@@ -64,7 +64,7 @@ class ParseqAdapter():
 
         # Wrap the original schedules with Parseq decorators, so that Parseq values will override the original values IFF appropriate.
         self.anim_keys = ParseqAnimKeysDecorator(self, DeformAnimKeys(anim_args))
-        self.cn_keys = ParseqControlNetKeysDecorator(self, ControlNetKeys(anim_args, controlnet_args)) if controlnet_args else None
+        self.cn_keys = ParseqControlNetKeysDecorator(self, ControlNetKeys(anim_args, controlnet_args)) if (controlnet_args and len(controlnet_args.__dict__)>0) else None
         # -1 because seed seems to be unused in LooperAnimKeys
         self.looper_keys = ParseqLooperKeysDecorator(self, LooperAnimKeys(loop_args, anim_args, -1)) if loop_args else None
 

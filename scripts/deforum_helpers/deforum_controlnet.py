@@ -39,19 +39,19 @@ max_models = shared.opts.data.get("control_net_unit_count", shared.opts.data.get
 num_of_models = 5 if max_models <= 5 else max_models
 
 def find_controlnet():
-    global cnet
-    if cnet: return cnet
-    try:
-        cnet = importlib.import_module('extensions.sd-webui-controlnet.scripts.external_code', 'external_code')
-    except:
-        try:
-            cnet = importlib.import_module('extensions-builtin.sd-webui-controlnet.scripts.external_code', 'external_code')
-        except:
-            pass
-    if cnet:
-        print(f"\033[0;32m*Deforum ControlNet support: enabled*\033[0m")
-        return True
-    return None
+    # global cnet
+    # if cnet: return cnet
+    # try:
+    #     cnet = importlib.import_module('extensions.sd-webui-controlnet.scripts.external_code', 'external_code')
+    # except:
+    #     try:
+    #         cnet = importlib.import_module('extensions-builtin.sd-webui-controlnet.scripts.external_code', 'external_code')
+    #     except:
+    #         pass
+    # if cnet:
+    #     print(f"\033[0;32m*Deforum ControlNet support: enabled*\033[0m")
+    #     return True
+    return False
 
 def controlnet_infotext():
     return """Requires the <a style='color:SteelBlue;' target='_blank' href='https://github.com/Mikubill/sd-webui-controlnet'>ControlNet</a> extension to be installed.</p>
