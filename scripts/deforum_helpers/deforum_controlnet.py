@@ -32,6 +32,9 @@ from .animation_key_frames import ControlNetKeys
 from .load_images import load_image
 from .general_utils import debug_print
 
+from lib_controlnet.global_state import update_controlnet_filenames, get_all_preprocessor_names, get_all_controlnet_names, get_sorted_preprocessors
+from lib_controlnet.external_code import ControlNetUnit
+
 cnet = None
 # number of CN model tabs to show in the deforum gui. If the user has set it in the A1111 UI to a value less than 5
 # then we set it to 5. Else, we respect the value they specified
@@ -42,7 +45,7 @@ def find_controlnet():
     # global cnet
     # if cnet: return cnet
     # try:
-    #     cnet = importlib.import_module('extensions.sd-webui-controlnet.scripts.external_code', 'external_code')
+    #     cnet = importlib.import_module('.sd-webui-controlnet.scripts.external_code', 'external_code')
     # except:
     #     try:
     #         cnet = importlib.import_module('extensions-builtin.sd-webui-controlnet.scripts.external_code', 'external_code')
@@ -51,7 +54,7 @@ def find_controlnet():
     # if cnet:
     #     print(f"\033[0;32m*Deforum ControlNet support: enabled*\033[0m")
     #     return True
-    return False
+    return True
 
 def controlnet_infotext():
     return """Requires the <a style='color:SteelBlue;' target='_blank' href='https://github.com/Mikubill/sd-webui-controlnet'>ControlNet</a> extension to be installed.</p>
@@ -65,20 +68,21 @@ def is_controlnet_enabled(controlnet_args):
     return False
 
 def setup_controlnet_ui_raw():
-    cnet = find_controlnet()
-    cn_models = cnet.get_models()
-    cn_preprocessors = cnet.get_modules()
+    update_controlnet_filenames()
+    cn_models = get_all_controlnet_names()
+    cn_preprocessors = get_all_preprocessor_names()
 
-    cn_modules = cnet.get_modules_detail()
+    cn_modules = get_sorted_preprocessors()
     preprocessor_sliders_config = {}
 
-    for config_name, config_values in cn_modules.items():
-        sliders = config_values.get('sliders', [])
-        preprocessor_sliders_config[config_name] = sliders
+    for preprocessor_name, preprocessor in cn_modules.items():
+        preprocessor_sliders_config[preprocessor_name] = [preprocessor.slider_1, preprocessor.slider_2, preprocessor.slider_3]
 
     model_free_preprocessors = ["reference_only", "reference_adain", "reference_adain+attn"]
     flag_preprocessor_resolution = "Preprocessor Resolution"
 
+    # TODO [robinf] - not sure if we're doing everything that's required here for the sliders to appear and behave correclty.
+    # In particular, I don't know how Pixel Perfect (pp) relates to the sliders.
     def build_sliders(module, pp):
         grs = []
         if module not in preprocessor_sliders_config:
@@ -90,20 +94,7 @@ def setup_controlnet_ui_raw():
             ]
         else:
             for slider_config in preprocessor_sliders_config[module]:
-                if isinstance(slider_config, dict):
-                    visible = True
-                    if slider_config['name'] == flag_preprocessor_resolution:
-                        visible = not pp
-                    grs.append(gr.update(
-                        label=slider_config['name'],
-                        value=slider_config['value'],
-                        minimum=slider_config['min'],
-                        maximum=slider_config['max'],
-                        step=slider_config['step'] if 'step' in slider_config else 1,
-                        visible=visible,
-                        interactive=visible))
-                else:
-                    grs.append(gr.update(visible=False, interactive=False))
+                  grs.append(gr.update(interactive=slider_config.gradio_update_kwargs['visible'], **slider_config.gradio_update_kwargs))
             while len(grs) < 3:
                 grs.append(gr.update(visible=False, interactive=False))
             grs.append(gr.update(visible=True))
@@ -174,7 +165,7 @@ def setup_controlnet_ui_raw():
         ]}
 
     def refresh_all_models(*inputs):
-        cn_models = cnet.get_models(update=True)
+        cn_models = get_all_controlnet_names()
         dd = inputs[0]
         selected = dd if dd in cn_models else "None"
         return gr.Dropdown.update(value=selected, choices=cn_models)
@@ -256,7 +247,7 @@ def process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_ad
 
         return cn_mask_np, cn_image_np
 
-    cnet = find_controlnet()
+    #cnet = find_controlnet()
     cn_data = [read_cn_data(i) for i in range(1, num_of_models + 1)]
 
     # Check if any loopback_mode is set to True
@@ -267,6 +258,10 @@ def process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_ad
     if not any(os.path.exists(cn_inputframes) for cn_inputframes in cn_inputframes_list) and not any_loopback_mode:
         print(f'\033[33mNeither the base nor the masking frames for ControlNet were found. Using the regular pipeline\033[0m')
 
+    
+    # TODO [robinf]: This is still using the a1111-style hack to define the set of controlnet units to use for the gen.
+    # There may be a better way to do this in Forge. 
+    #
     # Remove all scripts except controlnet.
     #
     # This is required because controlnet's access to p.script_args invokes @script_args.setter, 
@@ -285,9 +280,6 @@ def process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_ad
     p.scripts = copy.copy(scripts.scripts_img2img if is_img2img else scripts.scripts_txt2img)
     controlnet_script = find_controlnet_script(p)
     p.scripts.alwayson_scripts =  [controlnet_script]
-    # Filling the list with None is safe because only the length will be considered,
-    # and all cn args will be replaced.
-    p.script_args_value = [None] * controlnet_script.args_to
 
     def create_cnu_dict(cn_args, prefix, img_np, mask_np, frame_idx, CnSchKeys):
 
@@ -312,10 +304,15 @@ def process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_ad
 
     masks_np, images_np = zip(*cn_data)
 
-    cn_units = [cnet.ControlNetUnit(**create_cnu_dict(controlnet_args, f"cn_{i + 1}", img_np, mask_np, frame_idx, CnSchKeys))
-                for i, (img_np, mask_np) in enumerate(zip(images_np, masks_np))]
+    units = [
+        ControlNetUnit.from_dict(create_cnu_dict(controlnet_args, f"cn_{i + 1}", img_np, mask_np, frame_idx, CnSchKeys))
+                 for i, (img_np, mask_np) in enumerate(zip(images_np, masks_np))
+    ]
 
-    cnet.update_cn_script_in_processing(p, cn_units, is_img2img=is_img2img, is_ui=False)
+    # Set the script input args to the controlnet unit list
+    p.script_args_value = units
+
+
 
 def find_controlnet_script(p):
     controlnet_script = next((script for script in p.scripts.alwayson_scripts if script.title().lower()  == "controlnet"), None)
