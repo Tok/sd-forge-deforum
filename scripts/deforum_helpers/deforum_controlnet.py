@@ -57,9 +57,7 @@ def find_controlnet():
     return True
 
 def controlnet_infotext():
-    return """Requires the <a style='color:SteelBlue;' target='_blank' href='https://github.com/Mikubill/sd-webui-controlnet'>ControlNet</a> extension to be installed.</p>
-            <p">If Deforum crashes due to CN updates, go <a style='color:Orange;' target='_blank' href='https://github.com/Mikubill/sd-webui-controlnet/issues'>here</a> and report your problem.</p>
-           """
+    return ""
 
 def is_controlnet_enabled(controlnet_args):
     for i in range(1, num_of_models + 1):
@@ -278,7 +276,7 @@ def process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_ad
     # reference (scripts.alwayson_scripts)
     #
     p.scripts = copy.copy(scripts.scripts_img2img if is_img2img else scripts.scripts_txt2img)
-    controlnet_script = find_controlnet_script(p)
+    controlnet_script = copy.copy(find_controlnet_script(p))
     p.scripts.alwayson_scripts =  [controlnet_script]
 
     def create_cnu_dict(cn_args, prefix, img_np, mask_np, frame_idx, CnSchKeys):
@@ -298,7 +296,7 @@ def process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_ad
             cnu['guidance_end'] = getattr(CnSchKeys, f"cn_{model_num}_guidance_end_schedule_series")[frame_idx]
             if cnu['enabled']:
                 debug_print(f"ControlNet {model_num}: weight={cnu['weight']}, guidance_start={cnu['guidance_start']}, guidance_end={cnu['guidance_end']}")
-        cnu['image'] = {'image': img_np, 'mask': mask_np} if mask_np is not None else img_np
+        cnu['image'] = {'image': img_np, 'mask': mask_np} if mask_np is not None else  {'image': img_np, 'mask': np.zeros_like(img_np)} 
 
         return cnu
 
@@ -308,6 +306,9 @@ def process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_ad
         ControlNetUnit.from_dict(create_cnu_dict(controlnet_args, f"cn_{i + 1}", img_np, mask_np, frame_idx, CnSchKeys))
                  for i, (img_np, mask_np) in enumerate(zip(images_np, masks_np))
     ]
+
+    controlnet_script.args_from=0
+    controlnet_script.args_to=len(units)
 
     # Set the script input args to the controlnet unit list
     p.script_args_value = units
