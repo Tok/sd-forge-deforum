@@ -61,6 +61,7 @@ class DepthModel:
         self.midas_weight = midas_weight
         self.depth_min, self.depth_max = 1000, -1000
         self.adabins_helper = None
+        self.should_delete = False
         self._initialize_model()
 
     def _initialize_model(self):
