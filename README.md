@@ -25,3 +25,4 @@ TODO
 ## Compatibility notes
 
 * If you load a settings file from the a1111 extension into the Forge extension, you will need to reselect your controlnet preprocessors (they are referenced using different identifiers).
+* Forge reduces VRAM usage by more agressively unloading models from memory. This can cause delays between frame generations while models are juggled in and of memory. To reduce this, start Forge with `--always-high-vram` (assuming you have sufficient VRAM).
