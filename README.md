@@ -1,5 +1,5 @@
 
-# Deforum Stable Diffusion — official extension for 
+# Deforum Stable Diffusion — official extension for Forge
 
 This is the Deforum extension for the [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge).
 It is a fork of [the Deforum Extension for A1111](https://github.com/deforum-art/sd-webui-deforum) and is expected to diverge over time.
