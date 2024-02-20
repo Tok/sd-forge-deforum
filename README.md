@@ -21,3 +21,7 @@ After setting up the [Stable Diffusion WebUI Forge](https://github.com/lllyasvie
 ## What works & what doesn't
 
 TODO
+
+## Compatibility notes
+
+* If you load a settings file from the a1111 extension into the Forge extension, you will need to reselect your controlnet preprocessors (they are referenced using different identifiers).
