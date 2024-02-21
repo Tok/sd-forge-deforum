@@ -14,6 +14,7 @@
 
 # Contact the authors: https://deforum.github.io/
 
+from types import SimpleNamespace
 import gradio as gr
 from modules.ui_components import FormRow, FormColumn, ToolButton
 from .defaults import get_gradio_html, DeforumAnimPrompts
@@ -385,6 +386,21 @@ def get_tab_init(d, da, dp):
                 parseq_non_schedule_overrides = create_gr_elem(dp.parseq_non_schedule_overrides)
             with FormRow():
                 parseq_use_deltas = create_gr_elem(dp.parseq_use_deltas)
+    return {k: v for k, v in {**locals(), **vars()}.items()}
+
+
+def get_tab_freeu(dfu : SimpleNamespace):
+    with gr.TabItem('FreeU'):
+        with FormRow():
+            freeu_enabled = create_gr_elem(dfu.freeu_enabled)        
+        with FormRow():
+            freeu_b1 = create_gr_elem(dfu.freeu_b1)
+        with FormRow():            
+            freeu_b2 = create_gr_elem(dfu.freeu_b2)
+        with FormRow():            
+            freeu_s1 = create_gr_elem(dfu.freeu_s1)
+        with FormRow():
+            freeu_s2 = create_gr_elem(dfu.freeu_s2)            
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 def get_tab_hybrid(da):

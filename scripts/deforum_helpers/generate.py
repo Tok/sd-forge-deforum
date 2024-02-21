@@ -34,8 +34,11 @@ from .opts_overrider import A1111OptionsOverrider
 import cv2
 import numpy as np
 from types import SimpleNamespace
+from ldm_patched.contrib.external_freelunch import FreeU_V2
 
 from .general_utils import debug_print
+
+deforumFreeU_V2 = FreeU_V2()
 
 def load_mask_latent(mask_input, shape):
     # mask_input (str or PIL Image.Image): Path to the mask image or a PIL Image object
@@ -70,14 +73,14 @@ def pairwise_repl(iterable):
     next(b, None)
     return zip(a, b)
 
-def generate(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter,  frame=0, sampler_name=None):
+def generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, root, parseq_adapter,  frame=0, sampler_name=None):
     if state.interrupted:
         return None
 
     if args.reroll_blank_frames == 'ignore':
-        return generate_inner(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter, frame, sampler_name)
+        return generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, root, parseq_adapter, frame, sampler_name)
 
-    image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter, frame, sampler_name)
+    image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, root, parseq_adapter, frame, sampler_name)
 
     if caught_vae_exception or not image.getbbox():
         patience = args.reroll_patience
@@ -86,7 +89,7 @@ def generate(args, keys, anim_args, loop_args, controlnet_args, root, parseq_ada
             while caught_vae_exception or not image.getbbox():
                 print("Rerolling with +1 seed...")
                 args.seed += 1
-                image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter, frame, sampler_name)
+                image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, root, parseq_adapter, frame, sampler_name)
                 patience -= 1
                 if patience == 0:
                     print("Rerolling with +1 seed failed for 10 iterations! Try setting webui's precision to 'full' and if it fails, please report this to the devs! Interrupting...")
@@ -100,12 +103,12 @@ def generate(args, keys, anim_args, loop_args, controlnet_args, root, parseq_ada
             return None
     return image
 
-def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter, frame=0, sampler_name=None):
+def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, root, parseq_adapter, frame=0, sampler_name=None):
     if cmd_opts.disable_nan_check:
-        image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter, frame, sampler_name)
+        image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, root, parseq_adapter, frame, sampler_name)
     else:
         try:
-            image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter, frame, sampler_name)
+            image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, root, parseq_adapter, frame, sampler_name)
         except Exception as e:
             if "A tensor with all NaNs was produced in VAE." in repr(e):
                 print(e)
@@ -114,7 +117,7 @@ def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, 
                 raise e
     return image, False
 
-def generate_inner(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter, frame=0, sampler_name=None):
+def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, root, parseq_adapter, frame=0, sampler_name=None):
     # Setup the pipeline
     p = get_webui_sd_pipeline(args, root)
     p.prompt, p.negative_prompt = split_weighted_subprompts(args.prompt, frame, anim_args.max_frames)
@@ -234,6 +237,12 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, root, pars
 
             print_combined_table(args, anim_args, p_txt, keys, frame)  # print dynamic table to cli
 
+            debug_print(f"FreeU: freeu_enabled={freeu_args.freeu_enabled}, freeu_b1={freeu_args.freeu_b1}, freeu_b2={freeu_args.freeu_b2}, freeu_s1={freeu_args.freeu_s1}, freeu_s2={freeu_args.freeu_s2}")
+            if freeu_args.freeu_enabled:
+                unet = p_txt.sd_model.forge_objects.unet
+                unet = deforumFreeU_V2.patch(unet, freeu_args.freeu_b1_frameval, freeu_args.freeu_b2_frameval, freeu_args.freeu_s1_frameval, freeu_args.freeu_s2_frameval)[0]
+                p_txt.sd_model.forge_objects.unet = unet
+
             if is_controlnet_enabled(controlnet_args):
                 process_with_controlnet(p_txt, args, anim_args, controlnet_args, root, parseq_adapter, is_img2img=False, frame_idx=frame)
 
@@ -276,9 +285,16 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, root, pars
         if args.motion_preview_mode:
             processed = mock_process_images(args, p, init_image)
         else:
+
+            debug_print(f"FreeU: freeu_enabled={freeu_args.freeu_enabled}, freeu_b1={freeu_args.freeu_b1}, freeu_b2={freeu_args.freeu_b2}, freeu_s1={freeu_args.freeu_s1}, freeu_s2={freeu_args.freeu_s2}")
+            if freeu_args.freeu_enabled:
+                unet = p.sd_model.forge_objects.unet
+                unet = deforumFreeU_V2.patch(unet, freeu_args.freeu_b1_frameval, freeu_args.freeu_b2_frameval, freeu_args.freeu_s1_frameval, freeu_args.freeu_s2_frameval)[0]
+                p.sd_model.forge_objects.unet = unet 
+
             if is_controlnet_enabled(controlnet_args):
                 process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_adapter, is_img2img=True, frame_idx=frame)
-            
+
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
                 processed = processing.process_images(p)
 

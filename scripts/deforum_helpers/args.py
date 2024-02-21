@@ -987,6 +987,41 @@ def ParseqArgs():
         }        
     }
 
+def FreeUArgs():
+    return {
+        "freeu_enabled": {
+            "label": "Enabled",
+            "type": "checkbox",
+            "value": False,
+            "info": "Enable FreeU"
+        },
+        "freeu_b1": {
+            "label": "Backbone stage 1",
+            "type": "textbox",
+            "value": "0:(1.3)",
+            "info": "backbone factor of the first stage block of decoder",
+        },
+        "freeu_b2": {
+            "label": "Backbone stage 2",
+            "type": "textbox",
+            "value": "0:(1.4)",
+            "info": "backbone factor of the second stage block of decoder",
+        },        
+        "freeu_s1": {
+            "label": "Skip stage 1",
+            "type": "textbox",
+            "value": "0:(0.9)",
+            "info": "skip factor of the first stage block of decoder",
+        },
+        "freeu_s2": {
+            "label": "Skip stage 2",
+            "type": "textbox",
+            "value": "0:(0.2)",
+            "info": "skip factor of the second stage block of decoder",
+        },
+
+    }
+
 def DeforumOutputArgs():
     return {
         "skip_video_creation": {
@@ -1119,7 +1154,7 @@ def DeforumOutputArgs():
 
 def get_component_names():
     return ['override_settings_with_file', 'custom_settings_file', *DeforumAnimArgs().keys(), 'animation_prompts', 'animation_prompts_positive', 'animation_prompts_negative',
-            *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(), *LoopArgs().keys(), *controlnet_component_names()]
+            *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(), *LoopArgs().keys(), *controlnet_component_names(), *FreeUArgs().keys()]
 
 def get_settings_component_names():
     return [name for name in get_component_names()]
@@ -1139,13 +1174,14 @@ def process_args(args_dict_main, run_id):
     video_args = SimpleNamespace(**{name: args_dict_main[name] for name in DeforumOutputArgs()})
     parseq_args = SimpleNamespace(**{name: args_dict_main[name] for name in ParseqArgs()})
     loop_args = SimpleNamespace(**{name: args_dict_main[name] for name in LoopArgs()})
+    freeu_args = SimpleNamespace(**{name: args_dict_main[name] for name in FreeUArgs()})
     controlnet_args = SimpleNamespace(**{name: args_dict_main[name] for name in controlnet_component_names()})
 
     root.animation_prompts = json.loads(args_dict_main['animation_prompts'])
 
     args_loaded_ok = True
     if override_settings_with_file:
-        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, video_args, custom_settings_file, root, run_id)
+        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, video_args, custom_settings_file, root, run_id)
 
     positive_prompts = args_dict_main['animation_prompts_positive']
     negative_prompts = args_dict_main['animation_prompts_negative']
@@ -1184,4 +1220,4 @@ def process_args(args_dict_main, run_id):
     default_img = default_img.resize((args.W,args.H))
     root.default_img = default_img
 
-    return args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args
+    return args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args
