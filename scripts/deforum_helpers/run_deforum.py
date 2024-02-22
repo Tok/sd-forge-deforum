@@ -65,13 +65,13 @@ def run_deforum(*args):
     for i in range(times_to_run): # run for as many times as we need
         job_id = f"{job_id_prefix}-{i}"
         JobStatusTracker().update_phase(job_id, DeforumJobPhase.PREPARING)
-        print(f"\033[4;33mDeforum extension for auto1111 webui\033[0m")
+        print(f"\033[4;33mDeforum extension for Forge webui\033[0m")
         print(f"Git commit: {get_deforum_version()}")
         print(f"Starting job {job_id}...")
         args_dict['self'] = None
         args_dict['p'] = p
         try:
-            args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args = process_args(args_dict, i)
+            args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args = process_args(args_dict, i)
         except Exception as e:
             JobStatusTracker().fail_job(job_id, error_type="TERMINAL", message="Invalid arguments.")
             print("\n*START OF TRACEBACK*")
@@ -111,13 +111,13 @@ def run_deforum(*args):
             JobStatusTracker().update_output_info(job_id, outdir=args.outdir, timestring=root.timestring)
             if anim_args.animation_mode == '2D' or anim_args.animation_mode == '3D':
                 if anim_args.use_mask_video: 
-                    render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)  # allow mask video without an input video
+                    render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, root)  # allow mask video without an input video
                 else:    
-                    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
+                    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, root)
             elif anim_args.animation_mode == 'Video Input':
-                render_input_video(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)#TODO: prettify code
+                render_input_video(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, root)#TODO: prettify code
             elif anim_args.animation_mode == 'Interpolation':
-                render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
+                render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, root)
             else:
                 print('Other modes are not available yet!')
         except Exception as e:
@@ -163,7 +163,7 @@ def run_deforum(*args):
                 mp4 = open(mp4_path, 'rb').read()
                 data_url = f"data:video/mp4;base64, {b64encode(mp4).decode()}"
                 global last_vid_data
-                last_vid_data = f'<p style=\"font-weight:bold;margin-bottom:0em\">Deforum extension for auto1111 — version 2.4b </p><video controls loop><source src="{data_url}" type="video/mp4"></video>'
+                last_vid_data = f'<p style=\"font-weight:bold;margin-bottom:0em\">Deforum extension for Forge </p><video controls loop><source src="{data_url}" type="video/mp4"></video>'
             except Exception as e:
                 if need_to_frame_interpolate:
                     print(f"FFMPEG DID NOT STITCH ANY VIDEO. However, you requested to frame interpolate  - so we will continue to frame interpolation, but you'll be left only with the interpolated frames and not a video, since ffmpeg couldn't run. Original ffmpeg error: {e}")
@@ -221,7 +221,7 @@ def run_deforum(*args):
 
         if shared.opts.data.get("deforum_enable_persistent_settings", False):
             persistent_sett_path = shared.opts.data.get("deforum_persistent_settings_path")
-            save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, video_args, root, persistent_sett_path)
+            save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, video_args, root, persistent_sett_path)
 
         # Close the pipeline, not to interfere with ControlNet
         try:

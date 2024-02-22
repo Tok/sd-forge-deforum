@@ -87,6 +87,16 @@ class ControlNetKeys():
                 self.schedules[output_key] = self.fi.parse_inbetweens(getattr(controlnet_args, input_key), input_key)
                 setattr(self, output_key, self.schedules[output_key])
 
+class FreeUAnimKeys():
+    def __init__(self, anim_args, freeu_args):
+        self.fi = FrameInterpolater(max_frames=anim_args.max_frames)
+        self.freeu_enabled = freeu_args.freeu_enabled
+        self.freeu_b1_series = self.fi.parse_inbetweens(freeu_args.freeu_b1, 'freeu_args.b1')
+        self.freeu_b2_series = self.fi.parse_inbetweens(freeu_args.freeu_b2, 'freeu_args.b2')
+        self.freeu_s1_series = self.fi.parse_inbetweens(freeu_args.freeu_s1, 'freeu_args.s1')
+        self.freeu_s2_series = self.fi.parse_inbetweens(freeu_args.freeu_s2, 'freeu_args.s2')
+                    
+
 class LooperAnimKeys():
     def __init__(self, loop_args, anim_args, seed):
         self.fi = FrameInterpolater(anim_args.max_frames, seed)
