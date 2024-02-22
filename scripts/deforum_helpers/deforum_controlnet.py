@@ -42,18 +42,6 @@ max_models = shared.opts.data.get("control_net_unit_count", shared.opts.data.get
 num_of_models = 5 if max_models <= 5 else max_models
 
 def find_controlnet():
-    # global cnet
-    # if cnet: return cnet
-    # try:
-    #     cnet = importlib.import_module('.sd-webui-controlnet.scripts.external_code', 'external_code')
-    # except:
-    #     try:
-    #         cnet = importlib.import_module('extensions-builtin.sd-webui-controlnet.scripts.external_code', 'external_code')
-    #     except:
-    #         pass
-    # if cnet:
-    #     print(f"\033[0;32m*Deforum ControlNet support: enabled*\033[0m")
-    #     return True
     return True
 
 def controlnet_infotext():
@@ -206,7 +194,7 @@ def controlnet_component_names():
         'processor_res', 'threshold_a', 'threshold_b', 'resize_mode', 'control_mode', 'loopback_mode'
     ]]
 
-def process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_adapter, is_img2img=True, frame_idx=0):
+def get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=0):
     CnSchKeys = ControlNetKeys(anim_args, controlnet_args) if not parseq_adapter.use_parseq else parseq_adapter.cn_keys
 
     def read_cn_data(cn_idx):
@@ -256,29 +244,6 @@ def process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_ad
     if not any(os.path.exists(cn_inputframes) for cn_inputframes in cn_inputframes_list) and not any_loopback_mode:
         print(f'\033[33mNeither the base nor the masking frames for ControlNet were found. Using the regular pipeline\033[0m')
 
-    
-    # TODO [robinf]: This is still using the a1111-style hack to define the set of controlnet units to use for the gen.
-    # There may be a better way to do this in Forge. 
-    #
-    # Remove all scripts except controlnet.
-    #
-    # This is required because controlnet's access to p.script_args invokes @script_args.setter, 
-    # which triggers *all* alwayson_scripts' setup() functions, with whatever happens to be in script_args.
-    # In the case of seed.py (which we really don't need with deforum), this ovewrites our p.seed & co, which we
-    # had carefully prepared previously. So let's remove the scripts to avoid the problem.
-    #
-    # An alternative would be to populate all the args with the correct values
-    # for all scripts, but this seems even more fragile, as it would break
-    # if a1111 adds or removed scripts.
-    #
-    # Note that we must copy scripts.scripts_img2img or scripts.scripts_txt2img before mutating it
-    # because it persists across requests. Shallow-copying is sufficient because we only mutate a top-level
-    # reference (scripts.alwayson_scripts)
-    #
-    p.scripts = copy.copy(scripts.scripts_img2img if is_img2img else scripts.scripts_txt2img)
-    controlnet_script = copy.copy(find_controlnet_script(p))
-    p.scripts.alwayson_scripts =  [controlnet_script]
-
     def create_cnu_dict(cn_args, prefix, img_np, mask_np, frame_idx, CnSchKeys):
 
         keys = [
@@ -307,11 +272,7 @@ def process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_ad
                  for i, (img_np, mask_np) in enumerate(zip(images_np, masks_np))
     ]
 
-    controlnet_script.args_from=0
-    controlnet_script.args_to=len(units)
-
-    # Set the script input args to the controlnet unit list
-    p.script_args_value = units
+    return units
 
 
 

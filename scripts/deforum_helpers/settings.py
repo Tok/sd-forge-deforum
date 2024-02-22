@@ -17,7 +17,7 @@
 import os
 import json
 import modules.shared as sh
-from .args import DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, get_settings_component_names, pack_args
+from .args import DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, get_settings_component_names, pack_args, FreeUArgs
 from .deforum_controlnet import controlnet_component_names
 from .defaults import mask_fill_choices
 from .deprecation_utils import handle_deprecated_settings
@@ -91,8 +91,9 @@ def save_settings(*args, **kwargs):
     args_dict["animation_prompts_negative"] = data['animation_prompts_negative']
     loop_dict = pack_args(data, LoopArgs)
     controlnet_dict = pack_args(data, controlnet_component_names)
+    freeu_args_dict = pack_args(data, FreeUArgs)
     video_args_dict = pack_args(data, DeforumOutputArgs)
-    combined = {**args_dict, **anim_args_dict, **parseq_dict, **loop_dict, **controlnet_dict, **video_args_dict}
+    combined = {**args_dict, **anim_args_dict, **parseq_dict, **loop_dict, **controlnet_dict, **freeu_args_dict, **video_args_dict}
     exclude_keys = get_keys_to_exclude()
     filtered_combined = {k: v for k, v in combined.items() if k not in exclude_keys}
     filtered_combined["sd_model_name"] = sh.sd_model.sd_checkpoint_info.name

@@ -23,7 +23,7 @@ import requests
 import numexpr
 from modules import processing, sd_models
 from modules.shared import sd_model, state, cmd_opts
-from .deforum_controlnet import is_controlnet_enabled, process_with_controlnet
+from .deforum_controlnet import is_controlnet_enabled, get_controlnet_script_args
 from .prompt import split_weighted_subprompts
 from .load_images import load_img, prepare_mask, check_mask_for_errors
 from .webui_sd_pipeline import get_webui_sd_pipeline
@@ -34,11 +34,10 @@ from .opts_overrider import A1111OptionsOverrider
 import cv2
 import numpy as np
 from types import SimpleNamespace
-from ldm_patched.contrib.external_freelunch import FreeU_V2
+
+from .deforum_scripts_overrides import add_forge_script_to_deforum_run, initialise_forge_scripts
 
 from .general_utils import debug_print
-
-deforumFreeU_V2 = FreeU_V2()
 
 def load_mask_latent(mask_input, shape):
     # mask_input (str or PIL Image.Image): Path to the mask image or a PIL Image object
@@ -237,14 +236,16 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
 
             print_combined_table(args, anim_args, p_txt, keys, frame)  # print dynamic table to cli
 
-            debug_print(f"FreeU: freeu_enabled={freeu_args.freeu_enabled}, freeu_b1={freeu_args.freeu_b1}, freeu_b2={freeu_args.freeu_b2}, freeu_s1={freeu_args.freeu_s1}, freeu_s2={freeu_args.freeu_s2}")
-            if freeu_args.freeu_enabled:
-                unet = p_txt.sd_model.forge_objects.unet
-                unet = deforumFreeU_V2.patch(unet, freeu_args.freeu_b1_frameval, freeu_args.freeu_b2_frameval, freeu_args.freeu_s1_frameval, freeu_args.freeu_s2_frameval)[0]
-                p_txt.sd_model.forge_objects.unet = unet
+            initialise_forge_scripts(p_txt)
 
             if is_controlnet_enabled(controlnet_args):
-                process_with_controlnet(p_txt, args, anim_args, controlnet_args, root, parseq_adapter, is_img2img=False, frame_idx=frame)
+                cnet_args = get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=frame)
+                add_forge_script_to_deforum_run(p_txt, "ControlNet", cnet_args)
+
+            if freeu_args.freeu_enabled:
+                freeu_script_args = [freeu_args.freeu_enabled, freeu_args.freeu_b1_frameval, freeu_args.freeu_b2_frameval, freeu_args.freeu_s1_frameval, freeu_args.freeu_s2_frameval]
+                debug_print(f"FreeU: {json.dumps(freeu_script_args)}")
+                add_forge_script_to_deforum_run(p_txt, "FreeU Integrated", freeu_script_args)
 
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
                 processed = processing.process_images(p_txt)
@@ -285,15 +286,16 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
         if args.motion_preview_mode:
             processed = mock_process_images(args, p, init_image)
         else:
-
-            debug_print(f"FreeU: freeu_enabled={freeu_args.freeu_enabled}, freeu_b1={freeu_args.freeu_b1}, freeu_b2={freeu_args.freeu_b2}, freeu_s1={freeu_args.freeu_s1}, freeu_s2={freeu_args.freeu_s2}")
-            if freeu_args.freeu_enabled:
-                unet = p.sd_model.forge_objects.unet
-                unet = deforumFreeU_V2.patch(unet, freeu_args.freeu_b1_frameval, freeu_args.freeu_b2_frameval, freeu_args.freeu_s1_frameval, freeu_args.freeu_s2_frameval)[0]
-                p.sd_model.forge_objects.unet = unet 
+            initialise_forge_scripts(p)
 
             if is_controlnet_enabled(controlnet_args):
-                process_with_controlnet(p, args, anim_args, controlnet_args, root, parseq_adapter, is_img2img=True, frame_idx=frame)
+                cnet_args = get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=frame)
+                add_forge_script_to_deforum_run(p, "ControlNet", cnet_args)
+
+            if freeu_args.freeu_enabled:
+                freeu_script_args = [freeu_args.freeu_enabled, freeu_args.freeu_b1_frameval, freeu_args.freeu_b2_frameval, freeu_args.freeu_s1_frameval, freeu_args.freeu_s2_frameval]
+                debug_print(f"FreeU: {json.dumps(freeu_script_args)}")
+                add_forge_script_to_deforum_run(p, "FreeU Integrated", freeu_script_args)
 
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
                 processed = processing.process_images(p)
