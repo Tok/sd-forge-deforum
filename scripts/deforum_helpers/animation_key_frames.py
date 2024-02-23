@@ -90,11 +90,13 @@ class ControlNetKeys():
 class FreeUAnimKeys():
     def __init__(self, anim_args, freeu_args):
         self.fi = FrameInterpolater(max_frames=anim_args.max_frames)
-        self.freeu_enabled = freeu_args.freeu_enabled
-        self.freeu_b1_series = self.fi.parse_inbetweens(freeu_args.freeu_b1, 'freeu_args.b1')
-        self.freeu_b2_series = self.fi.parse_inbetweens(freeu_args.freeu_b2, 'freeu_args.b2')
-        self.freeu_s1_series = self.fi.parse_inbetweens(freeu_args.freeu_s1, 'freeu_args.s1')
-        self.freeu_s2_series = self.fi.parse_inbetweens(freeu_args.freeu_s2, 'freeu_args.s2')
+        from .args import FreeUArgs
+        defaults  = FreeUArgs()
+        self.freeu_enabled = freeu_args.freeu_enabled or defaults.get('freeu_enabled').get('value')
+        self.freeu_b1_series = self.fi.parse_inbetweens(freeu_args.freeu_b1 or defaults.get('freeu_b1').get('value'), 'freeu_args.b1')
+        self.freeu_b2_series = self.fi.parse_inbetweens(freeu_args.freeu_b2 or defaults.get('freeu_b2').get('value'), 'freeu_args.b2')
+        self.freeu_s1_series = self.fi.parse_inbetweens(freeu_args.freeu_s1 or defaults.get('freeu_s1').get('value'), 'freeu_args.s1')
+        self.freeu_s2_series = self.fi.parse_inbetweens(freeu_args.freeu_s2 or defaults.get('freeu_s2').get('value'), 'freeu_args.s2')
                     
 
 class LooperAnimKeys():
