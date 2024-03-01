@@ -34,16 +34,20 @@ from basicsr.utils.download_util import load_file_from_url
 from .rich import console
 import shutil
 from threading import Thread
+from .http_client import get_http_client
+
+SUPPORTED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "bmp", "webp"]
+SUPPORTED_VIDEO_EXTENSIONS = ["mov", "mpeg", "mp4", "m4v", "avi", "mpg", "webm"]
 
 def convert_image(input_path, output_path):
-    extension = get_extension_if_valid(input_path, ["png", "jpg", "jpeg", "bmp"])
+    extension = get_extension_if_valid(input_path, SUPPORTED_IMAGE_EXTENSIONS)
 
     if not extension:
         return
 
     # Read the input image
     if input_path.startswith('http://') or input_path.startswith('https://'):
-        resp = requests.get(input_path, allow_redirects=True)
+        resp = get_http_client().get(input_path, allow_redirects=True)
         arr = np.asarray(bytearray(resp.content), dtype=np.uint8)
         img = cv2.imdecode(arr, -1)
     else: 
@@ -54,10 +58,8 @@ def convert_image(input_path, output_path):
         cv2.imwrite(output_path, img, [cv2.IMWRITE_PNG_COMPRESSION, 9])
     elif extension == "jpg" or extension == "jpeg":
         cv2.imwrite(output_path, img, [cv2.IMWRITE_JPEG_QUALITY, 99])
-    elif extension == "bmp":
-        cv2.imwrite(output_path, img)
     else:
-        raise ValueError(f"Unrecognized image extension: {extension}")
+        cv2.imwrite(output_path, img)
 
 
 def get_ffmpeg_params(): # get ffmpeg params from webui's settings -> deforum tab. actual opts are set in deforum.py
@@ -97,7 +99,7 @@ def vid2frames(video_path, video_in_frame_path, n=1, overwrite=True, extract_fro
 
     video_path = clean_gradio_path_strings(video_path)
     # check vid path using a function and only enter if we get True
-    if get_extension_if_valid(video_path, ["mov", "mpeg", "mp4", "m4v", "avi", "mpg", "webm"]):
+    if get_extension_if_valid(video_path, SUPPORTED_VIDEO_EXTENSIONS):
 
         name = get_frame_name(video_path)
 
@@ -160,18 +162,26 @@ def vid2frames(video_path, video_in_frame_path, n=1, overwrite=True, extract_fro
         vidcap.release()
         return video_fps
 
-# Make sure the video_path provided is an existing local file or a web URL with a supported file extension
+# Make sure  path_to_check provided is an existing local file or a web URL with a supported file extension
+# Check Content-Disposition if necessary.
 # If so, return the extension. If not, raise an error.
 def get_extension_if_valid(path_to_check, acceptable_extensions: list[str] ) -> str:
-    if path_to_check.startswith('http://') or path_to_check.startswith('https://'):
-        # Path is actually a URL. Make sure it resolves and has a valid file extension.
-        response = requests.head(path_to_check, allow_redirects=True)
-        if response.status_code != 200:
-            raise ConnectionError(f"URL {path_to_check} is not valid. Response status code: {response.status_code}")
 
+    if path_to_check.startswith('http://') or path_to_check.startswith('https://'):
         extension = path_to_check.rsplit('?', 1)[0].rsplit('.', 1)[-1] # remove query string before checking file format extension.
         if extension in acceptable_extensions:
             return extension
+        
+
+        # Path is actually a URL. Make sure it resolves and has a valid file extension.
+        response = get_http_client().head(path_to_check, allow_redirects=True)
+        if response.status_code != 200:
+            # Pre-signed URLs for GET requests might not like HEAD requests. Try a 0 range GET request.
+            debug_print("Failed  HEAD request, trying 0 range GET. Status code: " + str(response.status_code))
+            response = get_http_client().get(path_to_check, headers={'Range': 'bytes=0-0'}, allow_redirects=True)
+            if response.status_code != 200:
+                debug_print("Also failed 0 range GET. Status code: " + str(response.status_code))
+                raise ConnectionError(f"URL {path_to_check} is not valid. Response status code: {response.status_code}")        
 
         content_disposition_extension = None
         content_disposition = response.headers.get('Content-Disposition')
@@ -260,7 +270,7 @@ def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch
             if (audio_path.startswith('http://') or audio_path.startswith('https://')):
                 url = audio_path
                 print(f"Downloading audio file from: {url}")
-                response = requests.get(url, stream=True)
+                response = get_http_client().get(url, stream=True)
                 response.raise_for_status()
                 temp_file = tempfile.NamedTemporaryFile(delete=False)
                 # Write the content of the downloaded file into the temporary file
