@@ -27,7 +27,7 @@ import importlib
 from modules import scripts, shared
 from .deforum_controlnet_gradio import hide_ui_by_cn_status, hide_file_textboxes, ToolButton
 from .general_utils import count_files_in_folder, clean_gradio_path_strings  # TODO: do it another way
-from .video_audio_utilities import vid2frames, convert_image
+from .video_audio_utilities import SUPPORTED_IMAGE_EXTENSIONS, SUPPORTED_VIDEO_EXTENSIONS, get_extension_if_valid, vid2frames, convert_image
 from .animation_key_frames import ControlNetKeys
 from .load_images import load_image
 from .general_utils import debug_print
@@ -282,22 +282,19 @@ def find_controlnet_script(p):
         raise Exception("ControlNet script not found.")
     return controlnet_script
 
-def process_controlnet_input_frames(args, anim_args, controlnet_args, video_path, mask_path, outdir_suffix, id):
-    if (video_path or mask_path) and getattr(controlnet_args, f'cn_{id}_enabled'):
+def process_controlnet_input_frames(args, anim_args, controlnet_args, input_path, is_mask, outdir_suffix, id):
+    if (input_path) and getattr(controlnet_args, f'cn_{id}_enabled'):
         frame_path = os.path.join(args.outdir, f'controlnet_{id}_{outdir_suffix}')
         os.makedirs(frame_path, exist_ok=True)
 
-        if video_path:
-            convert_image(video_path, os.path.join(frame_path, '000000000.jpg'))
-            print(f"Copied CN Model {id}'s single input image to inputframes folder!")
-        elif mask_path:
-            convert_image(mask_path, os.path.join(frame_path, '000000000.jpg'))
-            print(f"Copied CN Model {id}'s single input image to inputframes *mask* folder!")
-        else:
-            print(f'Unpacking ControlNet {id} {"video mask" if mask_path else "base video"}')
+        input_extension = get_extension_if_valid(input_path, SUPPORTED_IMAGE_EXTENSIONS + SUPPORTED_VIDEO_EXTENSIONS)
+        input_is_video = input_extension in SUPPORTED_VIDEO_EXTENSIONS
+
+        if input_is_video:
+            print(f'Unpacking ControlNet {id} {"video mask" if is_mask else "base video"}')
             print(f"Exporting Video Frames to {frame_path}...")
             vid2frames(
-                video_path=video_path or mask_path,
+                video_path=input_path,
                 video_in_frame_path=frame_path,
                 n=1 if anim_args.animation_mode != 'Video Input' else anim_args.extract_nth_frame,
                 overwrite=getattr(controlnet_args, f'cn_{id}_overwrite_frames'),
@@ -306,7 +303,11 @@ def process_controlnet_input_frames(args, anim_args, controlnet_args, video_path
                 numeric_files_output=True
             )
             print(f"Loading {anim_args.max_frames} input frames from {frame_path} and saving video frames to {args.outdir}")
-            print(f'ControlNet {id} {"video mask" if mask_path else "base video"} unpacked!')
+            print(f'ControlNet {id} {"video mask" if is_mask else "base video"} unpacked!')
+        else:
+            convert_image(input_path, os.path.join(frame_path, '000000000.jpg'))
+            print(f"Copied CN Model {id}'s single input image to {frame_path} folder!")
+
 
 def unpack_controlnet_vids(args, anim_args, controlnet_args):
     # this func gets called from render.py once for an entire animation run -->
@@ -320,7 +321,7 @@ def unpack_controlnet_vids(args, anim_args, controlnet_args):
         mask_path = clean_gradio_path_strings(getattr(controlnet_args, f'cn_{i}_mask_vid_path', None))
 
         if vid_path:  # Process base video, if available
-            process_controlnet_input_frames(args, anim_args, controlnet_args, vid_path, None, 'inputframes', i)
+            process_controlnet_input_frames(args, anim_args, controlnet_args, vid_path, False, 'inputframes', i)
 
         if mask_path:  # Process mask video, if available
-            process_controlnet_input_frames(args, anim_args, controlnet_args, None, mask_path, 'maskframes', i)
+            process_controlnet_input_frames(args, anim_args, controlnet_args, mask_path, True, 'maskframes', i)
