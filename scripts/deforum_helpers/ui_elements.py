@@ -403,6 +403,29 @@ def get_tab_freeu(dfu : SimpleNamespace):
             freeu_s2 = create_gr_elem(dfu.freeu_s2)            
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
+
+
+def get_tab_kohya_hrfix(dku : SimpleNamespace):
+    with gr.TabItem('Kohya HR Fix'):
+        with FormRow():
+            kohya_hrfix_enabled = create_gr_elem(dku.kohya_hrfix_enabled)        
+        with FormRow():
+            kohya_hrfix_block_number = create_gr_elem(dku.kohya_hrfix_block_number)
+        with FormRow():            
+            kohya_hrfix_downscale_factor = create_gr_elem(dku.kohya_hrfix_downscale_factor)
+        with FormRow():            
+            kohya_hrfix_start_percent = create_gr_elem(dku.kohya_hrfix_start_percent)
+        with FormRow():
+            kohya_hrfix_end_percent = create_gr_elem(dku.kohya_hrfix_end_percent)
+        with FormRow():
+            kohya_hrfix_downscale_after_skip = create_gr_elem(dku.kohya_hrfix_downscale_after_skip)
+        with FormRow():
+            kohya_hrfix_downscale_method = create_gr_elem(dku.kohya_hrfix_downscale_method)
+        with FormRow():
+            kohya_hrfix_upscale_method = create_gr_elem(dku.kohya_hrfix_upscale_method)            
+    return {k: v for k, v in {**locals(), **vars()}.items()}
+
+
 def get_tab_hybrid(da):
     with gr.TabItem('Hybrid Video'):
         # this html only shows when not in 2d/3d mode

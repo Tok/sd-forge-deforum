@@ -99,6 +99,18 @@ class FreeUAnimKeys():
         self.freeu_s2_series = self.fi.parse_inbetweens(freeu_args.freeu_s2 or defaults.get('freeu_s2').get('value'), 'freeu_args.s2')
                     
 
+class KohyaHRFixAnimKeys():
+    def __init__(self, anim_args, kohya_hrfix_args):
+        self.fi = FrameInterpolater(max_frames=anim_args.max_frames)
+        from .args import KohyaHRFixArgs
+        defaults  = KohyaHRFixArgs()
+        self.kohya_hrfix_enabled = kohya_hrfix_args.kohya_hrfix_enabled or defaults.get('kohya_hrfix_enabled').get('value')
+        self.block_number_series = self.fi.parse_inbetweens(kohya_hrfix_args.kohya_hrfix_block_number or defaults.get('kohya_hrfix_block_number').get('value'), 'kohya_hrfix.block_number')
+        self.downscale_factor_series = self.fi.parse_inbetweens(kohya_hrfix_args.kohya_hrfix_downscale_factor or defaults.get('kohya_hrfix_downscale_factor').get('value'), 'kohya_hrfix.downscale_factor')
+        self.start_percent_series = self.fi.parse_inbetweens(kohya_hrfix_args.kohya_hrfix_start_percent or defaults.get('kohya_hrfix_start_percent').get('value'), 'kohya_hrfix.start_percent')
+        self.end_percent_series = self.fi.parse_inbetweens(kohya_hrfix_args.kohya_hrfix_end_percent or defaults.get('kohya_hrfix_end_percent').get('value'), 'kohya_hrfix.end_percent')
+                    
+
 class LooperAnimKeys():
     def __init__(self, loop_args, anim_args, seed):
         self.fi = FrameInterpolater(anim_args.max_frames, seed)
