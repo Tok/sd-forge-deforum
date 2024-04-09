@@ -1256,7 +1256,8 @@ def process_args(args_dict_main, run_id):
     elif anim_args.animation_mode == 'Video Input':
         args.use_init = True
 
-    current_arg_list = [args, anim_args, video_args, parseq_args, root]
+    additional_substitutions = SimpleNamespace(date=time.strftime('%Y%m%d'), time=time.strftime('%H%M%S'))
+    current_arg_list = [args, anim_args, video_args, parseq_args, root, additional_substitutions]
     full_base_folder_path = os.path.join(os.getcwd(), p.outpath_samples)
     root.raw_batch_name = args.batch_name
     args.batch_name = substitute_placeholders(args.batch_name, current_arg_list, full_base_folder_path)
