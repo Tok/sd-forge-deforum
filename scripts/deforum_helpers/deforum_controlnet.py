@@ -32,7 +32,7 @@ from .animation_key_frames import ControlNetKeys
 from .load_images import load_image
 from .general_utils import debug_print
 
-from lib_controlnet.global_state import update_controlnet_filenames, get_all_preprocessor_names, get_all_controlnet_names, get_sorted_preprocessors
+from lib_controlnet.global_state import update_controlnet_filenames, get_all_preprocessor_names, get_all_controlnet_names, get_sorted_preprocessors, get_preprocessor
 from lib_controlnet.external_code import ControlNetUnit
 
 cnet = None
@@ -64,31 +64,24 @@ def setup_controlnet_ui_raw():
     for preprocessor_name, preprocessor in cn_modules.items():
         preprocessor_sliders_config[preprocessor_name] = [preprocessor.slider_1, preprocessor.slider_2, preprocessor.slider_3]
 
-    model_free_preprocessors = ["reference_only", "reference_adain", "reference_adain+attn"]
-    flag_preprocessor_resolution = "Preprocessor Resolution"
-
-    # TODO [robinf] - not sure if we're doing everything that's required here for the sliders to appear and behave correclty.
-    # In particular, I don't know how Pixel Perfect (pp) relates to the sliders.
     def build_sliders(module, pp):
-        grs = []
-        if module not in preprocessor_sliders_config:
-            grs += [
-                gr.update(label=flag_preprocessor_resolution, value=512, minimum=64, maximum=2048, step=1, visible=not pp, interactive=not pp),
-                gr.update(visible=False, interactive=False),
-                gr.update(visible=False, interactive=False),
-                gr.update(visible=True)
+            preprocessor = get_preprocessor(module)
+
+            slider_resolution_kwargs = preprocessor.slider_resolution.gradio_update_kwargs.copy()
+
+            if pp:
+                slider_resolution_kwargs['visible'] = False
+
+            grs = [
+                gr.update(**slider_resolution_kwargs),
+                gr.update(**preprocessor.slider_1.gradio_update_kwargs.copy()),
+                gr.update(**preprocessor.slider_2.gradio_update_kwargs.copy()),
+                gr.update(visible=True),
+                gr.update(visible=not preprocessor.do_not_need_model),
+                gr.update(visible=not preprocessor.do_not_need_model),
             ]
-        else:
-            for slider_config in preprocessor_sliders_config[module]:
-                  grs.append(gr.update(interactive=slider_config.gradio_update_kwargs['visible'], **slider_config.gradio_update_kwargs))
-            while len(grs) < 3:
-                grs.append(gr.update(visible=False, interactive=False))
-            grs.append(gr.update(visible=True))
-        if module in model_free_preprocessors:
-            grs += [gr.update(visible=False, value='None'), gr.update(visible=False)]
-        else:
-            grs += [gr.update(visible=True), gr.update(visible=True)]
-        return grs
+
+            return grs
 
     refresh_symbol = '\U0001f504'  # 🔄
     switch_values_symbol = '\U000021C5'  # ⇅
@@ -102,7 +95,7 @@ def setup_controlnet_ui_raw():
             low_vram = gr.Checkbox(label="Low VRAM", value=False, visible=False, interactive=True)
             overwrite_frames = gr.Checkbox(label='Overwrite input frames', value=True, visible=False, interactive=True)
         with gr.Row(visible=False) as mod_row:
-            module = gr.Dropdown(cn_preprocessors, label=f"Preprocessor", value="none", interactive=True)
+            module = gr.Dropdown(sorted(cn_preprocessors), label=f"Preprocessor", value="none", interactive=True)
             model = gr.Dropdown(cn_models, label=f"Model", value="None", interactive=True)
             refresh_models = ToolButton(value=refresh_symbol)
             refresh_models.click(refresh_all_models, model, model)
@@ -114,9 +107,9 @@ def setup_controlnet_ui_raw():
             guidance_end = gr.Textbox(label="Ending Control Step schedule", lines=1, value='0:(1.0)', interactive=True)
             model_dropdowns.append(model)
         with gr.Column(visible=False) as advanced_column:
-            processor_res = gr.Slider(label="Annotator resolution", value=64, minimum=64, maximum=2048, interactive=False)
-            threshold_a = gr.Slider(label="Threshold A", value=64, minimum=64, maximum=1024, interactive=False)
-            threshold_b = gr.Slider(label="Threshold B", value=64, minimum=64, maximum=1024, interactive=False)
+            processor_res = gr.Slider(label="Annotator resolution", value=64, minimum=64, maximum=2048, interactive=True)
+            threshold_a = gr.Slider(label="Parameter 1", value=64, minimum=64, maximum=1024, interactive=True)
+            threshold_b = gr.Slider(label="Parameter 2", value=64, minimum=64, maximum=1024, interactive=True)
         with gr.Row(visible=False) as vid_path_row:
             vid_path = gr.Textbox(value='', label="ControlNet Input Video/ Image Path", interactive=True)
         with gr.Row(visible=False) as mask_vid_path_row:  # invisible temporarily since 26-04-23 until masks are fixed
