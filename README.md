@@ -13,7 +13,7 @@ You are encouraged to take it for a spin and [raise issues here](https://github.
 
 After setting up the [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge):
 
-    cd <forge_install_dir>/exensions
+    cd <forge_install_dir>/extensions
     git clone https://github.com/deforum-art/sd-forge-deforum
     cd sd-forge-deforum
     pip install -r requirements.txt
