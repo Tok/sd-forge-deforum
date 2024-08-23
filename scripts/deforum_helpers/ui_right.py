@@ -34,8 +34,8 @@ def on_ui_tabs():
 
     with gr.Blocks(analytics_enabled=False) as deforum_interface:
         components = {}
-        dummy_component = gr.Label(visible=False)
-        with gr.Row(elem_id='deforum_progress_row').style(equal_height=False, variant='compact'):
+        dummy_component = gr.Button(visible=False)
+        with gr.Row(elem_id='deforum_progress_row', equal_height=False, variant='compact'):
             with gr.Column(scale=1, variant='panel'):
                 # setting the left side of the ui:
                 components = setup_deforum_left_side_ui()

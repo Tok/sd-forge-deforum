@@ -59,7 +59,7 @@ def setup_deforum_left_side_ui():
                 locals()[key] = value
 
     # Gradio's Change functions - hiding and renaming elements based on other elements
-    show_info_on_ui.change(fn=change_css, inputs=show_info_on_ui, outputs=gr.outputs.HTML())
+    show_info_on_ui.change(fn=change_css, inputs=show_info_on_ui, outputs=[gr.HTML()])
     handle_change_functions(locals())
 
     return locals()
