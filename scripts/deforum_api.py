@@ -28,7 +28,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 from scripts.deforum_api_models import Batch, DeforumJobErrorType, DeforumJobStatusCategory, DeforumJobPhase, DeforumJobStatus
 from contextlib import contextmanager
-from deforum_extend_paths import deforum_sys_extend
+from scripts.deforum_extend_paths import deforum_sys_extend
 
 import gradio as gr
 from deforum_helpers.args import (DeforumAnimArgs, DeforumArgs,
