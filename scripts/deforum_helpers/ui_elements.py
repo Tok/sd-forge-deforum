@@ -47,6 +47,7 @@ def get_tab_run(d, da):
             motion_preview_mode = create_gr_elem(d.motion_preview_mode)
         with FormRow():
             sampler = create_gr_elem(d.sampler)
+            scheduler = create_gr_elem(d.scheduler)
             steps = create_gr_elem(d.steps)
         with FormRow():
             W = create_gr_elem(d.W)

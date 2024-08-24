@@ -22,7 +22,7 @@ from types import SimpleNamespace
 import modules.paths as ph
 import modules.shared as sh
 from modules.processing import get_fixed_seed
-from .defaults import get_guided_imgs_default_json, mask_fill_choices, get_samplers_list
+from .defaults import get_guided_imgs_default_json, mask_fill_choices, get_samplers_list, get_schedulers_list
 from .deforum_controlnet import controlnet_component_names
 from .general_utils import get_os, substitute_placeholders
 
@@ -765,6 +765,12 @@ def DeforumArgs():
             "type": "dropdown",
             "choices": get_samplers_list().values(),
             "value": "Euler a",
+        },
+        "scheduler": {
+            "label": "Scheduler",
+            "type": "dropdown",
+            "choices": get_schedulers_list().values(),
+            "value": "Simple",
         },
         "steps": {
             "label": "Steps",

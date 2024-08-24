@@ -13,6 +13,8 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 # Contact the authors: https://deforum.github.io/
+def get_schedulers_list():
+    return {"Simple": "Simple"}
 
 def get_samplers_list():
     return {
