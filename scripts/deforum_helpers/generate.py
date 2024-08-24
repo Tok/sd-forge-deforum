@@ -262,6 +262,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
                 add_forge_script_to_deforum_run(p_txt, "Kohya HRFix Integrated", kohya_hrfix_script_args)                
 
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
+                p_txt.scheduler = "Simple"  # FIXME provide
                 processed = processing.process_images(p_txt)
 
             try:
@@ -318,6 +319,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
                 add_forge_script_to_deforum_run(p, "Kohya HRFix Integrated", kohya_hrfix_script_args)                
 
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
+                p.scheduler = "Simple"  # FIXME provide
                 processed = processing.process_images(p)
 
 

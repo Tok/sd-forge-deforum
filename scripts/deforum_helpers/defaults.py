@@ -14,7 +14,7 @@
 
 # Contact the authors: https://deforum.github.io/
 def get_schedulers_list():
-    return {"Simple": "Simple"}
+    return {"Simple": "Simple"}  # FIXME import real list...
 
 def get_samplers_list():
     return {
