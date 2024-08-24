@@ -32,8 +32,8 @@ from pathlib import Path
 from .settings import save_settings_from_animation_run
 from .deforum_controlnet import num_of_models
 
-from ..deforum_api import JobStatusTracker
-from ..deforum_api_models import DeforumJobPhase
+from scripts.deforum_api import JobStatusTracker
+from scripts.deforum_api_models import DeforumJobPhase
 
 
 # this global param will contain the latest generated video HTML-data-URL info (for preview inside the UI when needed)
