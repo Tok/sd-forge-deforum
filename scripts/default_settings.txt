@@ -8,6 +8,7 @@
     "seed_resize_from_h": 0,
     "seed": -1,
     "sampler": "Euler a",
+    "scheduler": "Simple",
     "steps": 25,
     "batch_name": "Deforum_20230812221310",
     "seed_behavior": "iter",

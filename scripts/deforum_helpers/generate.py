@@ -28,7 +28,7 @@ from .prompt import split_weighted_subprompts
 from .load_images import load_img, prepare_mask, check_mask_for_errors
 from .webui_sd_pipeline import get_webui_sd_pipeline
 from .rich import console
-from .defaults import get_samplers_list
+from .defaults import get_samplers_list, get_schedulers_list
 from .prompt import check_is_number
 from .opts_overrider import A1111OptionsOverrider
 import cv2
@@ -116,7 +116,7 @@ def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, 
                 raise e
     return image, False
 
-def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame=0, sampler_name=None):
+def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame=0, sampler_name=None, scheduler_name="Simple"):
     # Setup the pipeline
     p = get_webui_sd_pipeline(args, root)
     p.prompt, p.negative_prompt = split_weighted_subprompts(args.prompt, frame, anim_args.max_frames)
@@ -178,6 +178,13 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
         else:
             raise RuntimeError(f"Sampler name '{sampler_name}' is invalid. Please check the available sampler list in the 'Run' tab")
 
+    available_schedulers = get_schedulers_list()
+    if scheduler_name is not None:
+        if scheduler_name in available_schedulers.keys():
+            p.scheduler_name = available_schedulers[scheduler_name]
+        else:
+            raise RuntimeError(f"Scheduler name '{scheduler_name}' is invalid. Please check the available scheduler list in the 'Run' tab")
+
     if args.checkpoint is not None:
         info = sd_models.get_closet_checkpoint_match(args.checkpoint)
         if info is None:
@@ -222,6 +229,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
                 seed_resize_from_h=p.seed_resize_from_h,
                 seed_resize_from_w=p.seed_resize_from_w,
                 sampler_name=p.sampler_name,
+                scheduler_name=p.scheduler_name,
                 batch_size=p.batch_size,
                 n_iter=p.n_iter,
                 steps=p.steps,
