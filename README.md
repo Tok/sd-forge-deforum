@@ -11,7 +11,15 @@ It contains temporary shortcuts, evil workarounds and dirty quick-fixes.
 
 ## Installation
 
-After setting up the latest [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge) and deleting any old versions you may have had installed before:
+First install the latest version of [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge) and delete any old or alternative versions of this plugin
+you may have had installed before (=remove this directory if it already exists: `<forge_install_dir>/extensions/sd-forge-deforum`).
+
+### Activate Python venv
+Depending on your setup, you may need to make sure that the virtual environment for Python that's used Forge is active by running `<forge_install_dir>/venv/Scripts/activate.bat`.
+It should be visible on your commandline when Forges venv is active.
+
+### Install the Extension
+With Forges venv active do:
 
     cd <forge_install_dir>/extensions
     git clone https://github.com/Tok/sd-forge-deforum
@@ -38,13 +46,14 @@ You can also try to install it directly in Forge on tab "Extensions" - "Install 
   * switch UI to "flux", select the flux checkpoint and set all the 3 VAEs in "VAE / Text Encoder" in the same order as listed above (happens to be alphabetical).
   * make sure CFG (or "Scale" if you use Parseq) is at around 1.0
   * Make sure to remove the negative prompts!
-    * &#x26A0;&#xFE0F; Warning: since "--neg" is currently ignored, negative prompts may end up to be interpreted positively and can cause the opposite of their original intention.
+    * &#x26A0;&#xFE0F; Warning: since Flux doesn't support negative prompts, "--neg" is currently ignored and everything after that is interpreted positively. 
+      It may cause the opposite of their original intention.
   * Disable "Kohya HR Fix" and "FreeU".
-  * &#x26A0;&#xFE0F; Make sure to do single generation in the `Txt2img` tab before starting your Deforum generation. It's currently required to be done like this, so the models init properly.
+  * &#x26A0;&#xFE0F; Make sure to do a single generation in the `Txt2img` tab before starting your Deforum generation. It's currently required to be done like this, so the models init properly.
 
 #### Parseq Keyframe Redistribution
   * May be activated in the Parseq tab
-  * Causes the rendering to run on an (even more) experimental core that can rearrange keyframes, which allows for precise Parseq sync at high cadence, making it possible to setup really fast generations with less jitter.
+  * Causes the rendering to run on an (even more) experimental core that can rearrange keyframes, which allows for precise Parseq sync at high cadence, making it possible to set up really fast generations with less jitter.
   * Additional details on how to use it can be found on the Parseq tab.
 
 ### Currently not working and may need to be disabled
