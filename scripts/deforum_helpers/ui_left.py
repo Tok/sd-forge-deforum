@@ -20,7 +20,8 @@ from .defaults import get_gradio_html
 from .gradio_funcs import change_css, handle_change_functions
 from .args import DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, RootArgs, LoopArgs, FreeUArgs, KohyaHRFixArgs
 from .deforum_controlnet import setup_controlnet_ui
-from .ui_elements import get_tab_run, get_tab_keyframes, get_tab_prompts, get_tab_init, get_tab_hybrid, get_tab_output, get_tab_freeu, get_tab_kohya_hrfix
+from .ui_elements import (get_tab_run, get_tab_keyframes, get_tab_prompts, get_tab_init,
+                          get_tab_hybrid, get_tab_output, get_tab_freeu, get_tab_kohya_hrfix)
 
 def set_arg_lists():
     # convert dicts to NameSpaces for easy working (args.param instead of args['param']

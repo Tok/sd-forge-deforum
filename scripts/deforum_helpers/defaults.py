@@ -49,6 +49,13 @@ def get_samplers_list():
         'restart': 'Restart'
     }
 
+def get_parseq_keyframe_redistributions_list():
+    return {
+        'off': 'Off',
+        'parseq_only': 'Parseq Only (no cadence)',
+        'uniform_with_parseq': 'Uniform with Parseq (pseudo-cadence)'
+    }
+
 def DeforumAnimPrompts():
     return r"""{
     "0": "tiny cute bunny, vibrant diffraction, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus",

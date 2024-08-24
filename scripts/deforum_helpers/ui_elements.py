@@ -387,8 +387,11 @@ def get_tab_init(d, da, dp):
                 parseq_non_schedule_overrides = create_gr_elem(dp.parseq_non_schedule_overrides)
             with FormRow():
                 parseq_use_deltas = create_gr_elem(dp.parseq_use_deltas)
+            gr.HTML(value=f"""<br/>""")
+            with FormRow():
+                parseq_key_frame_redistribution = create_gr_elem(dp.parseq_key_frame_redistribution)
+            create_keyframe_redistribution_info()
     return {k: v for k, v in {**locals(), **vars()}.items()}
-
 
 def get_tab_freeu(dfu : SimpleNamespace):
     with gr.TabItem('FreeU'):
@@ -619,3 +622,31 @@ def get_tab_output(da, dv):
             ffmpeg_stitch_imgs_but.click(fn=direct_stitch_vid_from_frames, inputs=[image_path, fps, add_soundtrack, soundtrack_path])
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
+
+
+def create_keyframe_redistribution_info():
+    bars_mark = "&#x1F4CA;"
+    warn_mark = "&#x26A0;&#xFE0F;"
+    gr.HTML(value=f"""<p>
+        <span>Parseq keyframe redistribution ensures that every frame in the Parseq table is diffused.</span>
+        <span>It may easily be used at high FPS with just a fixed value for 'strength' in Parseq \
+        (e.g. '0.33' for all frames with no logic to detect dips).</span>
+        <span>Since keyframe redistribution allows for Parseq synchronization at high or no cadence, \
+        the generation can be performed much faster compared to a traditional low cadence setup.</span>
+        <span>Resulting videos tend to be less jittery at high or no cadence, \
+        but may introduce 'depth smear' when combined with fast movement.</span>
+        <span>Optical Flow related settings may not behave as expected and are recommended to be turned off \
+        when keyframe redistribution is used (see tab "Keyframes", sub-tab "Coherence").</span>
+        <ol style="list-style-type: none; padding-left: 20px;">
+            <li>{bars_mark} Off: Key frames are not redistributed. Cadence settings are fully respected.</li>
+            <li>{bars_mark} Parseq Only: Only frames with an entry in the Parseq table are diffused. \
+            Actual cadence settings are ignored and all frames not defined in Parseq are handled \
+            as if they were cadence frames. Recommended to be used at high FPS settings (e.g. '60').</li>
+            <li>{bars_mark} Uniform with Parseq: Calculates uniform cadence distribution \
+            but rearranges some keyframes to preserve proper Parseq synchronization at high cadence (e.g. '30'). \
+            Cadence may be understood as 'pseudo cadence'. \
+            A cadence value of '30' may more correctly be understood as 'about 30' in this mode.</li>
+        </ol>
+        <span>{warn_mark} It's currently not recommended to use keyframe redistribution together with optical flow \
+            or with hybrid video.</span>
+    </p>""")

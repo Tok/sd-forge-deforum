@@ -22,7 +22,8 @@ from types import SimpleNamespace
 import modules.paths as ph
 import modules.shared as sh
 from modules.processing import get_fixed_seed
-from .defaults import get_guided_imgs_default_json, mask_fill_choices, get_samplers_list, get_schedulers_list
+from .defaults import (get_guided_imgs_default_json, get_parseq_keyframe_redistributions_list,
+                       get_samplers_list, get_schedulers_list)
 from .deforum_controlnet import controlnet_component_names
 from .general_utils import get_os, substitute_placeholders
 
@@ -990,7 +991,14 @@ def ParseqArgs():
             "type": "checkbox",
             "value": True,
             "info": "Recommended. If you uncheck this, the FPS, max_frames and cadence in the Parseq doc are ignored, and the values in the A1111 UI are used instead."
-        }        
+        },
+        "parseq_key_frame_redistribution": {
+            "label": "Parseq key frame redistribution.",
+            "type": "dropdown",
+            "choices": get_parseq_keyframe_redistributions_list().values(),
+            "value": "None",
+            "info": "Gain Parseq precision at the cost of cadence regularity. Allows for fast generations at high cadence."
+        }
     }
 
 def FreeUArgs():
