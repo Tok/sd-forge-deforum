@@ -11,34 +11,36 @@ It contains temporary shortcuts, evil workarounds and dirty quick-fixes.
 
 ## Installation
 
-### Python 3.10.6
+### Requirements
+
+#### Python 3.10.6
 Forge currently recommends Python version 3.10.6: https://www.python.org/downloads/release/python-3106/
 
 In case you insist on trying to use newer versions (not recommended), see comments below about `basicsr`.
 
-### Forge
+#### SD WebUI Forge
 Install the latest version of [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge) and delete any old or alternative versions of this plugin
 you may have had installed before (=remove this directory if it already exists: `<forge_install_dir>/extensions/sd-forge-deforum`).
 
-
-### Activate Python venv
-Depending on your setup, you may need to make sure that the virtual environment for Python that's used Forge is active by running `<forge_install_dir>/venv/Scripts/activate.bat`.
-It should be visible on your commandline when Forges venv is active.
-
-### Install the Extension
+### Install this Extension
 
 #### Directly in Forge
 
 Go to tab "Extensions" - "Install from URL" and use this URL: https://github.com/Tok/sd-forge-deforum.git
 
-#### From the commandline
+#### Or from the commandline
 
-With the venv from Forge active do:
+Open commandline and run `<forge_install_dir>/venv/Scripts/activate.bat` 
+to activate the virtual environment (venv) for Python used by Forge.
 
-    cd <forge_install_dir>/extensions
-    git clone https://github.com/Tok/sd-forge-deforum
-    cd sd-forge-deforum
-    pip install -r requirements.txt
+With the venv from Forge activated, do:
+
+```
+cd <forge_install_dir>/extensions
+git clone https://github.com/Tok/sd-forge-deforum
+cd sd-forge-deforum
+pip install -r requirements.txt
+```
 
 
 ## What should work, what doesn't and what's untested
