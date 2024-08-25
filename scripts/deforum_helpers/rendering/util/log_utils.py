@@ -67,9 +67,9 @@ def print_redo_generation_info(data, n):
     print(f"Redo generation {n + 1} of {int(data.args.anim_args.diffusion_redo)} before final generation")
 
 
-def print_tween_step_creation_info(key_steps, index_dist):
-    tween_count = sum(len(ks.tweens) for ks in key_steps)
-    msg_start = f"Created {len(key_steps)} key frames with {tween_count} tweens."
+def print_tween_step_creation_info(key_frames, index_dist):
+    tween_count = sum(len(ks.tweens) for ks in key_frames)
+    msg_start = f"Created {len(key_frames)} key frames with {tween_count} tweens."
     msg_end = f"Key frame index distribution: '{index_dist.name}'."
     info(f"{msg_start} {msg_end}")
 

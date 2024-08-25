@@ -269,28 +269,52 @@ class KeyFrame:
         return image
 
     @staticmethod
-    def create_all_frames(data, index_dist: KeyFrameDistribution = KeyFrameDistribution.default()):
-        """Creates a list of key steps for the entire animation."""
-        start_index = data.turbo.find_start(data)
-        num_key_steps = 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
-        if data.parseq_adapter.use_parseq and index_dist is KeyFrameDistribution.PARSEQ_ONLY:
-            num_key_steps = len(data.parseq_adapter.parseq_json["keyframes"])
+    def precalculate_num_key_frames(data, keyframe_dist, start_index, max_frames):
+        # TODO change implementation so KeyFrames can be instantiated without any pre-calculations.
+        if not data.parseq_adapter.use_parseq or keyframe_dist is KeyFrameDistribution.OFF:
+            return 0  # not relevant
+        if keyframe_dist is KeyFrameDistribution.PARSEQ_ONLY:
+            return len(data.parseq_adapter.parseq_json["keyframes"])
+        elif keyframe_dist is KeyFrameDistribution.ADDITIVE_WITH_PARSEQ:
+            # TODO make this work without having to calc temp_num_key_steps first or refactor to make pre-calc obsolete.
+            temp_num_key_steps = 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
+            uniform_indices = KeyFrameDistribution.uniform_indexes(start_index, max_frames, temp_num_key_steps)
+            parseq_keyframes = [keyframe["frame"] for keyframe in data.parseq_adapter.parseq_json["keyframes"]]
+            shifted_parseq_frames = [frame + 1 for frame in parseq_keyframes]
+            precalc_key_frames = list(set(set(uniform_indices) | set(shifted_parseq_frames)))
+            precalc_key_frames.sort()
+            return len(precalc_key_frames)
+        elif keyframe_dist is KeyFrameDistribution.UNIFORM_WITH_PARSEQ:
+            return 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
+        else:
+            raise ValueError(f"Invalid parseq_key_frame_distribution: {keyframe_dist}")
 
-        key_steps = [KeyFrame.create(data) for _ in range(0, num_key_steps)]
-        actual_num_key_steps = len(key_steps)
+    @staticmethod
+    def create_all_frames(data, keyframe_dist: KeyFrameDistribution = KeyFrameDistribution.default()):
+        """Creates a list of key steps for the entire animation."""
+        start_index = data.turbo.find_start(data)  # TODO remove since we just recalc everything again on restart
+        max_frames = data.args.anim_args.max_frames
+        num_key_steps = KeyFrame.precalculate_num_key_frames(data, keyframe_dist, start_index, max_frames)
+
+        key_frames = [KeyFrame.create(data) for _ in range(0, num_key_steps)]
+        actual_num_key_steps = len(key_frames)
 
         recalculated_key_steps = KeyFrame._recalculate_and_check_tweens(
-            data, key_steps, start_index, actual_num_key_steps, data.parseq_adapter, index_dist)
-        log_utils.print_tween_step_creation_info(key_steps, index_dist)
+            data, key_frames, start_index, actual_num_key_steps, keyframe_dist)
+        log_utils.print_tween_step_creation_info(key_frames, keyframe_dist)
 
         return recalculated_key_steps
 
     @staticmethod
-    def _recalculate_and_check_tweens(data, key_frames, start_index, num_key_steps,
-                                      parseq_adapter, index_distribution):
+    def _recalculate_and_check_tweens(data, key_frames, start_index, num_key_steps, keyframe_distribution):
         max_frames = data.args.anim_args.max_frames
-        key_frames = index_distribution.calculate(key_frames, start_index, max_frames, num_key_steps, parseq_adapter)
-        key_frames = KeyFrame._add_tweens_to_key_steps(key_frames)
+
+        key_indices = keyframe_distribution.calculate(data, start_index, max_frames, num_key_steps, data.parseq_adapter)
+        assert len(key_frames) == len(key_indices)
+        for i, key_step in enumerate(key_indices):
+            key_frames[i].i = key_indices[i]  # TODO separate handling from calculation. this should be done elsewhere.
+
+        key_frames = KeyFrame.add_tweens_to_key_frames(key_frames)
         log_utils.print_key_step_debug_info_if_verbose(key_frames)
 
         # The number of generated tweens depends on index since last key-frame. The last tween has the same
@@ -298,21 +322,21 @@ class KeyFrame:
         assert len(key_frames) == num_key_steps
         assert key_frames[0].i == 1  # 1st key frame is at index 1
         assert key_frames[0].tweens == []  # 1st key frame has no tweens
-        if index_distribution != KeyFrameDistribution.PARSEQ_ONLY:  # just using however many key frames Parseq defines.
+        if keyframe_distribution != KeyFrameDistribution.PARSEQ_ONLY:  # however many key frames Parseq defines.
             assert key_frames[-1].i == max_frames  # last index is same as max frames
 
         return key_frames
 
     @staticmethod
-    def _add_tweens_to_key_steps(key_steps):
-        log_utils.info(f"Adding tweens to {len(key_steps)} keyframes...")
-        for i in range(1, len(key_steps)):  # skipping 1st key frame
-            data = key_steps[i].render_data
-            from_i = key_steps[i - 1].i
-            to_i = key_steps[i].i
-            tweens, values = Tween.create_in_between_steps(key_steps, i, data, from_i, to_i)
-            log_utils.debug(f"Creating {len(tweens)} tweens ({from_i}->{to_i}) for key frame at {key_steps[i].i}")
-            key_steps[i].tweens = tweens
-            key_steps[i].tween_values = values
-            key_steps[i].render_data.indexes.update_tween_start(data.turbo)
-        return key_steps
+    def add_tweens_to_key_frames(key_frames):
+        log_utils.info(f"Adding tweens to {len(key_frames)} keyframes...")
+        for i in range(1, len(key_frames)):  # skipping 1st key frame
+            data = key_frames[i].render_data
+            from_i = key_frames[i - 1].i
+            to_i = key_frames[i].i
+            tweens, values = Tween.create_in_between_steps(key_frames, i, data, from_i, to_i)
+            log_utils.debug(f"Creating {len(tweens)} tweens ({from_i}->{to_i}) for key frame at {key_frames[i].i}")
+            key_frames[i].tweens = tweens
+            key_frames[i].tween_values = values
+            key_frames[i].render_data.indexes.update_tween_start(data.turbo)
+        return key_frames

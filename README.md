@@ -1,12 +1,13 @@
 
 # Fluxabled Fork of the Deforum Stable Diffusion Extension for Forge
 
-Experimental fork of the Deforum extension for the [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge), 
+Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum)
+for [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge), 
 fix'd up to work with Flux and integrate Parseq keyframe redistribution logic.
 
 ## Current status
 
-This fork of the extension is &#x26A0;&#xFE0F;**extremely experimental**&#x26A0;&#xFE0F;.
+&#x26A0;&#xFE0F; This fork of the extension is _basically working_ but still **extremely experimental**.
 It contains temporary shortcuts, evil workarounds and dirty quick-fixes.
 
 ## Installation
@@ -16,7 +17,7 @@ It contains temporary shortcuts, evil workarounds and dirty quick-fixes.
 #### Python 3.10.6
 Forge currently recommends Python version 3.10.6: https://www.python.org/downloads/release/python-3106/
 
-In case you insist on trying to use newer versions (not recommended), see comments below about `basicsr`.
+In case you insist on trying to use a newer version (not recommended), see comments below about `basicsr`.
 
 #### SD WebUI Forge
 Install the latest version of [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge) and delete any old or alternative versions of this plugin

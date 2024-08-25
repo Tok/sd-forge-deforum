@@ -641,12 +641,17 @@ def create_keyframe_redistribution_info():
         <ol style="list-style-type: none; padding-left: 20px;">
             <li>{bars_mark} Off: Key frames are not redistributed. Cadence settings are fully respected.</li>
             <li>{bars_mark} Parseq Only: Only frames with an entry in the Parseq table are diffused. \
-            Actual cadence settings are ignored and all frames not defined in Parseq are handled \
-            as if they were cadence frames. Recommended to be used at high FPS settings (e.g. '60').</li>
+                Actual cadence settings are ignored and all frames not defined in Parseq are handled \
+                as if they were cadence frames. Recommended to be used at high FPS settings (e.g. '60').</li>
+            <li>{bars_mark} Additive with Parseq: Is using cadence but adds Parseq keyframes. Takes more \
+                time to generate, but may help stabilizing the frames by doing diffusions in regular intervals.
+                Recommendation: Make high cadence setup and mark your parseq frames with an "Info" like "event", then \
+                in 'strength_i' dip deeper on key frames. E.g.: 'if (f == info_match_last("event")) 0.25 else 0.50'
+            </li>
             <li>{bars_mark} Uniform with Parseq: Calculates uniform cadence distribution \
-            but rearranges some keyframes to preserve proper Parseq synchronization at high cadence (e.g. '30'). \
-            Cadence may be understood as 'pseudo cadence'. \
-            A cadence value of '30' may more correctly be understood as 'about 30' in this mode.</li>
+                but rearranges some keyframes to preserve proper Parseq synchronization at high cadence (e.g. '30'). \
+                Cadence may be understood as 'pseudo cadence'. \
+                A cadence value of '30' may more correctly be understood as 'about 30' in this mode.</li>
         </ol>
         <div>{bulb_mark} Avoid Dark Out: High cadence generations may have a tendency to dark over time. 
             Make sure to still setup some diffusions with low strength at regular intervals.

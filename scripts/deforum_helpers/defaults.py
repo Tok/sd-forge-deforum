@@ -53,7 +53,8 @@ def get_parseq_keyframe_redistributions_list():
     return {
         'off': 'Off',
         'parseq_only': 'Parseq Only (no cadence)',
-        'uniform_with_parseq': 'Uniform with Parseq (pseudo-cadence)'
+        'additive_with_parseq': 'Additive with Parseq (pseudo-cadence)',
+        'uniform_with_parseq': 'Uniform with Parseq (pseudo-cadence & redistribution)'
     }
 
 def DeforumAnimPrompts():
