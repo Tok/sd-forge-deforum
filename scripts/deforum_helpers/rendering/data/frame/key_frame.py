@@ -314,8 +314,11 @@ class KeyFrame:
         for i, key_step in enumerate(key_indices):
             key_frames[i].i = key_indices[i]  # TODO separate handling from calculation. this should be done elsewhere.
 
-        key_frames = KeyFrame.add_tweens_to_key_frames(key_frames)
+        key_frames = KeyFrame.add_tweens_to_key_frames(key_frames)  # noqa TODO? (linter marks this unreachable)
         log_utils.print_key_step_debug_info_if_verbose(key_frames)
+
+        pseudo_cadence = max_frames / len(key_frames)
+        log_utils.info(f"Calculated pseudo cadence: {pseudo_cadence:.2f}")
 
         # The number of generated tweens depends on index since last key-frame. The last tween has the same
         # index as the key_step it belongs to and is meant to replace the unprocessed original key frame.
