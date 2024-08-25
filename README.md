@@ -11,22 +11,34 @@ It contains temporary shortcuts, evil workarounds and dirty quick-fixes.
 
 ## Installation
 
-First install the latest version of [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge) and delete any old or alternative versions of this plugin
+### Python 3.10.6
+Forge currently recommends Python version 3.10.6: https://www.python.org/downloads/release/python-3106/
+
+In case you insist on trying to use newer versions (not recommended), see comments below about `basicsr`.
+
+### Forge
+Install the latest version of [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge) and delete any old or alternative versions of this plugin
 you may have had installed before (=remove this directory if it already exists: `<forge_install_dir>/extensions/sd-forge-deforum`).
+
 
 ### Activate Python venv
 Depending on your setup, you may need to make sure that the virtual environment for Python that's used Forge is active by running `<forge_install_dir>/venv/Scripts/activate.bat`.
 It should be visible on your commandline when Forges venv is active.
 
 ### Install the Extension
-With Forges venv active do:
+
+#### Directly in Forge
+
+Go to tab "Extensions" - "Install from URL" and use this URL: https://github.com/Tok/sd-forge-deforum.git
+
+#### From the commandline
+
+With the venv from Forge active do:
 
     cd <forge_install_dir>/extensions
     git clone https://github.com/Tok/sd-forge-deforum
     cd sd-forge-deforum
     pip install -r requirements.txt
-
-You can also try to install it directly in Forge on tab "Extensions" - "Install from URL", after making sure that any old versions were removed properly: https://github.com/Tok/sd-forge-deforum.git
 
 
 ## What should work, what doesn't and what's untested
@@ -64,3 +76,27 @@ You can also try to install it directly in Forge on tab "Extensions" - "Install 
 * Control Net
 * Hybrid Video
 * Non-Flux workflows
+
+## Struggle shooting
+
+### Potential problems with different Python-, Torch- and 'basicsr' versions
+
+Forge currently recommends Python version 3.10.6 and the torch versions that it runs.
+
+Newer versions of Python or different torch combinations may refuse to install the 'basicsr'
+dependency which is currently required by this extension.
+
+In case you get any error related to 'basicsr' during the installation, and you don't want to set up a new 
+Python 3.10.6 venv (as would be recommended), you can try the installation from commandline as described above, 
+but replacing the `basicsr` version with version `1.4.2` in `requirements.txt` before installing the requirements.
+
+If the extension was installed successfully, but there is an error related to `basicsr` while starting Forge,
+try the same directly with `pip uninstall basicsr` and then `pip install basicsr==1.4.2` (while venv is active).
+
+*TL;DR:* This extension should be able to run with either version `1.3.5` or `1.4.2` of `basicsr`, 
+but not all versions may install or run properly with all combos of Python and Torch.
+
+### Other problems with torch
+
+In case of other problems related to Torch, try to reinstall it as recommended on the pytorch website:
+https://pytorch.org/get-started/locally/
