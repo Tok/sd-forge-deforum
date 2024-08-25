@@ -626,17 +626,18 @@ def get_tab_output(da, dv):
 
 def create_keyframe_redistribution_info():
     bars_mark = "&#x1F4CA;"
+    bulb_mark = "&#x1F4A1;"
     warn_mark = "&#x26A0;&#xFE0F;"
     gr.HTML(value=f"""<p>
-        <span>Parseq keyframe redistribution ensures that every frame in the Parseq table is diffused.</span>
-        <span>It may easily be used at high FPS with just a fixed value for 'strength' in Parseq \
+        <div>Parseq keyframe redistribution ensures that every frame in the Parseq table is diffused.</div>
+        <div>It may easily be used at high FPS with just a fixed value for 'strength' in Parseq \
         (e.g. '0.33' for all frames with no logic to detect dips).</span>
-        <span>Since keyframe redistribution allows for Parseq synchronization at high or no cadence, \
-        the generation can be performed much faster compared to a traditional low cadence setup.</span>
-        <span>Resulting videos tend to be less jittery at high or no cadence, \
-        but may introduce 'depth smear' when combined with fast movement.</span>
-        <span>Optical Flow related settings may not behave as expected and are recommended to be turned off \
-        when keyframe redistribution is used (see tab "Keyframes", sub-tab "Coherence").</span>
+        <div>Since keyframe redistribution allows for Parseq synchronization at high or no cadence, \
+        the generation can be performed much faster compared to a traditional low cadence setup.</div>
+        <div>Resulting videos tend to be less jittery at high or no cadence, \
+        but may introduce 'depth smear' when combined with fast movement.</div>
+        <div>Optical Flow related settings may not behave as expected and are recommended to be turned off \
+        when keyframe redistribution is used (see tab "Keyframes", sub-tab "Coherence").</div>
         <ol style="list-style-type: none; padding-left: 20px;">
             <li>{bars_mark} Off: Key frames are not redistributed. Cadence settings are fully respected.</li>
             <li>{bars_mark} Parseq Only: Only frames with an entry in the Parseq table are diffused. \
@@ -647,6 +648,11 @@ def create_keyframe_redistribution_info():
             Cadence may be understood as 'pseudo cadence'. \
             A cadence value of '30' may more correctly be understood as 'about 30' in this mode.</li>
         </ol>
-        <span>{warn_mark} It's currently not recommended to use keyframe redistribution together with optical flow \
-            or with hybrid video.</span>
+        <div>{bulb_mark} Avoid Dark Out: High cadence generations may have a tendency to dark over time. 
+            Make sure to still setup some diffusions with low strength at regular intervals.
+            Setting "Sampling mode" to "nearest" in "Depth Warping & FOW" can help a great deal against dark-outs.</div>
+        <div>{bulb_mark} Avoid Depth Smear: If you get 'depth smear' try to calculate and set the correct 
+            Aspect Ratio Schedule. Eg. "0: (1.777)" for 16:9 landscape or "0: (0.5625)" for 9:16 portrait.</div>
+        <div>{warn_mark} It's currently not recommended to use keyframe redistribution together with optical flow \
+            or with hybrid video.</div>
     </p>""")

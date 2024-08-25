@@ -529,7 +529,7 @@ def DeforumAnimArgs():
             "info": "controls the handling of pixels outside the field of view as they come into the scene"
         },
         "sampling_mode": {
-            "label": "Padding mode",
+            "label": "Sampling mode",
             "type": "radio",
             "choices": ['bicubic', 'bilinear', 'nearest'],
             "value": "bicubic",
