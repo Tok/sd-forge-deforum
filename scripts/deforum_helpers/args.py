@@ -188,7 +188,13 @@ def DeforumAnimArgs():
             "label": "CFG scale schedule",
             "type": "textbox",
             "value": "0: (7)",
-            "info": "how closely the image should conform to the prompt. Lower values produce more creative results. (recommended range 5-15)`"
+            "info": "how closely the image should conform to the prompt. Lower values produce more creative results. (recommended value for Flux.1: 1.0, 5-15 with other models)"
+        },
+        "distilled_cfg_scale_schedule": {
+            "label": "Distilled CFG scale schedule",
+            "type": "textbox",
+            "value": "0: (3.5)",
+            "info": "how closely the image should conform to the prompt. Lower values produce more creative results. (recommended value for Flux.1: 3.5, ignored for most other models)`"
         },
         "enable_steps_scheduling": {
             "label": "Enable steps scheduling",
@@ -244,6 +250,12 @@ def DeforumAnimArgs():
             "value": "0:(1.5)",
             "info": "ONLY in use when working with a P2P ckpt!"
         },
+        "pix2pix_img_distilled_cfg_scale_schedule": {
+            "label": "Pix2Pix img distilled CFG schedule",
+            "type": "textbox",
+            "value": "0:(3.5)",
+            "info": "Distilled CFG scale for Flux."
+        },
         "enable_subseed_scheduling": {
             "label": "Enable Subseed scheduling",
             "type": "checkbox",
@@ -273,6 +285,18 @@ def DeforumAnimArgs():
             "type": "textbox",
             "value": '0: ("Euler a")',
             "info": "allows keyframing of samplers. Use names as they appear in ui dropdown in 'run' tab"
+        },
+        "enable_scheduler_scheduling": {
+            "label": "Enable scheduler scheduling",
+            "type": "checkbox",
+            "value": False,
+            "info": "enables scheduling of scheduler schedules."
+        },
+        "scheduler_schedule": {
+            "label": "Scheduler schedule",
+            "type": "textbox",
+            "value": '0: ("Simple")',
+            "info": "allows keyframing of schedulers. Use names as they appear in ui dropdown in 'run' tab"
         },
         "use_noise_mask": {
             "label": "Use noise mask",

@@ -77,6 +77,7 @@ def get_tab_run(d, da):
                     resume_timestring = create_gr_elem(da.resume_timestring)
             with gr.Row(variant='compact') as pix2pix_img_cfg_scale_row:
                 pix2pix_img_cfg_scale_schedule = create_gr_elem(da.pix2pix_img_cfg_scale_schedule)
+                pix2pix_img_distilled_cfg_scale_schedule = create_gr_elem(da.pix2pix_img_distilled_cfg_scale_schedule)
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 def get_tab_keyframes(d, da, dloopArgs):
@@ -120,6 +121,8 @@ def get_tab_keyframes(d, da, dloopArgs):
                 with FormRow():
                     cfg_scale_schedule = create_gr_elem(da.cfg_scale_schedule)
                 with FormRow():
+                    distilled_cfg_scale_schedule = create_gr_elem(da.distilled_cfg_scale_schedule)
+                with FormRow():
                     enable_clipskip_scheduling = create_gr_elem(da.enable_clipskip_scheduling)
                 with FormRow():
                     clipskip_schedule = create_gr_elem(da.clipskip_schedule)
@@ -150,6 +153,12 @@ def get_tab_keyframes(d, da, dloopArgs):
                     enable_sampler_scheduling = create_gr_elem(da.enable_sampler_scheduling)
                 with FormRow():
                     sampler_schedule = create_gr_elem(da.sampler_schedule)
+            # Scheduler Scheduling
+            with gr.TabItem('Scheduler'):
+                with FormRow():
+                    enable_scheduler_scheduling = create_gr_elem(da.enable_scheduler_scheduling)
+                with FormRow():
+                    scheduler_schedule = create_gr_elem(da.scheduler_schedule)
             # Checkpoint Scheduling
             with gr.TabItem('Checkpoint'):
                 with FormRow():

@@ -283,8 +283,12 @@ class ParseqAnimKeysDecorator(ParseqAbstractDecorator):
         self.noise_schedule_series = super().parseq_to_series('noise')
         self.strength_schedule_series = super().parseq_to_series('strength')
         self.sampler_schedule_series = super().parseq_to_series('sampler_schedule')
+        # TODO implement scheduler_schedule in Parseq
+        # self.scheduler_schedule_series = super().parseq_to_series('scheduler_schedule')  # Not implemented
         self.contrast_schedule_series = super().parseq_to_series('contrast')
         self.cfg_scale_schedule_series = super().parseq_to_series('scale')
+        # TODO implement distilled_scale schedule in Parseq
+        # self.distilled_cfg_scale_schedule_series = super().parseq_to_series('distilled_scale')  # Not implemented
         self.steps_schedule_series = super().parseq_to_series("steps_schedule")
         self.seed_schedule_series = super().parseq_to_series('seed')
         self.fov_series = super().parseq_to_series('fov')

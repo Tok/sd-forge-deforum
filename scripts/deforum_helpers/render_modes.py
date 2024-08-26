@@ -145,9 +145,12 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
         # grab inputs for current frame generation
         args.prompt = prompt_to_print
         args.scale = keys.cfg_scale_schedule_series[frame_idx]
+        args.distilled_scale = keys.distilled_cfg_scale_schedule_series[frame_idx]
         args.pix2pix_img_cfg_scale = keys.pix2pix_img_cfg_scale_series[frame_idx]
+        args.pix2pix_img_distilled_cfg_scale = keys.pix2pix_img_distilled_cfg_scale_series[frame_idx]
 
         scheduled_sampler_name = keys.sampler_schedule_series[frame_idx].casefold() if anim_args.enable_sampler_scheduling and keys.sampler_schedule_series[frame_idx] is not None else None
+        scheduled_scheduler_name = keys.scheduler_schedule_series[frame_idx].casefold() if anim_args.enable_scheduler_scheduling and keys.scheduler_schedule_series[frame_idx] is not None else None
         args.steps = int(keys.steps_schedule_series[frame_idx]) if anim_args.enable_steps_scheduling and keys.steps_schedule_series[frame_idx] is not None else args.steps
         scheduled_clipskip = int(keys.clipskip_schedule_series[frame_idx]) if anim_args.enable_clipskip_scheduling and keys.clipskip_schedule_series[frame_idx] is not None else None
         args.checkpoint = keys.checkpoint_schedule_series[frame_idx] if anim_args.enable_checkpoint_scheduling else None
@@ -162,7 +165,8 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
         args.seed = int(keys.seed_schedule_series[frame_idx]) if (args.seed_behavior == 'schedule' or parseq_adapter.manages_seed()) else args.seed
         opts.data["CLIP_stop_at_last_layers"] = scheduled_clipskip if scheduled_clipskip is not None else opts.data["CLIP_stop_at_last_layers"]
 
-        image = generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame_idx, sampler_name=scheduled_sampler_name)
+        image = generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args,
+                         root, parseq_adapter, frame_idx, scheduled_sampler_name, scheduled_scheduler_name)
         filename = f"{root.timestring}_{frame_idx:09}.png"
 
         save_image(image, 'PIL', filename, args, video_args, root)

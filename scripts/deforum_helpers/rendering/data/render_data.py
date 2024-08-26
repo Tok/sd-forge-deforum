@@ -218,6 +218,7 @@ class RenderData:
         keys = self.animation_keys.deform_keys
         # Pix2Pix Image CFG Scale - does *nothing* with non pix2pix checkpoints
         self.args.args.pix2pix_img_cfg_scale = float(keys.pix2pix_img_cfg_scale_series[i])
+        self.args.args.pix2pix_img_distilled_cfg_scale = float(keys.pix2pix_img_distilled_cfg_scale_series[i])
         self.args.args.prompt = self.prompt_series[i]  # grab prompt for current frame
         self.args.args.scale = step.step_data.scale
 

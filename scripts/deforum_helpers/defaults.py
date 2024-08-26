@@ -13,8 +13,10 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 # Contact the authors: https://deforum.github.io/
-def get_schedulers_list():
-    return {"Simple": "Simple"}  # FIXME import real list...
+
+# noinspection PyUnresolvedReferences
+from modules import sd_schedulers
+
 
 def get_samplers_list():
     return {
@@ -48,6 +50,11 @@ def get_samplers_list():
         'unipc': 'UniPC',
         'restart': 'Restart'
     }
+
+
+def get_schedulers_list():
+    return {scheduler.name: scheduler.label for scheduler in sd_schedulers.schedulers}
+
 
 def get_parseq_keyframe_redistributions_list():
     return {
