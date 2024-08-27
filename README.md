@@ -64,7 +64,6 @@ pip install -r requirements.txt
     * &#x26A0;&#xFE0F; Warning: since Flux doesn't support negative prompts, "--neg" is currently ignored and everything after that is interpreted positively. 
       It may cause the opposite of their original intention.
   * Disable "Kohya HR Fix" and "FreeU".
-  * &#x26A0;&#xFE0F; Make sure to do a single generation in the `Txt2img` tab before starting your Deforum generation. It's currently required to be done like this, so the models init properly.
 
 #### Parseq Keyframe Redistribution
   * May be activated in the Parseq tab

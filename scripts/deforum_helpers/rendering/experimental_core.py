@@ -100,6 +100,7 @@ def _tweens_with_progress(key_step):
     # only use tween progress bar when extra console output (aka "dev mode") is disabled.
     if not opt_utils.is_verbose():
         log_utils.clear_previous_line()
+        # TODO use modules.shared.total_tqdm
         return tqdm(key_step.tweens, desc="Tweens progress", file=progress_print_out,
                     disable=cmd_opts.disable_console_progressbars, colour='#FFA468')
     return key_step.tweens

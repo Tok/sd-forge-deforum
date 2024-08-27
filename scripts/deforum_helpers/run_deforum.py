@@ -20,6 +20,7 @@ import traceback
 import gc
 import torch
 import modules.shared as shared
+from modules.sd_models import forge_model_reload, FakeInitialModel
 from modules.processing import Processed, StableDiffusionProcessingImg2Img
 from .args import get_component_names, process_args
 from .deforum_tqdm import DeforumTQDM
@@ -40,7 +41,11 @@ from scripts.deforum_api_models import DeforumJobPhase
 last_vid_data = None
 
 def run_deforum(*args):
-    print("started run_deforum")
+    print("Starting Deforum...")
+
+    if isinstance(shared.sd_model, FakeInitialModel):
+        print("Loading Models...")
+        forge_model_reload()
 
     f_location, f_crf, f_preset = get_ffmpeg_params()  # get params for ffmpeg exec
     component_names = get_component_names()
