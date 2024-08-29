@@ -8,7 +8,8 @@ from ....animation_key_frames import DeformAnimKeys
 class KeyFrameData: # TODO rename to DiffusionFrameDate
     noise: Any = None
     strength: Any = None
-    scale: Any = None
+    scale: Any = None  # defaults to 1.0 for Flux.1, but is typically used at 5.0-15.0 for other models
+    distilled_scale: Any = None  # defaults to 3.5 for Flux.1, may be ignored for other models
     contrast: Any = None
     kernel: int = 0
     sigma: Any = None
@@ -36,6 +37,7 @@ class KeyFrameData: # TODO rename to DiffusionFrameDate
             keys.noise_schedule_series[i],
             actual_strength,
             keys.cfg_scale_schedule_series[i],
+            keys.distilled_cfg_scale_schedule_series[i],
             keys.contrast_schedule_series[i],
             int(keys.kernel_schedule_series[i]),
             keys.sigma_schedule_series[i],

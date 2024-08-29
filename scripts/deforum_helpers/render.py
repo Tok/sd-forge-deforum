@@ -49,6 +49,7 @@ from .prompt import prepare_prompt
 from modules.shared import opts, cmd_opts, state, sd_model
 from modules import lowvram, devices, sd_hijack
 from .rendering import experimental_core
+from .rendering.util import log_utils
 from .RAFT import RAFT
 
 from deforum_api import JobStatusTracker
@@ -97,7 +98,8 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
 
     # create output folder for the batch
     os.makedirs(args.outdir, exist_ok=True)
-    print(f"Saving animation frames to:\n{args.outdir}")
+    log_utils.info(f"Saving animation frames to:\n{args.outdir}")
+    log_utils.debug(f"Sampler: '{args.sampler}' Scheduler: '{args.scheduler}'")
 
     # save settings.txt file for the current run
     save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root)
@@ -241,6 +243,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         noise = keys.noise_schedule_series[frame_idx]
         strength = keys.strength_schedule_series[frame_idx]
         scale = keys.cfg_scale_schedule_series[frame_idx]
+        distilled_scale = keys.distilled_cfg_scale_schedule_series[frame_idx]
         contrast = keys.contrast_schedule_series[frame_idx]
         kernel = int(keys.kernel_schedule_series[frame_idx])
         sigma = keys.sigma_schedule_series[frame_idx]
@@ -257,6 +260,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
             "flow_factor": keys.hybrid_flow_factor_schedule_series[frame_idx]
         }
         scheduled_sampler_name = None
+        scheduled_scheduler_name = None
         scheduled_clipskip = None
         scheduled_noise_multiplier = None
         scheduled_ddim_eta = None
@@ -268,6 +272,8 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
             args.steps = int(keys.steps_schedule_series[frame_idx])
         if anim_args.enable_sampler_scheduling and keys.sampler_schedule_series[frame_idx] is not None:
             scheduled_sampler_name = keys.sampler_schedule_series[frame_idx].casefold()
+        if anim_args.enable_scheduler_scheduling and keys.scheduler_schedule_series[frame_idx] is not None:
+            scheduled_scheduler_name = keys.scheduler_schedule_series[frame_idx].casefold()
         if anim_args.enable_clipskip_scheduling and keys.clipskip_schedule_series[frame_idx] is not None:
             scheduled_clipskip = int(keys.clipskip_schedule_series[frame_idx])
         if anim_args.enable_noise_multiplier_scheduling and keys.noise_multiplier_schedule_series[frame_idx] is not None:
@@ -476,9 +482,12 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
             args.strength = max(0.0, min(1.0, strength))
 
         args.scale = scale
+        args.distilled_scale = distilled_scale
 
         # Pix2Pix Image CFG Scale - does *nothing* with non pix2pix checkpoints
         args.pix2pix_img_cfg_scale = float(keys.pix2pix_img_cfg_scale_series[frame_idx])
+        # Pix2Pix Image Distilled CFG Scale is required by Flux.1, but ignored for most other models.
+        args.pix2pix_img_distilled_cfg_scale = float(keys.pix2pix_img_distilled_cfg_scale_series[frame_idx])
 
         # grab prompt for current frame
         args.prompt = prompt_series[frame_idx]
@@ -566,7 +575,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
             args.seed = random.randint(0, 2 ** 32 - 1)
             print(f"Optical flow redo is diffusing and warping using {optical_flow_redo_generation} and seed {args.seed} optical flow before generation.")
 
-            disposable_image = generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame_idx, sampler_name=scheduled_sampler_name)
+            disposable_image = generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame_idx, sampler_name=scheduled_sampler_name, scheduler_name=scheduled_scheduler_name)
             disposable_image = cv2.cvtColor(np.array(disposable_image), cv2.COLOR_RGB2BGR)
             disposable_flow = get_flow_from_images(prev_img, disposable_image, optical_flow_redo_generation, raft_model)
             disposable_image = cv2.cvtColor(disposable_image, cv2.COLOR_BGR2RGB)
@@ -582,7 +591,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
             for n in range(0, int(anim_args.diffusion_redo)):
                 print(f"Redo generation {n + 1} of {int(anim_args.diffusion_redo)} before final generation")
                 args.seed = random.randint(0, 2 ** 32 - 1)
-                disposable_image = generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame_idx, sampler_name=scheduled_sampler_name)
+                disposable_image = generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame_idx, sampler_name=scheduled_sampler_name, scheduler_name=scheduled_scheduler_name)
                 disposable_image = cv2.cvtColor(np.array(disposable_image), cv2.COLOR_RGB2BGR)
                 # color match on last one only
                 if n == int(anim_args.diffusion_redo):
@@ -593,7 +602,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
             gc.collect()
 
         # generation
-        image = generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame_idx, sampler_name=scheduled_sampler_name)
+        image = generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame_idx, sampler_name=scheduled_sampler_name, scheduler_name=scheduled_scheduler_name)
 
         if image is None:
             break

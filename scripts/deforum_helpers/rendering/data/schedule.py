@@ -10,6 +10,7 @@ from ...args import DeforumAnimArgs, DeforumArgs
 class Schedule:
     steps: int
     sampler_name: str
+    scheduler_name: str
     clipskip: int
     noise_multiplier: float
     eta_ddim: float
@@ -26,6 +27,7 @@ class Schedule:
         keys: DeformAnimKeys = data.animation_keys.deform_keys
         steps = Schedule.schedule_steps(keys, i, anim_args)
         sampler_name = Schedule.schedule_sampler(keys, i, anim_args)
+        schedule_name = Schedule.schedule_scheduler(keys, i, anim_args)
         clipskip = Schedule.schedule_clipskip(keys, i, anim_args)
         noise_multiplier = Schedule.schedule_noise_multiplier(keys, i, anim_args)
         eta_ddim = Schedule.schedule_ddim_eta(keys, i, anim_args)
@@ -33,7 +35,8 @@ class Schedule:
         mask = Schedule.schedule_mask(keys, i, args)
         is_use_mask_without_noise = data.is_use_mask and not data.args.anim_args.use_noise_mask
         noise_mask = mask if is_use_mask_without_noise else Schedule.schedule_noise_mask(keys, i, anim_args)
-        return Schedule(steps, sampler_name, clipskip, noise_multiplier, eta_ddim, eta_ancestral, mask, noise_mask)
+        return Schedule(steps, sampler_name, schedule_name, clipskip, noise_multiplier,
+                        eta_ddim, eta_ancestral, mask, noise_mask)
 
     @staticmethod
     def _has_schedule(keys, i):
@@ -60,6 +63,12 @@ class Schedule:
     def schedule_sampler(keys, i, anim_args):
         return Schedule._use_on_cond_if_scheduled(keys, i, keys.sampler_schedule_series[i].casefold(),
                                                   anim_args.enable_sampler_scheduling)
+
+    @staticmethod
+    def schedule_scheduler(keys, i, anim_args):
+        return Schedule._use_on_cond_if_scheduled(keys, i, keys.scheduler_schedule_series[i].casefold(),
+                                                  anim_args.enable_scheduler_scheduling)
+
 
     @staticmethod
     def schedule_clipskip(keys, i, anim_args):

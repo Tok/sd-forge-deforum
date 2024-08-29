@@ -72,14 +72,14 @@ def pairwise_repl(iterable):
     next(b, None)
     return zip(a, b)
 
-def generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter,  frame=0, sampler_name=None):
+def generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter,  frame=0, sampler_name=None, scheduler_name=None):
     if state.interrupted:
         return None
 
     if args.reroll_blank_frames == 'ignore':
-        return generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name)
+        return generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
 
-    image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name)
+    image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
 
     if caught_vae_exception or not image.getbbox():
         patience = args.reroll_patience
@@ -88,7 +88,7 @@ def generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohy
             while caught_vae_exception or not image.getbbox():
                 print("Rerolling with +1 seed...")
                 args.seed += 1
-                image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name)
+                image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
                 patience -= 1
                 if patience == 0:
                     print("Rerolling with +1 seed failed for 10 iterations! Try setting webui's precision to 'full' and if it fails, please report this to the devs! Interrupting...")
@@ -102,12 +102,12 @@ def generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohy
             return None
     return image
 
-def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame=0, sampler_name=None):
+def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame=0, sampler_name=None, scheduler_name=None):
     if cmd_opts.disable_nan_check:
-        image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name)
+        image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
     else:
         try:
-            image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name)
+            image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
         except Exception as e:
             if "A tensor with all NaNs was produced in VAE." in repr(e):
                 print(e)
@@ -116,7 +116,8 @@ def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, 
                 raise e
     return image, False
 
-def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame=0, sampler_name=None, scheduler_name="Simple"):
+def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args,
+                   root, parseq_adapter, frame=0, sampler_name=None, scheduler_name=None):
     # Setup the pipeline
     p = get_webui_sd_pipeline(args, root)
     p.prompt, p.negative_prompt = split_weighted_subprompts(args.prompt, frame, anim_args.max_frames)
@@ -174,6 +175,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
     available_samplers = get_samplers_list()
     if sampler_name is not None:
         if sampler_name in available_samplers.keys():
+            print(f"{sampler_name}: {available_samplers}")
             p.sampler_name = available_samplers[sampler_name]
         else:
             raise RuntimeError(f"Sampler name '{sampler_name}' is invalid. Please check the available sampler list in the 'Run' tab")
@@ -229,11 +231,12 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
                 seed_resize_from_h=p.seed_resize_from_h,
                 seed_resize_from_w=p.seed_resize_from_w,
                 sampler_name=p.sampler_name,
-                #scheduler_name=p.scheduler_name,
+                scheduler=p.scheduler_name,
                 batch_size=p.batch_size,
                 n_iter=p.n_iter,
                 steps=p.steps,
                 cfg_scale=p.cfg_scale,
+                distilled_cfg_scale=p.distilled_cfg_scale,
                 width=p.width,
                 height=p.height,
                 restore_faces=p.restore_faces,
@@ -295,6 +298,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
         p.init_images = [init_image]
         p.image_mask = mask
         p.image_cfg_scale = args.pix2pix_img_cfg_scale
+        p.distilled_cfg_scale = args.pix2pix_img_distilled_cfg_scale
 
         print_combined_table(args, anim_args, p, keys, frame)  # print dynamic table to cli
 
@@ -319,7 +323,6 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
                 add_forge_script_to_deforum_run(p, "Kohya HRFix Integrated", kohya_hrfix_script_args)                
 
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
-                p.scheduler = "Simple"  # FIXME provide
                 processed = processing.process_images(p)
 
 
@@ -358,22 +361,24 @@ def print_combined_table(args, anim_args, p, keys, frame_idx):
 
     table = Table(padding=0, box=box.ROUNDED)
 
-    field_names1 = ["Steps", "CFG"]
+    field_names1 = ["Steps", "CFG", "Dist. CFG"]
     if anim_args.animation_mode != 'Interpolation':
         field_names1.append("Denoise")
     field_names1 += ["Subseed", "Subs. str"] * (anim_args.enable_subseed_scheduling)
     field_names1 += ["Sampler"] * anim_args.enable_sampler_scheduling
+    field_names1 += ["Scheduler"] * anim_args.enable_scheduler_scheduling
     field_names1 += ["Checkpoint"] * anim_args.enable_checkpoint_scheduling
 
     for field_name in field_names1:
         table.add_column(field_name, justify="center")
 
-    rows1 = [str(p.steps), str(p.cfg_scale)]
+    rows1 = [str(p.steps), str(p.cfg_scale), str(p.distilled_cfg_scale)]
     if anim_args.animation_mode != 'Interpolation':
         rows1.append(f"{p.denoising_strength:.5g}" if p.denoising_strength is not None else "None")
 
     rows1 += [str(p.subseed), f"{p.subseed_strength:.5g}"] * anim_args.enable_subseed_scheduling
     rows1 += [p.sampler_name] * anim_args.enable_sampler_scheduling
+    rows1 += [p.scheduler] * anim_args.enable_scheduler_scheduling
     rows1 += [str(args.checkpoint)] * anim_args.enable_checkpoint_scheduling
 
     rows2 = []

@@ -30,6 +30,7 @@ def get_webui_sd_pipeline(args, root):
     p.steps = args.steps
     p.seed = args.seed
     p.sampler_name = args.sampler
+    p.scheduler_name = args.scheduler
     p.tiling = args.tiling
     p.restore_faces = args.restore_faces
     p.subseed = root.subseed
@@ -41,6 +42,7 @@ def get_webui_sd_pipeline(args, root):
     p.seed = args.seed
     p.do_not_save_samples = True  # Setting this to False will trigger webui's saving mechanism - and we will end up with duplicated files, and another folder within our destination folder - big no no.
     p.sampler_name = args.sampler
+    p.scheduler = args.scheduler
     p.mask_blur = args.mask_overlay_blur
     p.extra_generation_params["Mask blur"] = args.mask_overlay_blur
     p.n_iter = 1
@@ -48,6 +50,7 @@ def get_webui_sd_pipeline(args, root):
     p.denoising_strength = 1 - args.strength
     p.cfg_scale = args.scale
     p.image_cfg_scale = args.pix2pix_img_cfg_scale
+    p.distilled_cfg_scale = args.pix2pix_img_distilled_cfg_scale
     p.outpath_samples = args.outdir
     
     return p

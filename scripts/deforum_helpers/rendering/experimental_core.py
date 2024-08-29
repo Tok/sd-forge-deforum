@@ -16,7 +16,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
                      freeu_args, kohya_hrfix_args, root):
     log_utils.info("Using experimental render core.")
     data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
-    _check_experimental_render_conditions(data)
+    _check_render_conditions(data)
     web_ui_utils.init_job(data)
     key_frames = KeyFrame.create_all_frames(data, KeyFrameDistribution.from_UI_tab(data))
     run_render_animation(data, key_frames)
@@ -74,7 +74,8 @@ def emit_tweens(data, key_step):
     [tween.emit_frame(key_step, grayscale_tube, overlay_mask_tube) for tween in tweens]
 
 
-def _check_experimental_render_conditions(data):
+def _check_render_conditions(data):
+    log_utils.info(f"Sampler: '{data.args.args.sampler}' Scheduler: '{data.args.args.scheduler}'")
     if data.has_parseq_keyframe_redistribution():
         msg = "Experimental conditions: Using 'Parseq keyframe redistribution' together with '{method}'. {results}. \
                In case of problems, consider deactivating either one."
@@ -99,6 +100,7 @@ def _tweens_with_progress(key_step):
     # only use tween progress bar when extra console output (aka "dev mode") is disabled.
     if not opt_utils.is_verbose():
         log_utils.clear_previous_line()
+        # TODO use modules.shared.total_tqdm
         return tqdm(key_step.tweens, desc="Tweens progress", file=progress_print_out,
                     disable=cmd_opts.disable_console_progressbars, colour='#FFA468')
     return key_step.tweens
