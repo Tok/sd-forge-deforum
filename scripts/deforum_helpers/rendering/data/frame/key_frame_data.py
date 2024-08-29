@@ -5,7 +5,7 @@ from ....animation_key_frames import DeformAnimKeys
 
 
 @dataclass(init=True, frozen=True, repr=False, eq=False)
-class KeyFrameData:
+class KeyFrameData: # TODO rename to DiffusionFrameDate
     noise: Any = None
     strength: Any = None
     scale: Any = None
@@ -31,9 +31,10 @@ class KeyFrameData:
     def create(data):
         i = data.indexes.frame.i
         keys: DeformAnimKeys = data.animation_keys.deform_keys
+        actual_strength = keys.strength_schedule_series[i]  # TODO...
         return KeyFrameData(
             keys.noise_schedule_series[i],
-            keys.strength_schedule_series[i],
+            actual_strength,
             keys.cfg_scale_schedule_series[i],
             keys.contrast_schedule_series[i],
             int(keys.kernel_schedule_series[i]),

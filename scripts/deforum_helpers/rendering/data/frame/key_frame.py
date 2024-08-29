@@ -271,18 +271,21 @@ class KeyFrame:
     @staticmethod
     def precalculate_num_key_frames(data, keyframe_dist, start_index, max_frames):
         # TODO change implementation so KeyFrames can be instantiated without any pre-calculations.
-        if not data.parseq_adapter.use_parseq or keyframe_dist is KeyFrameDistribution.OFF:
+        if keyframe_dist is KeyFrameDistribution.OFF:
             return 0  # not relevant
         if keyframe_dist is KeyFrameDistribution.PARSEQ_ONLY:
-            return len(data.parseq_adapter.parseq_json["keyframes"])
+            if data.parseq_adapter.use_parseq:
+                return len(data.parseq_adapter.parseq_json["keyframes"])
+            else:
+                return len(data.args.root.prompt_keyframes)
         elif keyframe_dist is KeyFrameDistribution.ADDITIVE_WITH_PARSEQ:
             # TODO make this work without having to calc temp_num_key_steps first or refactor to make pre-calc obsolete.
             temp_num_key_steps = 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
             uniform_indices = KeyFrameDistribution.uniform_indexes(start_index, max_frames, temp_num_key_steps)
-            parseq_keyframes = [keyframe["frame"] for keyframe in data.parseq_adapter.parseq_json["keyframes"]]
-            shifted_parseq_frames = [frame + 1 for frame in parseq_keyframes]
-            precalc_key_frames = list(set(set(uniform_indices) | set(shifted_parseq_frames)))
-            precalc_key_frames.sort()
+            keyframes = [keyframe["frame"] + 1 for keyframe in data.parseq_adapter.parseq_json["keyframes"]] \
+                if data.parseq_adapter.use_parseq \
+                else data.args.root.prompt_keyframes
+            precalc_key_frames = list(set(set(uniform_indices) | set(keyframes)))
             return len(precalc_key_frames)
         elif keyframe_dist is KeyFrameDistribution.UNIFORM_WITH_PARSEQ:
             return 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
@@ -307,12 +310,19 @@ class KeyFrame:
 
     @staticmethod
     def _recalculate_and_check_tweens(data, key_frames, start_index, num_key_steps, keyframe_distribution):
-        max_frames = data.args.anim_args.max_frames
+        def parseq_or_deforum_strength(index):
+            return data.args.strength if index in data.args.root.prompt_keyframes else data.args.keyframe_strength
 
+        max_frames = data.args.anim_args.max_frames
         key_indices = keyframe_distribution.calculate(data, start_index, max_frames, num_key_steps, data.parseq_adapter)
+
+        log_utils.info(f"{len(key_frames)} key_frames {key_frames}")
+        log_utils.info(f"{len(key_indices)} key_indices {key_indices}")
         assert len(key_frames) == len(key_indices)
         for i, key_step in enumerate(key_indices):
             key_frames[i].i = key_indices[i]  # TODO separate handling from calculation. this should be done elsewhere.
+            #key_frames[i].strength = parseq_or_deforum_strength(i)
+
 
         key_frames = KeyFrame.add_tweens_to_key_frames(key_frames)  # noqa TODO? (linter marks this unreachable)
         log_utils.print_key_step_debug_info_if_verbose(key_frames)

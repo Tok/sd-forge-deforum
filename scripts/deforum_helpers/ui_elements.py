@@ -104,6 +104,8 @@ def get_tab_keyframes(d, da, dloopArgs):
                 with FormRow():
                     image_strength_schedule = create_gr_elem(dloopArgs.image_strength_schedule)
                 with FormRow():
+                    image_keyframe_strength_schedule = create_gr_elem(dloopArgs.image_keyframe_strength_schedule)
+                with FormRow():
                     blendFactorMax = create_gr_elem(dloopArgs.blendFactorMax)
                 with FormRow():
                     blendFactorSlope = create_gr_elem(dloopArgs.blendFactorSlope)
@@ -116,6 +118,8 @@ def get_tab_keyframes(d, da, dloopArgs):
             with gr.TabItem('Strength'):
                 with FormRow():
                     strength_schedule = create_gr_elem(da.strength_schedule)
+                with FormRow():
+                    keyframe_strength_schedule = create_gr_elem(da.keyframe_strength_schedule)
             with gr.TabItem('CFG'):
                 with FormRow():
                     cfg_scale_schedule = create_gr_elem(da.cfg_scale_schedule)
@@ -341,6 +345,8 @@ def get_tab_init(d, da, dp):
                     strength_0_no_init = create_gr_elem(d.strength_0_no_init)
                 with gr.Column(min_width=170):
                     strength = create_gr_elem(d.strength)
+                with gr.Column(min_width=170):
+                    keyframe_strength = create_gr_elem(d.keyframe_strength)
             with FormRow():
                 init_image = create_gr_elem(d.init_image)
             with FormRow():

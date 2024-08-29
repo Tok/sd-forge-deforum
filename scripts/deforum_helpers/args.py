@@ -49,6 +49,7 @@ def RootArgs():
         "initial_info": None,
         "first_frame": None,
         "animation_prompts": None,
+        "prompt_keyframes": None,
         "current_user_os": get_os(),
         "tmp_deforum_run_duplicated_folder": os.path.join(tempfile.gettempdir(), 'tmp_run_deforum')
     }
@@ -182,6 +183,12 @@ def DeforumAnimArgs():
             "type": "textbox",
             "value": "0: (0.65)",
             "info": "amount of presence of previous frame to influence next frame, also controls steps in the following formula [steps - (strength_schedule * steps)]"
+        },
+        "keyframe_strength_schedule": {
+            "label": "Strength schedule for keyframes",
+            "type": "textbox",
+            "value": "0: (0.30)",
+            "info": "amount of presence of previous frame to influence next keyframe"
         },
         "contrast_schedule": "0: (1.0)",
         "cfg_scale_schedule": {
@@ -816,6 +823,15 @@ def DeforumArgs():
             "value": 0.8,
             "info": "the inverse of denoise; lower values alter the init image more (high denoise); higher values alter it less (low denoise)"
         },
+        "keyframe_strength": {
+            "label": "Keyframe Strength",
+            "type": "slider",
+            "minimum": 0,
+            "maximum": 1,
+            "step": 0.01,
+            "value": 0.3,
+            "info": "the inverse of denoise for keyframes; lower values alter the init image more (high denoise); higher values alter it less (low denoise). Should be set to a lower value than regular strength."
+        },
         "strength_0_no_init": {
             "label": "Strength 0 no init",
             "type": "checkbox",
@@ -949,6 +965,11 @@ def LoopArgs():
             "label": "Image strength schedule",
             "type": "textbox",
             "value": "0:(0.75)",
+        },
+        "image_keyframe_strength_schedule": {
+            "label": "Image strength schedule",
+            "type": "textbox",
+            "value": "0:(0.25)",
         },
         "blendFactorMax": {
             "label": "Blend factor max",
@@ -1250,6 +1271,7 @@ def process_args(args_dict_main, run_id):
     positive_prompts = args_dict_main['animation_prompts_positive']
     negative_prompts = args_dict_main['animation_prompts_negative']
     negative_prompts = negative_prompts.replace('--neg', '')  # remove --neg from negative_prompts if received by mistake
+    root.prompt_keyframes = [key for key in root.animation_prompts.keys()]
     root.animation_prompts = {key: f"{positive_prompts} {val} {'' if '--neg' in val else '--neg'} {negative_prompts}" for key, val in root.animation_prompts.items()}
 
     if args.seed == -1:
@@ -1262,6 +1284,7 @@ def process_args(args_dict_main, run_id):
     args.prompts = json.loads(args_dict_main['animation_prompts'])
     args.positive_prompts = args_dict_main['animation_prompts_positive']
     args.negative_prompts = args_dict_main['animation_prompts_negative']
+
 
     if not args.use_init and not anim_args.hybrid_use_init_image:
         args.init_image = None
