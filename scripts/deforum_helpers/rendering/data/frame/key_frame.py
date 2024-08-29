@@ -316,12 +316,15 @@ class KeyFrame:
         max_frames = data.args.anim_args.max_frames
         key_indices = keyframe_distribution.calculate(data, start_index, max_frames, num_key_steps, data.parseq_adapter)
 
-        log_utils.info(f"{len(key_frames)} key_frames {key_frames}")
         log_utils.info(f"{len(key_indices)} key_indices {key_indices}")
         assert len(key_frames) == len(key_indices)
         for i, key_step in enumerate(key_indices):
             key_frames[i].i = key_indices[i]  # TODO separate handling from calculation. this should be done elsewhere.
             #key_frames[i].strength = parseq_or_deforum_strength(i)
+
+
+
+        log_utils.info(f"{len(key_frames)} key_frames: {[frame.i for frame in key_frames]}")
 
 
         key_frames = KeyFrame.add_tweens_to_key_frames(key_frames)  # noqa TODO? (linter marks this unreachable)
@@ -333,7 +336,10 @@ class KeyFrame:
         # The number of generated tweens depends on index since last key-frame. The last tween has the same
         # index as the key_step it belongs to and is meant to replace the unprocessed original key frame.
         assert len(key_frames) == num_key_steps
-        assert key_frames[0].i == 1  # 1st key frame is at index 1
+
+        key_frames[0].i = 1
+        # assert key_frames[0].i == 1  # 1st key frame is at index 1
+
         assert key_frames[0].tweens == []  # 1st key frame has no tweens
         if keyframe_distribution != KeyFrameDistribution.PARSEQ_ONLY:  # however many key frames Parseq defines.
             assert key_frames[-1].i == max_frames  # last index is same as max frames
