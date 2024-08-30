@@ -28,9 +28,10 @@ from ....seed import next_seed
 
 
 @dataclass(init=True, frozen=False, repr=False, eq=False)
-class KeyFrame:
+class KeyFrame:  # TODO rename to DiffusionFrame
     """Key steps are the steps for frames that actually get diffused (as opposed to tween frame steps)."""
     i: int
+    is_keyframe: bool
     step_data: KeyFrameData
     render_data: RenderData
     schedule: Schedule
@@ -216,9 +217,10 @@ class KeyFrame:
 
     @staticmethod
     def create(data: RenderData):
-        step_data = KeyFrameData.create(data)
+        frame_data = KeyFrameData.create(data)
         schedule = Schedule.create(data)
-        return KeyFrame(0, step_data, data, schedule, None, None, "", 0, list(), list())
+        is_keyframe = True  # TODO provide from here?
+        return KeyFrame(0, is_keyframe, frame_data, data, schedule, None, None, "", 0, list(), list())
 
     @staticmethod
     def apply_color_matching(data: RenderData, image):
@@ -273,22 +275,21 @@ class KeyFrame:
         # TODO change implementation so KeyFrames can be instantiated without any pre-calculations.
         if keyframe_dist is KeyFrameDistribution.OFF:
             return 0  # not relevant
-        if keyframe_dist is KeyFrameDistribution.PARSEQ_ONLY:
+        if keyframe_dist is KeyFrameDistribution.KEYFRAMES_ONLY:
             if data.parseq_adapter.use_parseq:
                 return len(data.parseq_adapter.parseq_json["keyframes"])
             else:
                 return len(data.args.root.prompt_keyframes)
-        elif keyframe_dist is KeyFrameDistribution.ADDITIVE_WITH_PARSEQ:
+        elif keyframe_dist is KeyFrameDistribution.REDISTRIBUTED:
+            return 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
+        elif keyframe_dist is KeyFrameDistribution.ADDITIVE:
             # TODO make this work without having to calc temp_num_key_steps first or refactor to make pre-calc obsolete.
             temp_num_key_steps = 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
             uniform_indices = KeyFrameDistribution.uniform_indexes(start_index, max_frames, temp_num_key_steps)
-            keyframes = [keyframe["frame"] + 1 for keyframe in data.parseq_adapter.parseq_json["keyframes"]] \
-                if data.parseq_adapter.use_parseq \
-                else data.args.root.prompt_keyframes
+            keyframes = KeyFrameDistribution.select_keyframes(data)
+
             precalc_key_frames = list(set(set(uniform_indices) | set(keyframes)))
             return len(precalc_key_frames)
-        elif keyframe_dist is KeyFrameDistribution.UNIFORM_WITH_PARSEQ:
-            return 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
         else:
             raise ValueError(f"Invalid parseq_key_frame_distribution: {keyframe_dist}")
 
@@ -310,24 +311,22 @@ class KeyFrame:
 
     @staticmethod
     def _recalculate_and_check_tweens(data, key_frames, start_index, num_key_steps, keyframe_distribution):
-        def parseq_or_deforum_strength(index):
+        def keyframe_or_cadence_strength(index):
             return data.args.strength if index in data.args.root.prompt_keyframes else data.args.keyframe_strength
 
         max_frames = data.args.anim_args.max_frames
-        key_indices = keyframe_distribution.calculate(data, start_index, max_frames, num_key_steps, data.parseq_adapter)
+        key_indices = keyframe_distribution.calculate(data, start_index, max_frames, num_key_steps)
 
         log_utils.info(f"{len(key_indices)} key_indices {key_indices}")
+        log_utils.info(f"{len(key_frames)} key_frames {key_frames}")
         assert len(key_frames) == len(key_indices)
         for i, key_step in enumerate(key_indices):
             key_frames[i].i = key_indices[i]  # TODO separate handling from calculation. this should be done elsewhere.
-            #key_frames[i].strength = parseq_or_deforum_strength(i)
-
-
+            #key_frames[i].strength = keyframe_or_cadence_strength(i)
 
         log_utils.info(f"{len(key_frames)} key_frames: {[frame.i for frame in key_frames]}")
 
-
-        key_frames = KeyFrame.add_tweens_to_key_frames(key_frames)  # noqa TODO? (linter marks this unreachable)
+        key_frames = KeyFrame.add_tweens_to_key_frames(key_frames)
         log_utils.print_key_step_debug_info_if_verbose(key_frames)
 
         pseudo_cadence = max_frames / len(key_frames)
@@ -341,7 +340,7 @@ class KeyFrame:
         # assert key_frames[0].i == 1  # 1st key frame is at index 1
 
         assert key_frames[0].tweens == []  # 1st key frame has no tweens
-        if keyframe_distribution != KeyFrameDistribution.PARSEQ_ONLY:  # however many key frames Parseq defines.
+        if keyframe_distribution != KeyFrameDistribution.KEYFRAMES_ONLY:
             assert key_frames[-1].i == max_frames  # last index is same as max frames
 
         return key_frames

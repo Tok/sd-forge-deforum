@@ -76,7 +76,7 @@ def emit_tweens(data, key_step):
 
 def _check_render_conditions(data):
     log_utils.info(f"Sampler: '{data.args.args.sampler}' Scheduler: '{data.args.args.scheduler}'")
-    if data.has_parseq_keyframe_redistribution():
+    if data.has_keyframe_redistribution():
         msg = "Experimental conditions: Using 'Parseq keyframe redistribution' together with '{method}'. {results}. \
                In case of problems, consider deactivating either one."
         dark_or_dist = "Resulting images may quickly end up looking dark or distorted."

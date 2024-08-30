@@ -1,4 +1,3 @@
-import random
 from enum import Enum
 from typing import List
 
@@ -7,40 +6,40 @@ from ...util import log_utils
 
 class KeyFrameDistribution(Enum):
     OFF = "Off"
-    PARSEQ_ONLY = "Parseq Only"  # cadence is ignored. all frames not present in the Parseq table are handled as tweens.
-    ADDITIVE_WITH_PARSEQ = "Additive with Parseq"  # both cadence and parseq keyframes are used.
-    UNIFORM_WITH_PARSEQ = "Uniform with Parseq"  # similar to uniform, but parseq key frame diffusion is enforced.
+    KEYFRAMES_ONLY = "Keyframes Only"  # cadence is ignored. all other frames are handled as tweens.
+    ADDITIVE = "Additive"  # both cadence and parseq keyframes are used.
+    REDISTRIBUTED = "Redistributed"  # similar to uniform, but keyframe diffusion is enforced.
 
     @staticmethod
     def from_UI_tab(data):
-        redistribution = data.args.parseq_args.parseq_key_frame_redistribution
+        redistribution = data.args.parseq_args.keyframe_redistribution
         match redistribution:
             case "Off":
                 return KeyFrameDistribution.OFF
-            case "Parseq Only (no cadence)":
-                return KeyFrameDistribution.PARSEQ_ONLY
-            case "Additive with Parseq (pseudo-cadence)":
-                return KeyFrameDistribution.ADDITIVE_WITH_PARSEQ
-            case "Uniform with Parseq (pseudo-cadence & redistribution)":
-                return KeyFrameDistribution.UNIFORM_WITH_PARSEQ
+            case "Keyframes Only":
+                return KeyFrameDistribution.KEYFRAMES_ONLY
+            case "Additive":
+                return KeyFrameDistribution.ADDITIVE
+            case "Redistributed":
+                return KeyFrameDistribution.REDISTRIBUTED
             case _:
-                raise ValueError(f"Invalid parseq_key_frame_redistribution from UI: {redistribution}")
+                raise ValueError(f"Invalid keyframe_redistribution from UI: {redistribution}")
 
     @staticmethod
     def default():
         return KeyFrameDistribution.OFF
 
-    def calculate(self, data, start_index, max_frames, num_key_steps, parseq_adapter) -> List[int]:
+    def calculate(self, data, start_index, max_frames, num_key_steps) -> List[int]:
         match self:
-            case KeyFrameDistribution.PARSEQ_ONLY:  # same as UNIFORM_SPACING, if no Parseq keys are present.
-                return self._parseq_only(data, parseq_adapter)
-            case KeyFrameDistribution.ADDITIVE_WITH_PARSEQ:
-                return self._additive_with_parseq(data, start_index, max_frames, num_key_steps, parseq_adapter)
-            case KeyFrameDistribution.UNIFORM_WITH_PARSEQ:
-                return self._uniform_with_parseq(data, start_index, max_frames, num_key_steps, parseq_adapter)
+            case KeyFrameDistribution.KEYFRAMES_ONLY:  # same as UNIFORM_SPACING, if no Parseq keys are present.
+                return self.select_keyframes(data)
+            case KeyFrameDistribution.ADDITIVE:
+                return self._additive(data, start_index, max_frames)
+            case KeyFrameDistribution.REDISTRIBUTED:
+                return self._redistributed(data, start_index, max_frames, num_key_steps)
             case KeyFrameDistribution.OFF:
-                log_utils.warn("Called new core without key frame redistribution. Using 'PARSEQ_ONLY'.")
-                return self._parseq_only(data, parseq_adapter)
+                log_utils.warn("Called new core without keyframe redistribution. Using 'KEYFRAMES_ONLY'.")
+                return self.select_keyframes(data)
             case _:
                 raise ValueError(f"Invalid KeyFrameDistribution: {self}")
 
@@ -50,54 +49,48 @@ class KeyFrameDistribution(Enum):
                 for n in range(num_key_steps)]
 
     @staticmethod
-    def _parseq_only(data, parseq_adapter):
-        """Only Parseq key frames are used. Cadence settings are ignored."""
-        if parseq_adapter.use_parseq:
-            parseq_key_frames = [keyframe["frame"] for keyframe in parseq_adapter.parseq_json["keyframes"]]
-            shifted_parseq_frames = [frame + 1 for frame in parseq_key_frames]
-            return shifted_parseq_frames
-        else:
-            deforum_key_frames = [int(frame) for frame in data.args.root.prompt_keyframes]
-            return deforum_key_frames
-
-    @staticmethod
-    def _additive_with_parseq(data, start_index, max_frames, num_key_steps, parseq_adapter):
-        """Calculates uniform indices according to cadence and adds key frames defined by parseq key frames."""
+    def _additive(data, start_index, max_frames):
+        """Calculates uniform indices according to cadence and adds keyframes defined by Parseq or Deforum prompt."""
         temp_num_key_steps = 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
-        if not parseq_adapter.use_parseq:
-            # TODO implement...
-            log_utils.warn("ADDITIVE_WITH_PARSEQ, but Parseq is not active, using UNIFORM_SPACING instead.")
-            return KeyFrameDistribution._parseq_only(data, parseq_adapter)
-
         uniform_indices = KeyFrameDistribution.uniform_indexes(start_index, max_frames, temp_num_key_steps)
-        parseq_keyframes = [keyframe["frame"] for keyframe in parseq_adapter.parseq_json["keyframes"]]
-        shifted_parseq_frames = [frame + 1 for frame in parseq_keyframes]
-        key_frames = list(set(set(uniform_indices) | set(shifted_parseq_frames)))
-        key_frames.sort()
-        return key_frames
+        keyframes = KeyFrameDistribution.select_keyframes(data)
+        return KeyFrameDistribution._merge_with_uniform(uniform_indices, keyframes)
 
     @staticmethod
-    def _uniform_with_parseq(data, start_index, max_frames, num_key_steps, parseq_adapter):
-        """Calculates uniform indices according to cadence, but parseq key frames replace the closest deforum key."""
+    def _redistributed(data, start_index, max_frames, num_key_steps):
+        """Calculates uniform indices according to cadence, but keyframes replace the closest cadence frame."""
         uniform_indices = KeyFrameDistribution.uniform_indexes(start_index, max_frames, num_key_steps)
-        if not parseq_adapter.use_parseq:
-            # TODO implement...
-            log_utils.warn("UNIFORM_WITH_PARSEQ, but Parseq is not active, using UNIFORM_SPACING instead.")
-            return KeyFrameDistribution._parseq_only(data, parseq_adapter)
+        keyframes = KeyFrameDistribution.select_keyframes(data)
+        keyframes_set = set(uniform_indices)  # set for faster membership checks
 
-        parseq_key_frames = [keyframe["frame"] for keyframe in parseq_adapter.parseq_json["keyframes"]]
-        shifted_parseq_frames = [frame + 1 for frame in parseq_key_frames]
-        key_frames_set = set(uniform_indices)  # set for faster membership checks
-
-        # Insert parseq keyframes while maintaining keyframe count
-        for current_frame in shifted_parseq_frames:
-            if current_frame not in key_frames_set:
+        # Insert keyframes from Parseq or Deforum prompt while maintaining keyframe count according to cadence
+        for current_frame in keyframes:
+            if current_frame not in keyframes_set:
                 # Find the closest index in the set to replace (1st and last frame excluded)
-                closest_index = min(list(key_frames_set)[1:-1], key=lambda x: abs(x - current_frame))
-                key_frames_set.remove(closest_index)
-                key_frames_set.add(current_frame)
+                closest_index = min(list(keyframes_set)[1:-1], key=lambda x: abs(x - current_frame))
+                keyframes_set.remove(closest_index)
+                keyframes_set.add(current_frame)
 
-        key_frames = list(key_frames_set)
+        key_frames = list(keyframes_set)
         key_frames.sort()
         assert len(key_frames) == num_key_steps
         return key_frames
+
+    @staticmethod
+    def _merge_with_uniform(uniform_indices, key_frames):
+        key_frames = list(set(set(uniform_indices) | set(key_frames)))
+        key_frames.sort()
+        return key_frames
+
+    @staticmethod
+    def select_keyframes(data):
+        return KeyFrameDistribution._select_parseq_keyframes(data) if data.parseq_adapter.use_parseq \
+            else KeyFrameDistribution._select_deforum_keyframes(data)
+
+    @staticmethod
+    def _select_parseq_keyframes(data):
+        return [keyframe["frame"] + 1 for keyframe in data.parseq_adapter.parseq_json["keyframes"]]
+
+    @staticmethod
+    def _select_deforum_keyframes(data):
+        return [int(frame) for frame in data.args.root.prompt_keyframes]

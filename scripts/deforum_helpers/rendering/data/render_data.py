@@ -97,8 +97,8 @@ class RenderData:
     def is_3d_or_2d(self) -> bool:
         return self.args.anim_args.animation_mode in ['2D', '3D']
 
-    def has_parseq_keyframe_redistribution(self) -> bool:
-        return self.args.parseq_args.parseq_key_frame_redistribution != "Off"
+    def has_keyframe_redistribution(self) -> bool:
+        return self.args.parseq_args.keyframe_redistribution != "Off"
 
     def has_optical_flow_cadence(self) -> bool:
         return self.args.anim_args.optical_flow_cadence != 'None'
@@ -111,9 +111,6 @@ class RenderData:
 
     def is_3d_with_med_or_low_vram(self) -> bool:
         return self.is_3d() and memory_utils.is_low_or_med_vram()
-
-    def has_keyframe_redistribution(self) -> bool:
-        return self.args.parseq_args
 
     def width(self) -> int:
         return self.args.args.W

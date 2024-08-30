@@ -403,8 +403,8 @@ def get_tab_init(d, da, dp):
             with FormRow():
                 parseq_use_deltas = create_gr_elem(dp.parseq_use_deltas)
             gr.HTML(value=f"""<br/>""")
-            with FormRow():
-                parseq_key_frame_redistribution = create_gr_elem(dp.parseq_key_frame_redistribution)
+            with FormRow():  # TODO move to new sub-tab in keyframes
+                keyframe_redistribution = create_gr_elem(dp.keyframe_redistribution)
             create_keyframe_redistribution_info()
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
@@ -643,6 +643,7 @@ def create_keyframe_redistribution_info():
     bars_mark = "&#x1F4CA;"
     bulb_mark = "&#x1F4A1;"
     warn_mark = "&#x26A0;&#xFE0F;"
+    # TODO update descriptions.....
     gr.HTML(value=f"""<p>
         <div>Parseq keyframe redistribution ensures that every frame in the Parseq table is diffused.</div>
         <div>It may easily be used at high FPS with just a fixed value for 'strength' in Parseq \

@@ -56,12 +56,12 @@ def get_schedulers_list():
     return {scheduler.name: scheduler.label for scheduler in sd_schedulers.schedulers}
 
 
-def get_parseq_keyframe_redistributions_list():
+def get_keyframe_redistributions_list():
     return {
         'off': 'Off',
-        'parseq_only': 'Parseq Only (no cadence)',
-        'additive_with_parseq': 'Additive with Parseq (pseudo-cadence)',
-        'uniform_with_parseq': 'Uniform with Parseq (pseudo-cadence & redistribution)'
+        'keyframes_only': 'Keyframes Only',
+        'redistributed': 'Redistributed',
+        'additive': 'Additive',
     }
 
 def DeforumAnimPrompts():

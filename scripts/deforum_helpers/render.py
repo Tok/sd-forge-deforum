@@ -55,7 +55,7 @@ from .RAFT import RAFT
 from deforum_api import JobStatusTracker
 
 def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root):
-    is_use_new_render_core = parseq_args.parseq_key_frame_redistribution != "Off"
+    is_use_new_render_core = parseq_args.keyframe_redistribution != "Off"  # TODO move kfr to anim_args
     if is_use_new_render_core:
         experimental_core.render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
         return
