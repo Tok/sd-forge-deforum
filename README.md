@@ -7,8 +7,7 @@ fix'd up to work with Flux and integrate Parseq keyframe redistribution logic.
 
 ## Current status
 
-&#x26A0;&#xFE0F; This fork of the extension is _basically working_ but still **extremely experimental**.
-It contains temporary shortcuts, evil workarounds and dirty quick-fixes.
+&#x26A0;&#xFE0F; This fork of the extension is _basically working_ but still **rather experimental** and may crash if some features are not disabled.
 
 ## Installation
 
@@ -97,6 +96,10 @@ try the same directly with `pip uninstall basicsr` and then `pip install basicsr
 
 *TL;DR:* This extension should be able to run with either version `1.3.5` or `1.4.2` of `basicsr`, 
 but not all versions may install or run properly with all combos of Python and Torch.
+
+### ModuleNotFoundError: No module named 'torchvision.transforms.functional_tensor'
+May happen when there is a versions conflict with `basicsr` and `torchvision`.
+A workaround can be found here: https://github.com/Tok/sd-forge-deforum/issues/1#issuecomment-2318333572
 
 ### Other problems with torch
 
