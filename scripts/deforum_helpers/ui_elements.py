@@ -300,7 +300,10 @@ def get_tab_prompts(da):
             gr.HTML(value=get_gradio_html('prompts'))
         animation_prompts = create_row(
             gr.Textbox(label="Prompts", lines=8, interactive=True, value=DeforumAnimPrompts(),
-                       info="full prompts list in a JSON format.  value on left side is the frame number"))
+                       info="""Full prompts list in a JSON format. The value on left side is the frame number and
+                            its presence also defines the frame as a keyframe if a 'keyframe distribution' mode
+                            is active. Duplicating the same prompt multiple times to define keyframes
+                            is therefore expected and fine."""))
         animation_prompts_positive = create_row(
             gr.Textbox(label="Prompts positive", lines=1, interactive=True,
                        placeholder="words in here will be added to the start of all positive prompts"))
@@ -637,7 +640,7 @@ def create_keyframe_distribution_info_tab():
         * **Additive**: Is using cadence but adds keyframes. Takes more time to generate, 
             but may help stabilizing the frames by doing diffusions in regular intervals.
             Parseq Recommendation: Make high cadence setup and mark your frames with an 'Info' like "event", then
-            in 'i_strength' dip deeper on key frames. E.g.: 'if (f == info_match_last("event")) 0.25 else 0.50'.
+            in 'i_strength' dip deeper on key frames. E.g.: 'if (f == info_match_last("event")) 0.30 else 0.80'.
         * **Redistributed**: Calculates uniform cadence distribution from cadence, 
             but rearranges some keyframes to preserve proper keyframe synchronization at high cadence (e.g. '30').
             Helps to prevent diffusion frames from being too close and should be slightly faster than additive,

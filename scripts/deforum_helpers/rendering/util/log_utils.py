@@ -91,8 +91,11 @@ def print_cuda_memory_state(cuda):
         print(f"CUDA memory reserved on device {i}: {cuda.memory_reserved(i)} of {cuda.max_memory_reserved(i)}")
 
 
-def info(s: str):
-    print(f"Info: {s}")
+def info(s: str, color: str = None):
+    if color:
+        print(f"Info: {color}{s}{RESET_COLOR}")
+    else:
+        print(f"Info: {s}")
 
 
 def warn(s: str):

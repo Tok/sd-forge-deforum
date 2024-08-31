@@ -60,6 +60,8 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         experimental_core.render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
         return
 
+    log_utils.info("Using stable render core.", log_utils.RED)
+
     # initialise Parseq adapter
     parseq_adapter = ParseqAdapter(parseq_args, anim_args, video_args, controlnet_args, loop_args, freeu_args, kohya_hrfix_args)
 

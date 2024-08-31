@@ -14,7 +14,7 @@ from .util import filename_utils, image_utils, log_utils, opt_utils, memory_util
 
 def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args,
                      freeu_args, kohya_hrfix_args, root):
-    log_utils.info("Using experimental render core.")
+    log_utils.info("Using experimental render core.", log_utils.RED)
     data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
     _check_render_conditions(data)
     web_ui_utils.init_job(data)
