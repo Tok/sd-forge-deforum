@@ -3,7 +3,7 @@
 
 Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum)
 for [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge), 
-fix'd up to work with Flux and integrate Parseq keyframe redistribution logic.
+fix'd up to work with Flux.1 and integrate Parseq keyframe redistribution logic.
 
 ## Current status
 
@@ -47,7 +47,7 @@ pip install -r requirements.txt
 
 ### Should work:
 
-#### Flux Dev
+#### Flux.1 Dev
   * get `flux1-dev-bnb-nf4-v2.safetensors` from huggingface and put it into your `<forge_install_dir>/models/Stable-diffusion/Flux`
     * https://huggingface.co/lllyasviel/flux1-dev-bnb-nf4/blob/main/flux1-dev-bnb-nf4-v2.safetensors
   * get the following 3 files from huggingface and put them into `<forge_install_dir>/models/VAE`
@@ -98,7 +98,7 @@ try the same directly with `pip uninstall basicsr` and then `pip install basicsr
 but not all versions may install or run properly with all combos of Python and Torch.
 
 ### ModuleNotFoundError: No module named 'torchvision.transforms.functional_tensor'
-May happen when there is a versions conflict with `basicsr` and `torchvision`.
+May happen when there is a version conflict with `basicsr` and `torchvision`.
 A workaround can be found here: https://github.com/Tok/sd-forge-deforum/issues/1#issuecomment-2318333572
 
 ### Other problems with torch
