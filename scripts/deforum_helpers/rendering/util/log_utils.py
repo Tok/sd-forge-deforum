@@ -74,10 +74,11 @@ def print_tween_step_creation_info(key_frames, index_dist):
     info(f"{msg_start} {msg_end}")
 
 
-def print_key_step_debug_info_if_verbose(key_steps):
-    for i, ks in enumerate(key_steps):
-        tween_indices = [t.i() for t in ks.tweens]
-        debug(f"Key frame {ks.i} has {len(tween_indices)} tweens: {tween_indices}")
+def print_key_step_debug_info_if_verbose(diffusion_frames):
+    for i, df in enumerate(diffusion_frames):
+        tween_indices = [t.i() for t in df.tweens]
+        frame_type = "Key Frame" if df.is_keyframe else "    Frame"
+        debug(f"{frame_type} {df.i} has {len(tween_indices)} tweens: {tween_indices}")
 
 
 def print_warning_generate_returned_no_image():

@@ -12,8 +12,8 @@ class KeyFrameDistribution(Enum):
 
     @staticmethod
     def from_UI_tab(data):
-        redistribution = data.args.parseq_args.keyframe_redistribution
-        match redistribution:
+        distribution = data.args.anim_args.keyframe_distribution
+        match distribution:
             case "Off":
                 return KeyFrameDistribution.OFF
             case "Keyframes Only":
@@ -23,23 +23,25 @@ class KeyFrameDistribution(Enum):
             case "Redistributed":
                 return KeyFrameDistribution.REDISTRIBUTED
             case _:
-                raise ValueError(f"Invalid keyframe_redistribution from UI: {redistribution}")
+                raise ValueError(f"Invalid keyframe_distribution from UI: {distribution}")
 
     @staticmethod
     def default():
         return KeyFrameDistribution.OFF
 
-    def calculate(self, data, start_index, max_frames, num_key_steps) -> List[int]:
+    def calculate(self, data, start_index, num_key_steps) -> List[int]:
+        max_frames = data.args.anim_args.max_frames
         match self:
-            case KeyFrameDistribution.KEYFRAMES_ONLY:  # same as UNIFORM_SPACING, if no Parseq keys are present.
+            case KeyFrameDistribution.OFF:
+                # To get here on purpose, override `is_use_new_render_core` in render.py
+                log_utils.warn("Called new core without keyframe distribution. Using uniform from cadence'.")
+                return self.uniform_indexes(start_index, max_frames, num_key_steps)
+            case KeyFrameDistribution.KEYFRAMES_ONLY:
                 return self.select_keyframes(data)
             case KeyFrameDistribution.ADDITIVE:
                 return self._additive(data, start_index, max_frames)
             case KeyFrameDistribution.REDISTRIBUTED:
                 return self._redistributed(data, start_index, max_frames, num_key_steps)
-            case KeyFrameDistribution.OFF:
-                log_utils.warn("Called new core without keyframe redistribution. Using 'KEYFRAMES_ONLY'.")
-                return self.select_keyframes(data)
             case _:
                 raise ValueError(f"Invalid KeyFrameDistribution: {self}")
 
@@ -84,13 +86,41 @@ class KeyFrameDistribution(Enum):
 
     @staticmethod
     def select_keyframes(data):
-        return KeyFrameDistribution._select_parseq_keyframes(data) if data.parseq_adapter.use_parseq \
-            else KeyFrameDistribution._select_deforum_keyframes(data)
+        return KeyFrameDistribution.select_parseq_keyframes(data) if data.parseq_adapter.use_parseq \
+            else KeyFrameDistribution.select_deforum_keyframes(data)
 
     @staticmethod
-    def _select_parseq_keyframes(data):
+    def select_parseq_keyframes(data):
+        # Parseq keyframe indices are shifted 1 up before they used.
         return [keyframe["frame"] + 1 for keyframe in data.parseq_adapter.parseq_json["keyframes"]]
 
     @staticmethod
-    def _select_deforum_keyframes(data):
-        return [int(frame) for frame in data.args.root.prompt_keyframes]
+    def select_deforum_keyframes(data):
+        # Prompt at 0 is always meant to be defined in prompts, but the last frame is not, so we just take max_frames.
+        prompt_keyframes = [int(frame) for frame in data.args.root.prompt_keyframes]
+        last_frame = [data.args.anim_args.max_frames]
+        keyframes = list(set(prompt_keyframes + last_frame))
+        keyframes.sort()
+        keyframes[0] = 1  # Makes sure 1st frame is always 1.
+
+        # Filter out frames > max_frames or < 1 and log warning if any are removed.
+        original_count = len(keyframes)
+        keyframes = [frame for frame in keyframes if 1 <= frame <= data.args.anim_args.max_frames]
+        if len(keyframes) < original_count:
+            log_utils.warn(f"Frames have been removed. Original count: {original_count}, New count: {len(keyframes)}")
+
+        return keyframes
+
+    @staticmethod
+    def is_deforum_keyframe(data, i):
+        return i in KeyFrameDistribution.select_deforum_keyframes(data)
+
+    @staticmethod
+    def is_parseq_keyframe(data, i):
+        return i in KeyFrameDistribution.select_parseq_keyframes(data)
+
+    @staticmethod
+    def is_keyframe(data, i):
+        return KeyFrameDistribution.is_parseq_keyframe(data, i) \
+            if data.parseq_adapter.use_parseq \
+            else KeyFrameDistribution.is_deforum_keyframe(data, i)

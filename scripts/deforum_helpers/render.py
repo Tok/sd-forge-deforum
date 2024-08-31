@@ -55,7 +55,7 @@ from .RAFT import RAFT
 from deforum_api import JobStatusTracker
 
 def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root):
-    is_use_new_render_core = parseq_args.keyframe_redistribution != "Off"  # TODO move kfr to anim_args
+    is_use_new_render_core = anim_args.keyframe_distribution != "Off"
     if is_use_new_render_core:
         experimental_core.render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
         return
@@ -99,7 +99,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     # create output folder for the batch
     os.makedirs(args.outdir, exist_ok=True)
     log_utils.info(f"Saving animation frames to:\n{args.outdir}")
-    log_utils.debug(f"Sampler: '{args.sampler}' Scheduler: '{args.scheduler}'")
+    log_utils.info(f"Sampler: '{args.sampler}' Scheduler: '{args.scheduler}'")
 
     # save settings.txt file for the current run
     save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root)

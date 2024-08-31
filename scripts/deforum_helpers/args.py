@@ -22,7 +22,7 @@ from types import SimpleNamespace
 import modules.paths as ph
 import modules.shared as sh
 from modules.processing import get_fixed_seed
-from .defaults import (get_guided_imgs_default_json, get_keyframe_redistributions_list,
+from .defaults import (get_guided_imgs_default_json, get_keyframe_distribution_list,
                        get_samplers_list, get_schedulers_list)
 from .deforum_controlnet import controlnet_component_names
 from .general_utils import get_os, substitute_placeholders
@@ -188,7 +188,7 @@ def DeforumAnimArgs():
             "label": "Strength schedule for keyframes",
             "type": "textbox",
             "value": "0: (0.30)",
-            "info": "amount of presence of previous frame to influence next keyframe"
+            "info": "like 'Strength schedule' but only for frames with an entry in 'prompts'. Meant to be set somewhat lower than the regular Strengh schedule. At 0 it generates a totally new image on every prompt change. Ignored if Parseq is used or when Keyframe distribustion is disabled."
         },
         "contrast_schedule": "0: (1.0)",
         "cfg_scale_schedule": {
@@ -453,6 +453,13 @@ def DeforumAnimArgs():
             "type": "checkbox",
             "value": False,
             "info": "apply colormatch before adding noise (use with CN's Tile)"
+        },
+        "keyframe_distribution": {
+            "label": "Keyframe distribution.",
+            "type": "dropdown",
+            "choices": get_keyframe_distribution_list().values(),
+            "value": "None",
+            "info": "Allows for fast generations at high cadence or no cadence."
         },
         "diffusion_cadence": {
             "label": "Cadence",
@@ -847,15 +854,6 @@ def DeforumArgs():
             "value": 0.8,
             "info": "the inverse of denoise; lower values alter the init image more (high denoise); higher values alter it less (low denoise)"
         },
-        "keyframe_strength": {
-            "label": "Keyframe Strength",
-            "type": "slider",
-            "minimum": 0,
-            "maximum": 1,
-            "step": 0.01,
-            "value": 0.3,
-            "info": "the inverse of denoise for keyframes; lower values alter the init image more (high denoise); higher values alter it less (low denoise). Should be set to a lower value than regular strength."
-        },
         "strength_0_no_init": {
             "label": "Strength 0 no init",
             "type": "checkbox",
@@ -1037,13 +1035,6 @@ def ParseqArgs():
             "value": True,
             "info": "Recommended. If you uncheck this, the FPS, max_frames and cadence in the Parseq doc are ignored, and the values in the A1111 UI are used instead."
         },
-        "keyframe_redistribution": {
-            "label": "Keyframe redistribution.",
-            "type": "dropdown",
-            "choices": get_keyframe_redistributions_list().values(),
-            "value": "None",
-            "info": "Allows for fast generations at high cadence or no cadence."
-        }
     }
 
 def FreeUArgs():

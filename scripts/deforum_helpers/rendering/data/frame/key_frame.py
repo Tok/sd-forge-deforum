@@ -29,10 +29,11 @@ from ....seed import next_seed
 
 @dataclass(init=True, frozen=False, repr=False, eq=False)
 class KeyFrame:  # TODO rename to DiffusionFrame
-    """Key steps are the steps for frames that actually get diffused (as opposed to tween frame steps)."""
+    """DiffusionFrames are the frames that actually get diffused (as opposed to tween frame steps)."""
     i: int
     is_keyframe: bool
-    step_data: KeyFrameData
+    strength: float
+    step_data: KeyFrameData  # TODO rename to DiffusionFrameData
     render_data: RenderData
     schedule: Schedule
     depth: Any  # assigned during generation
@@ -47,7 +48,7 @@ class KeyFrame:  # TODO rename to DiffusionFrame
 
     def is_optical_flow_redo_before_generation(self, optical_flow_redo_generation, images):
         has_flow_redo = optical_flow_redo_generation != 'None'
-        return has_flow_redo and images.has_previous() and self.step_data.has_strength()
+        return has_flow_redo and images.has_previous() and self.has_strength()
 
     def maybe_write_frame_subtitle(self):
         data = self.render_data
@@ -139,10 +140,13 @@ class KeyFrame:  # TODO rename to DiffusionFrame
     def maybe_redo_diffusion(self):
         data = self.render_data
         is_pos_redo = data.has_positive_diffusion_redo
-        is_diffusion_redo = is_pos_redo and data.images.has_previous() and self.step_data.has_strength()
+        is_diffusion_redo = is_pos_redo and data.images.has_previous() and self.has_strength()
         is_not_preview = data.is_not_in_motion_preview_mode()
         if is_diffusion_redo and is_not_preview:
             self.do_diffusion_redo()
+
+    def has_strength(self):
+        return self.strength > 0
 
     def generate(self):
         return call_generate(self.render_data, self)
@@ -219,8 +223,7 @@ class KeyFrame:  # TODO rename to DiffusionFrame
     def create(data: RenderData):
         frame_data = KeyFrameData.create(data)
         schedule = Schedule.create(data)
-        is_keyframe = True  # TODO provide from here?
-        return KeyFrame(0, is_keyframe, frame_data, data, schedule, None, None, "", 0, list(), list())
+        return KeyFrame(0, False, 0.0, frame_data, data, schedule, None, None, "", 0, list(), list())
 
     @staticmethod
     def apply_color_matching(data: RenderData, image):
@@ -310,51 +313,53 @@ class KeyFrame:  # TODO rename to DiffusionFrame
         return recalculated_key_steps
 
     @staticmethod
-    def _recalculate_and_check_tweens(data, key_frames, start_index, num_key_steps, keyframe_distribution):
-        def keyframe_or_cadence_strength(index):
-            return data.args.strength if index in data.args.root.prompt_keyframes else data.args.keyframe_strength
+    def _recalculate_and_check_tweens(data, diffusion_frames, start_index, num_key_steps, keyframe_distribution):
+        # TODO move everything here into KeyFrame.create
+        # Applies `strength_schedule` if Parseq is active or if there is no entry with index i in the Deforum prompts.
+        # otherwise `keyframe_strength_schedule` is applied, which should be set lower (=more denoise on keyframes).
+        def select_keyframe_or_cadence_strength(index, is_keyframe):
+            # schedule series indices shifted to start at 0.
+            return data.animation_keys.deform_keys.strength_schedule_series[index - 1] \
+                if data.parseq_adapter.use_parseq or is_keyframe \
+                else data.animation_keys.deform_keys.keyframe_strength_schedule_series[index - 1]
 
-        max_frames = data.args.anim_args.max_frames
-        key_indices = keyframe_distribution.calculate(data, start_index, max_frames, num_key_steps)
-
-        log_utils.info(f"{len(key_indices)} key_indices {key_indices}")
-        log_utils.info(f"{len(key_frames)} key_frames {key_frames}")
-        assert len(key_frames) == len(key_indices)
+        key_indices = keyframe_distribution.calculate(data, start_index, num_key_steps)
+        assert len(diffusion_frames) == len(key_indices)
         for i, key_step in enumerate(key_indices):
-            key_frames[i].i = key_indices[i]  # TODO separate handling from calculation. this should be done elsewhere.
-            #key_frames[i].strength = keyframe_or_cadence_strength(i)
+            key_i = key_indices[i]  # TODO separate handling from calculation. this should be done on init.
+            is_kf = KeyFrameDistribution.is_deforum_keyframe(data, key_i)
+            diffusion_frames[i].i = key_i
+            diffusion_frames[i].is_keyframe = is_kf
+            diffusion_frames[i].strength = select_keyframe_or_cadence_strength(key_i, is_kf)
 
-        log_utils.info(f"{len(key_frames)} key_frames: {[frame.i for frame in key_frames]}")
+        diffusion_frames = KeyFrame.add_tweens_to_diffusion_frames(diffusion_frames)
+        log_utils.print_key_step_debug_info_if_verbose(diffusion_frames)
 
-        key_frames = KeyFrame.add_tweens_to_key_frames(key_frames)
-        log_utils.print_key_step_debug_info_if_verbose(key_frames)
-
-        pseudo_cadence = max_frames / len(key_frames)
+        pseudo_cadence = data.args.anim_args.max_frames / len(diffusion_frames)
         log_utils.info(f"Calculated pseudo cadence: {pseudo_cadence:.2f}")
 
-        # The number of generated tweens depends on index since last key-frame. The last tween has the same
-        # index as the key_step it belongs to and is meant to replace the unprocessed original key frame.
-        assert len(key_frames) == num_key_steps
+        # The number of generated tweens depends on index since last diffusion_frame. The last tween has the same
+        # index as the diffusion_frame it belongs to and is meant to replace the unprocessed original key frame.
+        assert len(diffusion_frames) == num_key_steps
 
-        key_frames[0].i = 1
-        # assert key_frames[0].i == 1  # 1st key frame is at index 1
-
-        assert key_frames[0].tweens == []  # 1st key frame has no tweens
+        diffusion_frames[0].i = 1  # TODO make sure this is correct from the start, then switch back to assert.
+        # assert diffusion_frames[0].i == 1  # 1st diffusion frame is at index 1
+        assert diffusion_frames[0].tweens == []  # 1st diffusion frame has no tweens
         if keyframe_distribution != KeyFrameDistribution.KEYFRAMES_ONLY:
-            assert key_frames[-1].i == max_frames  # last index is same as max frames
+            assert diffusion_frames[-1].i == data.args.anim_args.max_frames  # last index is same as max frames
 
-        return key_frames
+        return diffusion_frames
 
     @staticmethod
-    def add_tweens_to_key_frames(key_frames):
-        log_utils.info(f"Adding tweens to {len(key_frames)} keyframes...")
-        for i in range(1, len(key_frames)):  # skipping 1st key frame
-            data = key_frames[i].render_data
-            from_i = key_frames[i - 1].i
-            to_i = key_frames[i].i
-            tweens, values = Tween.create_in_between_steps(key_frames, i, data, from_i, to_i)
-            log_utils.debug(f"Creating {len(tweens)} tweens ({from_i}->{to_i}) for key frame at {key_frames[i].i}")
-            key_frames[i].tweens = tweens
-            key_frames[i].tween_values = values
-            key_frames[i].render_data.indexes.update_tween_start(data.turbo)
-        return key_frames
+    def add_tweens_to_diffusion_frames(diffusion_frames):
+        log_utils.debug(f"Adding tweens to {len(diffusion_frames)} keyframes...")
+        for i in range(1, len(diffusion_frames)):  # skipping 1st key frame
+            data = diffusion_frames[i].render_data
+            from_i = diffusion_frames[i - 1].i
+            to_i = diffusion_frames[i].i
+            tweens, values = Tween.create_in_between_steps(diffusion_frames, i, data, from_i, to_i)
+            log_utils.debug(f"Creating {len(tweens)} tweens ({from_i}->{to_i}) for frame at {diffusion_frames[i].i}")
+            diffusion_frames[i].tweens = tweens
+            diffusion_frames[i].tween_values = values
+            diffusion_frames[i].render_data.indexes.update_tween_start(data.turbo)
+        return diffusion_frames

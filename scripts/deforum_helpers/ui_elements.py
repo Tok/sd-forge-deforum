@@ -353,9 +353,7 @@ def get_tab_init(d, da, dp):
                 with gr.Column(min_width=150):
                     strength_0_no_init = create_gr_elem(d.strength_0_no_init)
                 with gr.Column(min_width=170):
-                    strength = create_gr_elem(d.strength)
-                with gr.Column(min_width=170):
-                    keyframe_strength = create_gr_elem(d.keyframe_strength)
+                    strength = create_gr_elem(d.strength)  # TODO rename to init_strength
             with FormRow():
                 init_image = create_gr_elem(d.init_image)
             with FormRow():
@@ -404,8 +402,8 @@ def get_tab_init(d, da, dp):
                 parseq_use_deltas = create_gr_elem(dp.parseq_use_deltas)
             gr.HTML(value=f"""<br/>""")
             with FormRow():  # TODO move to new sub-tab in keyframes
-                keyframe_redistribution = create_gr_elem(dp.keyframe_redistribution)
-            create_keyframe_redistribution_info()
+                keyframe_distribution = create_gr_elem(da.keyframe_distribution)
+            create_keyframe_distribution_info()
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 def get_tab_freeu(dfu : SimpleNamespace):
@@ -639,7 +637,7 @@ def get_tab_output(da, dv):
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
-def create_keyframe_redistribution_info():
+def create_keyframe_distribution_info():
     bars_mark = "&#x1F4CA;"
     bulb_mark = "&#x1F4A1;"
     warn_mark = "&#x26A0;&#xFE0F;"

@@ -97,8 +97,8 @@ class RenderData:
     def is_3d_or_2d(self) -> bool:
         return self.args.anim_args.animation_mode in ['2D', '3D']
 
-    def has_keyframe_redistribution(self) -> bool:
-        return self.args.parseq_args.keyframe_redistribution != "Off"
+    def has_keyframe_distribution(self) -> bool:
+        return self.args.anim_args.keyframe_distribution != "Off"
 
     def has_optical_flow_cadence(self) -> bool:
         return self.args.anim_args.optical_flow_cadence != 'None'
@@ -209,7 +209,7 @@ class RenderData:
         # use transformed previous frame as init for current
         self.args.args.use_init = True
         self.args.root.init_sample = Image.fromarray(cv2.cvtColor(noised_image, cv2.COLOR_BGR2RGB))
-        self.args.args.strength = max(0.0, min(1.0, step.step_data.strength))
+        self.args.args.strength = max(0.0, min(1.0, step.strength))
 
     def update_some_args_for_current_step(self, step, i):
         keys = self.animation_keys.deform_keys

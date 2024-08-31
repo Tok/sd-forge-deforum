@@ -23,45 +23,45 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     data.animation_mode.unload_raft_and_depth_model()
 
 
-def run_render_animation(data: RenderData, key_frames: List[KeyFrame]):
-    for key_frame in key_frames:
-        if is_resume(data, key_frame):
+def run_render_animation(data: RenderData, diffusion_frames: List[KeyFrame]):
+    for diffusion_frame in diffusion_frames:
+        if is_resume(data, diffusion_frame):
             continue
-        pre_process_key_frame_and_emit_tweens(data, key_frame)
-        image = key_frame.generate()
+        pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame)
+        image = diffusion_frame.generate()
         if image is None:
             log_utils.print_warning_generate_returned_no_image()
             break
-        post_process_key_frame(key_frame, image)
+        post_process_diffusion_frame(diffusion_frame, image)
 
 
-def pre_process_key_frame_and_emit_tweens(data, key_frame):
+def pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame):
     memory_utils.handle_med_or_low_vram_before_step(data)
     web_ui_utils.update_job(data)
-    if key_frame.has_tween_frames():
-        emit_tweens(data, key_frame)
-    log_utils.print_animation_frame_info(key_frame.i, data.args.anim_args.max_frames)
-    key_frame.maybe_write_frame_subtitle()
+    if diffusion_frame.has_tween_frames():
+        emit_tweens(data, diffusion_frame)
+    log_utils.print_animation_frame_info(diffusion_frame.i, data.args.anim_args.max_frames)
+    diffusion_frame.maybe_write_frame_subtitle()
     frame_tube = img_2_img_tubes.frame_transformation_tube
     contrasted_noise_tube = img_2_img_tubes.contrasted_noise_transformation_tube
-    key_frame.prepare_generation(frame_tube, contrasted_noise_tube)
+    diffusion_frame.prepare_generation(frame_tube, contrasted_noise_tube)
 
 
-def post_process_key_frame(key_frame, image):
+def post_process_diffusion_frame(diffusion_frame, image):
     if not image_utils.is_PIL(image):  # check is required when resuming from timestring
-        image = img_2_img_tubes.conditional_frame_transformation_tube(key_frame)(image)
+        image = img_2_img_tubes.conditional_frame_transformation_tube(diffusion_frame)(image)
     state.assign_current_image(image)
-    key_frame.after_diffusion(image)
-    web_ui_utils.update_status_tracker(key_frame.render_data)
+    diffusion_frame.after_diffusion(image)
+    web_ui_utils.update_status_tracker(diffusion_frame.render_data)
 
 
-def is_resume(data, key_step):
-    filename = filename_utils.frame_filename(data, key_step.i)
+def is_resume(data, diffusion_frame):
+    filename = filename_utils.frame_filename(data, diffusion_frame.i)
     full_path = Path(data.output_directory) / filename
     is_file_existing = os.path.exists(full_path)
     if is_file_existing:
         log_utils.warn(f"Frame {filename} exists, skipping to next key frame.")
-        key_step.render_data.args.args.seed = key_step.next_seed()
+        diffusion_frame.render_data.args.args.seed = diffusion_frame.next_seed()
     return is_file_existing
 
 
@@ -76,8 +76,8 @@ def emit_tweens(data, key_step):
 
 def _check_render_conditions(data):
     log_utils.info(f"Sampler: '{data.args.args.sampler}' Scheduler: '{data.args.args.scheduler}'")
-    if data.has_keyframe_redistribution():
-        msg = "Experimental conditions: Using 'Parseq keyframe redistribution' together with '{method}'. {results}. \
+    if data.has_keyframe_distribution():
+        msg = "Experimental conditions: Using 'keyframe distribution' together with '{method}'. {results}. \
                In case of problems, consider deactivating either one."
         dark_or_dist = "Resulting images may quickly end up looking dark or distorted."
         if data.has_optical_flow_cadence():

@@ -5,9 +5,8 @@ from ....animation_key_frames import DeformAnimKeys
 
 
 @dataclass(init=True, frozen=True, repr=False, eq=False)
-class KeyFrameData: # TODO rename to DiffusionFrameDate
+class KeyFrameData:  # TODO rename to DiffusionFrameDate
     noise: Any = None
-    strength: Any = None
     scale: Any = None  # defaults to 1.0 for Flux.1, but is typically used at 5.0-15.0 for other models
     distilled_scale: Any = None  # defaults to 3.5 for Flux.1, may be ignored for other models
     contrast: Any = None
@@ -25,17 +24,12 @@ class KeyFrameData: # TODO rename to DiffusionFrameDate
     def flow_factor(self):
         return self.hybrid_comp_schedules['flow_factor']
 
-    def has_strength(self):
-        return self.strength > 0
-
     @staticmethod
     def create(data):
         i = data.indexes.frame.i
         keys: DeformAnimKeys = data.animation_keys.deform_keys
-        actual_strength = keys.strength_schedule_series[i]  # TODO...
         return KeyFrameData(
             keys.noise_schedule_series[i],
-            actual_strength,
             keys.cfg_scale_schedule_series[i],
             keys.distilled_cfg_scale_schedule_series[i],
             keys.contrast_schedule_series[i],
