@@ -14,27 +14,28 @@
 
 # Contact the authors: https://deforum.github.io/
 
-import os
-import cv2
-import shutil
-import math
-import requests
-import subprocess
-import time
-import tempfile
-import re 
-import glob
-import numpy as np
 import concurrent.futures
-from pathlib import Path
-from pkg_resources import resource_filename
-from modules.shared import state, opts
-from .general_utils import checksum, clean_gradio_path_strings, debug_print
-from basicsr.utils.download_util import load_file_from_url
-from .rich import console
+import glob
+import math
+import os
+import re
+import requests
 import shutil
+import subprocess
+import tempfile
+import time
+from pathlib import Path
 from threading import Thread
+import cv2
+import numpy as np
+from basicsr.utils.download_util import load_file_from_url
+# noinspection PyUnresolvedReferences
+from modules.shared import state, opts
+from pkg_resources import resource_filename
+
+from .general_utils import checksum, clean_gradio_path_strings, debug_print
 from .http_client import get_http_client
+from .rich import console
 
 SUPPORTED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "bmp", "webp"]
 SUPPORTED_VIDEO_EXTENSIONS = ["mov", "mpeg", "mp4", "m4v", "avi", "mpg", "webm"]
@@ -221,9 +222,30 @@ def get_quick_vid_info(vid_path):
         video_fps = int(video_fps)
 
     return video_fps, video_frame_count, (video_width, video_height)
-    
+
+
+def download_audio(audio_path):
+    audio_path = clean_gradio_path_strings(audio_path)
+    if audio_path.startswith(('http://', 'https://')):
+        url = audio_path
+        print(f"Downloading audio file from: {url}")
+        response = get_http_client().get(url, stream=True)
+        response.raise_for_status()
+        _, ext = os.path.splitext(url)  # Extract the file extension from the URL..
+        ext = ext if ext else '.mp3'  # ..or default to .mp3 if no extension is present
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as temp_file:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:  # filter out keep-alive new chunks
+                    temp_file.write(chunk)
+            audio_path = temp_file.name
+            print(f"Audio saved to: {audio_path}")
+        temp_file.close()
+    return audio_path
+
+
 # Stitch images to a h264 mp4 video using ffmpeg
-def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch_from_frame=0, stitch_to_frame=None, imgs_path=None, add_soundtrack=None, audio_path=None, crf=17, preset='veryslow', srt_path=None):
+def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch_from_frame=0, stitch_to_frame=None,
+                        imgs_path=None, add_soundtrack=None, audio_path=None, crf=17, preset='veryslow', srt_path=None):
     start_time = time.time()
 
     print(f"Got a request to stitch frames to video using FFmpeg.\nFrames:\n{imgs_path}\nTo Video:\n{outmp4_path}")
@@ -267,22 +289,8 @@ def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch
     temp_file = None
     if add_soundtrack != 'None':
         try:
-            audio_path = clean_gradio_path_strings(audio_path)
-            if (audio_path.startswith('http://') or audio_path.startswith('https://')):
-                url = audio_path
-                print(f"Downloading audio file from: {url}")
-                response = get_http_client().get(url, stream=True)
-                response.raise_for_status()
-                temp_file = tempfile.NamedTemporaryFile(delete=False)
-                # Write the content of the downloaded file into the temporary file
-                with open(temp_file.name, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:  # filter out keep-alive new chunks
-                            f.write(chunk)
-                audio_path = temp_file.name
-                print(f"Audio saved to: {audio_path}")
-
-            audio_add_start_time = time.time()            
+            audio_path = download_audio(audio_path)
+            audio_add_start_time = time.time()
             cmd = [
                 ffmpeg_location,
                 '-i',
@@ -399,12 +407,17 @@ def direct_stitch_vid_from_frames(image_path, fps, add_soundtrack, audio_path):
         print("Couldn't find images that match the provided path/ pattern. At least 2 matched images are required.")
         return
     out_mp4_path = get_manual_frame_to_vid_output_path(image_path)
-    ffmpeg_stitch_video(ffmpeg_location=f_location, fps=fps, outmp4_path=out_mp4_path, stitch_from_frame=min_id, stitch_to_frame=-1, imgs_path=image_path, add_soundtrack=add_soundtrack, audio_path=audio_path, crf=f_crf, preset=f_preset)
+    ffmpeg_stitch_video(ffmpeg_location=f_location, fps=fps, outmp4_path=out_mp4_path, stitch_from_frame=min_id,
+                        stitch_to_frame=-1, imgs_path=image_path, add_soundtrack=add_soundtrack, audio_path=audio_path,
+                        crf=f_crf, preset=f_preset)
+
+
 # end of 2 stitch frame to video funcs
 
 # returns True if filename (could be also media URL) contains an audio stream, othehrwise False
 def media_file_has_audio(filename, ffmpeg_location):
-    result = subprocess.run([ffmpeg_location, "-i", filename, "-af", "volumedetect", "-f", "null", "-"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    result = subprocess.run([ffmpeg_location, "-i", filename, "-af", "volumedetect", "-f", "null", "-"],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     output = result.stderr.decode()
     return True if "Stream #0:1: Audio: " in output or "Stream #0:1(und): Audio" in output else False
 
