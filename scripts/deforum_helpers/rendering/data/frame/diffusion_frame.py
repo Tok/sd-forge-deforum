@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from . import KeyFrameData, KeyFrameDistribution
+from . import DiffusionFrameData, KeyFrameDistribution
 from .tween_frame import Tween
 from .. import RenderData, Schedule
 from ... import img_2_img_tubes
@@ -28,10 +28,12 @@ from ....seed import next_seed
 
 
 @dataclass(init=True, frozen=False, repr=False, eq=False)
-class KeyFrame:
-    """Key steps are the steps for frames that actually get diffused (as opposed to tween frame steps)."""
+class DiffusionFrame:
+    """DiffusionFrames are the frames that actually get diffused (as opposed to tween frame steps)."""
     i: int
-    step_data: KeyFrameData
+    is_keyframe: bool
+    strength: float
+    frame_data: DiffusionFrameData
     render_data: RenderData
     schedule: Schedule
     depth: Any  # assigned during generation
@@ -46,7 +48,7 @@ class KeyFrame:
 
     def is_optical_flow_redo_before_generation(self, optical_flow_redo_generation, images):
         has_flow_redo = optical_flow_redo_generation != 'None'
-        return has_flow_redo and images.has_previous() and self.step_data.has_strength()
+        return has_flow_redo and images.has_previous() and self.has_strength()
 
     def maybe_write_frame_subtitle(self):
         data = self.render_data
@@ -64,7 +66,7 @@ class KeyFrame:
 
     def _do_hybrid_compositing_on_cond(self, data: RenderData, image, condition):
         i = data.indexes.frame.i
-        schedules = self.step_data.hybrid_comp_schedules
+        schedules = self.frame_data.hybrid_comp_schedules
         if condition:
             _, composed = call_hybrid_composite(data, i, image, schedules)
             return composed
@@ -79,10 +81,10 @@ class KeyFrame:
         return self._do_hybrid_compositing_on_cond(data, image, condition)
 
     def apply_scaling(self, image):
-        return (image * self.step_data.contrast).round().astype(np.uint8)
+        return (image * self.frame_data.contrast).round().astype(np.uint8)
 
     def apply_anti_blur(self, data: RenderData, image):
-        if self.step_data.amount > 0:
+        if self.frame_data.amount > 0:
             return call_unsharp_mask(data, self, image, data.mask)
         return image
 
@@ -138,10 +140,13 @@ class KeyFrame:
     def maybe_redo_diffusion(self):
         data = self.render_data
         is_pos_redo = data.has_positive_diffusion_redo
-        is_diffusion_redo = is_pos_redo and data.images.has_previous() and self.step_data.has_strength()
+        is_diffusion_redo = is_pos_redo and data.images.has_previous() and self.has_strength()
         is_not_preview = data.is_not_in_motion_preview_mode()
         if is_diffusion_redo and is_not_preview:
             self.do_diffusion_redo()
+
+    def has_strength(self):
+        return self.strength > 0
 
     def generate(self):
         return call_generate(self.render_data, self)
@@ -216,13 +221,13 @@ class KeyFrame:
 
     @staticmethod
     def create(data: RenderData):
-        step_data = KeyFrameData.create(data)
+        frame_data = DiffusionFrameData.create(data)
         schedule = Schedule.create(data)
-        return KeyFrame(0, step_data, data, schedule, None, None, "", 0, list(), list())
+        return DiffusionFrame(0, False, 0.0, frame_data, data, schedule, None, None, "", 0, list(), list())
 
     @staticmethod
     def apply_color_matching(data: RenderData, image):
-        return KeyFrame.apply_color_coherence(image, data) if data.has_color_coherence() else image
+        return DiffusionFrame.apply_color_coherence(image, data) if data.has_color_coherence() else image
 
     @staticmethod
     def apply_color_coherence(image, data: RenderData):
@@ -254,7 +259,7 @@ class KeyFrame:
         return image
 
     @staticmethod
-    def apply_hybrid_motion_optical_flow(data: RenderData, key_frame, image):
+    def apply_hybrid_motion_optical_flow(data: RenderData, frame, image):
         motion = data.args.anim_args.hybrid_motion
         if motion in ['Optical Flow']:
             last_i = data.indexes.frame.i - 1
@@ -263,83 +268,97 @@ class KeyFrame:
                 if data.args.anim_args.hybrid_motion_use_prev_img \
                 else call_get_flow_for_hybrid_motion(data, last_i)
             transformed = image_transform_optical_flow(
-                reference_images.previous, flow, key_frame.step_data.flow_factor())
+                reference_images.previous, flow, frame.frame_data.flow_factor())
             data.animation_mode.prev_flow = flow
             return transformed
         return image
 
     @staticmethod
-    def precalculate_num_key_frames(data, keyframe_dist, start_index, max_frames):
+    def precalculate_diffusion_frame_count(data, keyframe_distribution, start_index, max_frames):
         # TODO change implementation so KeyFrames can be instantiated without any pre-calculations.
-        if not data.parseq_adapter.use_parseq or keyframe_dist is KeyFrameDistribution.OFF:
+        if keyframe_distribution is KeyFrameDistribution.OFF:
             return 0  # not relevant
-        if keyframe_dist is KeyFrameDistribution.PARSEQ_ONLY:
-            return len(data.parseq_adapter.parseq_json["keyframes"])
-        elif keyframe_dist is KeyFrameDistribution.ADDITIVE_WITH_PARSEQ:
-            # TODO make this work without having to calc temp_num_key_steps first or refactor to make pre-calc obsolete.
-            temp_num_key_steps = 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
-            uniform_indices = KeyFrameDistribution.uniform_indexes(start_index, max_frames, temp_num_key_steps)
-            parseq_keyframes = [keyframe["frame"] for keyframe in data.parseq_adapter.parseq_json["keyframes"]]
-            shifted_parseq_frames = [frame + 1 for frame in parseq_keyframes]
-            precalc_key_frames = list(set(set(uniform_indices) | set(shifted_parseq_frames)))
-            precalc_key_frames.sort()
-            return len(precalc_key_frames)
-        elif keyframe_dist is KeyFrameDistribution.UNIFORM_WITH_PARSEQ:
+        elif keyframe_distribution is KeyFrameDistribution.KEYFRAMES_ONLY:
+            return len(data.parseq_adapter.parseq_json["keyframes"]) if data.parseq_adapter.use_parseq \
+                else len(data.args.root.prompt_keyframes) + 1  # +1 because last frame is not defined in prompts
+        elif keyframe_distribution is KeyFrameDistribution.REDISTRIBUTED:
             return 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
+        elif keyframe_distribution is KeyFrameDistribution.ADDITIVE:
+            # TODO refactor to make pre-calc obsolete.
+            temp_diffusion_frame_count = 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
+            uniform_indices = KeyFrameDistribution.uniform_indexes(start_index, max_frames, temp_diffusion_frame_count)
+            keyframes = KeyFrameDistribution.select_keyframes(data)
+
+            precalculated_diffusion_frames = list(set(set(uniform_indices) | set(keyframes)))
+            return len(precalculated_diffusion_frames)
         else:
-            raise ValueError(f"Invalid parseq_key_frame_distribution: {keyframe_dist}")
+            raise ValueError(f"Invalid keyframe_distribution: {keyframe_distribution}")
 
     @staticmethod
     def create_all_frames(data, keyframe_dist: KeyFrameDistribution = KeyFrameDistribution.default()):
         """Creates a list of key steps for the entire animation."""
         start_index = data.turbo.find_start(data)  # TODO remove since we just recalc everything again on restart
         max_frames = data.args.anim_args.max_frames
-        num_key_steps = KeyFrame.precalculate_num_key_frames(data, keyframe_dist, start_index, max_frames)
-
-        key_frames = [KeyFrame.create(data) for _ in range(0, num_key_steps)]
-        actual_num_key_steps = len(key_frames)
-
-        recalculated_key_steps = KeyFrame._recalculate_and_check_tweens(
-            data, key_frames, start_index, actual_num_key_steps, keyframe_dist)
-        log_utils.print_tween_step_creation_info(key_frames, keyframe_dist)
-
-        return recalculated_key_steps
+        diffusion_frame_count = DiffusionFrame.precalculate_diffusion_frame_count(
+            data, keyframe_dist, start_index, max_frames)
+        diffusion_frames = [DiffusionFrame.create(data) for _ in range(0, diffusion_frame_count)]
+        actual_diffusion_frame_count = len(diffusion_frames)
+        recalculated_frames = DiffusionFrame._recalculate_and_check_tweens(
+            data, diffusion_frames, start_index, actual_diffusion_frame_count, keyframe_dist)
+        log_utils.print_tween_frame_creation_info(diffusion_frames, keyframe_dist)
+        return recalculated_frames
 
     @staticmethod
-    def _recalculate_and_check_tweens(data, key_frames, start_index, num_key_steps, keyframe_distribution):
-        max_frames = data.args.anim_args.max_frames
+    def _recalculate_and_check_tweens(data, diffusion_frames, start_index, diffusion_frame_count,
+                                      keyframe_distribution):
+        assert diffusion_frame_count == len(diffusion_frames)  # FIXME? calculate instead of pass diffusion_frame_count
 
-        key_indices = keyframe_distribution.calculate(data, start_index, max_frames, num_key_steps, data.parseq_adapter)
-        assert len(key_frames) == len(key_indices)
-        for i, key_step in enumerate(key_indices):
-            key_frames[i].i = key_indices[i]  # TODO separate handling from calculation. this should be done elsewhere.
+        # TODO move everything here into KeyFrame.create
+        # Applies `strength_schedule` if Parseq is active or if there is no entry with index i in the Deforum prompts.
+        # otherwise `keyframe_strength_schedule` is applied, which should be set lower (=more denoise on keyframes).
+        def select_keyframe_or_cadence_strength(index, is_keyframe):
+            # schedule series indices shifted to start at 0.
+            return data.animation_keys.deform_keys.strength_schedule_series[index - 1] \
+                if data.parseq_adapter.use_parseq or is_keyframe \
+                else data.animation_keys.deform_keys.keyframe_strength_schedule_series[index - 1]
 
-        key_frames = KeyFrame.add_tweens_to_key_frames(key_frames)  # noqa TODO? (linter marks this unreachable)
-        log_utils.print_key_step_debug_info_if_verbose(key_frames)
+        key_indices = keyframe_distribution.calculate(data, start_index, diffusion_frame_count)
+        assert len(diffusion_frames) == len(key_indices)
+        for i, key_i in enumerate(key_indices):
+            # TODO separate handling from calculation. this should be done on init.
+            is_kf = KeyFrameDistribution.is_deforum_keyframe(data, key_i)
+            diffusion_frames[i].i = key_i
+            diffusion_frames[i].is_keyframe = is_kf
+            diffusion_frames[i].strength = select_keyframe_or_cadence_strength(key_i, is_kf)
 
-        pseudo_cadence = max_frames / len(key_frames)
+        diffusion_frames = DiffusionFrame.add_tweens_to_diffusion_frames(diffusion_frames)
+        log_utils.print_key_frame_debug_info_if_verbose(diffusion_frames)
+
+        pseudo_cadence = data.args.anim_args.max_frames / len(diffusion_frames)
         log_utils.info(f"Calculated pseudo cadence: {pseudo_cadence:.2f}")
 
-        # The number of generated tweens depends on index since last key-frame. The last tween has the same
-        # index as the key_step it belongs to and is meant to replace the unprocessed original key frame.
-        assert len(key_frames) == num_key_steps
-        assert key_frames[0].i == 1  # 1st key frame is at index 1
-        assert key_frames[0].tweens == []  # 1st key frame has no tweens
-        if keyframe_distribution != KeyFrameDistribution.PARSEQ_ONLY:  # however many key frames Parseq defines.
-            assert key_frames[-1].i == max_frames  # last index is same as max frames
+        # The number of generated tweens depends on index since last diffusion_frame. The last tween has the same
+        # index as the diffusion_frame it belongs to and is meant to replace the unprocessed original key frame.
+        assert len(diffusion_frames) == diffusion_frame_count
 
-        return key_frames
+        diffusion_frames[0].i = 1  # TODO make sure this is correct from the start, then switch back to assert.
+        # assert diffusion_frames[0].i == 1  # 1st diffusion frame is at index 1
+        assert diffusion_frames[0].tweens == []  # 1st diffusion frame has no tweens
+        if keyframe_distribution != KeyFrameDistribution.KEYFRAMES_ONLY:
+            assert diffusion_frames[-1].i == data.args.anim_args.max_frames  # last index is same as max frames
+
+        return diffusion_frames
 
     @staticmethod
-    def add_tweens_to_key_frames(key_frames):
-        log_utils.info(f"Adding tweens to {len(key_frames)} keyframes...")
-        for i in range(1, len(key_frames)):  # skipping 1st key frame
-            data = key_frames[i].render_data
-            from_i = key_frames[i - 1].i
-            to_i = key_frames[i].i
-            tweens, values = Tween.create_in_between_steps(key_frames, i, data, from_i, to_i)
-            log_utils.debug(f"Creating {len(tweens)} tweens ({from_i}->{to_i}) for key frame at {key_frames[i].i}")
-            key_frames[i].tweens = tweens
-            key_frames[i].tween_values = values
-            key_frames[i].render_data.indexes.update_tween_start(data.turbo)
-        return key_frames
+    def add_tweens_to_diffusion_frames(diffusion_frames):
+        log_utils.debug(f"Adding tweens to {len(diffusion_frames)} keyframes...")
+        for i in range(1, len(diffusion_frames)):  # skipping 1st key frame
+            data = diffusion_frames[i].render_data
+            from_i = diffusion_frames[i - 1].i
+            to_i = diffusion_frames[i].i
+            tweens, values = Tween.create_in_between_steps(diffusion_frames, i, data, from_i, to_i)
+            log_utils.debug(f"Creating {len(tweens)} tweens ({from_i}->{to_i}) for frame at {diffusion_frames[i].i}")
+            diffusion_frames[i].tweens = tweens
+            diffusion_frames[i].tween_values = values
+            diffusion_frames[i].render_data.indexes.update_tween_start(data.turbo)
+        return diffusion_frames

@@ -56,24 +56,40 @@ def get_schedulers_list():
     return {scheduler.name: scheduler.label for scheduler in sd_schedulers.schedulers}
 
 
-def get_parseq_keyframe_redistributions_list():
+def get_keyframe_distribution_list():
     return {
         'off': 'Off',
-        'parseq_only': 'Parseq Only (no cadence)',
-        'additive_with_parseq': 'Additive with Parseq (pseudo-cadence)',
-        'uniform_with_parseq': 'Uniform with Parseq (pseudo-cadence & redistribution)'
+        'keyframes_only': 'Keyframes Only',
+        'additive': 'Additive',
+        'redistributed': 'Redistributed',
     }
 
+
 def DeforumAnimPrompts():
+    # Keyframes are synchronized to line up at 60 FPS with amen13 from https://archive.org/details/amen-breaks/:
+    # Direct link: https://ia801303.us.archive.org/26/items/amen-breaks/cw_amen13_173.mp3
     return r"""{
-    "0": "tiny cute bunny, vibrant diffraction, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus",
-    "30": "anthropomorphic clean cat, surrounded by fractals, epic angle and pose, symmetrical, 3d, depth of field",
-    "60": "a beautiful coconut --neg photo, realistic",
-    "90": "a beautiful durian, award winning photography"
-}
-    """
-    
-# Guided images defaults    
+        "0": "A cute bunny, hopping on grass",
+        "12": "A cute bunny, hopping on a construction site",
+        "43": "A cute  bunny, hopping on cyber grid",
+        "74": "A cool bunny, on a skateboard",
+        "85": "A cool synthwave bunny, on a skateboard",
+        "106": "A cool synthwave bunny, skating on burning coal",
+        "119": "A cool synthwave bunny, skating on frozen ice",
+        "126": "A cool synthwave bunny, skating on burning coal",
+        "147": "A cool synthwave bunny, skating on frozen ice",
+        "158": "A cool synthwave bunny, skating on burning coal",
+        "178": "A cool synthwave bunny, with a sign that says 'Deforum & Forge'",
+        "210": "A cool synthwave bunny, with a sign that says 'Deforum & Forge'",
+        "241": "A cool synthwave bunny, with a sign that says 'Deforum & Forge'",
+        "262": "A cool synthwave bunny, with a sign that says 'Deforum & Forge', surrounded by mandelbulb fractals",
+        "272": "A cool synthwave bunny, with a sign that says 'Deforum & Forge', surrounded by mandelbulb fractals",
+        "293": "A cool synthwave bunny, with a sign that says 'Deforum & Forge', surrounded by mandelbulb fractals",
+        "314": "A cool synthwave bunny, with a sign that says 'Deforum & Forge', surrounded by mandelbulb fractals",
+        "324": "A cool synthwave bunny, with a sign that says 'Deforum & Forge', surrounded by mandelbulb fractals"
+    }"""
+
+# Guided images defaults
 def get_guided_imgs_default_json():
     return '''{
     "0": "https://deforum.github.io/a1/Gi1.png",

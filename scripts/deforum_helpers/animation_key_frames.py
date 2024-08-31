@@ -40,6 +40,7 @@ class DeformAnimKeys():
         self.perspective_flip_fv_series = self.fi.parse_inbetweens(anim_args.perspective_flip_fv, 'perspective_flip_fv')
         self.noise_schedule_series = self.fi.parse_inbetweens(anim_args.noise_schedule, 'noise_schedule')
         self.strength_schedule_series = self.fi.parse_inbetweens(anim_args.strength_schedule, 'strength_schedule')
+        self.keyframe_strength_schedule_series = self.fi.parse_inbetweens(anim_args.keyframe_strength_schedule, 'keyframe_strength_schedule')
         self.contrast_schedule_series = self.fi.parse_inbetweens(anim_args.contrast_schedule, 'contrast_schedule')
         self.cfg_scale_schedule_series = self.fi.parse_inbetweens(anim_args.cfg_scale_schedule, 'cfg_scale_schedule')
         self.distilled_cfg_scale_schedule_series = self.fi.parse_inbetweens(anim_args.distilled_cfg_scale_schedule, 'distilled_cfg_scale_schedule')
@@ -120,6 +121,7 @@ class LooperAnimKeys():
         self.use_looper = loop_args.use_looper
         self.imagesToKeyframe = loop_args.init_images
         self.image_strength_schedule_series = self.fi.parse_inbetweens(loop_args.image_strength_schedule, 'image_strength_schedule')
+        self.image_keyframe_strength_schedule_series = self.fi.parse_inbetweens(loop_args.image_keyframe_strength_schedule, 'image_keyframe_strength_schedule')
         self.blendFactorMax_series = self.fi.parse_inbetweens(loop_args.blendFactorMax, 'blendFactorMax')
         self.blendFactorSlope_series = self.fi.parse_inbetweens(loop_args.blendFactorSlope, 'blendFactorSlope')
         self.tweening_frames_schedule_series = self.fi.parse_inbetweens(loop_args.tweening_frames_schedule, 'tweening_frames_schedule')

@@ -97,8 +97,8 @@ class RenderData:
     def is_3d_or_2d(self) -> bool:
         return self.args.anim_args.animation_mode in ['2D', '3D']
 
-    def has_parseq_keyframe_redistribution(self) -> bool:
-        return self.args.parseq_args.parseq_key_frame_redistribution != "Off"
+    def has_keyframe_distribution(self) -> bool:
+        return self.args.anim_args.keyframe_distribution != "Off"
 
     def has_optical_flow_cadence(self) -> bool:
         return self.args.anim_args.optical_flow_cadence != 'None'
@@ -111,9 +111,6 @@ class RenderData:
 
     def is_3d_with_med_or_low_vram(self) -> bool:
         return self.is_3d() and memory_utils.is_low_or_med_vram()
-
-    def has_keyframe_redistribution(self) -> bool:
-        return self.args.parseq_args
 
     def width(self) -> int:
         return self.args.args.W
@@ -200,27 +197,27 @@ class RenderData:
         is_not_preview = self.is_not_in_motion_preview_mode()
         return self.args.anim_args.optical_flow_redo_generation if is_not_preview else 'None'
 
-    def is_do_color_match_conversion(self, step) -> bool:
+    def is_do_color_match_conversion(self, frame) -> bool:
         is_legacy_cm = self.args.anim_args.legacy_colormatch
         is_use_init = self.args.args.use_init
         is_not_legacy_with_use_init = not is_legacy_cm and not is_use_init
-        is_legacy_cm_without_strength = is_legacy_cm and step.step_data.strength == 0
+        is_legacy_cm_without_strength = is_legacy_cm and frame.frame_data.strength == 0
         is_maybe_special_legacy = is_not_legacy_with_use_init or is_legacy_cm_without_strength
         return is_maybe_special_legacy and self.has_non_video_or_image_color_coherence()
 
-    def update_sample_and_args_for_current_progression_step(self, step, noised_image):
+    def update_sample_and_args_for_current_progression_step(self, frame, noised_image):
         # use transformed previous frame as init for current
         self.args.args.use_init = True
         self.args.root.init_sample = Image.fromarray(cv2.cvtColor(noised_image, cv2.COLOR_BGR2RGB))
-        self.args.args.strength = max(0.0, min(1.0, step.step_data.strength))
+        self.args.args.strength = max(0.0, min(1.0, frame.strength))
 
-    def update_some_args_for_current_step(self, step, i):
+    def update_some_args_for_current_step(self, frame, i):
         keys = self.animation_keys.deform_keys
         # Pix2Pix Image CFG Scale - does *nothing* with non pix2pix checkpoints
         self.args.args.pix2pix_img_cfg_scale = float(keys.pix2pix_img_cfg_scale_series[i])
         self.args.args.pix2pix_img_distilled_cfg_scale = float(keys.pix2pix_img_distilled_cfg_scale_series[i])
         self.args.args.prompt = self.prompt_series[i]  # grab prompt for current frame
-        self.args.args.scale = step.step_data.scale
+        self.args.args.scale = frame.frame_data.scale
 
     def update_seed_and_checkpoint_for_current_step(self, i):
         keys = self.animation_keys.deform_keys
@@ -251,13 +248,13 @@ class RenderData:
         seed = self.args.args.seed
         return prepare_prompt(prompt, max_frames, seed, i)
 
-    def _update_video_input_for_current_frame(self, i, step):
+    def _update_video_input_for_current_frame(self, i, frame):
         video_init_path = self.args.anim_args.video_init_path
         init_frame = call_get_next_frame(self, i, video_init_path)
         log_utils.print_init_frame_info(init_frame)
         self.args.args.init_image = init_frame
         self.args.args.init_image_box = None  # init_image_box not used in this case
-        self.args.args.strength = max(0.0, min(1.0, step.step_data.strength))
+        self.args.args.strength = max(0.0, min(1.0, frame.frame_data.strength))
 
     def _update_video_mask_for_current_frame(self, i):
         video_mask_path = self.args.anim_args.video_mask_path
@@ -268,34 +265,34 @@ class RenderData:
         self.args.root.noise_mask = new_mask
         self.mask.vals['video_mask'] = new_mask
 
-    def update_video_data_for_current_frame(self, i, step):
+    def update_video_data_for_current_frame(self, i, frame):
         if self.animation_mode.has_video_input:
-            self._update_video_input_for_current_frame(i, step)
+            self._update_video_input_for_current_frame(i, frame)
         if self.args.anim_args.use_mask_video:
             self._update_video_mask_for_current_frame(i)
 
-    def update_mask_image(self, step, mask):
+    def update_mask_image(self, frame, mask):
         is_use_mask = self.args.args.use_mask
         if is_use_mask:
             has_sample = self.args.root.init_sample is not None
             if has_sample:
-                mask_seq = step.schedule.mask_seq
+                mask_seq = frame.schedule.mask_seq
                 sample = self.args.root.init_sample
                 self.args.args.mask_image = call_compose_mask_with_check(self, mask_seq, mask.vals, sample)
             else:
                 self.args.args.mask_image = None  # we need it only after the first frame anyway
 
-    def prepare_generation(self, data, step, i):
+    def prepare_generation(self, data, frame, i):
         if i > self.args.anim_args.max_frames - 1:
             return
-        self.update_some_args_for_current_step(step, i)
+        self.update_some_args_for_current_step(frame, i)
         self.update_seed_and_checkpoint_for_current_step(i)
         self.update_sub_seed_schedule_for_current_step(i)
         self.prompt_for_current_step(i)
-        self.update_video_data_for_current_frame(i, step)
-        self.update_mask_image(step, data.mask)
+        self.update_video_data_for_current_frame(i, frame)
+        self.update_mask_image(frame, data.mask)
         self.animation_keys = AnimationKeys.from_args(self.args, self.parseq_adapter, self.seed)
-        opt_utils.setup(step.schedule)
+        opt_utils.setup(frame.schedule)
         memory_utils.handle_vram_if_depth_is_predicted(data)
 
     @staticmethod

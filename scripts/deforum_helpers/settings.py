@@ -14,14 +14,19 @@
 
 # Contact the authors: https://deforum.github.io/
 
-import os
 import json
+import os
+
 import modules.shared as sh
-from .args import DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, get_settings_component_names, pack_args, FreeUArgs, KohyaHRFixArgs
-from .deforum_controlnet import controlnet_component_names
+from modules.sd_models import FakeInitialModel
+
+from .args import DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, get_settings_component_names, \
+    pack_args, FreeUArgs, KohyaHRFixArgs
 from .defaults import mask_fill_choices
+from .deforum_controlnet import controlnet_component_names
 from .deprecation_utils import handle_deprecated_settings
 from .general_utils import get_deforum_version, clean_gradio_path_strings
+
 
 def get_keys_to_exclude():
     return ["init_sample", "perlin_w", "perlin_h", "image_path", "outdir", "init_image_box"]
@@ -97,8 +102,9 @@ def save_settings(*args, **kwargs):
     combined = {**args_dict, **anim_args_dict, **parseq_dict, **loop_dict, **controlnet_dict, **freeu_args_dict, **kohya_hrfix_args_dict, **video_args_dict}
     exclude_keys = get_keys_to_exclude()
     filtered_combined = {k: v for k, v in combined.items() if k not in exclude_keys}
-    filtered_combined["sd_model_name"] = sh.sd_model.sd_checkpoint_info.name
-    filtered_combined["sd_model_hash"] = sh.sd_model.sd_checkpoint_info.hash
+    if not isinstance(sh.sd_model, FakeInitialModel):
+        filtered_combined["sd_model_name"] = sh.sd_model.sd_checkpoint_info.name
+        filtered_combined["sd_model_hash"] = sh.sd_model.sd_checkpoint_info.hash
     filtered_combined["deforum_git_commit_id"] = get_deforum_version()
     print(f"saving custom settings to {settings_path}")
     with open(settings_path, "w", encoding='utf-8') as f:

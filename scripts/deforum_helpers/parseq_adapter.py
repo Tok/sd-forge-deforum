@@ -113,7 +113,7 @@ class ParseqAdapter():
     def print_parseq_table(self):
         from rich.table import Table
         from rich import box
-        
+
         table = Table(padding=0, box=box.ROUNDED, show_lines=True)
         table.add_column("", style="white bold")
         table.add_column("Parseq", style="cyan")
@@ -282,6 +282,8 @@ class ParseqAnimKeysDecorator(ParseqAbstractDecorator):
         self.perspective_flip_fv_series = super().parseq_to_series('perspective_flip_fv')
         self.noise_schedule_series = super().parseq_to_series('noise')
         self.strength_schedule_series = super().parseq_to_series('strength')
+        # TODO not implemented
+        # self.keyframe_strength_schedule_series = super().parseq_to_series('keyframe_strength')
         self.sampler_schedule_series = super().parseq_to_series('sampler_schedule')
         # TODO implement scheduler_schedule in Parseq
         # self.scheduler_schedule_series = super().parseq_to_series('scheduler_schedule')  # Not implemented

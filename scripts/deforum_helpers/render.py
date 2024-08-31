@@ -55,12 +55,12 @@ from .RAFT import RAFT
 from deforum_api import JobStatusTracker
 
 def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root):
-    is_use_parseq = parseq_args.parseq_manifest and parseq_args.parseq_manifest.strip()
-    is_use_key_frame_redistribution = parseq_args.parseq_key_frame_redistribution != "Off"
-    is_use_new_render_core = is_use_parseq and is_use_key_frame_redistribution
+    is_use_new_render_core = anim_args.keyframe_distribution != "Off"
     if is_use_new_render_core:
         experimental_core.render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
         return
+
+    log_utils.info("Using stable render core.", log_utils.RED)
 
     # initialise Parseq adapter
     parseq_adapter = ParseqAdapter(parseq_args, anim_args, video_args, controlnet_args, loop_args, freeu_args, kohya_hrfix_args)
@@ -101,7 +101,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     # create output folder for the batch
     os.makedirs(args.outdir, exist_ok=True)
     log_utils.info(f"Saving animation frames to:\n{args.outdir}")
-    log_utils.debug(f"Sampler: '{args.sampler}' Scheduler: '{args.scheduler}'")
+    log_utils.info(f"Sampler: '{args.sampler}' Scheduler: '{args.scheduler}'")
 
     # save settings.txt file for the current run
     save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root)

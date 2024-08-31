@@ -7,7 +7,10 @@ fix'd up to work with Flux.1 and integrate Parseq keyframe redistribution logic.
 
 ## Current status
 
-&#x26A0;&#xFE0F; This fork of the extension is _basically working_ but still **rather experimental** and may crash if some features are not disabled.
+This fork of the extension is _basically working_.
+
+&#x26A0;&#xFE0F; Configurations that use the **experimental render core** by enabling the 
+new keyframe distribution feature, may require that some unsupported features are being kept disabled.
 
 ## Installation
 
@@ -57,17 +60,19 @@ pip install -r requirements.txt
       * https://huggingface.co/comfyanonymous/flux_text_encoders/tree/main
     * `t5xxl_fp16.safetensors`
       * https://huggingface.co/comfyanonymous/flux_text_encoders/tree/main
-  * switch UI to "flux", select the flux checkpoint and set all the 3 VAEs in "VAE / Text Encoder" in the same order as listed above (happens to be alphabetical).
-  * make sure CFG (or "Scale" if you use Parseq) is at around 1.0
-  * Make sure to remove the negative prompts!
-    * &#x26A0;&#xFE0F; Warning: since Flux doesn't support negative prompts, "--neg" is currently ignored and everything after that is interpreted positively. 
-      It may cause the opposite of their original intention.
-  * Disable "Kohya HR Fix" and "FreeU".
+  * Switch UI to "flux", select the flux checkpoint and set all the 3 VAEs in "VAE / Text Encoder".
+  * 'CFG' (or "Scale" if you use Parseq) is expected to be at around 1.0
+  * 'Distilled CFG' at 3.5
+  * Negative prompts are ignored.
 
-#### Parseq Keyframe Redistribution
-  * May be activated in the Parseq tab
-  * Causes the rendering to run on an (even more) experimental core that can rearrange keyframes, which allows for precise Parseq sync at high cadence, making it possible to set up really fast generations with less jitter.
-  * Additional details on how to use it can be found on the Parseq tab.
+#### Keyframe Distribution
+Causes the rendering to run on an experimental core that can rearrange keyframes,
+which makes it possible to set up fast generations with less jitter at high or no cadence.
+
+##### New sub-tab under "Keyframes"
+* Can now be used **with- or without- Parseq**.
+* Allows for precise sync at high cadence.
+* Detailed info and recommendations on new tab.
 
 ### Currently not working and may need to be disabled
 * Kohya HR Fix
@@ -78,7 +83,15 @@ pip install -r requirements.txt
 * Hybrid Video
 * Non-Flux workflows
 
-## Struggle shooting
+### Other Stuff
+* Includes a new default setup.
+  * optimized for generating clips at 60 FPS in 720p, using Flux.1 with the new render core.
+  * is using `keyframes only` keyframe distribution.
+  * backup and replace your existing  with the example provided here.
+  * partially hardcoded, but also available as updated `deforum_settings.txt`
+* Non-essential emojis can be turned off with a checkbox under "Settings" - "Deforum".
+
+## Troubleshooting
 
 ### Potential problems with different Python-, Torch- and 'basicsr' versions
 
@@ -105,3 +118,7 @@ A workaround can be found here: https://github.com/Tok/sd-forge-deforum/issues/1
 
 In case of other problems related to Torch, try to reinstall it as recommended on the pytorch website:
 https://pytorch.org/get-started/locally/
+
+### Settings file
+The content of the `deforum_settings.txt` file has been updated.
+Settings from older versions may not behave as expected.

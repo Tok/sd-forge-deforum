@@ -57,7 +57,7 @@ class Turbo:
         self.next.image = image_transform_optical_flow(self.next.image, flow, flow_factor)
 
     def advance_optical_tween_flow(self, indexes, last_frame, flow):
-        flow_factor = last_frame.step_data.flow_factor()
+        flow_factor = last_frame.frame_data.flow_factor()
         i = indexes.tween.i
         if self.is_advance_prev(i):
             self.prev.image = image_transform_optical_flow(self.prev.image, flow, flow_factor)
