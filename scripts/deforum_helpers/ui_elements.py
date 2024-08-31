@@ -15,11 +15,31 @@
 # Contact the authors: https://deforum.github.io/
 
 from types import SimpleNamespace
+
 import gradio as gr
 from modules.ui_components import FormRow, FormColumn, ToolButton
+
 from .defaults import get_gradio_html, DeforumAnimPrompts
+from .gradio_funcs import (upload_vid_to_interpolate, upload_pics_to_interpolate,
+                           ncnn_upload_vid_to_upscale, upload_vid_to_depth)
 from .video_audio_utilities import direct_stitch_vid_from_frames
-from .gradio_funcs import upload_vid_to_interpolate, upload_pics_to_interpolate, ncnn_upload_vid_to_upscale, upload_vid_to_depth
+
+# Use sparingly to catch attention to essential items.
+# TODO move elsewhere
+refresh_emoji = '\U0001f504'  # 🔄
+warn_emoji = '\U000026A0\U0000FE0F'  # ⚠️
+bulb_emoji = '\U0001F4A1'  # 💡
+run_emoji = '\U0000F3CE\U0000FE0F'  # 🏎️
+key_emoji = '\U0001F511'  # 🔑
+frame_emoji = '\U0001F5BC\U0000FE0F'  # 🖼️
+control_emoji = '\U0001F39B\U0000FE0F'  # 🎛️
+net_emoji = '\U0001F578\U0000FE0F'  # 🕸️
+prompts_emoji = '\U0000270D\U0000FE0F'  # ✍️
+cadence_emoji = '\U000023F1\U0000FE0F'  # ⏱️
+distribution_emoji = '\U0001F4CA'  # 📊
+strength_emoji = '\U0001F4AA'  # 💪
+scale_emoji = '\U0001F4CF'  # 📏
+
 
 def create_gr_elem(d):
     # Capitalize and CamelCase the orig value under "type", which defines gr.inputs.type in lower_case.
@@ -37,6 +57,7 @@ def create_gr_elem(d):
         params['type'] = params.pop('type_param')
 
     return obj_type(**params)
+
 
 # ******** Important message ********
 # All get_tab functions use FormRow()/ FormColumn() by default, unless we have a gr.File inside that row/column, then we use gr.Row()/gr.Column() instead
@@ -67,9 +88,11 @@ def get_tab_run(d, da):
         with gr.Accordion('Batch Mode, Resume and more', open=False):
             with gr.Tab('Batch Mode/ run from setting files'):
                 with gr.Row():  # TODO: handle this inside one of the args functions?
-                    override_settings_with_file = gr.Checkbox(label="Enable batch mode", value=False, interactive=True, elem_id='override_settings',
+                    override_settings_with_file = gr.Checkbox(label="Enable batch mode", value=False, interactive=True,
+                                                              elem_id='override_settings',
                                                               info="run from a list of setting .txt files. Upload them to the box on the right (visible when enabled)")
-                    custom_settings_file = gr.File(label="Setting files", interactive=True, file_count="multiple", file_types=[".txt"], elem_id="custom_setting_file", visible=False)
+                    custom_settings_file = gr.File(label="Setting files", interactive=True, file_count="multiple",
+                                                   file_types=[".txt"], elem_id="custom_setting_file", visible=False)
             # RESUME ANIMATION ACCORD
             with gr.Tab('Resume Animation'):
                 with FormRow():
@@ -79,6 +102,7 @@ def get_tab_run(d, da):
                 pix2pix_img_cfg_scale_schedule = create_gr_elem(da.pix2pix_img_cfg_scale_schedule)
                 pix2pix_img_distilled_cfg_scale_schedule = create_gr_elem(da.pix2pix_img_distilled_cfg_scale_schedule)
     return {k: v for k, v in {**locals(), **vars()}.items()}
+
 
 def get_tab_keyframes(d, da, dloopArgs):
     components = {}
@@ -116,6 +140,10 @@ def get_tab_keyframes(d, da, dloopArgs):
                     color_correction_factor = create_gr_elem(dloopArgs.color_correction_factor)
         # EXTRA SCHEDULES TABS
         with gr.Tabs():
+            with gr.TabItem(f"{distribution_emoji} Distribution"):
+                with FormRow():
+                    keyframe_distribution = create_gr_elem(da.keyframe_distribution)
+                create_keyframe_distribution_info_tab()
             with gr.TabItem('Strength'):
                 with FormRow():
                     strength_schedule = create_gr_elem(da.strength_schedule)
@@ -169,19 +197,14 @@ def get_tab_keyframes(d, da, dloopArgs):
                     enable_checkpoint_scheduling = create_gr_elem(da.enable_checkpoint_scheduling)
                 with FormRow():
                     checkpoint_schedule = create_gr_elem(da.checkpoint_schedule)
-            with gr.TabItem('Distribution'):
-                with FormRow():
-                    keyframe_distribution = create_gr_elem(da.keyframe_distribution)
-                with FormRow():
-                    create_keyframe_distribution_info()
         # MOTION INNER TAB
-        refresh_symbol = '\U0001f504'  # 🔄
         with gr.Tabs(elem_id='motion_noise_etc'):
             with gr.TabItem('Motion') as motion_tab:
                 with FormColumn() as only_2d_motion_column:
                     with FormRow(variant="compact"):
                         zoom = create_gr_elem(da.zoom)
-                        reset_zoom_button = ToolButton(elem_id='reset_zoom_btn', value=refresh_symbol, tooltip="Reset zoom to static.")
+                        reset_zoom_button = ToolButton(elem_id='reset_zoom_btn', value=refresh_emoji,
+                                                       tooltip="Reset zoom to static.")
                         components['zoom'] = zoom
 
                         def reset_zoom_field():
@@ -208,7 +231,8 @@ def get_tab_keyframes(d, da, dloopArgs):
                 with FormColumn(visible=False) as only_3d_motion_column:
                     with FormRow():
                         translation_z = create_gr_elem(da.translation_z)
-                        reset_tr_z_button = ToolButton(elem_id='reset_tr_z_btn', value=refresh_symbol, tooltip="Reset translation Z to static.")
+                        reset_tr_z_button = ToolButton(elem_id='reset_tr_z_btn', value=refresh_emoji,
+                                                       tooltip="Reset translation Z to static.")
                         components['tr_z'] = translation_z
 
                         def reset_tr_z_field():
@@ -280,9 +304,11 @@ def get_tab_keyframes(d, da, dloopArgs):
                     with FormColumn(min_width=220, visible=False) as redo_flow_factor_schedule_column:
                         redo_flow_factor_schedule = create_gr_elem(da.redo_flow_factor_schedule)
                 with FormRow():
-                    contrast_schedule = gr.Textbox(label="Contrast schedule", lines=1, value=da.contrast_schedule, interactive=True,
+                    contrast_schedule = gr.Textbox(label="Contrast schedule", lines=1, value=da.contrast_schedule,
+                                                   interactive=True,
                                                    info="adjusts the overall contrast per frame [neutral at 1.0, recommended to *not* play with this param]")
-                    diffusion_redo = gr.Slider(label="Redo generation", minimum=0, maximum=50, step=1, value=da.diffusion_redo, interactive=True,
+                    diffusion_redo = gr.Slider(label="Redo generation", minimum=0, maximum=50, step=1,
+                                               value=da.diffusion_redo, interactive=True,
                                                info="this option renders N times before the final render. it is suggested to lower your steps if you up your redo. seed is randomized during redo generations and restored afterwards")
                 with FormRow():
                     # what to do with blank frames (they may result from glitches or the NSFW filter being turned on): reroll with +1 seed, interrupt the animation generation, or do nothing
@@ -300,11 +326,13 @@ def get_tab_keyframes(d, da, dloopArgs):
                     threshold_schedule = create_gr_elem(da.threshold_schedule)
             with gr.TabItem('Depth Warping & FOV', elem_id='depth_warp_fov_tab') as depth_warp_fov_tab:
                 # this html only shows when not in 2d/3d mode
-                depth_warp_msg_html = gr.HTML(value='Please switch to 3D animation mode to view this section.', elem_id='depth_warp_msg_html')
+                depth_warp_msg_html = gr.HTML(value='Please switch to 3D animation mode to view this section.',
+                                              elem_id='depth_warp_msg_html')
                 with FormRow(visible=False) as depth_warp_row_1:
                     use_depth_warping = create_gr_elem(da.use_depth_warping)
                     # *the following html only shows when LeReS depth is selected*
-                    leres_license_msg = gr.HTML(value=get_gradio_html('leres'), visible=False, elem_id='leres_license_msg')
+                    leres_license_msg = gr.HTML(value=get_gradio_html('leres'), visible=False,
+                                                elem_id='leres_license_msg')
                     depth_algorithm = create_gr_elem(da.depth_algorithm)
                     midas_weight = create_gr_elem(da.midas_weight)
                 with FormRow(visible=False) as depth_warp_row_2:
@@ -323,18 +351,22 @@ def get_tab_keyframes(d, da, dloopArgs):
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
+
 def get_tab_prompts(da):
     with gr.TabItem('Prompts'):
         # PROMPTS INFO ACCORD
-        with gr.Accordion(label='*Important* notes on Prompts', elem_id='prompts_info_accord', open=False) as prompts_info_accord:
+        with gr.Accordion(label='*Important* notes on Prompts', elem_id='prompts_info_accord',
+                          open=False) as prompts_info_accord:
             gr.HTML(value=get_gradio_html('prompts'))
         with FormRow():
             animation_prompts = gr.Textbox(label="Prompts", lines=8, interactive=True, value=DeforumAnimPrompts(),
                                            info="full prompts list in a JSON format.  value on left side is the frame number")
         with FormRow():
-            animation_prompts_positive = gr.Textbox(label="Prompts positive", lines=1, interactive=True, placeholder="words in here will be added to the start of all positive prompts")
+            animation_prompts_positive = gr.Textbox(label="Prompts positive", lines=1, interactive=True,
+                                                    placeholder="words in here will be added to the start of all positive prompts")
         with FormRow():
-            animation_prompts_negative = gr.Textbox(label="Prompts negative", value="nsfw, nude", lines=1, interactive=True,
+            animation_prompts_negative = gr.Textbox(label="Prompts negative", value="nsfw, nude", lines=1,
+                                                    interactive=True,
                                                     placeholder="words in here will be added to the end of all negative prompts")
         # COMPOSABLE MASK SCHEDULING ACCORD
         with gr.Accordion('Composable Mask scheduling', open=False):
@@ -347,6 +379,7 @@ def get_tab_prompts(da):
                 noise_mask_schedule = create_gr_elem(da.noise_mask_schedule)
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
+
 
 def get_tab_init(d, da, dp):
     with gr.TabItem('Init'):
@@ -407,31 +440,31 @@ def get_tab_init(d, da, dp):
                 parseq_use_deltas = create_gr_elem(dp.parseq_use_deltas)
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
-def get_tab_freeu(dfu : SimpleNamespace):
+
+def get_tab_freeu(dfu: SimpleNamespace):
     with gr.TabItem('FreeU'):
         with FormRow():
-            freeu_enabled = create_gr_elem(dfu.freeu_enabled)        
+            freeu_enabled = create_gr_elem(dfu.freeu_enabled)
         with FormRow():
             freeu_b1 = create_gr_elem(dfu.freeu_b1)
-        with FormRow():            
+        with FormRow():
             freeu_b2 = create_gr_elem(dfu.freeu_b2)
-        with FormRow():            
+        with FormRow():
             freeu_s1 = create_gr_elem(dfu.freeu_s1)
         with FormRow():
-            freeu_s2 = create_gr_elem(dfu.freeu_s2)            
+            freeu_s2 = create_gr_elem(dfu.freeu_s2)
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
-
-def get_tab_kohya_hrfix(dku : SimpleNamespace):
+def get_tab_kohya_hrfix(dku: SimpleNamespace):
     with gr.TabItem('Kohya HR Fix'):
         with FormRow():
-            kohya_hrfix_enabled = create_gr_elem(dku.kohya_hrfix_enabled)        
+            kohya_hrfix_enabled = create_gr_elem(dku.kohya_hrfix_enabled)
         with FormRow():
             kohya_hrfix_block_number = create_gr_elem(dku.kohya_hrfix_block_number)
-        with FormRow():            
+        with FormRow():
             kohya_hrfix_downscale_factor = create_gr_elem(dku.kohya_hrfix_downscale_factor)
-        with FormRow():            
+        with FormRow():
             kohya_hrfix_start_percent = create_gr_elem(dku.kohya_hrfix_start_percent)
         with FormRow():
             kohya_hrfix_end_percent = create_gr_elem(dku.kohya_hrfix_end_percent)
@@ -440,21 +473,24 @@ def get_tab_kohya_hrfix(dku : SimpleNamespace):
         with FormRow():
             kohya_hrfix_downscale_method = create_gr_elem(dku.kohya_hrfix_downscale_method)
         with FormRow():
-            kohya_hrfix_upscale_method = create_gr_elem(dku.kohya_hrfix_upscale_method)            
+            kohya_hrfix_upscale_method = create_gr_elem(dku.kohya_hrfix_upscale_method)
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
 def get_tab_hybrid(da):
     with gr.TabItem('Hybrid Video'):
         # this html only shows when not in 2d/3d mode
-        hybrid_msg_html = gr.HTML(value='Change animation mode to 2D or 3D to enable Hybrid Mode', visible=False, elem_id='hybrid_msg_html')
+        hybrid_msg_html = gr.HTML(value='Change animation mode to 2D or 3D to enable Hybrid Mode', visible=False,
+                                  elem_id='hybrid_msg_html')
         # HYBRID INFO ACCORD
         with gr.Accordion("Info & Help", open=False):
             gr.HTML(value=get_gradio_html('hybrid_video'))
         # HYBRID SETTINGS ACCORD
         with gr.Accordion("Hybrid Settings", open=True) as hybrid_settings_accord:
             with FormRow():
-                hybrid_composite = gr.Radio(['None', 'Normal', 'Before Motion', 'After Generation'], label="Hybrid composite", value=da.hybrid_composite, elem_id="hybrid_composite")
+                hybrid_composite = gr.Radio(['None', 'Normal', 'Before Motion', 'After Generation'],
+                                            label="Hybrid composite", value=da.hybrid_composite,
+                                            elem_id="hybrid_composite")
             with FormRow():
                 with FormColumn(min_width=340):
                     with FormRow():
@@ -480,10 +516,13 @@ def get_tab_hybrid(da):
             with gr.Row(visible=False, variant='compact') as hybrid_comp_mask_row:
                 hybrid_comp_mask_equalize = create_gr_elem(da.hybrid_comp_mask_equalize)
                 with FormColumn():
-                    hybrid_comp_mask_auto_contrast = gr.Checkbox(label="Comp mask auto contrast", value=False, interactive=True)
-                    hybrid_comp_mask_inverse = gr.Checkbox(label="Comp mask inverse", value=da.hybrid_comp_mask_inverse, interactive=True)
+                    hybrid_comp_mask_auto_contrast = gr.Checkbox(label="Comp mask auto contrast", value=False,
+                                                                 interactive=True)
+                    hybrid_comp_mask_inverse = gr.Checkbox(label="Comp mask inverse", value=da.hybrid_comp_mask_inverse,
+                                                           interactive=True)
             with FormRow():
-                hybrid_comp_save_extra_frames = gr.Checkbox(label="Comp save extra frames", value=False, interactive=True)
+                hybrid_comp_save_extra_frames = gr.Checkbox(label="Comp save extra frames", value=False,
+                                                            interactive=True)
         # HYBRID SCHEDULES ACCORD
         with gr.Accordion("Hybrid Schedules", open=False, visible=False) as hybrid_sch_accord:
             with FormRow() as hybrid_comp_alpha_schedule_row:
@@ -495,15 +534,18 @@ def get_tab_hybrid(da):
             with FormRow(visible=False) as hybrid_comp_mask_contrast_schedule_row:
                 hybrid_comp_mask_contrast_schedule = create_gr_elem(da.hybrid_comp_mask_contrast_schedule)
             with FormRow(visible=False) as hybrid_comp_mask_auto_contrast_cutoff_high_schedule_row:
-                hybrid_comp_mask_auto_contrast_cutoff_high_schedule = create_gr_elem(da.hybrid_comp_mask_auto_contrast_cutoff_high_schedule)
+                hybrid_comp_mask_auto_contrast_cutoff_high_schedule = create_gr_elem(
+                    da.hybrid_comp_mask_auto_contrast_cutoff_high_schedule)
             with FormRow(visible=False) as hybrid_comp_mask_auto_contrast_cutoff_low_schedule_row:
-                hybrid_comp_mask_auto_contrast_cutoff_low_schedule = create_gr_elem(da.hybrid_comp_mask_auto_contrast_cutoff_low_schedule)
+                hybrid_comp_mask_auto_contrast_cutoff_low_schedule = create_gr_elem(
+                    da.hybrid_comp_mask_auto_contrast_cutoff_low_schedule)
         # HUMANS MASKING ACCORD
         with gr.Accordion("Humans Masking", open=False, visible=False) as humans_masking_accord:
             with FormRow():
                 hybrid_generate_human_masks = create_gr_elem(da.hybrid_generate_human_masks)
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
+
 
 def get_tab_output(da, dv):
     with gr.TabItem('Output', elem_id='output_tab'):
@@ -542,7 +584,7 @@ def get_tab_output(da, dv):
                         # If this is set to True, we keep all the interpolated frames in a folder. Default is False - means we delete them at the end of the run
                         frame_interpolation_keep_imgs = create_gr_elem(dv.frame_interpolation_keep_imgs)
                     with gr.Column(min_width=30, scale=1):
-                        frame_interpolation_use_upscaled = create_gr_elem(dv.frame_interpolation_use_upscaled)                        
+                        frame_interpolation_use_upscaled = create_gr_elem(dv.frame_interpolation_use_upscaled)
                 with FormRow(visible=False) as frame_interp_amounts_row:
                     with gr.Column(min_width=180) as frame_interp_x_amount_column:
                         # How many times to interpolate (interp X)
@@ -555,14 +597,17 @@ def get_tab_output(da, dv):
                     with gr.Accordion('Interpolate existing Video/ Images', open=False) as interp_existing_video_accord:
                         with gr.Row(variant='compact') as interpolate_upload_files_row:
                             # A drag-n-drop UI box to which the user uploads a *single* (at this stage) video
-                            vid_to_interpolate_chosen_file = gr.File(label="Video to Interpolate", interactive=True, file_count="single", file_types=["video"],
+                            vid_to_interpolate_chosen_file = gr.File(label="Video to Interpolate", interactive=True,
+                                                                     file_count="single", file_types=["video"],
                                                                      elem_id="vid_to_interpolate_chosen_file")
                             # A drag-n-drop UI box to which the user uploads a pictures to interpolate
-                            pics_to_interpolate_chosen_file = gr.File(label="Pics to Interpolate", interactive=True, file_count="multiple", file_types=["image"],
+                            pics_to_interpolate_chosen_file = gr.File(label="Pics to Interpolate", interactive=True,
+                                                                      file_count="multiple", file_types=["image"],
                                                                       elem_id="pics_to_interpolate_chosen_file")
                         with FormRow(visible=False) as interp_live_stats_row:
                             # Non-interactive textbox showing uploaded input vid total Frame Count
-                            in_vid_frame_count_window = gr.Textbox(label="In Frame Count", lines=1, interactive=False, value='---')
+                            in_vid_frame_count_window = gr.Textbox(label="In Frame Count", lines=1, interactive=False,
+                                                                   value='---')
                             # Non-interactive textbox showing uploaded input vid FPS
                             in_vid_fps_ui_window = gr.Textbox(label="In FPS", lines=1, interactive=False, value='---')
                             # Non-interactive textbox showing expected output interpolated video FPS
@@ -575,47 +620,70 @@ def get_tab_output(da, dv):
                         gr.HTML("* check your CLI for outputs *", elem_id="below_interpolate_butts_msg")
                         # make the function call when the interpolation button is clicked
                         interpolate_button.click(fn=upload_vid_to_interpolate,
-                                                 inputs=[vid_to_interpolate_chosen_file, frame_interpolation_engine, frame_interpolation_x_amount, frame_interpolation_slow_mo_enabled,
-                                                         frame_interpolation_slow_mo_amount, frame_interpolation_keep_imgs, in_vid_fps_ui_window])
+                                                 inputs=[vid_to_interpolate_chosen_file, frame_interpolation_engine,
+                                                         frame_interpolation_x_amount,
+                                                         frame_interpolation_slow_mo_enabled,
+                                                         frame_interpolation_slow_mo_amount,
+                                                         frame_interpolation_keep_imgs, in_vid_fps_ui_window])
                         interpolate_pics_button.click(fn=upload_pics_to_interpolate,
-                                                      inputs=[pics_to_interpolate_chosen_file, frame_interpolation_engine, frame_interpolation_x_amount, frame_interpolation_slow_mo_enabled,
-                                                              frame_interpolation_slow_mo_amount, frame_interpolation_keep_imgs, fps, add_soundtrack, soundtrack_path])
+                                                      inputs=[pics_to_interpolate_chosen_file,
+                                                              frame_interpolation_engine, frame_interpolation_x_amount,
+                                                              frame_interpolation_slow_mo_enabled,
+                                                              frame_interpolation_slow_mo_amount,
+                                                              frame_interpolation_keep_imgs, fps, add_soundtrack,
+                                                              soundtrack_path])
         # VIDEO UPSCALE TAB - not built using our args.py at all - all data and params are here and in .upscaling file
         with gr.TabItem('Video Upscaling'):
-            vid_to_upscale_chosen_file = gr.File(label="Video to Upscale", interactive=True, file_count="single", file_types=["video"], elem_id="vid_to_upscale_chosen_file")
+            vid_to_upscale_chosen_file = gr.File(label="Video to Upscale", interactive=True, file_count="single",
+                                                 file_types=["video"], elem_id="vid_to_upscale_chosen_file")
             with gr.Column():
                 # NCNN UPSCALE TAB
                 with FormRow() as ncnn_upload_vid_stats_row:
-                    ncnn_upscale_in_vid_frame_count_window = gr.Textbox(label="In Frame Count", lines=1, interactive=False,
+                    ncnn_upscale_in_vid_frame_count_window = gr.Textbox(label="In Frame Count", lines=1,
+                                                                        interactive=False,
                                                                         value='---')  # Non-interactive textbox showing uploaded input vid Frame Count
-                    ncnn_upscale_in_vid_fps_ui_window = gr.Textbox(label="In FPS", lines=1, interactive=False, value='---')  # Non-interactive textbox showing uploaded input vid FPS
-                    ncnn_upscale_in_vid_res = gr.Textbox(label="In Res", lines=1, interactive=False, value='---')  # Non-interactive textbox showing uploaded input resolution
-                    ncnn_upscale_out_vid_res = gr.Textbox(label="Out Res", value='---')  # Non-interactive textbox showing expected output resolution
+                    ncnn_upscale_in_vid_fps_ui_window = gr.Textbox(label="In FPS", lines=1, interactive=False,
+                                                                   value='---')  # Non-interactive textbox showing uploaded input vid FPS
+                    ncnn_upscale_in_vid_res = gr.Textbox(label="In Res", lines=1, interactive=False,
+                                                         value='---')  # Non-interactive textbox showing uploaded input resolution
+                    ncnn_upscale_out_vid_res = gr.Textbox(label="Out Res",
+                                                          value='---')  # Non-interactive textbox showing expected output resolution
                 with gr.Column():
                     with FormRow() as ncnn_actual_upscale_row:
-                        ncnn_upscale_model = create_gr_elem(dv.r_upscale_model)  # note that we re-use *r_upscale_model* in here to create the gradio element as they are the same
-                        ncnn_upscale_factor = create_gr_elem(dv.r_upscale_factor)  # note that we re-use *r_upscale_facto*r in here to create the gradio element as they are the same
-                        ncnn_upscale_keep_imgs = create_gr_elem(dv.r_upscale_keep_imgs)  # note that we re-use *r_upscale_keep_imgs* in here to create the gradio element as they are the same
+                        ncnn_upscale_model = create_gr_elem(
+                            dv.r_upscale_model)  # note that we re-use *r_upscale_model* in here to create the gradio element as they are the same
+                        ncnn_upscale_factor = create_gr_elem(
+                            dv.r_upscale_factor)  # note that we re-use *r_upscale_facto*r in here to create the gradio element as they are the same
+                        ncnn_upscale_keep_imgs = create_gr_elem(
+                            dv.r_upscale_keep_imgs)  # note that we re-use *r_upscale_keep_imgs* in here to create the gradio element as they are the same
                 ncnn_upscale_btn = gr.Button(value="*Upscale uploaded video*")
                 ncnn_upscale_btn.click(fn=ncnn_upload_vid_to_upscale,
-                                       inputs=[vid_to_upscale_chosen_file, ncnn_upscale_in_vid_fps_ui_window, ncnn_upscale_in_vid_res, ncnn_upscale_out_vid_res, ncnn_upscale_model,
+                                       inputs=[vid_to_upscale_chosen_file, ncnn_upscale_in_vid_fps_ui_window,
+                                               ncnn_upscale_in_vid_res, ncnn_upscale_out_vid_res, ncnn_upscale_model,
                                                ncnn_upscale_factor, ncnn_upscale_keep_imgs])
         # Vid2Depth TAB - not built using our args.py at all - all data and params are here and in .vid2depth file
         with gr.TabItem('Vid2depth'):
-            vid_to_depth_chosen_file = gr.File(label="Video to get Depth from", interactive=True, file_count="single", file_types=["video"], elem_id="vid_to_depth_chosen_file")
+            vid_to_depth_chosen_file = gr.File(label="Video to get Depth from", interactive=True, file_count="single",
+                                               file_types=["video"], elem_id="vid_to_depth_chosen_file")
             with FormRow():
-                mode = gr.Dropdown(label='Mode', elem_id="mode", choices=['Depth (Midas/Adabins)', 'Anime Remove Background', 'Mixed', 'None (just grayscale)'], value='Depth (Midas/Adabins)')
+                mode = gr.Dropdown(label='Mode', elem_id="mode",
+                                   choices=['Depth (Midas/Adabins)', 'Anime Remove Background', 'Mixed',
+                                            'None (just grayscale)'], value='Depth (Midas/Adabins)')
                 threshold_value = gr.Slider(label="Threshold Value Lower", value=127, minimum=0, maximum=255, step=1)
-                threshold_value_max = gr.Slider(label="Threshold Value Upper", value=255, minimum=0, maximum=255, step=1)
+                threshold_value_max = gr.Slider(label="Threshold Value Upper", value=255, minimum=0, maximum=255,
+                                                step=1)
             with FormRow():
-                thresholding = gr.Radio(['None', 'Simple', 'Simple (Auto-value)', 'Adaptive (Mean)', 'Adaptive (Gaussian)'], label="Thresholding Mode", value='None')
+                thresholding = gr.Radio(
+                    ['None', 'Simple', 'Simple (Auto-value)', 'Adaptive (Mean)', 'Adaptive (Gaussian)'],
+                    label="Thresholding Mode", value='None')
             with FormRow():
                 adapt_block_size = gr.Number(label="Block size", value=11)
                 adapt_c = gr.Number(label="C", value=2)
                 invert = gr.Checkbox(label='Closer is brighter', value=True, elem_id="invert")
             with FormRow():
                 end_blur = gr.Slider(label="End blur width", value=0, minimum=0, maximum=255, step=1)
-                midas_weight_vid2depth = gr.Slider(label="MiDaS weight (vid2depth)", value=da.midas_weight, minimum=0, maximum=1, step=0.05, interactive=True,
+                midas_weight_vid2depth = gr.Slider(label="MiDaS weight (vid2depth)", value=da.midas_weight, minimum=0,
+                                                   maximum=1, step=0.05, interactive=True,
                                                    info="sets a midpoint at which a depth-map is to be drawn: range [-1 to +1]")
                 depth_keep_imgs = gr.Checkbox(label='Keep Imgs', value=True, elem_id="depth_keep_imgs")
             with FormRow():
@@ -626,59 +694,90 @@ def get_tab_output(da, dv):
                 gr.HTML("* check your CLI for outputs")
                 # make the function call when the UPSCALE button is clicked
             depth_btn.click(fn=upload_vid_to_depth,
-                            inputs=[vid_to_depth_chosen_file, mode, thresholding, threshold_value, threshold_value_max, adapt_block_size, adapt_c, invert, end_blur, midas_weight_vid2depth, depth_keep_imgs])
+                            inputs=[vid_to_depth_chosen_file, mode, thresholding, threshold_value, threshold_value_max,
+                                    adapt_block_size, adapt_c, invert, end_blur, midas_weight_vid2depth,
+                                    depth_keep_imgs])
         # STITCH FRAMES TO VID TAB
         with gr.TabItem('Frames to Video') as stitch_imgs_to_vid_row:
             gr.HTML(value=get_gradio_html('frames_to_video'))
             with FormRow():
                 image_path = create_gr_elem(dv.image_path)
             ffmpeg_stitch_imgs_but = gr.Button(value="*Stitch frames to video*")
-            ffmpeg_stitch_imgs_but.click(fn=direct_stitch_vid_from_frames, inputs=[image_path, fps, add_soundtrack, soundtrack_path])
+            ffmpeg_stitch_imgs_but.click(fn=direct_stitch_vid_from_frames,
+                                         inputs=[image_path, fps, add_soundtrack, soundtrack_path])
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
-def create_keyframe_distribution_info():
-    # TODO only display essential info and move the rest into an Accordion. Separate Parseq info into a 2nd Accordion.
-    bars_mark = "&#x1F4CA;"
-    bulb_mark = "&#x1F4A1;"
-    warn_mark = "&#x26A0;&#xFE0F;"
-    gr.HTML(value=f"""<p>
-        <div>Keyframe distribution ensures that every frame with an entry
-            in the Prompts- or in the Parseq-table is diffused.</div>
-        <div>Since the experimental render core allows for high or no cadence,
-            the generation can be performed much faster compared to a traditional low cadence setup.</div>
-        <div>{warn_mark} If Keyframe distribution is activated, the rendering will be processed in a different,
-            more experimental render core. Some features are currently not or not fully supported in the new core
-            and could crash or lead to undesired results if not turned off.
-        <div>Keyframe Distribution modes may most effectively be used at high FPS. 
-            If Parseq is active, 'strength' is meant to be controlled and provided from Parseq.
-            Otherwise the process is either using 'strength' or 'keyframe_strength', depending on frame type.</span>
-        <div>Resulting videos tend to be less jittery at high or no cadence,
-            but may introduce 'depth smear' when combined with fast movement.
-            Most negative effects can still be mitigated, by inserting lower strength frames in regular intervals.</div>
-        <div>Optical Flow related settings may not behave as expected and are recommended to be turned off
-            when keyframe distribution is used (see tab "Keyframes", sub-tab "Coherence").</div>
-        <ol style="list-style-type: none; padding-left: 20px;">
-            <li>{bars_mark} Off: Key frames are not redistributed. Cadence settings are fully respected.
-                Process runs on stable render core with better support for complicated setups.</li>
-            <li>{bars_mark} Keyframes Only: Only frames with an entry in Prompts or in the Parseq table are diffused.
-                Actual cadence settings are ignored and all non-keyframes are handled as cadence frames.
-            <li>{bars_mark} Additive: Is using cadence but adds keyframes. Takes more time to generate, 
-                but may help stabilizing the frames by doing diffusions in regular intervals.
-                Parseq Recommendation: Make high cadence setup and mark your frames with an 'Info' like "event", then
-                in 'i_strength' dip deeper on key frames. E.g.: 'if (f == info_match_last("event")) 0.25 else 0.50'</li>
-            <li>{bars_mark} Redistributed: Calculates uniform cadence distribution from cadence, 
-                but rearranges some keyframes to preserve proper keyframe synchronization at high cadence (e.g. '30').
-                Helps to prevent diffusion frames from being too close and should be slightly faster than additive,
-                but is also less predictable because some cadence frames are moved to match keyframes.</li>
-        </ol>
-        <div>{bulb_mark} Always set 'Keyframe strength' lower than 'Strength' so keyframes can really be key.</div>
-        <div>{bulb_mark} Avoid Dark Out: High cadence generations may have a tendency to dark over time.
+def create_keyframe_distribution_info_tab():
+    with FormRow():
+        gr.Markdown(f"""{warn_emoji} If Keyframe distribution is activated, the rendering will be processed in a
+            different, more experimental render core. **Some features are currently not- or not fully supported in the
+            new render core** and could lead to an error or to undesired results if not turned off.""")
+    create_accordion_md_row("Keyframe Distribution Info", f"""
+        ### Purpose & Description
+        * Keyframe distribution ensures that every frame with an entry in the Prompts-
+            or in the Parseq-table is diffused, ideally at a lower Strength.
+        * Since the experimental render core allows for high or no cadence,
+            the generation can be performed **much faster** compared to a traditional low cadence setup.
+        * Resulting videos tend to be **less jittery** at high or no cadence, but may introduce other visual artifacts
+            like 'depth smear' when combined with fast movement.
+            * {bulb_emoji} Most negative effects can still be mitigated,
+                by inserting lower strength frames in at regular intervals.
+
+        ### Distribution Modes
+        * **Off**: Key frames are not redistributed. Cadence settings are fully respected.
+            Process runs on stable render core with better support for complicated setups.
+        * **Keyframes Only**: Only frames with an entry in Prompts or in the Parseq table are diffused.
+            Actual cadence settings are ignored and all non-keyframes are handled as cadence frames.
+        * **Additive**: Is using cadence but adds keyframes. Takes more time to generate, 
+            but may help stabilizing the frames by doing diffusions in regular intervals.
+            Parseq Recommendation: Make high cadence setup and mark your frames with an 'Info' like "event", then
+            in 'i_strength' dip deeper on key frames. E.g.: 'if (f == info_match_last("event")) 0.25 else 0.50'.
+        * **Redistributed**: Calculates uniform cadence distribution from cadence, 
+            but rearranges some keyframes to preserve proper keyframe synchronization at high cadence (e.g. '30').
+            Helps to prevent diffusion frames from being too close and should be slightly faster than additive,
+            but is also less predictable because some cadence frames are moved to match keyframes.
+        """)
+    create_accordion_md_row("General Recommendations & Warnings", f"""
+        * Keyframe Distribution modes may most effectively be used at **high FPS** and with **high cadence**.
+            * Try FPS "60" and cadence "20".
+        * The diffusion process is either using 'strength' or 'keyframe_strength', depending on frame type.
+            * 'keyframe_strength' should be lower than 'strength', but is ignored when using Parseq.
+        * {warn_emoji} It's currently not recommended to try and use keyframe distribution together
+            with optical flow or with hybrid. Better keep this turned off.
+        * {warn_emoji} Optical Flow related settings may not behave as expected and are recommended
+            to be turned off when keyframe distribution is used (see tab "Keyframes", sub-tab "Coherence").
+        * Avoid Dark Out: High cadence generations may have a tendency to dark out over time.
             Make sure to still setup some diffusions with low strength at regular intervals.
-            Setting "Sampling mode" to "nearest" in "Depth Warping & FOW" can help a great deal against dark-outs.</div>
-        <div>{bulb_mark} Avoid Depth Smear: If you get 'depth smear', try to calculate and set the correct 
-            Aspect Ratio Schedule. Eg. "0: (1.777)" for 16:9 landscape or "0: (0.5625)" for 9:16 portrait.</div>
-        <div>{warn_mark} It's currently not recommended to try and use keyframe distribution together with optical flow
-            or with hybrid video.</div>
-    </p>""")
+            Setting "Sampling mode" to "nearest" in "Depth Warping & FOW" can help a great deal against dark-outs.
+        * Avoid Depth Smear: If you get 'depth smear', try to calculate and set the correct 
+            Aspect Ratio Schedule. Eg. "0: (1.777)" for 16:9 landscape or "0: (0.5625)" for 9:16 portrait.
+            It doesn't solve the problem, but may help mitigating it.
+            * Help clearing the canvas from time to time by diffusing some frames at low strength.
+            * A render at 0 keyframe strength could in theory solve practically all visual problems by resetting
+                the context, however that would is generally undesirable because it results in a cut in 
+                the resulting clip. Finding an ideal balance for strength values is key to a good setup.
+                * The optimal values highly depend on other variables such as cadence or calculated pseudo cadence.
+    """)
+    create_accordion_md_row("Deforum Setup Recommendations", f"""
+        * Set 'Keyframe strength' somewhat lower than 'Strength' so the keyframes can really be key.
+        * When using keyframe distributions, you can force keyframe creation at a specific frame by duplicating 
+            the previous prompt and give it the desired frame number. It will make sure that the frame is diffused with
+            the value defined in 'Keyframe strength' (ideally at higher denoise than cadence frames).
+    """)
+    create_accordion_md_row("Parseq Setup Recommendations", f"""
+        * Deforum prompt keyframes are ignored, instead all frames with an entry in Parseq are handled as keyframes.
+        * If Parseq is active, 'Keyframe strength' is also ignored, because you can provide the value for regular
+            'Strength' directly from Parseq, where you have more options to control the value directly, 
+            so there's no need for a secondary value.
+            * However, it's still recommended to create a similar setup with strength-dips at regular intervals.
+            * E.g: mark your all frames with an 'Info' like "event", then in 'i_strength' dip deeper on key frames 
+                with a formula like "if (f == info_match_last("event")) 0.25 else 0.50" (tune values as needed).
+    """)
+
+
+def create_accordion_md_row(name, markdown, is_open=False):
+    with FormRow():
+        with gr.Accordion(name, open=is_open):
+            gr.Markdown(markdown)
