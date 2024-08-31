@@ -20,27 +20,11 @@ from types import SimpleNamespace
 import gradio as gr
 # noinspection PyUnresolvedReferences
 from modules.ui_components import FormRow, FormColumn, ToolButton
-
+from .rendering.util import emoji_utils
 from .defaults import get_gradio_html, DeforumAnimPrompts
 from .gradio_funcs import (upload_vid_to_interpolate, upload_pics_to_interpolate,
                            ncnn_upload_vid_to_upscale, upload_vid_to_depth)
 from .video_audio_utilities import direct_stitch_vid_from_frames
-
-# Use sparingly to catch attention to essential items.
-# TODO? move elsewhere
-refresh_emoji = '\U0001f504'  # 🔄
-warn_emoji = '\U000026A0\U0000FE0F'  # ⚠️
-bulb_emoji = '\U0001F4A1'  # 💡
-run_emoji = '\U0000F3CE\U0000FE0F'  # 🏎️
-key_emoji = '\U0001F511'  # 🔑
-frame_emoji = '\U0001F5BC\U0000FE0F'  # 🖼️
-control_emoji = '\U0001F39B\U0000FE0F'  # 🎛️
-net_emoji = '\U0001F578\U0000FE0F'  # 🕸️
-prompts_emoji = '\U0000270D\U0000FE0F'  # ✍️
-cadence_emoji = '\U000023F1\U0000FE0F'  # ⏱️
-distribution_emoji = '\U0001F4CA'  # 📊
-strength_emoji = '\U0001F4AA'  # 💪
-scale_emoji = '\U0001F4CF'  # 📏
 
 
 def create_gr_elem(d):
@@ -80,7 +64,7 @@ def create_row(args, *attrs):
 # unless we have a gr.File inside that row/column, then we use gr.Row()/gr.Column() instead.
 # ******** Important message ********
 def get_tab_run(d, da):
-    with (gr.TabItem('Run')):  # RUN TAB
+    with (gr.TabItem(f"{emoji_utils.run()} Run")):  # RUN TAB
         motion_preview_mode = create_row(d.motion_preview_mode)
         sampler, scheduler, steps = create_row(d, 'sampler', 'scheduler', 'steps')
         W, H = create_row(d, 'W', 'H')
@@ -114,7 +98,7 @@ def get_tab_run(d, da):
 
 def get_tab_keyframes(d, da, dloopArgs):
     components = {}
-    with gr.TabItem('Keyframes'):  # TODO make a some sort of the original dictionary parsing
+    with gr.TabItem(f"{emoji_utils.key()} Keyframes"):  # TODO make a some sort of the original dictionary parsing
         with FormRow():
             with FormColumn(scale=2):
                 animation_mode = create_gr_elem(da.animation_mode)
@@ -139,18 +123,18 @@ def get_tab_keyframes(d, da, dloopArgs):
                 color_correction_factor = create_row(dloopArgs.color_correction_factor)
         # EXTRA SCHEDULES TABS
         with gr.Tabs():
-            with gr.TabItem(f"{distribution_emoji} Distribution"):
+            with gr.TabItem(f"{emoji_utils.distribution()} Distribution"):
                 keyframe_distribution = create_row(da.keyframe_distribution)
                 create_keyframe_distribution_info_tab()
-            with gr.TabItem('Strength'):
+            with gr.TabItem(f"{emoji_utils.strength()} Strength"):
                 strength_schedule = create_row(da.strength_schedule)
                 keyframe_strength_schedule = create_row(da.keyframe_strength_schedule)
-            with gr.TabItem('CFG'):
+            with gr.TabItem(f"{emoji_utils.scale()} CFG"):
                 cfg_scale_schedule = create_row(da.cfg_scale_schedule)
                 distilled_cfg_scale_schedule = create_row(da.distilled_cfg_scale_schedule)
                 enable_clipskip_scheduling = create_row(da.enable_clipskip_scheduling)
                 clipskip_schedule = create_row(da.clipskip_schedule)
-            with gr.TabItem('Seed'):
+            with gr.TabItem(f"{emoji_utils.seed()} Seed"):
                 seed_behavior = create_row(d.seed_behavior)
                 with FormRow() as seed_iter_N_row:
                     seed_iter_N = create_row(d.seed_iter_N)
@@ -179,11 +163,11 @@ def get_tab_keyframes(d, da, dloopArgs):
                 checkpoint_schedule = create_row(da.checkpoint_schedule)
         # MOTION INNER TAB
         with gr.Tabs(elem_id='motion_noise_etc'):
-            with gr.TabItem('Motion') as motion_tab:
+            with gr.TabItem(f"{emoji_utils.bicycle()} Motion") as motion_tab:
                 with FormColumn() as only_2d_motion_column:
                     with FormRow(variant="compact"):
                         zoom = create_gr_elem(da.zoom)
-                        reset_zoom_button = ToolButton(elem_id='reset_zoom_btn', value=refresh_emoji,
+                        reset_zoom_button = ToolButton(elem_id='reset_zoom_btn', value=emoji_utils.refresh,
                                                        tooltip="Reset zoom to static.")
                         components['zoom'] = zoom
 
@@ -200,7 +184,7 @@ def get_tab_keyframes(d, da, dloopArgs):
                 with FormColumn(visible=False) as only_3d_motion_column:
                     with FormRow():
                         translation_z = create_gr_elem(da.translation_z)
-                        reset_tr_z_button = ToolButton(elem_id='reset_tr_z_btn', value=refresh_emoji,
+                        reset_tr_z_button = ToolButton(elem_id='reset_tr_z_btn', value=emoji_utils.refresh,
                                                        tooltip="Reset translation Z to static.")
                         components['tr_z'] = translation_z
 
@@ -224,7 +208,7 @@ def get_tab_keyframes(d, da, dloopArgs):
                     perspective_flip_fv = create_gr_elem(da.perspective_flip_fv)
 
             # NOISE INNER TAB
-            with gr.TabItem('Noise'):
+            with gr.TabItem(f"{emoji_utils.wave()} Noise"):
                 with FormColumn() as noise_tab_column:
                     noise_type = create_row(da.noise_type)
                     noise_schedule = create_row(da.noise_schedule)
@@ -239,7 +223,7 @@ def get_tab_keyframes(d, da, dloopArgs):
                     enable_noise_multiplier_scheduling = create_row(da.enable_noise_multiplier_scheduling)
                     noise_multiplier_schedule = create_row(da.noise_multiplier_schedule)
             # COHERENCE INNER TAB
-            with gr.TabItem('Coherence', open=False) as coherence_accord:
+            with gr.TabItem(f"{emoji_utils.palette()} Coherence", open=False) as coherence_accord:
                 color_coherence, color_force_grayscale = create_row(
                     da, 'color_coherence', 'color_force_grayscale')
                 legacy_colormatch = create_row(da.legacy_colormatch)
@@ -274,12 +258,13 @@ def get_tab_keyframes(d, da, dloopArgs):
                 reroll_blank_frames, reroll_patience = create_row(
                     d, 'reroll_blank_frames', 'reroll_patience')
             # ANTI BLUR INNER TAB
-            with gr.TabItem('Anti Blur', elem_id='anti_blur_accord') as anti_blur_tab:
+            with gr.TabItem(f"{emoji_utils.broom()} Anti Blur", elem_id='anti_blur_accord') as anti_blur_tab:
                 amount_schedule = create_row(da.amount_schedule)
                 kernel_schedule = create_row(da.kernel_schedule)
                 sigma_schedule = create_row(da.sigma_schedule)
                 threshold_schedule = create_row(da.threshold_schedule)
-            with gr.TabItem('Depth Warping & FOV', elem_id='depth_warp_fov_tab') as depth_warp_fov_tab:
+            with gr.TabItem(f"{emoji_utils.hole()} Depth Warping & FOV", elem_id='depth_warp_fov_tab') \
+                    as depth_warp_fov_tab:
                 # this html only shows when not in 2d/3d mode
                 depth_warp_msg_html = gr.HTML(value='Please switch to 3D animation mode to view this section.',
                                               elem_id='depth_warp_msg_html')
@@ -308,7 +293,7 @@ def get_tab_keyframes(d, da, dloopArgs):
 
 
 def get_tab_prompts(da):
-    with gr.TabItem('Prompts'):
+    with gr.TabItem(f"{emoji_utils.prompts()} Prompts"):
         # PROMPTS INFO ACCORD
         with gr.Accordion(label='*Important* notes on Prompts', elem_id='prompts_info_accord',
                           open=False) as prompts_info_accord:
@@ -372,7 +357,7 @@ def get_tab_init(d, da, dp):
                 with FormColumn(min_width=250):
                     mask_brightness_adjust = create_gr_elem(d.mask_brightness_adjust)
         # PARSEQ INNER-TAB
-        with gr.Tab('Parseq'):
+        with gr.Tab(f"{emoji_utils.numbers()} Parseq"):
             gr.HTML(value=get_gradio_html('parseq'))
             parseq_manifest = create_row(dp.parseq_manifest)
             parseq_non_schedule_overrides = create_row(dp.parseq_non_schedule_overrides)
@@ -469,7 +454,7 @@ def get_tab_hybrid(da):
 
 
 def get_tab_output(da, dv):
-    with gr.TabItem('Output', elem_id='output_tab'):
+    with gr.TabItem(f"{emoji_utils.document()} Output", elem_id='output_tab'):
         # VID OUTPUT ACCORD
         with gr.Accordion('Video Output Settings', open=True):
             with FormRow() as fps_out_format_row:
@@ -554,7 +539,7 @@ def get_tab_output(da, dv):
                                                               frame_interpolation_keep_imgs, fps, add_soundtrack,
                                                               soundtrack_path])
         # VIDEO UPSCALE TAB - not built using our args.py at all - all data and params are here and in .upscaling file
-        with gr.TabItem('Video Upscaling'):
+        with gr.TabItem(f"{emoji_utils.up()} Video Upscaling"):
             vid_to_upscale_chosen_file = gr.File(label="Video to Upscale", interactive=True, file_count="single",
                                                  file_types=["video"], elem_id="vid_to_upscale_chosen_file")
             with gr.Column():
@@ -602,9 +587,10 @@ def get_tab_output(da, dv):
                 invert = gr.Checkbox(label='Closer is brighter', value=True, elem_id="invert")
             with FormRow():
                 end_blur = gr.Slider(label="End blur width", value=0, minimum=0, maximum=255, step=1)
-                midas_weight_vid2depth = gr.Slider(label="MiDaS weight (vid2depth)", value=da.midas_weight, minimum=0,
-                                                   maximum=1, step=0.05, interactive=True,
-                                                   info="sets a midpoint at which a depth-map is to be drawn: range [-1 to +1]")
+                midas_weight_vid2depth = gr.Slider(
+                    label="MiDaS weight (vid2depth)", value=da.midas_weight, minimum=0,
+                    maximum=1, step=0.05, interactive=True,
+                    info="sets a midpoint at which a depth-map is to be drawn: range [-1 to +1]")
                 depth_keep_imgs = gr.Checkbox(label='Keep Imgs', value=True, elem_id="depth_keep_imgs")
 
             # This is the actual button that's pressed to initiate the Upscaling:
@@ -618,7 +604,7 @@ def get_tab_output(da, dv):
                                     adapt_block_size, adapt_c, invert, end_blur, midas_weight_vid2depth,
                                     depth_keep_imgs])
         # STITCH FRAMES TO VID TAB
-        with gr.TabItem('Frames to Video') as stitch_imgs_to_vid_row:
+        with gr.TabItem(f"{emoji_utils.frames()} Frames to Video") as stitch_imgs_to_vid_row:
             gr.HTML(value=get_gradio_html('frames_to_video'))
             image_path = create_row(dv.image_path)
             ffmpeg_stitch_imgs_but = gr.Button(value="*Stitch frames to video*")
@@ -629,7 +615,7 @@ def get_tab_output(da, dv):
 
 def create_keyframe_distribution_info_tab():
     create_row(gr.Markdown(f"""
-        {warn_emoji} If Keyframe distribution is activated, the rendering will be processed in a
+        {emoji_utils.warn} If Keyframe distribution is activated, the rendering will be processed in a
             different, more experimental render core. **Some features are currently not- or not fully supported in the
             new render core** and could lead to an error or to undesired results if not turned off."""))
     create_accordion_md_row("Keyframe Distribution Info", f"""
@@ -640,7 +626,7 @@ def create_keyframe_distribution_info_tab():
             the generation can be performed **much faster** compared to a traditional low cadence setup.
         * Resulting videos tend to be **less jittery** at high or no cadence, but may introduce other visual artifacts
             like 'depth smear' when combined with fast movement.
-            * {bulb_emoji} Most negative effects can still be mitigated,
+            * {emoji_utils.bulb()} Most negative effects can still be mitigated,
                 by inserting lower strength frames in at regular intervals.
 
         ### Distribution Modes
@@ -662,9 +648,9 @@ def create_keyframe_distribution_info_tab():
             * Try FPS "60" and cadence "20".
         * The diffusion process is either using 'strength' or 'keyframe_strength', depending on frame type.
             * 'keyframe_strength' should be lower than 'strength', but is ignored when using Parseq.
-        * {warn_emoji} It's currently not recommended to try and use keyframe distribution together
+        * {emoji_utils.warn} It's currently not recommended to try and use keyframe distribution together
             with optical flow or with hybrid. Better keep this turned off.
-        * {warn_emoji} Optical Flow related settings may not behave as expected and are recommended
+        * {emoji_utils.warn} Optical Flow related settings may not behave as expected and are recommended
             to be turned off when keyframe distribution is used (see tab "Keyframes", sub-tab "Coherence").
         * Avoid Dark Out: High cadence generations may have a tendency to dark out over time.
             Make sure to still setup some diffusions with low strength at regular intervals.

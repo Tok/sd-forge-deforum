@@ -278,11 +278,9 @@ class DiffusionFrame:
         # TODO change implementation so KeyFrames can be instantiated without any pre-calculations.
         if keyframe_distribution is KeyFrameDistribution.OFF:
             return 0  # not relevant
-        if keyframe_distribution is KeyFrameDistribution.KEYFRAMES_ONLY:
-            if data.parseq_adapter.use_parseq:
-                return len(data.parseq_adapter.parseq_json["keyframes"])
-            else:
-                return len(data.args.root.prompt_keyframes)
+        elif keyframe_distribution is KeyFrameDistribution.KEYFRAMES_ONLY:
+            return len(data.parseq_adapter.parseq_json["keyframes"]) if data.parseq_adapter.use_parseq \
+                else len(data.args.root.prompt_keyframes) + 1  # +1 because last frame is not defined in prompts
         elif keyframe_distribution is KeyFrameDistribution.REDISTRIBUTED:
             return 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
         elif keyframe_distribution is KeyFrameDistribution.ADDITIVE:
@@ -311,8 +309,10 @@ class DiffusionFrame:
         return recalculated_frames
 
     @staticmethod
-    def _recalculate_and_check_tweens(data, diffusion_frames, start_index, diffusion_frame_count, keyframe_distribution):
+    def _recalculate_and_check_tweens(data, diffusion_frames, start_index, diffusion_frame_count,
+                                      keyframe_distribution):
         assert diffusion_frame_count == len(diffusion_frames)  # FIXME? calculate instead of pass diffusion_frame_count
+
         # TODO move everything here into KeyFrame.create
         # Applies `strength_schedule` if Parseq is active or if there is no entry with index i in the Deforum prompts.
         # otherwise `keyframe_strength_schedule` is applied, which should be set lower (=more denoise on keyframes).

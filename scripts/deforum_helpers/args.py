@@ -16,19 +16,21 @@
 
 import json
 import os
+import pathlib
 import tempfile
 import time
 from types import SimpleNamespace
+
 import modules.paths as ph
 import modules.shared as sh
+from PIL import Image
 from modules.processing import get_fixed_seed
+
 from .defaults import (get_guided_imgs_default_json, get_keyframe_distribution_list,
                        get_samplers_list, get_schedulers_list)
 from .deforum_controlnet import controlnet_component_names
 from .general_utils import get_os, substitute_placeholders
 
-from PIL import Image
-import pathlib
 
 def RootArgs():
     return {
@@ -54,7 +56,9 @@ def RootArgs():
         "tmp_deforum_run_duplicated_folder": os.path.join(tempfile.gettempdir(), 'tmp_run_deforum')
     }
 
-# 'Midas-3.1-BeitLarge' is temporarily removed until fixed. Can add it back anytime as it's supported in the back-end depth code
+
+# 'Midas-3.1-BeitLarge' is temporarily removed until fixed. Can add it back anytime
+# as it's supported in the back-end depth code
 def DeforumAnimArgs():
     return {
         "animation_mode": {
@@ -68,7 +72,7 @@ def DeforumAnimArgs():
             "label": "Max frames",
             "type": "number",
             "precision": 0,
-            "value": 120,
+            "value": 333,
             "info": "end the animation at this frame number",
         },
         "border": {
@@ -84,21 +88,18 @@ def DeforumAnimArgs():
             "value": "0: (0)",
             "info": "rotate canvas clockwise/anticlockwise in degrees per frame"
         },
-
         "zoom": {
             "label": "Zoom",
             "type": "textbox",
-            "value": "0: (1.0025+0.002*sin(1.25*3.14*t/30))",
+            "value": "0: (1.0025+0.002*sin(1.25*3.14*t/120))",
             "info": "scale the canvas size, multiplicatively. [static = 1.0]"
         },
-
         "translation_x": {
             "label": "Translation X",
             "type": "textbox",
             "value": "0: (0)",
             "info": "move canvas left/right in pixels per frame"
         },
-
         "translation_y": {
             "label": "Translation Y",
             "type": "textbox",
@@ -117,7 +118,6 @@ def DeforumAnimArgs():
             "value": "0: (0.5)",
             "info": "X center axis for 2D angle/zoom"
         },
-
         "transform_center_y": {
             "label": "Transform Center Y",
             "type": "textbox",
@@ -181,20 +181,20 @@ def DeforumAnimArgs():
         "strength_schedule": {
             "label": "Strength schedule",
             "type": "textbox",
-            "value": "0: (0.65)",
+            "value": "0: (0.85)",
             "info": "amount of presence of previous frame to influence next frame, also controls steps in the following formula [steps - (strength_schedule * steps)]"
         },
         "keyframe_strength_schedule": {
             "label": "Strength schedule for keyframes",
             "type": "textbox",
-            "value": "0: (0.30)",
+            "value": "0: (0.25)",
             "info": "like 'Strength schedule' but only for frames with an entry in 'prompts'. Meant to be set somewhat lower than the regular Strengh schedule. At 0 it generates a totally new image on every prompt change. Ignored if Parseq is used or when Keyframe distribustion is disabled."
         },
         "contrast_schedule": "0: (1.0)",
         "cfg_scale_schedule": {
             "label": "CFG scale schedule",
             "type": "textbox",
-            "value": "0: (7)",
+            "value": "0: (1.0)",
             "info": "how closely the image should conform to the prompt. Lower values produce more creative results. (recommended value for Flux.1: 1.0, 5-15 with other models)"
         },
         "distilled_cfg_scale_schedule": {
@@ -212,7 +212,7 @@ def DeforumAnimArgs():
         "steps_schedule": {
             "label": "Steps schedule",
             "type": "textbox",
-            "value": "0: (25)",
+            "value": "0: (20)",
             "info": "mainly allows using more than 200 steps. Otherwise, it's a mirror-like param of 'strength schedule'"
         },
         "fov_schedule": {
@@ -224,7 +224,7 @@ def DeforumAnimArgs():
         "aspect_ratio_schedule": {
             "label": "Aspect Ratio schedule",
             "type": "textbox",
-            "value": "0: (1)",
+            "value": "0: (1.777)",
             "info": "adjusts the aspect ratio for the depth calculations"
         },
         "aspect_ratio_use_old_formula": {
@@ -254,7 +254,7 @@ def DeforumAnimArgs():
         "pix2pix_img_cfg_scale_schedule": {
             "label": "Pix2Pix img CFG schedule",
             "type": "textbox",
-            "value": "0:(1.5)",
+            "value": "0:(1.0)",
             "info": "ONLY in use when working with a P2P ckpt!"
         },
         "pix2pix_img_distilled_cfg_scale_schedule": {
@@ -368,7 +368,7 @@ def DeforumAnimArgs():
         "resume_timestring": {
             "label": "Resume timestring",
             "type": "textbox",
-            "value": "20230129210106",
+            "value": "20241111111111",
             "info": ""
         },
         "enable_ddim_eta_scheduling": {
@@ -426,7 +426,7 @@ def DeforumAnimArgs():
             "label": "Color coherence",
             "type": "dropdown",
             "choices": ['None', 'HSV', 'LAB', 'RGB', 'Video Input', 'Image'],
-            "value": "LAB",
+            "value": "None",
             "info": "choose an algorithm/ method for keeping color coherence across the animation"
         },
         "color_coherence_image_path": {
@@ -465,9 +465,9 @@ def DeforumAnimArgs():
             "label": "Cadence",
             "type": "slider",
             "minimum": 1,
-            "maximum": 50,
+            "maximum": 200,
             "step": 1,
-            "value": 2,
+            "value": 10,
             "info": "# of in-between frames that will not be directly diffused"
         },
         "optical_flow_cadence": {
@@ -745,6 +745,7 @@ def DeforumAnimArgs():
         "hybrid_comp_save_extra_frames": False
     }
 
+
 def DeforumArgs():
     return {
         "W": {
@@ -752,16 +753,16 @@ def DeforumArgs():
             "type": "slider",
             "minimum": 64,
             "maximum": 2048,
-            "step": 64,
-            "value": 512,
+            "step": 4,
+            "value": 1280,
         },
         "H": {
             "label": "Height",
             "type": "slider",
             "minimum": 64,
             "maximum": 2048,
-            "step": 64,
-            "value": 512,
+            "step": 4,
+            "value": 720,
         },
         "show_info_on_ui": True,
         "tiling": {
@@ -817,7 +818,7 @@ def DeforumArgs():
             "minimum": 1,
             "maximum": 200,
             "step": 1,
-            "value": 25,
+            "value": 20,
         },
         "batch_name": {
             "label": "Batch name",
@@ -851,7 +852,7 @@ def DeforumArgs():
             "minimum": 0,
             "maximum": 1,
             "step": 0.01,
-            "value": 0.8,
+            "value": 0.85,
             "info": "the inverse of denoise; lower values alter the init image more (high denoise); higher values alter it less (low denoise)"
         },
         "strength_0_no_init": {
@@ -967,8 +968,9 @@ def DeforumArgs():
             "type": "checkbox",
             "value": False,
             "info": "Preview motion only. Uses a static picture for init, and draw motion reference rectangle."
-        },        
+        },
     }
+
 
 def LoopArgs():
     return {
@@ -986,7 +988,7 @@ def LoopArgs():
         "image_strength_schedule": {
             "label": "Image strength schedule",
             "type": "textbox",
-            "value": "0:(0.75)",
+            "value": "0:(0.85)",
         },
         "image_keyframe_strength_schedule": {
             "label": "Image strength schedule",
@@ -1015,6 +1017,7 @@ def LoopArgs():
         }
     }
 
+
 def ParseqArgs():
     return {
         "parseq_manifest": {
@@ -1037,6 +1040,7 @@ def ParseqArgs():
         },
     }
 
+
 def FreeUArgs():
     return {
         "freeu_enabled": {
@@ -1056,7 +1060,7 @@ def FreeUArgs():
             "type": "textbox",
             "value": "0:(1.4)",
             "info": "backbone factor of the second stage block of decoder",
-        },        
+        },
         "freeu_s1": {
             "label": "Skip stage 1",
             "type": "textbox",
@@ -1070,6 +1074,7 @@ def FreeUArgs():
             "info": "skip factor of the second stage block of decoder",
         },
     }
+
 
 def KohyaHRFixArgs():
     return {
@@ -1121,6 +1126,7 @@ def KohyaHRFixArgs():
         }
     }
 
+
 def DeforumOutputArgs():
     return {
         "skip_video_creation": {
@@ -1135,7 +1141,7 @@ def DeforumOutputArgs():
             "minimum": 1,
             "maximum": 240,
             "step": 1,
-            "value": 15,
+            "value": 60,
         },
         "make_gif": {
             "label": "Make GIF",
@@ -1158,19 +1164,19 @@ def DeforumOutputArgs():
         "image_path": {
             "label": "Image path",
             "type": "textbox",
-            "value": "C:/SD/20230124234916_%09d.png",
+            "value": "C:/SD/20241111111111_%09d.png",
         },
         "add_soundtrack": {
             "label": "Add soundtrack",
             "type": "radio",
             "choices": ['None', 'File', 'Init Video'],
-            "value": "None",
+            "value": "File",
             "info": "add audio to video from file/url or init video"
         },
         "soundtrack_path": {
             "label": "Soundtrack path",
             "type": "textbox",
-            "value": "https://deforum.github.io/a1/A1.mp3",
+            "value": "https://ia801303.us.archive.org/26/items/amen-breaks/cw_amen13_173.mp3",
             "info": "abs. path or url to audio file"
         },
         "r_upscale_video": {
@@ -1247,19 +1253,24 @@ def DeforumOutputArgs():
             "value": False,
             "info": "Interpolate upscaled images, if available",
             "visible": False
-        },        
-
+        },
     }
 
+
 def get_component_names():
-    return ['override_settings_with_file', 'custom_settings_file', *DeforumAnimArgs().keys(), 'animation_prompts', 'animation_prompts_positive', 'animation_prompts_negative',
-            *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(), *LoopArgs().keys(), *controlnet_component_names(), *FreeUArgs().keys(), *KohyaHRFixArgs().keys()]
+    return ['override_settings_with_file', 'custom_settings_file', *DeforumAnimArgs().keys(), 'animation_prompts',
+            'animation_prompts_positive', 'animation_prompts_negative',
+            *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(), *LoopArgs().keys(),
+            *controlnet_component_names(), *FreeUArgs().keys(), *KohyaHRFixArgs().keys()]
+
 
 def get_settings_component_names():
     return [name for name in get_component_names()]
 
+
 def pack_args(args_dict, keys_function):
     return {name: args_dict[name] for name in keys_function()}
+
 
 def process_args(args_dict_main, run_id):
     from .settings import load_args
@@ -1281,13 +1292,16 @@ def process_args(args_dict_main, run_id):
 
     args_loaded_ok = True
     if override_settings_with_file:
-        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, custom_settings_file, root, run_id)
+        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args,
+                                   kohya_hrfix_args, video_args, custom_settings_file, root, run_id)
 
     positive_prompts = args_dict_main['animation_prompts_positive']
     negative_prompts = args_dict_main['animation_prompts_negative']
-    negative_prompts = negative_prompts.replace('--neg', '')  # remove --neg from negative_prompts if received by mistake
+    negative_prompts = negative_prompts.replace('--neg',
+                                                '')  # remove --neg from negative_prompts if received by mistake
     root.prompt_keyframes = [key for key in root.animation_prompts.keys()]
-    root.animation_prompts = {key: f"{positive_prompts} {val} {'' if '--neg' in val else '--neg'} {negative_prompts}" for key, val in root.animation_prompts.items()}
+    root.animation_prompts = {key: f"{positive_prompts} {val} {'' if '--neg' in val else '--neg'} {negative_prompts}"
+                              for key, val in root.animation_prompts.items()}
 
     if args.seed == -1:
         root.raw_seed = -1
@@ -1299,7 +1313,6 @@ def process_args(args_dict_main, run_id):
     args.prompts = json.loads(args_dict_main['animation_prompts'])
     args.positive_prompts = args_dict_main['animation_prompts_positive']
     args.negative_prompts = args_dict_main['animation_prompts_negative']
-
 
     if not args.use_init and not anim_args.hybrid_use_init_image:
         args.init_image = None
@@ -1320,7 +1333,7 @@ def process_args(args_dict_main, run_id):
 
     default_img = Image.open(os.path.join(pathlib.Path(__file__).parent.absolute(), '114763196.jpg'))
     assert default_img is not None
-    default_img = default_img.resize((args.W,args.H))
+    default_img = default_img.resize((args.W, args.H))
     root.default_img = default_img
 
     return args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args

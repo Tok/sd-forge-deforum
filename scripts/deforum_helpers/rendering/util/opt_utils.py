@@ -13,6 +13,10 @@ def is_verbose():
     return opts.data.get("deforum_debug_mode_enabled", False)
 
 
+def is_nonessential_emojis_disabled():
+    return opts.data.get("deforum_disable_nonessential_emojis", False)
+
+
 def has_img2img_fix_steps():
     return 'img2img_fix_steps' in opts.data and opts.data["img2img_fix_steps"]
 
