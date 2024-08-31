@@ -29,39 +29,39 @@ class KeyFrameDistribution(Enum):
     def default():
         return KeyFrameDistribution.OFF
 
-    def calculate(self, data, start_index, num_key_steps) -> List[int]:
+    def calculate(self, data, start_index, diffusion_frame_count) -> List[int]:
         max_frames = data.args.anim_args.max_frames
         match self:
             case KeyFrameDistribution.OFF:
                 # To get here on purpose, override `is_use_new_render_core` in render.py
                 log_utils.warn("Called new core without keyframe distribution. Using uniform from cadence'.")
-                return self.uniform_indexes(start_index, max_frames, num_key_steps)
+                return self.uniform_indexes(start_index, max_frames, diffusion_frame_count)
             case KeyFrameDistribution.KEYFRAMES_ONLY:
                 return self.select_keyframes(data)
             case KeyFrameDistribution.ADDITIVE:
                 return self._additive(data, start_index, max_frames)
             case KeyFrameDistribution.REDISTRIBUTED:
-                return self._redistributed(data, start_index, max_frames, num_key_steps)
+                return self._redistributed(data, start_index, max_frames, diffusion_frame_count)
             case _:
                 raise ValueError(f"Invalid KeyFrameDistribution: {self}")
 
     @staticmethod
-    def uniform_indexes(start_index, max_frames, num_key_steps):
-        return [1 + start_index + int(n * (max_frames - 1 - start_index) / (num_key_steps - 1))
-                for n in range(num_key_steps)]
+    def uniform_indexes(start_index, max_frames, diffusion_frame_count):
+        return [1 + start_index + int(n * (max_frames - 1 - start_index) / (diffusion_frame_count - 1))
+                for n in range(diffusion_frame_count)]
 
     @staticmethod
     def _additive(data, start_index, max_frames):
         """Calculates uniform indices according to cadence and adds keyframes defined by Parseq or Deforum prompt."""
-        temp_num_key_steps = 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
-        uniform_indices = KeyFrameDistribution.uniform_indexes(start_index, max_frames, temp_num_key_steps)
+        temp_diffusion_frame_count = 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
+        uniform_indices = KeyFrameDistribution.uniform_indexes(start_index, max_frames, temp_diffusion_frame_count)
         keyframes = KeyFrameDistribution.select_keyframes(data)
         return KeyFrameDistribution._merge_with_uniform(uniform_indices, keyframes)
 
     @staticmethod
-    def _redistributed(data, start_index, max_frames, num_key_steps):
+    def _redistributed(data, start_index, max_frames, diffusion_frame_count):
         """Calculates uniform indices according to cadence, but keyframes replace the closest cadence frame."""
-        uniform_indices = KeyFrameDistribution.uniform_indexes(start_index, max_frames, num_key_steps)
+        uniform_indices = KeyFrameDistribution.uniform_indexes(start_index, max_frames, diffusion_frame_count)
         keyframes = KeyFrameDistribution.select_keyframes(data)
         keyframes_set = set(uniform_indices)  # set for faster membership checks
 
@@ -75,7 +75,7 @@ class KeyFrameDistribution(Enum):
 
         key_frames = list(keyframes_set)
         key_frames.sort()
-        assert len(key_frames) == num_key_steps
+        assert len(key_frames) == diffusion_frame_count
         return key_frames
 
     @staticmethod

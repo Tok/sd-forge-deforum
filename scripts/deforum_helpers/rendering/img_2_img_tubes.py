@@ -5,7 +5,7 @@ import numpy as np
 from PIL import ImageOps, Image
 from cv2.typing import MatLike
 
-from .data.frame.key_frame import KeyFrame
+from .data.frame.diffusion_frame import DiffusionFrame
 from .data.render_data import RenderData
 from .util import image_utils
 from .util.call.hybrid import call_hybrid_composite
@@ -32,39 +32,39 @@ ImageTube = Callable[[MatLike], MatLike]
 PilImageTube = Callable[[Image.Image], Image.Image]
 
 
-def frame_transformation_tube(data: RenderData, key_frame: KeyFrame) -> ImageTube:
+def frame_transformation_tube(data: RenderData, frame: DiffusionFrame) -> ImageTube:
     # make sure `img` stays the last argument in each call.
-    return tube(lambda img: key_frame.apply_frame_warp_transform(data, img),
-                lambda img: key_frame.do_hybrid_compositing_before_motion(data, img),
-                lambda img: KeyFrame.apply_hybrid_motion_ransac_transform(data, img),
-                lambda img: KeyFrame.apply_hybrid_motion_optical_flow(data, key_frame, img),
-                lambda img: key_frame.do_normal_hybrid_compositing_after_motion(data, img),
-                lambda img: KeyFrame.apply_color_matching(data, img),
-                lambda img: KeyFrame.transform_to_grayscale_if_active(data, img))
+    return tube(lambda img: frame.apply_frame_warp_transform(data, img),
+                lambda img: frame.do_hybrid_compositing_before_motion(data, img),
+                lambda img: DiffusionFrame.apply_hybrid_motion_ransac_transform(data, img),
+                lambda img: DiffusionFrame.apply_hybrid_motion_optical_flow(data, frame, img),
+                lambda img: frame.do_normal_hybrid_compositing_after_motion(data, img),
+                lambda img: DiffusionFrame.apply_color_matching(data, img),
+                lambda img: DiffusionFrame.transform_to_grayscale_if_active(data, img))
 
 
-def contrast_transformation_tube(data: RenderData, key_frame: KeyFrame) -> ImageTube:
-    return tube(lambda img: key_frame.apply_scaling(img),
-                lambda img: key_frame.apply_anti_blur(data, img))
+def contrast_transformation_tube(data: RenderData, frame: DiffusionFrame) -> ImageTube:
+    return tube(lambda img: frame.apply_scaling(img),
+                lambda img: frame.apply_anti_blur(data, img))
 
 
-def noise_transformation_tube(data: RenderData, key_frame: KeyFrame) -> ImageTube:
-    return tube(lambda img: key_frame.apply_frame_noising(data, key_frame, img))
+def noise_transformation_tube(data: RenderData, frame: DiffusionFrame) -> ImageTube:
+    return tube(lambda img: frame.apply_frame_noising(data, frame, img))
 
 
-def optical_flow_redo_tube(data: RenderData, key_frame: KeyFrame, optical_flow) -> ImageTube:
+def optical_flow_redo_tube(data: RenderData, frame: DiffusionFrame, optical_flow) -> ImageTube:
     return tube(lambda img: image_utils.pil_to_numpy(img),
                 lambda img: image_utils.bgr_to_rgb(img),
                 lambda img: image_transform_optical_flow(
                     img, get_flow_from_images(data.images.previous, img, optical_flow, data.animation_mode.raft_model),
-                    key_frame.step_data.redo_flow_factor))
+                    frame.frame_data.redo_flow_factor))
 
 
 # Conditional Tubes (can be switched on or off by providing a Callable[Boolean] `is_do_process` predicate).
-def conditional_hybrid_video_after_generation_tube(key_frame: KeyFrame) -> PilImageTube:
-    data = key_frame.render_data
-    step_data = key_frame.step_data
-    return tube(lambda img: call_hybrid_composite(data, data.indexes.frame.i, img, step_data.hybrid_comp_schedules),
+def conditional_hybrid_video_after_generation_tube(frame: DiffusionFrame) -> PilImageTube:
+    data = frame.render_data
+    fd = frame.frame_data
+    return tube(lambda img: call_hybrid_composite(data, data.indexes.frame.i, img, fd.hybrid_comp_schedules),
                 lambda img: image_utils.numpy_to_pil(img),
                 is_do_process=lambda: data.indexes.is_not_first_frame() and data.is_hybrid_composite_after_generation())
 
@@ -79,10 +79,10 @@ def conditional_extra_color_match_tube(data: RenderData) -> PilImageTube:
                     data.images.color_match))
 
 
-def conditional_color_match_tube(key_frame: KeyFrame) -> ImageTube:
+def conditional_color_match_tube(frame: DiffusionFrame) -> ImageTube:
     # on strength 0, set color match to generation
     return tube(lambda img: image_utils.bgr_to_rgb(np.asarray(img)),
-                is_do_process=lambda: key_frame.render_data.is_do_color_match_conversion(key_frame))
+                is_do_process=lambda: frame.render_data.is_do_color_match_conversion(frame))
 
 
 def conditional_force_to_grayscale_tube(data: RenderData) -> PilImageTube:
@@ -108,16 +108,16 @@ def conditional_force_tween_to_grayscale_tube(data: RenderData) -> ImageTube:
 
 
 # Composite Tubes, made from other Tubes.
-def contrasted_noise_transformation_tube(data: RenderData, key_frame: KeyFrame) -> ImageTube:
+def contrasted_noise_transformation_tube(data: RenderData, frame: DiffusionFrame) -> ImageTube:
     """Combines contrast and noise transformation tubes."""
-    contrast_tube: ImageTube = contrast_transformation_tube(data, key_frame)
-    noise_tube: ImageTube = noise_transformation_tube(data, key_frame)
+    contrast_tube: ImageTube = contrast_transformation_tube(data, frame)
+    noise_tube: ImageTube = noise_transformation_tube(data, frame)
     return tube(lambda img: noise_tube(contrast_tube(img)))
 
 
-def conditional_frame_transformation_tube(key_frame: KeyFrame, is_tween: bool = False) -> PilImageTube:
-    hybrid_tube: PilImageTube = conditional_hybrid_video_after_generation_tube(key_frame)
-    extra_tube: PilImageTube = conditional_extra_color_match_tube(key_frame.render_data)
-    gray_tube: PilImageTube = conditional_force_to_grayscale_tube(key_frame.render_data)
-    mask_tube: PilImageTube = conditional_add_overlay_mask_tube(key_frame.render_data, is_tween)
+def conditional_frame_transformation_tube(frame: DiffusionFrame, is_tween: bool = False) -> PilImageTube:
+    hybrid_tube: PilImageTube = conditional_hybrid_video_after_generation_tube(frame)
+    extra_tube: PilImageTube = conditional_extra_color_match_tube(frame.render_data)
+    gray_tube: PilImageTube = conditional_force_to_grayscale_tube(frame.render_data)
+    mask_tube: PilImageTube = conditional_add_overlay_mask_tube(frame.render_data, is_tween)
     return tube(lambda img: mask_tube(gray_tube(extra_tube(hybrid_tube(img)))))

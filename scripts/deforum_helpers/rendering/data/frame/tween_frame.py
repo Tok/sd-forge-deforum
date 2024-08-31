@@ -22,12 +22,6 @@ class Tween:
     def i(self):
         return self.indexes.tween.i
 
-    def from_key_step_i(self):
-        return self.indexes.frame.start
-
-    def to_key_step_i(self):
-        return self.indexes.frame.i
-
     def emit_frame(self, last_frame, grayscale_tube, overlay_mask_tube):
         """Emits this tween frame."""
         max_frames = last_frame.render_data.args.anim_args.max_frames

@@ -7,7 +7,7 @@ from modules.shared import cmd_opts, progress_print_out, state
 from tqdm import tqdm
 
 from . import img_2_img_tubes
-from .data.frame import KeyFrameDistribution, KeyFrame
+from .data.frame import KeyFrameDistribution, DiffusionFrame
 from .data.render_data import RenderData
 from .util import filename_utils, image_utils, log_utils, opt_utils, memory_utils, web_ui_utils
 
@@ -18,12 +18,12 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
     _check_render_conditions(data)
     web_ui_utils.init_job(data)
-    key_frames = KeyFrame.create_all_frames(data, KeyFrameDistribution.from_UI_tab(data))
-    run_render_animation(data, key_frames)
+    diffusion_frames = DiffusionFrame.create_all_frames(data, KeyFrameDistribution.from_UI_tab(data))
+    run_render_animation(data, diffusion_frames)
     data.animation_mode.unload_raft_and_depth_model()
 
 
-def run_render_animation(data: RenderData, diffusion_frames: List[KeyFrame]):
+def run_render_animation(data: RenderData, diffusion_frames: List[DiffusionFrame]):
     for diffusion_frame in diffusion_frames:
         if is_resume(data, diffusion_frame):
             continue
@@ -65,13 +65,13 @@ def is_resume(data, diffusion_frame):
     return is_file_existing
 
 
-def emit_tweens(data, key_step):
-    _update_pseudo_cadence(data, len(key_step.tweens) - 1)
-    log_utils.print_tween_frame_from_to_info(key_step)
+def emit_tweens(data, frame):
+    _update_pseudo_cadence(data, len(frame.tweens) - 1)
+    log_utils.print_tween_frame_from_to_info(frame)
     grayscale_tube = img_2_img_tubes.conditional_force_tween_to_grayscale_tube
     overlay_mask_tube = img_2_img_tubes.conditional_add_overlay_mask_tube
-    tweens = _tweens_with_progress(key_step)
-    [tween.emit_frame(key_step, grayscale_tube, overlay_mask_tube) for tween in tweens]
+    tweens = _tweens_with_progress(frame)
+    [tween.emit_frame(frame, grayscale_tube, overlay_mask_tube) for tween in tweens]
 
 
 def _check_render_conditions(data):
@@ -96,11 +96,11 @@ def _update_pseudo_cadence(data, value):
     data.args.anim_args.cadence_flow_factor_schedule = f"0: ({value})"
 
 
-def _tweens_with_progress(key_step):
+def _tweens_with_progress(frame):
     # only use tween progress bar when extra console output (aka "dev mode") is disabled.
     if not opt_utils.is_verbose():
         log_utils.clear_previous_line()
         # TODO use modules.shared.total_tqdm
-        return tqdm(key_step.tweens, desc="Tweens progress", file=progress_print_out,
+        return tqdm(frame.tweens, desc="Tweens progress", file=progress_print_out,
                     disable=cmd_opts.disable_console_progressbars, colour='#FFA468')
-    return key_step.tweens
+    return frame.tweens

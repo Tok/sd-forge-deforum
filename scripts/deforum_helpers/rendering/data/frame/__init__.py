@@ -1,4 +1,4 @@
 from .key_frame_distribution import KeyFrameDistribution
-from .key_frame_data import KeyFrameData
-from .key_frame import KeyFrame
+from .diffusion_frame_data import DiffusionFrameData
+from .diffusion_frame import DiffusionFrame
 from .tween_frame import Tween

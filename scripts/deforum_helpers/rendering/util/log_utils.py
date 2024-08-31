@@ -30,11 +30,11 @@ def clear_previous_line():
     print(f"{ESC}F{ESC}K", end="")  # "F" is cursor up, "K" is clear line.
 
 
-def print_tween_frame_from_to_info(key_step, is_disabled=True):
+def print_tween_frame_from_to_info(frame, is_disabled=True):
     if not is_disabled:  # replaced with prog bar, but value info print may be useful
-        tween_values = key_step.tween_values
-        start_i = key_step.tweens[0].i()
-        end_i = key_step.tweens[-1].i()
+        tween_values = frame.tween_values
+        start_i = frame.tweens[0].i()
+        end_i = frame.tweens[-1].i()
         if end_i > 0:
             formatted_values = [f"{val:.2f}" for val in tween_values]
             count = end_i - start_i + 1
@@ -67,14 +67,14 @@ def print_redo_generation_info(data, n):
     print(f"Redo generation {n + 1} of {int(data.args.anim_args.diffusion_redo)} before final generation")
 
 
-def print_tween_step_creation_info(key_frames, index_dist):
+def print_tween_frame_creation_info(key_frames, index_dist):
     tween_count = sum(len(ks.tweens) for ks in key_frames)
     msg_start = f"Created {len(key_frames)} key frames with {tween_count} tweens."
     msg_end = f"Key frame index distribution: '{index_dist.name}'."
     info(f"{msg_start} {msg_end}")
 
 
-def print_key_step_debug_info_if_verbose(diffusion_frames):
+def print_key_frame_debug_info_if_verbose(diffusion_frames):
     for i, df in enumerate(diffusion_frames):
         tween_indices = [t.i() for t in df.tweens]
         frame_type = "Key Frame" if df.is_keyframe else "    Frame"

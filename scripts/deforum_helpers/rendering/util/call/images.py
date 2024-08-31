@@ -1,10 +1,11 @@
 from ....load_images import get_mask_from_file
 from ....noise import add_noise
+from ....video_audio_utilities import get_next_frame
 
 
-def call_add_noise(init, step, image):
+def call_add_noise(init, frame, image):
     aa = init.args.anim_args
-    amount: float = step.step_data.noise
+    amount: float = frame.frame_data.noise
     seed: int = init.args.args.seed
     n_type: str = aa.noise_type
     perlin_arguments = (aa.perlin_w, aa.perlin_h, aa.perlin_octaves, aa.perlin_persistence)
