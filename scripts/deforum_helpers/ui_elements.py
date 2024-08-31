@@ -169,6 +169,11 @@ def get_tab_keyframes(d, da, dloopArgs):
                     enable_checkpoint_scheduling = create_gr_elem(da.enable_checkpoint_scheduling)
                 with FormRow():
                     checkpoint_schedule = create_gr_elem(da.checkpoint_schedule)
+            with gr.TabItem('Distribution'):
+                with FormRow():
+                    keyframe_distribution = create_gr_elem(da.keyframe_distribution)
+                with FormRow():
+                    create_keyframe_distribution_info()
         # MOTION INNER TAB
         refresh_symbol = '\U0001f504'  # 🔄
         with gr.Tabs(elem_id='motion_noise_etc'):
@@ -400,10 +405,6 @@ def get_tab_init(d, da, dp):
                 parseq_non_schedule_overrides = create_gr_elem(dp.parseq_non_schedule_overrides)
             with FormRow():
                 parseq_use_deltas = create_gr_elem(dp.parseq_use_deltas)
-            gr.HTML(value=f"""<br/>""")
-            with FormRow():  # TODO move to new sub-tab in keyframes
-                keyframe_distribution = create_gr_elem(da.keyframe_distribution)
-            create_keyframe_distribution_info()
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 def get_tab_freeu(dfu : SimpleNamespace):
@@ -638,40 +639,46 @@ def get_tab_output(da, dv):
 
 
 def create_keyframe_distribution_info():
+    # TODO only display essential info and move the rest into an Accordion. Separate Parseq info into a 2nd Accordion.
     bars_mark = "&#x1F4CA;"
     bulb_mark = "&#x1F4A1;"
     warn_mark = "&#x26A0;&#xFE0F;"
-    # TODO update descriptions.....
     gr.HTML(value=f"""<p>
-        <div>Parseq keyframe redistribution ensures that every frame in the Parseq table is diffused.</div>
-        <div>It may easily be used at high FPS with just a fixed value for 'strength' in Parseq \
-        (e.g. '0.33' for all frames with no logic to detect dips).</span>
-        <div>Since keyframe redistribution allows for Parseq synchronization at high or no cadence, \
-        the generation can be performed much faster compared to a traditional low cadence setup.</div>
-        <div>Resulting videos tend to be less jittery at high or no cadence, \
-        but may introduce 'depth smear' when combined with fast movement.</div>
-        <div>Optical Flow related settings may not behave as expected and are recommended to be turned off \
-        when keyframe redistribution is used (see tab "Keyframes", sub-tab "Coherence").</div>
+        <div>Keyframe distribution ensures that every frame with an entry
+            in the Prompts- or in the Parseq-table is diffused.</div>
+        <div>Since the experimental render core allows for high or no cadence,
+            the generation can be performed much faster compared to a traditional low cadence setup.</div>
+        <div>{warn_mark} If Keyframe distribution is activated, the rendering will be processed in a different,
+            more experimental render core. Some features are currently not or not fully supported in the new core
+            and could crash or lead to undesired results if not turned off.
+        <div>Keyframe Distribution modes may most effectively be used at high FPS. 
+            If Parseq is active, 'strength' is meant to be controlled and provided from Parseq.
+            Otherwise the process is either using 'strength' or 'keyframe_strength', depending on frame type.</span>
+        <div>Resulting videos tend to be less jittery at high or no cadence,
+            but may introduce 'depth smear' when combined with fast movement.
+            Most negative effects can still be mitigated, by inserting lower strength frames in regular intervals.</div>
+        <div>Optical Flow related settings may not behave as expected and are recommended to be turned off
+            when keyframe distribution is used (see tab "Keyframes", sub-tab "Coherence").</div>
         <ol style="list-style-type: none; padding-left: 20px;">
-            <li>{bars_mark} Off: Key frames are not redistributed. Cadence settings are fully respected.</li>
-            <li>{bars_mark} Parseq Only: Only frames with an entry in the Parseq table are diffused. \
-                Actual cadence settings are ignored and all frames not defined in Parseq are handled \
-                as if they were cadence frames. Recommended to be used at high FPS settings (e.g. '60').</li>
-            <li>{bars_mark} Additive with Parseq: Is using cadence but adds Parseq keyframes. Takes more \
-                time to generate, but may help stabilizing the frames by doing diffusions in regular intervals.
-                Recommendation: Make high cadence setup and mark your parseq frames with an "Info" like "event", then \
-                in 'strength_i' dip deeper on key frames. E.g.: 'if (f == info_match_last("event")) 0.25 else 0.50'
-            </li>
-            <li>{bars_mark} Uniform with Parseq: Calculates uniform cadence distribution \
-                but rearranges some keyframes to preserve proper Parseq synchronization at high cadence (e.g. '30'). \
-                Cadence may be understood as 'pseudo cadence'. \
-                A cadence value of '30' may more correctly be understood as 'about 30' in this mode.</li>
+            <li>{bars_mark} Off: Key frames are not redistributed. Cadence settings are fully respected.
+                Process runs on stable render core with better support for complicated setups.</li>
+            <li>{bars_mark} Keyframes Only: Only frames with an entry in Prompts or in the Parseq table are diffused.
+                Actual cadence settings are ignored and all non-keyframes are handled as cadence frames.
+            <li>{bars_mark} Additive: Is using cadence but adds keyframes. Takes more time to generate, 
+                but may help stabilizing the frames by doing diffusions in regular intervals.
+                Parseq Recommendation: Make high cadence setup and mark your frames with an 'Info' like "event", then
+                in 'i_strength' dip deeper on key frames. E.g.: 'if (f == info_match_last("event")) 0.25 else 0.50'</li>
+            <li>{bars_mark} Redistributed: Calculates uniform cadence distribution from cadence, 
+                but rearranges some keyframes to preserve proper keyframe synchronization at high cadence (e.g. '30').
+                Helps to prevent diffusion frames from being too close and should be slightly faster than additive,
+                but is also less predictable because some cadence frames are moved to match keyframes.</li>
         </ol>
-        <div>{bulb_mark} Avoid Dark Out: High cadence generations may have a tendency to dark over time. 
+        <div>{bulb_mark} Always set 'Keyframe strength' lower than 'Strength' so keyframes can really be key.</div>
+        <div>{bulb_mark} Avoid Dark Out: High cadence generations may have a tendency to dark over time.
             Make sure to still setup some diffusions with low strength at regular intervals.
             Setting "Sampling mode" to "nearest" in "Depth Warping & FOW" can help a great deal against dark-outs.</div>
-        <div>{bulb_mark} Avoid Depth Smear: If you get 'depth smear' try to calculate and set the correct 
+        <div>{bulb_mark} Avoid Depth Smear: If you get 'depth smear', try to calculate and set the correct 
             Aspect Ratio Schedule. Eg. "0: (1.777)" for 16:9 landscape or "0: (0.5625)" for 9:16 portrait.</div>
-        <div>{warn_mark} It's currently not recommended to use keyframe redistribution together with optical flow \
+        <div>{warn_mark} It's currently not recommended to try and use keyframe distribution together with optical flow
             or with hybrid video.</div>
     </p>""")
