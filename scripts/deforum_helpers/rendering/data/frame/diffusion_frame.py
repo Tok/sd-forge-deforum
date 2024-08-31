@@ -319,7 +319,7 @@ class DiffusionFrame:
         def select_keyframe_or_cadence_strength(index, is_keyframe):
             # schedule series indices shifted to start at 0.
             return data.animation_keys.deform_keys.strength_schedule_series[index - 1] \
-                if data.parseq_adapter.use_parseq or is_keyframe \
+                if data.parseq_adapter.use_parseq or not is_keyframe \
                 else data.animation_keys.deform_keys.keyframe_strength_schedule_series[index - 1]
 
         key_indices = keyframe_distribution.calculate(data, start_index, diffusion_frame_count)

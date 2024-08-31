@@ -187,7 +187,7 @@ def DeforumAnimArgs():
         "keyframe_strength_schedule": {
             "label": "Strength schedule for keyframes",
             "type": "textbox",
-            "value": "0: (0.30)",
+            "value": "0: (0.20)",
             "info": "like 'Strength schedule' but only for frames with an entry in 'prompts'. Meant to be set somewhat lower than the regular Strengh schedule. At 0 it generates a totally new image on every prompt change. Ignored if Parseq is used or when Keyframe distribustion is disabled."
         },
         "contrast_schedule": "0: (1.0)",
@@ -993,7 +993,7 @@ def LoopArgs():
         "image_keyframe_strength_schedule": {
             "label": "Image strength schedule",
             "type": "textbox",
-            "value": "0:(0.30)",
+            "value": "0:(0.20)",
         },
         "blendFactorMax": {
             "label": "Blend factor max",

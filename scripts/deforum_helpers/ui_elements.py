@@ -309,7 +309,7 @@ def get_tab_prompts(da):
                        placeholder="words in here will be added to the start of all positive prompts"))
         animation_prompts_negative = create_row(
             gr.Textbox(label="Prompts negative", value="nsfw, nude", lines=1, interactive=True,
-                       placeholder="words in here will be added to the end of all negative prompts"))
+                       placeholder="words here will be added to the end of all negative prompts. ignored with Flux."))
         # COMPOSABLE MASK SCHEDULING ACCORD
         with gr.Accordion('Composable Mask scheduling', open=False):
             gr.HTML(value=get_gradio_html('composable_masks'))
