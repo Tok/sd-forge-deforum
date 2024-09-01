@@ -5,8 +5,8 @@ from typing import Any, Iterable, Tuple, List
 from ..turbo import Turbo
 from ...data.indexes import Indexes, IndexWithStart
 from ...data.render_data import RenderData
-from ...util import image_utils, log_utils, opt_utils, web_ui_utils
-from ...util.call.subtitle import call_format_animation_params, call_write_frame_subtitle
+from ...util import image_utils, log_utils, web_ui_utils
+from ...util.call.subtitle import call_write_frame_subtitle
 
 
 @dataclass(init=True, frozen=False, repr=False, eq=False)
@@ -62,10 +62,8 @@ class Tween:
         # Cadence can be asserted because subtitle generation
         # skips the last tween in favor of its parent diffusion frame.
         is_cadence = True
-        params_to_print = opt_utils.generation_info_for_subtitles()
-        params_string = call_format_animation_params(data, self.indexes.tween.i, params_to_print)
         decremented_index = self.indexes.tween.i - 1
-        call_write_frame_subtitle(data, decremented_index, params_string, is_cadence, self.shadow_seed)
+        call_write_frame_subtitle(data, decremented_index, is_cadence, self.shadow_seed)
 
     def has_cadence(self):
         return self.cadence_flow is not None

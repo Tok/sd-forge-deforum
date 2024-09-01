@@ -11,7 +11,7 @@ from . import DiffusionFrameData, KeyFrameDistribution
 from .tween_frame import Tween
 from .. import RenderData, Schedule
 from ... import img_2_img_tubes
-from ...util import depth_utils, filename_utils, log_utils, opt_utils, utils
+from ...util import depth_utils, filename_utils, log_utils, utils
 from ...util.call.anim import call_anim_frame_warp
 from ...util.call.gen import call_generate
 from ...util.call.hybrid import (
@@ -19,7 +19,7 @@ from ...util.call.hybrid import (
     call_get_matrix_for_hybrid_motion_prev, call_hybrid_composite)
 from ...util.call.images import call_add_noise
 from ...util.call.mask import call_compose_mask_with_check, call_unsharp_mask
-from ...util.call.subtitle import call_format_animation_params, call_write_frame_subtitle
+from ...util.call.subtitle import call_write_frame_subtitle
 from ...util.call.video_and_audio import call_render_preview
 from ....colors import maintain_colors
 from ....hybrid_video import image_transform_ransac, image_transform_optical_flow
@@ -52,9 +52,7 @@ class DiffusionFrame:
     def write_frame_subtitle(self, data, i):
         # Non-cadence can be asserted because subtitle creation gives priority to diffusion frames over tween ones.
         is_cadence = False
-        params_to_print = opt_utils.generation_info_for_subtitles()
-        params_string = call_format_animation_params(data, i, params_to_print)
-        call_write_frame_subtitle(data, i, params_string, is_cadence, self.seed)
+        call_write_frame_subtitle(data, i, is_cadence, self.seed)
 
     def apply_frame_warp_transform(self, data: RenderData, image):
         is_not_last_frame = self.i < data.args.anim_args.max_frames

@@ -74,14 +74,33 @@ which makes it possible to set up fast generations with less jitter at high or n
 * Allows for precise sync at high cadence.
 * Detailed info and recommendations on new tab.
 
-### Currently not working and may need to be disabled
-* Kohya HR Fix
-* FreeU
+##### Asynchronous Subtitle generation
+All subtitles are now generated and written to an .srt file in advance.
+Complex subtitle generations should work fine with Parseq but are currently limited with Deforum-only setups.
+* New Deforum setting for skipping the prompt-part to a new line in .srt files.
+* New Deforum setting for choosing simple (non-technical) subtitles that contain only the text from the prompt.
+  * Complex subtitles should work fine when Parseq is used, but are otherwise limited to essential information only.
+  * Recommendation: turn on for now if not using Parseq
+* Removed emtpy "--neg" param from being written into the subtitles
+  because negative prompts are ignored in Flux workflows.
+* Improved padding of technical information so subtitles jitter less.
 
 ### Perhaps working (untested)
+* Flux schnell
+  * There's not a lot of precision for fine-tuning strength values when only 4 steps are required.
 * Control Net
 * Hybrid Video
 * Non-Flux workflows
+
+### Currently not working with experimental core
+* Seed distributions
+  * Setting is ignored in favor of random seeds.
+  * But should be fine when seeds are provided by parseq
+  * To be fixed in future version..
+* Kohya HR Fix
+  * may need to be left disabled
+* FreeU
+  * may need to be left disabled
 
 ### Other Stuff
 * Includes a new default setup.
