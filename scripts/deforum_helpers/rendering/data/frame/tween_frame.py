@@ -17,10 +17,9 @@ class Tween:
     # Since tweens are not diffused, the seed or 'shadow-seed' is currently only relevant for subtitles.
     # We generate and assign a seed any ways, so the behaviour is consistent and comparable with parseq setups.
     shadow_seed: int
-    cadence_flow: Any  # late init
-    cadence_flow_inc: Any  # late init
+    cadence_flow: Any
+    cadence_flow_inc: Any
     depth: Any
-    depth_prediction: Any  # reassigned
 
     def i(self):
         return self.indexes.tween.i
@@ -51,8 +50,8 @@ class Tween:
 
     def process(self, last_frame, data):
         data.turbo.advance_optical_flow_cadence_before_animation_warping(data, last_frame, self)
-        self.depth_prediction = Tween.calculate_depth_prediction(data, data.turbo)
-        data.turbo.advance(data, self.indexes.tween.i, self.depth)
+        self.depth = Tween.calculate_depth_prediction(data, data.turbo)
+        data.turbo.advance(data, self.i(), self.depth)
         data.turbo.do_hybrid_video_motion(data, last_frame, self.indexes, data.images)
 
     def handle_synchronous_status_concerns(self, data):
@@ -100,7 +99,7 @@ class Tween:
         count = len(values)
         r = range(count)
         indexes_list = [Tween._increment(last_frame.render_data.indexes.copy(), count, i + 1) for i in r]
-        return list((Tween(indexes_list[i], values[i], -1, None, None, last_frame.depth, None) for i in r))
+        return list((Tween(indexes_list[i], values[i], -1, None, None, last_frame.depth) for i in r))
 
     @staticmethod
     def create_indexes(base_indexes: Indexes, frame_range: Iterable[int]) -> list[Indexes]:
