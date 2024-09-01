@@ -69,6 +69,10 @@ pip install -r requirements.txt
 Causes the rendering to run on an experimental core that can rearrange keyframes,
 which makes it possible to set up fast generations with less jitter at high or no cadence.
 
+##### Example Clip
+[Default Bunny](https://github.com/Tok/sd-forge-deforum/releases/download/default-bunny/default_bunny.mp4)
+
+
 ##### New sub-tab under "Keyframes"
 * Can now be used **with- or without- Parseq**.
 * Allows for precise sync at high cadence.
