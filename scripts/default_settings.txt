@@ -61,7 +61,7 @@
     "zoom": "0: (1.0025+0.002*sin(1.25*3.14*t/120))",
     "translation_x": "0: (0)",
     "translation_y": "0: (0)",
-    "translation_z": "0: (1.50)",
+    "translation_z": "0: (1.30)",
     "transform_center_x": "0: (0.5)",
     "transform_center_y": "0: (0.5)",
     "rotation_3d_x": "0: (0)",

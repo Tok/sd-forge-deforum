@@ -225,6 +225,7 @@ def get_quick_vid_info(vid_path):
 
 
 def download_audio(audio_path):
+    # TODO? check if file already exists and don't DL again if it does.
     audio_path = clean_gradio_path_strings(audio_path)
     if audio_path.startswith(('http://', 'https://')):
         url = audio_path

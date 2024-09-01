@@ -109,7 +109,7 @@ def DeforumAnimArgs():
         "translation_z": {
             "label": "Translation Z",
             "type": "textbox",
-            "value": "0: (1.50)",
+            "value": "0: (1.30)",
             "info": "move canvas towards/away from view [speed set by FOV]"
         },
         "transform_center_x": {
