@@ -107,9 +107,9 @@ def DeforumAnimArgs():
             "info": "move canvas up/down in pixels per frame"
         },
         "translation_z": {
-            "label": "Translation Z",
+            "label": "Translation Z (zoom when animation mode is '3D')",
             "type": "textbox",
-            "value": "0: (1.30)",
+            "value": "0: (1.10)",
             "info": "move canvas towards/away from view [speed set by FOV]"
         },
         "transform_center_x": {
