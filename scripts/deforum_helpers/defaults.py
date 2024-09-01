@@ -71,7 +71,7 @@ def DeforumAnimPrompts():
     return r"""{
         "0": "A cute bunny, hopping on grass",
         "12": "A cute bunny, hopping at a construction site",
-        "43": "A cute  bunny, hopping on cyber grid",
+        "43": "A cute bunny, hopping on a cyber grid",
         "74": "A cool bunny, on a skateboard",
         "85": "A cool synthwave bunny, on a skateboard",
         "106": "A cool synthwave bunny, skating on burning coal",
