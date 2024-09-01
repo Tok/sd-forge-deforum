@@ -69,16 +69,12 @@ pip install -r requirements.txt
 Causes the rendering to run on an experimental core that can rearrange keyframes,
 which makes it possible to set up fast generations with less jitter at high or no cadence.
 
-##### Example Clip
-[Default Bunny](https://github.com/Tok/sd-forge-deforum/releases/download/default-bunny/default_bunny.mp4)
-
-
 ##### New sub-tab under "Keyframes"
 * Can now be used **with- or without- Parseq**.
 * Allows for precise sync at high cadence.
 * Detailed info and recommendations on new tab.
 
-##### Asynchronous Subtitle generation
+#### Asynchronous Subtitle generation
 All subtitles are now generated and written to an .srt file in advance.
 Complex subtitle generations should work fine with Parseq but are currently limited with Deforum-only setups.
 * New Deforum setting for skipping the prompt-part to a new line in .srt files.
@@ -113,6 +109,9 @@ Complex subtitle generations should work fine with Parseq but are currently limi
   * backup and replace your existing  with the example provided here.
   * partially hardcoded, but also available as updated `deforum_settings.txt`
 * Non-essential emojis can be turned off with a checkbox under "Settings" - "Deforum".
+
+##### Example Clip (enable sound):
+https://github.com/user-attachments/assets/9d7e511c-d109-4b8b-a5e4-e1540dfc5f17
 
 ## Troubleshooting
 
