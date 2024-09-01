@@ -32,13 +32,12 @@ class DiffusionFrame:
     """DiffusionFrames are the frames that actually get diffused (as opposed to tween frame steps)."""
     i: int
     is_keyframe: bool
-    strength: float
-    frame_data: DiffusionFrameData
-    render_data: RenderData
+    seed: int  # FIXME avoid reassignment after creation
+    strength: float  # FIXME avoid reassignment after creation
+    frame_data: DiffusionFrameData  # immutable collection of less essential frame data. # TODO move more stuff to data
+    render_data: RenderData  # TODO? remove this from frame
     schedule: Schedule
     depth: Any  # assigned during generation
-    subtitle_params_to_print: Any
-    subtitle_params_string: str
     last_preview_frame: int
     tweens: List[Tween]
     tween_values: List[float]
@@ -50,13 +49,12 @@ class DiffusionFrame:
         has_flow_redo = optical_flow_redo_generation != 'None'
         return has_flow_redo and images.has_previous() and self.has_strength()
 
-    def maybe_write_frame_subtitle(self):
-        data = self.render_data
-        if data.turbo.is_first_step_with_subtitles():
-            params_string = opt_utils.generation_info_for_subtitles()
-            self.subtitle_params_to_print = params_string
-            self.subtitle_params_string = call_format_animation_params(data, data.indexes.frame.i, params_string)
-            call_write_frame_subtitle(data, data.indexes.frame.i, params_string)
+    def write_frame_subtitle(self, data, i):
+        # Non-cadence can be asserted because subtitle creation gives priority to diffusion frames over tween ones.
+        is_cadence = False
+        params_to_print = opt_utils.generation_info_for_subtitles()
+        params_string = call_format_animation_params(data, i, params_to_print)
+        call_write_frame_subtitle(data, i, params_string, is_cadence, self.seed)
 
     def apply_frame_warp_transform(self, data: RenderData, image):
         is_not_last_frame = self.i < data.args.anim_args.max_frames
@@ -102,7 +100,7 @@ class DiffusionFrame:
         if data.args.anim_args.color_coherence == 'Video Input' and data.is_hybrid_available():
             if int(data.indexes.frame.i) % int(data.args.anim_args.color_coherence_video_every_N_frames) == 0:
                 prev_vid_img = Image.open(filename_utils.preview_video_image_path(data, data.indexes))
-                prev_vid_img = prev_vid_img.resize(data.dimensions(), PIL.Image.LANCZOS)
+                prev_vid_img = prev_vid_img.resize(data.dimensions(), PIL.Image.Resampling.LANCZOS)
                 data.images.color_match = np.asarray(prev_vid_img)
                 return cv2.cvtColor(data.images.color_match, cv2.COLOR_RGB2BGR)
         return None
@@ -154,7 +152,6 @@ class DiffusionFrame:
     def after_diffusion(self, image):
         self.render_data.images.color_match = img_2_img_tubes.conditional_color_match_tube(self)(image)
         self.progress_and_save(image)
-        self.render_data.args.args.seed = self.next_seed()
         self.update_render_preview()
 
     def progress_and_save(self, image):
@@ -182,9 +179,6 @@ class DiffusionFrame:
             return data.indexes.frame.i + data.turbo.progress_step(data.indexes, opencv_image)
         return data.indexes.frame.i + 1  # normal (i.e. 'non-turbo') step always increments by 1.
 
-    def next_seed(self):
-        return next_seed(self.render_data.args.args, self.render_data.args.root)
-
     def update_render_preview(self):
         self.last_preview_frame = call_render_preview(self.render_data, self.last_preview_frame)
 
@@ -192,10 +186,10 @@ class DiffusionFrame:
         data = self.render_data
         redo = data.args.anim_args.optical_flow_redo_generation
         stored_seed = data.args.args.seed  # keep original to reset it after executing the optical flow
-        data.args.args.seed = utils.generate_random_seed()  # create and set a new random seed
-        log_utils.print_optical_flow_info(data, redo)
+        random_seed = utils.generate_random_seed()  # create and set a new random seed
+        log_utils.print_optical_flow_info(data, redo, random_seed)
 
-        sample_image = call_generate(data, self)
+        sample_image = call_generate(data, self, random_seed)
         optical_tube = img_2_img_tubes.optical_flow_redo_tube(data, self, redo)
         transformed_sample_image = optical_tube(sample_image)
 
@@ -204,26 +198,23 @@ class DiffusionFrame:
 
     def do_diffusion_redo(self):
         data = self.render_data
-        stored_seed = data.args.args.seed
         last_diffusion_redo_index = int(data.args.anim_args.diffusion_redo)
         for n in range(0, last_diffusion_redo_index):
             log_utils.print_redo_generation_info(data, n)
-            data.args.args.seed = utils.generate_random_seed()
-            diffusion_redo_image = call_generate(data, self)
+            diffusion_redo_image = call_generate(data, self, utils.generate_random_seed())
             diffusion_redo_image = cv2.cvtColor(np.array(diffusion_redo_image), cv2.COLOR_RGB2BGR)
             # color match on last one only
             is_last_iteration = n == last_diffusion_redo_index
             if is_last_iteration:
                 mode = data.args.anim_args.color_coherence
                 diffusion_redo_image = maintain_colors(data.images.previous, data.images.color_match, mode)
-            data.args.args.seed = stored_seed
             data.args.root.init_sample = Image.fromarray(cv2.cvtColor(diffusion_redo_image, cv2.COLOR_BGR2RGB))
 
     @staticmethod
     def create(data: RenderData):
         frame_data = DiffusionFrameData.create(data)
         schedule = Schedule.create(data)
-        return DiffusionFrame(0, False, 0.0, frame_data, data, schedule, None, None, "", 0, list(), list())
+        return DiffusionFrame(0, False, -1, 0.0, frame_data, data, schedule, "", 0, list(), list())
 
     @staticmethod
     def apply_color_matching(data: RenderData, image):
@@ -301,6 +292,7 @@ class DiffusionFrame:
         max_frames = data.args.anim_args.max_frames
         diffusion_frame_count = DiffusionFrame.precalculate_diffusion_frame_count(
             data, keyframe_dist, start_index, max_frames)
+
         diffusion_frames = [DiffusionFrame.create(data) for _ in range(0, diffusion_frame_count)]
         actual_diffusion_frame_count = len(diffusion_frames)
         recalculated_frames = DiffusionFrame._recalculate_and_check_tweens(
@@ -311,16 +303,8 @@ class DiffusionFrame:
     @staticmethod
     def _recalculate_and_check_tweens(data, diffusion_frames, start_index, diffusion_frame_count,
                                       keyframe_distribution):
+        # TODO? move everything here into KeyFrame.create
         assert diffusion_frame_count == len(diffusion_frames)  # FIXME? calculate instead of pass diffusion_frame_count
-
-        # TODO move everything here into KeyFrame.create
-        # Applies `strength_schedule` if Parseq is active or if there is no entry with index i in the Deforum prompts.
-        # otherwise `keyframe_strength_schedule` is applied, which should be set lower (=more denoise on keyframes).
-        def select_keyframe_or_cadence_strength(index, is_keyframe):
-            # schedule series indices shifted to start at 0.
-            return data.animation_keys.deform_keys.strength_schedule_series[index - 1] \
-                if data.parseq_adapter.use_parseq or is_keyframe \
-                else data.animation_keys.deform_keys.keyframe_strength_schedule_series[index - 1]
 
         key_indices = keyframe_distribution.calculate(data, start_index, diffusion_frame_count)
         assert len(diffusion_frames) == len(key_indices)
@@ -329,7 +313,7 @@ class DiffusionFrame:
             is_kf = KeyFrameDistribution.is_deforum_keyframe(data, key_i)
             diffusion_frames[i].i = key_i
             diffusion_frames[i].is_keyframe = is_kf
-            diffusion_frames[i].strength = select_keyframe_or_cadence_strength(key_i, is_kf)
+            diffusion_frames[i].strength = DiffusionFrame._select_keyframe_or_cadence_strength(data, key_i, is_kf)
 
         diffusion_frames = DiffusionFrame.add_tweens_to_diffusion_frames(diffusion_frames)
         log_utils.print_key_frame_debug_info_if_verbose(diffusion_frames)
@@ -347,7 +331,28 @@ class DiffusionFrame:
         if keyframe_distribution != KeyFrameDistribution.KEYFRAMES_ONLY:
             assert diffusion_frames[-1].i == data.args.anim_args.max_frames  # last index is same as max frames
 
+        DiffusionFrame._assign_initial_seeds(data, diffusion_frames)
         return diffusion_frames
+
+    @staticmethod
+    def _select_keyframe_or_cadence_strength(data, index, is_keyframe):
+        # Applies `strength_schedule` if Parseq is active or if there is no entry with index i in the Deforum prompts.
+        # otherwise `keyframe_strength_schedule` is applied, which should be set lower (=more denoise on keyframes).
+        # schedule series indices shifted to start at 0.
+        return data.animation_keys.deform_keys.strength_schedule_series[index - 1] \
+            if data.parseq_adapter.use_parseq or is_keyframe \
+            else data.animation_keys.deform_keys.keyframe_strength_schedule_series[index - 1]
+
+    @staticmethod
+    def _assign_initial_seeds(data, diffusion_frames):
+        log_utils.debug(f"Precalculating all seeds.")
+        for diffusion_frame in diffusion_frames:
+            for tween in diffusion_frame.tweens:
+                seed = next_seed(data.args.args, data.args.root)
+                tween.shadow_seed = seed  # set shadow seed
+                is_last_tween_in_diffusion_frame = diffusion_frame.i == tween.i()
+                if is_last_tween_in_diffusion_frame:
+                    diffusion_frame.seed = seed  # also set actual seed
 
     @staticmethod
     def add_tweens_to_diffusion_frames(diffusion_frames):

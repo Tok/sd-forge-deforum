@@ -36,7 +36,7 @@ def setup(schedule):
 
 
 def generation_info_for_subtitles():
-    return opts.data.get("deforum_save_gen_info_as_srt_params", ['Seed'])
+    return opts.data.get("deforum_save_gen_info_as_srt_params", ['StrSch', 'KfrStrSch', 'Prompt'])
 
 
 def is_generate_subtitles():

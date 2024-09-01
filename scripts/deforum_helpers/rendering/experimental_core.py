@@ -9,16 +9,17 @@ from tqdm import tqdm
 from . import img_2_img_tubes
 from .data.frame import KeyFrameDistribution, DiffusionFrame
 from .data.render_data import RenderData
-from .util import filename_utils, image_utils, log_utils, opt_utils, memory_utils, web_ui_utils
+from .util import filename_utils, image_utils, log_utils, memory_utils, opt_utils, subtitle_utils, web_ui_utils
 
 
 def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args,
                      freeu_args, kohya_hrfix_args, root):
     log_utils.info("Using experimental render core.", log_utils.RED)
     data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
-    _check_render_conditions(data)
+    check_render_conditions(data)
     web_ui_utils.init_job(data)
     diffusion_frames = DiffusionFrame.create_all_frames(data, KeyFrameDistribution.from_UI_tab(data))
+    subtitle_utils.create_all_subtitles_if_active(data, diffusion_frames)
     run_render_animation(data, diffusion_frames)
     data.animation_mode.unload_raft_and_depth_model()
 
@@ -27,27 +28,26 @@ def run_render_animation(data: RenderData, diffusion_frames: List[DiffusionFrame
     for diffusion_frame in diffusion_frames:
         if is_resume(data, diffusion_frame):
             continue
-        pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame)
+        _pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame)
         image = diffusion_frame.generate()
         if image is None:
             log_utils.print_warning_generate_returned_no_image()
             break
-        post_process_diffusion_frame(diffusion_frame, image)
+        _post_process_diffusion_frame(diffusion_frame, image)
 
 
-def pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame):
+def _pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame):
     memory_utils.handle_med_or_low_vram_before_step(data)
     web_ui_utils.update_job(data)
     if diffusion_frame.has_tween_frames():
         emit_tweens(data, diffusion_frame)
     log_utils.print_animation_frame_info(diffusion_frame.i, data.args.anim_args.max_frames)
-    diffusion_frame.maybe_write_frame_subtitle()
     frame_tube = img_2_img_tubes.frame_transformation_tube
     contrasted_noise_tube = img_2_img_tubes.contrasted_noise_transformation_tube
     diffusion_frame.prepare_generation(frame_tube, contrasted_noise_tube)
 
 
-def post_process_diffusion_frame(diffusion_frame, image):
+def _post_process_diffusion_frame(diffusion_frame, image):
     if not image_utils.is_PIL(image):  # check is required when resuming from timestring
         image = img_2_img_tubes.conditional_frame_transformation_tube(diffusion_frame)(image)
     state.assign_current_image(image)
@@ -55,26 +55,16 @@ def post_process_diffusion_frame(diffusion_frame, image):
     web_ui_utils.update_status_tracker(diffusion_frame.render_data)
 
 
-def is_resume(data, diffusion_frame):
-    filename = filename_utils.frame_filename(data, diffusion_frame.i)
-    full_path = Path(data.output_directory) / filename
-    is_file_existing = os.path.exists(full_path)
-    if is_file_existing:
-        log_utils.warn(f"Frame {filename} exists, skipping to next key frame.")
-        diffusion_frame.render_data.args.args.seed = diffusion_frame.next_seed()
-    return is_file_existing
-
-
 def emit_tweens(data, frame):
     _update_pseudo_cadence(data, len(frame.tweens) - 1)
     log_utils.print_tween_frame_from_to_info(frame)
     grayscale_tube = img_2_img_tubes.conditional_force_tween_to_grayscale_tube
     overlay_mask_tube = img_2_img_tubes.conditional_add_overlay_mask_tube
-    tweens = _tweens_with_progress(frame)
+    tweens = _maybe_wrap_tweens_with_progress_bar(frame)
     [tween.emit_frame(frame, grayscale_tube, overlay_mask_tube) for tween in tweens]
 
 
-def _check_render_conditions(data):
+def check_render_conditions(data):
     log_utils.info(f"Sampler: '{data.args.args.sampler}' Scheduler: '{data.args.args.scheduler}'")
     if data.has_keyframe_distribution():
         msg = "Experimental conditions: Using 'keyframe distribution' together with '{method}'. {results}. \
@@ -96,11 +86,20 @@ def _update_pseudo_cadence(data, value):
     data.args.anim_args.cadence_flow_factor_schedule = f"0: ({value})"
 
 
-def _tweens_with_progress(frame):
+def _maybe_wrap_tweens_with_progress_bar(frame):
     # only use tween progress bar when extra console output (aka "dev mode") is disabled.
     if not opt_utils.is_verbose():
         log_utils.clear_previous_line()
-        # TODO use modules.shared.total_tqdm
+        # FIXME use modules.shared.total_tqdm
         return tqdm(frame.tweens, desc="Tweens progress", file=progress_print_out,
                     disable=cmd_opts.disable_console_progressbars, colour='#FFA468')
     return frame.tweens
+
+
+def is_resume(data, diffusion_frame):
+    filename = filename_utils.frame_filename(data, diffusion_frame.i)
+    full_path = Path(data.output_directory) / filename
+    is_file_existing = os.path.exists(full_path)
+    if is_file_existing:
+        log_utils.info(f"Frame {filename} exists, skipping to next keyframe.", log_utils.ORANGE)
+    return is_file_existing

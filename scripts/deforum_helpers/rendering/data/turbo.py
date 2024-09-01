@@ -171,8 +171,5 @@ class Turbo:
     def is_first_step(self) -> bool:
         return self.cadence == 1
 
-    def is_first_step_with_subtitles(self) -> bool:
-        return self.is_first_step() and opt_utils.is_subtitle_generation_active()
-
     def is_emit_in_between_frames(self) -> bool:
         return self.cadence > 1

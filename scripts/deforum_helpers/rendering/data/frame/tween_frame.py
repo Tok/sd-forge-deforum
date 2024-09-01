@@ -14,6 +14,9 @@ class Tween:
     """cadence vars"""
     indexes: Indexes
     value: float
+    # Since tweens are not diffused, the seed or 'shadow-seed' is currently only relevant for subtitles.
+    # We generate and assign a seed any ways, so the behaviour is consistent and comparable with parseq setups.
+    shadow_seed: int
     cadence_flow: Any  # late init
     cadence_flow_inc: Any  # late init
     depth: Any
@@ -53,16 +56,17 @@ class Tween:
         data.turbo.do_hybrid_video_motion(data, last_frame, self.indexes, data.images)
 
     def handle_synchronous_status_concerns(self, data):
-        self.write_tween_frame_subtitle_if_active(data)  # TODO? decouple from execution and calc all in advance.
         log_utils.print_tween_frame_info(data, self.indexes, self.cadence_flow, self.value)
         web_ui_utils.update_progress_during_cadence(data, self.indexes)
 
-    def write_tween_frame_subtitle_if_active(self, data: RenderData):
-        if opt_utils.is_generate_subtitles():
-            params_to_print = opt_utils.generation_info_for_subtitles()
-            params_string = call_format_animation_params(data, self.indexes.tween.i, params_to_print)
-            is_cadence = self.value < 1.0
-            call_write_frame_subtitle(data, self.indexes.tween.i, params_string, is_cadence)
+    def write_tween_frame_subtitle(self, data: RenderData):
+        # Cadence can be asserted because subtitle generation
+        # skips the last tween in favor of its parent diffusion frame.
+        is_cadence = True
+        params_to_print = opt_utils.generation_info_for_subtitles()
+        params_string = call_format_animation_params(data, self.indexes.tween.i, params_to_print)
+        decremented_index = self.indexes.tween.i - 1
+        call_write_frame_subtitle(data, decremented_index, params_string, is_cadence, self.shadow_seed)
 
     def has_cadence(self):
         return self.cadence_flow is not None
@@ -96,7 +100,7 @@ class Tween:
         count = len(values)
         r = range(count)
         indexes_list = [Tween._increment(last_frame.render_data.indexes.copy(), count, i + 1) for i in r]
-        return list((Tween(indexes_list[i], values[i], None, None, last_frame.depth, None) for i in r))
+        return list((Tween(indexes_list[i], values[i], -1, None, None, last_frame.depth, None) for i in r))
 
     @staticmethod
     def create_indexes(base_indexes: Indexes, frame_range: Iterable[int]) -> list[Indexes]:
@@ -117,5 +121,4 @@ class Tween:
             image = turbo.next.image
             weight = data.args.anim_args.midas_weight
             precision = data.args.root.half_precision
-            # log_utils.info(f"weight {weight} precision {precision}")
             return data.depth_model.predict(image, weight, precision)

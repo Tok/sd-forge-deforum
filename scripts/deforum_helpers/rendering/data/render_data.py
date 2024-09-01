@@ -85,7 +85,8 @@ class RenderData:
         RenderData.init_looper_if_active(args, loop_args)
         RenderData.handle_controlnet_video_input_frames_generation(controlnet_args, args, anim_args)
         RenderData.create_output_directory_for_the_batch(args.outdir)
-        RenderData.save_settings_txt(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root)
+        RenderData.save_settings_txt(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args,
+                                     kohya_hrfix_args, video_args, root)
         RenderData.maybe_resume_from_timestring(anim_args, root)
         return instance
 
@@ -322,9 +323,18 @@ class RenderData:
             raise RuntimeError("The images set for use with keyframe-guidance are not in a proper JSON format")
 
     @staticmethod
+    def sanitize_prompts(prompts):
+        # Removing "--neg" from prompts if they are not used (e.g. with Flux).
+        return [prompt.rstrip().replace("--neg", "").rstrip()
+                if prompt.endswith("--neg") else prompt
+                for prompt in prompts]
+
+    @staticmethod
     def select_prompts(parseq_adapter, anim_args, animation_keys, root):
-        return animation_keys.deform_keys.prompts if parseq_adapter.manages_prompts() \
+        prompts = animation_keys.deform_keys.prompts \
+            if parseq_adapter.manages_prompts() \
             else RenderData.expand_prompts_out_to_per_frame(anim_args, root)
+        return RenderData.sanitize_prompts(prompts)
 
     @staticmethod
     def expand_prompts_out_to_per_frame(anim_args, root):

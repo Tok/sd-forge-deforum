@@ -57,10 +57,10 @@ def print_init_frame_info(init_frame):
     print(f"Using video init frame {init_frame}")
 
 
-def print_optical_flow_info(data, optical_flow_redo_generation):
+def print_optical_flow_info(data, optical_flow_redo_generation, random_seed):
     msg_start = "Optical flow redo is diffusing and warping using"
     msg_end = "optical flow before generation."
-    print(f"{msg_start} {optical_flow_redo_generation} and seed {data.args.args.seed} {msg_end}")
+    print(f"{msg_start} {optical_flow_redo_generation} and seed {random_seed} {msg_end}")
 
 
 def print_redo_generation_info(data, n):
