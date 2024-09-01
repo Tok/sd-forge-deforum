@@ -108,7 +108,7 @@ deforum_titles = {
 	// Prompts
 	"Prompts": "prompts for your animation in a JSON format. Use --neg words to add 'words' as negative prompt",
 	"Prompts positive": "positive prompt to be appended to *all* prompts",
-	"Prompts negative": "negative prompt to be appended to *all* prompts. DON'T use --neg here!",
+	"Prompts negative": "negative prompt to be appended to *all* prompts. Ignored with Flux. DON'T use --neg here!",
 	
     //Init
 	"Use init": "Diffuse the first frame based on an image, similar to img2img.",

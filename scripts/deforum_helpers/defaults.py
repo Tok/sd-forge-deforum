@@ -70,7 +70,7 @@ def DeforumAnimPrompts():
     # Direct link: https://ia801303.us.archive.org/26/items/amen-breaks/cw_amen13_173.mp3
     return r"""{
         "0": "A cute bunny, hopping on grass",
-        "12": "A cute bunny, hopping on a construction site",
+        "12": "A cute bunny, hopping at a construction site",
         "43": "A cute  bunny, hopping on cyber grid",
         "74": "A cool bunny, on a skateboard",
         "85": "A cool synthwave bunny, on a skateboard",

@@ -181,7 +181,8 @@ def get_tab_keyframes(d, da, dloopArgs):
                 with FormColumn() as both_anim_mode_motion_params_column:
                     translation_x = create_row(da.translation_x)
                     translation_y = create_row(da.translation_y)
-                with FormColumn(visible=False) as only_3d_motion_column:
+                is_3d_motion_column_visible = True  # FIXME init, overridden because default is 3D
+                with FormColumn(visible=is_3d_motion_column_visible) as only_3d_motion_column:
                     with FormRow():
                         translation_z = create_gr_elem(da.translation_z)
                         reset_tr_z_button = ToolButton(elem_id='reset_tr_z_btn', value=emoji_utils.refresh,
@@ -266,27 +267,29 @@ def get_tab_keyframes(d, da, dloopArgs):
             with gr.TabItem(f"{emoji_utils.hole()} Depth Warping & FOV", elem_id='depth_warp_fov_tab') \
                     as depth_warp_fov_tab:
                 # this html only shows when not in 2d/3d mode
+
+                is_visible = True  # FIXME init should only be True if initial animation mode is "3D"
                 depth_warp_msg_html = gr.HTML(value='Please switch to 3D animation mode to view this section.',
                                               elem_id='depth_warp_msg_html')
-                with FormRow(visible=False) as depth_warp_row_1:
+                with FormRow(visible=is_visible) as depth_warp_row_1:
                     use_depth_warping = create_gr_elem(da.use_depth_warping)
                     # *the following html only shows when LeReS depth is selected*
                     leres_license_msg = gr.HTML(value=get_gradio_html('leres'), visible=False,
                                                 elem_id='leres_license_msg')
                     depth_algorithm = create_gr_elem(da.depth_algorithm)
                     midas_weight = create_gr_elem(da.midas_weight)
-                with FormRow(visible=False) as depth_warp_row_2:
+                with FormRow(visible=is_visible) as depth_warp_row_2:
                     padding_mode = create_gr_elem(da.padding_mode)
                     sampling_mode = create_gr_elem(da.sampling_mode)
-                with FormRow(visible=False) as depth_warp_row_3:
+                with FormRow(visible=is_visible) as depth_warp_row_3:
                     aspect_ratio_use_old_formula = create_gr_elem(da.aspect_ratio_use_old_formula)
-                with FormRow(visible=False) as depth_warp_row_4:
+                with FormRow(visible=is_visible) as depth_warp_row_4:
                     aspect_ratio_schedule = create_gr_elem(da.aspect_ratio_schedule)
-                with FormRow(visible=False) as depth_warp_row_5:
+                with FormRow(visible=is_visible) as depth_warp_row_5:
                     fov_schedule = create_gr_elem(da.fov_schedule)
-                with FormRow(visible=False) as depth_warp_row_6:
+                with FormRow(visible=is_visible) as depth_warp_row_6:
                     near_schedule = create_gr_elem(da.near_schedule)
-                with FormRow(visible=False) as depth_warp_row_7:
+                with FormRow(visible=is_visible) as depth_warp_row_7:
                     far_schedule = create_gr_elem(da.far_schedule)
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
@@ -309,7 +312,7 @@ def get_tab_prompts(da):
                        placeholder="words in here will be added to the start of all positive prompts"))
         animation_prompts_negative = create_row(
             gr.Textbox(label="Prompts negative", value="nsfw, nude", lines=1, interactive=True,
-                       placeholder="words in here will be added to the end of all negative prompts"))
+                       placeholder="words here will be added to the end of all negative prompts.  ignored with Flux."))
         # COMPOSABLE MASK SCHEDULING ACCORD
         with gr.Accordion('Composable Mask scheduling', open=False):
             gr.HTML(value=get_gradio_html('composable_masks'))

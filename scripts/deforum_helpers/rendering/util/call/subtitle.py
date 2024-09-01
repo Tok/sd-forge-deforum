@@ -21,7 +21,7 @@ def prepare_prompt_for_subtitle(params_string):
     # prompt is always the last param if present,
     # so there's no need to add a newline after it.
     clean_params_string = params_string.replace("--neg", "") \
-        if params_string.endswith("--neg") else params_string
+        if params_string.endswith("--neg") else params_string  # TODO this should be done elsewhere.
     trimmed_params_string = clean_params_string.rstrip()
     return trimmed_params_string.replace(" Prompt: ", "\nPrompt:") \
         if opts.data.get("deforum_own_line_for_prompt_srt", True) \
