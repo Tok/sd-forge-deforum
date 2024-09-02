@@ -37,7 +37,6 @@ param_dict = {
     "contrast_schedule": {"backend": "contrast_schedule_series", "user": "Contrast Sch", "print": "CtrstSch"},
     "cfg_scale_schedule": {"backend": "cfg_scale_schedule_series", "user": "CFG Sch", "print": "CFGSch"},
     "distilled_cfg_scale_schedule": {"backend": "distilled_cfg_scale_schedule_series", "user": "Dist. CFG Sch", "print": "DistCFGSch"},
-    "pix2pix_img_cfg_scale_schedule": {"backend": "pix2pix_img_cfg_scale_series", "user": "P2P Img CFG Sch", "print": "P2PCfgSch"},
     "subseed_schedule": {"backend": "subseed_schedule_series", "user": "Subseed Sch", "print": "SubSSch"},
     "subseed_strength_schedule": {"backend": "subseed_strength_schedule_series", "user": "Subseed Str Sch", "print": "SubSStrSch"},
     "checkpoint_schedule": {"backend": "checkpoint_schedule_series", "user": "Ckpt Sch", "print": "CkptSch"},

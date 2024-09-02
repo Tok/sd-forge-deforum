@@ -297,8 +297,8 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
 
         p.init_images = [init_image]
         p.image_mask = mask
-        p.image_cfg_scale = args.pix2pix_img_cfg_scale
-        p.distilled_cfg_scale = args.pix2pix_img_distilled_cfg_scale
+        p.image_cfg_scale = args.cfg_scale
+        p.image_distilled_cfg_scale = args.distilled_cfg_scale
 
         print_combined_table(args, anim_args, p, keys, frame)  # print dynamic table to cli
 

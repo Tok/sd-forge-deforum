@@ -48,9 +48,14 @@ def get_webui_sd_pipeline(args, root):
     p.n_iter = 1
     p.steps = args.steps
     p.denoising_strength = 1 - args.strength
-    p.cfg_scale = args.scale
-    p.image_cfg_scale = args.pix2pix_img_cfg_scale
-    p.distilled_cfg_scale = args.pix2pix_img_distilled_cfg_scale
     p.outpath_samples = args.outdir
-    
+
+    # Guidance scales:
+    # Separate CFG scale schedules for Img2Img and for Txt2Img pipes have been removed in favor of unified ones.
+    p.cfg_scale = args.cfg_scale  # see "StableDiffusionProcessing" in <webUI-dir>/modules/processing.py
+    p.distilled_cfg_scale = args.distilled_cfg_scale
+    # Additionally passed to the Img2Img pipe only (probably for override?), so we can just pass the same value again:
+    p.image_cfg_scale = args.cfg_scale  # image specific, only used in "StableDiffusionProcessingImg2Img" (img2img.py)
+    # p.image_distilled_cfg_scale  # <-- does not exist (which is fine).
+
     return p

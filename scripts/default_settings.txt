@@ -86,8 +86,6 @@
     "near_schedule": "0: (200)",
     "far_schedule": "0: (10000)",
     "seed_schedule": "0:(s), 1:(-1), \"max_f-2\":(-1), \"max_f-1\":(s)",
-    "pix2pix_img_cfg_scale_schedule": "0:(1.0)",
-    "pix2pix_img_distilled_cfg_scale_schedule": "0:(3.5)",
     "enable_subseed_scheduling": false,
     "subseed_schedule": "0: (1)",
     "subseed_strength_schedule": "0: (0)",

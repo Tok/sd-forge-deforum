@@ -244,8 +244,8 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
 
         noise = keys.noise_schedule_series[frame_idx]
         strength = keys.strength_schedule_series[frame_idx]
-        scale = keys.cfg_scale_schedule_series[frame_idx]
-        distilled_scale = keys.distilled_cfg_scale_schedule_series[frame_idx]
+        cfg_scale = keys.cfg_scale_schedule_series[frame_idx]
+        distilled_cfg_scale = keys.distilled_cfg_scale_schedule_series[frame_idx]
         contrast = keys.contrast_schedule_series[frame_idx]
         kernel = int(keys.kernel_schedule_series[frame_idx])
         sigma = keys.sigma_schedule_series[frame_idx]
@@ -483,13 +483,8 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
             root.init_sample = Image.fromarray(cv2.cvtColor(noised_image, cv2.COLOR_BGR2RGB))
             args.strength = max(0.0, min(1.0, strength))
 
-        args.scale = scale
-        args.distilled_scale = distilled_scale
-
-        # Pix2Pix Image CFG Scale - does *nothing* with non pix2pix checkpoints
-        args.pix2pix_img_cfg_scale = float(keys.pix2pix_img_cfg_scale_series[frame_idx])
-        # Pix2Pix Image Distilled CFG Scale is required by Flux.1, but ignored for most other models.
-        args.pix2pix_img_distilled_cfg_scale = float(keys.pix2pix_img_distilled_cfg_scale_series[frame_idx])
+        args.cfg_scale = cfg_scale
+        args.distilled_cfg_scale = distilled_cfg_scale
 
         # grab prompt for current frame
         args.prompt = prompt_series[frame_idx]

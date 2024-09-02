@@ -46,8 +46,6 @@ class DeformAnimKeys():
         self.distilled_cfg_scale_schedule_series = self.fi.parse_inbetweens(anim_args.distilled_cfg_scale_schedule, 'distilled_cfg_scale_schedule')
         self.ddim_eta_schedule_series = self.fi.parse_inbetweens(anim_args.ddim_eta_schedule, 'ddim_eta_schedule')
         self.ancestral_eta_schedule_series = self.fi.parse_inbetweens(anim_args.ancestral_eta_schedule, 'ancestral_eta_schedule')
-        self.pix2pix_img_cfg_scale_series = self.fi.parse_inbetweens(anim_args.pix2pix_img_cfg_scale_schedule, 'pix2pix_img_cfg_scale_schedule')
-        self.pix2pix_img_distilled_cfg_scale_series = self.fi.parse_inbetweens(anim_args.pix2pix_img_distilled_cfg_scale_schedule, 'pix2pix_img_distilled_cfg_scale_schedule')
         self.subseed_schedule_series = self.fi.parse_inbetweens(anim_args.subseed_schedule, 'subseed_schedule')
         self.subseed_strength_schedule_series = self.fi.parse_inbetweens(anim_args.subseed_strength_schedule, 'subseed_strength_schedule')
         self.checkpoint_schedule_series = self.fi.parse_inbetweens(anim_args.checkpoint_schedule, 'checkpoint_schedule', is_single_string = True)

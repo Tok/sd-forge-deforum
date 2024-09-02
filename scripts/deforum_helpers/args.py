@@ -251,18 +251,6 @@ def DeforumAnimArgs():
             "value": '0:(s), 1:(-1), "max_f-2":(-1), "max_f-1":(s)',
             "info": ""
         },
-        "pix2pix_img_cfg_scale_schedule": {
-            "label": "Pix2Pix img CFG schedule",
-            "type": "textbox",
-            "value": "0:(1.0)",
-            "info": "ONLY in use when working with a P2P ckpt!"
-        },
-        "pix2pix_img_distilled_cfg_scale_schedule": {
-            "label": "Pix2Pix img distilled CFG schedule",
-            "type": "textbox",
-            "value": "0:(3.5)",
-            "info": "Distilled CFG scale for Flux."
-        },
         "enable_subseed_scheduling": {
             "label": "Enable Subseed scheduling",
             "type": "checkbox",

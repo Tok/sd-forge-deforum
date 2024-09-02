@@ -213,12 +213,9 @@ class RenderData:
         self.args.args.strength = max(0.0, min(1.0, frame.strength))
 
     def update_some_args_for_current_step(self, frame, i):
-        keys = self.animation_keys.deform_keys
-        # Pix2Pix Image CFG Scale - does *nothing* with non pix2pix checkpoints
-        self.args.args.pix2pix_img_cfg_scale = float(keys.pix2pix_img_cfg_scale_series[i])
-        self.args.args.pix2pix_img_distilled_cfg_scale = float(keys.pix2pix_img_distilled_cfg_scale_series[i])
         self.args.args.prompt = self.prompt_series[i]  # grab prompt for current frame
-        self.args.args.scale = frame.frame_data.scale
+        self.args.args.cfg_scale = frame.frame_data.cfg_scale
+        self.args.args.distilled_cfg_scale = frame.frame_data.distilled_cfg_scale
 
     def update_seed_and_checkpoint_for_current_step(self, i):
         keys = self.animation_keys.deform_keys

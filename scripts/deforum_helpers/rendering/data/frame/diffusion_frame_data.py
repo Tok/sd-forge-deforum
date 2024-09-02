@@ -7,8 +7,8 @@ from ....animation_key_frames import DeformAnimKeys
 @dataclass(init=True, frozen=True, repr=False, eq=False)
 class DiffusionFrameData:
     noise: Any = None
-    scale: Any = None  # defaults to 1.0 for Flux.1, but is typically used at 5.0-15.0 for other models
-    distilled_scale: Any = None  # defaults to 3.5 for Flux.1, may be ignored for other models
+    cfg_scale: Any = None  # defaults to 1.0 for Flux.1, but is typically used at 5.0-15.0 for other models
+    distilled_cfg_scale: Any = None  # defaults to 3.5 for Flux.1, may be ignored for other models
     contrast: Any = None
     kernel: int = 0
     sigma: Any = None

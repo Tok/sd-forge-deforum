@@ -90,9 +90,6 @@ def get_tab_run(d, da):
             with gr.Tab('Resume Animation'):
                 resume_from_timestring, resume_timestring = create_row(
                     da, 'resume_from_timestring', 'resume_timestring')
-            with gr.Row(variant='compact') as pix2pix_img_cfg_scale_row:
-                pix2pix_img_cfg_scale_schedule = create_gr_elem(da.pix2pix_img_cfg_scale_schedule)
-                pix2pix_img_distilled_cfg_scale_schedule = create_gr_elem(da.pix2pix_img_distilled_cfg_scale_schedule)
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
