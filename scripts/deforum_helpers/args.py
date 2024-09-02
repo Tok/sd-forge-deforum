@@ -224,8 +224,8 @@ def DeforumAnimArgs():
         "aspect_ratio_schedule": {
             "label": "Aspect Ratio schedule",
             "type": "textbox",
-            "value": "0: (1.777)",
-            "info": "adjusts the aspect ratio for the depth calculations"
+            "value": "0: (1.0)",
+            "info": "adjusts the aspect ratio for the depth calculations. Meant to be left at 1.0, except for emulating legacy behaviour."
         },
         "aspect_ratio_use_old_formula": {
             "label": "Use old aspect ratio formula",

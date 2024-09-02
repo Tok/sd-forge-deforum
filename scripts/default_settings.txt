@@ -81,7 +81,7 @@
     "enable_steps_scheduling": false,
     "steps_schedule": "0: (20)",
     "fov_schedule": "0: (70)",
-    "aspect_ratio_schedule": "0: (1.777)",
+    "aspect_ratio_schedule": "0: (1.0)",
     "aspect_ratio_use_old_formula": false,
     "near_schedule": "0: (200)",
     "far_schedule": "0: (10000)",

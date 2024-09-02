@@ -663,9 +663,7 @@ def create_keyframe_distribution_info_tab():
         * Avoid Dark Out: High cadence generations may have a tendency to dark out over time.
             Make sure to still setup some diffusions with low strength at regular intervals.
             Setting "Sampling mode" to "nearest" in "Depth Warping & FOW" can help a great deal against dark-outs.
-        * Avoid Depth Smear: If you get 'depth smear', try to calculate and set the correct 
-            Aspect Ratio Schedule. Eg. "0: (1.777)" for 16:9 landscape or "0: (0.5625)" for 9:16 portrait.
-            It doesn't solve the problem, but may help mitigating it.
+        * 
             * Help clearing the canvas from time to time by diffusing some frames at low strength.
             * A render at 0 keyframe strength could in theory solve practically all visual problems by resetting
                 the context, however that would is generally undesirable because it results in a cut in 
