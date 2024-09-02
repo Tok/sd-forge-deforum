@@ -5,6 +5,7 @@ from modules.shared import opts
 def _is_emojis_disabled():
     return opts.data.get("deforum_disable_nonessential_emojis", False)
 
+
 def _select(emoji):
     return '' if _is_emojis_disabled() else emoji
 
@@ -14,6 +15,7 @@ _suffix = '\U0000FE0F'
 
 # essentials, shouldn't be turned off.
 refresh = '\U0001f504'  # 🔄
+info = f'\U00002139{_suffix}'  # ℹ️
 warn = f'\U000026A0{_suffix}'  # ⚠️
 
 

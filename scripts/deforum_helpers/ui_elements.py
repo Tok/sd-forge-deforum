@@ -77,6 +77,11 @@ def get_tab_run(d, da):
         with gr.Row(variant='compact') as eta_sch_row:
             ddim_eta_schedule = create_gr_elem(da.ddim_eta_schedule)
             ancestral_eta_schedule = create_gr_elem(da.ancestral_eta_schedule)
+
+        # TODO FIXME remove this message again after some time:
+        with gr.Row(variant='compact'):
+            gr.Markdown(f"{emoji_utils.up()} All guidance scale schedules have been moved to 'Keyframes' - 'CFG'.")
+
         # RUN FROM SETTING FILE ACCORD
         with gr.Accordion('Batch Mode, Resume and more', open=False):
             with gr.Tab('Batch Mode/ run from setting files'):
