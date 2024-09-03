@@ -22,7 +22,7 @@ import subprocess
 from .frame_interpolation import clean_folder_name
 from .general_utils import duplicate_pngs_from_folder, checksum
 from .video_audio_utilities import vid2frames, ffmpeg_stitch_video, extract_number, media_file_has_audio
-from basicsr.utils.download_util import load_file_from_url
+from torch.hub import download_url_to_file
 from .rich import console
 
 from modules.shared import opts
@@ -114,7 +114,7 @@ def check_and_download_realesrgan_ncnn(models_folder, current_user_os):
     try:
         os.makedirs(realesrgan_ncnn_folder, exist_ok=True)
         # download exec and model files from url
-        load_file_from_url(download_url, realesrgan_ncnn_folder)
+        download_url_to_file(download_url, realesrgan_ncnn_folder)
         # check downloaded zip's hash
         with open(realesrgan_zip_path, 'rb') as f:
             file_hash = checksum(realesrgan_zip_path)

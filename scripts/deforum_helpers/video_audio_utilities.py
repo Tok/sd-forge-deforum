@@ -28,7 +28,8 @@ from pathlib import Path
 from threading import Thread
 import cv2
 import numpy as np
-from basicsr.utils.download_util import load_file_from_url
+from torch.hub import download_url_to_file
+
 # noinspection PyUnresolvedReferences
 from modules.shared import state, opts
 from pkg_resources import resource_filename
@@ -442,7 +443,7 @@ def check_and_download_gifski(models_folder, current_user_os):
     file_path = os.path.join(models_folder, file_name)
     
     if not os.path.exists(file_path):
-        load_file_from_url(download_url, models_folder)
+        download_url_to_file(download_url, models_folder)
         if current_user_os in ['Linux','Mac']:
             os.chmod(file_path, 0o755)
             if current_user_os == 'Mac':

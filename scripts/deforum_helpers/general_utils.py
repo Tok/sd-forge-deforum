@@ -18,7 +18,8 @@ import os
 import shutil
 import hashlib
 from modules.shared import opts
-from basicsr.utils.download_util import load_file_from_url
+from torch.hub import download_url_to_file
+
 
 def debug_print(message):
     DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False)
@@ -139,7 +140,9 @@ def clean_gradio_path_strings(input_str):
 def download_file_with_checksum(url, expected_checksum, dest_folder, dest_filename):
     expected_full_path = os.path.join(dest_folder, dest_filename)
     if not os.path.exists(expected_full_path) and not os.path.isdir(expected_full_path):
-        load_file_from_url(url=url, model_dir=dest_folder, file_name=dest_filename, progress=True)
+        hash = None
+        progress = True
+        download_url_to_file(url, str(expected_full_path), hash, progress)
         if checksum(expected_full_path) != expected_checksum:
             raise Exception(f"Error while downloading {dest_filename}.]nPlease manually download from: {url}\nAnd place it in: {dest_folder}")
         

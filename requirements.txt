@@ -6,4 +6,3 @@ pims
 imageio_ffmpeg
 rich
 gdown
-basicsr==1.3.5
