@@ -60,7 +60,13 @@ pip install -r requirements.txt
 
 After installation, you can test the setup by generating the default bunny with
 "Distribution" set to "Keyframes Only" and "Animation Mode" set to "3D".
-This also downloads the MiDaS model for depth warping when ran for the first time.
+This also downloads the MiDaS model for depth warping when ran for the first time
+and demonstrates prompt synchronization in a no-cadence setup.
+
+The default bunnies contain 333 frames at 720p, but only 19 of them are actually diffused.
+The diffused frames are placed in the clip according to the keyframes defined in the prompts.
+The prompts themselves are aligned to be synchronized at 60 FPS with the beat of an 
+amen break you can find linked in the settings (enable sound):
 
 https://github.com/user-attachments/assets/5f637a04-104f-4d87-8439-15a386685a5e
 
