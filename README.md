@@ -111,7 +111,8 @@ Complex subtitle generations should work fine with Parseq but are currently limi
 * Non-essential emojis can be turned off with a checkbox under "Settings" - "Deforum".
 
 ##### Example Clip (enable sound):
-https://github.com/user-attachments/assets/9d7e511c-d109-4b8b-a5e4-e1540dfc5f17
+https://github.com/user-attachments/assets/5f637a04-104f-4d87-8439-15a386685a5e
+
 
 ## Troubleshooting
 
