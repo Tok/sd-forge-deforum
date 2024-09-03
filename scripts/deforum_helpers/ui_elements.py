@@ -266,13 +266,14 @@ def get_tab_keyframes(d, da, dloopArgs):
                 kernel_schedule = create_row(da.kernel_schedule)
                 sigma_schedule = create_row(da.sigma_schedule)
                 threshold_schedule = create_row(da.threshold_schedule)
-            with gr.TabItem(f"{emoji_utils.hole()} Depth Warping & FOV", elem_id='depth_warp_fov_tab') \
+            with gr.TabItem(f"{emoji_utils.hole()} 3D Depth Warping & FOV", elem_id='depth_warp_fov_tab') \
                     as depth_warp_fov_tab:
-                # this html only shows when not in 2d/3d mode
 
-                is_visible = True  # FIXME init should only be True if initial animation mode is "3D"
+                # FIXME this should only be visible if animation mode is "3D".
+                is_visible = True
+                is_info_visible = is_visible
                 depth_warp_msg_html = gr.HTML(value='Please switch to 3D animation mode to view this section.',
-                                              elem_id='depth_warp_msg_html')
+                                              elem_id='depth_warp_msg_html', visible=is_info_visible)
                 with FormRow(visible=is_visible) as depth_warp_row_1:
                     use_depth_warping = create_gr_elem(da.use_depth_warping)
                     # *the following html only shows when LeReS depth is selected*
@@ -283,16 +284,19 @@ def get_tab_keyframes(d, da, dloopArgs):
                 with FormRow(visible=is_visible) as depth_warp_row_2:
                     padding_mode = create_gr_elem(da.padding_mode)
                     sampling_mode = create_gr_elem(da.sampling_mode)
-                with FormRow(visible=is_visible) as depth_warp_row_3:
-                    aspect_ratio_use_old_formula = create_gr_elem(da.aspect_ratio_use_old_formula)
-                with FormRow(visible=is_visible) as depth_warp_row_4:
-                    aspect_ratio_schedule = create_gr_elem(da.aspect_ratio_schedule)
-                with FormRow(visible=is_visible) as depth_warp_row_5:
-                    fov_schedule = create_gr_elem(da.fov_schedule)
-                with FormRow(visible=is_visible) as depth_warp_row_6:
-                    near_schedule = create_gr_elem(da.near_schedule)
-                with FormRow(visible=is_visible) as depth_warp_row_7:
-                    far_schedule = create_gr_elem(da.far_schedule)
+                with FormRow(visible=is_visible):
+                    with gr.Accordion('Extended Depth Warp Settings', open=False):
+                        with FormRow() as depth_warp_row_3:
+                            aspect_ratio_use_old_formula = create_gr_elem(da.aspect_ratio_use_old_formula)
+                        with FormRow() as depth_warp_row_4:
+                            aspect_ratio_schedule = create_gr_elem(da.aspect_ratio_schedule)
+                with FormRow(visible=is_visible):
+                    with FormRow() as depth_warp_row_5:
+                        fov_schedule = create_gr_elem(da.fov_schedule)
+                    with FormRow() as depth_warp_row_6:
+                        near_schedule = create_gr_elem(da.near_schedule)
+                    with FormRow() as depth_warp_row_7:
+                        far_schedule = create_gr_elem(da.far_schedule)
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
@@ -662,8 +666,7 @@ def create_keyframe_distribution_info_tab():
             to be turned off when keyframe distribution is used (see tab "Keyframes", sub-tab "Coherence").
         * Avoid Dark Out: High cadence generations may have a tendency to dark out over time.
             Make sure to still setup some diffusions with low strength at regular intervals.
-            Setting "Sampling mode" to "nearest" in "Depth Warping & FOW" can help a great deal against dark-outs.
-        * 
+            Setting "Sampling mode" to "nearest" in "3D Depth Warping & FOW" can help a great deal against dark-outs.
             * Help clearing the canvas from time to time by diffusing some frames at low strength.
             * A render at 0 keyframe strength could in theory solve practically all visual problems by resetting
                 the context, however that would is generally undesirable because it results in a cut in 

@@ -552,14 +552,14 @@ def DeforumAnimArgs():
             "type": "radio",
             "choices": ['border', 'reflection', 'zeros'],
             "value": "border",
-            "info": "controls the handling of pixels outside the field of view as they come into the scene"
+            "info": "Choose how to handle pixels outside the field of view as they come into the scene"
         },
         "sampling_mode": {
             "label": "Sampling mode",
             "type": "radio",
             "choices": ['bicubic', 'bilinear', 'nearest'],
             "value": "bicubic",
-            "info": ""
+            "info": "Choose the sampling method: Bicubic for quality, Bilinear for speed, Nearest for simplicity."
         },
         "save_depth_maps": {
             "label": "Save 3D depth maps",
