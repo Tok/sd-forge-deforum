@@ -12,32 +12,43 @@ This fork of the extension is _basically working_.
 &#x26A0;&#xFE0F; Configurations that use the **experimental render core** by enabling the 
 new keyframe distribution feature, may require that some unsupported features are being kept disabled.
 
+
+## Requirements
+
+### Get SD WebUI Forge
+Install, update and run the 'one-click installation package' of
+[Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge
+as described. Includes:
+* Python 3.10.6
+* CUDA 12.1
+* Pytorch 2.3.1
+
+Other versions _may_ work with this extension, but have not been properly tested.
+
+### Run Flux on Forge
+
+Get `flux1-dev-bnb-nf4-v2.safetensors` from huggingface and put it into your `<forge_install_dir>/models/Stable-diffusion/Flux`:
+https://huggingface.co/lllyasviel/flux1-dev-bnb-nf4/blob/main/flux1-dev-bnb-nf4-v2.safetensors
+
+Get the following 3 files from huggingface and put them into `<forge_install_dir>/models/VAE`
+* `ae.safetensors` https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main
+* `clip_l.safetensors` https://huggingface.co/comfyanonymous/flux_text_encoders/tree/main
+* `t5xxl_fp16.safetensors` https://huggingface.co/comfyanonymous/flux_text_encoders/tree/main
+
+Restart Forge, set mode to "flux", select the flux checkpoint and all the 3 VAEs in "VAE / Text Encoder" and test with Txt2Img.
+
 ## Installation
 
-### Requirements
+### Directly in Forge (recommended)
 
-#### Python 3.10.6
-Forge currently recommends Python version 3.10.6: https://www.python.org/downloads/release/python-3106/
+Go to tab "Extensions" - "Install from URL" and use this: https://github.com/Tok/sd-forge-deforum.git
 
-In case you insist on trying to use a newer version (not recommended), see comments below about `basicsr`.
-
-#### SD WebUI Forge
-Install the latest version of [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge) and delete any old or alternative versions of this plugin
-you may have had installed before (=remove this directory if it already exists: `<forge_install_dir>/extensions/sd-forge-deforum`).
-
-### Install this Extension
-
-#### Directly in Forge
-
-Go to tab "Extensions" - "Install from URL" and use this URL: https://github.com/Tok/sd-forge-deforum.git
-
-#### Or from the commandline
+### From the commandline
 
 Open commandline and run `<forge_install_dir>/venv/Scripts/activate.bat` 
 to activate the virtual environment (venv) for Python used by Forge.
 
 With the venv from Forge activated, do:
-
 ```
 cd <forge_install_dir>/extensions
 git clone https://github.com/Tok/sd-forge-deforum
@@ -45,26 +56,22 @@ cd sd-forge-deforum
 pip install -r requirements.txt
 ```
 
+## Default Bunny Testrun
+
+After installation, you can test the setup by generating the default bunny with
+"Distribution" set to "Keyframes Only" and "Animation Mode" set to "3D".
+This also downloads the MiDaS model for depth warping when ran for the first time.
+
+https://github.com/user-attachments/assets/5f637a04-104f-4d87-8439-15a386685a5e
+
+If you used other versions of the Deforum plugin before, it may also be necessary
+to update or adjust your Deforum settings. The latest example settings with for the default bunny can also be downloaded here:
+https://github.com/deforum-art/sd-webui-deforum/blob/automatic1111-webui/scripts/default_settings.txt
+
 
 ## What should work, what doesn't and what's untested
 
 ### Should work:
-
-#### Flux.1 Dev
-  * get `flux1-dev-bnb-nf4-v2.safetensors` from huggingface and put it into your `<forge_install_dir>/models/Stable-diffusion/Flux`
-    * https://huggingface.co/lllyasviel/flux1-dev-bnb-nf4/blob/main/flux1-dev-bnb-nf4-v2.safetensors
-  * get the following 3 files from huggingface and put them into `<forge_install_dir>/models/VAE`
-    * `ae.safetensors`
-      * https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main
-    * `clip_l.safetensors`
-      * https://huggingface.co/comfyanonymous/flux_text_encoders/tree/main
-    * `t5xxl_fp16.safetensors`
-      * https://huggingface.co/comfyanonymous/flux_text_encoders/tree/main
-  * Switch UI to "flux", select the flux checkpoint and set all the 3 VAEs in "VAE / Text Encoder".
-  * 'CFG' (or "Scale" if you use Parseq) is expected to be at around 1.0
-  * 'Distilled CFG' at 3.5
-  * Negative prompts are ignored.
-
 #### Keyframe Distribution
 Causes the rendering to run on an experimental core that can rearrange keyframes,
 which makes it possible to set up fast generations with less jitter at high or no cadence.
@@ -103,45 +110,13 @@ Complex subtitle generations should work fine with Parseq but are currently limi
   * may need to be left disabled
 
 ### Other Stuff
-* Includes a new default setup.
-  * optimized for generating clips at 60 FPS in 720p, using Flux.1 with the new render core.
-  * is using `keyframes only` keyframe distribution.
-  * backup and replace your existing  with the example provided here.
-  * partially hardcoded, but also available as updated `deforum_settings.txt`
+* Includes a new default setup to generate default bunny at 60 FPS in 720p with keyframes only.
 * Non-essential emojis can be turned off with a checkbox under "Settings" - "Deforum".
-
-##### Example Clip (enable sound):
-https://github.com/user-attachments/assets/5f637a04-104f-4d87-8439-15a386685a5e
-
 
 ## Troubleshooting
 
-### Potential problems with different Python-, Torch- and 'basicsr' versions
-
-Forge currently recommends Python version 3.10.6 and the torch versions that it runs.
-
-Newer versions of Python or different torch combinations may refuse to install the 'basicsr'
-dependency which is currently required by this extension.
-
-In case you get any error related to 'basicsr' during the installation, and you don't want to set up a new 
-Python 3.10.6 venv (as would be recommended), you can try the installation from commandline as described above, 
-but replacing the `basicsr` version with version `1.4.2` in `requirements.txt` before installing the requirements.
-
-If the extension was installed successfully, but there is an error related to `basicsr` while starting Forge,
-try the same directly with `pip uninstall basicsr` and then `pip install basicsr==1.4.2` (while venv is active).
-
-*TL;DR:* This extension should be able to run with either version `1.3.5` or `1.4.2` of `basicsr`, 
-but not all versions may install or run properly with all combos of Python and Torch.
-
-### ModuleNotFoundError: No module named 'torchvision.transforms.functional_tensor'
-May happen when there is a version conflict with `basicsr` and `torchvision`.
-A workaround can be found here: https://github.com/Tok/sd-forge-deforum/issues/1#issuecomment-2318333572
-
-### Other problems with torch
-
-In case of other problems related to Torch, try to reinstall it as recommended on the pytorch website:
-https://pytorch.org/get-started/locally/
-
 ### Settings file
-The content of the `deforum_settings.txt` file has been updated.
-Settings from older versions may not behave as expected.
+During active development, content and structure of the `deforum_settings.txt` file 
+can change quickly been updated. Settings from older versions may not behave as expected.
+If necessary, the lastest deforum-settings.txt are available for download here:
+https://github.com/deforum-art/sd-webui-deforum/blob/automatic1111-webui/scripts/default_settings.txt
