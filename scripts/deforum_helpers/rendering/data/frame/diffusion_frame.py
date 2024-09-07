@@ -32,8 +32,10 @@ class DiffusionFrame:
     """DiffusionFrames are the frames that actually get diffused (as opposed to tween frame steps)."""
     i: int
     is_keyframe: bool
-    seed: int  # FIXME avoid reassignment after creation
-    strength: float  # FIXME avoid reassignment after creation
+    seed: int  # TODO avoid reassignment after creation:
+    subseed: int
+    subseed_strength: float
+    strength: float
     frame_data: DiffusionFrameData  # immutable collection of less essential frame data. # TODO move more stuff to data
     render_data: RenderData  # TODO? remove this from frame
     schedule: Schedule
@@ -52,7 +54,7 @@ class DiffusionFrame:
     def write_frame_subtitle(self, data, i):
         # Non-cadence can be asserted because subtitle creation gives priority to diffusion frames over tween ones.
         is_cadence = False
-        call_write_frame_subtitle(data, i, is_cadence, self.seed)
+        call_write_frame_subtitle(data, i, is_cadence, self.seed, self.subseed)
 
     def apply_frame_warp_transform(self, data: RenderData, image):
         is_not_last_frame = self.i < data.args.anim_args.max_frames
@@ -212,7 +214,7 @@ class DiffusionFrame:
     def create(data: RenderData):
         frame_data = DiffusionFrameData.create(data)
         schedule = Schedule.create(data)
-        return DiffusionFrame(0, False, -1, 0.0, frame_data, data, schedule, "", 0, list(), list())
+        return DiffusionFrame(0, False, -1, -1, 1.0, 0.0, frame_data, data, schedule, "", 0, list(), list())
 
     @staticmethod
     def apply_color_matching(data: RenderData, image):
@@ -343,14 +345,26 @@ class DiffusionFrame:
 
     @staticmethod
     def _assign_initial_seeds(data, diffusion_frames):
-        log_utils.debug(f"Precalculating all seeds.")
+        log_utils.info(f"Precalculating seeds with behaviour '{data.args.args.seed_behavior}' " +
+                       f"for {len(diffusion_frames)} frames.")
+        keys = data.animation_keys.deform_keys
+        is_subseed_scheduling_enabled = data.args.anim_args.enable_subseed_scheduling
+        is_seed_managed_by_parseq = data.parseq_adapter.manages_seed()
+        if is_seed_managed_by_parseq:
+            data.args.anim_args.enable_subseed_scheduling = True
+
         for diffusion_frame in diffusion_frames:
-            for tween in diffusion_frame.tweens:
-                seed = next_seed(data.args.args, data.args.root)
-                tween.shadow_seed = seed  # set shadow seed
-                is_last_tween_in_diffusion_frame = diffusion_frame.i == tween.i()
-                if is_last_tween_in_diffusion_frame:
-                    diffusion_frame.seed = seed  # also set actual seed
+            if is_subseed_scheduling_enabled or is_seed_managed_by_parseq:
+                diffusion_frame.subseed = int(keys.subseed_schedule_series[diffusion_frame.i])
+            if is_subseed_scheduling_enabled and not is_seed_managed_by_parseq:
+                diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[diffusion_frame.i])
+            if is_seed_managed_by_parseq:
+                diffusion_frame.subseed_strength = keys.subseed_strength_schedule_series[diffusion_frame.i]
+            the_next_seed = next_seed(data.args.args, data.args.root)
+            log_utils.debug(f"Seed {the_next_seed:10}. " +
+                            f"Subseed {diffusion_frame.subseed:10} with strength {diffusion_frame.subseed_strength}."
+                            if diffusion_frame.subseed != -1 else "")
+            diffusion_frame.seed = the_next_seed
 
     @staticmethod
     def add_tweens_to_diffusion_frames(diffusion_frames):

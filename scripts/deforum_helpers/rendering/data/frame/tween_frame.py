@@ -14,9 +14,6 @@ class Tween:
     """cadence vars"""
     indexes: Indexes
     value: float
-    # Since tweens are not diffused, the seed or 'shadow-seed' is currently only relevant for subtitles.
-    # We generate and assign a seed any ways, so the behaviour is consistent and comparable with parseq setups.
-    shadow_seed: int
     cadence_flow: Any
     cadence_flow_inc: Any
     depth: Any
@@ -58,12 +55,17 @@ class Tween:
         log_utils.print_tween_frame_info(data, self.indexes, self.cadence_flow, self.value)
         web_ui_utils.update_progress_during_cadence(data, self.indexes)
 
-    def write_tween_frame_subtitle(self, data: RenderData):
+    def write_tween_frame_subtitle(self, data: RenderData, previous_diffusion_frame):
         # Cadence can be asserted because subtitle generation
         # skips the last tween in favor of its parent diffusion frame.
         is_cadence = True
         decremented_index = self.indexes.tween.i - 1
-        call_write_frame_subtitle(data, decremented_index, is_cadence, self.shadow_seed)
+        # Since tween frames are not diffused, they don't have their own seed.
+        # We provide the seed of the previous frame that was diffused (parent diffusion frame has the next seed).
+        # Since the 1st frame is always diffused it never has tweens, meaning there's always a previous_diffusion_frame.
+        seed = previous_diffusion_frame.seed
+        subseed = previous_diffusion_frame.subseed
+        call_write_frame_subtitle(data, decremented_index, is_cadence, seed, subseed)
 
     def has_cadence(self):
         return self.cadence_flow is not None
@@ -97,7 +99,7 @@ class Tween:
         count = len(values)
         r = range(count)
         indexes_list = [Tween._increment(last_frame.render_data.indexes.copy(), count, i + 1) for i in r]
-        return list((Tween(indexes_list[i], values[i], -1, None, None, last_frame.depth) for i in r))
+        return list((Tween(indexes_list[i], values[i], None, None, last_frame.depth) for i in r))
 
     @staticmethod
     def create_indexes(base_indexes: Indexes, frame_range: Iterable[int]) -> list[Indexes]:

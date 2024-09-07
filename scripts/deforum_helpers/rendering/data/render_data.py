@@ -310,8 +310,9 @@ class RenderData:
 
     @staticmethod
     def init_looper_if_active(args, loop_args):
-        if loop_args.use_looper:
-            print("Using Guided Images mode: seed_behavior will be set to 'schedule' and 'strength_0_no_init' to False")
+        if not loop_args.use_looper:
+            return
+        log_utils.info("Using Guided Images mode: seed_behavior is set to 'schedule' and 'strength_0_no_init' to False")
         if args.strength == 0:
             raise RuntimeError("Strength needs to be greater than 0 in Init tab")
         args.strength_0_no_init = False

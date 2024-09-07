@@ -20,19 +20,21 @@ def create_all_subtitles_if_active(data: RenderData, diffusion_frames: List[Diff
 def _write_subtitle_lines(data, diffusion_frames):
     log_utils.debug(f"Subtitle generation info: {opt_utils.generation_info_for_subtitles()}")
     subtitle_count = 0
+    previous_diffusion_frame = None
     for diffusion_frame in diffusion_frames:
         if not diffusion_frame.has_tween_frames():  # 1st frame has no matching tween.
             diffusion_frame.write_frame_subtitle(data, subtitle_count)
             subtitle_count += 1
         for tween_frame in diffusion_frame.tweens:
-            _write_tween_subtitle(data, subtitle_count, diffusion_frame, tween_frame)
+            _write_tween_subtitle(data, subtitle_count, diffusion_frame, tween_frame, previous_diffusion_frame)
             subtitle_count += 1
+        previous_diffusion_frame = diffusion_frame
 
     log_utils.info(f"Created {subtitle_count} subtitles.")
     return subtitle_count
 
 
-def _write_tween_subtitle(data, i, diffusion_frame, tween_frame):
+def _write_tween_subtitle(data, i, diffusion_frame, tween_frame, previous_diffusion_frame):
     # Each diffusion frame has 0 to many tweens. If there are any, the last tween in the collection
     # has the same index as the diffusion frame it belongs to (asserted on creation).
     # With both options available, subtitles are written using the method provided by the diffusion frame,
@@ -42,7 +44,7 @@ def _write_tween_subtitle(data, i, diffusion_frame, tween_frame):
     if is_last_tween:
         diffusion_frame.write_frame_subtitle(data, i)
     else:
-        tween_frame.write_tween_frame_subtitle(data)
+        tween_frame.write_tween_frame_subtitle(data, previous_diffusion_frame)
 
 
 def _check_and_log_subtitle_count(data, diffusion_frames, subtitle_count):
