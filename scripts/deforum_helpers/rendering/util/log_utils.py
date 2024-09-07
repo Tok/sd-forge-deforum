@@ -78,7 +78,15 @@ def print_key_frame_debug_info_if_verbose(diffusion_frames):
     for i, df in enumerate(diffusion_frames):
         tween_indices = [t.i() for t in df.tweens]
         frame_type = "Key Frame" if df.is_keyframe else "    Frame"
-        debug(f"{frame_type} {df.i} has {len(tween_indices)} tweens: {tween_indices}")
+        tween_count = len(tween_indices)
+        if tween_count > 6:  # Limit to first 3 and last 3
+            first_three = [f"{index:05}" for index in tween_indices[:3]]
+            last_three = [f"{index:05}" for index in tween_indices[-3:]]
+            displayed_tweens = f"[{', '.join(first_three)}] ... [{', '.join(last_three)}]"
+        else:
+            displayed_tweens = [f"{index:05}" for index in tween_indices]
+            displayed_tweens = f"[{', '.join(displayed_tweens)}]"
+        debug(f"{frame_type} {df.i:05} has {tween_count:03} tweens: {displayed_tweens}")
 
 
 def print_warning_generate_returned_no_image():

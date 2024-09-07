@@ -106,10 +106,6 @@ Complex subtitle generations should work fine with Parseq but are currently limi
 * Non-Flux workflows
 
 ### Currently not working with experimental core
-* Seed distributions
-  * Setting is ignored in favor of random seeds.
-  * But should be fine when seeds are provided by parseq
-  * To be fixed in future version..
 * Kohya HR Fix
   * may need to be left disabled
 * FreeU
@@ -118,6 +114,7 @@ Complex subtitle generations should work fine with Parseq but are currently limi
 ### Other Stuff
 * Includes a new default setup to generate default bunny at 60 FPS in 720p with keyframes only.
 * Non-essential emojis can be turned off with a checkbox under "Settings" - "Deforum".
+* Seed and Subseed tabs unified.
 
 ## Troubleshooting
 

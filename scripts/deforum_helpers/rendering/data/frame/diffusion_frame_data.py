@@ -25,8 +25,7 @@ class DiffusionFrameData:
         return self.hybrid_comp_schedules['flow_factor']
 
     @staticmethod
-    def create(data):
-        i = data.indexes.frame.i
+    def create(data, i):
         keys: DeformAnimKeys = data.animation_keys.deform_keys
         return DiffusionFrameData(
             keys.noise_schedule_series[i],

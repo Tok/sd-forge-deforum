@@ -77,7 +77,7 @@ class RenderData:
                                      animation_mode, prompt_series, depth_model, output_directory, is_use_mask)
         images = Images.create(incomplete_init)
         turbo = Turbo.create(incomplete_init)
-        indexes = Indexes.create(incomplete_init, turbo)
+        indexes = Indexes.create()
         mask = Mask.create(incomplete_init, indexes.frame.i)
 
         instance = RenderData(images, turbo, indexes, mask, args.seed, ri_args, parseq_adapter, srt, animation_keys,
@@ -222,12 +222,12 @@ class RenderData:
         self.args.args.checkpoint = keys.checkpoint_schedule_series[i] \
             if self.args.anim_args.enable_checkpoint_scheduling else None
 
-    def prompt_for_current_step(self, i):
+    def prompt_for_current_step(self, frame, i):
         """returns value to be set back into the prompt"""
         prompt = self.args.args.prompt
         max_frames = self.args.anim_args.max_frames
-        seed = self.args.args.seed
-        return prepare_prompt(prompt, max_frames, seed, i)
+        seed = frame.seed
+        return prepare_prompt(prompt, max_frames, seed, frame.i)
 
     def _update_video_input_for_current_frame(self, i, frame):
         video_init_path = self.args.anim_args.video_init_path
@@ -268,7 +268,7 @@ class RenderData:
             return
         self.update_some_args_for_current_step(frame, i)
         self.update_checkpoint_for_current_step(i)
-        self.prompt_for_current_step(i)
+        self.prompt_for_current_step(frame, i)
         self.update_video_data_for_current_frame(i, frame)
         self.update_mask_image(frame, data.mask)
         self.animation_keys = AnimationKeys.from_args(self.args, self.parseq_adapter, self.seed)

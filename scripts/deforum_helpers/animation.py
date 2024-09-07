@@ -326,12 +326,11 @@ def transform_image_3d_new(device, prev_img_cv2, depth_tensor, rot_mat, translat
     y,x = torch.meshgrid(torch.linspace(-1.,1.,h,dtype=torch.float32,device=device),torch.linspace(-1.,1.,w,dtype=torch.float32,device=device))
 
     # test tensor for validity (some are corrupted for some reason)
-    depth_tensor_invalid = depth_tensor is None or torch.isnan(depth_tensor).any() or torch.isinf(depth_tensor).any() or depth_tensor.min() == depth_tensor.max()
-    
-    if depth_tensor is not None:
-        debug_print(f"Depth_T.min: {depth_tensor.min()}, Depth_T.max: {depth_tensor.max()}")
+    is_depth_tensor_invalid_or_missing = (depth_tensor is None or torch.isnan(depth_tensor).any()
+                                       or torch.isinf(depth_tensor).any() or depth_tensor.min() == depth_tensor.max())
+
     # if invalid, create flat z for this frame
-    if depth_tensor_invalid:
+    if is_depth_tensor_invalid_or_missing:
         # if none, then 3D depth is turned off, so no warning is needed.
         if depth_tensor is not None:
             print("Depth tensor invalid. Generating a Flat depth for this frame.")
@@ -351,10 +350,12 @@ def transform_image_3d_new(device, prev_img_cv2, depth_tensor, rot_mat, translat
         
         # console reporting of depth normalization, min, max, diff
         # will *only* print to console if Dev mode is enabled in general settings of Deforum
-        txt_depth_min, txt_depth_max = '{:.2f}'.format(float(depth_tensor.min())), '{:.2f}'.format(float(depth_tensor.max()))
-        diff = '{:.2f}'.format(float(depth_tensor.max()) - float(depth_tensor.min()))
-        console_txt = f"\033[36mDepth normalized to {depth_final.min()}/{depth_final.max()} from"
-        debug_print(f"{console_txt} {txt_depth_min}/{txt_depth_max} diff {diff}\033[0m") 
+
+        depth_min, depth_max, txt_depth_min, txt_depth_max = depth_min_max_and_formatted(depth_tensor)
+        aligned_min_max = f"Depth Tensor min/max: {txt_depth_min:>5}/{txt_depth_max:>5} \033[36mnormalized"
+        to_txt = f"{depth_final.min():.2f}/{depth_final.max():.2f}"
+        diff = '{:>5.2f}'.format(float(depth_max) - float(depth_min))
+        debug_print(f"{aligned_min_max} to {to_txt} (difference: {diff})\033[0m")
 
         # add z from depth
         z = torch.as_tensor(depth_final, dtype=torch.float32, device=device)
@@ -427,3 +428,9 @@ def depth_equalization(depth_tensor):
     equalized_depth_tensor = torch.from_numpy(equalized_depth_array).to(depth_tensor.device)
 
     return equalized_depth_tensor
+
+
+def depth_min_max_and_formatted(depth_tensor):
+    depth_min = depth_tensor.min()
+    depth_max = depth_tensor.max()
+    return depth_min, depth_max, '{:5.2f}'.format(float(depth_min)), '{:5.2f}'.format(float(depth_max))

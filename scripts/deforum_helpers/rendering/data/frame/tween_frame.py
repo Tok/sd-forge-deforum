@@ -33,7 +33,7 @@ class Tween:
         self.process(last_frame, data)
 
         new_image = self.generate_tween_image(data, grayscale_tube, overlay_mask_tube)
-        new_image = image_utils.save_and_return_frame(data, self, self.i(), new_image)
+        new_image = image_utils.save_and_return_frame(data, self, new_image)
 
         # updating reference images to calculate hybrid motions in next iteration
         data.images.previous = new_image

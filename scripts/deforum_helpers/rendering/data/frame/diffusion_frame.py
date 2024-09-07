@@ -212,7 +212,8 @@ class DiffusionFrame:
 
     @staticmethod
     def create(data: RenderData):
-        frame_data = DiffusionFrameData.create(data)
+        i = data.indexes.frame.i
+        frame_data = DiffusionFrameData.create(data, i)
         schedule = Schedule.create(data)
         return DiffusionFrame(0, False, -1, -1, 1.0, 0.0, frame_data, data, schedule, "", 0, list(), list())
 
@@ -288,8 +289,10 @@ class DiffusionFrame:
     @staticmethod
     def create_all_frames(data, keyframe_dist: KeyFrameDistribution = KeyFrameDistribution.default()):
         """Creates a list of key steps for the entire animation."""
-        start_index = data.turbo.find_start(data)  # TODO remove since we just recalc everything again on restart
-        max_frames = data.args.anim_args.max_frames
+        start_index = 0
+        max_frames = (data.args.anim_args.max_frames
+                      if not data.parseq_adapter.use_parseq
+                      else data.args.anim_args.max_frames - 1)
         diffusion_frame_count = DiffusionFrame.precalculate_diffusion_frame_count(
             data, keyframe_dist, start_index, max_frames)
 
@@ -308,6 +311,7 @@ class DiffusionFrame:
 
         key_indices = keyframe_distribution.calculate(data, start_index, diffusion_frame_count)
         assert len(diffusion_frames) == len(key_indices)
+
         for i, key_i in enumerate(key_indices):
             # TODO separate handling from calculation. this should be done on init.
             is_kf = KeyFrameDistribution.is_deforum_keyframe(data, key_i)
@@ -324,9 +328,7 @@ class DiffusionFrame:
         # The number of generated tweens depends on index since last diffusion_frame. The last tween has the same
         # index as the diffusion_frame it belongs to and is meant to replace the unprocessed original key frame.
         assert len(diffusion_frames) == diffusion_frame_count
-
-        diffusion_frames[0].i = 1  # TODO make sure this is correct from the start, then switch back to assert.
-        # assert diffusion_frames[0].i == 1  # 1st diffusion frame is at index 1
+        assert diffusion_frames[0].i == 1  # 1st diffusion frame is at index 1
         assert diffusion_frames[0].tweens == []  # 1st diffusion frame has no tweens
         if keyframe_distribution != KeyFrameDistribution.KEYFRAMES_ONLY:
             assert diffusion_frames[-1].i == data.args.anim_args.max_frames  # last index is same as max frames
@@ -354,33 +356,34 @@ class DiffusionFrame:
         def _start_control():
             return 0 if behavior != 'ladder' and behavior != 'alternate' else 1
 
-        last_seed = _start_seed()
-        last_seed_control = _start_control()  # same as 'data.args.root.seed_internal', but it's passed directly.
-
         is_seed_managed_by_parseq = data.parseq_adapter.manages_seed()
         if is_seed_managed_by_parseq:
             data.args.anim_args.enable_subseed_scheduling = True
-
-        for diffusion_frame in diffusion_frames:
-            DiffusionFrame._assign_subseed_properties(data, diffusion_frame, is_seed_managed_by_parseq)
-            the_next_seed, the_next_seed_control = generate_next_seed(data.args.args, last_seed, last_seed_control)
-            log_utils.debug(f"Seed {the_next_seed:010}. " +
-                            (f"Subseed {diffusion_frame.subseed:010} with strength {diffusion_frame.subseed_strength}."
-                             if diffusion_frame.subseed != -1 else ""))
-            diffusion_frame.seed = the_next_seed
-            last_seed = the_next_seed
-            last_seed_control = the_next_seed_control
+            keys = data.animation_keys.deform_keys  # Parseq keys are decorated in 'ParseqAnimKeysDecorator'
+            for diffusion_frame in diffusion_frames:
+                diffusion_frame.seed = int(keys.seed_schedule_series[diffusion_frame.i - 1])
+                diffusion_frame.subseed = int(keys.subseed_schedule_series[diffusion_frame.i - 1])
+                diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[diffusion_frame.i - 1])
+        else:
+            last_seed = _start_seed()
+            last_seed_control = _start_control()  # same as 'data.args.root.seed_internal', but it's passed directly.
+            for diffusion_frame in diffusion_frames:
+                DiffusionFrame._assign_subseed_properties(data, diffusion_frame, is_seed_managed_by_parseq)
+                the_next_seed, the_next_seed_control = generate_next_seed(data.args.args, last_seed, last_seed_control)
+                log_utils.debug(f"Seed {the_next_seed:010}. " +
+                                (f"Subseed {diffusion_frame.subseed:010} at {diffusion_frame.subseed_strength}."
+                                 if diffusion_frame.subseed != -1 else ""))
+                diffusion_frame.seed = the_next_seed
+                last_seed = the_next_seed
+                last_seed_control = the_next_seed_control
 
     @staticmethod
     def _assign_subseed_properties(data, diffusion_frame, is_seed_managed_by_parseq):
         keys = data.animation_keys.deform_keys
         is_subseed_scheduling_enabled = data.args.anim_args.enable_subseed_scheduling
-        if is_subseed_scheduling_enabled or is_seed_managed_by_parseq:
+        if is_subseed_scheduling_enabled:
             diffusion_frame.subseed = int(keys.subseed_schedule_series[diffusion_frame.i - 1])
-        if is_subseed_scheduling_enabled and not is_seed_managed_by_parseq:
             diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[diffusion_frame.i - 1])
-        if is_seed_managed_by_parseq:
-            diffusion_frame.subseed_strength = keys.subseed_strength_schedule_series[diffusion_frame.i - 1]
 
     @staticmethod
     def add_tweens_to_diffusion_frames(diffusion_frames):
@@ -390,7 +393,8 @@ class DiffusionFrame:
             from_i = diffusion_frames[i - 1].i
             to_i = diffusion_frames[i].i
             tweens, values = Tween.create_in_between_steps(diffusion_frames, i, data, from_i, to_i)
-            log_utils.debug(f"Creating {len(tweens)} tweens ({from_i}->{to_i}) for frame at {diffusion_frames[i].i}")
+            from_to = f"({from_i:05}->{to_i:05})"
+            log_utils.debug(f"Creating {len(tweens):03} tweens {from_to} for frame #{diffusion_frames[i].i:09}")
             diffusion_frames[i].tweens = tweens
             diffusion_frames[i].tween_values = values
             diffusion_frames[i].render_data.indexes.update_tween_start(data.turbo)

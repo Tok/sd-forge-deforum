@@ -25,7 +25,7 @@ def _prepare_subtitle_text(data, is_simple_subtitles, params_to_print, i, is_cad
     index_str = f"{i:05}"  # Pad frame index to 5 digits with leading zeros, which ought to be enough for anybody.
     cadence_str = str(is_cadence).ljust(5)  # Pad is_cadence to 5 characters so 'True' is the same width as 'False'.
     seed_str = str(seed).zfill(10)  # Convert seed to string and pad with leading zeros to 10 digits if necessary.
-    subseed_str = str(subseed).zfill(10)
+    subseed_str = str(subseed).zfill(10)  # TODO also provide subseed_strength
     if not data.parseq_adapter.use_parseq:
         log_utils.warn("Complex subtitles not supported without Parseq in the experimental core: Params removed.")
         return f"F#: {index_str}; {params_str}"

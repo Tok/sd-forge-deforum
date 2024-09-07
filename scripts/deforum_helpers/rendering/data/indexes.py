@@ -12,14 +12,13 @@ class IndexWithStart:
 
 @dataclass(init=True, frozen=False, repr=False, eq=False)
 class Indexes:
+    # TODO class should eventually be removed in favor of the indices directly on the frame.
     frame: IndexWithStart = None
     tween: IndexWithStart = None
 
     @staticmethod
-    def create(init, turbo):
-        frame_start = turbo.find_start(init)
-        tween_start = 0
-        return Indexes(IndexWithStart(frame_start), IndexWithStart(tween_start))
+    def create():
+        return Indexes(IndexWithStart(), IndexWithStart())
 
     @staticmethod
     def create_from_last(last_indexes, i: int):
