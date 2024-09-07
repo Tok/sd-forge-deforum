@@ -145,6 +145,10 @@ def download_file_with_checksum(url, expected_checksum, dest_folder, dest_filena
         download_url_to_file(url, str(expected_full_path), hash, progress)
         if checksum(expected_full_path) != expected_checksum:
             raise Exception(f"Error while downloading {dest_filename}.]nPlease manually download from: {url}\nAnd place it in: {dest_folder}")
-        
+
+
 def tickOrCross(value):
-    return "✅" if value else "❌"
+    is_use_simple_symbols = True  # TODO? re-enable console emojis
+    tick = "✔" if is_use_simple_symbols else "\U00002705"  # Check mark ✅
+    cross = "✖" if is_use_simple_symbols else "\U0000274C"  # Cross mark ❌
+    return tick if value else cross

@@ -323,7 +323,7 @@ class DiffusionFrame:
         log_utils.print_key_frame_debug_info_if_verbose(diffusion_frames)
 
         pseudo_cadence = data.args.anim_args.max_frames / len(diffusion_frames)
-        log_utils.info(f"Calculated pseudo cadence: {pseudo_cadence:.2f}")
+        log_utils.info(f"Calculated pseudo cadence: {log_utils.ORANGE}{pseudo_cadence:.2f}{log_utils.RESET_COLOR}")
 
         # The number of generated tweens depends on index since last diffusion_frame. The last tween has the same
         # index as the diffusion_frame it belongs to and is meant to replace the unprocessed original key frame.
