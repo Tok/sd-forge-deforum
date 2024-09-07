@@ -217,27 +217,10 @@ class RenderData:
         self.args.args.cfg_scale = frame.frame_data.cfg_scale
         self.args.args.distilled_cfg_scale = frame.frame_data.distilled_cfg_scale
 
-    def update_seed_and_checkpoint_for_current_step(self, i):
+    def update_checkpoint_for_current_step(self, i):
         keys = self.animation_keys.deform_keys
-        is_seed_scheduled = self.args.args.seed_behavior == 'schedule'
-        is_seed_managed = self.parseq_adapter.manages_seed()
-        is_seed_scheduled_or_managed = is_seed_scheduled or is_seed_managed
-        if is_seed_scheduled_or_managed:
-            self.args.args.seed = int(keys.seed_schedule_series[i])
         self.args.args.checkpoint = keys.checkpoint_schedule_series[i] \
             if self.args.anim_args.enable_checkpoint_scheduling else None
-
-    def update_sub_seed_schedule_for_current_step(self, i):
-        keys = self.animation_keys.deform_keys
-        is_subseed_scheduling_enabled = self.args.anim_args.enable_subseed_scheduling
-        is_seed_managed_by_parseq = self.parseq_adapter.manages_seed()
-        if is_subseed_scheduling_enabled or is_seed_managed_by_parseq:
-            self.args.root.subseed = int(keys.subseed_schedule_series[i])
-        if is_subseed_scheduling_enabled and not is_seed_managed_by_parseq:
-            self.args.root.subseed_strength = float(keys.subseed_strength_schedule_series[i])
-        if is_seed_managed_by_parseq:
-            self.args.root.subseed_strength = keys.subseed_strength_schedule_series[i]
-            self.args.anim_args.enable_subseed_scheduling = True  # TODO? move to init.
 
     def prompt_for_current_step(self, i):
         """returns value to be set back into the prompt"""
@@ -284,8 +267,7 @@ class RenderData:
         if i > self.args.anim_args.max_frames - 1:
             return
         self.update_some_args_for_current_step(frame, i)
-        self.update_seed_and_checkpoint_for_current_step(i)
-        self.update_sub_seed_schedule_for_current_step(i)
+        self.update_checkpoint_for_current_step(i)
         self.prompt_for_current_step(i)
         self.update_video_data_for_current_frame(i, frame)
         self.update_mask_image(frame, data.mask)

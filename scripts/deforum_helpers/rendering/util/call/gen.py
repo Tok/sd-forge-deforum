@@ -6,7 +6,6 @@ def call_generate(data, frame, redo_seed: int = None):
     ia = data.args
     ia.args.strength = 1.0 - frame.strength  # update denoise for current diffusion from pre-generated frame
     ia.args.seed = frame.seed if redo_seed is None else redo_seed  # update seed with precalculated value from frame
-    ia.root.seed_internal = ia.args.seed
     ia.root.subseed = frame.subseed
     ia.root.subseed_strength = frame.subseed_strength
     return generate(ia.args, data.animation_keys.deform_keys, ia.anim_args, ia.loop_args, ia.controlnet_args,

@@ -99,6 +99,9 @@ def seed():
     return _select('\U0001F330')  # 🌰
 
 
+def subseed():
+    return _select('\U0001F95C')  # 🥜
+
 def leaf():
     return _select('\U0001F343')  # 🍃
 

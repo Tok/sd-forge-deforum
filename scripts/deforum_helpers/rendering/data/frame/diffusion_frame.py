@@ -24,7 +24,7 @@ from ...util.call.video_and_audio import call_render_preview
 from ....colors import maintain_colors
 from ....hybrid_video import image_transform_ransac, image_transform_optical_flow
 from ....save_images import save_image
-from ....seed import next_seed
+from ....seed import generate_next_seed
 
 
 @dataclass(init=True, frozen=False, repr=False, eq=False)
@@ -345,26 +345,42 @@ class DiffusionFrame:
 
     @staticmethod
     def _assign_initial_seeds(data, diffusion_frames):
-        log_utils.info(f"Precalculating seeds with behaviour '{data.args.args.seed_behavior}' " +
-                       f"for {len(diffusion_frames)} frames.")
-        keys = data.animation_keys.deform_keys
-        is_subseed_scheduling_enabled = data.args.anim_args.enable_subseed_scheduling
+        log_utils.info(f"Precalculating {len(diffusion_frames)} seeds with behaviour '{data.args.args.seed_behavior}'.")
+        behavior = data.args.args.seed_behavior
+
+        def _start_seed():
+            return data.args.args.seed + (-1 if behavior == 'iter' else (1 if behavior == 'ladder' else 0))
+
+        def _start_control():
+            return 0 if behavior != 'ladder' and behavior != 'alternate' else 1
+
+        last_seed = _start_seed()
+        last_seed_control = _start_control()  # same as 'data.args.root.seed_internal', but it's passed directly.
+
         is_seed_managed_by_parseq = data.parseq_adapter.manages_seed()
         if is_seed_managed_by_parseq:
             data.args.anim_args.enable_subseed_scheduling = True
 
         for diffusion_frame in diffusion_frames:
-            if is_subseed_scheduling_enabled or is_seed_managed_by_parseq:
-                diffusion_frame.subseed = int(keys.subseed_schedule_series[diffusion_frame.i])
-            if is_subseed_scheduling_enabled and not is_seed_managed_by_parseq:
-                diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[diffusion_frame.i])
-            if is_seed_managed_by_parseq:
-                diffusion_frame.subseed_strength = keys.subseed_strength_schedule_series[diffusion_frame.i]
-            the_next_seed = next_seed(data.args.args, data.args.root)
-            log_utils.debug(f"Seed {the_next_seed:10}. " +
-                            f"Subseed {diffusion_frame.subseed:10} with strength {diffusion_frame.subseed_strength}."
-                            if diffusion_frame.subseed != -1 else "")
+            DiffusionFrame._assign_subseed_properties(data, diffusion_frame, is_seed_managed_by_parseq)
+            the_next_seed, the_next_seed_control = generate_next_seed(data.args.args, last_seed, last_seed_control)
+            log_utils.debug(f"Seed {the_next_seed:010}. " +
+                            (f"Subseed {diffusion_frame.subseed:010} with strength {diffusion_frame.subseed_strength}."
+                             if diffusion_frame.subseed != -1 else ""))
             diffusion_frame.seed = the_next_seed
+            last_seed = the_next_seed
+            last_seed_control = the_next_seed_control
+
+    @staticmethod
+    def _assign_subseed_properties(data, diffusion_frame, is_seed_managed_by_parseq):
+        keys = data.animation_keys.deform_keys
+        is_subseed_scheduling_enabled = data.args.anim_args.enable_subseed_scheduling
+        if is_subseed_scheduling_enabled or is_seed_managed_by_parseq:
+            diffusion_frame.subseed = int(keys.subseed_schedule_series[diffusion_frame.i - 1])
+        if is_subseed_scheduling_enabled and not is_seed_managed_by_parseq:
+            diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[diffusion_frame.i - 1])
+        if is_seed_managed_by_parseq:
+            diffusion_frame.subseed_strength = keys.subseed_strength_schedule_series[diffusion_frame.i - 1]
 
     @staticmethod
     def add_tweens_to_diffusion_frames(diffusion_frames):

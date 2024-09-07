@@ -255,7 +255,7 @@ def DeforumAnimArgs():
             "label": "Enable Subseed scheduling",
             "type": "checkbox",
             "value": False,
-            "info": ""
+            "info": "Aim for more continuous similarity by mixing in a constant seed."
         },
         "subseed_schedule": {
             "label": "Subseed schedule",

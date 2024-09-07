@@ -136,13 +136,12 @@ def get_tab_keyframes(d, da, dloopArgs):
                 distilled_cfg_scale_schedule = create_row(da.distilled_cfg_scale_schedule)
                 enable_clipskip_scheduling = create_row(da.enable_clipskip_scheduling)
                 clipskip_schedule = create_row(da.clipskip_schedule)
-            with gr.TabItem(f"{emoji_utils.seed()} Seed"):
+            with gr.TabItem(f"{emoji_utils.seed()} Seed & SubSeed") as subseed_sch_tab:
                 seed_behavior = create_row(d.seed_behavior)
                 with FormRow() as seed_iter_N_row:
                     seed_iter_N = create_row(d.seed_iter_N)
                 with FormRow(visible=False) as seed_schedule_row:
                     seed_schedule = create_gr_elem(da.seed_schedule)
-            with gr.TabItem('SubSeed', open=False) as subseed_sch_tab:
                 enable_subseed_scheduling, subseed_schedule, subseed_strength_schedule = create_row(
                     da, 'enable_subseed_scheduling', 'subseed_schedule', 'subseed_strength_schedule')
                 seed_resize_from_w, seed_resize_from_h = create_row(
