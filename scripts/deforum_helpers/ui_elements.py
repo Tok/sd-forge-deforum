@@ -627,66 +627,46 @@ def get_tab_output(da, dv):
 
 def create_keyframe_distribution_info_tab():
     create_row(gr.Markdown(f"""
-        {emoji_utils.warn} If Keyframe distribution is activated, the rendering will be processed in a
-            different, more experimental render core. **Some features are currently not- or not fully supported in the
-            new render core** and could lead to an error or to undesired results if not turned off."""))
+        {emoji_utils.warn} Keyframe distribution uses an experimental render core with a slightly different feature set.
+        Some features may not be supported and could cause errors or unexpected results if not disabled.
+    """))
     create_accordion_md_row("Keyframe Distribution Info", f"""
         ### Purpose & Description
-        * Keyframe distribution ensures that every frame with an entry in the Prompts-
-            or in the Parseq-table is diffused, ideally at a lower Strength.
-        * Since the experimental render core allows for high or no cadence,
-            the generation can be performed **much faster** compared to a traditional low cadence setup.
-        * Resulting videos tend to be **less jittery** at high or no cadence, but may introduce other visual artifacts
-            like 'depth smear' when combined with fast movement.
-            * {emoji_utils.bulb()} Most negative effects can still be mitigated,
-                by inserting lower strength frames in at regular intervals.
+        - Ensures diffusion of frames with entries in Prompts or Parseq tables
+        - Allows faster generation with high or no cadence
+        - Produces less jittery videos, but may introduce artifacts like 'depth smear' at 3D fast movement.
+        - Mitigate cumulative negative effects by inserting lower strength frames at regular intervals
 
         ### Distribution Modes
-        * **Off**: Key frames are not redistributed. Cadence settings are fully respected.
-            Process runs on stable render core with better support for complicated setups.
-        * **Keyframes Only**: Only frames with an entry in Prompts or in the Parseq table are diffused.
-            Actual cadence settings are ignored and all non-keyframes are handled as cadence frames.
-        * **Additive**: Is using cadence but adds keyframes. Takes more time to generate, 
-            but may help stabilizing the frames by doing diffusions in regular intervals.
-            Parseq Recommendation: Make high cadence setup and mark your frames with an 'Info' like "event", then
-            in 'i_strength' dip deeper on key frames. E.g.: 'if (f == info_match_last("event")) 0.30 else 0.80'.
-        * **Redistributed**: Calculates uniform cadence distribution from cadence, 
-            but rearranges some keyframes to preserve proper keyframe synchronization at high cadence (e.g. '30').
-            Helps to prevent diffusion frames from being too close and should be slightly faster than additive,
-            but is also less predictable because some cadence frames are moved to match keyframes.
-        """)
+        1. **Off**: Standard render core, respects cadence settings
+        2. **Keyframes Only**: Diffuses only Prompts/Parseq entries, ignores cadence
+        3. **Additive**: Uses keyframes and adds cadence for stability.
+        4. **Redistributed**: Calculates cadence but rearranges the frames closest to keyframe positions
+            to fit them for better synchronization and reactivity at high cadence.
+    """)
     create_accordion_md_row("General Recommendations & Warnings", f"""
-        * Keyframe Distribution modes may most effectively be used at **high FPS** and with **high cadence**.
-            * Try FPS "60" and cadence "20".
-        * The diffusion process is either using 'strength' or 'keyframe_strength', depending on frame type.
-            * 'keyframe_strength' should be lower than 'strength', but is ignored when using Parseq.
-        * {emoji_utils.warn} It's currently not recommended to try and use keyframe distribution together
-            with optical flow or with hybrid. Better keep this turned off.
-        * {emoji_utils.warn} Optical Flow related settings may not behave as expected and are recommended
-            to be turned off when keyframe distribution is used (see tab "Keyframes", sub-tab "Coherence").
-        * Avoid Dark Out: High cadence generations may have a tendency to dark out over time.
-            Make sure to still setup some diffusions with low strength at regular intervals.
-            Setting "Sampling mode" to "nearest" in "3D Depth Warping & FOW" can help a great deal against dark-outs.
-            * Help clearing the canvas from time to time by diffusing some frames at low strength.
-            * A render at 0 keyframe strength could in theory solve practically all visual problems by resetting
-                the context, however that would is generally undesirable because it results in a cut in 
-                the resulting clip. Finding an ideal balance for strength values is key to a good setup.
-                * The optimal values highly depend on other variables such as cadence or calculated pseudo cadence.
+        - Use with high FPS (e.g., 60) and high cadence (e.g., 15)
+        - 'Keyframe_strength' should be lower than 'strength' (ignored when using Parseq)
+        - {emoji_utils.warn} Not recommended with optical flow or hybrid settings
+        - {emoji_utils.warn} Optical flow settings ~may~ will behave unexpectedly.
+            - Turn off in tab "Keyframes", sub-tab "Coherence".
+        - Prevent issues like dark-outs that add up over frames:
+            - Set up regular low-strength diffusions by using enough keyframes
+        - Balance strength values for optimal results
     """)
     create_accordion_md_row("Deforum Setup Recommendations", f"""
-        * Set 'Keyframe strength' somewhat lower than 'Strength' so the keyframes can really be key.
-        * When using keyframe distributions, you can force keyframe creation at a specific frame by duplicating 
-            the previous prompt and give it the desired frame number. It will make sure that the frame is diffused with
-            the value defined in 'Keyframe strength' (ideally at higher denoise than cadence frames).
+        - Set 'Keyframe strength' lower than 'Strength' to make sure keyframes get diffused with more steps
+            - The higher the difference, the more keyframes become key compared to regular cadence frames. 
+        - Force keyframe creation by duplicating the previous prompt with the desired frame number
+            - This ensures diffusion with 'Keyframe strength' value
     """)
     create_accordion_md_row("Parseq Setup Recommendations", f"""
-        * Deforum prompt keyframes are ignored, instead all frames with an entry in Parseq are handled as keyframes.
-        * If Parseq is active, 'Keyframe strength' is also ignored, because you can provide the value for regular
-            'Strength' directly from Parseq, where you have more options to control the value directly, 
-            so there's no need for a secondary value.
-            * However, it's still recommended to create a similar setup with strength-dips at regular intervals.
-            * E.g: mark your all frames with an 'Info' like "event", then in 'i_strength' dip deeper on key frames 
-                with a formula like "if (f == info_match_last("event")) 0.25 else 0.50" (tune values as needed).
+        - Deforum prompt keyframes are ignored
+        - All frames with Parseq entries are treated as keyframes and will be diffused
+        - 'Keyframe strength' is ignored; use Parseq for direct 'Strength' control
+        - Create strength-dips at regular intervals:
+            - Mark frames with 'Info' (e.g., "event")
+            - Use formulas like: `if (f == info_match_last("event")) 0.25 else 0.75`
     """)
 
 
