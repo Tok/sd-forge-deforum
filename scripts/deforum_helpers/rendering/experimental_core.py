@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import List
 
 # noinspection PyUnresolvedReferences
+import modules.shared as shared
+# noinspection PyUnresolvedReferences
 from modules.shared import cmd_opts, progress_print_out, state
 from tqdm import tqdm
 
@@ -15,7 +17,8 @@ from .util import filename_utils, image_utils, log_utils, memory_utils, opt_util
 def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args,
                      freeu_args, kohya_hrfix_args, root):
     log_utils.info("Using experimental render core.", log_utils.RED)
-    data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
+    data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, freeu_args,
+                             kohya_hrfix_args, root)
     check_render_conditions(data)
     web_ui_utils.init_job(data)
     diffusion_frames = DiffusionFrame.create_all_frames(data, KeyFrameDistribution.from_UI_tab(data))
@@ -90,9 +93,11 @@ def _maybe_wrap_tweens_with_progress_bar(frame):
     # only use tween progress bar when extra console output (aka "dev mode") is disabled.
     if not opt_utils.is_verbose():
         log_utils.clear_previous_line()
-        # FIXME use modules.shared.total_tqdm
-        return tqdm(frame.tweens, desc="Tweens progress", file=progress_print_out,
-                    disable=cmd_opts.disable_console_progressbars, colour='#FFA468')
+        # TODO add a working total progress bar..
+        wrapped = tqdm(frame.tweens, desc="Tweens progress", file=progress_print_out, position=0,
+                       disable=cmd_opts.disable_console_progressbars, colour='#FFA468')
+        shared.total_tqdm = wrapped
+        return wrapped
     return frame.tweens
 
 

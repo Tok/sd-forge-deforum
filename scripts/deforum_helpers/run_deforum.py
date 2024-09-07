@@ -106,11 +106,14 @@ def run_deforum(*args):
         torch.cuda.empty_cache()
         
         # Import them *here* or we add 3 seconds to initial webui launch-time. user doesn't feel it when we import inside the func:
-        from .render import render_animation
+        from .render import render_animation, is_use_experimental_render_core
         from .render_modes import render_input_video, render_animation_with_video_mask, render_interpolation
 
         tqdm_backup = shared.total_tqdm
-        shared.total_tqdm = DeforumTQDM(args, anim_args, parseq_args, video_args)
+
+        if not is_use_experimental_render_core(anim_args):  # Experimental core sets shared tdqm directly
+            shared.total_tqdm = DeforumTQDM(args, anim_args, parseq_args, video_args)
+
         try:  # dispatch to appropriate renderer
             JobStatusTracker().update_phase(job_id, DeforumJobPhase.GENERATING)
             JobStatusTracker().update_output_info(job_id, outdir=args.outdir, timestring=root.timestring)
