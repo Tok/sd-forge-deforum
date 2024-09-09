@@ -56,6 +56,22 @@ cd sd-forge-deforum
 pip install -r requirements.txt
 ```
 
+### Update Deforum Settings
+
+Get the latest default-settings.txt and place it directly into your 'webui' directory, then click "Load All Settings":
+https://raw.githubusercontent.com/Tok/sd-forge-deforum/main/scripts/default_settings.txt1
+
+
+&#x26A0;&#xFE0F; Some Settings are currently not properly loaded or are not persisted 
+in `default_settings.txt` and may need to be set manually the first time:
+* Tab "Prompts" - "Prompts negative" not resetting
+  * Consider removing the defaults because they're not used with Flux.
+* Tab "Keyframe" - "Distribution" may be showing up blank
+  * set to "Keyframes Only" for the Default Bunny testrun
+  * set to "Off" to use the stable render core.
+
+Recommendation: **Use ForgeUIs "Settings" - "Defaults" to save your settings.**
+
 ## Default Bunny Testrun
 
 After installation, you can test the setup by generating the default bunny with
