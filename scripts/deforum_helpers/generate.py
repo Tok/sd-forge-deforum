@@ -251,6 +251,9 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
 
             if is_controlnet_enabled(controlnet_args):
                 cnet_args = get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=frame)
+                print(f"----> controlnet_args: {controlnet_args}")
+                print(f"----> p_txt {p_txt}")
+                print(f"----> frame {frame}: {cnet_args}")
                 add_forge_script_to_deforum_run(p_txt, "ControlNet", cnet_args)
 
             if freeu_args.freeu_enabled:

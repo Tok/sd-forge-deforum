@@ -254,7 +254,11 @@ def get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_ad
             cnu['guidance_end'] = getattr(CnSchKeys, f"cn_{model_num}_guidance_end_schedule_series")[frame_idx]
             if cnu['enabled']:
                 debug_print(f"ControlNet {model_num}: weight={cnu['weight']}, guidance_start={cnu['guidance_start']}, guidance_end={cnu['guidance_end']}")
-        cnu['image'] = {'image': img_np, 'mask': mask_np} if mask_np is not None else  {'image': img_np, 'mask': np.zeros_like(img_np)} 
+        cnu['generated_image'] = img_np
+        cnu['image'] = img_np
+        cnu['image_fg'] = None  # TODO use
+        cnu['mask_image'] = mask_np if mask_np is not None else np.zeros_like(img_np)
+        cnu['mask_image_fg'] = None  # TODO use
 
         return cnu
 
