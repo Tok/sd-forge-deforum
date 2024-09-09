@@ -122,4 +122,4 @@ Complex subtitle generations should work fine with Parseq but are currently limi
 During active development, content and structure of the `deforum_settings.txt` file 
 can change quickly been updated. Settings from older versions may not behave as expected.
 If necessary, the lastest deforum-settings.txt are available for download here:
-https://github.com/deforum-art/sd-webui-deforum/blob/automatic1111-webui/scripts/default_settings.txt
+https://github.com/Tok/sd-forge-deforum/blob/main/scripts/default_settings.txt
