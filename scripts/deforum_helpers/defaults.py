@@ -46,9 +46,11 @@ def get_samplers_list():
         'dpm++ 3m sde karras': 'DPM++ 3M SDE Karras',
         'dpm++ 3m sde exponential': 'DPM++ 3M SDE Exponential',
         'ddim': 'DDIM',
+        'deis':'DEIS',
         'plms': 'PLMS',
         'unipc': 'UniPC',
-        'restart': 'Restart'
+        'restart': 'Restart',
+        'Flux Realistic': '[Forge]Flux Realistic'
     }
 
 
