@@ -16,40 +16,14 @@
 
 # noinspection PyUnresolvedReferences
 from modules import sd_schedulers
+from modules import sd_samplers
 
-
+# Dynamically calls all the samplers from forge, so if it updates so does this
 def get_samplers_list():
-    return {
-        'euler a': 'Euler a',
-        'euler': 'Euler',
-        'lms': 'LMS',
-        'heun': 'Heun',
-        'dpm2': 'DPM2',
-        'dpm2 a': 'DPM2 a',
-        'dpm++ 2s a': 'DPM++ 2S a',
-        'dpm++ 2m': 'DPM++ 2M',
-        'dpm++ sde': 'DPM++ SDE',
-        'dpm++ 2m sde karras': 'DPM++ 2M SDE Karras',
-        'dpm fast': 'DPM fast',
-        'dpm adaptive': 'DPM adaptive',
-        'lms karras': 'LMS Karras',
-        'dpm2 karras': 'DPM2 Karras',
-        'dpm2 a karras': 'DPM2 a Karras',
-        'dpm++ 2s a karras': 'DPM++ 2S a Karras',
-        'dpm++ 2m karras': 'DPM++ 2M Karras',
-        'dpm++ sde karras': 'DPM++ SDE Karras',
-        'dpm++ 2m sde exponential': 'DPM++ 2M SDE Exponential',
-        'dpm++ 2m sde heun': 'DPM++ 2M SDE Heun',
-        'dpm++ 2m sde heun karras': 'DPM++ 2M SDE Heun Karras',
-        'dpm++ 2m sde Heun Exponential': 'DPM++ 2M SDE Heun Exponential',
-        'dpm++ 3m sde': 'DPM++ 3M SDE',
-        'dpm++ 3m sde karras': 'DPM++ 3M SDE Karras',
-        'dpm++ 3m sde exponential': 'DPM++ 3M SDE Exponential',
-        'ddim': 'DDIM',
-        'plms': 'PLMS',
-        'unipc': 'UniPC',
-        'restart': 'Restart'
-    }
+    samplers = {}
+    for sampler in sd_samplers.all_samplers:
+        samplers[sampler.name.lower()] = sampler.name
+    return samplers
 
 
 def get_schedulers_list():
