@@ -23,9 +23,9 @@ class KeyFrameDistribution(Enum):
             case "Redistributed":
                 return KeyFrameDistribution.REDISTRIBUTED
             case _:
-                log_utils.warn(f"Invalid keyframe_distribution from UI, falling back to "
-                               f"'{KeyFrameDistribution.default()}': {distribution}")
-                return KeyFrameDistribution.default()
+                default = KeyFrameDistribution.default()
+                log_utils.warn(f"Invalid keyframe_distribution from UI: '{distribution}'. Falling back to '{default}'.")
+                return default
 
     @staticmethod
     def default():
