@@ -44,7 +44,8 @@ def hide_file_textboxes(choice):
 class ToolButton(gr.Button, gr.components.FormComponent):
         """Small button with single emoji as text, fits inside gradio forms"""
         def __init__(self, **kwargs):
-            super().__init__(variant="tool", **kwargs)
+            super().__init__(**kwargs)  # Don't pass the variant here to avoid a type error in Gradio...
+            self.variant = "tool"  # ...but setting the variant directly here is fine.
 
         def get_block_name(self):
             return "button"
