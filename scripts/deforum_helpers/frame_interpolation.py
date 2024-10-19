@@ -217,7 +217,7 @@ def calculate_frames_to_add(total_frames, interp_x):
 def process_interp_pics_upload_logic(pic_list, engine, x_am, sl_enabled, sl_am, keep_imgs, f_location, f_crf, f_preset, fps, f_models_path, resolution, add_soundtrack, audio_track):
     pic_path_list = [pic.name for pic in pic_list]
     print(f"got a request to *frame interpolate* a set of {len(pic_list)} images.")
-    folder_name = clean_folder_name(Path(pic_list[0].orig_name).stem)
+    folder_name = clean_folder_name(Path(pic_list[0].name).stem)
     outdir_no_tmp = os.path.join(os.getcwd(), 'outputs', 'frame-interpolation', folder_name)
     i = 1
     while os.path.exists(outdir_no_tmp):

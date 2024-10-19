@@ -31,7 +31,7 @@ from modules.shared import opts
 def process_ncnn_upscale_vid_upload_logic(vid_path, in_vid_fps, in_vid_res, out_vid_res, models_path, upscale_model, upscale_factor, keep_imgs, f_location, f_crf, f_preset, current_user_os):
     print(f"Got a request to *upscale* a video using {upscale_model} at {upscale_factor}")
 
-    folder_name = clean_folder_name(Path(vid_path.orig_name).stem)
+    folder_name = clean_folder_name(Path(vid_path.name).stem)
     outdir = opts.outdir_samples or os.path.join(os.getcwd(), 'outputs')
     outdir_no_tmp = outdir + f'/frame-upscaling/{folder_name}'
     i = 1

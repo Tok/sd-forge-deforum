@@ -114,7 +114,7 @@ def upload_vid_to_interpolate(file, engine, x_am, sl_enabled, sl_am, keep_imgs, 
         return print("Please upload a video and set a proper value for 'Interp X'. Can't interpolate x0 times :)")
     f_location, f_crf, f_preset = get_ffmpeg_params()
 
-    process_interp_vid_upload_logic(file, engine, x_am, sl_enabled, sl_am, keep_imgs, f_location, f_crf, f_preset, in_vid_fps, f_models_path, file.orig_name)
+    process_interp_vid_upload_logic(file, engine, x_am, sl_enabled, sl_am, keep_imgs, f_location, f_crf, f_preset, in_vid_fps, f_models_path, file.name)
 
 def upload_pics_to_interpolate(pic_list, engine, x_am, sl_enabled, sl_am, keep_imgs, fps, add_audio, audio_track):
     from PIL import Image
@@ -146,7 +146,7 @@ def upload_vid_to_depth(vid_to_depth_chosen_file, mode, thresholding, threshold_
     f_location, f_crf, f_preset = get_ffmpeg_params()
 
     process_depth_vid_upload_logic(vid_to_depth_chosen_file, mode, thresholding, threshold_value, threshold_value_max, adapt_block_size, adapt_c, invert, end_blur, midas_weight_vid2depth,
-                                   vid_to_depth_chosen_file.orig_name, depth_keep_imgs, f_location, f_crf, f_preset, f_models_path)
+                                   vid_to_depth_chosen_file.name, depth_keep_imgs, f_location, f_crf, f_preset, f_models_path)
 
 # END gradio-to-frame-interoplation/ upscaling functions
 
