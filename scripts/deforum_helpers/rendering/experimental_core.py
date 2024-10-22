@@ -11,6 +11,7 @@ from tqdm import tqdm
 from . import img_2_img_tubes
 from .data.frame import KeyFrameDistribution, DiffusionFrame
 from .data.render_data import RenderData
+from .data.turbo import ImageFrame
 from .util import filename_utils, image_utils, log_utils, memory_utils, opt_utils, subtitle_utils, web_ui_utils
 
 
@@ -29,8 +30,12 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
 
 def run_render_animation(data: RenderData, diffusion_frames: List[DiffusionFrame]):
     for diffusion_frame in diffusion_frames:
-        if is_resume(data, diffusion_frame):
+        is_resume, full_path = is_resume_with_image(data, diffusion_frame)
+        if is_resume:
+            existing_image = image_utils.load_image(full_path)  # TODO pass directly
+            data.turbo.next = ImageFrame(existing_image, diffusion_frame.i)
             continue
+
         _pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame)
         image = diffusion_frame.generate()
         if image is None:
@@ -101,10 +106,11 @@ def _maybe_wrap_tweens_with_progress_bar(frame):
     return frame.tweens
 
 
-def is_resume(data, diffusion_frame):
-    filename = filename_utils.frame_filename(data, diffusion_frame.i)
+def is_resume_with_image(data, diffusion_frame):
+    last_index = diffusion_frame.tweens[-1].i() if diffusion_frame.has_tween_frames() else diffusion_frame.i
+    filename = filename_utils.frame_filename(data, last_index)
     full_path = Path(data.output_directory) / filename
     is_file_existing = os.path.exists(full_path)
     if is_file_existing:
         log_utils.info(f"Frame {filename} exists, skipping to next keyframe.", log_utils.ORANGE)
-    return is_file_existing
+    return is_file_existing, full_path

@@ -36,6 +36,13 @@ def save_cadence_frame_and_depth_map_if_active(data: RenderData, frame, image):
         data.depth_model.save(dm_save_path, frame.depth)
 
 
+def load_image(image_path):
+    if not os.path.isfile(image_path):
+        print(f"File does not exist: {image_path}")
+        return None
+    return cv2.imread(str(image_path))
+
+
 def save_and_return_frame(data: RenderData, frame, image):
     save_cadence_frame_and_depth_map_if_active(data, frame, image)
     return image
