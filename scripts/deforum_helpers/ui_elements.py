@@ -78,10 +78,6 @@ def get_tab_run(d, da):
             ddim_eta_schedule = create_gr_elem(da.ddim_eta_schedule)
             ancestral_eta_schedule = create_gr_elem(da.ancestral_eta_schedule)
 
-        # TODO FIXME remove this message again after some time:
-        with gr.Row(variant='compact'):
-            gr.Markdown(f"{emoji_utils.up()} All guidance scale schedules have been moved to 'Keyframes' - 'CFG'.")
-
         # RUN FROM SETTING FILE ACCORD
         with gr.Accordion('Batch Mode, Resume and more', open=False):
             with gr.Tab('Batch Mode/ run from setting files'):
@@ -208,6 +204,17 @@ def get_tab_keyframes(d, da, dloopArgs):
                     perspective_flip_gamma = create_gr_elem(da.perspective_flip_gamma)
                 with FormRow(visible=False) as per_f_f_row:
                     perspective_flip_fv = create_gr_elem(da.perspective_flip_fv)
+
+            with gr.TabItem(f"{emoji_utils.video_camera()} Shakify"):
+                with FormColumn(min_width=220):
+                    create_row(gr.Markdown(f"""
+                        Integrate dynamic camera shake effects into your renders with data sourced from EatTheFutures
+                         'Camera Shakify' Blender plugin. This feature enhances the realism of your animations
+                        by simulating natural camera movements, adding a layer of depth and engagement to your visuals. 
+                    """))
+                    shake_name = create_row(da.shake_name)
+                    shake_intensity = create_row(da.shake_intensity)
+                    shake_speed = create_row(da.shake_speed)
 
             # NOISE INNER TAB
             with gr.TabItem(f"{emoji_utils.wave()} Noise"):

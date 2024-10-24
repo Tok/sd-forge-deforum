@@ -41,7 +41,7 @@ def run_render_animation(data: RenderData, diffusion_frames: List[DiffusionFrame
         if image is None:
             log_utils.print_warning_generate_returned_no_image()
             break
-        _post_process_diffusion_frame(diffusion_frame, image)
+        _post_process_diffusion_frame(data, diffusion_frame, image)
 
 
 def _pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame):
@@ -55,12 +55,15 @@ def _pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame):
     diffusion_frame.prepare_generation(frame_tube, contrasted_noise_tube)
 
 
-def _post_process_diffusion_frame(diffusion_frame, image):
+def _post_process_diffusion_frame(data: RenderData, diffusion_frame, image):
+    df = diffusion_frame
     if not image_utils.is_PIL(image):  # check is required when resuming from timestring
-        image = img_2_img_tubes.conditional_frame_transformation_tube(diffusion_frame)(image)
+        image = img_2_img_tubes.conditional_frame_transformation_tube(df)(image)
+    # data.turbo.next = ImageFrame(image, df.tweens[-1].i() if df.tweens else df.i)
+    data.turbo.next = ImageFrame(image, df.i)  # TODO remove
     state.assign_current_image(image)
-    diffusion_frame.after_diffusion(image)
-    web_ui_utils.update_status_tracker(diffusion_frame.render_data)
+    df.after_diffusion(image)
+    web_ui_utils.update_status_tracker(df.render_data)
 
 
 def emit_tweens(data, frame):

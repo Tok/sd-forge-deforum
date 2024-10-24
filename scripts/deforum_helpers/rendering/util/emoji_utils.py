@@ -67,6 +67,10 @@ def hybrid():
     return _select('\U0001F3AC')  # 🎬
 
 
+def video_camera():
+    return _select('\U0001F4F9')  # 📹
+
+
 def document():
     return _select('\U0001F4C4')  # 📄
 
@@ -101,6 +105,7 @@ def seed():
 
 def subseed():
     return _select('\U0001F95C')  # 🥜
+
 
 def leaf():
     return _select('\U0001F343')  # 🍃

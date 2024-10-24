@@ -4,6 +4,7 @@
 Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum)
 for [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge), 
 fix'd up to work with Flux.1 and integrate Parseq keyframe redistribution logic.
+Integrates dynamic camera shake effects with data sourced from EatTheFutures 'Camera Shakify' Blender plugin.
 
 ## Current status
 
@@ -113,6 +114,20 @@ Complex subtitle generations should work fine with Parseq but are currently limi
   because negative prompts are ignored in Flux workflows.
 * Improved padding of technical information so subtitles jitter less.
 
+### Camera Shakify Effects
+
+Add camera shake effects to your renders on top of your other movement.
+
+##### New sub-sub-tab under "Keyframes"
+
+This feature enhances the realism of your animations by simulating natural camera movements, adding a layer of depth
+and engagement to your visuals. Perfect for creating action sequences or adding a sense of spontaneity, 
+it allows for customizable shake parameters to fit your specific needs.
+
+The shake data is available under Creative Commons CC0 1.0 Universal license and was sourced from the
+['Camera Shakify' Blender plugin by EatTheFuture](https://github.com/EatTheFuture/camera_shakify).
+
+
 ### Perhaps working (untested)
 * Flux schnell
   * There's not a lot of precision for fine-tuning strength values when only 4 steps are required.
@@ -125,6 +140,9 @@ Complex subtitle generations should work fine with Parseq but are currently limi
   * may need to be left disabled
 * FreeU
   * may need to be left disabled
+* Control Net
+* CLI progress bar may show incorrect values in some setups.
+  * Check progress on the webUI for better estimations.
 
 ### Other Stuff
 * Includes a new default setup to generate default bunny at 60 FPS in 720p with keyframes only.

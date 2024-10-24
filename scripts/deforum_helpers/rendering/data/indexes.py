@@ -25,9 +25,6 @@ class Indexes:
         """Creates a new `Indexes` object based on the last one, but updates the tween start index."""
         return Indexes(last_indexes.frame, IndexWithStart(last_indexes.tween.start, i))
 
-    def create_next_tween(self):
-        return Indexes(self.frame, IndexWithStart(self.tween.start, self.tween.i + 1))
-
     def update_tween_start(self, turbo):
         tween_start = max(self.frame.start, self.frame.i - turbo.cadence)
         self.tween = IndexWithStart(tween_start, self.tween.i)

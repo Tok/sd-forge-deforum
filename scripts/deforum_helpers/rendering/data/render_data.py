@@ -12,6 +12,7 @@ from .anim import AnimationKeys, AnimationMode
 from .images import Images
 from .indexes import Indexes
 from .mask import Mask
+from .shakify.shaker import Shaker
 from .subtitle import Srt
 from .turbo import Turbo
 from ..util import depth_utils, log_utils, memory_utils, opt_utils
@@ -44,6 +45,7 @@ class RenderData:
     """The purpose of this class is to group and control all data used in render_animation"""
     images: Images | None
     turbo: Turbo | None
+    shaker: Shaker | None
     indexes: Indexes | None
     mask: Mask | None
     seed: int
@@ -73,15 +75,17 @@ class RenderData:
 
         # Temporary instance only exists for using it to easily create other objects required by the actual instance.
         # Feels slightly awkward, but it's probably not worth optimizing since only 1st and gc can take care of it fine.
-        incomplete_init = RenderData(None, None, None, None, args.seed, ri_args, parseq_adapter, srt, animation_keys,
-                                     animation_mode, prompt_series, depth_model, output_directory, is_use_mask)
+        incomplete_init = RenderData(None, None, None, None, None, args.seed, ri_args, parseq_adapter, srt,
+                                     animation_keys, animation_mode, prompt_series, depth_model,
+                                     output_directory, is_use_mask)
         images = Images.create(incomplete_init)
         turbo = Turbo.create(incomplete_init)
+        shaker = Shaker.create(incomplete_init)
         indexes = Indexes.create()
         mask = Mask.create(incomplete_init, indexes.frame.i)
 
-        instance = RenderData(images, turbo, indexes, mask, args.seed, ri_args, parseq_adapter, srt, animation_keys,
-                              animation_mode, prompt_series, depth_model, output_directory, is_use_mask)
+        instance = RenderData(images, turbo, shaker, indexes, mask, args.seed, ri_args, parseq_adapter, srt,
+                              animation_keys, animation_mode, prompt_series, depth_model, output_directory, is_use_mask)
         RenderData.init_looper_if_active(args, loop_args)
         RenderData.handle_controlnet_video_input_frames_generation(controlnet_args, args, anim_args)
         RenderData.create_output_directory_for_the_batch(args.outdir)
@@ -89,6 +93,9 @@ class RenderData:
                                      kohya_hrfix_args, video_args, root)
         RenderData.maybe_resume_from_timestring(anim_args, root)
         return instance
+
+    def fps(self):
+        return self.args.video_args.fps
 
     # The following methods are meant to provide easy and centralized access to the most important
     # arguments and settings relevant for rendering. All bools use naming with 'is_' or 'has_'.

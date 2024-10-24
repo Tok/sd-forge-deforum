@@ -64,7 +64,7 @@ def optical_flow_redo_tube(data: RenderData, frame: DiffusionFrame, optical_flow
 def conditional_hybrid_video_after_generation_tube(frame: DiffusionFrame) -> PilImageTube:
     data = frame.render_data
     fd = frame.frame_data
-    return tube(lambda img: call_hybrid_composite(data, data.indexes.frame.i, img, fd.hybrid_comp_schedules),
+    return tube(lambda img: call_hybrid_composite(data, frame.i, img, fd.hybrid_comp_schedules),
                 lambda img: image_utils.numpy_to_pil(img),
                 is_do_process=lambda: data.indexes.is_not_first_frame() and data.is_hybrid_composite_after_generation())
 
@@ -94,7 +94,7 @@ def conditional_force_to_grayscale_tube(data: RenderData) -> PilImageTube:
 def conditional_add_overlay_mask_tube(data: RenderData, is_tween) -> PilImageTube:
     is_use_overlay = data.args.args.overlay_mask
     is_use_mask = data.args.anim_args.use_mask_video or data.args.args.use_mask
-    index = data.indexes.tween.i if is_tween else data.indexes.frame.i
+    index = data.indexes.tween.i if is_tween else data.indexes.frame.i  # TODO pass index directly
     is_bgr_array = True
     return tube(lambda img: ImageOps.grayscale(img),
                 lambda img: do_overlay_mask(data.args.args, data.args.anim_args, img, index, is_bgr_array),

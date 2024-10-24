@@ -18,6 +18,7 @@
 from modules import sd_schedulers
 from modules import sd_samplers
 
+
 # Dynamically calls all the samplers from forge, so if it updates so does this
 def get_samplers_list():
     samplers = {}
@@ -39,28 +40,43 @@ def get_keyframe_distribution_list():
     }
 
 
+def get_camera_shake_list():
+    # Defined in .rendering.data.shakify.shake_data
+    return {
+        'NONE': 'None',
+        'INVESTIGATION': 'Investigation',
+        'THE_CLOSEUP': 'The Closeup',
+        'THE_WEDDING': 'The Wedding',
+        'WALK_TO_THE_STORE': 'Walk to the Store',
+        'HANDYCAM_RUN': 'HandyCam Run',
+        'OUT_CAR_WINDOW': 'Out Car Window',
+        'BIKE_ON_GRAVEL_2D': 'Bike On Gravel (2D)',
+        'SPACESHIP_SHAKE_2D': 'Spaceship Shake (2D)',
+        'THE_ZEEK_2D': 'The Zeek (2D)',
+    }
+
 def DeforumAnimPrompts():
     # Keyframes are synchronized to line up at 60 FPS with amen13 from https://archive.org/details/amen-breaks/:
     # Direct link: https://ia801303.us.archive.org/26/items/amen-breaks/cw_amen13_173.mp3
     return r"""{
-        "0": "A cute bunny, hopping on grass",
-        "12": "A cute bunny, hopping at a construction site",
-        "43": "A cute bunny, hopping on a cyber grid",
-        "74": "A cool bunny, on a skateboard",
-        "85": "A cool synthwave bunny, on a skateboard",
-        "106": "A cool synthwave bunny, skating on burning coal",
-        "119": "A cool synthwave bunny, skating on frozen ice",
-        "126": "A cool synthwave bunny, skating on burning coal",
-        "147": "A cool synthwave bunny, skating on frozen ice",
-        "158": "A cool synthwave bunny, skating on burning coal",
-        "178": "A cool synthwave bunny, with a sign that says 'Deforum & Forge'",
-        "210": "A cool synthwave bunny, with a sign that says 'Deforum & Forge'",
-        "241": "A cool synthwave bunny, with a sign that says 'Deforum & Forge'",
-        "262": "A cool synthwave bunny, with a sign that says 'Deforum & Forge', surrounded by mandelbulb fractals",
-        "272": "A cool synthwave bunny, with a sign that says 'Deforum & Forge', surrounded by mandelbulb fractals",
-        "293": "A cool synthwave bunny, with a sign that says 'Deforum & Forge', surrounded by mandelbulb fractals",
-        "314": "A cool synthwave bunny, with a sign that says 'Deforum & Forge', surrounded by mandelbulb fractals",
-        "324": "A cool synthwave bunny, with a sign that says 'Deforum & Forge', surrounded by mandelbulb fractals"
+        "0": "A sterile hallway, brightly lit with fluorescent lights and empty",
+        "12": "A sterile hallway, illuminated and overlooking a construction site through large windows",
+        "43": "A sterile hallway, glowing with a digital grid pattern on the walls",
+        "74": "An empty parking lot, featuring concrete surfaces and harsh lighting",
+        "85": "An empty parking lot, under bright, flickering LED lights",
+        "106": "A high-tech facility, with lights flickering in a vast, open area",
+        "119": "A cold, reflective surface, illuminated by harsh overhead lights",
+        "126": "A sterile environment, with vibrant lights creating a technological ambiance",
+        "147": "A sterile space, with cold surfaces reflecting bright lights",
+        "158": "A high-tech area, illuminated by neon lights in a clinical setting",
+        "178": "A sterile environment, with a sign that says 'Camera Shake in Deforum', attached to a blank wall",
+        "210": "A sterile environment, with a sign that says 'Camera Shake in Deforum', attached to a blank wall",
+        "241": "A sterile environment, with a sign that says 'Camera Shake in Deforum', attached to a blank wall",
+        "262": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
+        "272": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
+        "293": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
+        "314": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
+        "324": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
     }"""
 
 # Guided images defaults

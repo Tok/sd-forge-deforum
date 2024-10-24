@@ -98,6 +98,7 @@ class DiffusionFrame:
     def create_color_match_for_video(self):
         data = self.render_data
         if data.args.anim_args.color_coherence == 'Video Input' and data.is_hybrid_available():
+            # TODO remove data.indexes.frame.i and pass i directly
             if int(data.indexes.frame.i) % int(data.args.anim_args.color_coherence_video_every_N_frames) == 0:
                 prev_vid_img = Image.open(filename_utils.preview_video_image_path(data, data.indexes))
                 prev_vid_img = prev_vid_img.resize(data.dimensions(), PIL.Image.Resampling.LANCZOS)
@@ -397,5 +398,5 @@ class DiffusionFrame:
             log_utils.debug(f"Creating {len(tweens):03} tweens {from_to} for frame #{diffusion_frames[i].i:09}")
             diffusion_frames[i].tweens = tweens
             diffusion_frames[i].tween_values = values
-            diffusion_frames[i].render_data.indexes.update_tween_start(data.turbo)
+            diffusion_frames[i].render_data.indexes.update_tween_start(data.turbo)  # FIXME
         return diffusion_frames

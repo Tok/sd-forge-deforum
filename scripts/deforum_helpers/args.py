@@ -26,7 +26,7 @@ import modules.shared as sh
 from PIL import Image
 from modules.processing import get_fixed_seed
 
-from .defaults import (get_guided_imgs_default_json, get_keyframe_distribution_list,
+from .defaults import (get_guided_imgs_default_json, get_camera_shake_list, get_keyframe_distribution_list,
                        get_samplers_list, get_schedulers_list)
 from .deforum_controlnet import controlnet_component_names
 from .general_utils import get_os, substitute_placeholders
@@ -91,7 +91,7 @@ def DeforumAnimArgs():
         "zoom": {
             "label": "Zoom",
             "type": "textbox",
-            "value": "0: (1.0025+0.002*sin(1.25*3.14*t/120))",
+            "value": "0: (1.0)",  # original value: "0: (1.0025+0.002*sin(1.25*3.14*t/120))"
             "info": "scale the canvas size, multiplicatively. [static = 1.0]"
         },
         "translation_x": {
@@ -109,7 +109,7 @@ def DeforumAnimArgs():
         "translation_z": {
             "label": "Translation Z (zoom when animation mode is '3D')",
             "type": "textbox",
-            "value": "0: (1.10)",
+            "value": "0: (0)",  # original value: "0: (1.10)"
             "info": "move canvas towards/away from view [speed set by FOV]"
         },
         "transform_center_x": {
@@ -141,6 +141,31 @@ def DeforumAnimArgs():
             "type": "textbox",
             "value": "0: (0)",
             "info": "roll canvas clockwise/anticlockwise"
+        },
+        "shake_name": {
+            "label": "Shake Name",
+            "type": "dropdown",
+            "choices": get_camera_shake_list().values(),
+            "value": "INVESTIGATION",
+            "info": "Name of the camera shake loop.",
+        },
+        "shake_intensity": {
+            "label": "Shake Intensity",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 3.0,
+            "step": 0.1,
+            "value": 1.0,
+            "info": "Intensity of the camera shake loop."
+        },
+        "shake_speed": {
+            "label": "Shake Speed",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 3.0,
+            "step": 0.1,
+            "value": 1.0,
+            "info": "Speed of the camera shake loop."
         },
         "enable_perspective_flip": {
             "label": "Enable perspective flip",
@@ -187,7 +212,7 @@ def DeforumAnimArgs():
         "keyframe_strength_schedule": {
             "label": "Strength schedule for keyframes",
             "type": "textbox",
-            "value": "0: (0.20)",
+            "value": "0: (0.50)",
             "info": "like 'Strength schedule' but only for frames with an entry in 'prompts'. Meant to be set somewhat lower than the regular Strengh schedule. At 0 it generates a totally new image on every prompt change. Ignored if Parseq is used or when Keyframe distribustion is disabled."
         },
         "contrast_schedule": "0: (1.0)",

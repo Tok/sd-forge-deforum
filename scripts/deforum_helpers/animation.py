@@ -24,6 +24,8 @@ from einops import rearrange
 from modules.shared import state, opts
 from .prompt import check_is_number
 from .general_utils import debug_print
+from .rendering.util import log_utils
+
 
 def sample_from_cv2(sample: np.ndarray) -> torch.Tensor:
     sample = ((sample.astype(float) / 255.0) * 2) - 1
@@ -170,21 +172,25 @@ def flip_3d_perspective(anim_args, prev_img_cv2, keys, frame_idx):
         borderMode=cv2.BORDER_WRAP if anim_args.border == 'wrap' else cv2.BORDER_REPLICATE
     )
 
-def anim_frame_warp(prev_img_cv2, args, anim_args, keys, frame_idx, depth_model=None, depth=None, device='cuda', half_precision = False):
+
+def anim_frame_warp(prev_img_cv2, args, anim_args, keys, frame_idx, depth_model=None, depth=None,
+                    device='cuda', half_precision=False, shaker=None):
 
     if anim_args.use_depth_warping:
         if depth is None and depth_model is not None:
             depth = depth_model.predict(prev_img_cv2, anim_args.midas_weight, half_precision)
-            
     else:
         depth = None
 
     if anim_args.animation_mode == '2D':
+        if shaker is not None:
+            log_utils.warn("Camera shake data can not be used in 2D animation mode. Ignoring setup.")
         prev_img = anim_frame_warp_2d(prev_img_cv2, args, anim_args, keys, frame_idx)
-    else: # '3D'
-        prev_img = anim_frame_warp_3d(device, prev_img_cv2, depth, anim_args, keys, frame_idx)
+    else:  # '3D'
+        prev_img = anim_frame_warp_3d(device, prev_img_cv2, depth, anim_args, keys, frame_idx, shaker)
                 
     return prev_img, depth
+
 
 def anim_frame_warp_2d(prev_img_cv2, args, anim_args, keys, frame_idx):
     angle = keys.angle_series[frame_idx]
@@ -210,24 +216,33 @@ def anim_frame_warp_2d(prev_img_cv2, args, anim_args, keys, frame_idx):
         borderMode=cv2.BORDER_WRAP if anim_args.border == 'wrap' else cv2.BORDER_REPLICATE
     )
 
-def anim_frame_warp_3d(device, prev_img_cv2, depth, anim_args, keys, frame_idx):
-    TRANSLATION_SCALE = 1.0/200.0 # matches Disco
+
+def anim_frame_warp_3d(device, prev_img_cv2, depth, anim_args, keys, frame_idx, shaker=None):
+    is_shake = shaker is not None and shaker.is_enabled
+
+    def _maybe_shake(series, transform_type, axis):
+        if is_shake:
+            return series[frame_idx] + shaker.get_data(transform_type, axis, frame_idx)
+        return series[frame_idx]
+
+    translation_scale = 1.0 / 200.0  # matches Disco.
     translate_xyz = [
-        -keys.translation_x_series[frame_idx] * TRANSLATION_SCALE, 
-        keys.translation_y_series[frame_idx] * TRANSLATION_SCALE, 
-        -keys.translation_z_series[frame_idx] * TRANSLATION_SCALE
-    ]
+        _maybe_shake(keys.translation_x_series, 'translation', 'x') * translation_scale * -1.0,
+        _maybe_shake(keys.translation_y_series, 'translation', 'y') * translation_scale,
+        _maybe_shake(keys.translation_z_series, 'translation', 'z') * translation_scale * -1.0]
     rotate_xyz = [
-        math.radians(keys.rotation_3d_x_series[frame_idx]), 
-        math.radians(keys.rotation_3d_y_series[frame_idx]), 
-        math.radians(keys.rotation_3d_z_series[frame_idx])
-    ]
+        math.radians(_maybe_shake(keys.rotation_3d_x_series, 'rotation_3d', 'x')),
+        math.radians(_maybe_shake(keys.rotation_3d_y_series, 'rotation_3d', 'y')),
+        math.radians(_maybe_shake(keys.rotation_3d_z_series, 'rotation_3d', 'z'))]
+
     if anim_args.enable_perspective_flip:
         prev_img_cv2 = flip_3d_perspective(anim_args, prev_img_cv2, keys, frame_idx)
     rot_mat = p3d.euler_angles_to_matrix(torch.tensor(rotate_xyz, device=device), "XYZ").unsqueeze(0)
-    result = transform_image_3d_switcher(device if not device.type.startswith('mps') else torch.device('cpu'), prev_img_cv2, depth, rot_mat, translate_xyz, anim_args, keys, frame_idx)
+    dev = device if not device.type.startswith('mps') else torch.device('cpu')
+    result = transform_image_3d_switcher(dev, prev_img_cv2, depth, rot_mat, translate_xyz, anim_args, keys, frame_idx)
     torch.cuda.empty_cache()
     return result
+
 
 def transform_image_3d_switcher(device, prev_img_cv2, depth_tensor, rot_mat, translate, anim_args, keys, frame_idx):
     if anim_args.depth_algorithm.lower() in ['midas+adabins (old)', 'zoe+adabins (old)']:
