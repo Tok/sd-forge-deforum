@@ -76,8 +76,8 @@ def DeforumAnimPrompts():
         "272": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
         "293": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
         "314": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
-        "324": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
-    }"""
+        "324": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens"
+    }"""  # WARNING: make sure to not add a trailing semicolon after the last prompt, or the run might break.
 
 # Guided images defaults
 def get_guided_imgs_default_json():

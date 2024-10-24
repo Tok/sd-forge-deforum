@@ -50,7 +50,7 @@
         "272": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
         "293": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
         "314": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
-        "324": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens",
+        "324": "An empty space, with a sign that says 'Camera Shake in Deforum', surrounded by intricate mandelbulb fractals on screens"
     },
     "positive_prompts": "",
     "negative_prompts": "",
