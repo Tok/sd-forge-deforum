@@ -111,7 +111,7 @@ def run_deforum(*args):
 
         tqdm_backup = shared.total_tqdm
 
-        if not is_use_experimental_render_core(anim_args):  # Experimental core sets shared tdqm directly
+        if not is_use_experimental_render_core(anim_args):  # Experimental core sets shared tqdm directly
             shared.total_tqdm = DeforumTQDM(args, anim_args, parseq_args, video_args)
 
         try:  # dispatch to appropriate renderer

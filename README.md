@@ -141,8 +141,6 @@ The shake data is available under Creative Commons CC0 1.0 Universal license and
 * FreeU
   * may need to be left disabled
 * Control Net
-* CLI progress bar may show incorrect values in some setups.
-  * Check progress on the webUI for better estimations.
 
 ### Other Stuff
 * Includes a new default setup to generate default bunny at 60 FPS in 720p with keyframes only.

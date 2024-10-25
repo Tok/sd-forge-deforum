@@ -20,6 +20,7 @@ import py3d_tools as p3d # this is actually a file in our /src folder!
 from functools import reduce
 import math
 import torch
+from PIL import Image
 from einops import rearrange
 from modules.shared import state, opts
 from .prompt import check_is_number
@@ -245,10 +246,17 @@ def anim_frame_warp_3d(device, prev_img_cv2, depth, anim_args, keys, frame_idx, 
 
 
 def transform_image_3d_switcher(device, prev_img_cv2, depth_tensor, rot_mat, translate, anim_args, keys, frame_idx):
+    # Convert prev_img_cv2 to a NumPy array if it's not already
+    if isinstance(prev_img_cv2, Image.Image):
+        prev_img_cv2 = np.array(prev_img_cv2)
+    elif isinstance(prev_img_cv2, list):
+        prev_img_cv2 = np.array(prev_img_cv2)
+
     if anim_args.depth_algorithm.lower() in ['midas+adabins (old)', 'zoe+adabins (old)']:
         return transform_image_3d_legacy(device, prev_img_cv2, depth_tensor, rot_mat, translate, anim_args, keys, frame_idx)
     else:
         return transform_image_3d_new(device, prev_img_cv2, depth_tensor, rot_mat, translate, anim_args, keys, frame_idx)
+
 
 def transform_image_3d_legacy(device, prev_img_cv2, depth_tensor, rot_mat, translate, anim_args, keys, frame_idx):
     # adapted and optimized version of transform_image_3d from Disco Diffusion https://github.com/alembics/disco-diffusion 

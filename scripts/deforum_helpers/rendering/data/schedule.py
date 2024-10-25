@@ -19,9 +19,9 @@ class Schedule:
     noise_mask: Optional[Any]
 
     @staticmethod
-    def create(data: RenderData):
+    def create(data: RenderData, index):
         """Create a new Schedule instance based on the provided parameters."""
-        i = data.indexes.frame.i
+        i = index
         args: DeforumArgs = data.args.args
         anim_args: DeforumAnimArgs = data.args.anim_args
         keys: DeformAnimKeys = data.animation_keys.deform_keys

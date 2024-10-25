@@ -12,9 +12,13 @@ from ...load_images import load_image
 class Images:
     color_match: MatLike = None
     previous: MatLike | None = None
+    before_previous: MatLike | None = None
 
     def has_previous(self):
         return self.previous is not None
+
+    def has_before_previous(self):
+        return self.before_previous is not None
 
     @staticmethod
     def _load_color_match_sample(init) -> MatLike:

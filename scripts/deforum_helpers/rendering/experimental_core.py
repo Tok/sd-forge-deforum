@@ -11,7 +11,6 @@ from tqdm import tqdm
 from . import img_2_img_tubes
 from .data.frame import KeyFrameDistribution, DiffusionFrame
 from .data.render_data import RenderData
-from .data.turbo import ImageFrame
 from .util import filename_utils, image_utils, log_utils, memory_utils, opt_utils, subtitle_utils, web_ui_utils
 
 
@@ -24,16 +23,20 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     web_ui_utils.init_job(data)
     diffusion_frames = DiffusionFrame.create_all_frames(data, KeyFrameDistribution.from_UI_tab(data))
     subtitle_utils.create_all_subtitles_if_active(data, diffusion_frames)
+    shared.total_tqdm.updateTotal(sum(len(frame.tweens) for frame in diffusion_frames))
     run_render_animation(data, diffusion_frames)
     data.animation_mode.unload_raft_and_depth_model()
 
 
 def run_render_animation(data: RenderData, diffusion_frames: List[DiffusionFrame]):
     for diffusion_frame in diffusion_frames:
+        shared.total_tqdm.update()
+
         is_resume, full_path = is_resume_with_image(data, diffusion_frame)
         if is_resume:
             existing_image = image_utils.load_image(full_path)  # TODO pass directly
-            data.turbo.next = ImageFrame(existing_image, diffusion_frame.i)
+            data.images.before_previous = data.images.previous
+            data.images.previous = existing_image
             continue
 
         _pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame)
@@ -46,7 +49,7 @@ def run_render_animation(data: RenderData, diffusion_frames: List[DiffusionFrame
 
 def _pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame):
     memory_utils.handle_med_or_low_vram_before_step(data)
-    web_ui_utils.update_job(data)
+    web_ui_utils.update_job(data, diffusion_frame.i)
     if diffusion_frame.has_tween_frames():
         emit_tweens(data, diffusion_frame)
     log_utils.print_animation_frame_info(diffusion_frame.i, data.args.anim_args.max_frames)
@@ -59,11 +62,11 @@ def _post_process_diffusion_frame(data: RenderData, diffusion_frame, image):
     df = diffusion_frame
     if not image_utils.is_PIL(image):  # check is required when resuming from timestring
         image = img_2_img_tubes.conditional_frame_transformation_tube(df)(image)
-    # data.turbo.next = ImageFrame(image, df.tweens[-1].i() if df.tweens else df.i)
-    data.turbo.next = ImageFrame(image, df.i)  # TODO remove
     state.assign_current_image(image)
     df.after_diffusion(image)
-    web_ui_utils.update_status_tracker(df.render_data)
+    data.images.before_previous = data.images.previous
+    data.images.previous = image
+    web_ui_utils.update_status_tracker(df.render_data, diffusion_frame.i)
 
 
 def emit_tweens(data, frame):
@@ -90,7 +93,6 @@ def check_render_conditions(data):
 
 
 def _update_pseudo_cadence(data, value):
-    data.turbo.cadence = value
     data.parseq_adapter.cadence = value
     data.parseq_adapter.a1111_cadence = value
     data.args.anim_args.diffusion_cadence = value
@@ -110,7 +112,7 @@ def _maybe_wrap_tweens_with_progress_bar(frame):
 
 
 def is_resume_with_image(data, diffusion_frame):
-    last_index = diffusion_frame.tweens[-1].i() if diffusion_frame.has_tween_frames() else diffusion_frame.i
+    last_index = diffusion_frame.i  # same as diffusion_frame.tweens[-1].i
     filename = filename_utils.frame_filename(data, last_index)
     full_path = Path(data.output_directory) / filename
     is_file_existing = os.path.exists(full_path)

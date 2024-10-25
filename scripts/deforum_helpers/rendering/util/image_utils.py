@@ -30,9 +30,9 @@ def save_cadence_frame(data: RenderData, i: int, image: MatLike, is_overwrite: b
 
 
 def save_cadence_frame_and_depth_map_if_active(data: RenderData, frame, image):
-    save_cadence_frame(data, frame.i(), image)
+    save_cadence_frame(data, frame.i, image)
     if data.args.anim_args.save_depth_maps:
-        dm_save_path = os.path.join(data.output_directory, filename_utils.frame_filename(data, frame.i(), True))
+        dm_save_path = os.path.join(data.output_directory, filename_utils.frame_filename(data, frame.i, True))
         data.depth_model.save(dm_save_path, frame.depth)
 
 

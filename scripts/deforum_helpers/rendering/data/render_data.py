@@ -10,11 +10,9 @@ from PIL import Image
 
 from .anim import AnimationKeys, AnimationMode
 from .images import Images
-from .indexes import Indexes
 from .mask import Mask
 from .shakify.shaker import Shaker
 from .subtitle import Srt
-from .turbo import Turbo
 from ..util import depth_utils, log_utils, memory_utils, opt_utils
 from ..util.call.images import call_get_mask_from_file_with_frame
 from ..util.call.mask import call_compose_mask_with_check
@@ -44,9 +42,7 @@ class RenderInitArgs:
 class RenderData:
     """The purpose of this class is to group and control all data used in render_animation"""
     images: Images | None
-    turbo: Turbo | None
     shaker: Shaker | None
-    indexes: Indexes | None
     mask: Mask | None
     seed: int
     args: RenderInitArgs
@@ -60,8 +56,10 @@ class RenderData:
     is_use_mask: bool
 
     @staticmethod
-    def create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root) -> 'RenderData':
-        ri_args = RenderInitArgs(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
+    def create(args, parseq_args, anim_args, video_args, loop_args,
+               controlnet_args, freeu_args, kohya_hrfix_args, root) -> 'RenderData':
+        ri_args = RenderInitArgs(args, parseq_args, anim_args, video_args, loop_args,
+                                 controlnet_args, freeu_args, kohya_hrfix_args, root)
 
         output_directory = args.outdir
         is_use_mask = args.use_mask
@@ -75,17 +73,15 @@ class RenderData:
 
         # Temporary instance only exists for using it to easily create other objects required by the actual instance.
         # Feels slightly awkward, but it's probably not worth optimizing since only 1st and gc can take care of it fine.
-        incomplete_init = RenderData(None, None, None, None, None, args.seed, ri_args, parseq_adapter, srt,
+        incomplete_init = RenderData(None, None, None, args.seed, ri_args, parseq_adapter, srt,
                                      animation_keys, animation_mode, prompt_series, depth_model,
                                      output_directory, is_use_mask)
         images = Images.create(incomplete_init)
-        turbo = Turbo.create(incomplete_init)
         shaker = Shaker.create(incomplete_init)
-        indexes = Indexes.create()
-        mask = Mask.create(incomplete_init, indexes.frame.i)
+        mask = Mask.create(incomplete_init, 0)  # TODO? fix index
 
-        instance = RenderData(images, turbo, shaker, indexes, mask, args.seed, ri_args, parseq_adapter, srt,
-                              animation_keys, animation_mode, prompt_series, depth_model, output_directory, is_use_mask)
+        instance = RenderData(images, shaker, mask, args.seed, ri_args, parseq_adapter, srt, animation_keys,
+                              animation_mode, prompt_series, depth_model, output_directory, is_use_mask)
         RenderData.init_looper_if_active(args, loop_args)
         RenderData.handle_controlnet_video_input_frames_generation(controlnet_args, args, anim_args)
         RenderData.create_output_directory_for_the_batch(args.outdir)
@@ -147,6 +143,7 @@ class RenderData:
 
     def is_hybrid_composite_after_generation(self) -> bool:
         return self.args.anim_args.hybrid_composite == 'After Generation'
+
     # end hybrid stuff
 
     def is_initialize_color_match(self, color_match_sample) -> bool:
@@ -226,8 +223,9 @@ class RenderData:
 
     def update_checkpoint_for_current_step(self, i):
         keys = self.animation_keys.deform_keys
-        self.args.args.checkpoint = keys.checkpoint_schedule_series[i] \
-            if self.args.anim_args.enable_checkpoint_scheduling else None
+        self.args.args.checkpoint = (keys.checkpoint_schedule_series[i]
+                                     if self.args.anim_args.enable_checkpoint_scheduling
+                                     else None)
 
     def prompt_for_current_step(self, frame, i):
         """returns value to be set back into the prompt"""
@@ -318,9 +316,9 @@ class RenderData:
 
     @staticmethod
     def select_prompts(parseq_adapter, anim_args, animation_keys, root):
-        prompts = animation_keys.deform_keys.prompts \
-            if parseq_adapter.manages_prompts() \
-            else RenderData.expand_prompts_out_to_per_frame(anim_args, root)
+        prompts = (animation_keys.deform_keys.prompts
+                   if parseq_adapter.manages_prompts()
+                   else RenderData.expand_prompts_out_to_per_frame(anim_args, root))
         return RenderData.sanitize_prompts(prompts)
 
     @staticmethod
@@ -339,8 +337,10 @@ class RenderData:
             unpack_controlnet_vids(args, anim_args, controlnet_args)
 
     @staticmethod
-    def save_settings_txt(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root):
-        save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root)
+    def save_settings_txt(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args,
+                          video_args, root):
+        save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args,
+                                         kohya_hrfix_args, video_args, root)
 
     @staticmethod
     def maybe_resume_from_timestring(anim_args, root):

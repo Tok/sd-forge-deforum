@@ -11,11 +11,11 @@ from ....hybrid_video import (
     hybrid_composite)
 
 
-def call_get_flow_for_hybrid_motion_prev(init, i, image):
-    mode = init.animation_mode
-    aa = init.args.anim_args
+def call_get_flow_for_hybrid_motion_prev(data, i, image):
+    mode = data.animation_mode
+    aa = data.args.anim_args
     return get_flow_for_hybrid_motion_prev(
-        i, init.dimensions(),
+        i, data.dimensions(),
         mode.hybrid_input_files,
         mode.hybrid_frame_path,
         mode.prev_flow,
@@ -27,29 +27,29 @@ def call_get_flow_for_hybrid_motion_prev(init, i, image):
         aa.hybrid_comp_save_extra_frames)
 
 
-def call_get_flow_for_hybrid_motion(init, i):
-    mode = init.animation_mode
-    args = init.args.anim_args
+def call_get_flow_for_hybrid_motion(data, i):
+    mode = data.animation_mode
+    args = data.args.anim_args
     return get_flow_for_hybrid_motion(
-        i, init.dimensions(), mode.hybrid_input_files, mode.hybrid_frame_path,
+        i, data.dimensions(), mode.hybrid_input_files, mode.hybrid_frame_path,
         mode.prev_flow, args.hybrid_flow_method, mode.raft_model,
         args.hybrid_flow_consistency, args.hybrid_consistency_blur, args)
 
 
-def call_get_matrix_for_hybrid_motion_prev(init, i, image):
+def call_get_matrix_for_hybrid_motion_prev(data, i, image):
     return get_matrix_for_hybrid_motion_prev(
-        i, init.dimensions(), init.animation_mode.hybrid_input_files,
-        image, init.args.anim_args.hybrid_motion)
+        i, data.dimensions(), data.animation_mode.hybrid_input_files,
+        image, data.args.anim_args.hybrid_motion)
 
 
-def call_get_matrix_for_hybrid_motion(init, i):
+def call_get_matrix_for_hybrid_motion(data, i):
     return get_matrix_for_hybrid_motion(
-        i, init.dimensions(), init.animation_mode.hybrid_input_files,
-        init.args.anim_args.hybrid_motion)
+        i, data.dimensions(), data.animation_mode.hybrid_input_files,
+        data.args.anim_args.hybrid_motion)
 
 
-def call_hybrid_composite(init, i, image, hybrid_comp_schedules):
-    ia = init.args
+def call_hybrid_composite(data, i, image, hybrid_comp_schedules):
+    ia = data.args
     return hybrid_composite(
         ia.args, ia.anim_args, i, image,
-        init.depth_model, hybrid_comp_schedules, init.args.root)
+        data.depth_model, hybrid_comp_schedules, data.args.root)

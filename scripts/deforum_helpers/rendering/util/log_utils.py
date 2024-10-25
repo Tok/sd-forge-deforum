@@ -33,8 +33,8 @@ def clear_previous_line():
 def print_tween_frame_from_to_info(frame, is_disabled=True):
     if not is_disabled:  # replaced with prog bar, but value info print may be useful
         tween_values = frame.tween_values
-        start_i = frame.tweens[0].i()
-        end_i = frame.tweens[-1].i()
+        start_i = frame.tweens[0].i
+        end_i = frame.tweens[-1].i
         if end_i > 0:
             formatted_values = [f"{val:.2f}" for val in tween_values]
             count = end_i - start_i + 1
@@ -46,10 +46,10 @@ def print_animation_frame_info(i, max_frames):
     print(f"{CYAN}Animation frame: {RESET_COLOR}{i}/{max_frames}")
 
 
-def print_tween_frame_info(data, indexes, cadence_flow, tween, is_disabled=True):
+def print_tween_frame_info(data, i, cadence_flow, tween, is_disabled=True):
     if not is_disabled:  # disabled because it's spamming the cli on high cadence settings.
         msg_flow_name = '' if cadence_flow is None else data.args.anim_args.optical_flow_cadence + ' optical flow '
-        msg_frame_info = f"cadence frame: {indexes.tween.i}; tween: {tween:0.2f};"
+        msg_frame_info = f"cadence frame: {i}; tween: {tween:0.2f};"
         print(f"Creating in-between {msg_flow_name}{msg_frame_info}")
 
 
@@ -76,7 +76,7 @@ def print_tween_frame_creation_info(key_frames, index_dist):
 
 def print_key_frame_debug_info_if_verbose(diffusion_frames):
     for i, df in enumerate(diffusion_frames):
-        tween_indices = [t.i() for t in df.tweens]
+        tween_indices = [t.i for t in df.tweens]
         frame_type = "Key Frame" if df.is_keyframe else "    Frame"
         tween_count = len(tween_indices)
         if tween_count > 6:  # Limit to first 3 and last 3
@@ -100,18 +100,18 @@ def print_cuda_memory_state(cuda):
 
 
 def info(s: str, color: str = None):
-    if color:
-        print(f"Info: {color}{s}{RESET_COLOR}")
-    else:
-        print(f"Info: {s}")
+    message = f"{color}{s}{RESET_COLOR}" if color else s
+    print(f"{BLUE}{BOLD}Info: {RESET_COLOR}{message}")
+
+
+def error(s: str):
+    print(f"{RED}{BOLD}Error: {RESET_COLOR}{s}")
 
 
 def warn(s: str):
-    eye_catcher = "###"
-    print(f"{ORANGE}{BOLD}{eye_catcher} Warning: {RESET_COLOR}{s}")
+    print(f"{ORANGE}{BOLD}Warning: {RESET_COLOR}{s}")
 
 
 def debug(s: str):
     if opt_utils.is_verbose():
-        eye_catcher = "###"
-        print(f"{YELLOW}{BOLD}{eye_catcher} Debug: {RESET_COLOR}{s}")
+        print(f"{YELLOW}{BOLD}Debug: {RESET_COLOR}{s}")

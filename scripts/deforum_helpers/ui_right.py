@@ -20,7 +20,7 @@ from modules.ui import create_output_panel, wrap_gradio_call
 from modules.call_queue import wrap_gradio_gpu_call
 from .run_deforum import run_deforum
 from .settings import save_settings, load_all_settings, load_video_settings
-from .general_utils import get_deforum_version
+from .general_utils import get_deforum_version, get_commit_date
 from .ui_left import setup_deforum_left_side_ui
 from scripts.deforum_extend_paths import deforum_sys_extend
 import gradio as gr
@@ -29,7 +29,13 @@ def on_ui_tabs():
     # extend paths using sys.path.extend so we can access all of our files and folders
     deforum_sys_extend()
     # set text above generate button
-    i1_store_backup = f"<p style=\"text-align:center;font-weight:bold;margin-bottom:0em\">Deforum extension for auto1111 — version 3.0 | Git commit: {get_deforum_version()}</p>"
+    style = '"text-align:center;font-weight:bold;margin-bottom:0em"'
+    extension_url = "https://github.com/Tok/sd-forge-deforum"
+    link = f"<a href='{extension_url}' target='_blank'>Zirteqs Fluxabled Fork</a>"
+    extension_name = f"{link} of the Deforum Extension for WebUI Forge"
+
+    commit_info = f"Git commit: {get_deforum_version()}"
+    i1_store_backup = f"<p style={style}>{extension_name} - Version: {get_commit_date()} | {commit_info}</p>"
     i1_store = i1_store_backup
 
     with gr.Blocks(analytics_enabled=False) as deforum_interface:

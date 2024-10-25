@@ -51,10 +51,10 @@ class DiffusionFrame:
         has_flow_redo = optical_flow_redo_generation != 'None'
         return has_flow_redo and images.has_previous() and self.has_strength()
 
-    def write_frame_subtitle(self, data, i):
+    def write_frame_subtitle(self, data, subtitle_index):
         # Non-cadence can be asserted because subtitle creation gives priority to diffusion frames over tween ones.
         is_cadence = False
-        call_write_frame_subtitle(data, i, is_cadence, self.seed, self.subseed)
+        call_write_frame_subtitle(data, subtitle_index, is_cadence, self.seed, self.subseed)
 
     def apply_frame_warp_transform(self, data: RenderData, image):
         is_not_last_frame = self.i < data.args.anim_args.max_frames
@@ -63,10 +63,9 @@ class DiffusionFrame:
             return previous
 
     def _do_hybrid_compositing_on_cond(self, data: RenderData, image, condition):
-        i = data.indexes.frame.i
         schedules = self.frame_data.hybrid_comp_schedules
         if condition:
-            _, composed = call_hybrid_composite(data, i, image, schedules)
+            _, composed = call_hybrid_composite(data, self.i, image, schedules)
             return composed
         return image
 
@@ -98,9 +97,8 @@ class DiffusionFrame:
     def create_color_match_for_video(self):
         data = self.render_data
         if data.args.anim_args.color_coherence == 'Video Input' and data.is_hybrid_available():
-            # TODO remove data.indexes.frame.i and pass i directly
-            if int(data.indexes.frame.i) % int(data.args.anim_args.color_coherence_video_every_N_frames) == 0:
-                prev_vid_img = Image.open(filename_utils.preview_video_image_path(data, data.indexes))
+            if self.i % int(data.args.anim_args.color_coherence_video_every_N_frames) == 0:
+                prev_vid_img = Image.open(filename_utils.preview_video_image_path(data, self.i))
                 prev_vid_img = prev_vid_img.resize(data.dimensions(), PIL.Image.Resampling.LANCZOS)
                 data.images.color_match = np.asarray(prev_vid_img)
                 return cv2.cvtColor(data.images.color_match, cv2.COLOR_RGB2BGR)
@@ -156,10 +154,6 @@ class DiffusionFrame:
         self.update_render_preview()
 
     def progress_and_save(self, image):
-        next_index = self._progress_save_and_get_next_index(image)
-        self.render_data.indexes.update_frame(next_index)
-
-    def _progress_save_and_get_next_index(self, image):
         data = self.render_data
         """Will progress frame or turbo-frame step, save the image, update `self.depth` and return next index."""
         opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
@@ -174,14 +168,10 @@ class DiffusionFrame:
             # However, it may be preferable to use them for the 1st and for the last frame, or as thumbnails.
             # TODO? add option to save original frames in a different sub dir.
             save_image(image, 'PIL', filename, data.args.args, data.args.video_args, data.args.root)
-
-        self.depth = depth_utils.generate_and_save_depth_map_if_active(data, opencv_image)
-        if data.turbo.has_steps():
-            return data.indexes.frame.i + data.turbo.progress_step(data.indexes, opencv_image)
-        return data.indexes.frame.i + 1  # normal (i.e. 'non-turbo') step always increments by 1.
+        self.depth = depth_utils.generate_and_save_depth_map_if_active(data, opencv_image, self.i)
 
     def update_render_preview(self):
-        self.last_preview_frame = call_render_preview(self.render_data, self.last_preview_frame)
+        self.last_preview_frame = call_render_preview(self.render_data, self.last_preview_frame, self.i)
 
     def do_optical_flow_redo_before_generation(self):
         data = self.render_data
@@ -212,11 +202,11 @@ class DiffusionFrame:
             data.args.root.init_sample = Image.fromarray(cv2.cvtColor(diffusion_redo_image, cv2.COLOR_BGR2RGB))
 
     @staticmethod
-    def create(data: RenderData):
-        i = data.indexes.frame.i
-        frame_data = DiffusionFrameData.create(data, i)
-        schedule = Schedule.create(data)
-        return DiffusionFrame(0, False, -1, -1, 1.0, 0.0, frame_data, data, schedule, "", 0, list(), list())
+    def create(data: RenderData, i):
+        initial_index = i  # replaced once keyframes are arranged.
+        frame_data = DiffusionFrameData.create(data, initial_index)
+        schedule = Schedule.create(data, i)
+        return DiffusionFrame(initial_index, False, -1, -1, 1.0, 0.0, frame_data, data, schedule, "", 0, list(), list())
 
     @staticmethod
     def apply_color_matching(data: RenderData, image):
@@ -239,11 +229,11 @@ class DiffusionFrame:
         return image
 
     @staticmethod
-    def apply_hybrid_motion_ransac_transform(data: RenderData, image):
+    def apply_hybrid_motion_ransac_transform(data: RenderData, image, i):
         """hybrid video motion - warps `images.previous` to match motion, usually to prepare for compositing"""
         motion = data.args.anim_args.hybrid_motion
         if motion in ['Affine', 'Perspective']:
-            last_i = data.indexes.frame.i - 1
+            last_i = i - 1
             reference_images = data.images
             matrix = call_get_matrix_for_hybrid_motion_prev(data, last_i, reference_images.previous) \
                 if data.args.anim_args.hybrid_motion_use_prev_img \
@@ -255,7 +245,7 @@ class DiffusionFrame:
     def apply_hybrid_motion_optical_flow(data: RenderData, frame, image):
         motion = data.args.anim_args.hybrid_motion
         if motion in ['Optical Flow']:
-            last_i = data.indexes.frame.i - 1
+            last_i = frame.i - 1
             reference_images = data.images
             flow = call_get_flow_for_hybrid_motion_prev(data, last_i, reference_images.previous) \
                 if data.args.anim_args.hybrid_motion_use_prev_img \
@@ -297,7 +287,7 @@ class DiffusionFrame:
         diffusion_frame_count = DiffusionFrame.precalculate_diffusion_frame_count(
             data, keyframe_dist, start_index, max_frames)
 
-        diffusion_frames = [DiffusionFrame.create(data) for _ in range(0, diffusion_frame_count)]
+        diffusion_frames = [DiffusionFrame.create(data, i) for i in range(0, diffusion_frame_count)]
         actual_diffusion_frame_count = len(diffusion_frames)
         recalculated_frames = DiffusionFrame._recalculate_and_check_tweens(
             data, diffusion_frames, start_index, actual_diffusion_frame_count, keyframe_dist)
@@ -398,5 +388,4 @@ class DiffusionFrame:
             log_utils.debug(f"Creating {len(tweens):03} tweens {from_to} for frame #{diffusion_frames[i].i:09}")
             diffusion_frames[i].tweens = tweens
             diffusion_frames[i].tween_values = values
-            diffusion_frames[i].render_data.indexes.update_tween_start(data.turbo)  # FIXME
         return diffusion_frames

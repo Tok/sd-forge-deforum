@@ -36,7 +36,7 @@ def frame_transformation_tube(data: RenderData, frame: DiffusionFrame) -> ImageT
     # make sure `img` stays the last argument in each call.
     return tube(lambda img: frame.apply_frame_warp_transform(data, img),
                 lambda img: frame.do_hybrid_compositing_before_motion(data, img),
-                lambda img: DiffusionFrame.apply_hybrid_motion_ransac_transform(data, img),
+                lambda img: DiffusionFrame.apply_hybrid_motion_ransac_transform(data, img, frame.i),
                 lambda img: DiffusionFrame.apply_hybrid_motion_optical_flow(data, frame, img),
                 lambda img: frame.do_normal_hybrid_compositing_after_motion(data, img),
                 lambda img: DiffusionFrame.apply_color_matching(data, img),
@@ -91,13 +91,13 @@ def conditional_force_to_grayscale_tube(data: RenderData) -> PilImageTube:
                 is_do_process=lambda: data.args.anim_args.color_force_grayscale)
 
 
-def conditional_add_overlay_mask_tube(data: RenderData, is_tween) -> PilImageTube:
+def conditional_add_overlay_mask_tube(data: RenderData, i) -> PilImageTube:
     is_use_overlay = data.args.args.overlay_mask
     is_use_mask = data.args.anim_args.use_mask_video or data.args.args.use_mask
-    index = data.indexes.tween.i if is_tween else data.indexes.frame.i  # TODO pass index directly
+
     is_bgr_array = True
     return tube(lambda img: ImageOps.grayscale(img),
-                lambda img: do_overlay_mask(data.args.args, data.args.anim_args, img, index, is_bgr_array),
+                lambda img: do_overlay_mask(data.args.args, data.args.anim_args, img, i, is_bgr_array),
                 is_do_process=lambda: is_use_overlay and is_use_mask)
 
 
@@ -115,9 +115,9 @@ def contrasted_noise_transformation_tube(data: RenderData, frame: DiffusionFrame
     return tube(lambda img: noise_tube(contrast_tube(img)))
 
 
-def conditional_frame_transformation_tube(frame: DiffusionFrame, is_tween: bool = False) -> PilImageTube:
+def conditional_frame_transformation_tube(frame: DiffusionFrame) -> PilImageTube:
     hybrid_tube: PilImageTube = conditional_hybrid_video_after_generation_tube(frame)
     extra_tube: PilImageTube = conditional_extra_color_match_tube(frame.render_data)
     gray_tube: PilImageTube = conditional_force_to_grayscale_tube(frame.render_data)
-    mask_tube: PilImageTube = conditional_add_overlay_mask_tube(frame.render_data, is_tween)
+    mask_tube: PilImageTube = conditional_add_overlay_mask_tube(frame.render_data, frame.i)
     return tube(lambda img: mask_tube(gray_tube(extra_tube(hybrid_tube(img)))))
