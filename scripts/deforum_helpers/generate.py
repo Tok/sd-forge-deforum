@@ -175,7 +175,6 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
     available_samplers = get_samplers_list()
     if sampler_name is not None:
         if sampler_name in available_samplers.keys():
-            print(f"{sampler_name}: {available_samplers}")
             p.sampler_name = available_samplers[sampler_name]
         else:
             raise RuntimeError(f"Sampler name '{sampler_name}' is invalid. Please check the available sampler list in the 'Run' tab")

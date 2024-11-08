@@ -37,6 +37,7 @@ class Tween:
         # updating reference images to calculate hybrid motions in next iteration
         data.images.before_previous = data.images.previous
         data.images.previous = saved_image
+        data.args.root.init_sample = saved_image
 
     def process(self, last_frame, data, prev_image, image):
         # TODO use tube

@@ -34,7 +34,7 @@ def run_render_animation(data: RenderData, diffusion_frames: List[DiffusionFrame
 
         is_resume, full_path = is_resume_with_image(data, diffusion_frame)
         if is_resume:
-            existing_image = image_utils.load_image(full_path)  # TODO pass directly
+            existing_image = image_utils.load_image(full_path)
             data.images.before_previous = data.images.previous
             data.images.previous = existing_image
             continue
@@ -64,8 +64,6 @@ def _post_process_diffusion_frame(data: RenderData, diffusion_frame, image):
         image = img_2_img_tubes.conditional_frame_transformation_tube(df)(image)
     state.assign_current_image(image)
     df.after_diffusion(image)
-    data.images.before_previous = data.images.previous
-    data.images.previous = image
     web_ui_utils.update_status_tracker(df.render_data, diffusion_frame.i)
 
 

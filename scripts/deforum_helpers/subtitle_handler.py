@@ -83,7 +83,7 @@ def write_frame_subtitle(filename, frame_number, frame_duration, text):
     frame_start_time = Decimal(frame_number) * frame_duration
     frame_end_time = (Decimal(frame_number) + Decimal(1)) * frame_duration
 
-    with open(filename, "a") as f:
+    with open(filename, "a", encoding="utf-8") as f:
         f.write(f"{frame_number + 1}\n")
         f.write(f"{time_to_srt_format(frame_start_time)} --> {time_to_srt_format(frame_end_time)}\n")
         f.write(f"{text}\n\n")
