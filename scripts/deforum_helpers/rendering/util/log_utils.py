@@ -32,11 +32,10 @@ def clear_previous_line():
 
 def print_tween_frame_from_to_info(frame, is_disabled=True):
     if not is_disabled:  # replaced with prog bar, but value info print may be useful
-        tween_values = frame.tween_values
         start_i = frame.tweens[0].i
         end_i = frame.tweens[-1].i
         if end_i > 0:
-            formatted_values = [f"{val:.2f}" for val in tween_values]
+            formatted_values = [f"{val:.2f}" for val in frame.tween_values()]
             count = end_i - start_i + 1
             print(f"{ORANGE}Creating in-between: {RESET_COLOR}{count} frames ({start_i}-->{end_i}){formatted_values}")
 

@@ -69,7 +69,7 @@ class Tween:
         return self.i == last_keyframe.i
 
     @staticmethod
-    def create_in_between_steps(key_frames, i, data, from_i, to_i):
+    def create_in_between_steps(key_frames, i, from_i, to_i):
         tween_count = to_i - from_i
         last_step = key_frames[i]
         return Tween.create_steps(last_step, tween_count, from_i)
@@ -89,11 +89,11 @@ class Tween:
         return list((Tween(values[i], None, None, last_frame.depth, i + from_i + 1) for i in r))
 
     @staticmethod
-    def create_steps(last_frame, tween_count, from_i) -> Tuple[list['Tween'], list[float]]:
+    def create_steps(last_frame, tween_count, from_i) -> list['Tween']:
         if tween_count > 0:
             expected_tween_frames = Tween._calculate_expected_tween_frames(tween_count)
-            return Tween.create_steps_from_values(last_frame, expected_tween_frames, from_i), expected_tween_frames
-        return list(), list()
+            return Tween.create_steps_from_values(last_frame, expected_tween_frames, from_i)
+        return list()
 
     @staticmethod
     def calculate_depth_prediction(data, image):

@@ -41,7 +41,6 @@ class DiffusionFrame:
     depth: Any  # assigned during generation
     last_preview_frame: int
     tweens: List[Tween]
-    tween_values: List[float]
 
     def has_tween_frames(self):
         return len(self.tweens) > 0
@@ -193,12 +192,15 @@ class DiffusionFrame:
                 diffusion_redo_image = maintain_colors(data.images.previous, data.images.color_match, mode)
             data.args.root.init_sample = Image.fromarray(cv2.cvtColor(diffusion_redo_image, cv2.COLOR_BGR2RGB))
 
+    def tween_values(self):
+        return list(map(lambda _: _.value, self.tweens))
+
     @staticmethod
     def create(data: RenderData, i):
         initial_index = i  # replaced once keyframes are arranged.
         frame_data = DiffusionFrameData.create(data, initial_index)
         schedule = Schedule.create(data, i)
-        return DiffusionFrame(initial_index, False, -1, -1, 1.0, 0.0, frame_data, schedule, "", 0, list(), list())
+        return DiffusionFrame(initial_index, False, -1, -1, 1.0, 0.0, frame_data, schedule, "", 0, list())
 
     @staticmethod
     def apply_color_matching(data: RenderData, image):
@@ -302,7 +304,7 @@ class DiffusionFrame:
             diffusion_frames[i].is_keyframe = is_kf
             diffusion_frames[i].strength = DiffusionFrame._select_keyframe_or_cadence_strength(data, key_i, is_kf)
 
-        diffusion_frames = DiffusionFrame.add_tweens_to_diffusion_frames(data, diffusion_frames)
+        diffusion_frames = DiffusionFrame.add_tweens_to_diffusion_frames(diffusion_frames)
         log_utils.print_key_frame_debug_info_if_verbose(diffusion_frames)
 
         pseudo_cadence = data.args.anim_args.max_frames / len(diffusion_frames)
@@ -369,14 +371,13 @@ class DiffusionFrame:
             diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[diffusion_frame.i - 1])
 
     @staticmethod
-    def add_tweens_to_diffusion_frames(data: RenderData, diffusion_frames):
+    def add_tweens_to_diffusion_frames(diffusion_frames):
         log_utils.debug(f"Adding tweens to {len(diffusion_frames)} keyframes...")
         for i in range(1, len(diffusion_frames)):  # skipping 1st key frame
             from_i = diffusion_frames[i - 1].i
             to_i = diffusion_frames[i].i
-            tweens, values = Tween.create_in_between_steps(diffusion_frames, i, data, from_i, to_i)
+            tweens = Tween.create_in_between_steps(diffusion_frames, i, from_i, to_i)
             from_to = f"({from_i:05}->{to_i:05})"
             log_utils.debug(f"Creating {len(tweens):03} tweens {from_to} for frame #{diffusion_frames[i].i:09}")
             diffusion_frames[i].tweens = tweens
-            diffusion_frames[i].tween_values = values
         return diffusion_frames
