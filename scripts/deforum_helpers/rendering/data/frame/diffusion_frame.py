@@ -19,7 +19,7 @@ from ...util.call.hybrid import (
     call_get_matrix_for_hybrid_motion_prev, call_hybrid_composite)
 from ...util.call.images import call_add_noise
 from ...util.call.mask import call_compose_mask_with_check, call_unsharp_mask
-from ...util.call.subtitle import call_write_frame_subtitle
+from ...util.call.subtitle import call_write_subtitle_from_to
 from ...util.call.video_and_audio import call_render_preview
 from ....colors import maintain_colors
 from ....hybrid_video import image_transform_ransac, image_transform_optical_flow
@@ -51,10 +51,10 @@ class DiffusionFrame:
         has_flow_redo = optical_flow_redo_generation != 'None'
         return has_flow_redo and images.has_previous() and self.has_strength()
 
-    def write_frame_subtitle(self, data, subtitle_index):
+    def write_subtitle_from_to(self, data, subtitle_index, frame_i, from_time, to_time):
         # Non-cadence can be asserted because subtitle creation gives priority to diffusion frames over tween ones.
         is_cadence = False
-        call_write_frame_subtitle(data, subtitle_index, is_cadence, self.seed, self.subseed)
+        call_write_subtitle_from_to(data, subtitle_index, frame_i, is_cadence, self.seed, self.subseed, from_time, to_time)
 
     def apply_frame_warp_transform(self, data: RenderData, image):
         is_not_last_frame = self.i < data.args.anim_args.max_frames

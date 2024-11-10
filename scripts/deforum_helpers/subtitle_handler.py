@@ -66,27 +66,44 @@ param_dict = {
     "hybrid_flow_factor_schedule": {"backend": "hybrid_flow_factor_schedule_series", "user": "Hybrid Flow Factor Sch", "print": "HybridFlowFactorSchedule"},
 }
 
+
 def time_to_srt_format(seconds):
     hours, remainder = divmod(seconds, 3600)
     minutes, remainder = divmod(remainder, 60)
     seconds, milliseconds = divmod(remainder, 1)
     return f"{hours:02}:{minutes:02}:{int(seconds):02},{int(milliseconds * 1000):03}"
 
+
 def init_srt_file(filename, fps, precision=20):
     with open(filename, "w") as f:
         pass
+    return calculate_frame_duration(fps)
+
+
+def calculate_frame_duration(fps, precision=20):
     getcontext().prec = precision
     frame_duration = Decimal(1) / Decimal(fps)
     return frame_duration
 
-def write_frame_subtitle(filename, frame_number, frame_duration, text):
-    frame_start_time = Decimal(frame_number) * frame_duration
-    frame_end_time = (Decimal(frame_number) + Decimal(1)) * frame_duration
 
+def write_frame_subtitle(filename, frame_number, frame_duration, text):
+    start_time = frame_time(frame_number, frame_duration)
+    end_time = (Decimal(frame_number) + Decimal(1)) * frame_duration
+    write_subtitle_from_to(filename, frame_number, start_time, end_time, text)
+
+
+def frame_time(frame_number, frame_duration):
+    return Decimal(frame_number) * frame_duration
+
+
+def write_subtitle_from_to(filename, frame_number, start_time_s, end_time_s, text):
+    # start_time should be the same as end_time of the last call
     with open(filename, "a", encoding="utf-8") as f:
+        # see https://en.wikipedia.org/wiki/SubRip#Format
         f.write(f"{frame_number + 1}\n")
-        f.write(f"{time_to_srt_format(frame_start_time)} --> {time_to_srt_format(frame_end_time)}\n")
+        f.write(f"{time_to_srt_format(start_time_s)} --> {time_to_srt_format(end_time_s)}\n")
         f.write(f"{text}\n\n")
+
 
 def format_animation_params(keys, prompt_series, frame_idx, params_to_print):
     params_string = ""
@@ -104,11 +121,12 @@ def format_animation_params(keys, prompt_series, frame_idx, params_to_print):
             params_string += f"{print_key}: {formatted_value}; "
 
     if "Prompt" in params_to_print:
-        params_string += f"Prompt: {prompt_series[frame_idx]}; "        
+        params_string += f"Prompt: {prompt_series[frame_idx]}; "
 
     params_string = params_string.rstrip("; ")  # Remove trailing semicolon and whitespace
     return params_string
-    
+
+
 def get_user_values():
     items = [v["user"] for v in param_dict.values()]
     items.append("Prompt")

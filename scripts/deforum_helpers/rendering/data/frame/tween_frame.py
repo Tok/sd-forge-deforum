@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 from typing import Any, Tuple
 
-import cv2
 import numpy as np
 from PIL import Image
 
 from ...data.render_data import RenderData
 from ...util import image_utils, log_utils, turbo_utils, web_ui_utils
-from ...util.call.subtitle import call_write_frame_subtitle
+from ...util.call.subtitle import call_write_subtitle_from_to
 
 
 @dataclass(init=True, frozen=False, repr=False, eq=False)
@@ -61,7 +60,7 @@ class Tween:
         log_utils.print_tween_frame_info(data, self.i, self.cadence_flow, self.value)
         web_ui_utils.update_progress_during_cadence(data, self.i)
 
-    def write_tween_frame_subtitle(self, data: RenderData, previous_diffusion_frame):
+    def write_tween_subtitle_from_to(self, data: RenderData, sub_i, previous_diffusion_frame, from_time, to_time):
         # Cadence can be asserted because subtitle generation
         # skips the last tween in favor of its parent diffusion frame.
         is_cadence = True
@@ -71,10 +70,13 @@ class Tween:
         # Since the 1st frame is always diffused it never has tweens, meaning there's always a previous_diffusion_frame.
         seed = previous_diffusion_frame.seed
         subseed = previous_diffusion_frame.subseed
-        call_write_frame_subtitle(data, decremented_index, is_cadence, seed, subseed)
+        call_write_subtitle_from_to(data, sub_i, decremented_index, is_cadence, seed, subseed, from_time, to_time)
 
     def has_cadence(self):
         return self.cadence_flow is not None
+
+    def is_last(self, last_keyframe):
+        return self.i == last_keyframe.i
 
     @staticmethod
     def create_in_between_steps(key_frames, i, data, from_i, to_i):

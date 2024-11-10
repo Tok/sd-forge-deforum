@@ -1,8 +1,12 @@
 from typing import List
 
+# noinspection PyUnresolvedReferences
+from modules.shared import opts
+
 from . import log_utils, opt_utils
 from ..data import RenderData
 from ..data.frame import DiffusionFrame
+from ...subtitle_handler import calculate_frame_duration, frame_time, time_to_srt_format
 
 
 def create_all_subtitles_if_active(data: RenderData, diffusion_frames: List[DiffusionFrame]):
@@ -18,33 +22,58 @@ def create_all_subtitles_if_active(data: RenderData, diffusion_frames: List[Diff
 
 
 def _write_subtitle_lines(data, diffusion_frames):
-    log_utils.debug(f"Subtitle generation info: {opt_utils.generation_info_for_subtitles()}")
-    subtitle_index = 0
+    desired_subtitles_per_second = int(opts.data.get("deforum_subtitles_per_second", '10'))
+    write_interval = _interval(data, desired_subtitles_per_second)
+    sub_info = opt_utils.generation_info_for_subtitles()
+    is_always_write_keyframe_subs = opts.data.get("deforum_always_write_keyframe_subtitle", True)
+    frame_duration = calculate_frame_duration(data.fps())
+    log_utils.debug(f"Creating subtitles aiming for {desired_subtitles_per_second} per second at "
+                    f"{'fuzzy' if is_always_write_keyframe_subs else ''} interval {write_interval} "
+                    f"with frame duration {frame_duration:.3f} and info: {sub_info}")
+    return _write_subtitle_lines_internal(data, diffusion_frames, frame_duration, write_interval,
+                                          is_always_write_keyframe_subs)
+
+
+def _write_subtitle_lines_internal(data, diffusion_frames, frame_duration, write_interval,
+                                   is_always_write_keyframe_subs):
+    subtitle_count = 0
     previous_diffusion_frame = None
+    from_time = 0
+    to_time = 0
     for diffusion_frame in diffusion_frames:
         if not diffusion_frame.has_tween_frames():  # 1st frame has no matching tween.
-            diffusion_frame.write_frame_subtitle(data, subtitle_index)
-            subtitle_index += 1
+            to_time = frame_time(diffusion_frame.i, frame_duration)
+            diffusion_frame.write_subtitle_from_to(data, subtitle_count, diffusion_frame.i, from_time, to_time)
+            from_time = to_time
+            subtitle_count += 1
         for tween_frame in diffusion_frame.tweens:
-            _write_tween_subtitle(data, subtitle_index, diffusion_frame, tween_frame, previous_diffusion_frame)
-            subtitle_index += 1
+            to_time = frame_time(tween_frame.i, frame_duration)
+            if is_always_write_keyframe_subs and tween_frame.is_last(diffusion_frame):
+                diffusion_frame.write_subtitle_from_to(data, subtitle_count, tween_frame.i, from_time, to_time)
+                from_time = to_time
+                subtitle_count += 1
+            elif _is_do_not_skip(subtitle_count, write_interval):
+                _write_tween_subtitle(data, subtitle_count, tween_frame.i, diffusion_frame, tween_frame,
+                                      previous_diffusion_frame, from_time, to_time)
+                from_time = to_time
+                subtitle_count += 1
         previous_diffusion_frame = diffusion_frame
 
-    log_utils.info(f"Created {subtitle_index} subtitles.")
-    return subtitle_index
+    log_utils.info(f"Created {subtitle_count} subtitles. Last timestamp: {time_to_srt_format(to_time)}.")
+    return subtitle_count
 
 
-def _write_tween_subtitle(data, subtitle_index, diffusion_frame, tween_frame, previous_diffusion_frame):
+def _write_tween_subtitle(data, sub_i, frame_i, diffusion_frame, tween_frame, previous_diffusion_frame,
+                          from_time, to_time):
     # Each diffusion frame has 0 to many tweens. If there are any, the last tween in the collection
     # has the same index as the diffusion frame it belongs to (asserted on creation).
     # With both options available, subtitles are written using the method provided by the diffusion frame,
     # making it easy to hardcode and pass the correct value for 'is_cadence'
     # without doing any additional calculations or checks.
-    is_last_tween = tween_frame.i == diffusion_frame.i
-    if is_last_tween:
-        diffusion_frame.write_frame_subtitle(data, subtitle_index)
+    if tween_frame.is_last(diffusion_frame):
+        diffusion_frame.write_subtitle_from_to(data, sub_i, frame_i, from_time, to_time)
     else:
-        tween_frame.write_tween_frame_subtitle(data, previous_diffusion_frame)
+        tween_frame.write_tween_subtitle_from_to(data, sub_i, previous_diffusion_frame, from_time, to_time)
 
 
 def _check_and_log_subtitle_count(data, diffusion_frames, subtitle_count):
@@ -54,3 +83,15 @@ def _check_and_log_subtitle_count(data, diffusion_frames, subtitle_count):
     calculated_count = 1 + sum(len(ks.tweens) for ks in diffusion_frames)
     if subtitle_count != calculated_count:
         log_utils.warn(f"Subtitle count {subtitle_count} is different from calculated count {calculated_count}.")
+
+
+def _is_do_not_skip(subtitle_index, write_interval):
+    return subtitle_index % write_interval == 0
+
+
+def _interval(data, desired_subtitles_per_second):
+    # How many tween frames to skip between writing tween subtitles
+    # To keep subtitles in sync with actual keyframes, subtitle FPS is only applied to tween frames.
+    # It's therefore not meant to be 100% accurate.
+    animation_fps = data.fps()
+    return int(animation_fps / desired_subtitles_per_second)
