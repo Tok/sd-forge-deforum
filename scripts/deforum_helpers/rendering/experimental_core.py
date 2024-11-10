@@ -40,7 +40,7 @@ def run_render_animation(data: RenderData, diffusion_frames: List[DiffusionFrame
             continue
 
         _pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame)
-        image = diffusion_frame.generate()
+        image = diffusion_frame.generate(data)
         if image is None:
             log_utils.print_warning_generate_returned_no_image()
             break
@@ -55,16 +55,16 @@ def _pre_process_diffusion_frame_and_emit_tweens(data, diffusion_frame):
     log_utils.print_animation_frame_info(diffusion_frame.i, data.args.anim_args.max_frames)
     frame_tube = img_2_img_tubes.frame_transformation_tube
     contrasted_noise_tube = img_2_img_tubes.contrasted_noise_transformation_tube
-    diffusion_frame.prepare_generation(frame_tube, contrasted_noise_tube)
+    diffusion_frame.prepare_generation(data, frame_tube, contrasted_noise_tube)
 
 
 def _post_process_diffusion_frame(data: RenderData, diffusion_frame, image):
     df = diffusion_frame
     if not image_utils.is_PIL(image):  # check is required when resuming from timestring
-        image = img_2_img_tubes.conditional_frame_transformation_tube(df)(image)
+        image = img_2_img_tubes.conditional_frame_transformation_tube(data, df)(image)
     state.assign_current_image(image)
-    df.after_diffusion(image)
-    web_ui_utils.update_status_tracker(df.render_data, diffusion_frame.i)
+    df.after_diffusion(data, image)
+    web_ui_utils.update_status_tracker(data, diffusion_frame.i)
 
 
 def emit_tweens(data, frame):
@@ -73,7 +73,7 @@ def emit_tweens(data, frame):
     grayscale_tube = img_2_img_tubes.conditional_force_tween_to_grayscale_tube
     overlay_mask_tube = img_2_img_tubes.conditional_add_overlay_mask_tube
     tweens = _maybe_wrap_tweens_with_progress_bar(frame)
-    [tween.emit_frame(frame, grayscale_tube, overlay_mask_tube) for tween in tweens]
+    [tween.emit_frame(data, frame, grayscale_tube, overlay_mask_tube) for tween in tweens]
 
 
 def check_render_conditions(data):

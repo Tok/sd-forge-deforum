@@ -19,13 +19,12 @@ class Tween:
     depth: Any
     i: int
 
-    def emit_frame(self, last_frame, grayscale_tube, overlay_mask_tube):
+    def emit_frame(self, data, last_frame, grayscale_tube, overlay_mask_tube):
         """Emits this tween frame."""
-        max_frames = last_frame.render_data.args.anim_args.max_frames
+        max_frames = data.args.anim_args.max_frames
         if self.i >= max_frames:
             return  # skipping tween emission on the last frame
 
-        data = last_frame.render_data
         self.handle_synchronous_status_concerns(data)
 
         new_image = self._generate(data, last_frame, grayscale_tube, overlay_mask_tube, data.images.previous)
