@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image
 
 from ...data.render_data import RenderData
+from ... import img_2_img_tubes
 from ...util import image_utils, log_utils, turbo_utils, web_ui_utils
 from ...util.call.subtitle import call_write_subtitle_from_to
 
@@ -27,10 +28,7 @@ class Tween:
         data = last_frame.render_data
         self.handle_synchronous_status_concerns(data)
 
-        # TODO use tube...
-        next_image = self.process(last_frame, data, data.images.before_previous, data.images.previous)
-        new_image = self.generate_tween_image(data, grayscale_tube, overlay_mask_tube, data.images.previous, next_image)
-
+        new_image = self._generate(data, last_frame, grayscale_tube, overlay_mask_tube, data.images.previous)
         saved_image = image_utils.save_and_return_frame(data, self, new_image)
 
         # updating reference images to calculate hybrid motions in next iteration
@@ -38,19 +36,12 @@ class Tween:
         data.images.previous = saved_image
         data.args.root.init_sample = saved_image
 
-    def process(self, last_frame, data, prev_image, image):
-        # TODO use tube
+    def _generate(self, data, last_frame, grayscale_tube, overlay_mask_tube, prev_image):
         advanced_image = turbo_utils.advance_optical_flow_cadence_before_animation_warping(
-            data, last_frame, self, prev_image, image)
-
-        if advanced_image is not None:
-            self.depth = Tween.calculate_depth_prediction(data, advanced_image)
-
-        next_img = turbo_utils.advance(data, self.i, advanced_image, self.depth)
-        return turbo_utils.do_hybrid_video_motion(data, last_frame, self.i, data.images, next_img)
-
-    def generate_tween_image(self, data, grayscale_tube, overlay_mask_tube, prev_image, next_image):
-        warped = turbo_utils.do_optical_flow_cadence_after_animation_warping(data, self, prev_image, next_image)
+            data, last_frame, self, data.images.before_previous, data.images.previous)
+        self.depth = Tween.calculate_depth_prediction(data, advanced_image)
+        processed_image = img_2_img_tubes.process_tween_tube(data, last_frame, self.i, self.depth)(advanced_image)
+        warped = turbo_utils.do_optical_flow_cadence_after_animation_warping(data, self, prev_image, processed_image)
         recolored = grayscale_tube(data)(warped)
         is_tween = True
         masked = overlay_mask_tube(data, is_tween)(recolored)
@@ -110,18 +101,18 @@ class Tween:
         has_image = image is not None
         has_depth = data.depth_model is not None
         if has_image and has_depth:
-            # Ensure image is a NumPy array
-            if isinstance(image, list):
-                image = np.array(image)
-            elif isinstance(image, Image.Image):
-                image = np.array(image)
-
-            # If it's still not a NumPy array, raise an error
-            if not isinstance(image, np.ndarray):
-                raise ValueError("Image must be a NumPy array.")
-
+            image = Tween.ensure_image_is_a_numpy_array(image)
             weight = data.args.anim_args.midas_weight
             precision = data.args.root.half_precision
             return data.depth_model.predict(image, weight, precision)
         else:
             return None
+
+    @staticmethod
+    def ensure_image_is_a_numpy_array(image):
+        def convert(img):
+            return np.array(img) if isinstance(img, list) or isinstance(img, Image.Image) else img
+        numpy_array = convert(image)
+        if not isinstance(numpy_array, np.ndarray):
+            raise ValueError("Image must be a NumPy array.")
+        return numpy_array

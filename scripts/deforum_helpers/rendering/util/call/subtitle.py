@@ -1,8 +1,5 @@
-# noinspection PyUnresolvedReferences
-from modules.shared import opts
-
 from .. import log_utils, opt_utils
-from ....subtitle_handler import format_animation_params, write_frame_subtitle, write_subtitle_from_to
+from ....subtitle_handler import format_animation_params, write_subtitle_from_to
 
 
 def _call_format_animation_params(data, frame_i, params_to_print):
@@ -12,15 +9,14 @@ def _call_format_animation_params(data, frame_i, params_to_print):
 
 
 def call_write_subtitle_from_to(data, sub_i, frame_i, is_cadence, seed, subseed, start_time_s, end_time_s) -> None:
-    is_simple_subtitles = opts.data.get("deforum_simple_subtitles", False)
     params_to_print = opt_utils.generation_info_for_subtitles() if data.parseq_adapter.use_parseq else ['Prompt']
-    text = _prepare_subtitle_text(data, is_simple_subtitles, params_to_print, frame_i, is_cadence, seed, subseed)
+    text = _prepare_subtitle_text(data, params_to_print, frame_i, is_cadence, seed, subseed)
     write_subtitle_from_to(data.srt.filename, sub_i, start_time_s, end_time_s, text)
 
 
-def _prepare_subtitle_text(data, is_simple_subtitles, params_to_print, frame_i, is_cadence, seed, subseed):
+def _prepare_subtitle_text(data, params_to_print, frame_i, is_cadence, seed, subseed):
     params_str = _call_format_animation_params(data, frame_i, params_to_print)
-    if is_simple_subtitles:
+    if opt_utils.is_simple_subtitles():
         return params_str.replace("Prompt:", "").strip()
 
     index_str = f"{frame_i:05}"  # Pad frame index to 5 digits with leading zeros, which ought to be enough for anybody.
@@ -37,9 +33,10 @@ def _prepare_subtitle_text(data, is_simple_subtitles, params_to_print, frame_i, 
 def _prepare_prompt_for_subtitle(params_string):
     # prompt is always the last param if present,
     # so there's no need to add a newline after it.
-    clean_params_string = params_string.replace("--neg", "") \
-        if params_string.endswith("--neg") else params_string  # TODO this should be done elsewhere.
+    clean_params_string = (params_string.replace("--neg", "")
+                           if params_string.endswith("--neg")
+                           else params_string)  # TODO this should be done elsewhere.
     trimmed_params_string = clean_params_string.rstrip()
-    return trimmed_params_string.replace(" Prompt: ", "\nPrompt:") \
-        if opts.data.get("deforum_own_line_for_prompt_srt", True) \
-        else trimmed_params_string
+    return (trimmed_params_string.replace(" Prompt: ", "\nPrompt:")
+            if opt_utils.is_own_line_for_prompt_srt()
+            else trimmed_params_string)

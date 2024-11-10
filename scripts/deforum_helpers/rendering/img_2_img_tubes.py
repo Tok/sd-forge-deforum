@@ -7,7 +7,7 @@ from cv2.typing import MatLike
 
 from .data.frame.diffusion_frame import DiffusionFrame
 from .data.render_data import RenderData
-from .util import image_utils
+from .util import image_utils, turbo_utils
 from .util.call.hybrid import call_hybrid_composite
 from .util.fun_utils import tube
 from ..colors import maintain_colors
@@ -60,22 +60,27 @@ def optical_flow_redo_tube(data: RenderData, frame: DiffusionFrame, optical_flow
                     frame.frame_data.redo_flow_factor))
 
 
+def process_tween_tube(data, last_frame, i, depth) -> ImageTube:
+    return tube(lambda img: turbo_utils.advance(data, i, img, depth),
+                lambda img: turbo_utils.do_hybrid_video_motion(data, last_frame, i, data.images, img))
+
+
 # Conditional Tubes (can be switched on or off by providing a Callable[Boolean] `is_do_process` predicate).
 def conditional_hybrid_video_after_generation_tube(frame: DiffusionFrame) -> PilImageTube:
     data = frame.render_data
     fd = frame.frame_data
     return tube(lambda img: call_hybrid_composite(data, frame.i, img, fd.hybrid_comp_schedules),
                 lambda img: image_utils.numpy_to_pil(img),
-                is_do_process=lambda: data.indexes.is_not_first_frame() and data.is_hybrid_composite_after_generation())
+                is_do_process=lambda: frame.i > 0 and data.is_hybrid_composite_after_generation())
 
 
-def conditional_extra_color_match_tube(data: RenderData) -> PilImageTube:
+def conditional_extra_color_match_tube(data: RenderData, i) -> PilImageTube:
     # color matching on first frame is after generation, color match was collected earlier,
     # so we do an extra generation to avoid the corruption introduced by the color match of first output
     return tube(lambda img: maintain_colors(img, data.images.color_match, data.args.anim_args.color_coherence),
                 lambda img: maintain_colors(img, data.images.color_match, data.args.anim_args.color_coherence),
                 lambda img: image_utils.numpy_to_pil(img),
-                is_do_process=lambda: data.indexes.is_first_frame() and data.is_initialize_color_match(
+                is_do_process=lambda: i == 0 and data.is_initialize_color_match(
                     data.images.color_match))
 
 
@@ -117,7 +122,7 @@ def contrasted_noise_transformation_tube(data: RenderData, frame: DiffusionFrame
 
 def conditional_frame_transformation_tube(frame: DiffusionFrame) -> PilImageTube:
     hybrid_tube: PilImageTube = conditional_hybrid_video_after_generation_tube(frame)
-    extra_tube: PilImageTube = conditional_extra_color_match_tube(frame.render_data)
+    extra_tube: PilImageTube = conditional_extra_color_match_tube(frame.render_data, frame.i)
     gray_tube: PilImageTube = conditional_force_to_grayscale_tube(frame.render_data)
     mask_tube: PilImageTube = conditional_add_overlay_mask_tube(frame.render_data, frame.i)
     return tube(lambda img: mask_tube(gray_tube(extra_tube(hybrid_tube(img)))))

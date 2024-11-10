@@ -1,3 +1,5 @@
+from cv2.typing import MatLike
+
 from .call.anim import call_anim_frame_warp
 from .call.hybrid import (call_get_flow_for_hybrid_motion_prev,
                           call_get_flow_for_hybrid_motion,
@@ -7,7 +9,7 @@ from ...hybrid_video import (get_flow_from_images, image_transform_ransac,
                              image_transform_optical_flow, rel_flow_to_abs_flow)
 
 
-def advance_optical_flow_cadence_before_animation_warping(data, last_frame, tween_frame, prev_image, image):
+def advance_optical_flow_cadence_before_animation_warping(data, last_frame, tween_frame, prev_image, image) -> MatLike:
     is_with_flow = data.is_3d_or_2d_with_optical_flow()
     if is_with_flow and _is_do_flow(data, tween_frame, last_frame.i, prev_image, image):
         method = data.args.anim_args.optical_flow_cadence  # string containing the flow method (e.g. "RAFT").

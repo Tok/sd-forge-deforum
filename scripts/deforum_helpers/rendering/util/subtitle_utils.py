@@ -1,8 +1,5 @@
 from typing import List
 
-# noinspection PyUnresolvedReferences
-from modules.shared import opts
-
 from . import log_utils, opt_utils
 from ..data import RenderData
 from ..data.frame import DiffusionFrame
@@ -22,16 +19,14 @@ def create_all_subtitles_if_active(data: RenderData, diffusion_frames: List[Diff
 
 
 def _write_subtitle_lines(data, diffusion_frames):
-    desired_subtitles_per_second = int(opts.data.get("deforum_subtitles_per_second", '10'))
-    write_interval = _interval(data, desired_subtitles_per_second)
+    write_interval = _interval(data, opt_utils.desired_subtitles_per_second())
     sub_info = opt_utils.generation_info_for_subtitles()
-    is_always_write_keyframe_subs = opts.data.get("deforum_always_write_keyframe_subtitle", True)
     frame_duration = calculate_frame_duration(data.fps())
-    log_utils.debug(f"Creating subtitles aiming for {desired_subtitles_per_second} per second at "
-                    f"{'fuzzy' if is_always_write_keyframe_subs else ''} interval {write_interval} "
-                    f"with frame duration {frame_duration:.3f} and info: {sub_info}")
+    log_utils.info(f"Creating subtitles aiming for {opt_utils.desired_subtitles_per_second()} per second with "
+                   f"{'a fuzzy' if opt_utils.is_always_write_keyframe_subs() else 'an'} interval of {write_interval} "
+                   f"using frame duration {frame_duration:.3f} with info: {sub_info}")
     return _write_subtitle_lines_internal(data, diffusion_frames, frame_duration, write_interval,
-                                          is_always_write_keyframe_subs)
+                                          opt_utils.is_always_write_keyframe_subs())
 
 
 def _write_subtitle_lines_internal(data, diffusion_frames, frame_duration, write_interval,
@@ -77,6 +72,8 @@ def _write_tween_subtitle(data, sub_i, frame_i, diffusion_frame, tween_frame, pr
 
 
 def _check_and_log_subtitle_count(data, diffusion_frames, subtitle_count):
+    if opt_utils.always_write_keyframe_subtitle() or not opt_utils.is_subtitles_per_second_same_as_animation_fps(data):
+        return  # no check because subtitle frequency is expected to be irregular.
     max_frames = data.args.anim_args.max_frames
     if subtitle_count != max_frames:
         log_utils.warn(f"Subtitle count {subtitle_count} is different from max. frames {max_frames}.")

@@ -41,3 +41,31 @@ def generation_info_for_subtitles():
 
 def is_generate_subtitles():
     return opts.data.get("deforum_save_gen_info_as_srt")
+
+
+def is_always_write_keyframe_subs():
+    return opts.data.get("deforum_always_write_keyframe_subtitle", True)
+
+
+def desired_subtitles_per_second():
+    return int(opts.data.get("deforum_subtitles_per_second", '10'))
+
+
+def always_write_keyframe_subtitle():
+    return int(opts.data.get("deforum_always_write_keyframe_subtitle", True))
+
+
+def is_subtitles_per_second_same_as_animation_fps(data):
+    return desired_subtitles_per_second() == data.fps()
+
+
+def is_simple_subtitles():
+    return opts.data.get("deforum_simple_subtitles", False)
+
+
+def is_own_line_for_prompt_srt():
+    return opts.data.get("deforum_own_line_for_prompt_srt", True)
+
+
+def is_emojis_disabled():
+    return opts.data.get("deforum_disable_nonessential_emojis", False)

@@ -1,13 +1,8 @@
-# noinspection PyUnresolvedReferences
-from modules.shared import opts
-
-
-def _is_emojis_disabled():
-    return opts.data.get("deforum_disable_nonessential_emojis", False)
+from . import opt_utils
 
 
 def _select(emoji):
-    return '' if _is_emojis_disabled() else emoji
+    return '' if opt_utils.is_emojis_disabled() else emoji
 
 
 # Use emojis sparingly to catch attention to essential items.

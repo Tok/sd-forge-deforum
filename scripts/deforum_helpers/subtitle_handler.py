@@ -87,8 +87,12 @@ def calculate_frame_duration(fps, precision=20):
 
 
 def write_frame_subtitle(filename, frame_number, frame_duration, text):
+    # Used by stable core only. Meant to be used when subtitles are intended to change with every frame.
+    frames_per_subtitle = 1
+    # For low FPS animations and for debugging this is fine, but at higher FPS the file may be too bloated and not fit
+    # for YouTube upload, in which case "write_subtitle_from_to" may be used directly with a longer duration instead.
     start_time = frame_time(frame_number, frame_duration)
-    end_time = (Decimal(frame_number) + Decimal(1)) * frame_duration
+    end_time = (Decimal(frame_number) + Decimal(frames_per_subtitle)) * frame_duration
     write_subtitle_from_to(filename, frame_number, start_time, end_time, text)
 
 
@@ -112,12 +116,7 @@ def format_animation_params(keys, prompt_series, frame_idx, params_to_print):
             backend_key = value['backend']
             print_key = value['print']
             param_value = getattr(keys, backend_key)[frame_idx]
-            if isinstance(param_value, float) and param_value == int(param_value):
-                formatted_value = str(int(param_value))
-            elif isinstance(param_value, float) and not param_value.is_integer():
-                formatted_value = f"{param_value:.3f}"
-            else:
-                formatted_value = f"{param_value}"
+            formatted_value = _format_value(param_value)
             params_string += f"{print_key}: {formatted_value}; "
 
     if "Prompt" in params_to_print:
@@ -125,6 +124,23 @@ def format_animation_params(keys, prompt_series, frame_idx, params_to_print):
 
     params_string = params_string.rstrip("; ")  # Remove trailing semicolon and whitespace
     return params_string
+
+
+def _format_value(param_value):
+    """
+    Format the input value as a string.
+
+    If the input is a float that represents an integer (e.g., 3.0), it converts it to an integer string (e.g., "3").
+    If it's a float with a decimal component (e.g., 3.14), it formats it to three decimal places (e.g., "3.140").
+    For all other types (including integers), it simply converts the value to a string.
+    """
+    is_float = isinstance(param_value, float)
+    if is_float and param_value == int(param_value):
+        return str(int(param_value))
+    elif is_float and not param_value.is_integer():  # TODO? un-flaw logic by combining check in reverse (or something).
+        return f"{param_value:.3f}"
+    else:
+        return f"{param_value}"
 
 
 def get_user_values():
