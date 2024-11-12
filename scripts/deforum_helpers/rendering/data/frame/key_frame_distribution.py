@@ -71,7 +71,7 @@ class KeyFrameDistribution(Enum):
         for current_frame in keyframes:
             if current_frame not in keyframes_set:
                 # Find the closest index in the set to replace (1st and last frame excluded)
-                closest_index = min(list(keyframes_set)[1:-1], key=lambda x: abs(x - current_frame))
+                closest_index = min(list(keyframes_set)[1:-1], key=lambda _: abs(_ - current_frame))
                 keyframes_set.remove(closest_index)
                 keyframes_set.add(current_frame)
 
@@ -88,29 +88,32 @@ class KeyFrameDistribution(Enum):
 
     @staticmethod
     def select_keyframes(data):
-        return KeyFrameDistribution.select_parseq_keyframes(data) if data.parseq_adapter.use_parseq \
-            else KeyFrameDistribution.select_deforum_keyframes(data)
+        return (KeyFrameDistribution.select_parseq_keyframes(data)
+                if data.parseq_adapter.use_parseq
+                else KeyFrameDistribution.select_deforum_keyframes(data))
 
     @staticmethod
     def select_parseq_keyframes(data):
         # Parseq keyframe indices are shifted 1 up before they used.
-        return [keyframe["frame"] + 1 for keyframe in data.parseq_adapter.parseq_json["keyframes"]]
+        keyframes = data.parseq_adapter.parseq_json["keyframes"]
+        return list(map(lambda _: _["frame"] + 1, keyframes))
 
     @staticmethod
     def select_deforum_keyframes(data):
         # Prompt at 0 is always meant to be defined in prompts, but the last frame is not, so we just take max_frames.
-        prompt_keyframes = [int(frame) for frame in data.args.root.prompt_keyframes]
+        prompt_keyframes = list(map(int, data.args.root.prompt_keyframes))
         last_frame = [data.args.anim_args.max_frames]
         keyframes = list(set(prompt_keyframes + last_frame))
         keyframes.sort()
         keyframes[0] = 1  # Makes sure 1st frame is always 1.
 
+        max_frames = data.args.anim_args.max_frames
         # Filter out frames > max_frames or < 1 and log warning if any are removed.
         original_count = len(keyframes)
-        keyframes = [frame for frame in keyframes if 1 <= frame <= data.args.anim_args.max_frames]
+        keyframes = list(filter(lambda _: 1 <= _ <= max_frames, keyframes))
         if len(keyframes) < original_count:
-            log_utils.warn(f"Frames have been removed. Original count: {original_count}, New count: {len(keyframes)}")
-
+            log_utils.warn(f"Removed at least one prompt because its index is not between 0 and {max_frames}. "
+                           f"Original count: {original_count}, New count: {len(keyframes)}")
         return keyframes
 
     @staticmethod
@@ -123,6 +126,6 @@ class KeyFrameDistribution(Enum):
 
     @staticmethod
     def is_keyframe(data, i):
-        return KeyFrameDistribution.is_parseq_keyframe(data, i) \
-            if data.parseq_adapter.use_parseq \
-            else KeyFrameDistribution.is_deforum_keyframe(data, i)
+        return (KeyFrameDistribution.is_parseq_keyframe(data, i)
+                if data.parseq_adapter.use_parseq
+                else KeyFrameDistribution.is_deforum_keyframe(data, i))

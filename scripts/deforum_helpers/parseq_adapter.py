@@ -25,6 +25,7 @@ import requests
 from .animation_key_frames import DeformAnimKeys, ControlNetKeys, LooperAnimKeys, FreeUAnimKeys, KohyaHRFixAnimKeys
 from .rich import console
 from .general_utils import tickOrCross
+from .rendering.util.log_utils import HEX_BLUE, HEX_GREEN
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -116,8 +117,8 @@ class ParseqAdapter():
 
         table = Table(padding=0, box=box.ROUNDED, show_lines=True)
         table.add_column("", style="white bold")
-        table.add_column("Parseq", style="cyan")
-        table.add_column("Deforum", style="green")
+        table.add_column("Parseq", style=HEX_BLUE)
+        table.add_column("Deforum", style=HEX_GREEN)
 
         table.add_row("Animation",         '\n'.join(self.anim_keys.managed_fields()),                      '\n'.join(self.anim_keys.unmanaged_fields()))
         if self.cn_keys:

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Optional, Any
 
 from .render_data import RenderData
+from ..util import log_utils
 from ...animation_key_frames import DeformAnimKeys
 from ...args import DeforumAnimArgs, DeforumArgs
 
@@ -25,7 +26,7 @@ class Schedule:
         args: DeforumArgs = data.args.args
         anim_args: DeforumAnimArgs = data.args.anim_args
         keys: DeformAnimKeys = data.animation_keys.deform_keys
-        steps = Schedule.schedule_steps(keys, i, anim_args)
+        steps = Schedule.schedule_steps(keys, i, anim_args, args)
         sampler_name = Schedule.schedule_sampler(keys, i, anim_args)
         schedule_name = Schedule.schedule_scheduler(keys, i, anim_args)
         clipskip = Schedule.schedule_clipskip(keys, i, anim_args)
@@ -55,9 +56,13 @@ class Schedule:
         return value if cond and Schedule._has_schedule(keys, i) else None
 
     @staticmethod
-    def schedule_steps(keys, i, anim_args):
-        return Schedule._use_on_cond_if_scheduled(keys, i, int(keys.steps_schedule_series[i]),
-                                                  anim_args.enable_steps_scheduling)
+    def schedule_steps(keys, i, anim_args, deforum_args):
+        steps = Schedule._use_on_cond_if_scheduled(keys, i, int(keys.steps_schedule_series[i]),
+                                                   anim_args.enable_steps_scheduling)
+        if steps is None:
+            log_utils.warn(f"Step schedule not found for frame {i}, using default of {deforum_args.steps} instead.")
+            steps = deforum_args.steps
+        return steps
 
     @staticmethod
     def schedule_sampler(keys, i, anim_args):
@@ -68,7 +73,6 @@ class Schedule:
     def schedule_scheduler(keys, i, anim_args):
         return Schedule._use_on_cond_if_scheduled(keys, i, keys.scheduler_schedule_series[i].casefold(),
                                                   anim_args.enable_scheduler_scheduling)
-
 
     @staticmethod
     def schedule_clipskip(keys, i, anim_args):

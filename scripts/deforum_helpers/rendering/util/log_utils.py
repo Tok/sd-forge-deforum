@@ -1,33 +1,53 @@
 from . import opt_utils
 
-ESC = "\033["  # ANSI escape character, same as "\x1b["
+ESC = "\033["  # ANSI escape character with bracket. Same as "\x1b[".
 TERM = "m"  # ANSI terminator
 
 EIGHT_BIT = "38;5;"
 TEXT = "38;2;"
 BACKGROUND = "48;2;"
 
-COLOUR_RGB = f"{ESC}{TEXT}%d;%d;%d{TERM}"
-BG_COLOUR_RGB = f"{ESC}{BACKGROUND}%d;%d;%d{TERM}"
+COLOR_RGB = f"{ESC}{TEXT}%d;%d;%d{TERM}"
+BG_COLOR_RGB = f"{ESC}{BACKGROUND}%d;%d;%d{TERM}"
 RESET_COLOR = f"{ESC}0{TERM}"
 
-RED = f"{ESC}31{TERM}"
-ORANGE = f"{ESC}{EIGHT_BIT}208{TERM}"
-YELLOW = f"{ESC}33{TERM}"
-GREEN = f"{ESC}32{TERM}"
-CYAN = f"{ESC}36{TERM}"
-BLUE = f"{ESC}34{TERM}"
-INDIGO = f"{ESC}{EIGHT_BIT}66{TERM}"
-VIOLET = f"{ESC}{EIGHT_BIT}130{TERM}"
-BLACK = f"{ESC}30{TERM}"
-WHITE = f"{ESC}37{TERM}"
+
+def from_hex_color(hex_color):
+    def _hex_to_rgb(color):
+        color = color.lstrip('#')  # Remove '#' if present
+        return tuple(int(color[i:i + 2], 16) for i in (0, 2, 4))
+
+    r, g, b = _hex_to_rgb(hex_color)
+    return f"{ESC}{TEXT}{r};{g};{b}{TERM}"
+
+
+HEX_RED = '#FE797B'
+HEX_ORANGE = '#FFB750'
+HEX_YELLOW = '#FFEA56'
+HEX_GREEN = '#8FE968'
+HEX_BLUE = '#36CEDC'
+HEX_PURPLE = '#A587CA'
+
+RED = from_hex_color(HEX_RED)
+ORANGE = from_hex_color(HEX_ORANGE)
+YELLOW = from_hex_color(HEX_YELLOW)
+GREEN = from_hex_color(HEX_GREEN)
+BLUE = from_hex_color(HEX_BLUE)
+PURPLE = from_hex_color(HEX_PURPLE)
 
 BOLD = f"{ESC}1{TERM}"
 UNDERLINE = f"{ESC}4{TERM}"
 
 
-def clear_previous_line():
-    print(f"{ESC}F{ESC}K", end="")  # "F" is cursor up, "K" is clear line.
+def clear_last_n_lines(n):
+    print(f'{ESC}F{ESC}K' * n, end="")  # Move cursor up with F and clear the line with K
+    print(f'{ESC}B' * n, end="", flush=True)  # Move cursor back down
+
+
+def clear_next_n_lines(n):
+    clear_line = f'{ESC}2K{ESC}0G'  # Clear the entire line and move cursor to beginning
+    print(f'{ESC}B{clear_line}' * n, end="")  # Move cursor down with B and clear the line with K
+    print(f'{ESC}F' * n, end="", flush=True)  # Move cursor back up
 
 
 def print_tween_frame_from_to_info(frame, is_disabled=True):
@@ -42,7 +62,7 @@ def print_tween_frame_from_to_info(frame, is_disabled=True):
 
 def print_animation_frame_info(i, max_frames):
     print("")
-    print(f"{CYAN}Animation frame: {RESET_COLOR}{i}/{max_frames}")
+    print(f"{BLUE}Animation frame: {RESET_COLOR}{BOLD}{i}{RESET_COLOR}/{max_frames}")
 
 
 def print_tween_frame_info(data, i, cadence_flow, tween, is_disabled=True):

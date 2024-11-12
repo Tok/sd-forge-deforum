@@ -26,10 +26,11 @@ from .args import get_component_names, process_args
 from .deforum_tqdm import DeforumTQDM
 from .save_images import dump_frames_cache, reset_frames_cache
 from .frame_interpolation import process_video_interpolation
-from .general_utils import get_deforum_version
+from .general_utils import get_deforum_version, get_commit_date
 from .upscaling import make_upscale_v2
 from .video_audio_utilities import ffmpeg_stitch_video, make_gifski_gif, handle_imgs_deletion, handle_input_frames_deletion, handle_cn_frames_deletion, get_ffmpeg_params, get_ffmpeg_paths
 from pathlib import Path
+from .rendering.util.log_utils import UNDERLINE, YELLOW, ORANGE, RED, RESET_COLOR
 from .settings import save_settings_from_animation_run
 from .deforum_controlnet import num_of_models
 
@@ -70,8 +71,9 @@ def run_deforum(*args):
     for i in range(times_to_run): # run for as many times as we need
         job_id = f"{job_id_prefix}-{i}"
         JobStatusTracker().update_phase(job_id, DeforumJobPhase.PREPARING)
-        print(f"\033[4;33mDeforum extension for Forge webui\033[0m")
-        print(f"Git commit: {get_deforum_version()}")
+
+        print(f"{UNDERLINE}{YELLOW}Zirteqs Fluxabled Fork of the Deforum Extension for WebUI Forge{RESET_COLOR}")
+        print(f"Version: {get_commit_date()} | Git commit: {get_deforum_version()}")
         print(f"Starting job {job_id}...")
         args_dict['self'] = None
         args_dict['p'] = p
@@ -86,11 +88,11 @@ def run_deforum(*args):
             return None, None, None, f"Error: '{e}'. Please, check your prompts with a JSON validator. Full error message is in your terminal/ cli."
         if args_loaded_ok is False:
             if times_to_run > 1:
-                print(f"\033[31mWARNING:\033[0m skipped running from the following setting file, as it contains an invalid JSON: {os.path.basename(args_dict['custom_settings_file'][i].name)}")
+                print(f"{ORANGE}WARNING:{RESET_COLOR} skipped running from the following setting file, as it contains an invalid JSON: {os.path.basename(args_dict['custom_settings_file'][i].name)}")
                 continue
             else:
                 JobStatusTracker().fail_job(job_id, error_type="TERMINAL", message="Invalid settings file.")
-                print(f"\033[31mERROR!\033[0m Couldn't load data from '{os.path.basename(args_dict['custom_settings_file'][i].name)}'. Make sure it's a valid JSON using a JSON validator")
+                print(f"{RED}ERROR!{RESET_COLOR} Couldn't load data from '{os.path.basename(args_dict['custom_settings_file'][i].name)}'. Make sure it's a valid JSON using a JSON validator")
                 return None, None, None, f"Couldn't load data from '{os.path.basename(args_dict['custom_settings_file'][i].name)}'. Make sure it's a valid JSON using a JSON validator"
 
         root.initial_clipskip = shared.opts.data.get("CLIP_stop_at_last_layers", 1)
@@ -111,7 +113,7 @@ def run_deforum(*args):
 
         tqdm_backup = shared.total_tqdm
 
-        if not is_use_experimental_render_core(anim_args):  # Experimental core sets shared tqdm directly
+        if not is_use_experimental_render_core(anim_args):  # The experimental core provides its own set of tqdm.
             shared.total_tqdm = DeforumTQDM(args, anim_args, parseq_args, video_args)
 
         try:  # dispatch to appropriate renderer

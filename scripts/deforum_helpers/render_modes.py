@@ -21,6 +21,7 @@ import re
 import numexpr
 from modules.shared import opts, state
 from .render import render_animation
+from .rendering.util.log_utils import BOLD, BLUE, GREEN, PURPLE, RESET_COLOR
 from .seed import next_seed
 from .video_audio_utilities import vid2frames, render_preview
 from .prompt import interpolate_prompts
@@ -126,10 +127,12 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
         
         if prompt_to_print.endswith("--neg"):
             prompt_to_print = prompt_to_print[:-5]
-        print(f"\033[36mInterpolation frame: \033[0m{frame_idx}/{anim_args.max_frames}  ")
-        print(f"\033[32mSeed: \033[0m{args.seed}")
-        print(f"\033[35mPrompt: \033[0m{prompt_to_print}")
-        
+
+        print(f"{BLUE}Interpolation frame: {RESET_COLOR}"
+              f"{BOLD}{frame_idx}{RESET_COLOR}/{anim_args.max_frames}  ")
+        print(f"{GREEN}Seed: {RESET_COLOR}{args.seed}")
+        print(f"{PURPLE}Prompt: {RESET_COLOR}{prompt_to_print}")
+
         state.job = f"frame {frame_idx + 1}/{anim_args.max_frames}"
         state.job_no = frame_idx + 1
         

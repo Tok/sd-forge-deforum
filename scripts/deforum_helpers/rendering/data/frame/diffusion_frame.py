@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from math import ceil
 from typing import Any, List
 
 import PIL
@@ -29,7 +30,7 @@ from ....seed import generate_next_seed
 
 @dataclass(init=True, frozen=False, repr=False, eq=False)
 class DiffusionFrame:
-    """DiffusionFrames are the frames that actually get diffused (as opposed to tween frame steps)."""
+    """DiffusionFrames are the frames that actually get diffused (as opposed to Tween frames)."""
     i: int
     is_keyframe: bool
     seed: int  # TODO avoid reassignment after creation:
@@ -42,6 +43,10 @@ class DiffusionFrame:
     last_preview_frame: int
     tweens: List[Tween]
 
+    def actual_steps(self):
+        return int(ceil(self.schedule.steps * self.strength)) + 1
+               #int(ceil(self._args.steps * (1 - strength)))
+
     def has_tween_frames(self):
         return len(self.tweens) > 0
 
@@ -52,7 +57,8 @@ class DiffusionFrame:
     def write_subtitle_from_to(self, data: RenderData, subtitle_index, frame_i, from_time, to_time):
         # Non-cadence can be asserted because subtitle creation gives priority to diffusion frames over tween ones.
         is_cadence = False
-        call_write_subtitle_from_to(data, subtitle_index, frame_i, is_cadence, self.seed, self.subseed, from_time, to_time)
+        call_write_subtitle_from_to(data, subtitle_index, frame_i, is_cadence,
+                                    self.seed, self.subseed, from_time, to_time)
 
     def apply_frame_warp_transform(self, data: RenderData, image):
         is_not_last_frame = self.i < data.args.anim_args.max_frames
@@ -236,7 +242,7 @@ class DiffusionFrame:
         return image
 
     @staticmethod
-    def apply_hybrid_motion_optical_flow(data: RenderData, frame, image):
+    def apply_hybrid_motion_optical_flow(data: RenderData, image, frame):
         motion = data.args.anim_args.hybrid_motion
         if motion in ['Optical Flow']:
             last_i = frame.i - 1
@@ -256,8 +262,9 @@ class DiffusionFrame:
         if keyframe_distribution is KeyFrameDistribution.OFF:
             return 0  # not relevant
         elif keyframe_distribution is KeyFrameDistribution.KEYFRAMES_ONLY:
-            return len(data.parseq_adapter.parseq_json["keyframes"]) if data.parseq_adapter.use_parseq \
-                else len(data.args.root.prompt_keyframes) + 1  # +1 because last frame is not defined in prompts
+            return (len(data.parseq_adapter.parseq_json["keyframes"])
+                    if data.parseq_adapter.use_parseq
+                    else len(data.args.root.prompt_keyframes) + 1)  # +1 because last frame is not defined in prompts
         elif keyframe_distribution is KeyFrameDistribution.REDISTRIBUTED:
             return 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
         elif keyframe_distribution is KeyFrameDistribution.ADDITIVE:

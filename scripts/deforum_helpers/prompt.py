@@ -16,6 +16,7 @@
 
 import re
 import numexpr
+from .rendering.util.log_utils import RED, GREEN, PURPLE, RESET_COLOR
 
 def check_is_number(value):
     float_pattern = r'^(?=.)([+-]?([0-9]*)(\.([0-9]+))?)$'
@@ -131,6 +132,7 @@ def interpolate_prompts(animation_prompts, max_frames):
     # Return the filled series, in case max_frames is greater than the last keyframe or any ranges were skipped.
     return prompt_series.ffill().bfill()
 
+
 def prepare_prompt(prompt_series, max_frames, seed, frame_idx):
     max_f = max_frames - 1
     pattern = r'`.*?`'
@@ -146,10 +148,10 @@ def prepare_prompt(prompt_series, max_frames, seed, frame_idx):
     prompt_to_print = prompt_to_print.strip()
     after_neg = "".join(after_neg).strip()
 
-    print(f"\033[32mSeed: \033[0m{seed}")
-    print(f"\033[35mPrompt: \033[0m{prompt_to_print}")
+    print(f"{GREEN}Seed: {RESET_COLOR}{seed}")
+    print(f"{PURPLE}Prompt: {RESET_COLOR}{prompt_to_print}")
     if after_neg and after_neg.strip():
-        print(f"\033[91mNeg Prompt: \033[0m{after_neg}")
+        print(f"{RED}Neg Prompt: {RESET_COLOR}{after_neg}")
         prompt_to_print += f"--neg {after_neg}"
 
     # set value back into the prompt

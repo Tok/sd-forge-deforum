@@ -33,11 +33,10 @@ PilImageTube = Callable[[Image.Image], Image.Image]
 
 
 def frame_transformation_tube(data: RenderData, frame: DiffusionFrame) -> ImageTube:
-    # make sure `img` stays the last argument in each call.
     return tube(lambda img: frame.apply_frame_warp_transform(data, img),
                 lambda img: frame.do_hybrid_compositing_before_motion(data, img),
                 lambda img: DiffusionFrame.apply_hybrid_motion_ransac_transform(data, img, frame.i),
-                lambda img: DiffusionFrame.apply_hybrid_motion_optical_flow(data, frame, img),
+                lambda img: DiffusionFrame.apply_hybrid_motion_optical_flow(data, img, frame),
                 lambda img: frame.do_normal_hybrid_compositing_after_motion(data, img),
                 lambda img: DiffusionFrame.apply_color_matching(data, img),
                 lambda img: DiffusionFrame.transform_to_grayscale_if_active(data, img))

@@ -19,15 +19,17 @@ class Tween:
     depth: Any
     i: int
 
-    def emit_frame(self, data, last_frame, grayscale_tube, overlay_mask_tube):
+    def emit_frame(self, data, total_tqdm, last_frame):
         """Emits this tween frame."""
+        total_tqdm.increment_tween_count()
+
         max_frames = data.args.anim_args.max_frames
         if self.i >= max_frames:
             return  # skipping tween emission on the last frame
 
         self.handle_synchronous_status_concerns(data)
 
-        new_image = self._generate(data, last_frame, grayscale_tube, overlay_mask_tube, data.images.previous)
+        new_image = self._generate(data, last_frame, data.images.previous)
         saved_image = image_utils.save_and_return_frame(data, self, new_image)
 
         # updating reference images to calculate hybrid motions in next iteration
@@ -35,14 +37,18 @@ class Tween:
         data.images.previous = saved_image
         data.args.root.init_sample = saved_image
 
-    def _generate(self, data, last_frame, grayscale_tube, overlay_mask_tube, prev_image):
+    def _generate(self, data, last_frame, prev_image):
         advanced_image = turbo_utils.advance_optical_flow_cadence_before_animation_warping(
             data, last_frame, self, data.images.before_previous, data.images.previous)
         self.depth = Tween.calculate_depth_prediction(data, advanced_image)
         processed_image = img_2_img_tubes.process_tween_tube(data, last_frame, self.i, self.depth)(advanced_image)
         warped = turbo_utils.do_optical_flow_cadence_after_animation_warping(data, self, prev_image, processed_image)
+
+        grayscale_tube = img_2_img_tubes.conditional_force_tween_to_grayscale_tube
         recolored = grayscale_tube(data)(warped)
+
         is_tween = True
+        overlay_mask_tube = img_2_img_tubes.conditional_add_overlay_mask_tube
         masked = overlay_mask_tube(data, is_tween)(recolored)
         return masked
 
