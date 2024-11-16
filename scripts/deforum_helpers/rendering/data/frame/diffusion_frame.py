@@ -152,7 +152,7 @@ class DiffusionFrame:
 
     def generate(self, data: RenderData, total_tqdm):
         image = call_generate(data, self)
-        total_tqdm.increment_diffusion_frame_count()
+        total_tqdm.increment_animation_cycle_count()
         return image
 
     def after_diffusion(self, data: RenderData, image):

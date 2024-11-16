@@ -19,7 +19,7 @@ class Taqaddumat:
         self.total_frames = None
         self.steps = None
         self.total_steps = None
-        self.diffusion_frames = None
+        self.total_animation_cycles = None
 
     def reset(self, data, frames):
         def create(iterable, position, color, description, unit, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
@@ -53,9 +53,9 @@ class Taqaddumat:
             range(total_steps), 1, HEX_RED,
             "Total Diffusion Steps", "step")
 
-        self.diffusion_frames = create(
+        self.total_animation_cycles = create(
             frames, 0, HEX_PURPLE,
-            "Total Animation Cycles", "cycles",
+            "Total Animation Cycles", "cycle",
             Taqaddumat.DEFAULT_BAR_FORMAT)
 
         self.clear_all()
@@ -89,10 +89,10 @@ class Taqaddumat:
         if Taqaddumat.is_last_iteration(self.steps):
             print("\n")
 
-    def increment_diffusion_frame_count(self):
+    def increment_animation_cycle_count(self):
         # Calls to tqdm.update() without an argument increment it by 1.
-        self.diffusion_frames.update()
-        self.diffusion_frames.refresh()
+        self.total_animation_cycles.update()
+        self.total_animation_cycles.refresh()
         print("")
 
     def reset_tween_count(self, n):
@@ -112,7 +112,7 @@ class Taqaddumat:
         self.steps.clear()
         self.total_steps.clear()
         self.total_frames.clear()
-        self.diffusion_frames.clear()
+        self.total_animation_cycles.clear()
         print("\n\n\n\n")
 
     @staticmethod

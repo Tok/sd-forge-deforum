@@ -38,7 +38,7 @@ def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
     for frame in frames:
         is_resume, full_path = is_resume_with_image(data, frame)
         if is_resume:
-            shared.total_tqdm.total_diffusions.update()
+            shared.total_tqdm.total_animation_cycles.update()
             shared.total_tqdm.total_frames.update(len(frame.tweens))
             shared.total_tqdm.total_steps.update(frame.actual_steps(data))
             existing_image = image_utils.load_image(full_path)
