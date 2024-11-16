@@ -80,7 +80,7 @@ class AnimationMode:
         return []
 
     @staticmethod
-    def from_args(step_args):
+    def create(step_args):
         sa = step_args  # RenderInitArgs
         # path required by hybrid functions, even if hybrid_comp_save_extra_frames is False
         hybrid_input_files: Any = os.path.join(sa.args.outdir, 'hybridframes')

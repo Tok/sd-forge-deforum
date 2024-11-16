@@ -21,8 +21,6 @@ class Tween:
 
     def emit_frame(self, data, total_tqdm, last_frame):
         """Emits this tween frame."""
-        total_tqdm.increment_tween_count()
-
         max_frames = data.args.anim_args.max_frames
         if self.i >= max_frames:
             return  # skipping tween emission on the last frame
@@ -31,6 +29,7 @@ class Tween:
 
         new_image = self._generate(data, last_frame, data.images.previous)
         saved_image = image_utils.save_and_return_frame(data, self, new_image)
+        total_tqdm.increment_tween_count()
 
         # updating reference images to calculate hybrid motions in next iteration
         data.images.before_previous = data.images.previous

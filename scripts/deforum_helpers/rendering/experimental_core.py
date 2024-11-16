@@ -3,12 +3,12 @@ from pathlib import Path
 from typing import List
 
 # noinspection PyUnresolvedReferences
-import modules.shared as shared
+from modules import shared
 
 from . import img_2_img_tubes
-from .data.combined_tqdm import CombinedTqdm
 from .data.frame import KeyFrameDistribution, DiffusionFrame
 from .data.render_data import RenderData
+from .data.taqaddumat import Taqaddumat
 from .util import filename_utils, image_utils, log_utils, memory_utils, subtitle_utils, web_ui_utils
 
 
@@ -21,8 +21,8 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     web_ui_utils.init_job(data)
     diffusion_frames = DiffusionFrame.create_all_frames(data, KeyFrameDistribution.from_UI_tab(data))
     subtitle_utils.create_all_subtitles_if_active(data, diffusion_frames)
-    shared.total_tqdm = CombinedTqdm()
-    shared.total_tqdm.reset(diffusion_frames)
+    shared.total_tqdm = Taqaddumat()
+    shared.total_tqdm.reset(data, diffusion_frames)
     run_render_animation(data, diffusion_frames)
     data.animation_mode.unload_raft_and_depth_model()
 
@@ -31,9 +31,9 @@ def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
     for frame in frames:
         is_resume, full_path = is_resume_with_image(data, frame)
         if is_resume:
-            shared.total_tqdm.total_diffusions_tqdm.update()
-            shared.total_tqdm.total_frames_tqdm.update(len(frame.tweens))
-            shared.total_tqdm.total_steps_tqdm.update(frame.actual_steps())
+            shared.total_tqdm.total_diffusions.update()
+            shared.total_tqdm.total_frames.update(len(frame.tweens))
+            shared.total_tqdm.total_steps.update(frame.actual_steps(data))
             existing_image = image_utils.load_image(full_path)
             data.images.before_previous = data.images.previous
             data.images.previous = existing_image
@@ -42,11 +42,10 @@ def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
         prepare_generation(data, frame)
         emit_tweens(data, frame)
         pre_process(data, frame)
-        image = frame.generate(data)
+        image = frame.generate(data, shared.total_tqdm)
         if image is None:
             log_utils.print_warning_generate_returned_no_image()
             break
-        shared.total_tqdm.increment_diffusion_frame_count()
         post_process(data, frame, image)
 
 
@@ -65,11 +64,10 @@ def emit_tweens(data: RenderData, frame: DiffusionFrame):
 
 
 def pre_process(data: RenderData, frame: DiffusionFrame):
-    shared.total_tqdm.reset_step_count(frame.actual_steps())
+    shared.total_tqdm.reset_step_count(frame.actual_steps(data))
     frame_tube = img_2_img_tubes.frame_transformation_tube
     contrasted_noise_tube = img_2_img_tubes.contrasted_noise_transformation_tube
     frame.prepare_generation(data, frame_tube, contrasted_noise_tube)
-    shared.total_tqdm.reset_step_count(frame.actual_steps())
 
 
 def post_process(data: RenderData, frame: DiffusionFrame, image):

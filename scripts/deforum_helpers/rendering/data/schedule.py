@@ -2,13 +2,12 @@ from dataclasses import dataclass
 from typing import Optional, Any
 
 from .render_data import RenderData
-from ..util import log_utils
-from ...animation_key_frames import DeformAnimKeys
 from ...args import DeforumAnimArgs, DeforumArgs
 
 
 @dataclass(init=True, frozen=True, repr=False, eq=False)
 class Schedule:
+    seed: int
     steps: int
     sampler_name: str
     scheduler_name: str
@@ -20,23 +19,25 @@ class Schedule:
     noise_mask: Optional[Any]
 
     @staticmethod
-    def create(data: RenderData, index):
+    def create(data: RenderData, seed, i):
         """Create a new Schedule instance based on the provided parameters."""
-        i = index
         args: DeforumArgs = data.args.args
         anim_args: DeforumAnimArgs = data.args.anim_args
-        keys: DeformAnimKeys = data.animation_keys.deform_keys
-        steps = Schedule.schedule_steps(keys, i, anim_args, args)
-        sampler_name = Schedule.schedule_sampler(keys, i, anim_args)
-        schedule_name = Schedule.schedule_scheduler(keys, i, anim_args)
-        clipskip = Schedule.schedule_clipskip(keys, i, anim_args)
-        noise_multiplier = Schedule.schedule_noise_multiplier(keys, i, anim_args)
-        eta_ddim = Schedule.schedule_ddim_eta(keys, i, anim_args)
-        eta_ancestral = Schedule.schedule_ancestral_eta(keys, i, anim_args)
-        mask = Schedule.schedule_mask(keys, i, args)
-        is_use_mask_without_noise = data.is_use_mask and not data.args.anim_args.use_noise_mask
-        noise_mask = mask if is_use_mask_without_noise else Schedule.schedule_noise_mask(keys, i, anim_args)
-        return Schedule(steps, sampler_name, schedule_name, clipskip, noise_multiplier,
+        keys = data.animation_keys.deform_keys
+        (steps, sampler_name, schedule_name, clipskip, noise_multiplier,
+         eta_ddim, eta_ancestral, mask, noise_mask) = (
+            Schedule.schedule_steps(keys, i, anim_args, args),
+            Schedule.schedule_sampler(keys, i, anim_args),
+            Schedule.schedule_scheduler(keys, i, anim_args),
+            Schedule.schedule_clipskip(keys, i, anim_args),
+            Schedule.schedule_noise_multiplier(keys, i, anim_args),
+            Schedule.schedule_ddim_eta(keys, i, anim_args),
+            Schedule.schedule_ancestral_eta(keys, i, anim_args),
+            Schedule.schedule_mask(keys, i, args),
+            (Schedule.schedule_noise_mask(keys, i, anim_args)
+             if data.is_use_mask and not data.args.anim_args.use_noise_mask
+             else None))
+        return Schedule(seed, steps, sampler_name, schedule_name, clipskip, noise_multiplier,
                         eta_ddim, eta_ancestral, mask, noise_mask)
 
     @staticmethod
@@ -60,7 +61,6 @@ class Schedule:
         steps = Schedule._use_on_cond_if_scheduled(keys, i, int(keys.steps_schedule_series[i]),
                                                    anim_args.enable_steps_scheduling)
         if steps is None:
-            log_utils.warn(f"Step schedule not found for frame {i}, using default of {deforum_args.steps} instead.")
             steps = deforum_args.steps
         return steps
 

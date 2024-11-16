@@ -11,6 +11,13 @@ COLOR_RGB = f"{ESC}{TEXT}%d;%d;%d{TERM}"
 BG_COLOR_RGB = f"{ESC}{BACKGROUND}%d;%d;%d{TERM}"
 RESET_COLOR = f"{ESC}0{TERM}"
 
+HEX_RED = '#FE797B'
+HEX_ORANGE = '#FFB750'
+HEX_YELLOW = '#FFEA56'
+HEX_GREEN = '#8FE968'
+HEX_BLUE = '#36CEDC'
+HEX_PURPLE = '#A587CA'
+
 
 def from_hex_color(hex_color):
     def _hex_to_rgb(color):
@@ -20,13 +27,6 @@ def from_hex_color(hex_color):
     r, g, b = _hex_to_rgb(hex_color)
     return f"{ESC}{TEXT}{r};{g};{b}{TERM}"
 
-
-HEX_RED = '#FE797B'
-HEX_ORANGE = '#FFB750'
-HEX_YELLOW = '#FFEA56'
-HEX_GREEN = '#8FE968'
-HEX_BLUE = '#36CEDC'
-HEX_PURPLE = '#A587CA'
 
 RED = from_hex_color(HEX_RED)
 ORANGE = from_hex_color(HEX_ORANGE)
@@ -39,15 +39,10 @@ BOLD = f"{ESC}1{TERM}"
 UNDERLINE = f"{ESC}4{TERM}"
 
 
-def clear_last_n_lines(n):
-    print(f'{ESC}F{ESC}K' * n, end="")  # Move cursor up with F and clear the line with K
-    print(f'{ESC}B' * n, end="", flush=True)  # Move cursor back down
-
-
 def clear_next_n_lines(n):
     clear_line = f'{ESC}2K{ESC}0G'  # Clear the entire line and move cursor to beginning
-    print(f'{ESC}B{clear_line}' * n, end="")  # Move cursor down with B and clear the line with K
-    print(f'{ESC}F' * n, end="", flush=True)  # Move cursor back up
+    print(f'{ESC}B{clear_line}' * n, end="")  # Move cursor down with B and clear the line n times.
+    print(f'{ESC}F' * n, end="", flush=True)  # Move cursor back up n times.
 
 
 def print_tween_frame_from_to_info(frame, is_disabled=True):

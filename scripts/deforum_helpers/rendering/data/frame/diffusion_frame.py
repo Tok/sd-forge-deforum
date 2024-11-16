@@ -7,10 +7,14 @@ import PIL
 import cv2
 import numpy as np
 from PIL import Image
+# noinspection PyUnresolvedReferences
+from modules import shared
+from tqdm import tqdm
 
 from . import DiffusionFrameData, KeyFrameDistribution
 from .tween_frame import Tween
 from .. import RenderData, Schedule
+from ..taqaddumat import Taqaddumat
 from ... import img_2_img_tubes
 from ...util import depth_utils, filename_utils, log_utils, utils
 from ...util.call.anim import call_anim_frame_warp
@@ -37,15 +41,16 @@ class DiffusionFrame:
     subseed: int
     subseed_strength: float
     strength: float
-    frame_data: DiffusionFrameData  # immutable collection of less essential frame data. # TODO move more stuff to data
-    schedule: Schedule
+    frame_data: DiffusionFrameData  # immutable collection of less essential frame data.
+    schedule: Schedule  # assigned after the seed is available
     depth: Any  # assigned during generation
     last_preview_frame: int
     tweens: List[Tween]
 
-    def actual_steps(self):
+    def actual_steps(self, data):
+        if self.i == 1 and not data.args.args.use_init:
+            return self.schedule.steps
         return int(ceil(self.schedule.steps * self.strength)) + 1
-               #int(ceil(self._args.steps * (1 - strength)))
 
     def has_tween_frames(self):
         return len(self.tweens) > 0
@@ -133,7 +138,7 @@ class DiffusionFrame:
         optical_flow_redo_generation = data.optical_flow_redo_generation_if_not_in_preview_mode()
         is_redo_optical_flow = self.is_optical_flow_redo_before_generation(optical_flow_redo_generation, data.images)
         if is_redo_optical_flow:
-            data.args.root.init_sample = self.do_optical_flow_redo_before_generation()
+            data.args.root.init_sample = self.do_optical_flow_redo_before_generation(data)
 
     def maybe_redo_diffusion(self, data: RenderData):
         is_pos_redo = data.has_positive_diffusion_redo
@@ -145,8 +150,10 @@ class DiffusionFrame:
     def has_strength(self):
         return self.strength > 0
 
-    def generate(self, data: RenderData):
-        return call_generate(data, self)
+    def generate(self, data: RenderData, total_tqdm):
+        image = call_generate(data, self)
+        total_tqdm.increment_diffusion_frame_count()
+        return image
 
     def after_diffusion(self, data: RenderData, image):
         data.images.color_match = img_2_img_tubes.conditional_color_match_tube(data, self)(image)
@@ -205,8 +212,7 @@ class DiffusionFrame:
     def create(data: RenderData, i):
         initial_index = i  # replaced once keyframes are arranged.
         frame_data = DiffusionFrameData.create(data, initial_index)
-        schedule = Schedule.create(data, i)
-        return DiffusionFrame(initial_index, False, -1, -1, 1.0, 0.0, frame_data, schedule, "", 0, list())
+        return DiffusionFrame(initial_index, False, -1, -1, 1.0, 0.0, frame_data, None, "", 0, list())
 
     @staticmethod
     def apply_color_matching(data: RenderData, image):
@@ -325,7 +331,8 @@ class DiffusionFrame:
         if keyframe_distribution != KeyFrameDistribution.KEYFRAMES_ONLY:
             assert diffusion_frames[-1].i == data.args.anim_args.max_frames  # last index is same as max frames
 
-        DiffusionFrame._assign_initial_seeds(data, diffusion_frames)
+        DiffusionFrame._assign_initial_seeds_and_schedules(data, diffusion_frames)
+
         return diffusion_frames
 
     @staticmethod
@@ -333,13 +340,35 @@ class DiffusionFrame:
         # Applies `strength_schedule` if Parseq is active or if there is no entry with index i in the Deforum prompts.
         # otherwise `keyframe_strength_schedule` is applied, which should be set lower (=more denoise on keyframes).
         # schedule series indices shifted to start at 0.
-        return data.animation_keys.deform_keys.strength_schedule_series[index - 1] \
-            if data.parseq_adapter.use_parseq or is_keyframe \
-            else data.animation_keys.deform_keys.keyframe_strength_schedule_series[index - 1]
+        return (data.animation_keys.deform_keys.strength_schedule_series[index - 1]
+                if data.parseq_adapter.use_parseq or is_keyframe
+                else data.animation_keys.deform_keys.keyframe_strength_schedule_series[index - 1])
 
     @staticmethod
-    def _assign_initial_seeds(data: RenderData, diffusion_frames):
+    def _assign_initial_seeds_and_schedules(data: RenderData, diffusion_frames):
         log_utils.info(f"Precalculating {len(diffusion_frames)} seeds with behaviour '{data.args.args.seed_behavior}'.")
+        is_seed_managed_by_parseq = data.parseq_adapter.manages_seed()
+        if is_seed_managed_by_parseq:
+            DiffusionFrame.process_parseq_diffusion_frames(diffusion_frames, data)
+        else:
+            DiffusionFrame.process_deforum_diffusion_frames(diffusion_frames, data)
+
+    @staticmethod
+    def process_parseq_diffusion_frames(diffusion_frames, data):
+        data.args.anim_args.enable_subseed_scheduling = True
+        keys = data.animation_keys.deform_keys  # Parseq keys are decorated in 'ParseqAnimKeysDecorator'
+        for diffusion_frame in tqdm(diffusion_frames, desc="Precalculations", unit="diffusion-frames",
+                                    dynamic_ncols=True, file=shared.progress_print_out,
+                                    bar_format=Taqaddumat.DEFAULT_BAR_FORMAT,
+                                    disable=shared.cmd_opts.disable_console_progressbars, colour=log_utils.HEX_YELLOW):
+            i = diffusion_frame.i - 1
+            diffusion_frame.seed = int(keys.seed_schedule_series[i])
+            diffusion_frame.subseed = int(keys.subseed_schedule_series[i])
+            diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[i])
+            diffusion_frame.schedule = Schedule.create(data, diffusion_frame.seed, i)
+
+    @staticmethod
+    def process_deforum_diffusion_frames(diffusion_frames, data):
         behavior = data.args.args.seed_behavior
 
         def _start_seed():
@@ -348,26 +377,18 @@ class DiffusionFrame:
         def _start_control():
             return 0 if behavior != 'ladder' and behavior != 'alternate' else 1
 
-        is_seed_managed_by_parseq = data.parseq_adapter.manages_seed()
-        if is_seed_managed_by_parseq:
-            data.args.anim_args.enable_subseed_scheduling = True
-            keys = data.animation_keys.deform_keys  # Parseq keys are decorated in 'ParseqAnimKeysDecorator'
-            for diffusion_frame in diffusion_frames:
-                diffusion_frame.seed = int(keys.seed_schedule_series[diffusion_frame.i - 1])
-                diffusion_frame.subseed = int(keys.subseed_schedule_series[diffusion_frame.i - 1])
-                diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[diffusion_frame.i - 1])
-        else:
-            last_seed = _start_seed()
-            last_seed_control = _start_control()  # same as 'data.args.root.seed_internal', but it's passed directly.
-            for diffusion_frame in diffusion_frames:
-                DiffusionFrame._assign_subseed_properties(data, diffusion_frame, is_seed_managed_by_parseq)
-                the_next_seed, the_next_seed_control = generate_next_seed(data.args.args, last_seed, last_seed_control)
-                log_utils.debug(f"Seed {the_next_seed:010}. " +
-                                (f"Subseed {diffusion_frame.subseed:010} at {diffusion_frame.subseed_strength}."
-                                 if diffusion_frame.subseed != -1 else ""))
-                diffusion_frame.seed = the_next_seed
-                last_seed = the_next_seed
-                last_seed_control = the_next_seed_control
+        last_seed = _start_seed()
+        last_seed_control = _start_control()  # same as 'data.args.root.seed_internal', but it's passed directly.
+        for diffusion_frame in diffusion_frames:
+            DiffusionFrame._assign_subseed_properties(data, diffusion_frame, False)
+            the_next_seed, the_next_seed_control = generate_next_seed(data.args.args, last_seed, last_seed_control)
+            log_utils.debug(f"Seed {the_next_seed:010}. " +
+                            (f"Subseed {diffusion_frame.subseed:010} at {diffusion_frame.subseed_strength}."
+                             if diffusion_frame.subseed != -1 else ""))
+            diffusion_frame.seed = the_next_seed
+            diffusion_frame.schedule = Schedule.create(data, diffusion_frame.seed, diffusion_frame.i)
+            last_seed = the_next_seed
+            last_seed_control = the_next_seed_control
 
     @staticmethod
     def _assign_subseed_properties(data: RenderData, diffusion_frame, is_seed_managed_by_parseq):

@@ -65,8 +65,8 @@ class RenderData:
         is_use_mask = args.use_mask
         parseq_adapter = RenderData.create_parseq_adapter(ri_args, freeu_args, kohya_hrfix_args)
         srt = Srt.create_if_active(output_directory, root.timestring, video_args.fps)
-        animation_keys = AnimationKeys.from_args(ri_args, parseq_adapter, args.seed)
-        animation_mode = AnimationMode.from_args(ri_args)
+        animation_keys = AnimationKeys.create(ri_args, parseq_adapter, args.seed)
+        animation_mode = AnimationMode.create(ri_args)
         prompt_series = RenderData.select_prompts(parseq_adapter, anim_args, animation_keys, root)
         depth_model = depth_utils.create_depth_model_and_enable_depth_map_saving_if_active(
             animation_mode, root, anim_args, args)
@@ -276,7 +276,6 @@ class RenderData:
         self.prompt_for_current_step(frame, i)
         self.update_video_data_for_current_frame(i, frame)
         self.update_mask_image(frame, data.mask)
-        self.animation_keys = AnimationKeys.from_args(self.args, self.parseq_adapter, self.seed)
         opt_utils.setup(frame.schedule)
         memory_utils.handle_vram_if_depth_is_predicted(data)
 
