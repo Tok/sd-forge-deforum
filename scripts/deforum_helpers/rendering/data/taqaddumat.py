@@ -10,6 +10,8 @@ from ..util.log_utils import HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED, HEX_PURPL
 
 class Taqaddumat:
     # Only used by experimental core. Stable core provides its own TQDM in deforum_tqdm.py
+    NO_ETA_RBAR = "| {n_fmt}/{total_fmt} [{elapsed}, {rate_fmt}{postfix}]"
+    NO_ETA_BAR_FORMAT = "{l_bar}{bar}" + f"{NO_ETA_RBAR}"
     DEFAULT_BAR_FORMAT = "{l_bar}{bar}{r_bar}"  # see 'bar_format' at https://tqdm.github.io/docs/tqdm/
 
     def __init__(self):
@@ -20,9 +22,9 @@ class Taqaddumat:
         self.diffusion_frames = None
 
     def reset(self, data, frames):
-        def create(iterable, position, description, unit, color):
+        def create(iterable, position, description, unit, color, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
             return tqdm(iterable, position=position, desc=description, unit=unit, dynamic_ncols=True,
-                        file=shared.progress_print_out, bar_format=Taqaddumat.DEFAULT_BAR_FORMAT,
+                        file=shared.progress_print_out, bar_format=bar_format,
                         disable=shared.cmd_opts.disable_console_progressbars, colour=color)
 
         # Positions greater than 0 are assigned where bars are meant to show up directly after each other and
@@ -43,7 +45,8 @@ class Taqaddumat:
         total_steps = sum(frame.actual_steps(data) for frame in frames)
         self.total_steps = create(range(total_steps), 1, "Total Steps", "step", HEX_RED)
 
-        self.diffusion_frames = create(frames, 0, "Diffusions", "diffusion", HEX_PURPLE)
+        self.diffusion_frames = create(frames, 0, "Diffusions", "diffusion", HEX_PURPLE,
+                                       Taqaddumat.DEFAULT_BAR_FORMAT)
 
         self.clear_all()
 
