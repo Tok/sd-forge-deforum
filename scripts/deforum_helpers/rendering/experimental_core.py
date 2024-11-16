@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 
 # noinspection PyUnresolvedReferences
-from modules import shared
+from modules import shared  # provided by Forge
 
 from . import img_2_img_tubes
 from .data.frame import KeyFrameDistribution, DiffusionFrame

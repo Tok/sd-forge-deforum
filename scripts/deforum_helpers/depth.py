@@ -23,6 +23,7 @@ from einops import rearrange, repeat
 from modules import devices
 from modules.shared import cmd_opts
 from .depth_adabins import AdaBinsModel
+from .depth_anything_v2 import DepthAnything
 from .depth_leres import LeReSDepth
 from .depth_midas import MidasDepth
 from .depth_zoe import ZoeDepth
@@ -33,7 +34,7 @@ class DepthModel:
 
     def __new__(cls, *args, **kwargs):
         keep_in_vram = kwargs.get('keep_in_vram', False)
-        depth_algorithm = kwargs.get('depth_algorithm', 'Midas-3-Hybrid')
+        depth_algorithm = kwargs.get('depth_algorithm', 'Depth-Anything-V2-Small')
         Width, Height = kwargs.get('Width', 512), kwargs.get('Height', 512)
         midas_weight = kwargs.get('midas_weight', 0.2)
         model_switched = cls._instance and cls._instance.depth_algorithm != depth_algorithm
@@ -71,6 +72,8 @@ class DepthModel:
             if depth_algo == 'zoe+adabins (old)':
                 self.adabins_model = AdaBinsModel(self.models_path, keep_in_vram=self.keep_in_vram)
                 self.adabins_helper = self.adabins_model.adabins_helper
+        elif depth_algo.startswith('depth-anything'):
+            self.depth_anything = DepthAnything(self.device)
         elif depth_algo == 'leres':
             self.leres_depth = LeReSDepth(width=448, height=448, models_path=self.models_path, checkpoint_name='res101.pth', backbone='resnext101')
         elif depth_algo == 'adabins':
@@ -94,6 +97,8 @@ class DepthModel:
                 use_adabins, adabins_depth = AdaBinsModel._instance.predict(img_pil, prev_img_cv2)
                 if use_adabins: # if there was no error in getting the adabins depth, align midas with adabins
                     depth_tensor = self.blend_and_align_with_adabins(depth_tensor, adabins_depth, midas_weight)
+        elif self.depth_algorithm.lower().startswith('depth-anything'):
+            depth_tensor = self.depth_anything.predict(img_pil)
         elif self.depth_algorithm.lower() == 'leres':
             depth_tensor = self.leres_depth.predict(prev_img_cv2.astype(np.float32) / 255.0)
         elif self.depth_algorithm.lower() == 'adabins':

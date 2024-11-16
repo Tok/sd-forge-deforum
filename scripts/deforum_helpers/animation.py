@@ -320,6 +320,11 @@ def transform_image_3d_new(device, prev_img_cv2, depth_tensor, rot_mat, translat
         depth = 1
         depth_factor = 1
         depth_offset = 1
+    elif anim_args.depth_algorithm.lower().startswith('depth-anything'):
+        # TODO tune?
+        depth = 1
+        depth_factor = -1
+        depth_offset = -2
     elif anim_args.depth_algorithm.lower() == "leres":
         depth = 1
         depth_factor = 1
