@@ -324,7 +324,7 @@ def transform_image_3d_new(device, prev_img_cv2, depth_tensor, rot_mat, translat
         # TODO tune?
         depth = 1
         depth_factor = -1
-        depth_offset = -2
+        depth_offset = -2.3  # TODO? allow (mis)configuring this to 0 for crazy distortion effects.
     elif anim_args.depth_algorithm.lower() == "leres":
         depth = 1
         depth_factor = 1
