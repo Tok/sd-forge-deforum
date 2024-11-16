@@ -268,7 +268,7 @@ class DiffusionFrame:
         if keyframe_distribution is KeyFrameDistribution.OFF:
             return 0  # not relevant
         elif keyframe_distribution is KeyFrameDistribution.KEYFRAMES_ONLY:
-            return (len(data.parseq_adapter.parseq_json["keyframes"])
+            return (len(data.parseq_adapter.parseq_json['keyframes'])
                     if data.parseq_adapter.use_parseq
                     else len(data.args.root.prompt_keyframes) + 1)  # +1 because last frame is not defined in prompts
         elif keyframe_distribution is KeyFrameDistribution.REDISTRIBUTED:
@@ -357,10 +357,11 @@ class DiffusionFrame:
     def process_parseq_diffusion_frames(diffusion_frames, data):
         data.args.anim_args.enable_subseed_scheduling = True
         keys = data.animation_keys.deform_keys  # Parseq keys are decorated in 'ParseqAnimKeysDecorator'
-        for diffusion_frame in tqdm(diffusion_frames, desc="Precalculations", unit="diffusion-frames",
+        for diffusion_frame in tqdm(diffusion_frames, desc='Precalculations', unit='diffusion-frames',
                                     dynamic_ncols=True, file=shared.progress_print_out,
-                                    bar_format=Taqaddumat.DEFAULT_BAR_FORMAT,
-                                    disable=shared.cmd_opts.disable_console_progressbars, colour=log_utils.HEX_YELLOW):
+                                    bar_format=Taqaddumat.NO_ETA_BAR_FORMAT,
+                                    disable=shared.cmd_opts.disable_console_progressbars,
+                                    colour=log_utils.HEX_YELLOW):
             i = diffusion_frame.i - 1
             diffusion_frame.seed = int(keys.seed_schedule_series[i])
             diffusion_frame.subseed = int(keys.subseed_schedule_series[i])
@@ -379,7 +380,11 @@ class DiffusionFrame:
 
         last_seed = _start_seed()
         last_seed_control = _start_control()  # same as 'data.args.root.seed_internal', but it's passed directly.
-        for diffusion_frame in diffusion_frames:
+        for diffusion_frame in tqdm(diffusion_frames, desc='Precalculations', unit='diffusion-frames',
+                                    dynamic_ncols=True, file=shared.progress_print_out,
+                                    bar_format=Taqaddumat.NO_ETA_BAR_FORMAT,
+                                    disable=shared.cmd_opts.disable_console_progressbars,
+                                    colour=log_utils.HEX_YELLOW):
             DiffusionFrame._assign_subseed_properties(data, diffusion_frame, False)
             the_next_seed, the_next_seed_control = generate_next_seed(data.args.args, last_seed, last_seed_control)
             log_utils.debug(f"Seed {the_next_seed:010}. " +

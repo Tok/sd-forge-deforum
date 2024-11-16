@@ -97,8 +97,8 @@ def conditional_force_to_grayscale_tube(data: RenderData) -> PilImageTube:
 def conditional_add_overlay_mask_tube(data: RenderData, i) -> PilImageTube:
     is_use_overlay = data.args.args.overlay_mask
     is_use_mask = data.args.anim_args.use_mask_video or data.args.args.use_mask
-
-    is_bgr_array = True
+    # do_overlay_mask can handle both, BGR array and PIL Image, but does a conversion if an array is passed.
+    is_bgr_array = False  # No need for conversion as grayscale returns a PIL Image.
     return tube(lambda img: ImageOps.grayscale(img),
                 lambda img: do_overlay_mask(data.args.args, data.args.anim_args, img, i, is_bgr_array),
                 is_do_process=lambda: is_use_overlay and is_use_mask)

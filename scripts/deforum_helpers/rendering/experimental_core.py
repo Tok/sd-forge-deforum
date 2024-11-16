@@ -1,4 +1,5 @@
 import os
+
 from pathlib import Path
 from typing import List
 
@@ -10,6 +11,12 @@ from .data.frame import KeyFrameDistribution, DiffusionFrame
 from .data.render_data import RenderData
 from .data.taqaddumat import Taqaddumat
 from .util import filename_utils, image_utils, log_utils, memory_utils, subtitle_utils, web_ui_utils
+
+IS_USE_PROFILER = False
+
+
+class NoImageGenerated(Exception):
+    pass
 
 
 def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args,
@@ -39,14 +46,24 @@ def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
             data.images.previous = existing_image
             continue
 
-        prepare_generation(data, frame)
-        emit_tweens(data, frame)
-        pre_process(data, frame)
-        image = frame.generate(data, shared.total_tqdm)
-        if image is None:
+        profiler = maybe_start_profiler()
+        try:
+            process_frame(data, frame)
+        except NoImageGenerated:
             log_utils.print_warning_generate_returned_no_image()
-            break
-        post_process(data, frame, image)
+            break  # Exit the loop if no image was generated
+        finally:
+            maybe_end_profiler_and_print_results(profiler)
+
+
+def process_frame(data, frame):
+    prepare_generation(data, frame)
+    emit_tweens(data, frame)
+    pre_process(data, frame)
+    image = frame.generate(data, shared.total_tqdm)
+    if image is None:
+        raise NoImageGenerated()
+    post_process(data, frame, image)
 
 
 def prepare_generation(data: RenderData, frame: DiffusionFrame):
@@ -108,3 +125,21 @@ def is_resume_with_image(data: RenderData, frame: DiffusionFrame):
     if is_file_existing:
         log_utils.info(f"Frame {filename} exists, skipping to next keyframe.", log_utils.ORANGE)
     return is_file_existing, full_path
+
+
+def maybe_start_profiler():
+    if not IS_USE_PROFILER:
+        return None
+    import cProfile
+    profiler = cProfile.Profile()
+    profiler.enable()
+    return profiler
+
+
+def maybe_end_profiler_and_print_results(profiler, limit=20):
+    if not IS_USE_PROFILER:
+        return
+    import pstats
+    profiler.disable()
+    stats = pstats.Stats(profiler)
+    stats.sort_stats('time').print_stats(limit)

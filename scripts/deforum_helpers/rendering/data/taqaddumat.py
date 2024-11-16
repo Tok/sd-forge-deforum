@@ -22,7 +22,7 @@ class Taqaddumat:
         self.diffusion_frames = None
 
     def reset(self, data, frames):
-        def create(iterable, position, description, unit, color, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
+        def create(iterable, position, color, description, unit, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
             return tqdm(iterable, position=position, desc=description, unit=unit, dynamic_ncols=True,
                         file=shared.progress_print_out, bar_format=bar_format,
                         disable=shared.cmd_opts.disable_console_progressbars, colour=color)
@@ -33,20 +33,30 @@ class Taqaddumat:
         # The global step counter tqdm provided by Forge keeps reattaching itself after the highest position used here.
         # This dictates how much space the total tqdm will take up, even when positions are reassigned here later.
 
-        second_frame_tweens_count = len(frames[1].tweens)  # DF 0 can not have Tweens, so we start at 1.
-        self.tweens = create(range(second_frame_tweens_count), 0, "Tweens", "tween", HEX_BLUE)
+        second_frame_tweens_count = len(frames[1].tweens)  # DF 0 can not have Tweens, so we initialize at 1.
+        self.tweens = create(
+            range(second_frame_tweens_count), 0, HEX_BLUE,
+            "Current Tweens", "tween")
 
         total_frames = sum(len(frame.tweens) for frame in frames)
-        self.total_frames = create(range(total_frames), 1, "Total Frames", "frame", HEX_GREEN)
+        self.total_frames = create(
+            range(total_frames), 1, HEX_GREEN,
+            "Total Frames", "frame")
 
         first_frame_steps_count = frames[0].schedule.steps
-        self.steps = create(range(first_frame_steps_count), 0, "Steps", "step", HEX_ORANGE)
+        self.steps = create(
+            range(first_frame_steps_count), 0, HEX_ORANGE,
+            "Current Diffusion Steps", "step")
 
         total_steps = sum(frame.actual_steps(data) for frame in frames)
-        self.total_steps = create(range(total_steps), 1, "Total Steps", "step", HEX_RED)
+        self.total_steps = create(
+            range(total_steps), 1, HEX_RED,
+            "Total Diffusion Steps", "step")
 
-        self.diffusion_frames = create(frames, 0, "Diffusions", "diffusion", HEX_PURPLE,
-                                       Taqaddumat.DEFAULT_BAR_FORMAT)
+        self.diffusion_frames = create(
+            frames, 0, HEX_PURPLE,
+            "Total Animation Cycles", "cycles",
+            Taqaddumat.DEFAULT_BAR_FORMAT)
 
         self.clear_all()
 
