@@ -60,6 +60,17 @@ def is_use_experimental_render_core(anim_args):
 
 
 def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root):
+    # Pre-download soundtrack if specified
+    if video_args.add_soundtrack == 'File' and video_args.soundtrack_path is not None:
+        if video_args.soundtrack_path.startswith(('http://', 'https://')):
+            print(f"Pre-downloading soundtrack at the beginning of the render process: {video_args.soundtrack_path}")
+            try:
+                from .video_audio_utilities import download_audio
+                video_args.soundtrack_path = download_audio(video_args.soundtrack_path)
+                print(f"Audio successfully pre-downloaded to: {video_args.soundtrack_path}")
+            except Exception as e:
+                print(f"Error pre-downloading audio: {e}")
+    
     if is_use_experimental_render_core(anim_args):
         experimental_core.render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
         return

@@ -250,6 +250,16 @@ def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch
                         imgs_path=None, add_soundtrack=None, audio_path=None, crf=17, preset='veryslow', srt_path=None):
     start_time = time.time()
 
+    # Download audio at the beginning if soundtrack is enabled
+    downloaded_audio_path = None
+    if add_soundtrack != 'None' and audio_path is not None:
+        try:
+            print(f"Downloading audio file from: {audio_path}")
+            downloaded_audio_path = download_audio(audio_path)
+            print(f"Audio downloaded to: {downloaded_audio_path}")
+        except Exception as e:
+            print(f"Error downloading audio: {e}")
+    
     print(f"Got a request to stitch frames to video using FFmpeg.\nFrames:\n{imgs_path}\nTo Video:\n{outmp4_path}")
     msg_to_print = f"Stitching *video*..."
     console.print(msg_to_print, style="blink yellow", end="") 
@@ -291,7 +301,13 @@ def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch
     temp_file = None
     if add_soundtrack != 'None':
         try:
-            audio_path = download_audio(audio_path)
+            # Use the previously downloaded audio path
+            if downloaded_audio_path is not None:
+                audio_path = downloaded_audio_path
+            else:
+                # Fallback to download now if it wasn't downloaded earlier
+                audio_path = download_audio(audio_path)
+                
             audio_add_start_time = time.time()
             cmd = [
                 ffmpeg_location,
