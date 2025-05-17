@@ -51,7 +51,12 @@ class Shaker:
         speed = aa.shake_speed
 
         log_utils.info(f"Calculating shake '{shake_name}' at intensity {intensity} with speed {speed}.")
-        name, source_fps, shake_data = SHAKE_LIST[Shaker.shake_name_to_key(shake_name)]
+        shake_key = Shaker.shake_name_to_key(shake_name)
+        if shake_key is None:
+            log_utils.warn(f"Camera shake name '{shake_name}' not found! Defaulting to 'None'. Valid options are: {list(get_camera_shake_list().values())}")
+            return Shaker('None', 1.0, 1.0, {}, False)
+        
+        name, source_fps, shake_data = SHAKE_LIST[shake_key]
 
         def _proc(key, xyz):
             return Shaker._process(data, shake_data, key, xyz, source_fps, data.fps())
@@ -69,7 +74,12 @@ class Shaker:
 
     @staticmethod
     def shake_name_to_key(shake_name):
-        return next((key for key, value in get_camera_shake_list().items() if value == shake_name), None)
+        # First check if shake_name is already a valid key
+        camera_shake_list = get_camera_shake_list()
+        if shake_name in camera_shake_list.keys():
+            return shake_name
+        # If not, try to find a key with matching display name
+        return next((key for key, value in camera_shake_list.items() if value == shake_name), None)
 
     @staticmethod
     def _process(data, shake_data, shakify_key: Key, xyz: Xyz, source_fps: int, target_fps: int):

@@ -16,16 +16,26 @@
 
 import json
 import os
+import sys
 
 import modules.shared as sh
 from modules.sd_models import FakeInitialModel
 
 from .args import DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, get_settings_component_names, \
     pack_args, FreeUArgs, KohyaHRFixArgs
-from .defaults import mask_fill_choices
+from .defaults import mask_fill_choices, get_camera_shake_list
 from .deforum_controlnet import controlnet_component_names
 from .deprecation_utils import handle_deprecated_settings
 from .general_utils import get_deforum_version, clean_gradio_path_strings
+
+
+def get_extension_base_dir():
+    """Return the base directory of the extension"""
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
+def get_default_settings_path():
+    """Return the path to the default settings file in the extension directory"""
+    return os.path.join(get_extension_base_dir(), "scripts", "default_settings.txt")
 
 
 def get_keys_to_exclude():
@@ -112,21 +122,33 @@ def save_settings(*args, **kwargs):
     
     return [""]
 
-def load_all_settings(*args, ui_launch=False, **kwargs):
+def update_settings_path(path):
+    """Updates the settings path field after loading settings"""
+    return path
+
+
+def load_all_settings(*args, ui_launch=False, update_path=False, **kwargs):
     import gradio as gr
     settings_path = args[0].strip()
     settings_path = clean_gradio_path_strings(settings_path)
     settings_path = os.path.realpath(settings_path)
     settings_component_names = get_settings_component_names()
     data = {settings_component_names[i]: args[i+1] for i in range(len(settings_component_names))}
-    print(f"reading custom settings from {settings_path}")
-
+    
+    # Check if the file exists, if not fall back to default settings
     if not os.path.isfile(settings_path):
-        print('The custom settings file does not exist. The values will be unchanged.')
-        if ui_launch:
-            return ({key: gr.update(value=value) for key, value in data.items()},)
-        else:
-            return list(data.values()) + [""]
+        default_path = get_default_settings_path()
+        print(f"The custom settings file '{settings_path}' does not exist. Using default settings from {default_path}")
+        settings_path = default_path
+        # If default file also doesn't exist, return unchanged data
+        if not os.path.isfile(settings_path):
+            print(f"Default settings file '{default_path}' also not found. The values will be unchanged.")
+            if ui_launch:
+                return ({key: gr.update(value=value) for key, value in data.items()},)
+            else:
+                return [settings_path] + list(data.values()) + [""]
+    
+    print(f"reading custom settings from {settings_path}")
 
     with open(settings_path, "r", encoding='utf-8') as f:
         jdata = json.load(f)
@@ -150,28 +172,55 @@ def load_all_settings(*args, ui_launch=False, **kwargs):
             val = jdata.get(key, default_val)
         elif key == 'animation_prompts':
             val = json.dumps(jdata['prompts'], ensure_ascii=False, indent=4)
+        # Special handling for camera shake
+        elif key == 'shake_name':
+            # Check if the value is a key in the camera shake list
+            camera_shake_list = get_camera_shake_list()
+            if val in camera_shake_list.keys():
+                # If it's a key, convert it to the display name
+                print(f"Converting camera shake key '{val}' to display name '{camera_shake_list[val]}'")
+                val = camera_shake_list[val]
+            # Make sure the value exists in the list of display names
+            elif val not in camera_shake_list.values():
+                print(f"Warning: Unknown camera shake value '{val}'. Using default 'Investigation'.")
+                val = 'Investigation'
 
         result[key] = val
 
+    # Add the settings path (input) as the first element of the return list
     if ui_launch:
-        return ({key: gr.update(value=value) for key, value in result.items()},)
+        updates = {key: gr.update(value=value) for key, value in result.items()}
+        # Add the settings path update
+        updates['settings_path'] = gr.update(value=settings_path)
+        return (updates,)
     else:
-        return list(result.values()) + [""]
+        # Return exactly the same structure that was received, but with updated values
+        return list(result.values()) # We should not add the settings_path here
 
 
 def load_video_settings(*args, **kwargs):
     video_settings_path = args[0].strip()
+    video_settings_path = clean_gradio_path_strings(video_settings_path)
+    video_settings_path = os.path.realpath(video_settings_path)
     vid_args_names = list(DeforumOutputArgs().keys())
     data = {vid_args_names[i]: args[i+1] for i in range(0, len(vid_args_names))}
-    print(f"reading custom video settings from {video_settings_path}")
-    jdata = {}
+    
+    # Check if the file exists, if not fall back to default settings
     if not os.path.isfile(video_settings_path):
-        print('The custom video settings file does not exist. The values will be unchanged.')
-        return [data[name] for name in vid_args_names] + [""]
-    else:
-        with open(video_settings_path, "r") as f:
-            jdata = json.loads(f.read())
-            handle_deprecated_settings(jdata)
+        default_path = get_default_settings_path()
+        print(f"The custom video settings file '{video_settings_path}' does not exist. Using default settings from {default_path}")
+        video_settings_path = default_path
+        # If default file also doesn't exist, return unchanged data
+        if not os.path.isfile(video_settings_path):
+            print(f"Default settings file '{default_path}' also not found. The values will be unchanged.")
+            return [data[name] for name in vid_args_names]
+    
+    print(f"reading custom video settings from {video_settings_path}")
+    
+    with open(video_settings_path, "r", encoding='utf-8') as f:
+        jdata = json.loads(f.read())
+        handle_deprecated_settings(jdata)
+        
     ret = []
 
     for key in data:

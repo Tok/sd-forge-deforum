@@ -42,14 +42,23 @@ class Schedule:
 
     @staticmethod
     def _has_schedule(keys, i):
+        # Ensure i is within bounds of the series
+        if i >= len(keys.steps_schedule_series):
+            return False
         return keys.steps_schedule_series[i] is not None
 
     @staticmethod
     def _has_mask_schedule(keys, i):
+        # Ensure i is within bounds of the series
+        if i >= len(keys.mask_schedule_series):
+            return False
         return keys.mask_schedule_series[i] is not None
 
     @staticmethod
     def _has_noise_mask_schedule(keys, i):
+        # Ensure i is within bounds of the series
+        if i >= len(keys.noise_mask_schedule_series):
+            return False
         return keys.noise_mask_schedule_series[i] is not None
 
     @staticmethod
@@ -58,6 +67,10 @@ class Schedule:
 
     @staticmethod
     def schedule_steps(keys, i, anim_args, deforum_args):
+        # Ensure i is within bounds of the series
+        if i >= len(keys.steps_schedule_series):
+            return deforum_args.steps
+        
         steps = Schedule._use_on_cond_if_scheduled(keys, i, int(keys.steps_schedule_series[i]),
                                                    anim_args.enable_steps_scheduling)
         if steps is None:

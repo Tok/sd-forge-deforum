@@ -340,9 +340,17 @@ class DiffusionFrame:
         # Applies `strength_schedule` if Parseq is active or if there is no entry with index i in the Deforum prompts.
         # otherwise `keyframe_strength_schedule` is applied, which should be set lower (=more denoise on keyframes).
         # schedule series indices shifted to start at 0.
-        return (data.animation_keys.deform_keys.strength_schedule_series[index - 1]
+        keys = data.animation_keys.deform_keys
+        idx = index - 1
+        
+        # Check if index is within bounds
+        if idx >= len(keys.strength_schedule_series) or idx >= len(keys.keyframe_strength_schedule_series):
+            log_utils.warn(f"Frame index {index} (0-indexed: {idx}) exceeds strength schedule series length, using default value.")
+            return 0.85  # Default strength value
+        
+        return (keys.strength_schedule_series[idx]
                 if data.parseq_adapter.use_parseq or is_keyframe
-                else data.animation_keys.deform_keys.keyframe_strength_schedule_series[index - 1])
+                else keys.keyframe_strength_schedule_series[idx])
 
     @staticmethod
     def _assign_initial_seeds_and_schedules(data: RenderData, diffusion_frames):
@@ -363,10 +371,20 @@ class DiffusionFrame:
                                     disable=shared.cmd_opts.disable_console_progressbars,
                                     colour=log_utils.HEX_YELLOW):
             i = diffusion_frame.i - 1
-            diffusion_frame.seed = int(keys.seed_schedule_series[i])
-            diffusion_frame.subseed = int(keys.subseed_schedule_series[i])
-            diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[i])
-            diffusion_frame.schedule = Schedule.create(data, diffusion_frame.seed, i)
+            # Ensure i is within bounds of the series
+            if i >= len(keys.seed_schedule_series):
+                log_utils.warn(f"Frame index {diffusion_frame.i} (0-indexed: {i}) exceeds max_frames, using fallback values.")
+                diffusion_frame.seed = data.args.args.seed
+                diffusion_frame.subseed = -1
+                diffusion_frame.subseed_strength = 0.0
+            else:
+                diffusion_frame.seed = int(keys.seed_schedule_series[i])
+                diffusion_frame.subseed = int(keys.subseed_schedule_series[i])
+                diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[i])
+            
+            # Always use a safe index for schedule creation
+            safe_i = min(i, len(keys.steps_schedule_series)-1)
+            diffusion_frame.schedule = Schedule.create(data, diffusion_frame.seed, safe_i)
 
     @staticmethod
     def process_deforum_diffusion_frames(diffusion_frames, data):
@@ -391,7 +409,16 @@ class DiffusionFrame:
                             (f"Subseed {diffusion_frame.subseed:010} at {diffusion_frame.subseed_strength}."
                              if diffusion_frame.subseed != -1 else ""))
             diffusion_frame.seed = the_next_seed
-            diffusion_frame.schedule = Schedule.create(data, diffusion_frame.seed, diffusion_frame.i)
+            
+            # Ensure the frame index is within bounds for schedule creation
+            i = diffusion_frame.i
+            keys = data.animation_keys.deform_keys
+            if i >= len(keys.steps_schedule_series):
+                log_utils.warn(f"Frame index {i} exceeds max_frames length, using safe index for schedule creation.")
+                safe_i = min(i, len(keys.steps_schedule_series)-1)
+                diffusion_frame.schedule = Schedule.create(data, diffusion_frame.seed, safe_i)
+            else:
+                diffusion_frame.schedule = Schedule.create(data, diffusion_frame.seed, diffusion_frame.i)
             last_seed = the_next_seed
             last_seed_control = the_next_seed_control
 
@@ -400,8 +427,15 @@ class DiffusionFrame:
         keys = data.animation_keys.deform_keys
         is_subseed_scheduling_enabled = data.args.anim_args.enable_subseed_scheduling
         if is_subseed_scheduling_enabled:
-            diffusion_frame.subseed = int(keys.subseed_schedule_series[diffusion_frame.i - 1])
-            diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[diffusion_frame.i - 1])
+            i = diffusion_frame.i - 1
+            # Check if index is within bounds
+            if i >= len(keys.subseed_schedule_series):
+                log_utils.warn(f"Frame index {diffusion_frame.i} (0-indexed: {i}) exceeds subseed schedule series length, using default values.")
+                diffusion_frame.subseed = -1
+                diffusion_frame.subseed_strength = 0.0
+            else:
+                diffusion_frame.subseed = int(keys.subseed_schedule_series[i])
+                diffusion_frame.subseed_strength = float(keys.subseed_strength_schedule_series[i])
 
     @staticmethod
     def add_tweens_to_diffusion_frames(diffusion_frames):

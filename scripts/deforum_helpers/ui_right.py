@@ -19,7 +19,7 @@ from modules.shared import opts, state
 from modules.ui import create_output_panel, wrap_gradio_call
 from modules.call_queue import wrap_gradio_gpu_call
 from .run_deforum import run_deforum
-from .settings import save_settings, load_all_settings, load_video_settings
+from .settings import save_settings, load_all_settings, load_video_settings, get_default_settings_path, update_settings_path
 from .general_utils import get_deforum_version, get_commit_date
 from .ui_left import setup_deforum_left_side_ui
 from scripts.deforum_extend_paths import deforum_sys_extend
@@ -111,7 +111,7 @@ def on_ui_tabs():
                 deforum_gallery = res.gallery
 
                 with gr.Row(variant='compact'):
-                    settings_path = gr.Textbox("deforum_settings.txt", elem_id='deforum_settings_path', label="Settings File", info="settings file path can be relative to webui folder OR full - absolute")
+                    settings_path = gr.Textbox(get_default_settings_path(), elem_id='deforum_settings_path', label="Settings File", info="settings file path can be relative to webui folder OR full - absolute")
                 with gr.Row(variant='compact'):
                     save_settings_btn = gr.Button('Save Settings', elem_id='deforum_save_settings_btn')
                     load_settings_btn = gr.Button('Load All Settings', elem_id='deforum_load_settings_btn')
@@ -140,14 +140,26 @@ def on_ui_tabs():
             outputs=[],
         )
         
+        # Create a path update function
+        def path_updating_load_settings(*args):
+            path = args[0]
+            settings_path.value = path
+            return load_all_settings(*args)
+            
         load_settings_btn.click(
-            fn=wrap_gradio_call(lambda *args, **kwargs: load_all_settings(*args, ui_launch=False, **kwargs)),
+            fn=wrap_gradio_call(path_updating_load_settings),
             inputs=[settings_path] + settings_component_list,
             outputs=settings_component_list,
         )
 
+        # Create a path update function for video settings
+        def path_updating_load_video_settings(*args):
+            path = args[0]
+            settings_path.value = path
+            return load_video_settings(*args)
+            
         load_video_settings_btn.click(
-            fn=wrap_gradio_call(load_video_settings),
+            fn=wrap_gradio_call(path_updating_load_video_settings),
             inputs=[settings_path] + video_settings_component_list,
             outputs=video_settings_component_list,
         )
@@ -155,13 +167,24 @@ def on_ui_tabs():
     # handle persistent settings - load the persistent file upon UI launch
     def trigger_load_general_settings():
         print("Loading general settings...")
+        # Use the default settings path
+        settings_file_path = get_default_settings_path()
+        print(f"Using default settings from: {settings_file_path}")
+        
+        # Update the settings path field with the default path
+        settings_path.value = settings_file_path
+        
+        # Now call load_all_settings with ui_launch=True to update all components
         wrapped_fn = wrap_gradio_call(lambda *args, **kwargs: load_all_settings(*args, ui_launch=True, **kwargs))
-        inputs = [settings_path.value] + [component.value for component in settings_component_list]
+        inputs = [settings_file_path] + [component.value for component in settings_component_list]
         outputs = settings_component_list
         updated_values = wrapped_fn(*inputs, *outputs)[0]
+        
+        # Update all the component values
         settings_component_name_to_obj = {name: component for name, component in zip(get_settings_component_names(), settings_component_list)}
         for key, value in updated_values.items():
-            settings_component_name_to_obj[key].value = value['value']
+            if key in settings_component_name_to_obj:
+                settings_component_name_to_obj[key].value = value['value']
     # actually check persistent setting status
     if opts.data.get("deforum_enable_persistent_settings", False):
         trigger_load_general_settings()
