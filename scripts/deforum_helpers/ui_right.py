@@ -111,7 +111,7 @@ def on_ui_tabs():
                 deforum_gallery = res.gallery
 
                 with gr.Row(variant='compact'):
-                    settings_path = gr.Textbox(get_default_settings_path(), elem_id='deforum_settings_path', label="Settings File", info="settings file path can be relative to webui folder OR full - absolute")
+                    settings_path = gr.Textbox(get_default_settings_path(), elem_id='deforum_settings_path', label="Settings File", info="Settings are automatically loaded on startup. Path can be relative to webui folder OR full/absolute.")
                 with gr.Row(variant='compact'):
                     save_settings_btn = gr.Button('Save Settings', elem_id='deforum_save_settings_btn')
                     load_settings_btn = gr.Button('Load All Settings', elem_id='deforum_load_settings_btn')
@@ -164,14 +164,26 @@ def on_ui_tabs():
             outputs=video_settings_component_list,
         )
         
-    # handle persistent settings - load the persistent file upon UI launch
+    # handle settings loading on UI launch
     def trigger_load_general_settings():
         print("Loading general settings...")
-        # Use the default settings path
-        settings_file_path = get_default_settings_path()
-        print(f"Using default settings from: {settings_file_path}")
         
-        # Update the settings path field with the default path
+        # First check if deforum_settings.txt exists in webui root
+        import os
+        from modules import paths_internal
+        webui_root_settings = os.path.join(paths_internal.script_path, "deforum_settings.txt")
+        
+        # Determine the settings file to load
+        if os.path.isfile(webui_root_settings):
+            # Use the settings file from webui root if it exists
+            settings_file_path = webui_root_settings
+            print(f"Loading existing settings from webui root: {settings_file_path}")
+        else:
+            # Fall back to default settings provided by the extension
+            settings_file_path = get_default_settings_path()
+            print(f"No settings found in webui root, using default settings from: {settings_file_path}")
+        
+        # Update the settings path field with the path
         settings_path.value = settings_file_path
         
         # Now call load_all_settings with ui_launch=True to update all components
@@ -185,8 +197,8 @@ def on_ui_tabs():
         for key, value in updated_values.items():
             if key in settings_component_name_to_obj:
                 settings_component_name_to_obj[key].value = value['value']
-    # actually check persistent setting status
-    if opts.data.get("deforum_enable_persistent_settings", False):
-        trigger_load_general_settings()
+    # Always load settings on startup - either from persistent settings path (if enabled),
+    # from webui root, or from the extension's default settings
+    trigger_load_general_settings()
         
     return [(deforum_interface, "Deforum", "deforum_interface")]
