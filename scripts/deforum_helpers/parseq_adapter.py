@@ -66,7 +66,24 @@ class ParseqAdapter():
 
         # Wrap the original schedules with Parseq decorators, so that Parseq values will override the original values IFF appropriate.
         self.anim_keys = ParseqAnimKeysDecorator(self, DeformAnimKeys(anim_args))
-        self.cn_keys = ParseqControlNetKeysDecorator(self, ControlNetKeys(anim_args, controlnet_args)) if (controlnet_args and len(controlnet_args.__dict__)>0) else None
+        
+        # Handle ControlNet with better error management
+        self.cn_keys = None
+        if controlnet_args and len(controlnet_args.__dict__) > 0:
+            try:
+                # Try to import and call the ensure function if it exists
+                try:
+                    from deforum_helpers.deforum_controlnet import ensure_controlnet_keys_in_namespace
+                    ensure_controlnet_keys_in_namespace(controlnet_args)
+                    logging.debug("ControlNet namespace attributes initialized")
+                except (ImportError, AttributeError) as e:
+                    logging.debug(f"Could not call ensure_controlnet_keys_in_namespace: {e}")
+                
+                # Create ControlNet keys
+                self.cn_keys = ParseqControlNetKeysDecorator(self, ControlNetKeys(anim_args, controlnet_args))
+            except Exception as e:
+                logging.error(f"Error initializing ControlNet decorator: {e}")
+        
         # -1 because seed seems to be unused in LooperAnimKeys
         self.looper_keys = ParseqLooperKeysDecorator(self, LooperAnimKeys(loop_args, anim_args, -1)) if loop_args else None
         self.freeu_keys = ParseqFreeUKeysDecorator(self, FreeUAnimKeys(anim_args, freeu_args)) if freeu_args else None

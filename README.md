@@ -1,4 +1,3 @@
-
 # Fluxabled Fork of the Deforum Stable Diffusion Extension for Forge
 
 Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum)
@@ -127,11 +126,80 @@ it allows for customizable shake parameters to fit your specific needs.
 The shake data is available under Creative Commons CC0 1.0 Universal license and was sourced from the
 ['Camera Shakify' Blender plugin by EatTheFuture](https://github.com/EatTheFuture/camera_shakify).
 
+### ControlNet with FLUX
+
+This version includes comprehensive patches to enable compatibility between FLUX and ControlNet for animation rendering.
+
+#### FLUX ControlNet Models
+
+For best results with FLUX animations, use specially designed FLUX ControlNet models:
+
+* **Official Models**: Download from [XLabs-AI FLUX ControlNet Collection](https://huggingface.co/XLabs-AI/flux-controlnet-collections)
+* **Installation**: Place models in your `models/ControlNet` directory
+* **Recommended Models**:
+  * `flux-canny-controlnet-v3.safetensors`
+  * `flux-depth-controlnet-v3.safetensors` 
+  * `flux-hed-controlnet-v3.safetensors`
+
+#### Setup and Configuration
+
+1. **Enable ControlNet** in WebUI Forge settings before using with Deforum
+2. **In Deforum's ControlNet Tab**:
+   * Enable "Optimize ControlNet execution" to prevent memory issues
+   * Set processor resolution to 720px or 1024px for best results with FLUX
+   * If you experience issues, try a different input preprocessing mode
+   * **New**: Support for up to 5 ControlNet units (previously some configs had issues with unit 5)
+
+3. **Video Input Processing**:
+   * You can use video files as ControlNet inputs
+   * Enable "Batch Input" and provide the video path
+   * Input videos will be automatically processed frame-by-frame
+
+#### ⚠️ EXPERIMENTAL: WebUI Forge Compatibility Patching ⚠️
+
+The extension includes a comprehensive patching system in `scripts/deforum_helpers/forge_controlnet_patcher.py`, `flux_model_utils.py` and `preload.py` that modifies WebUI Forge's ControlNet implementation for FLUX compatibility. These are **highly experimental** modifications:
+
+* **Advanced Monkey Patching**: The extension dynamically modifies WebUI Forge's code at runtime to:
+  * Fix missing `resize_mode` attribute errors
+  * Handle type conversion issues in image processing functions (HWC3 assertion errors)
+  * Fix model loading and recognition failures
+  * Ensure dictionary fields exist before access
+  * Fix unit 5 attribute initialization
+  * Implement fallbacks for failed operations
+  * **New**: Multi-level HWC3 patching to prevent assertion errors with different image formats
+
+* **Files Modified**:
+  * `/extensions-builtin/sd_forge_controlnet/scripts/controlnet.py` may be directly patched
+  * Core WebUI processing classes are modified with additional methods
+  * HWC3 function patched to handle more image formats safely
+  * **New**: Direct file editing of utils.py to fix problematic assertions
+  * **New**: Direct patching of ControlNet to fix 'NoneType' has no attribute 'strength' errors
+  * **New**: Improved preprocessor handling to prevent 'process_after_every_sampling' errors
+
+* **Recent Improvements**:
+  * Fixed missing attributes for ControlNet unit 5
+  * Added multiple levels of HWC3 patching to prevent assertion errors
+  * Runtime monkey patching via `builtins` for global access to safe functions
+  * Implemented import hooks to catch and patch dynamically loaded modules
+  * **New**: Added early initialization system for more reliable patching
+  * **New**: Direct editing of ControlNet script files with safety checks
+  * **New**: Fixes for VAE initialization errors with WebUI Forge
+
+* **Potential Impacts**:
+  * These patches may interfere with other extensions that use ControlNet
+  * You may see error messages in the console that are actually handled by the patches
+  * Memory usage patterns might be affected
+  * Future WebUI Forge updates could break compatibility
+
+* **Debug Information**:
+  * Enable extra logging with environment variable: `DEFORUM_DEBUG_CONTROLNET=1`
+  * Key patch files: `forge_controlnet_patcher.py`, `flux_model_utils.py`, and `preload.py`
+
+**If you encounter issues with other extensions**, try disabling either this extension or the conflicting one to isolate the problem.
 
 ### Perhaps working (untested)
 * Flux schnell
   * There's not a lot of precision for fine-tuning strength values when only 4 steps are required.
-* Control Net
 * Hybrid Video
 * Non-Flux workflows
 
@@ -140,7 +208,7 @@ The shake data is available under Creative Commons CC0 1.0 Universal license and
   * may need to be left disabled
 * FreeU
   * may need to be left disabled
-* Control Net
+* Some advanced ControlNet features
 
 ### Other Stuff
 * Includes a new default setup to generate default bunny at 60 FPS in 720p with keyframes only.
@@ -154,3 +222,82 @@ During active development, content and structure of the `deforum_settings.txt` f
 can change quickly been updated. Settings from older versions may not behave as expected.
 If necessary, the latest deforum-settings.txt are available for download here:
 https://github.com/Tok/sd-forge-deforum/blob/main/scripts/default_settings.txt
+
+### ControlNet issues
+If you encounter problems with ControlNet and FLUX:
+
+1. **Model Loading Errors**:
+   * Error message: `Recognizing Control Model failed`
+   * **Solutions**: 
+     * Ensure model files are in the correct location (`models/ControlNet` directory)
+     * Try using the basename of the model without extension (e.g., `flux-canny-controlnet-v3` instead of full path)
+     * Restart WebUI Forge after adding new models
+     * If FLUX models fail, the extension will attempt to use standard ControlNet models as fallbacks
+
+2. **Memory Issues**:
+   * Error messages: `CUDA out of memory` or `RuntimeError: CUDA error`
+   * **Solutions**:
+     * Enable "Optimize ControlNet execution" in the Deforum ControlNet tab
+     * Reduce the number of active ControlNet units 
+     * Lower the preprocessing resolution
+     * Enable "Low VRAM" mode in advanced settings
+
+3. **Image Processing Errors**:
+   * Error messages: `HWC3 assertion error` or `Image format not supported`
+   * **Solution**: The extension includes multiple patches to handle these errors automatically
+   * These errors typically show in the console but are handled by the patching system
+
+4. **Missing Attributes Errors**:
+   * Error message: `'StableDiffusionProcessingTxt2Img' object has no attribute 'resize_mode'`
+   * **Solution**: The extension adds this attribute dynamically - error messages are intercepted
+   * You may see these in logs but they shouldn't affect rendering
+
+5. **Pydantic Schema Generation Errors**:
+   * Error messages: `PydanticSchemaGenerationError: Unable to generate pydantic-core schema for <class 'inspect._empty'>`
+   * **Solution**: The extension includes a patch that automatically configures Pydantic models with `arbitrary_types_allowed=True` 
+   * The patch is applied to the WebUI Forge API models during extension startup
+   * This fixes UI errors related to script loading and model configuration
+
+6. **ControlNet Script Not Found Errors**:
+   * Error message: `Exception: Script not found: ControlNet`
+   * **Solution**: The extension implements an improved script finding algorithm that:
+     * Searches for ControlNet using multiple naming conventions
+     * Looks through module hierarchy to find by partial name matching 
+     * Works with WebUI Forge's unique extension layout
+   * This ensures Deforum can properly locate and use ControlNet in WebUI Forge
+
+7. **IndentationError in ControlNet Script**:
+   * Error message: `IndentationError: expected an indented block after 'if' statement on line 414`
+   * **Solution**: The extension includes multiple safeguards:
+     * Sets `IGNORE_TORCH_INDENT_WARNING=1` environment variable
+     * Adds proper indentation when patching the ControlNet script
+     * Maintains consistent code style when modifying the script file
+   * These changes prevent syntax errors when patching the assertion checks
+
+8. **Debugging ControlNet Issues**:
+   * Set environment variable `DEFORUM_DEBUG_CONTROLNET=1` before starting WebUI
+   * Look for messages with prefix `[Deforum ControlNet Patcher]` or `[Deforum FLUX Utils]`
+   * Check if models are properly registered at startup
+
+## Technical Implementation
+
+Deforum addresses various technical challenges when working with ControlNet and other modules:
+
+1. A Forge ControlNet patching system (`forge_controlnet_patcher.py`) provides compatibility fixes for WebUI Forge, including:
+   * HWC3 assertion failures in image processing
+   * Dictionary KeyErrors in ControlNet scripts
+   * Missing ControlNet script indices
+   * Indentation errors in built-in scripts
+   * Model loading failures with FLUX models
+   * Pydantic schema generation errors
+
+2. The patching system applies multiple levels of protection:
+   * Environment variable configuration for WebUI Forge
+   * Direct script modifications to fix syntax issues
+   * Runtime monkey patching for dynamic fixes
+   * Fallback mechanisms when models can't be loaded
+
+3. FLUX model support through dedicated utilities:
+   * Automatic registration of FLUX models at startup
+   * Alternative model finding when exact models aren't available
+   * Special handling for different model naming conventions

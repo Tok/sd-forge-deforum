@@ -51,12 +51,23 @@ def setup_deforum_left_side_ui():
             tab_prompts_params = get_tab_prompts(da)  # Prompts tab
             tab_init_params = get_tab_init(d, da, dp)  # Init tab
             controlnet_dict = setup_controlnet_ui()  # ControlNet tab
+            
+            # Filter out non-component items from controlnet_dict before merging
+            filtered_controlnet_dict = {}
+            for key, value in controlnet_dict.items():
+                if hasattr(value, '_id'):  # Check if it's a Gradio component
+                    filtered_controlnet_dict[key] = value
+                else:
+                    # For non-component values, create hidden dummy components to preserve values
+                    dummy = gr.Number(value=value, visible=False, interactive=False, label=f"dummy_{key}")
+                    filtered_controlnet_dict[key] = dummy
+                    
             tab_freeu_params = get_tab_freeu(dfu)  # FreeU tab
             tab_kohya_hrfix_params = get_tab_kohya_hrfix(dku)  # Kohya tab
             tab_hybrid_params = get_tab_hybrid(da)  # Hybrid tab
             tab_output_params = get_tab_output(da, dv)  # Output tab
             # add returned gradio elements from main tabs to locals()
-            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_prompts_params, **tab_init_params, **controlnet_dict, **tab_freeu_params, **tab_kohya_hrfix_params, **tab_hybrid_params, **tab_output_params}.items():
+            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_prompts_params, **tab_init_params, **filtered_controlnet_dict, **tab_freeu_params, **tab_kohya_hrfix_params, **tab_hybrid_params, **tab_output_params}.items():
                 locals()[key] = value
 
     # Gradio's Change functions - hiding and renaming elements based on other elements

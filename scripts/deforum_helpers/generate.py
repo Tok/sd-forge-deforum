@@ -72,14 +72,14 @@ def pairwise_repl(iterable):
     next(b, None)
     return zip(a, b)
 
-def generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter,  frame=0, sampler_name=None, scheduler_name=None):
+def generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter,  frame=0, sampler_name=None, scheduler_name=None, is_keyframe=True):
     if state.interrupted:
         return None
 
     if args.reroll_blank_frames == 'ignore':
-        return generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
+        return generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name, is_keyframe=is_keyframe)
 
-    image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
+    image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name, is_keyframe=is_keyframe)
 
     if caught_vae_exception or not image.getbbox():
         patience = args.reroll_patience
@@ -88,7 +88,7 @@ def generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohy
             while caught_vae_exception or not image.getbbox():
                 print("Rerolling with +1 seed...")
                 args.seed += 1
-                image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
+                image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name, is_keyframe=is_keyframe)
                 patience -= 1
                 if patience == 0:
                     print("Rerolling with +1 seed failed for 10 iterations! Try setting webui's precision to 'full' and if it fails, please report this to the devs! Interrupting...")
@@ -102,12 +102,12 @@ def generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohy
             return None
     return image
 
-def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame=0, sampler_name=None, scheduler_name=None):
+def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame=0, sampler_name=None, scheduler_name=None, is_keyframe=True):
     if cmd_opts.disable_nan_check:
-        image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
+        image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name, is_keyframe=is_keyframe)
     else:
         try:
-            image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
+            image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame, sampler_name, scheduler_name, is_keyframe=is_keyframe)
         except Exception as e:
             if "A tensor with all NaNs was produced in VAE." in repr(e):
                 print(e)
@@ -117,7 +117,7 @@ def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, 
     return image, False
 
 def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args,
-                   root, parseq_adapter, frame=0, sampler_name=None, scheduler_name=None):
+                   root, parseq_adapter, frame=0, sampler_name=None, scheduler_name=None, is_keyframe=True):
     # Setup the pipeline
     p = get_webui_sd_pipeline(args, root)
     p.prompt, p.negative_prompt = split_weighted_subprompts(args.prompt, frame, anim_args.max_frames)
@@ -248,8 +248,8 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
 
             initialise_forge_scripts(p_txt)
 
-            if is_controlnet_enabled(controlnet_args):
-                cnet_args = get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=frame)
+            if is_controlnet_enabled(controlnet_args) and is_keyframe:
+                cnet_args = get_controlnet_script_args(p=args, controlnet_args=controlnet_args, current_frame=frame, root=root, parseq_adapter=parseq_adapter)
                 add_forge_script_to_deforum_run(p_txt, "ControlNet", cnet_args)
 
             if freeu_args.freeu_enabled:
@@ -306,8 +306,8 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
         else:
             initialise_forge_scripts(p)
 
-            if is_controlnet_enabled(controlnet_args):
-                cnet_args = get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=frame)
+            if is_controlnet_enabled(controlnet_args) and is_keyframe:
+                cnet_args = get_controlnet_script_args(p=args, controlnet_args=controlnet_args, current_frame=frame, root=root, parseq_adapter=parseq_adapter)
                 add_forge_script_to_deforum_run(p, "ControlNet", cnet_args)
 
             if freeu_args.freeu_enabled:

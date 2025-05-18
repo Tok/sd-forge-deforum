@@ -81,12 +81,51 @@ class ControlNetKeys():
         max_models = shared.opts.data.get("control_net_unit_count", shared.opts.data.get("control_net_max_models_num", 5))
         num_of_models = 5
         num_of_models = num_of_models if max_models <= 5 else max_models
+        
+        # Helper function to safely parse schedule values
+        def safe_parse_schedule(value, default_value, key_name):
+            try:
+                # If it's already a number, return a series with that number
+                if isinstance(value, (int, float)):
+                    return pd.Series([float(value)] * anim_args.max_frames)
+                    
+                # If it's a simple numeric string
+                if isinstance(value, str) and value.replace('.', '', 1).isdigit():
+                    return pd.Series([float(value)] * anim_args.max_frames)
+                
+                # Otherwise try to parse as schedule
+                return self.fi.parse_inbetweens(value, key_name)
+            except Exception as e:
+                print(f"Error parsing ControlNet schedule for {key_name}: {e}")
+                print(f"Using default value: {default_value}")
+                return pd.Series([float(default_value)] * anim_args.max_frames)
+        
+        # Ensure all required attributes exist in the controlnet_args namespace
+        for i in range(1, num_of_models + 1):
+            for suffix in ['weight', 'guidance_start', 'guidance_end']:
+                input_key = f"cn_{i}_{suffix}"
+                # Check if the attribute exists, if not, set default value
+                if not hasattr(controlnet_args, input_key):
+                    default_value = "1.0" if suffix == 'weight' else "0.0" if suffix == 'guidance_start' else "1.0"
+                    print(f"Warning: ControlNet attribute {input_key} not found, using default value {default_value}")
+                    setattr(controlnet_args, input_key, default_value)
+        
+        # Now process all attributes with defaults in place
         for i in range(1, num_of_models + 1):
             for suffix in ['weight', 'guidance_start', 'guidance_end']:
                 prefix = f"cn_{i}"
                 input_key = f"{prefix}_{suffix}"
                 output_key = f"{input_key}_schedule_series"
-                self.schedules[output_key] = self.fi.parse_inbetweens(getattr(controlnet_args, input_key), input_key)
+                
+                # Get value with safe default
+                value = getattr(controlnet_args, input_key, "1.0" if suffix == 'weight' else "0.0" if suffix == 'guidance_start' else "1.0")
+                
+                # Parse the value into a schedule using our safe parser
+                self.schedules[output_key] = safe_parse_schedule(
+                    value, 
+                    "1.0" if suffix == 'weight' else "0.0" if suffix == 'guidance_start' else "1.0",
+                    input_key
+                )
                 setattr(self, output_key, self.schedules[output_key])
 
 class FreeUAnimKeys():

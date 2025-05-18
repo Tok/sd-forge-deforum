@@ -35,6 +35,10 @@ def control():
 
 
 def net():
+    return _select(f'\U0001F945{_suffix}')  # 🥅
+
+
+def web():
     return _select(f'\U0001F578{_suffix}')  # 🕸️
 
 

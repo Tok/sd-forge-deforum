@@ -118,11 +118,22 @@ def on_ui_tabs():
                     load_video_settings_btn = gr.Button('Load Video Settings', elem_id='deforum_load_video_settings_btn')
 
         component_list = [components[name] for name in get_component_names()]
+        
+        # Make sure all items in component_list are actual gradio components
+        # Filter out any non-component items (like float values)
+        filtered_component_list = []
+        for component in component_list:
+            # Check if it's a gradio component (has _id attribute)
+            if hasattr(component, '_id'):
+                filtered_component_list.append(component)
+            else:
+                # If not a component, add a dummy component as a placeholder
+                filtered_component_list.append(dummy_component)
 
         submit.click(
                     fn=wrap_gradio_gpu_call(run_deforum),
                     _js="submit_deforum",
-                    inputs=[dummy_component, dummy_component] + component_list,
+                    inputs=[dummy_component, dummy_component] + filtered_component_list,
                     outputs=[
                          deforum_gallery,
                          components["resume_timestring"],
