@@ -1152,8 +1152,8 @@ def WanArgs():
         "wan_model_path": {
             "label": "Wan Model Path",
             "type": "textbox", 
-            "value": "",
-            "info": "Path to Wan 2.1 model checkpoint"
+            "value": "webui-forge\\webui\\models\\wan",
+            "info": "Path to Wan 2.1 model checkpoint. Default: webui-forge\\webui\\models\\wan"
         },
         "wan_clip_duration": {
             "label": "Clip Duration (seconds)",
@@ -1176,9 +1176,9 @@ def WanArgs():
         "wan_resolution": {
             "label": "Wan Resolution",
             "type": "dropdown",
-            "choices": ["512x512", "768x768", "1024x1024"],
-            "value": "768x768",
-            "info": "Resolution for Wan video generation"
+            "choices": ["1280x720", "720x1280", "854x480", "480x854"],
+            "value": "1280x720",
+            "info": "Resolution for Wan video generation. 16:9 landscape, 9:16 portrait, both in 720p and 480p"
         },
         "wan_inference_steps": {
             "label": "Inference Steps",
@@ -1222,12 +1222,6 @@ def WanArgs():
             "step": 0.1,
             "value": 1.0,
             "info": "Strength of motion in generated videos"
-        },
-        "wan_use_audio_sync": {
-            "label": "Use Audio Synchronization",
-            "type": "checkbox",
-            "value": False,
-            "info": "Synchronize video clips with audio timeline"
         },
         "wan_enable_interpolation": {
             "label": "Enable Interpolation",

@@ -65,10 +65,6 @@ def render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loo
         prompt_scheduler = WanPromptScheduler(root.animation_prompts, wan_args, video_args)
         prompt_schedule = prompt_scheduler.parse_prompts_and_timing()
         
-        if wan_args.wan_use_audio_sync and video_args.add_soundtrack != "None":
-            audio_path = video_args.soundtrack_path if video_args.add_soundtrack == "File" else None
-            prompt_schedule = prompt_scheduler.synchronize_with_audio(prompt_schedule, audio_path)
-        
         print(f"Generated {len(prompt_schedule)} video clips:")
         for i, (prompt, start_time, duration) in enumerate(prompt_schedule):
             print(f"  Clip {i+1}: '{prompt[:50]}...' (start: {start_time:.1f}s, duration: {duration:.1f}s)")

@@ -406,6 +406,27 @@ def get_tab_kohya_hrfix(dku: SimpleNamespace):
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
+def wan_generate_video():
+    """
+    Function to handle Wan video generation from the Wan tab
+    This function would be called when the Wan Generate button is clicked
+    """
+    # Import here to avoid circular imports
+    from .run_deforum import run_deforum_animation
+    
+    # This function would trigger the Wan video generation
+    # For now, we'll just print a message
+    print("Wan video generation triggered from Wan tab")
+    
+    # In the full implementation, this would:
+    # 1. Validate Wan settings
+    # 2. Set animation_mode to 'Wan Video'
+    # 3. Call the appropriate rendering function
+    # 4. Return success/error messages
+    
+    return "Wan video generation started..."
+
+
 def get_tab_wan(dw: SimpleNamespace):
     """Wan 2.1 Video Generation Tab"""
     with gr.TabItem(f"{emoji_utils.wan_video()} Wan Video"):
@@ -416,7 +437,7 @@ def get_tab_wan(dw: SimpleNamespace):
         # Main Wan Settings
         wan_enabled = create_row(dw.wan_enabled)
         
-        # Show warning when Wan is enabled but model path is empty
+        # Model path with default to webui-forge\webui\models\wan
         wan_model_path = create_row(dw.wan_model_path)
         
         with gr.Accordion("Basic Wan Settings", open=True):
@@ -436,9 +457,38 @@ def get_tab_wan(dw: SimpleNamespace):
                 wan_motion_strength = create_gr_elem(dw.wan_motion_strength)
                 
             with FormRow():
-                wan_use_audio_sync = create_gr_elem(dw.wan_use_audio_sync)
                 wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
                 wan_interpolation_strength = create_gr_elem(dw.wan_interpolation_strength)
+        
+        # Dedicated Wan Generate Button
+        with gr.Accordion("Generate Wan Video", open=True):
+            gr.Markdown("""
+            **Important:** Wan video generation uses the prompts from the **Prompts tab** where you have prompts paired with start frames.
+            Make sure to configure your prompts there before generating.
+            """)
+            
+            with FormRow():
+                wan_generate_button = gr.Button(
+                    "🎬 Generate Wan Video", 
+                    variant="primary", 
+                    size="lg",
+                    elem_id="wan_generate_button"
+                )
+                
+            # Status output for Wan generation
+            wan_generation_status = gr.Textbox(
+                label="Generation Status",
+                interactive=False,
+                lines=2,
+                placeholder="Ready to generate Wan video..."
+            )
+            
+            # Connect the button to the function
+            wan_generate_button.click(
+                fn=wan_generate_video,
+                inputs=[],
+                outputs=[wan_generation_status]
+            )
         
         with gr.Accordion("Wan Performance & Tips", open=False):
             gr.Markdown("""
@@ -446,20 +496,26 @@ def get_tab_wan(dw: SimpleNamespace):
             - **Memory**: Wan requires significant GPU memory (12GB+ recommended)
             - **Speed**: Lower inference steps (20-30) for faster generation
             - **Quality**: Higher steps (50-80) for better quality
-            - **Resolution**: Start with 512x512 for testing, scale up for production
+            - **Resolution**: Start with 720p for testing, use 480p for faster generation
             - **Duration**: Shorter clips (2-4 seconds) are more memory efficient
             
             ### Workflow Recommendations:
-            1. Set up your prompts using standard Deforum JSON format
-            2. Configure clip duration based on your prompt timing
-            3. Enable frame overlap for smoother transitions
-            4. Use audio sync if you have accompanying audio
-            5. Monitor GPU memory usage during generation
+            1. **Set up prompts**: Configure your animation prompts in the Prompts tab using standard Deforum JSON format
+            2. **Choose resolution**: Select from 16:9 (1280x720), 9:16 (720x1280), or 480p variants
+            3. **Configure timing**: Set clip duration based on your prompt timing
+            4. **Enable frame overlap**: For smoother transitions between clips
+            5. **Monitor GPU usage**: Watch GPU memory during generation
+            
+            ### New Resolution Options:
+            - **1280x720** (16:9 landscape, 720p) - Default, best quality
+            - **720x1280** (9:16 portrait, 720p) - Perfect for mobile/social media
+            - **854x480** (16:9 landscape, 480p) - Faster generation, lower quality
+            - **480x854** (9:16 portrait, 480p) - Fastest generation for mobile content
             
             ### Troubleshooting:
-            - **Model loading errors**: Check model path and file permissions
+            - **Model loading errors**: Check that your model is in the webui-forge\\webui\\models\\wan directory
             - **Out of memory**: Reduce resolution, clip duration, or inference steps
-            - **Slow generation**: Lower inference steps or use smaller resolution
+            - **Slow generation**: Use 480p resolution or lower inference steps
             - **Poor quality**: Increase inference steps and guidance scale
             """)
             

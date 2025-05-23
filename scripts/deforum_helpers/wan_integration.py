@@ -76,7 +76,7 @@ class WanVideoGenerator:
                           prompt: str, 
                           duration: float = 4.0,
                           fps: int = 24,
-                          resolution: str = "768x768",
+                          resolution: str = "1280x720",
                           steps: int = 50,
                           guidance_scale: float = 7.5,
                           seed: int = -1,
@@ -89,7 +89,7 @@ class WanVideoGenerator:
             prompt: Text prompt for video generation
             duration: Video duration in seconds
             fps: Frames per second
-            resolution: Video resolution (e.g., "768x768")
+            resolution: Video resolution (e.g., "1280x720")
             steps: Number of inference steps
             guidance_scale: Guidance scale for prompt adherence
             seed: Random seed (-1 for random)
@@ -144,7 +144,7 @@ class WanVideoGenerator:
                           prompt: str, 
                           duration: float = 4.0,
                           fps: int = 24,
-                          resolution: str = "768x768",
+                          resolution: str = "1280x720",
                           steps: int = 50,
                           guidance_scale: float = 7.5,
                           seed: int = -1,
@@ -158,7 +158,7 @@ class WanVideoGenerator:
             prompt: Text prompt for video generation
             duration: Video duration in seconds
             fps: Frames per second
-            resolution: Video resolution (e.g., "768x768")
+            resolution: Video resolution (e.g., "1280x720")
             steps: Number of inference steps
             guidance_scale: Guidance scale for prompt adherence
             seed: Random seed (-1 for random)
@@ -337,26 +337,6 @@ class WanPromptScheduler:
                 
             clips.append((prompt, start_time, duration))
             
-        return clips
-        
-    def synchronize_with_audio(self, clips: List[Tuple[str, float, float]], audio_path: str = None) -> List[Tuple[str, float, float]]:
-        """
-        Synchronize clips with audio timeline (placeholder for future implementation)
-        
-        Args:
-            clips: List of (prompt, start_time, duration) tuples
-            audio_path: Path to audio file for synchronization
-            
-        Returns:
-            Synchronized clips
-        """
-        if not audio_path or not self.wan_args.wan_use_audio_sync:
-            return clips
-            
-        # TODO: Implement audio synchronization
-        # This would analyze the audio file and adjust clip timing
-        # based on beat detection, voice activity, etc.
-        
         return clips
 
 
