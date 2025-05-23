@@ -18,21 +18,20 @@
 # https://github.com/Mikubill/sd-webui-controlnet — controlnet repo
 
 import os
-import copy
 import gradio as gr
-import scripts
 from PIL import Image
 import numpy as np
-import importlib
 from modules import scripts, shared
 from .deforum_controlnet_gradio import hide_ui_by_cn_status, hide_file_textboxes, ToolButton
-from .general_utils import count_files_in_folder, clean_gradio_path_strings  # TODO: do it another way
-from .video_audio_utilities import SUPPORTED_IMAGE_EXTENSIONS, SUPPORTED_VIDEO_EXTENSIONS, get_extension_if_valid, vid2frames, convert_image
+from .general_utils import count_files_in_folder, clean_gradio_path_strings, debug_print
+from .rendering.util import emoji_utils
+from .video_audio_utilities import SUPPORTED_IMAGE_EXTENSIONS, SUPPORTED_VIDEO_EXTENSIONS, get_extension_if_valid, \
+    vid2frames, convert_image
 from .animation_key_frames import ControlNetKeys
 from .load_images import load_image
-from .general_utils import debug_print
 
-from lib_controlnet.global_state import update_controlnet_filenames, get_all_preprocessor_names, get_all_controlnet_names, get_sorted_preprocessors, get_preprocessor
+from lib_controlnet.global_state import update_controlnet_filenames, get_all_preprocessor_names, \
+    get_all_controlnet_names, get_sorted_preprocessors, get_preprocessor
 from lib_controlnet.external_code import ControlNetUnit
 
 cnet = None
@@ -149,7 +148,8 @@ def setup_controlnet_ui_raw():
         selected = dd if dd in cn_models else "None"
         return gr.Dropdown.update(value=selected, choices=cn_models)
 
-    with gr.TabItem('ControlNet'):
+    with gr.TabItem(f"{emoji_utils.off()} ControlNet"):
+        gr.Markdown("ControlNet is currently not supported.")
         gr.HTML(controlnet_infotext())
         with gr.Tabs():
             model_params = {}

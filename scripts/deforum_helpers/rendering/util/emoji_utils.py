@@ -35,6 +35,10 @@ def control():
 
 
 def net():
+    return _select(f'\U0001F945{_suffix}')  # 🥅
+
+
+def web():
     return _select(f'\U0001F578{_suffix}')  # 🕸️
 
 
@@ -44,6 +48,10 @@ def prompts():
 
 def cadence():
     return _select(f'\U000023F1{_suffix}')  # ⏱️
+
+
+def off():
+    return _select(f'\U0000274C')  # ❌
 
 
 def distribution():
