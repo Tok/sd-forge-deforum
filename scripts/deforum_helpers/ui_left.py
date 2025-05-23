@@ -65,4 +65,28 @@ def setup_deforum_left_side_ui():
     show_info_on_ui.change(fn=change_css, inputs=show_info_on_ui, outputs=[gr.HTML()])
     handle_change_functions(locals())
 
+    # Set up Wan Generate button if it exists
+    if 'wan_generate_button' in locals() and 'wan_generation_status' in locals():
+        from .args import get_component_names
+        from .ui_elements import wan_generate_video
+        
+        # Get all components in the same order as the main generate button
+        component_names = get_component_names()
+        component_list = []
+        
+        # Add components in the correct order
+        for name in component_names:
+            if name in locals():
+                component_list.append(locals()[name])
+            else:
+                # Use a default value if component is missing
+                component_list.append(None)
+        
+        # Connect the Wan generate button
+        locals()['wan_generate_button'].click(
+            fn=wan_generate_video,
+            inputs=component_list,
+            outputs=[locals()['wan_generation_status']]
+        )
+
     return locals()

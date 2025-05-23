@@ -64,7 +64,20 @@ def setup_controlnet_ui_raw():
         preprocessor_sliders_config[preprocessor_name] = [preprocessor.slider_1, preprocessor.slider_2, preprocessor.slider_3]
 
     def build_sliders(module, pp):
+        try:
             preprocessor = get_preprocessor(module)
+            
+            # Handle case where preprocessor is None
+            if preprocessor is None:
+                # Return default gradio updates
+                return [
+                    gr.update(visible=False),  # processor_res
+                    gr.update(visible=False),  # threshold_a  
+                    gr.update(visible=False),  # threshold_b
+                    gr.update(visible=False),  # advanced_column
+                    gr.update(),               # model
+                    gr.update(),               # refresh_models
+                ]
 
             slider_resolution_kwargs = preprocessor.slider_resolution.gradio_update_kwargs.copy()
 
@@ -81,6 +94,17 @@ def setup_controlnet_ui_raw():
             ]
 
             return grs
+        except Exception as e:
+            # If any error occurs, return safe defaults
+            print(f"Error in build_sliders: {e}")
+            return [
+                gr.update(visible=False),  # processor_res
+                gr.update(visible=False),  # threshold_a  
+                gr.update(visible=False),  # threshold_b
+                gr.update(visible=False),  # advanced_column
+                gr.update(),               # model
+                gr.update(),               # refresh_models
+            ]
 
     refresh_symbol = '\U0001f504'  # 🔄
     switch_values_symbol = '\U000021C5'  # ⇅

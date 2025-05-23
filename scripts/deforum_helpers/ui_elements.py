@@ -406,25 +406,59 @@ def get_tab_kohya_hrfix(dku: SimpleNamespace):
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
-def wan_generate_video():
+def wan_generate_video(*component_args):
     """
     Function to handle Wan video generation from the Wan tab
     This function would be called when the Wan Generate button is clicked
     """
-    # Import here to avoid circular imports
-    from .run_deforum import run_deforum_animation
-    
-    # This function would trigger the Wan video generation
-    # For now, we'll just print a message
-    print("Wan video generation triggered from Wan tab")
-    
-    # In the full implementation, this would:
-    # 1. Validate Wan settings
-    # 2. Set animation_mode to 'Wan Video'
-    # 3. Call the appropriate rendering function
-    # 4. Return success/error messages
-    
-    return "Wan video generation started..."
+    try:
+        # Import here to avoid circular imports
+        from .run_deforum import run_deforum
+        from .args import get_component_names
+        import uuid
+        
+        print("Wan video generation triggered from Wan tab")
+        
+        # Generate a unique ID for this run
+        job_id = str(uuid.uuid4())[:8]
+        
+        # Get component names to understand the argument structure
+        component_names = get_component_names()
+        
+        # Create the arguments list in the same format as the main UI
+        # First two arguments are dummy components, then all the actual component values
+        run_args = [job_id, None] + list(component_args)
+        
+        print(f"Component count: {len(component_args)}")
+        print(f"Total args count: {len(run_args)}")
+        print(f"Expected component names count: {len(component_names)}")
+        
+        # Find the animation_mode argument and set it to 'Wan Video'
+        if 'animation_mode' in component_names:
+            anim_mode_index = component_names.index('animation_mode') + 2  # +2 for the dummy components
+            if len(run_args) > anim_mode_index:
+                run_args[anim_mode_index] = 'Wan Video'
+                print("Set animation mode to 'Wan Video'")
+            else:
+                print(f"Warning: Could not set animation mode - index {anim_mode_index} out of range (args length: {len(run_args)})")
+        else:
+            print("Warning: animation_mode not found in component names")
+        
+        # Call run_deforum with the prepared arguments
+        print(f"Starting Wan video generation with job ID: {job_id}")
+        result = run_deforum(*run_args)
+        
+        if result and len(result) > 0:
+            return "Wan video generation completed successfully! Check the output folder."
+        else:
+            return "Wan video generation completed."
+            
+    except Exception as e:
+        error_msg = f"Error during Wan video generation: {str(e)}"
+        print(error_msg)
+        import traceback
+        traceback.print_exc()
+        return error_msg
 
 
 def get_tab_wan(dw: SimpleNamespace):
@@ -483,12 +517,9 @@ def get_tab_wan(dw: SimpleNamespace):
                 placeholder="Ready to generate Wan video..."
             )
             
-            # Connect the button to the function
-            wan_generate_button.click(
-                fn=wan_generate_video,
-                inputs=[],
-                outputs=[wan_generation_status]
-            )
+            # Don't connect the button here - it will be connected in ui_left.py
+            # with access to all components
+            pass
         
         with gr.Accordion("Wan Performance & Tips", open=False):
             gr.Markdown("""
