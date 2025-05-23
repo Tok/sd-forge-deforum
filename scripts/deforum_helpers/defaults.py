@@ -115,6 +115,57 @@ def get_hybrid_info_html():
         <a style='color:SteelBlue;' target='_blank' href='https://github.com/deforum-art/deforum-for-automatic1111-webui/wiki/Animation-Settings#hybrid-video-mode-for-2d3d-animations'>Click Here</a> for more info/ a Guide.
         """
 
+def get_wan_video_info_html():
+    return """
+        <p style="padding-bottom:0">
+            <b style="text-shadow: blue -1px -1px;">Wan 2.1 Video Generation</b>
+            <span style="color:#DDD;font-size:0.7rem;text-shadow: black -1px -1px;margin-left:10px;">
+                powered by <a href="https://github.com/Wan-Video/Wan2.1" target="_blank">Wan 2.1</a>
+            </span>
+        </p>
+        <ul style="list-style-type:circle; margin-left:1em; margin-bottom:1em;">
+            <li><b>Text-to-Video</b>: Generate video clips directly from text prompts using Wan 2.1</li>
+            <li><b>Image-to-Video</b>: Continue video generation using the last frame of the previous clip as initialization</li>
+            <li><b>Frame Continuity</b>: Seamless transitions between clips ensure smooth video flow</li>
+            <li><b>Audio Synchronization</b>: Align video clips with audio timing for perfect synchronization</li>
+            <li><b>Prompt Scheduling</b>: Use Deforum's prompt scheduling system with frame-based timing</li>
+        </ul>
+        
+        <p><b>Setup Requirements:</b></p>
+        <ul style="list-style-type:circle; margin-left:1em; margin-bottom:1em;">
+            <li>Download and install <a href="https://github.com/Wan-Video/Wan2.1" target="_blank">Wan 2.1</a></li>
+            <li>Set the correct model path in the Wan Model Path field</li>
+            <li>Ensure you have sufficient GPU memory (recommended: 12GB+ VRAM)</li>
+            <li>Configure your prompts using standard Deforum JSON format</li>
+        </ul>
+        
+        <p><b>How It Works:</b></p>
+        <ul style="list-style-type:circle; margin-left:1em; margin-bottom:1em;">
+            <li><b>First Clip</b>: Generated using text-to-video from your first prompt</li>
+            <li><b>Subsequent Clips</b>: Generated using image-to-video with the last frame as init image</li>
+            <li><b>Timing</b>: Clip duration calculated from prompt frame positions and FPS settings</li>
+            <li><b>Output</b>: All clips are stitched together using FFmpeg for final video</li>
+        </ul>
+        
+        <p><b>Performance Tips:</b></p>
+        <ul style="list-style-type:circle; margin-left:1em; margin-bottom:1em;">
+            <li>Use shorter clip durations (2-4 seconds) for better memory efficiency</li>
+            <li>Lower inference steps (20-30) for faster generation</li>
+            <li>Start with 512x512 resolution for testing, scale up for final renders</li>
+            <li>Enable frame overlap for smoother transitions between clips</li>
+        </ul>
+        
+        <p><b>Limitations:</b></p>
+        <ul style="list-style-type:circle; margin-left:1em; margin-bottom:1em;">
+            <li>Traditional Deforum camera movements are disabled in Wan mode</li>
+            <li>3D depth warping and optical flow are not compatible</li>
+            <li>Generation time is significantly longer than traditional diffusion</li>
+            <li>Requires high-end hardware for optimal performance</li>
+        </ul>
+        
+        <a style='color:SteelBlue;' target='_blank' href='https://github.com/Wan-Video/Wan2.1'>Visit Wan 2.1 Repository</a> for more information and installation instructions.
+        """
+
 def get_composable_masks_info_html():
     return """
         <ul style="list-style-type:circle; margin-left:0.75em; margin-bottom:0.2em">
@@ -231,6 +282,8 @@ def get_leres_info_html():
 def get_gradio_html(section_name):
     if section_name.lower() == 'hybrid_video':
         return get_hybrid_info_html()
+    elif section_name.lower() == 'wan_video':
+        return get_wan_video_info_html()
     elif section_name.lower() == 'composable_masks':
         return get_composable_masks_info_html()
     elif section_name.lower() == 'parseq':

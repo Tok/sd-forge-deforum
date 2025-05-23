@@ -74,6 +74,10 @@ def video_camera():
     return _select('\U0001F4F9')  # 📹
 
 
+def wan_video():
+    return _select('\U0001F3A5')  # 🎥
+
+
 def document():
     return _select('\U0001F4C4')  # 📄
 

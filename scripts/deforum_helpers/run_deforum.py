@@ -78,7 +78,7 @@ def run_deforum(*args):
         args_dict['self'] = None
         args_dict['p'] = p
         try:
-            args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args = process_args(args_dict, i)
+            args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, wan_args = process_args(args_dict, i)
         except Exception as e:
             JobStatusTracker().fail_job(job_id, error_type="TERMINAL", message="Invalid arguments.")
             print("\n*START OF TRACEBACK*")
@@ -128,6 +128,23 @@ def run_deforum(*args):
                 render_input_video(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)#TODO: prettify code
             elif anim_args.animation_mode == 'Interpolation':
                 render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
+            elif anim_args.animation_mode == 'Wan Video':
+                # Import Wan renderer only when needed
+                from .wan_integration import validate_wan_settings
+                from .render_wan import render_wan_animation
+                
+                # Validate Wan settings before proceeding
+                validation_errors = validate_wan_settings(wan_args)
+                if validation_errors:
+                    error_msg = "Wan validation failed:\n" + "\n".join(f"- {error}" for error in validation_errors)
+                    print(f"{RED}ERROR!{RESET_COLOR} {error_msg}")
+                    raise ValueError(error_msg)
+                
+                if not wan_args.wan_enabled:
+                    raise ValueError("Wan Video mode selected but Wan is not enabled. Please enable Wan in the Wan Video tab.")
+                
+                print(f"{YELLOW}Starting Wan 2.1 Video Generation...{RESET_COLOR}")
+                render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
             else:
                 print('Other modes are not available yet!')
         except Exception as e:

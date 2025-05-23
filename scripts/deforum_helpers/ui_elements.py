@@ -406,6 +406,66 @@ def get_tab_kohya_hrfix(dku: SimpleNamespace):
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
+def get_tab_wan(dw: SimpleNamespace):
+    """Wan 2.1 Video Generation Tab"""
+    with gr.TabItem(f"{emoji_utils.wan_video()} Wan Video"):
+        # Wan Info Accordion
+        with gr.Accordion("Wan 2.1 Video Generation Info & Setup", open=False):
+            gr.HTML(value=get_gradio_html('wan_video'))
+        
+        # Main Wan Settings
+        wan_enabled = create_row(dw.wan_enabled)
+        
+        # Show warning when Wan is enabled but model path is empty
+        wan_model_path = create_row(dw.wan_model_path)
+        
+        with gr.Accordion("Basic Wan Settings", open=True):
+            with FormRow():
+                wan_clip_duration = create_gr_elem(dw.wan_clip_duration)
+                wan_fps = create_gr_elem(dw.wan_fps) 
+                wan_resolution = create_gr_elem(dw.wan_resolution)
+        
+            with FormRow():
+                wan_inference_steps = create_gr_elem(dw.wan_inference_steps)
+                wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
+                wan_seed = create_gr_elem(dw.wan_seed)
+        
+        with gr.Accordion("Advanced Wan Settings", open=False):
+            with FormRow():
+                wan_frame_overlap = create_gr_elem(dw.wan_frame_overlap)
+                wan_motion_strength = create_gr_elem(dw.wan_motion_strength)
+                
+            with FormRow():
+                wan_use_audio_sync = create_gr_elem(dw.wan_use_audio_sync)
+                wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
+                wan_interpolation_strength = create_gr_elem(dw.wan_interpolation_strength)
+        
+        with gr.Accordion("Wan Performance & Tips", open=False):
+            gr.Markdown("""
+            ### Performance Optimization Tips:
+            - **Memory**: Wan requires significant GPU memory (12GB+ recommended)
+            - **Speed**: Lower inference steps (20-30) for faster generation
+            - **Quality**: Higher steps (50-80) for better quality
+            - **Resolution**: Start with 512x512 for testing, scale up for production
+            - **Duration**: Shorter clips (2-4 seconds) are more memory efficient
+            
+            ### Workflow Recommendations:
+            1. Set up your prompts using standard Deforum JSON format
+            2. Configure clip duration based on your prompt timing
+            3. Enable frame overlap for smoother transitions
+            4. Use audio sync if you have accompanying audio
+            5. Monitor GPU memory usage during generation
+            
+            ### Troubleshooting:
+            - **Model loading errors**: Check model path and file permissions
+            - **Out of memory**: Reduce resolution, clip duration, or inference steps
+            - **Slow generation**: Lower inference steps or use smaller resolution
+            - **Poor quality**: Increase inference steps and guidance scale
+            """)
+            
+    return {k: v for k, v in {**locals(), **vars()}.items()}
+
+
 def get_tab_hybrid(da):
     with gr.TabItem('Hybrid Video'):
         # this html only shows when not in 2d/3d mode

@@ -64,7 +64,7 @@ def DeforumAnimArgs():
         "animation_mode": {
             "label": "Animation mode",
             "type": "radio",
-            "choices": ['2D', '3D', 'Video Input', 'Interpolation'],
+            "choices": ['2D', '3D', 'Video Input', 'Interpolation', 'Wan Video'],
             "value": "2D",
             "info": "control animation mode, will hide non relevant params upon change"
         },
@@ -1140,6 +1140,113 @@ def KohyaHRFixArgs():
     }
 
 
+def WanArgs():
+    """Wan 2.1 video generation arguments"""
+    return {
+        "wan_enabled": {
+            "label": "Enable Wan Video Generation",
+            "type": "checkbox",
+            "value": False,
+            "info": "Use Wan 2.1 for video generation instead of traditional diffusion"
+        },
+        "wan_model_path": {
+            "label": "Wan Model Path",
+            "type": "textbox", 
+            "value": "",
+            "info": "Path to Wan 2.1 model checkpoint"
+        },
+        "wan_clip_duration": {
+            "label": "Clip Duration (seconds)",
+            "type": "slider",
+            "minimum": 1.0,
+            "maximum": 30.0,
+            "step": 0.5,
+            "value": 4.0,
+            "info": "Duration of each generated video clip"
+        },
+        "wan_fps": {
+            "label": "Wan FPS",
+            "type": "slider", 
+            "minimum": 8,
+            "maximum": 60,
+            "step": 1,
+            "value": 24,
+            "info": "Frames per second for Wan video generation"
+        },
+        "wan_resolution": {
+            "label": "Wan Resolution",
+            "type": "dropdown",
+            "choices": ["512x512", "768x768", "1024x1024"],
+            "value": "768x768",
+            "info": "Resolution for Wan video generation"
+        },
+        "wan_inference_steps": {
+            "label": "Inference Steps",
+            "type": "slider",
+            "minimum": 20,
+            "maximum": 100,
+            "step": 5,
+            "value": 50,
+            "info": "Number of inference steps for Wan generation"
+        },
+        "wan_guidance_scale": {
+            "label": "Guidance Scale",
+            "type": "slider",
+            "minimum": 1.0,
+            "maximum": 20.0,
+            "step": 0.5,
+            "value": 7.5,
+            "info": "Guidance scale for prompt adherence"
+        },
+        "wan_seed": {
+            "label": "Wan Seed",
+            "type": "number",
+            "precision": 0,
+            "value": -1,
+            "info": "Seed for Wan generation (-1 for random)"
+        },
+        "wan_frame_overlap": {
+            "label": "Frame Overlap",
+            "type": "slider",
+            "minimum": 0,
+            "maximum": 10,
+            "step": 1,
+            "value": 2,
+            "info": "Number of overlapping frames between clips for smoother transitions"
+        },
+        "wan_motion_strength": {
+            "label": "Motion Strength",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 2.0,
+            "step": 0.1,
+            "value": 1.0,
+            "info": "Strength of motion in generated videos"
+        },
+        "wan_use_audio_sync": {
+            "label": "Use Audio Synchronization",
+            "type": "checkbox",
+            "value": False,
+            "info": "Synchronize video clips with audio timeline"
+        },
+        "wan_enable_interpolation": {
+            "label": "Enable Interpolation",
+            "type": "checkbox",
+            "value": True,
+            "info": "Enable frame interpolation between clips"
+        },
+        "wan_interpolation_strength": {
+            "label": "Interpolation Strength",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "step": 0.1,
+            "value": 0.5,
+            "info": "Strength of interpolation between consecutive clips"
+        }
+    }
+
+
 def DeforumOutputArgs():
     return {
         "skip_video_creation": {
@@ -1274,7 +1381,7 @@ def get_component_names():
     return ['override_settings_with_file', 'custom_settings_file', *DeforumAnimArgs().keys(), 'animation_prompts',
             'animation_prompts_positive', 'animation_prompts_negative',
             *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(), *LoopArgs().keys(),
-            *controlnet_component_names(), *FreeUArgs().keys(), *KohyaHRFixArgs().keys()]
+            *controlnet_component_names(), *FreeUArgs().keys(), *KohyaHRFixArgs().keys(), *WanArgs().keys()]
 
 
 def get_settings_component_names():
@@ -1299,6 +1406,7 @@ def process_args(args_dict_main, run_id):
     loop_args = SimpleNamespace(**{name: args_dict_main[name] for name in LoopArgs()})
     freeu_args = SimpleNamespace(**{name: args_dict_main[name] for name in FreeUArgs()})
     kohya_hrfix_args = SimpleNamespace(**{name: args_dict_main[name] for name in KohyaHRFixArgs()})
+    wan_args = SimpleNamespace(**{name: args_dict_main[name] for name in WanArgs()})
     controlnet_args = SimpleNamespace(**{name: args_dict_main[name] for name in controlnet_component_names()})
 
     root.animation_prompts = json.loads(args_dict_main['animation_prompts'])
@@ -1349,4 +1457,4 @@ def process_args(args_dict_main, run_id):
     default_img = default_img.resize((args.W, args.H))
     root.default_img = default_img
 
-    return args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args
+    return args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, wan_args
