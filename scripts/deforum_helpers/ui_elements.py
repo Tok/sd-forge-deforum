@@ -502,6 +502,10 @@ def wan_generate_video(*component_args):
         # Also ensure root.timestring doesn't have template issues - COMPLETELY override it
         root.timestring = timestring_final
         
+        # CRITICAL: Replace any template variables in the output directory path itself
+        if '{timestring}' in args.outdir:
+            args.outdir = args.outdir.replace('{timestring}', timestring_final)
+        
         print(f"🔧 Fixed output directory: {wan_output_dir_final}")
         print(f"🔧 Fixed root.timestring: '{root.timestring}'")
         print(f"🔧 Final args.outdir: '{args.outdir}'")
