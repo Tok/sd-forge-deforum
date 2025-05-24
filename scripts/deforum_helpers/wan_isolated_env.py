@@ -745,70 +745,100 @@ Or install Git and ensure it's in your PATH.
                 
         if requirements_file and requirements_file.name == "requirements.txt":
             try:
-                # Install requirements to our isolated environment
+                # Read requirements and filter out problematic packages
+                with open(requirements_file, 'r', encoding='utf-8') as f:
+                    requirements = f.read().splitlines()
+                
+                # Filter out packages that require CUDA development tools
+                filtered_requirements = []
+                skip_packages = [
+                    'flash-attn',  # Requires nvcc compiler
+                    'flash_attn',  # Alternative spelling
+                    'xformers',    # May require compilation
+                ]
+                
+                for req in requirements:
+                    req = req.strip()
+                    if not req or req.startswith('#'):
+                        continue
+                    
+                    # Extract package name (before any version specifiers)
+                    package_name = req.split('==')[0].split('>=')[0].split('<=')[0].split('~=')[0].split('!=')[0].strip()
+                    
+                    if package_name.lower() in [pkg.lower() for pkg in skip_packages]:
+                        print(f"⚠️ Skipping {package_name} (requires CUDA development tools)")
+                        continue
+                    
+                    filtered_requirements.append(req)
+                
+                if filtered_requirements:
+                    print(f"📋 Installing {len(filtered_requirements)} WAN requirements (skipped {len(requirements) - len(filtered_requirements)} problematic packages)")
+                    
+                    # Install requirements one by one to handle individual failures
+                    for req in filtered_requirements:
+                        try:
+                            cmd = [
+                                sys.executable, "-m", "pip", "install", 
+                                req,
+                                "--target", str(self.wan_site_packages),
+                                "--upgrade",
+                                "--no-deps"  # Avoid dependency conflicts
+                            ]
+                            
+                            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                            
+                            if result.returncode == 0:
+                                print(f"✅ Installed {req}")
+                            else:
+                                print(f"⚠️ Failed to install {req}: {result.stderr[:100]}...")
+                                
+                        except Exception as e:
+                            print(f"⚠️ Error installing {req}: {e}")
+                            continue
+                else:
+                    print("⚠️ No valid requirements found after filtering")
+                    
+            except Exception as e:
+                print(f"⚠️ Failed to process WAN requirements: {e}")
+                
+        elif requirements_file and requirements_file.name == "setup.py":
+            print("⚠️ setup.py found but skipping to avoid compilation issues")
+            print("💡 Installing known WAN dependencies manually...")
+            
+        else:
+            print("📝 No requirements.txt found, installing essential WAN dependencies...")
+            
+        # Always install essential WAN dependencies manually
+        print("📦 Installing essential WAN dependencies...")
+        essential_deps = [
+            "torch>=2.0.0",
+            "torchvision",
+            "transformers>=4.36.0",
+            "accelerate>=0.25.0",
+            "safetensors>=0.4.0",
+            "pillow",
+            "numpy",
+            "einops",
+            "omegaconf",
+            "gradio",
+            "diffusers>=0.26.0"  # May be needed for VAE components
+        ]
+        
+        for dep in essential_deps:
+            try:
                 cmd = [
-                    sys.executable, "-m", "pip", "install", 
-                    "-r", str(requirements_file),
+                    sys.executable, "-m", "pip", "install",
+                    dep, 
                     "--target", str(self.wan_site_packages),
                     "--upgrade"
                 ]
-                
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-                
-                if result.returncode == 0:
-                    print("✅ WAN requirements installed successfully")
-                else:
-                    print(f"⚠️ Some WAN requirements failed: {result.stderr}")
-                    
+                result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
+                print(f"✅ Installed {dep}")
+            except subprocess.CalledProcessError as e:
+                print(f"⚠️ Failed to install {dep}: {e.stderr[:100]}...")
             except Exception as e:
-                print(f"⚠️ Failed to install WAN requirements: {e}")
+                print(f"⚠️ Error with {dep}: {e}")
                 
-        elif requirements_file and requirements_file.name == "setup.py":
-            try:
-                # Install package in development mode to our isolated environment
-                cmd = [
-                    sys.executable, "-m", "pip", "install", 
-                    "-e", str(repo_path),
-                    "--target", str(self.wan_site_packages)
-                ]
-                
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-                
-                if result.returncode == 0:
-                    print("✅ WAN package installed successfully")
-                else:
-                    print(f"⚠️ WAN package installation failed: {result.stderr}")
-                    
-            except Exception as e:
-                print(f"⚠️ Failed to install WAN package: {e}")
-        else:
-            print("📝 No requirements.txt found, using manual dependencies...")
-            # Install known WAN dependencies
-            wan_deps = [
-                "torch>=2.0.0",
-                "torchvision",
-                "transformers>=4.36.0",
-                "diffusers>=0.26.0", 
-                "accelerate>=0.25.0",
-                "safetensors>=0.4.0",
-                "pillow",
-                "numpy",
-                "einops",
-                "omegaconf",
-                "gradio"
-            ]
-            
-            for dep in wan_deps:
-                try:
-                    cmd = [
-                        sys.executable, "-m", "pip", "install",
-                        dep, "--target", str(self.wan_site_packages)
-                    ]
-                    subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
-                    print(f"✅ Installed {dep}")
-                except Exception as e:
-                    print(f"⚠️ Failed to install {dep}: {e}")
-                    
         print("✅ WAN environment setup complete")
 
 
