@@ -485,11 +485,11 @@ def wan_generate_video(*component_args):
         current_file_path = os.path.abspath(__file__)
         webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file_path)))))
         
-        # Create clean timestamp and batch name
+        # Create clean timestamp and batch name WITHOUT any template processing
         clean_timestamp = time.strftime('%Y%m%d%H%M%S')
-        clean_batch = args_dict.get('batch_name', 'Deforum')
+        clean_batch = str(args_dict.get('batch_name', 'Deforum')).replace('{timestring}', '').replace('_', '').replace('}', '')
         
-        # Build completely clean path
+        # Build completely clean path with NO template remnants
         clean_wan_dir = os.path.join(webui_root, 'outputs', 'wan-images', f"{clean_batch}_{clean_timestamp}")
         os.makedirs(clean_wan_dir, exist_ok=True)
         
