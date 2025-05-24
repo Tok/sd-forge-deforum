@@ -2,6 +2,27 @@
 WAN 2.1 Flow Matching Pipeline Implementation
 Based on official WAN 2.1 repository: https://github.com/Wan-Video/Wan2.1
 
+CURRENT INTEGRATION STATUS:
+✅ Repository Integration: Official WAN repo cloned and modules imported
+✅ Environment Isolation: Separate Python env with WAN dependencies  
+✅ Module Discovery: Finds and imports actual WAN modules (text2video, image2video)
+⚠️  Function Calls: Attempts to call WAN functions but needs proper parameter mapping
+❌ Model Loading: Uses mock components (T5, VAE) instead of actual WAN implementations
+
+ACTUAL WAN CODE REUSED:
+- WAN repository structure and module discovery
+- WAN requirements.txt for dependency management  
+- Import of official WAN modules (text2video.py, image2video.py, modules/model.py)
+- Attempts to call WAN generation functions (but parameter mismatches)
+
+NOT YET REUSED:
+- Actual WAN model classes and architectures
+- Real WAN T5 encoder and 3D causal VAE
+- WAN's native generation pipeline and flow matching implementation
+
+This is currently a "WAN-compatible" implementation that tries to integrate with
+official WAN code but falls back to custom implementations when needed.
+
 WAN uses Flow Matching framework with:
 - T5 Encoder for multilingual text input
 - 3D causal VAE (Wan-VAE) for video encoding/decoding  

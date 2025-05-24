@@ -808,36 +808,39 @@ Or install Git and ensure it's in your PATH.
         else:
             print("📝 No requirements.txt found, installing essential WAN dependencies...")
             
-        # Always install essential WAN dependencies manually
-        print("📦 Installing essential WAN dependencies...")
-        essential_deps = [
-            "torch>=2.0.0",
-            "torchvision",
-            "transformers>=4.36.0",
-            "accelerate>=0.25.0",
-            "safetensors>=0.4.0",
-            "pillow",
-            "numpy",
-            "einops",
-            "omegaconf",
-            "gradio",
-            "diffusers>=0.26.0"  # May be needed for VAE components
-        ]
-        
-        for dep in essential_deps:
-            try:
-                cmd = [
-                    sys.executable, "-m", "pip", "install",
-                    dep, 
-                    "--target", str(self.wan_site_packages),
-                    "--upgrade"
-                ]
-                result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
-                print(f"✅ Installed {dep}")
-            except subprocess.CalledProcessError as e:
-                print(f"⚠️ Failed to install {dep}: {e.stderr[:100]}...")
-            except Exception as e:
-                print(f"⚠️ Error with {dep}: {e}")
+        # Only install essential dependencies if no requirements were processed
+        if not requirements_file or (requirements_file and requirements_file.name != "requirements.txt"):
+            print("📦 Installing essential WAN dependencies...")
+            essential_deps = [
+                "torch>=2.0.0",
+                "torchvision",
+                "transformers>=4.36.0",
+                "accelerate>=0.25.0",
+                "safetensors>=0.4.0",
+                "pillow",
+                "numpy",
+                "einops",
+                "omegaconf",
+                "gradio",
+                "diffusers>=0.26.0"  # May be needed for VAE components
+            ]
+            
+            for dep in essential_deps:
+                try:
+                    cmd = [
+                        sys.executable, "-m", "pip", "install",
+                        dep, 
+                        "--target", str(self.wan_site_packages),
+                        "--upgrade"
+                    ]
+                    result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
+                    print(f"✅ Installed {dep}")
+                except subprocess.CalledProcessError as e:
+                    print(f"⚠️ Failed to install {dep}: {e.stderr[:100]}...")
+                except Exception as e:
+                    print(f"⚠️ Error with {dep}: {e}")
+        else:
+            print("✅ Using packages from WAN requirements.txt - skipping duplicate installation")
                 
         print("✅ WAN environment setup complete")
 

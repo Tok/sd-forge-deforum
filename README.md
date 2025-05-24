@@ -16,9 +16,16 @@ new keyframe distribution feature, may require that some unsupported features ar
 
 This fork includes **Wan 2.1 video generation** support with Flow Matching architecture for text-to-video and image-to-video generation.
 
+**Key Features:**
+- **Isolated Environment**: Runs in separate Python environment to prevent conflicts with WebUI
+- **Official Integration**: Uses the actual WAN 2.1 repository as a submodule
+- **Flow Matching**: Advanced video synthesis (not traditional diffusion)
+
 ### Setup Requirements
 
-**Manual Repository Setup:**
+**Automatic Setup:** The system will auto-clone the official repository on first run.
+
+**Manual Setup (Recommended):**
 ```bash
 cd <forge_install_dir>/extensions/sd-forge-deforum
 git clone https://github.com/Wan-Video/Wan2.1.git wan_official_repo
@@ -43,11 +50,11 @@ git clone https://github.com/Wan-Video/Wan2.1.git wan_official_repo
 ### Troubleshooting
 
 **Common Issues:**
-- "Repository not set up" → Clone WAN repo manually
-- "Out of memory" → Use 480p resolution, reduce steps
-- "Import errors" → Delete `wan_isolated_env` folder and restart
+- "Repository not set up" → Clone WAN repo manually (see command above)
+- "Out of memory" → Use 480p resolution, reduce inference steps
+- "Import errors" → Delete `wan_isolated_env` folder and restart WebUI
 
-The system uses isolated environment to prevent conflicts with WebUI's diffusion systems.
+**Environment Isolation:** WAN uses `wan_isolated_env/` with separate dependencies to avoid conflicts with WebUI's diffusion systems.
 
 ## Requirements
 
