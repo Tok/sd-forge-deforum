@@ -567,53 +567,81 @@ huggingface-hub>=0.20.0
     # Re-implement WAN repository integration methods
     def setup_wan_repository(self) -> Path:
         """
-        Download and setup the official WAN 2.1 repository for actual inference
+        Setup the official WAN 2.1 repository for actual inference
+        Handles existing repositories properly
         """
         print("🚀 Setting up official WAN 2.1 repository...")
         
         wan_repo_dir = self.extension_root / "wan_official_repo"
         
-        # Check if already downloaded
-        if wan_repo_dir.exists() and (wan_repo_dir / "models" / "modeling_wan.py").exists():
-            print(f"✅ Official WAN repository already exists at: {wan_repo_dir}")
-            return wan_repo_dir
+        # Check if already downloaded and has the main WAN modules
+        if wan_repo_dir.exists():
+            key_files = [
+                wan_repo_dir / "wan" / "text2video.py",
+                wan_repo_dir / "wan" / "image2video.py", 
+                wan_repo_dir / "generate.py"
+            ]
+            
+            if all(f.exists() for f in key_files):
+                print(f"✅ Official WAN repository already exists at: {wan_repo_dir}")
+                print(f"🔍 Found key files: text2video.py, image2video.py, generate.py")
+                
+                # Try to update if it's a git repository
+                if (wan_repo_dir / ".git").exists():
+                    try:
+                        print("🔄 Pulling latest updates from WAN repository...")
+                        import subprocess
+                        result = subprocess.run(
+                            ["git", "pull", "--depth", "1"],
+                            cwd=str(wan_repo_dir),
+                            capture_output=True,
+                            text=True,
+                            timeout=60
+                        )
+                        if result.returncode == 0:
+                            print("✅ Repository updated successfully")
+                        else:
+                            print(f"⚠️ Git pull failed: {result.stderr}")
+                            print("💡 Continuing with existing repository")
+                    except Exception as git_error:
+                        print(f"⚠️ Could not update repository: {git_error}")
+                        print("💡 Continuing with existing repository")
+                
+                return wan_repo_dir
+            else:
+                print(f"⚠️ WAN repository exists but is incomplete, removing and re-cloning...")
+                try:
+                    import shutil
+                    shutil.rmtree(wan_repo_dir)
+                except Exception as e:
+                    print(f"❌ Failed to remove incomplete repository: {e}")
+                    raise RuntimeError(f"Cannot clean up incomplete WAN repository: {e}")
             
         try:
             import subprocess
-            import git
             
             # Clone the official repository
             print("📥 Cloning WAN 2.1 repository from GitHub...")
-            git.Repo.clone_from(
+            result = subprocess.run([
+                "git", "clone", "--depth", "1",
                 "https://github.com/Wan-Video/Wan2.1.git",
-                str(wan_repo_dir),
-                depth=1  # Shallow clone for speed
-            )
+                str(wan_repo_dir)
+            ], capture_output=True, text=True, timeout=300)
+            
+            if result.returncode != 0:
+                raise subprocess.CalledProcessError(result.returncode, "git clone", result.stderr)
             
             print(f"✅ WAN 2.1 repository cloned to: {wan_repo_dir}")
             return wan_repo_dir
             
-        except ImportError:
-            # Fallback to subprocess if GitPython not available
-            try:
-                print("📥 Cloning WAN 2.1 repository using git command...")
-                subprocess.run([
-                    "git", "clone", "--depth", "1",
-                    "https://github.com/Wan-Video/Wan2.1.git",
-                    str(wan_repo_dir)
-                ], check=True, capture_output=True, text=True)
-                
-                print(f"✅ WAN 2.1 repository cloned to: {wan_repo_dir}")
-                return wan_repo_dir
-                
-            except (subprocess.CalledProcessError, FileNotFoundError) as e:
-                raise RuntimeError(f"""
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            raise RuntimeError(f"""
 ❌ Failed to clone WAN 2.1 repository: {e}
 
 Please manually clone the repository:
 git clone https://github.com/Wan-Video/Wan2.1.git {wan_repo_dir}
 
-Or install GitPython: pip install GitPython
+Or install Git and ensure it's in your PATH.
 """)
         except Exception as e:
             raise RuntimeError(f"Failed to setup WAN repository: {e}")
@@ -645,7 +673,7 @@ Or install GitPython: pip install GitPython
         # Look for Python files containing "model" or "wan" 
         print(f"🔍 Searching for Python files...")
         python_files = list(repo_path.rglob("*.py"))
-        model_files = [f for f in python_files if any(keyword in f.name.lower() for keyword in ['model', 'wan', 'inference', 'pipeline'])]
+        model_files = [f for f in python_files if any(keyword in f.name.lower() for keyword in ['model', 'wan', 'inference', 'pipeline', 'text2video', 'image2video'])]
         
         print(f"📄 Found {len(python_files)} Python files total")
         print(f"📄 Found {len(model_files)} potentially relevant files:")
@@ -653,36 +681,41 @@ Or install GitPython: pip install GitPython
             relative_path = f.relative_to(repo_path)
             print(f"  📄 {relative_path}")
         
-        possible_dirs = [
-            repo_path,
-            repo_path / "src",
-            repo_path / "wan", 
-            repo_path / "models",
-            repo_path / "wan2.1",
+        # Check for the actual WAN module structure we found
+        wan_code_dirs = [
+            repo_path / "wan",  # Main WAN module directory
+            repo_path,  # Repository root (has generate.py)
         ]
         
-        for code_dir in possible_dirs:
-            # Look for key WAN files
-            if (code_dir / "modeling_wan.py").exists() or \
-               (code_dir / "models" / "modeling_wan.py").exists() or \
-               any(code_dir.glob("**/modeling_wan.py")):
-                print(f"✅ Found WAN code directory: {code_dir}")
-                return code_dir
+        # Look for key WAN files in expected locations
+        for code_dir in wan_code_dirs:
+            if code_dir.exists():
+                key_files = [
+                    code_dir / "text2video.py" if code_dir.name == "wan" else code_dir / "wan" / "text2video.py",
+                    code_dir / "image2video.py" if code_dir.name == "wan" else code_dir / "wan" / "image2video.py",
+                    code_dir / "generate.py" if code_dir.name != "wan" else code_dir / ".." / "generate.py"
+                ]
                 
-        # Search recursively for modeling files
-        for model_file in repo_path.rglob("modeling_*.py"):
-            if "wan" in model_file.name.lower():
-                code_dir = model_file.parent
-                print(f"✅ Found WAN code directory: {code_dir}")
-                return code_dir
-                
+                if any(f.exists() for f in key_files):
+                    print(f"✅ Found WAN code directory: {code_dir}")
+                    return code_dir
+        
+        # Search recursively for the WAN modules
+        for py_file in repo_path.rglob("*.py"):
+            if py_file.name in ["text2video.py", "image2video.py"]:
+                # Found a key WAN file
+                if "wan" in str(py_file.parent):
+                    code_dir = py_file.parent
+                    print(f"✅ Found WAN code directory via {py_file.name}: {code_dir}")
+                    return code_dir
+                    
         # Look for any Python files that might be WAN related
         for py_file in repo_path.rglob("*.py"):
             try:
                 content = py_file.read_text(errors='ignore').lower()
-                if any(keyword in content for keyword in ['flow matching', 'wan', 'text2video']):
+                if any(keyword in content for keyword in ['class wandiffusiontransformer', 'def text2video', 'def image2video']):
                     code_dir = py_file.parent
-                    print(f"✅ Found WAN code directory: {code_dir}")
+                    print(f"✅ Found WAN code directory via content search: {code_dir}")
                     return code_dir
             except Exception:
                 continue
