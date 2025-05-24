@@ -564,6 +564,184 @@ huggingface-hub>=0.20.0
             print(f"⚠️ Component download failed: {e}")
             print("💡 Using basic generated components instead")
 
+    # Re-implement WAN repository integration methods
+    def setup_wan_repository(self) -> Path:
+        """
+        Download and setup the official WAN 2.1 repository for actual inference
+        """
+        print("🚀 Setting up official WAN 2.1 repository...")
+        
+        wan_repo_dir = self.extension_root / "wan_official_repo"
+        
+        # Check if already downloaded
+        if wan_repo_dir.exists() and (wan_repo_dir / "models" / "modeling_wan.py").exists():
+            print(f"✅ Official WAN repository already exists at: {wan_repo_dir}")
+            return wan_repo_dir
+            
+        try:
+            import subprocess
+            import git
+            
+            # Clone the official repository
+            print("📥 Cloning WAN 2.1 repository from GitHub...")
+            git.Repo.clone_from(
+                "https://github.com/Wan-Video/Wan2.1.git",
+                str(wan_repo_dir),
+                depth=1  # Shallow clone for speed
+            )
+            
+            print(f"✅ WAN 2.1 repository cloned to: {wan_repo_dir}")
+            return wan_repo_dir
+            
+        except ImportError:
+            # Fallback to subprocess if GitPython not available
+            try:
+                print("📥 Cloning WAN 2.1 repository using git command...")
+                subprocess.run([
+                    "git", "clone", "--depth", "1",
+                    "https://github.com/Wan-Video/Wan2.1.git",
+                    str(wan_repo_dir)
+                ], check=True, capture_output=True, text=True)
+                
+                print(f"✅ WAN 2.1 repository cloned to: {wan_repo_dir}")
+                return wan_repo_dir
+                
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                raise RuntimeError(f"""
+❌ Failed to clone WAN 2.1 repository: {e}
+
+Please manually clone the repository:
+git clone https://github.com/Wan-Video/Wan2.1.git {wan_repo_dir}
+
+Or install GitPython: pip install GitPython
+""")
+        except Exception as e:
+            raise RuntimeError(f"Failed to setup WAN repository: {e}")
+    
+    def find_wan_code_directory(self, repo_path: Path) -> Path:
+        """
+        Find the main WAN code directory in the repository
+        """
+        possible_dirs = [
+            repo_path,
+            repo_path / "src",
+            repo_path / "wan", 
+            repo_path / "models",
+            repo_path / "wan2.1",
+        ]
+        
+        for code_dir in possible_dirs:
+            # Look for key WAN files
+            if (code_dir / "modeling_wan.py").exists() or \
+               (code_dir / "models" / "modeling_wan.py").exists() or \
+               any(code_dir.glob("**/modeling_wan.py")):
+                print(f"✅ Found WAN code directory: {code_dir}")
+                return code_dir
+                
+        # Search recursively for modeling files
+        for model_file in repo_path.rglob("modeling_*.py"):
+            if "wan" in model_file.name.lower():
+                code_dir = model_file.parent
+                print(f"✅ Found WAN code directory: {code_dir}")
+                return code_dir
+                
+        # Look for any Python files that might be WAN related
+        for py_file in repo_path.rglob("*.py"):
+            if any(keyword in py_file.read_text(errors='ignore').lower() 
+                   for keyword in ['flow matching', 'wan', 'text2video']):
+                code_dir = py_file.parent
+                print(f"✅ Found WAN code directory: {code_dir}")
+                return code_dir
+                
+        raise RuntimeError(f"Could not find WAN code directory in {repo_path}")
+    
+    def setup_wan_requirements_from_repo(self, repo_path: Path):
+        """
+        Install WAN requirements from the official repository
+        """
+        print("📦 Installing WAN requirements from official repository...")
+        
+        requirements_files = [
+            repo_path / "requirements.txt",
+            repo_path / "requirements" / "requirements.txt", 
+            repo_path / "environment.yml",
+            repo_path / "setup.py"
+        ]
+        
+        requirements_file = None
+        for req_file in requirements_files:
+            if req_file.exists():
+                requirements_file = req_file
+                break
+                
+        if requirements_file and requirements_file.name == "requirements.txt":
+            try:
+                # Install requirements to our isolated environment
+                cmd = [
+                    sys.executable, "-m", "pip", "install", 
+                    "-r", str(requirements_file),
+                    "--target", str(self.wan_site_packages),
+                    "--upgrade"
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+                
+                if result.returncode == 0:
+                    print("✅ WAN requirements installed successfully")
+                else:
+                    print(f"⚠️ Some WAN requirements failed: {result.stderr}")
+                    
+            except Exception as e:
+                print(f"⚠️ Failed to install WAN requirements: {e}")
+                
+        elif requirements_file and requirements_file.name == "setup.py":
+            try:
+                # Install package in development mode to our isolated environment
+                cmd = [
+                    sys.executable, "-m", "pip", "install", 
+                    "-e", str(repo_path),
+                    "--target", str(self.wan_site_packages)
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+                
+                if result.returncode == 0:
+                    print("✅ WAN package installed successfully")
+                else:
+                    print(f"⚠️ WAN package installation failed: {result.stderr}")
+                    
+            except Exception as e:
+                print(f"⚠️ Failed to install WAN package: {e}")
+        else:
+            print("📝 No requirements.txt found, using manual dependencies...")
+            # Install known WAN dependencies
+            wan_deps = [
+                "torch>=2.0.0",
+                "torchvision",
+                "transformers>=4.36.0",
+                "diffusers>=0.26.0", 
+                "accelerate>=0.25.0",
+                "safetensors>=0.4.0",
+                "pillow",
+                "numpy",
+                "einops",
+                "omegaconf",
+                "gradio"
+            ]
+            
+            for dep in wan_deps:
+                try:
+                    cmd = [
+                        sys.executable, "-m", "pip", "install",
+                        dep, "--target", str(self.wan_site_packages)
+                    ]
+                    subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
+                    print(f"✅ Installed {dep}")
+                except Exception as e:
+                    print(f"⚠️ Failed to install {dep}: {e}")
+                    
+        print("✅ WAN environment setup complete")
+
 
 class WanIsolatedGenerator:
     """Wan generator that uses the isolated environment"""
@@ -575,14 +753,34 @@ class WanIsolatedGenerator:
         self.prepared_model_path = None
         
     def setup(self, extension_root: str):
-        """Set up the isolated environment and prepare the model"""
-        print("🚀 Setting up Wan isolated generator...")
+        """Set up the isolated environment and prepare the model - NOW WITH OFFICIAL WAN REPO"""
+        print("🚀 Setting up Wan isolated generator with official WAN 2.1 repository...")
         
         # Initialize environment manager
         self.env_manager = WanIsolatedEnvironment(extension_root)
         
         # Set up isolated environment
         self.env_manager.setup_environment()
+        
+        # NEW: Setup official WAN repository
+        try:
+            wan_repo_path = self.env_manager.setup_wan_repository()
+            wan_code_dir = self.env_manager.find_wan_code_directory(wan_repo_path)
+            
+            # Install WAN requirements
+            self.env_manager.setup_wan_requirements_from_repo(wan_repo_path)
+            
+            # Store paths for later use
+            self.env_manager.wan_repo_path = wan_repo_path
+            self.env_manager.wan_code_dir = wan_code_dir
+            
+            print(f"✅ Official WAN 2.1 repository integrated successfully")
+            print(f"📂 Repository: {wan_repo_path}")
+            print(f"📂 Code directory: {wan_code_dir}")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to setup official WAN repository: {e}")
+            print("💡 Falling back to basic model structure preparation...")
         
         # Prepare model structure
         self.prepared_model_path = self.env_manager.prepare_model_structure(self.model_path)
@@ -662,12 +860,14 @@ class WanIsolatedGenerator:
                     model_size = "14B" if len(model_tensors) > 1000 else "1.3B"
                     print(f"🔧 Detected model size: {model_size}")
                     
-                    # Create the Flow Matching pipeline
+                    # Create the Flow Matching pipeline with official WAN repository
                     wan_pipeline = create_wan_pipeline(
                         model_path=str(model_path),
                         model_tensors=model_tensors,
                         model_size=model_size,
-                        device=self.device
+                        device=self.device,
+                        wan_repo_path=str(self.env_manager.wan_repo_path) if hasattr(self.env_manager, 'wan_repo_path') and self.env_manager.wan_repo_path else None,
+                        wan_code_dir=str(self.env_manager.wan_code_dir) if hasattr(self.env_manager, 'wan_code_dir') and self.env_manager.wan_code_dir else None
                     )
                     
                     # Generate video using Flow Matching

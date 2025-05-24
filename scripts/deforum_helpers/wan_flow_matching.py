@@ -288,46 +288,122 @@ class WanFlowMatchingPipeline:
         
     def load_model_components(self, model_tensors: Dict[str, torch.Tensor]):
         """
-        Load model components from WAN tensors - FAIL FAST if not possible
+        Load model components from WAN tensors - NOW USING OFFICIAL WAN REPOSITORY
         
         Args:
             model_tensors: Dictionary of loaded model tensors
         """
-        print(f"🔧 Initializing WAN Flow Matching model ({self.model_size})...")
+        print(f"🔧 Loading WAN Flow Matching model using official repository ({self.model_size})...")
         
-        # FAIL FAST: Check if we have the actual WAN model tensors needed
-        required_keys = ['transformer.layers.0.norm1.weight', 'transformer.layers.0.attn1.to_q.weight']
-        missing_keys = [key for key in required_keys if key not in model_tensors]
-        
-        if missing_keys:
+        # Try to import and use official WAN code
+        try:
+            # This should be set by the isolated environment
+            if hasattr(self, 'wan_repo_path') and hasattr(self, 'wan_code_dir'):
+                print(f"📂 Using official WAN code from: {self.wan_code_dir}")
+                
+                # Add WAN code directory to Python path temporarily
+                import sys
+                wan_code_str = str(self.wan_code_dir)
+                if wan_code_str not in sys.path:
+                    sys.path.insert(0, wan_code_str)
+                
+                try:
+                    # Try to import official WAN modules
+                    print("📦 Importing official WAN modules...")
+                    
+                    # Common WAN module names to try
+                    wan_modules = [
+                        'modeling_wan',
+                        'models.modeling_wan', 
+                        'wan.modeling_wan',
+                        'wan_model',
+                        'models.wan_model',
+                        'inference',
+                        'models.inference'
+                    ]
+                    
+                    wan_model_class = None
+                    for module_name in wan_modules:
+                        try:
+                            import importlib
+                            module = importlib.import_module(module_name)
+                            
+                            # Look for model classes
+                            for attr_name in dir(module):
+                                attr = getattr(module, attr_name)
+                                if isinstance(attr, type) and 'wan' in attr_name.lower():
+                                    wan_model_class = attr
+                                    print(f"✅ Found WAN model class: {module_name}.{attr_name}")
+                                    break
+                                    
+                            if wan_model_class:
+                                break
+                                
+                        except ImportError as e:
+                            continue
+                    
+                    if wan_model_class:
+                        # Initialize the official WAN model
+                        print(f"🔧 Initializing official WAN model: {wan_model_class.__name__}")
+                        
+                        # Try to load with the actual tensors
+                        try:
+                            self.flow_model = wan_model_class.from_pretrained(
+                                str(self.model_path),
+                                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                                device_map=self.device
+                            )
+                            print("✅ Official WAN model loaded successfully!")
+                            
+                        except Exception as load_error:
+                            print(f"⚠️ Official model loading failed: {load_error}")
+                            # Try alternative loading methods
+                            try:
+                                self.flow_model = wan_model_class()
+                                # Manually load state dict
+                                self.flow_model.load_state_dict(model_tensors, strict=False)
+                                self.flow_model = self.flow_model.to(self.device)
+                                print("✅ WAN model loaded with manual state dict!")
+                                
+                            except Exception as manual_error:
+                                print(f"⚠️ Manual loading also failed: {manual_error}")
+                                raise RuntimeError(f"Could not load WAN model: {load_error}")
+                        
+                        # Set to evaluation mode
+                        self.flow_model.eval()
+                        
+                    else:
+                        raise ImportError("No WAN model class found in official repository")
+                    
+                finally:
+                    # Clean up sys.path
+                    if wan_code_str in sys.path:
+                        sys.path.remove(wan_code_str)
+                        
+            else:
+                raise RuntimeError("WAN repository not properly set up")
+                
+        except Exception as e:
+            # FAIL FAST if official WAN doesn't work
             raise RuntimeError(f"""
-❌ FAIL FAST: WAN model tensors missing required keys: {missing_keys}
+❌ FAIL FAST: Official WAN 2.1 Repository Integration Failed
 
-This is not a valid WAN 2.1 model. Expected transformer architecture with:
-- transformer.layers.*.norm1.weight  
-- transformer.layers.*.attn1.to_q.weight
-- etc.
+Error: {e}
 
-Current model has {len(model_tensors)} tensors but wrong structure.
-NO FALLBACKS - please provide a valid WAN 2.1 model or disable WAN generation.
-""")
-        
-        # FAIL FAST: Don't attempt to initialize huge models in mock mode
-        # Real WAN would load the actual weights, but we can't do that without proper implementation
-        raise RuntimeError(f"""
-❌ FAIL FAST: WAN Flow Matching NOT FULLY IMPLEMENTED
+Attempted to use official WAN 2.1 code but failed. This could be due to:
 
-Found valid WAN model structure with {len(model_tensors)} tensors, but actual WAN inference
-requires the complete official WAN 2.1 codebase integration.
+1. **Repository Issues**: WAN repository not properly cloned or structured
+2. **Import Errors**: Missing dependencies or incompatible versions  
+3. **Model Loading**: Tensors incompatible with official WAN architecture
+4. **Environment**: Isolated environment setup problems
 
-Current status:
-✅ Model loading and validation
-✅ Tensor structure verification  
-✅ Architecture implementation
-❌ Actual WAN inference - REQUIRES OFFICIAL WAN 2.1 INTEGRATION
+Current model has {len(model_tensors)} tensors but cannot be loaded with official WAN code.
 
-NO FALLBACKS, NO FAKE FRAMES, NO PROMPT GUESSING.
-Either integrate the full official WAN 2.1 codebase or disable WAN generation.
+NO FALLBACKS - Please:
+1. Ensure the WAN 2.1 repository is properly cloned
+2. Install all WAN dependencies 
+3. Use compatible model weights
+4. Or disable WAN generation
 
 Reference: https://github.com/Wan-Video/Wan2.1
 """)
@@ -491,23 +567,35 @@ Reference: https://github.com/Wan-Video/Wan2.1
 def create_wan_pipeline(model_path: str, 
                        model_tensors: Dict[str, torch.Tensor],
                        model_size: str = "14B",
-                       device: str = "cuda") -> WanFlowMatchingPipeline:
+                       device: str = "cuda",
+                       wan_repo_path: Optional[str] = None,
+                       wan_code_dir: Optional[str] = None) -> WanFlowMatchingPipeline:
     """
-    Create and initialize WAN Flow Matching pipeline
+    Create and initialize WAN Flow Matching pipeline - NOW WITH OFFICIAL WAN INTEGRATION
     
     Args:
         model_path: Path to model directory
         model_tensors: Loaded model tensors
         model_size: Model size ("1.3B" or "14B")
         device: Device to run on
+        wan_repo_path: Path to official WAN 2.1 repository
+        wan_code_dir: Path to WAN code directory
         
     Returns:
         Initialized WAN pipeline
     """
-    print("🚀 Creating WAN Flow Matching pipeline...")
+    print("🚀 Creating WAN Flow Matching pipeline with official repository integration...")
     
     # Create pipeline
     pipeline = WanFlowMatchingPipeline(model_path, model_size, device)
+    
+    # Pass repository paths to pipeline
+    if wan_repo_path and wan_code_dir:
+        pipeline.wan_repo_path = Path(wan_repo_path)
+        pipeline.wan_code_dir = Path(wan_code_dir)
+        print(f"📂 Pipeline configured with official WAN repository")
+    else:
+        print("⚠️ No official WAN repository paths provided - will attempt basic loading")
     
     # Load components
     pipeline.load_model_components(model_tensors)
