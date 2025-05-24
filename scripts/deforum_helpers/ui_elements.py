@@ -455,9 +455,17 @@ def wan_generate_video(*component_args):
         
         class MockProcessing:
             def __init__(self):
-                # Use the correct webui-forge output directory structure for WAN
-                webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-                self.outpath_samples = os.path.join(webui_root, 'outputs', 'wan-images')
+                # Fix output directory: go from extensions/sd-forge-deforum/scripts/deforum_helpers/ui_elements.py
+                # up to webui-forge/webui/outputs/wan-images (NOT extensions/outputs)
+                current_file = os.path.abspath(__file__)
+                # Go up 4 levels: ui_elements.py -> deforum_helpers -> scripts -> sd-forge-deforum -> extensions
+                extensions_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+                # Go up 1 more to get to webui directory
+                webui_dir = os.path.dirname(extensions_dir)
+                wan_output_dir = os.path.join(webui_dir, 'outputs', 'wan-images')
+                # Create the directory if it doesn't exist
+                os.makedirs(wan_output_dir, exist_ok=True)
+                self.outpath_samples = wan_output_dir
         
         args_dict['p'] = MockProcessing()
         

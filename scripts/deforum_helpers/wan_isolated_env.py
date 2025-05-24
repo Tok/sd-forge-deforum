@@ -231,23 +231,23 @@ huggingface-hub>=0.20.0
             print("✅ Generated text encoder config")
     
     def _create_main_config(self) -> Dict[str, Any]:
-        """Create main config.json that works with standard UNet models"""
+        """Create main config.json that works with video generation models"""
         return {
-            "_class_name": "UNet2DConditionModel",
+            "_class_name": "UNet3DConditionModel", 
             "_diffusers_version": "0.26.0",
             "in_channels": 4,
             "out_channels": 4,
             "down_block_types": [
-                "CrossAttnDownBlock2D",
-                "CrossAttnDownBlock2D", 
-                "CrossAttnDownBlock2D",
-                "DownBlock2D"
+                "CrossAttnDownBlock3D",
+                "CrossAttnDownBlock3D", 
+                "CrossAttnDownBlock3D",
+                "DownBlock3D"
             ],
             "up_block_types": [
-                "UpBlock2D",
-                "CrossAttnUpBlock2D",
-                "CrossAttnUpBlock2D",
-                "CrossAttnUpBlock2D"
+                "UpBlock3D",
+                "CrossAttnUpBlock3D",
+                "CrossAttnUpBlock3D", 
+                "CrossAttnUpBlock3D"
             ],
             "block_out_channels": [320, 640, 1280, 1280],
             "layers_per_block": 2,
@@ -258,14 +258,14 @@ huggingface-hub>=0.20.0
         }
     
     def _create_model_index(self) -> Dict[str, Any]:
-        """Create a basic model_index.json that works with multiple pipeline types"""
+        """Create a basic model_index.json that works with video generation pipelines"""
         return {
             "_class_name": "DiffusionPipeline",
             "_diffusers_version": "0.26.0",
             "scheduler": ["diffusers", "EulerDiscreteScheduler"],
             "text_encoder": ["transformers", "CLIPTextModel"], 
             "tokenizer": ["transformers", "CLIPTokenizer"],
-            "unet": ["diffusers", "UNet2DConditionModel"],
+            "unet": ["diffusers", "UNet3DConditionModel"],
             "vae": ["diffusers", "AutoencoderKL"]
         }
     
@@ -560,124 +560,48 @@ class WanIsolatedGenerator:
         with self.env_manager.isolated_imports():
             import torch
             
-            # Try different pipeline types in order of preference for video generation
-            pipeline_classes = []
-            
+            # For WAN models, try to load with basic DiffusionPipeline auto-detection
             try:
-                # First try standard stable diffusion pipelines (most likely to work)
-                from diffusers import StableDiffusionPipeline
-                pipeline_classes.append(("StableDiffusionPipeline", StableDiffusionPipeline))
-            except ImportError:
-                pass
-                
-            try:
-                # Try generic DiffusionPipeline (auto-detects model type)
                 from diffusers import DiffusionPipeline
-                pipeline_classes.append(("DiffusionPipeline", DiffusionPipeline))
-            except ImportError:
-                pass
-            
-            try:
-                # Try dedicated video pipelines
-                from diffusers import I2VGenXLPipeline
-                pipeline_classes.append(("I2VGenXLPipeline", I2VGenXLPipeline))
-            except ImportError:
-                pass
-            
-            try:
-                from diffusers import StableVideoDiffusionPipeline
-                pipeline_classes.append(("StableVideoDiffusionPipeline", StableVideoDiffusionPipeline))
-            except ImportError:
-                pass
-            
-            try:
-                # Try Flux as last resort (requires specific model format)
-                from diffusers import FluxPipeline
-                pipeline_classes.append(("FluxPipeline", FluxPipeline))
-            except ImportError:
-                pass
-            
-            if not pipeline_classes:
-                raise RuntimeError("No compatible pipeline classes found in diffusers")
-            
-            # Try loading pipelines in order
-            for pipeline_name, pipeline_class in pipeline_classes:
+                import torch
+                
+                print("🧪 Attempting to load with auto-detection DiffusionPipeline...")
+                
+                # Use DiffusionPipeline.from_pretrained with auto-detection
+                pipeline = DiffusionPipeline.from_pretrained(
+                    self.prepared_model_path,
+                    torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                    trust_remote_code=True,  # Allow custom pipeline code
+                    use_safetensors=True
+                ).to(self.device)
+                
+                print(f"✅ Successfully loaded auto-detected pipeline: {type(pipeline).__name__}")
+                
+                # Generate frames using the loaded pipeline
+                generation_kwargs = kwargs.copy()
+                
+                # Try to call the pipeline with the prompt
                 try:
-                    print(f"🧪 Attempting to load {pipeline_name}...")
+                    result = pipeline(prompt=prompt, **generation_kwargs)
                     
-                    # Load pipeline
-                    pipeline = pipeline_class.from_pretrained(
-                        self.prepared_model_path,
-                        torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                        safety_checker=None,  # Disable safety checker for speed
-                        requires_safety_checker=False
-                    ).to(self.device)
-                    
-                    print(f"✅ Successfully loaded {pipeline_name}")
-                    
-                    # Handle different pipeline argument patterns
-                    generation_kwargs = kwargs.copy()
-                    
-                    # Check if we're doing image-to-video (image parameter provided)
-                    is_img2video = 'image' in generation_kwargs
-                    
-                    # Remove video-specific args that image pipelines don't understand
-                    if pipeline_name in ["FluxPipeline"]:
-                        generation_kwargs.pop('num_frames', None)
-                        generation_kwargs.pop('width', None)
-                        generation_kwargs.pop('height', None)
-                        
-                        # For image pipelines, generate multiple images as "frames"
-                        num_frames = kwargs.get('num_frames', 1)
-                        frames = []
-                        
-                        if is_img2video:
-                            # For img2video with image pipeline, use the image as init_image
-                            init_image = generation_kwargs.pop('image', None)
-                            if init_image:
-                                # Use image-to-image generation
-                                for i in range(num_frames):
-                                    result = pipeline(prompt=prompt, image=init_image, **generation_kwargs)
-                                    if hasattr(result, 'images') and result.images:
-                                        frames.extend(result.images)
-                                    else:
-                                        frames.append(result)
-                            else:
-                                # Fallback to text-to-image
-                                for i in range(num_frames):
-                                    result = pipeline(prompt=prompt, **generation_kwargs)
-                                    if hasattr(result, 'images') and result.images:
-                                        frames.extend(result.images)
-                                    else:
-                                        frames.append(result)
-                        else:
-                            # Text-to-image generation
-                            for i in range(num_frames):
-                                result = pipeline(prompt=prompt, **generation_kwargs)
-                                if hasattr(result, 'images') and result.images:
-                                    frames.extend(result.images)
-                                else:
-                                    frames.append(result)
+                    # Extract frames from result
+                    if hasattr(result, 'frames'):
+                        frames = result.frames[0] if isinstance(result.frames, list) else result.frames
+                    elif hasattr(result, 'images'):
+                        frames = result.images
+                    elif isinstance(result, list):
+                        frames = result
                     else:
-                        # For video pipelines, use all arguments
-                        result = pipeline(prompt=prompt, **generation_kwargs)
-                        
-                        # Convert result to frames
-                        if hasattr(result, 'frames'):
-                            frames = result.frames[0] if isinstance(result.frames, list) else result.frames
-                        elif hasattr(result, 'images'):
-                            frames = result.images
-                        elif isinstance(result, list):
-                            frames = result
-                        else:
-                            frames = [result]
+                        frames = [result]
                     
-                    print(f"✅ Generated {len(frames)} frames using {pipeline_name}")
+                    print(f"✅ Generated {len(frames)} frames using auto-detected pipeline")
                     return frames
                     
-                except Exception as e:
-                    print(f"⚠️ {pipeline_name} failed: {e}")
-                    continue
-            
-            # If all pipelines failed
-            raise RuntimeError("All pipeline loading attempts failed")
+                except Exception as gen_error:
+                    print(f"⚠️ Generation failed: {gen_error}")
+                    
+            except Exception as e:
+                print(f"⚠️ Auto-detection pipeline failed: {e}")
+                
+            # If auto-detection fails, the model might not be compatible
+            raise RuntimeError("WAN model format not compatible with available diffusers pipelines")
