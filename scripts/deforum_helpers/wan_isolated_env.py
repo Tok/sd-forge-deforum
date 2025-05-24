@@ -592,11 +592,11 @@ class WanIsolatedGenerator:
         print("✅ Wan isolated generator setup complete!")
     
     def generate_video(self, prompt: str, **kwargs) -> List:
-        """Generate video using WAN native approach - simplified without external dependencies"""
+        """Generate video using WAN - FAIL FAST if not implemented"""
         if not self.env_manager or not self.prepared_model_path:
             raise RuntimeError("Generator not properly set up")
         
-        print(f"🎬 Generating video with WAN native approach: '{prompt}'")
+        print(f"🎬 Attempting WAN video generation: '{prompt}'")
         
         with self.env_manager.isolated_imports():
             import torch
@@ -606,7 +606,7 @@ class WanIsolatedGenerator:
             from pathlib import Path
             
             try:
-                print("🧪 Loading WAN model with native approach...")
+                print("🧪 Validating WAN model...")
                 
                 model_path = Path(self.prepared_model_path)
                 
@@ -633,9 +633,9 @@ class WanIsolatedGenerator:
                 if duration is not None and fps is not None:
                     num_frames = int(duration * fps)
                 
-                print(f"🎬 Generating {num_frames} frames at {width}x{height}")
+                print(f"🎬 Request: {num_frames} frames at {width}x{height}")
                 
-                # Simple native approach - load and use the model directly
+                # Load and validate WAN model tensors - FAIL FAST
                 try:
                     print("🔄 Loading WAN model tensors...")
                     
@@ -651,62 +651,44 @@ class WanIsolatedGenerator:
                     
                     print(f"✅ Loaded {len(model_tensors)} tensors from {len(shard_files)} shards")
                     
-                    # For now, generate simple placeholder frames with proper structure
-                    # This is a minimal working implementation that can be enhanced later
-                    print("🎭 Generating video frames...")
-                    
-                    frames = []
-                    for i in range(num_frames):  # Use actual frame count
-                        # Create a frame with some basic pattern
-                        frame_data = np.random.randint(0, 255, (height, width, 3), dtype=np.uint8)
-                        
-                        # Add some structure to make it less random
-                        # Simple gradient and pattern based on prompt hash and frame number
-                        prompt_hash = hash(prompt) % 256
-                        for y in range(height):
-                            for x in range(width):
-                                # Create a subtle gradient based on prompt and frame
-                                r = (prompt_hash + x // 4 + i * 5) % 256
-                                g = (prompt_hash + y // 4 + i * 3) % 256  
-                                b = (prompt_hash + (x + y) // 8 + i * 7) % 256
-                                frame_data[y, x] = [r, g, b]
-                        
-                        # Convert to PIL Image
-                        frame_image = Image.fromarray(frame_data)
-                        frames.append(frame_image)
-                        
-                        if (i + 1) % 8 == 0 or i == num_frames - 1:
-                            print(f"📽️ Generated {i + 1}/{num_frames} frames...")
-                    
-                    print(f"✅ Successfully generated {len(frames)} frames with WAN native approach")
-                    return frames
-                    
-                except Exception as native_error:
-                    print(f"⚠️ WAN native approach failed: {native_error}")
+                    # FAIL FAST: WAN diffusion pipeline not yet implemented
                     raise RuntimeError(f"""
-🚫 WAN Native Generation Failed
+🚫 WAN Diffusion Pipeline Not Yet Implemented
 
-The WAN model could not generate video. This could be due to:
+WAN model loaded successfully ({len(model_tensors)} tensors from {len(shard_files)} shards)
+However, the actual WAN diffusion pipeline is not yet implemented.
 
-1. **Model Loading**: Could not load WAN model tensors properly
-2. **GPU Memory**: Insufficient GPU memory for the model size  
-3. **Model Format**: WAN model format not as expected
-4. **Tensor Issues**: Issues reading safetensors files
+Current Status:
+✅ Model loading and validation - WORKING
+✅ Environment isolation - WORKING  
+✅ Prompt scheduling - WORKING
+✅ Frame saving - WORKING
+❌ WAN diffusion pipeline - NOT IMPLEMENTED
 
-Error details: {native_error}
+Next Steps Required:
+1. Implement UNet3D forward pass with loaded tensors
+2. Implement text encoder integration for prompt processing
+3. Implement scheduler/sampler integration
+4. Implement video-specific diffusion loop
 
-Suggestions:
-- Check that all shard files are valid and uncorrupted
-- Ensure sufficient system memory to load model
-- Verify model is a valid WAN 2.1 model
+This is a complex implementation that requires:
+- Proper diffusion pipeline architecture
+- Text-to-video and image-to-video modes
+- Memory-efficient batching for video generation
+- Integration with WAN-specific sampling methods
+
+Error: WAN model tensors loaded but diffusion pipeline not implemented.
 """)
+                    
+                except Exception as load_error:
+                    raise RuntimeError(f"Failed to load WAN model tensors: {load_error}")
                 
             except Exception as e:
-                print(f"❌ WAN model setup failed: {e}")
+                print(f"❌ WAN model validation failed: {e}")
                 raise RuntimeError(f"""
-🚫 WAN Model Setup Failed
+🚫 WAN Model Validation Failed
 
-Could not set up the WAN model. Common causes:
+Could not validate the WAN model. Common causes:
 
 1. **Invalid Model Path**: Check that {self.prepared_model_path} exists and contains valid model files
 2. **Missing Files**: Model shard files not found or incomplete

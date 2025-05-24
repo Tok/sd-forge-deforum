@@ -421,6 +421,8 @@ def wan_generate_video(*component_args):
         import modules.shared as shared
         import os
         import time
+        import numpy as np
+        from PIL import Image
         
         print("🎬 Wan video generation triggered from Wan tab")
         print("🔒 Using isolated Wan generation path (bypassing run_deforum)")
@@ -460,9 +462,8 @@ def wan_generate_video(*component_args):
                 current_file = os.path.abspath(__file__)
                 # Go up 4 levels: ui_elements.py -> deforum_helpers -> scripts -> sd-forge-deforum -> extensions
                 extensions_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
-                # Go up 1 more to get to webui directory
                 webui_dir = os.path.dirname(extensions_dir)
-                # Fix: Remove extra underscore from directory name and ensure proper timestring interpolation
+                # Simple clean directory name WITHOUT extra underscores or templates
                 output_subdir = f"{batch_name}_{timestring}"
                 wan_output_dir = os.path.join(webui_dir, 'outputs', 'wan-images', output_subdir)
                 # Create the directory if it doesn't exist
@@ -479,33 +480,31 @@ def wan_generate_video(*component_args):
         if not args_loaded_ok:
             return "❌ Failed to load arguments for Wan generation"
         
-        # Fix output directory after process_args in case it was overridden with template
+        # CRITICAL: Fix output directory after process_args since it mangles our clean path
         timestring_final = time.strftime('%Y%m%d%H%M%S')
         batch_name_final = args_dict.get('batch_name', 'Deforum')
         
-        # Debug: Check what root.timestring contains
+        # Debug: Check what process_args did to our directory
         print(f"🔍 Debug - Original root.timestring: '{root.timestring}'")
         print(f"🔍 Debug - Original args.outdir: '{args.outdir}'")
         
-        # CLEAN APPROACH: Build output directory from scratch to avoid template issues
+        # COMPLETELY REBUILD output directory to override any templates/corruption
         current_file = os.path.abspath(__file__)
         extensions_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
         webui_dir = os.path.dirname(extensions_dir)
         
         # Simple, clean directory name
-        output_subdir_final = f"{batch_name_final}_{timestring_final}"
-        wan_output_dir_final = os.path.join(webui_dir, 'outputs', 'wan-images', output_subdir_final)
+        clean_output_subdir = f"{batch_name_final}_{timestring_final}"
+        clean_wan_output_dir = os.path.join(webui_dir, 'outputs', 'wan-images', clean_output_subdir)
         
         # Create directory
-        os.makedirs(wan_output_dir_final, exist_ok=True)
+        os.makedirs(clean_wan_output_dir, exist_ok=True)
         
-        # COMPLETELY OVERRIDE args.outdir with clean path (ignore whatever was there before)
-        args.outdir = wan_output_dir_final
-        
-        # Also fix root.timestring
+        # FORCE override args.outdir with our clean path
+        args.outdir = clean_wan_output_dir
         root.timestring = timestring_final
         
-        print(f"🔧 Clean output directory: {wan_output_dir_final}")
+        print(f"🔧 FORCED clean output directory: {clean_wan_output_dir}")
         print(f"🔧 Fixed root.timestring: '{root.timestring}'")
         
         # Validate Wan settings
@@ -624,8 +623,17 @@ def wan_generate_video(*component_args):
                         print(f"⚠️ No frames generated for clip {i+1}")
                         
                 except Exception as e:
-                    print(f"❌ ERROR generating clip {i+1}: {e}")
-                    # Continue with next clip instead of failing completely
+                    error_msg = f"❌ CLIP {i+1} GENERATION FAILED: {e}"
+                    print(error_msg)
+                    
+                    # FAIL FAST: If this is a pipeline not implemented error, don't continue
+                    if "WAN Diffusion Pipeline Not Yet Implemented" in str(e):
+                        print("🚫 WAN pipeline not implemented - stopping generation")
+                        raise e
+                    
+                    # For other errors, continue with next clip
+                    print(f"⚠️ Continuing with next clip after error in clip {i+1}")
+                    continue
             
             print(f"\n🎉 Wan Video Generation Complete!")
             print(f"📊 Generated {len(prompt_schedule)} clips with {total_frames_generated} total frames")
@@ -642,8 +650,8 @@ def wan_generate_video(*component_args):
                     # Get ffmpeg parameters
                     f_location, f_crf, f_preset = get_ffmpeg_params()
                     
-                    # Set up paths for video creation
-                    image_path = os.path.join(args.outdir, f"{root.timestring}_%09d.png")
+                    # Set up paths for video creation - Fix pattern to match saved filenames
+                    image_path = os.path.join(args.outdir, "%08d.png")  # Match our 8-digit frame names
                     mp4_path = os.path.join(args.outdir, f"{root.timestring}_wan_video.mp4")
                     
                     # Handle audio

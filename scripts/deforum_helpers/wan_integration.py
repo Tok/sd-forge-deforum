@@ -1,7 +1,7 @@
 """
 Wan 2.1 Integration Module for Deforum
 Handles text-to-video and image-to-video generation using Wan 2.1 with isolated environment
-FAIL FAST - No fallbacks, proper error propagation
+FAIL FAST - No fallbacks, proper error propagation, no placeholder generation
 """
 
 import os
@@ -230,17 +230,35 @@ class WanVideoGenerator:
             raise ValueError("FPS must be positive")
         return max(1, int(duration * fps))
         
-    def extract_last_frame(self, video_frames: List[np.ndarray]) -> np.ndarray:
-        """Extract the last frame from a video sequence"""
+    def extract_last_frame(self, video_frames: List) -> np.ndarray:
+        """Extract the last frame from a video sequence - handles both PIL Images and numpy arrays"""
         if not video_frames:
             raise ValueError("Empty video frames list")
-        return video_frames[-1].copy()
         
-    def extract_first_frame(self, video_frames: List[np.ndarray]) -> np.ndarray:
-        """Extract the first frame from a video sequence"""
+        last_frame = video_frames[-1]
+        
+        # Convert PIL Image to numpy array if needed
+        if hasattr(last_frame, 'mode'):  # PIL Image
+            return np.array(last_frame)
+        elif isinstance(last_frame, np.ndarray):
+            return last_frame.copy()
+        else:
+            raise ValueError(f"Unsupported frame type: {type(last_frame)}")
+        
+    def extract_first_frame(self, video_frames: List) -> np.ndarray:
+        """Extract the first frame from a video sequence - handles both PIL Images and numpy arrays"""
         if not video_frames:
             raise ValueError("Empty video frames list")
-        return video_frames[0].copy()
+        
+        first_frame = video_frames[0]
+        
+        # Convert PIL Image to numpy array if needed
+        if hasattr(first_frame, 'mode'):  # PIL Image
+            return np.array(first_frame)
+        elif isinstance(first_frame, np.ndarray):
+            return first_frame.copy()
+        else:
+            raise ValueError(f"Unsupported frame type: {type(first_frame)}")
         
     def blend_frames(self, frame1: np.ndarray, frame2: np.ndarray, alpha: float = 0.5) -> np.ndarray:
         """Blend two frames together"""
@@ -358,14 +376,17 @@ class WanPromptScheduler:
             # Calculate duration until next prompt or use default
             if i < len(frame_prompts) - 1:
                 next_frame = frame_prompts[i + 1][0]
-                duration = (next_frame - frame_num) / fps
-                # Ensure minimum duration
-                duration = max(duration, 1.0)
+                # Calculate exact frame count between keyframes
+                frame_count = next_frame - frame_num
+                duration = frame_count / fps
+                # Don't apply artificial minimums - use exact frame counts
+                # duration = max(duration, 0.5)  # REMOVED - use actual frame counts
             else:
                 duration = default_duration
                 
-            # Limit maximum duration
-            duration = min(duration, 30.0)
+            # Only limit maximum duration for the last clip
+            if i == len(frame_prompts) - 1:
+                duration = min(duration, 8.0)  # Only apply max to last clip
                 
             clips.append((prompt, start_time, duration))
             
