@@ -326,164 +326,144 @@ class WanFlowMatchingPipeline:
                 
                 # Add WAN code directory to Python path temporarily
                 import sys
-                wan_code_str = str(self.wan_code_dir)
-                if wan_code_str not in sys.path:
-                    sys.path.insert(0, wan_code_str)
+                wan_repo_root = Path(self.wan_repo_path)
+                
+                if str(wan_repo_root) not in sys.path:
+                    sys.path.insert(0, str(wan_repo_root))
                 
                 try:
-                    # Try to import official WAN modules
-                    print("📦 Importing official WAN modules...")
+                    print("📦 Importing official WAN modules and config...")
                     
-                    # First, let's see what Python files are available
-                    wan_code_path = Path(self.wan_code_dir)
-                    print(f"🔍 Searching for modules in: {wan_code_path}")
+                    # Import the official WAN modules 
+                    import wan.text2video as wt2v
                     
-                    # Find all Python files in the WAN repository
-                    python_files = []
-                    for root, dirs, files in os.walk(wan_code_path):
-                        for file in files:
-                            if file.endswith('.py') and not file.startswith('__'):
-                                rel_path = os.path.relpath(os.path.join(root, file), wan_code_path)
-                                module_name = rel_path.replace('\\', '.').replace('/', '.').replace('.py', '')
-                                python_files.append(module_name)
-                    
-                    print(f"📄 Found {len(python_files)} Python modules:")
-                    for f in python_files[:15]:  # Show first 15
-                        print(f"  📄 {f}")
-                    
-                    # Try to import the ACTUAL modules we found
-                    print("🔍 Importing discovered WAN modules...")
-                    
-                    # Add the WAN repository root (not just wan/ dir) to Python path for proper package imports
-                    wan_repo_root = wan_code_path.parent  # Go up one level to repository root
-                    if str(wan_repo_root) not in sys.path:
-                        sys.path.insert(0, str(wan_repo_root))
-                    
-                    # Import the key WAN modules as a package
-                    wan_modules = {}
-                    
-                    # Try importing wan package modules properly
-                    try:
-                        import wan.text2video
-                        wan_modules['text2video'] = wan.text2video
-                        print("✅ Successfully imported wan.text2video module")
-                        
-                        # Check what functions are available
-                        text2video_functions = [name for name in dir(wan.text2video) if not name.startswith('_')]
-                        print(f"🔧 text2video functions: {text2video_functions[:5]}...")
-                        
-                    except Exception as e:
-                        print(f"⚠️ Failed to import wan.text2video: {e}")
-                    
-                    # Try image2video module
-                    try:
-                        import wan.image2video
-                        wan_modules['image2video'] = wan.image2video
-                        print("✅ Successfully imported wan.image2video module")
-                        
-                        # Check what functions are available
-                        image2video_functions = [name for name in dir(wan.image2video) if not name.startswith('_')]
-                        print(f"🔧 image2video functions: {image2video_functions[:5]}...")
-                        
-                    except Exception as e:
-                        print(f"⚠️ Failed to import wan.image2video: {e}")
-                    
-                    # Try modules.model
-                    try:
-                        import wan.modules.model
-                        wan_modules['model'] = wan.modules.model
-                        print("✅ Successfully imported wan.modules.model")
-                        
-                        # Check what classes are available
-                        model_classes = [name for name in dir(wan.modules.model) if not name.startswith('_') and name[0].isupper()]
-                        print(f"🔧 Model classes: {model_classes[:5]}...")
-                        
-                    except Exception as e:
-                        print(f"⚠️ Failed to import wan.modules.model: {e}")
-                    
-                    # Try vace module for VAE
-                    try:
-                        import wan.vace
-                        wan_modules['vace'] = wan.vace
-                        print("✅ Successfully imported wan.vace module")
-                        
-                    except Exception as e:
-                        print(f"⚠️ Failed to import wan.vace: {e}")
-                    
-                    if wan_modules:
-                        print(f"🎉 Successfully imported {len(wan_modules)} WAN modules: {list(wan_modules.keys())}")
-                        
-                        # Now try to actually run WAN generation
-                        print("🚀 Attempting WAN video generation using official modules...")
-                        
-                        if 'text2video' in wan_modules:
-                            # Use the official text2video module
-                            text2video_module = wan_modules['text2video']
-                            
-                            # Look for generation functions in the module
-                            generation_functions = [name for name in dir(text2video_module) 
-                                                  if 'generate' in name.lower() or 'infer' in name.lower() or 'run' in name.lower()]
-                            
-                            print(f"🔧 Available generation functions: {generation_functions}")
-                            
-                            if generation_functions:
-                                # Try to use the first generation function
-                                gen_func_name = generation_functions[0]
-                                gen_func = getattr(text2video_module, gen_func_name)
-                                
-                                print(f"🎬 Attempting generation using {gen_func_name}...")
-                                
-                                try:
-                                    # Try to call the generation function with our parameters
-                                    # This is experimental - the actual API may be different
-                                    result = gen_func(
-                                        prompt=prompt,
-                                        num_frames=num_frames,
-                                        height=height,
-                                        width=width,
-                                        num_inference_steps=num_inference_steps,
-                                        guidance_scale=guidance_scale
-                                    )
-                                    
-                                    if result:
-                                        print(f"🎉 WAN generation successful using official module!")
-                                        # Convert result to our expected format
-                                        frames = self._convert_wan_result_to_frames(result)
-                                        print(f"✅ Generated {len(frames)} frames using official WAN")
-                                        return frames
-                                    else:
-                                        print("⚠️ WAN generation returned empty result")
-                                        
-                                except Exception as gen_error:
-                                    print(f"⚠️ Generation function failed: {gen_error}")
-                                    print(f"🔧 Function signature may be different - attempting fallback...")
-                            else:
-                                print("⚠️ No generation functions found in text2video module")
-                        
-                        # If we get here, direct module usage failed - FAIL FAST
-                        raise RuntimeError(f"""
-❌ FAIL FAST: WAN Official Module Integration Failed
-
-Successfully imported {len(wan_modules)} official WAN modules but could not run generation.
-
-Imported modules: {list(wan_modules.keys())}
-
-This indicates the model weights or API interface is incompatible with the 
-official WAN 2.1 codebase.
-
-NO FALLBACKS - Please ensure:
-1. Model weights are compatible with WAN 2.1 architecture
-2. All dependencies are correctly installed  
-3. GPU memory is sufficient for the model size
-
-Reference: https://github.com/Wan-Video/Wan2.1
-""")
+                    # Import the config for the appropriate model size
+                    if self.model_size == "14B":
+                        from wan.configs.wan_t2v_14B import config as wan_config
+                        print("✅ Loaded WAN 14B config")
                     else:
-                        raise RuntimeError("❌ FAIL FAST: No WAN modules could be imported from official repository")
+                        from wan.configs.wan_t2v_1_3B import config as wan_config
+                        print("✅ Loaded WAN 1.3B config")
+                    
+                    # Check if we can import the main class
+                    WanT2V = getattr(wt2v, 'WanT2V', None)
+                    if WanT2V is None:
+                        raise ImportError("WanT2V class not found in official repository")
+                    
+                    print("✅ Successfully imported WanT2V class")
+                    
+                    # CRITICAL FIX: Check for required checkpoint files BEFORE attempting initialization
+                    checkpoint_dir = Path(self.model_path)
+                    
+                    # Check what the config expects for checkpoint files
+                    t5_checkpoint = getattr(wan_config, 't5_checkpoint', 'models_t5_umt5-xxl-enc-bf16.pth')
+                    vae_checkpoint = getattr(wan_config, 'vae_checkpoint', 'Wan2.1_VAE.pth')
+                    
+                    print(f"🔧 Expected T5 checkpoint: {t5_checkpoint}")
+                    print(f"🔧 Expected VAE checkpoint: {vae_checkpoint}")
+                    print(f"🔧 Model path: {self.model_path}")
+                    
+                    # Check if we have the expected checkpoint structure
+                    t5_path = checkpoint_dir / t5_checkpoint
+                    vae_path = checkpoint_dir / vae_checkpoint
+                    
+                    missing_files = []
+                    if not t5_path.exists():
+                        missing_files.append(f"T5 encoder: {t5_checkpoint}")
+                    if not vae_path.exists():
+                        missing_files.append(f"VAE model: {vae_checkpoint}")
+                    
+                    if missing_files:
+                        print(f"❌ Missing required WAN checkpoint files:")
+                        for missing in missing_files:
+                            print(f"   - {missing}")
+                        print(f"📂 Found files: {list(checkpoint_dir.glob('*'))}")
                         
-                except Exception as official_error:
-                    print(f"❌ Official WAN import failed: {official_error}")
-                    raise RuntimeError(f"Failed to use official WAN modules: {official_error}")
+                        raise FileNotFoundError(f"""
+❌ FAIL FAST: Incomplete WAN Model Structure
+
+The model directory is missing required WAN 2.1 checkpoint files:
+{missing_files}
+
+WAN 2.1 requires these specific files:
+- {t5_checkpoint} (T5 text encoder)
+- {vae_checkpoint} (3D causal VAE)
+- DiT transformer weights (diffusion_pytorch_model*.safetensors)
+
+Current directory: {checkpoint_dir}
+Found files: {list(checkpoint_dir.glob('*'))}
+
+You have the DiT weights ({len(model_tensors)} tensors) but are missing the T5 and VAE components.
+
+To get complete WAN 2.1 models:
+1. Download from: https://huggingface.co/Wan-Video/Wan2.1
+2. Or follow: https://github.com/Wan-Video/Wan2.1
+
+NO FALLBACKS as requested - either complete WAN or fail fast.
+""")
+                    
+                    # All required files exist - proceed with official WAN initialization
+                    print("✅ All required WAN checkpoint files found")
+                    print("🚀 Initializing official WAN T2V pipeline...")
+                    
+                    try:
+                        wan_pipeline = WanT2V(
+                            config=wan_config,
+                            checkpoint_dir=str(checkpoint_dir),
+                            device_id=0,  # Use GPU 0
+                            rank=0,
+                            t5_fsdp=False,
+                            dit_fsdp=False,
+                            use_usp=False,
+                            t5_cpu=False
+                        )
+                        
+                        print("🎉 Official WAN T2V pipeline initialized successfully!")
+                        self.wan_pipeline = wan_pipeline
+                        print("✅ Official WAN pipeline ready for generation")
+                        return
+                        
+                    except Exception as init_error:
+                        print(f"❌ WAN initialization failed: {init_error}")
+                        print("🔧 Error details:")
+                        import traceback
+                        traceback.print_exc()
+                        
+                        raise RuntimeError(f"""
+❌ FAIL FAST: WAN Initialization Error
+
+Error during official WAN T2V initialization: {init_error}
+
+All required files were found but initialization failed. This could indicate:
+1. Model file corruption
+2. Version incompatibility  
+3. Memory/GPU issues
+4. Missing dependencies
+
+Model path: {checkpoint_dir}
+Config: {wan_config.__class__.__name__}
+Device: cuda:0
+
+NO FALLBACKS as requested - either working WAN or fail fast.
+""")
+                        
+                except ImportError as import_error:
+                    print(f"❌ WAN import failed: {import_error}")
+                    raise RuntimeError(f"""
+❌ FAIL FAST: Official WAN Import Failed
+
+Could not import required WAN modules: {import_error}
+
+This indicates the official WAN repository is incomplete or corrupted.
+
+Repository path: {self.wan_repo_path}
+Code directory: {self.wan_code_dir}
+
+Please re-clone the official repository:
+git clone https://github.com/Wan-Video/Wan2.1.git
+
+NO FALLBACKS as requested - either working WAN or fail fast.
+""")
                 
                 finally:
                     # Clean up sys.path
@@ -491,31 +471,47 @@ Reference: https://github.com/Wan-Video/Wan2.1
                         sys.path.remove(str(wan_repo_root))
                         
             else:
-                raise RuntimeError("WAN repository not properly set up")
+                raise RuntimeError("""
+❌ FAIL FAST: WAN Repository Not Set Up
+
+The official WAN repository was not properly initialized.
+
+Required attributes missing:
+- wan_repo_path: Path to cloned WAN repository
+- wan_code_dir: Path to WAN source code
+
+This should have been set during environment setup.
+
+NO FALLBACKS as requested - either working WAN or fail fast.
+""")
                 
         except Exception as e:
             # FAIL FAST if official WAN doesn't work
+            print(f"❌ Official WAN integration failed: {e}")
             raise RuntimeError(f"""
-❌ FAIL FAST: Official WAN 2.1 Repository Integration Failed
+❌ FAIL FAST: Complete WAN Integration Failure
 
-Error: {e}
+Official WAN 2.1 integration failed: {e}
 
-Attempted to use official WAN 2.1 code but failed. This could be due to:
+Summary of what was attempted:
+1. ✅ Official WAN repository: {getattr(self, 'wan_repo_path', 'NOT SET')}
+2. ✅ Model tensors loaded: {len(model_tensors)} tensors from {self.model_size} model
+3. ❌ WAN initialization: Failed
 
-1. **Repository Issues**: WAN repository not properly cloned or structured
-2. **Import Errors**: Missing dependencies or incompatible versions  
-3. **Model Loading**: Tensors incompatible with official WAN architecture
-4. **Environment**: Isolated environment setup problems
+Common causes:
+- Incomplete model files (missing T5/VAE checkpoints)
+- Repository corruption or version mismatch
+- Environment/dependency issues
 
-Current model has {len(model_tensors)} tensors but cannot be loaded with official WAN code.
+As requested: NO PROMPT GUESSING, NO FALLBACK IMAGES
+Either complete, working WAN 2.1 or fast failure.
 
-NO FALLBACKS - Please:
-1. Ensure the WAN 2.1 repository is properly cloned
-2. Install all WAN dependencies 
-3. Use compatible model weights
-4. Or disable WAN generation
+To resolve:
+1. Ensure complete WAN 2.1 model download
+2. Verify all checkpoint files exist
+3. Check official documentation: https://github.com/Wan-Video/Wan2.1
 
-Reference: https://github.com/Wan-Video/Wan2.1
+Current model path: {self.model_path}
 """)
         
     def setup_text_encoder(self):
@@ -605,73 +601,61 @@ Reference: https://github.com/Wan-Video/Wan2.1
                       guidance_scale: float = 7.5,
                       seed: Optional[int] = None) -> List[np.ndarray]:
         """
-        Generate video using WAN Flow Matching
+        Generate video using official WAN Flow Matching
         
         Args:
             prompt: Text prompt for generation
-            num_frames: Number of frames to generate
+            num_frames: Number of frames to generate (must be 4n+1 for WAN)
             height: Video height
             width: Video width  
-            num_inference_steps: Number of denoising steps
-            guidance_scale: Classifier-free guidance scale
+            num_inference_steps: Number of denoising steps (WAN calls this sampling_steps)
+            guidance_scale: Classifier-free guidance scale (WAN calls this guide_scale)
             seed: Random seed
             
         Returns:
             List of generated video frames as numpy arrays
         """
+        if not hasattr(self, 'wan_pipeline'):
+            raise RuntimeError("WAN pipeline not initialized - call load_model_components first")
+            
+        # WAN requires frame count to be 4n+1
+        if (num_frames - 1) % 4 != 0:
+            # Adjust to nearest valid frame count
+            adjusted_frames = ((num_frames - 1) // 4) * 4 + 1
+            print(f"⚠️ WAN requires frames = 4n+1, adjusting {num_frames} → {adjusted_frames}")
+            num_frames = adjusted_frames
+            
         if seed is not None:
             torch.manual_seed(seed)
             
-        self.num_inference_steps = num_inference_steps
-        
-        print(f"🎬 Generating {num_frames} frames at {width}x{height}")
+        print(f"🎬 Generating {num_frames} frames at {width}x{height} using official WAN")
         print(f"📝 Prompt: {prompt}")
         
-        # Encode text prompt using T5
-        text_embeddings = self.text_encoder.encode([prompt])
-        
-        # Initialize random noise in latent space
-        # VAE typically downsamples by factor of 8 spatially
-        latent_height = height // 8
-        latent_width = width // 8
-        latent_channels = 16
-        
-        # Start from pure noise
-        x_t = torch.randn(
-            1, num_frames, latent_height, latent_width, latent_channels,
-            device=self.device, dtype=torch.float32
-        )
-        
-        print(f"🔄 Running {num_inference_steps} flow matching steps...")
-        
-        # Flow matching sampling loop
-        for i, step in enumerate(range(num_inference_steps)):
-            # Create timestep tensor (flow matching uses [0, 1] range)
-            t = torch.full((1,), step / num_inference_steps, device=self.device)
+        try:
+            # Call official WAN generate method
+            result_tensor = self.wan_pipeline.generate(
+                input_prompt=prompt,
+                size=(width, height),  # WAN expects (width, height)
+                frame_num=num_frames,
+                sampling_steps=num_inference_steps,
+                guide_scale=guidance_scale,
+                seed=seed if seed is not None else -1
+            )
             
-            # Denoising step
-            x_t = self.flow_matching_step(x_t, t, text_embeddings, guidance_scale)
-            
-            if (i + 1) % 10 == 0:
-                print(f"  Step {i+1}/{num_inference_steps}")
+            if result_tensor is None:
+                raise RuntimeError("WAN generation returned None")
                 
-        print("🎨 Decoding latents to video frames...")
-        
-        # Decode latents to video frames using Wan-VAE
-        video_tensor = self.vae.decode(x_t)
-        
-        # Convert to numpy and PIL format
-        frames = []
-        video_np = video_tensor.squeeze(0).cpu().numpy()  # (3, frames, height, width)
-        video_np = np.transpose(video_np, (1, 2, 3, 0))  # (frames, height, width, 3)
-        video_np = np.clip((video_np + 1.0) * 127.5, 0, 255).astype(np.uint8)
-        
-        for frame_idx in range(num_frames):
-            frame_pil = Image.fromarray(video_np[frame_idx])
-            frames.append(np.array(frame_pil))
+            print(f"✅ WAN generation complete! Tensor shape: {result_tensor.shape}")
             
-        print(f"✅ Generated {len(frames)} frames using WAN Flow Matching")
-        return frames
+            # Convert WAN result to our expected format
+            # WAN returns (C, N, H, W) tensor
+            frames = self._convert_wan_result_to_frames(result_tensor)
+            
+            print(f"✅ Generated {len(frames)} frames using official WAN 2.1")
+            return frames
+            
+        except Exception as e:
+            raise RuntimeError(f"Official WAN generation failed: {e}")
 
     def _convert_wan_result_to_frames(self, wan_result):
         """

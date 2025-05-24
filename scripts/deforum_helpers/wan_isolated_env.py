@@ -744,6 +744,11 @@ Or install Git and ensure it's in your PATH.
         """
         Install WAN requirements from the official repository
         """
+        # Check if environment is already ready - skip installation if so
+        if self.is_environment_ready():
+            print("✅ WAN isolated environment already has required packages - skipping duplicate installation")
+            return
+            
         print("📦 Installing WAN requirements from official repository...")
         
         requirements_files = [
@@ -791,6 +796,7 @@ Or install Git and ensure it's in your PATH.
                     print(f"📋 Installing {len(filtered_requirements)} WAN requirements (skipped {len(requirements) - len(filtered_requirements)} problematic packages)")
                     
                     # Install requirements one by one to handle individual failures
+                    installed_count = 0
                     for req in filtered_requirements:
                         try:
                             cmd = [
@@ -805,12 +811,16 @@ Or install Git and ensure it's in your PATH.
                             
                             if result.returncode == 0:
                                 print(f"✅ Installed {req}")
+                                installed_count += 1
                             else:
                                 print(f"⚠️ Failed to install {req}: {result.stderr[:100]}...")
                                 
                         except Exception as e:
                             print(f"⚠️ Error installing {req}: {e}")
                             continue
+                    
+                    print(f"✅ WAN requirements complete: {installed_count}/{len(filtered_requirements)} packages installed")
+                    return  # Important: return here to skip essential deps installation
                 else:
                     print("⚠️ No valid requirements found after filtering")
                     
@@ -824,39 +834,36 @@ Or install Git and ensure it's in your PATH.
         else:
             print("📝 No requirements.txt found, installing essential WAN dependencies...")
             
-        # Only install essential dependencies if no requirements were processed
-        if not requirements_file or (requirements_file and requirements_file.name != "requirements.txt"):
-            print("📦 Installing essential WAN dependencies...")
-            essential_deps = [
-                "torch>=2.0.0",
-                "torchvision",
-                "transformers>=4.36.0",
-                "accelerate>=0.25.0",
-                "safetensors>=0.4.0",
-                "pillow",
-                "numpy",
-                "einops",
-                "omegaconf",
-                "gradio",
-                "diffusers>=0.26.0"  # May be needed for VAE components
-            ]
-            
-            for dep in essential_deps:
-                try:
-                    cmd = [
-                        sys.executable, "-m", "pip", "install",
-                        dep, 
-                        "--target", str(self.wan_site_packages),
-                        "--upgrade"
-                    ]
-                    result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
-                    print(f"✅ Installed {dep}")
-                except subprocess.CalledProcessError as e:
-                    print(f"⚠️ Failed to install {dep}: {e.stderr[:100]}...")
-                except Exception as e:
-                    print(f"⚠️ Error with {dep}: {e}")
-        else:
-            print("✅ Using packages from WAN requirements.txt - skipping duplicate installation")
+        # Only reach here if requirements.txt processing failed or doesn't exist
+        print("📦 Installing essential WAN dependencies as fallback...")
+        essential_deps = [
+            "torch>=2.0.0",
+            "torchvision",
+            "transformers>=4.36.0",
+            "accelerate>=0.25.0",
+            "safetensors>=0.4.0",
+            "pillow",
+            "numpy",
+            "einops",
+            "omegaconf",
+            "gradio",
+            "diffusers>=0.26.0"  # May be needed for VAE components
+        ]
+        
+        for dep in essential_deps:
+            try:
+                cmd = [
+                    sys.executable, "-m", "pip", "install",
+                    dep, 
+                    "--target", str(self.wan_site_packages),
+                    "--upgrade"
+                ]
+                result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
+                print(f"✅ Installed {dep}")
+            except subprocess.CalledProcessError as e:
+                print(f"⚠️ Failed to install {dep}: {e.stderr[:100]}...")
+            except Exception as e:
+                print(f"⚠️ Error with {dep}: {e}")
                 
         print("✅ WAN environment setup complete")
 
@@ -1047,6 +1054,9 @@ The WAN Flow Matching pipeline is now implemented with:
 
 Note: This is a simplified implementation. Full WAN functionality would require
 the complete official model weights and proper tensor mapping.
+
+🔧 Expected T5 checkpoint: models_t5_umt5-xxl-enc-bf16.pth
+🔧 Expected VAE checkpoint: Wan2.1_VAE.pth
 """)
     
     # Remove deprecated methods

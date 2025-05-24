@@ -42,3 +42,25 @@ webui_log.txt
 webui_startup_log.txt
 hf_cache/
 Wan2.1/
+
+# WAN official repository (dynamically downloaded)
+wan_official_repo/
+
+# Model files
+models/
+*.safetensors
+*.bin
+*.ckpt
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Logs
+*.log
+logs/
+
+# Test files
+test_*.py
