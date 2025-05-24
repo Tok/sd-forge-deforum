@@ -589,22 +589,38 @@ huggingface-hub>=0.20.0
                 # Try to update if it's a git repository
                 if (wan_repo_dir / ".git").exists():
                     try:
-                        print("🔄 Pulling latest updates from WAN repository...")
+                        print("🔍 Checking for remote updates...")
                         import subprocess
-                        result = subprocess.run(
-                            ["git", "pull", "--depth", "1"],
+                        
+                        # First, fetch to see if there are changes
+                        fetch_result = subprocess.run(
+                            ["git", "fetch", "--dry-run"],
                             cwd=str(wan_repo_dir),
                             capture_output=True,
                             text=True,
-                            timeout=60
+                            timeout=30
                         )
-                        if result.returncode == 0:
-                            print("✅ Repository updated successfully")
+                        
+                        if fetch_result.returncode == 0 and fetch_result.stderr.strip():
+                            # There are remote changes, pull them
+                            print("🔄 Remote changes detected, pulling updates...")
+                            result = subprocess.run(
+                                ["git", "pull", "--depth", "1"],
+                                cwd=str(wan_repo_dir),
+                                capture_output=True,
+                                text=True,
+                                timeout=60
+                            )
+                            if result.returncode == 0:
+                                print("✅ Repository updated successfully")
+                            else:
+                                print(f"⚠️ Git pull failed: {result.stderr}")
+                                print("💡 Continuing with existing repository")
                         else:
-                            print(f"⚠️ Git pull failed: {result.stderr}")
-                            print("💡 Continuing with existing repository")
+                            print("✅ Repository is already up to date")
+                            
                     except Exception as git_error:
-                        print(f"⚠️ Could not update repository: {git_error}")
+                        print(f"⚠️ Could not check for updates: {git_error}")
                         print("💡 Continuing with existing repository")
                 
                 return wan_repo_dir

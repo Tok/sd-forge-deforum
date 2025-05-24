@@ -354,60 +354,61 @@ class WanFlowMatchingPipeline:
                     # Try to import the ACTUAL modules we found
                     print("🔍 Importing discovered WAN modules...")
                     
-                    # Add the WAN code directory to Python path for imports
-                    if str(wan_code_path) not in sys.path:
-                        sys.path.insert(0, str(wan_code_path))
+                    # Add the WAN repository root (not just wan/ dir) to Python path for proper package imports
+                    wan_repo_root = wan_code_path.parent  # Go up one level to repository root
+                    if str(wan_repo_root) not in sys.path:
+                        sys.path.insert(0, str(wan_repo_root))
                     
-                    # Import the key WAN modules that actually exist
+                    # Import the key WAN modules as a package
                     wan_modules = {}
                     
-                    # Try text2video module
+                    # Try importing wan package modules properly
                     try:
-                        import text2video
-                        wan_modules['text2video'] = text2video
-                        print("✅ Successfully imported text2video module")
+                        import wan.text2video
+                        wan_modules['text2video'] = wan.text2video
+                        print("✅ Successfully imported wan.text2video module")
                         
                         # Check what functions are available
-                        text2video_functions = [name for name in dir(text2video) if not name.startswith('_')]
+                        text2video_functions = [name for name in dir(wan.text2video) if not name.startswith('_')]
                         print(f"🔧 text2video functions: {text2video_functions[:5]}...")
                         
                     except Exception as e:
-                        print(f"⚠️ Failed to import text2video: {e}")
+                        print(f"⚠️ Failed to import wan.text2video: {e}")
                     
                     # Try image2video module
                     try:
-                        import image2video
-                        wan_modules['image2video'] = image2video
-                        print("✅ Successfully imported image2video module")
+                        import wan.image2video
+                        wan_modules['image2video'] = wan.image2video
+                        print("✅ Successfully imported wan.image2video module")
                         
                         # Check what functions are available
-                        image2video_functions = [name for name in dir(image2video) if not name.startswith('_')]
+                        image2video_functions = [name for name in dir(wan.image2video) if not name.startswith('_')]
                         print(f"🔧 image2video functions: {image2video_functions[:5]}...")
                         
                     except Exception as e:
-                        print(f"⚠️ Failed to import image2video: {e}")
+                        print(f"⚠️ Failed to import wan.image2video: {e}")
                     
                     # Try modules.model
                     try:
-                        from modules import model
-                        wan_modules['model'] = model
-                        print("✅ Successfully imported modules.model")
+                        import wan.modules.model
+                        wan_modules['model'] = wan.modules.model
+                        print("✅ Successfully imported wan.modules.model")
                         
                         # Check what classes are available
-                        model_classes = [name for name in dir(model) if not name.startswith('_') and name[0].isupper()]
+                        model_classes = [name for name in dir(wan.modules.model) if not name.startswith('_') and name[0].isupper()]
                         print(f"🔧 Model classes: {model_classes[:5]}...")
                         
                     except Exception as e:
-                        print(f"⚠️ Failed to import modules.model: {e}")
+                        print(f"⚠️ Failed to import wan.modules.model: {e}")
                     
                     # Try vace module for VAE
                     try:
-                        import vace
-                        wan_modules['vace'] = vace
-                        print("✅ Successfully imported vace module")
+                        import wan.vace
+                        wan_modules['vace'] = wan.vace
+                        print("✅ Successfully imported wan.vace module")
                         
                     except Exception as e:
-                        print(f"⚠️ Failed to import vace: {e}")
+                        print(f"⚠️ Failed to import wan.vace: {e}")
                     
                     if wan_modules:
                         print(f"🎉 Successfully imported {len(wan_modules)} WAN modules: {list(wan_modules.keys())}")
@@ -486,8 +487,8 @@ Reference: https://github.com/Wan-Video/Wan2.1
                 
                 finally:
                     # Clean up sys.path
-                    if wan_code_str in sys.path:
-                        sys.path.remove(wan_code_str)
+                    if str(wan_repo_root) in sys.path:
+                        sys.path.remove(str(wan_repo_root))
                         
             else:
                 raise RuntimeError("WAN repository not properly set up")
