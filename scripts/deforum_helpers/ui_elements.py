@@ -419,6 +419,8 @@ def wan_generate_video(*component_args):
         from modules.processing import StableDiffusionProcessing
         import uuid
         import modules.shared as shared
+        import os
+        import time
         
         print("🎬 Wan video generation triggered from Wan tab")
         print("🔒 Using isolated Wan generation path (bypassing run_deforum)")
@@ -447,13 +449,18 @@ def wan_generate_video(*component_args):
         # Force animation mode to Wan Video
         args_dict['animation_mode'] = 'Wan Video'
         
-        # Create a minimal processing object (needed for process_args)
-        import tempfile
-        temp_outdir = tempfile.mkdtemp()
+        # Create proper output directory using Deforum's structure
+        timestring = time.strftime('%Y%m%d%H%M%S')
+        batch_name = args_dict.get('batch_name', 'Deforum')
+        
+        # Use webui-forge's output directory structure
+        webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        deforum_outdir = os.path.join(webui_root, 'outputs', 'deforum', f"{timestring}_{batch_name}")
+        os.makedirs(deforum_outdir, exist_ok=True)
         
         class MockProcessing:
             def __init__(self):
-                self.outpath_samples = temp_outdir
+                self.outpath_samples = deforum_outdir
         
         args_dict['p'] = MockProcessing()
         
