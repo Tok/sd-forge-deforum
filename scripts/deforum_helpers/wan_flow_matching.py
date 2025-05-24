@@ -726,11 +726,9 @@ Reference: https://github.com/Wan-Video/Wan2.1
             
         except Exception as e:
             raise RuntimeError(f"Failed to convert WAN result to frames: {e}")
-            
-    def _create_mock_frames(self, prompt: str, num_frames: int, height: int, width: int) -> List[np.ndarray]:
 
 
-def create_wan_pipeline(model_path: str, 
+def create_wan_pipeline(model_path: str,
                        model_tensors: Dict[str, torch.Tensor],
                        model_size: str = "14B",
                        device: str = "cuda",

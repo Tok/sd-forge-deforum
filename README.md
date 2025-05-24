@@ -14,199 +14,40 @@ new keyframe distribution feature, may require that some unsupported features ar
 
 ## Wan 2.1 Video Integration
 
-This fork includes comprehensive support for **Wan 2.1 video generation** with advanced Flow Matching architecture. 
-WAN provides state-of-the-art text-to-video and image-to-video generation capabilities using a completely isolated 
-environment to prevent conflicts with WebUI's diffusion systems.
+This fork includes **Wan 2.1 video generation** support with Flow Matching architecture for text-to-video and image-to-video generation.
 
-### ⚠️ Important: Repository Setup Required
+### Setup Requirements
 
-**WAN requires the official repository to be cloned as a submodule:**
-
+**Manual Repository Setup:**
 ```bash
 cd <forge_install_dir>/extensions/sd-forge-deforum
 git clone https://github.com/Wan-Video/Wan2.1.git wan_official_repo
 ```
 
-The system will automatically handle this on first run, but manual setup ensures better reliability.
+**Model Files:** Place WAN model files in `<forge_install_dir>/models/wan/`
+- Supports: `.safetensors`, `.bin`, `.ckpt` formats
+- Memory: 12GB+ VRAM recommended
 
-### 🔧 WAN System Architecture
+### Usage
 
-**Isolated Environment Design:**
-- **Complete Isolation**: WAN runs in a separate Python environment with its own dependencies
-- **No Conflicts**: Zero interference with WebUI's diffusion pipelines or transformers
-- **Flow Matching**: Uses WAN's native Flow Matching framework (NOT traditional diffusion)
-- **Official Code**: Integrates with the actual WAN 2.1 repository for authentic inference
-- **Auto-Setup**: Downloads missing HuggingFace components (tokenizer, text encoder) automatically
-
-**Key Components:**
-- **T5 Text Encoder**: Multilingual text understanding and conditioning
-- **3D Causal VAE (Wan-VAE)**: Advanced video encoding/decoding with temporal consistency
-- **Flow Matching Pipeline**: State-of-the-art generative framework for smooth video synthesis
-- **Cross-Attention Mechanisms**: Precise text-to-video conditioning throughout generation
-
-### 📋 WAN Setup Requirements
-
-#### 1. **System Requirements**
-- **GPU Memory**: 12GB+ VRAM (16GB recommended for 720p generation)
-- **Storage**: ~10GB for models and repository
-- **Python**: 3.10+ (included with Forge)
-- **Git**: Required for repository management
-
-#### 2. **Model Files Setup**
-Place your WAN model files in: `<forge_install_dir>/models/wan/`
-
-**Supported Model Formats:**
-- Sharded SafeTensors: `diffusion_pytorch_model-00001-of-00007.safetensors` (etc.)
-- Single SafeTensors: `diffusion_pytorch_model.safetensors`
-- PyTorch Checkpoints: `model.bin`, `pytorch_model.bin`
-
-#### 3. **Directory Structure (Auto-Created)**
-```
-<forge_install_dir>/extensions/sd-forge-deforum/
-├── wan_official_repo/           # Official WAN 2.1 repository (auto-cloned)
-│   ├── wan/                     # Core WAN modules
-│   │   ├── text2video.py        # Text-to-video generation
-│   │   ├── image2video.py       # Image-to-video generation
-│   │   └── modules/             # WAN model components
-│   ├── generate.py              # Main generation script
-│   └── requirements.txt         # WAN dependencies
-├── wan_isolated_env/            # Isolated Python environment
-│   ├── models/                  # Prepared model structure
-│   └── site-packages/           # Isolated WAN dependencies
-└── scripts/deforum_helpers/
-    ├── wan_integration.py       # Main WAN integration
-    ├── wan_isolated_env.py      # Environment management
-    └── wan_flow_matching.py     # Flow Matching pipeline
-```
-
-### 🎬 Using WAN Video Generation
-
-#### 1. **Basic Setup**
 1. Set **Animation Mode** to "Wan Video"
-2. Configure **Model Path**: Point to your WAN model directory
-3. Set **Resolution**: Choose from 720p, 480p, or portrait variants
-4. Configure **Generation Settings**: FPS, duration, steps, guidance scale
-
-#### 2. **Prompt Configuration**
-Use **standard Deforum prompt format** in the Prompts tab:
+2. Configure **Model Path** and **Resolution** 
+3. Use standard Deforum prompt format:
 ```json
 {
-    "0": "A cute bunny hopping on grass, photorealistic",
-    "12": "A bunny with sunglasses at a neon construction site", 
-    "43": "A cyberpunk bunny with glowing eyes on a digital grid"
+    "0": "A cute bunny hopping on grass",
+    "12": "A bunny with sunglasses at a construction site"
 }
 ```
 
-The system automatically calculates:
-- **Clip 1**: Frames 0-11 (12 frames, 0.2s @ 60fps)
-- **Clip 2**: Frames 12-42 (31 frames, 0.5s @ 60fps)
-- **Clip 3**: Frames 43+ (remaining duration)
+### Troubleshooting
 
-#### 3. **Generation Modes**
-- **Text-to-Video**: First clip generation from text prompt
-- **Image-to-Video**: Subsequent clips use the last frame from previous clip as init image
-- **Automatic Transitioning**: Seamless clip-to-clip continuity
+**Common Issues:**
+- "Repository not set up" → Clone WAN repo manually
+- "Out of memory" → Use 480p resolution, reduce steps
+- "Import errors" → Delete `wan_isolated_env` folder and restart
 
-### ⚙️ WAN Configuration Options
-
-#### **Basic Settings**
-- **Clip Duration**: 2-8 seconds per clip (4s default)
-- **FPS**: 15-60 fps (60fps recommended)
-- **Resolution**: 
-  - `1280x720` (16:9 landscape, best quality)
-  - `720x1280` (9:16 portrait, social media)
-  - `854x480` (16:9 landscape, faster)
-  - `480x854` (9:16 portrait, fastest)
-
-#### **Quality Settings**
-- **Inference Steps**: 20-80 (50 default, lower = faster)
-- **Guidance Scale**: 1.0-20.0 (7.5 default, higher = more prompt adherence)
-- **Motion Strength**: 0.1-2.0 (1.0 default, higher = more movement)
-
-#### **Advanced Options**
-- **Frame Overlap**: Blend frames between clips for smoother transitions
-- **Interpolation**: AI-enhanced frame interpolation for smoother motion
-- **Seed Control**: Reproducible generation with fixed seeds
-
-### 🚨 Troubleshooting
-
-#### **Common Issues & Solutions**
-
-**1. "WAN repository not properly set up"**
-```bash
-# Manually clone the repository:
-cd <forge_install_dir>/extensions/sd-forge-deforum
-rm -rf wan_official_repo
-git clone https://github.com/Wan-Video/Wan2.1.git wan_official_repo
-```
-
-**2. "No WAN model class found"**
-- Ensure the repository has been cloned correctly
-- Check that `wan_official_repo/wan/text2video.py` exists
-- Restart WebUI after repository setup
-
-**3. "Out of GPU Memory"**
-- Reduce resolution: Use 480p variants
-- Lower inference steps: Try 20-30 steps
-- Reduce clip duration: Use 2-3 second clips
-- Close other GPU applications
-
-**4. "Model loading failed"**
-- Verify model files are in correct directory: `models/wan/`
-- Check model file format (SafeTensors recommended)
-- Ensure sufficient storage space (models can be 10GB+)
-
-**5. "Import errors in isolated environment"**
-- Delete isolation directory: `rm -rf wan_isolated_env`
-- Restart generation (will rebuild environment)
-- Check internet connection for HuggingFace downloads
-
-#### **Performance Optimization**
-
-**For Speed:**
-- Use 480p resolution
-- Lower inference steps (20-30)
-- Shorter clip duration (2-3s)
-- Disable frame interpolation
-
-**For Quality:**
-- Use 720p resolution
-- Higher inference steps (50-80)
-- Higher guidance scale (10-15)
-- Enable frame overlap
-
-**For Memory Efficiency:**
-- Use portrait resolutions (less pixels)
-- Generate shorter clips
-- Close unnecessary applications
-
-### 🔍 Environment Isolation Details
-
-WAN uses a sophisticated isolation system to prevent conflicts:
-
-**Isolated Dependencies:**
-- Separate Python package installation in `wan_isolated_env/site-packages/`
-- Version-specific transformers, accelerate, and torch packages
-- No interference with WebUI's diffusion libraries
-
-**Dynamic Import Management:**
-- Temporary `sys.path` modification during WAN generation
-- Context managers ensure clean environment switching
-- Complete restoration of original state after generation
-
-**Repository Integration:**
-- Automatic discovery of WAN modules in official repository
-- Dynamic import of `wan.text2video` and `wan.image2video`
-- Graceful fallback if repository structure changes
-
-**Fail-Fast Philosophy:**
-- No placeholder or fallback generation
-- Clear error messages with specific solutions
-- Immediate termination if requirements not met
-- No hidden dependencies or surprise behaviors
-
-This architecture ensures that WAN can be seamlessly integrated into existing Deforum workflows without any 
-impact on traditional diffusion-based generation modes.
+The system uses isolated environment to prevent conflicts with WebUI's diffusion systems.
 
 ## Requirements
 
