@@ -1,7 +1,7 @@
-# Wan-compatible diffusers and dependencies
-diffusers>=0.26.0
-transformers>=4.36.0
-accelerate>=0.25.0
+# Wan-compatible diffusers and dependencies - compatible with webui-forge
+diffusers>=0.26.0,<0.33.0
+transformers>=4.36.0,<4.46.0
+accelerate>=0.25.0,<0.31.0
 torch>=2.0.0
 torchvision>=0.15.0
 Pillow>=9.0.0
