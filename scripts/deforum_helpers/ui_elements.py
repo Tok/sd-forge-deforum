@@ -487,28 +487,26 @@ def wan_generate_video(*component_args):
         print(f"🔍 Debug - Original root.timestring: '{root.timestring}'")
         print(f"🔍 Debug - Original args.outdir: '{args.outdir}'")
         
-        # Rebuild the correct output directory - fix template issues
+        # CLEAN APPROACH: Build output directory from scratch to avoid template issues
         current_file = os.path.abspath(__file__)
         extensions_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
         webui_dir = os.path.dirname(extensions_dir)
-        # Fix: Ensure clean directory name without templates or extra underscores
+        
+        # Simple, clean directory name
         output_subdir_final = f"{batch_name_final}_{timestring_final}"
         wan_output_dir_final = os.path.join(webui_dir, 'outputs', 'wan-images', output_subdir_final)
+        
+        # Create directory
         os.makedirs(wan_output_dir_final, exist_ok=True)
         
-        # Override args.outdir to ensure it's correct and remove any template remnants
+        # COMPLETELY OVERRIDE args.outdir with clean path (ignore whatever was there before)
         args.outdir = wan_output_dir_final
         
-        # Also ensure root.timestring doesn't have template issues - COMPLETELY override it
+        # Also fix root.timestring
         root.timestring = timestring_final
         
-        # CRITICAL: Replace any template variables in the output directory path itself
-        if '{timestring}' in args.outdir:
-            args.outdir = args.outdir.replace('{timestring}', timestring_final)
-        
-        print(f"🔧 Fixed output directory: {wan_output_dir_final}")
+        print(f"🔧 Clean output directory: {wan_output_dir_final}")
         print(f"🔧 Fixed root.timestring: '{root.timestring}'")
-        print(f"🔧 Final args.outdir: '{args.outdir}'")
         
         # Validate Wan settings
         validation_errors = validate_wan_settings(wan_args)
@@ -541,12 +539,14 @@ def wan_generate_video(*component_args):
             
             print(f"📝 Generated {len(prompt_schedule)} video clips:")
             for i, (prompt, start_time, duration) in enumerate(prompt_schedule):
-                print(f"  Clip {i+1}: '{prompt[:50]}...' (start: {start_time:.1f}s, duration: {duration:.1f}s)")
+                frames_needed = int(duration * wan_args.wan_fps)
+                print(f"  Clip {i+1}: '{prompt[:50]}...' (start: {start_time:.1f}s, duration: {duration:.1f}s, frames: {frames_needed})")
             
             # Generate video clips with full isolation
             all_frames = []
             previous_frame = None
             total_frames_generated = 0
+            frame_offset = 0
             
             for i, (prompt, start_time, duration) in enumerate(prompt_schedule):
                 if shared.state.interrupted:
@@ -573,8 +573,8 @@ def wan_generate_video(*component_args):
                             motion_strength=wan_args.wan_motion_strength
                         )
                     else:
-                        # Subsequent clips with valid previous frame: image-to-video
-                        print(f"🖼️ Mode: Image-to-Video (using previous frame as init)")
+                        # Subsequent clips: use image-to-video with previous frame
+                        print(f"🎭 Mode: Image-to-Video")
                         frames = wan_generator.generate_img2video(
                             init_image=previous_frame,
                             prompt=prompt,
@@ -586,37 +586,46 @@ def wan_generate_video(*component_args):
                             seed=clip_seed,
                             motion_strength=wan_args.wan_motion_strength
                         )
-                    
-                    if not frames:
-                        print(f"❌ ERROR: No frames generated for clip {i+1}")
-                        continue
-                    
-                    print(f"✅ Generated {len(frames)} frames for clip {i+1}")
-                    
-                    # Handle frame overlap and save frames
-                    processed_frames = handle_frame_overlap(frames, previous_frame, wan_args.wan_frame_overlap, i > 0)
-                    
-                    # Save frames to disk
-                    saved_frame_count = save_clip_frames(processed_frames, args.outdir, root.timestring, i, total_frames_generated)
-                    total_frames_generated += saved_frame_count
-                    
-                    # Add frames to the all_frames list
-                    all_frames.extend(processed_frames)
-                    
-                    # Extract last frame for next clip initialization
-                    previous_frame = wan_generator.extract_last_frame(frames)
-                    
-                    # Update progress
-                    shared.state.job = f"Wan clip {i+1}/{len(prompt_schedule)}"
-                    shared.state.job_no = i + 1
-                    shared.state.job_count = len(prompt_schedule)
-                    
-                    print(f"✅ Clip {i+1} completed successfully")
-                    
+
+                    if frames and len(frames) > 0:
+                        print(f"✅ Generated {len(frames)} frames for clip {i+1}")
+                        
+                        # Save frames to disk
+                        try:
+                            for frame_idx, frame in enumerate(frames):
+                                frame_number = frame_offset + frame_idx
+                                frame_filename = f"{frame_number:08d}.png"
+                                frame_path = os.path.join(args.outdir, frame_filename)
+                                
+                                # Convert to PIL Image if needed
+                                if isinstance(frame, np.ndarray):
+                                    frame_image = Image.fromarray(frame)
+                                else:
+                                    frame_image = frame
+                                
+                                frame_image.save(frame_path)
+                                
+                            print(f"💾 Saved {len(frames)} frames to {args.outdir}")
+                            
+                        except Exception as save_error:
+                            print(f"❌ Error saving frames: {save_error}")
+                            # Continue anyway
+                        
+                        all_frames.extend(frames)
+                        total_frames_generated += len(frames)
+                        
+                        # Update frame offset for next clip
+                        frame_offset += len(frames)
+                        
+                        # Save previous frame for next clip
+                        previous_frame = wan_generator.extract_last_frame(frames)
+                        
+                    else:
+                        print(f"⚠️ No frames generated for clip {i+1}")
+                        
                 except Exception as e:
                     print(f"❌ ERROR generating clip {i+1}: {e}")
                     # Continue with next clip instead of failing completely
-                    continue
             
             print(f"\n🎉 Wan Video Generation Complete!")
             print(f"📊 Generated {len(prompt_schedule)} clips with {total_frames_generated} total frames")

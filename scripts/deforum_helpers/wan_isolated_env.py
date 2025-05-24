@@ -627,6 +627,12 @@ class WanIsolatedGenerator:
                 generator = kwargs.get('generator', None)
                 image = kwargs.get('image', None)  # For img2video
                 
+                # Calculate frames from duration and FPS if provided
+                duration = kwargs.get('duration', None)
+                fps = kwargs.get('fps', None)
+                if duration is not None and fps is not None:
+                    num_frames = int(duration * fps)
+                
                 print(f"🎬 Generating {num_frames} frames at {width}x{height}")
                 
                 # Simple native approach - load and use the model directly
@@ -650,7 +656,7 @@ class WanIsolatedGenerator:
                     print("🎭 Generating video frames...")
                     
                     frames = []
-                    for i in range(min(num_frames, 16)):  # Limit to reasonable number
+                    for i in range(num_frames):  # Use actual frame count
                         # Create a frame with some basic pattern
                         frame_data = np.random.randint(0, 255, (height, width, 3), dtype=np.uint8)
                         
@@ -669,8 +675,8 @@ class WanIsolatedGenerator:
                         frame_image = Image.fromarray(frame_data)
                         frames.append(frame_image)
                         
-                        if (i + 1) % 4 == 0:
-                            print(f"📽️ Generated {i + 1}/{min(num_frames, 16)} frames...")
+                        if (i + 1) % 8 == 0 or i == num_frames - 1:
+                            print(f"📽️ Generated {i + 1}/{num_frames} frames...")
                     
                     print(f"✅ Successfully generated {len(frames)} frames with WAN native approach")
                     return frames
