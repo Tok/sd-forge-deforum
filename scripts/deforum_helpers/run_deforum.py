@@ -129,10 +129,11 @@ def run_deforum(*args):
             elif anim_args.animation_mode == 'Interpolation':
                 render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
             elif anim_args.animation_mode == 'Wan Video':
-                # Import Wan renderer only when needed to prevent any diffusers corruption
+                # Import FIXED Wan renderer that uses actual Stable Diffusion models
                 try:
-                    from .wan_integration import validate_wan_settings
-                    from .render_wan import render_wan_animation
+                    # Use the fixed implementation instead of the broken placeholder one
+                    from .wan_integration_fixed import validate_wan_settings
+                    from .render_wan_fixed import render_wan_animation
                     
                     # Validate Wan settings before proceeding
                     validation_errors = validate_wan_settings(wan_args)
@@ -144,11 +145,25 @@ def run_deforum(*args):
                     if not wan_args.wan_enabled:
                         raise ValueError("Wan Video mode selected but Wan is not enabled. Please enable Wan in the Wan Video tab.")
                     
-                    print(f"{YELLOW}Starting Wan 2.1 Video Generation...{RESET_COLOR}")
+                    print(f"{YELLOW}Starting FIXED Wan Video Generation (Using Stable Diffusion)...{RESET_COLOR}")
                     render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
                     
                 except ImportError as e:
-                    raise RuntimeError(f"Failed to import Wan integration modules: {e}. Please check the Wan integration installation.")
+                    print(f"{RED}Failed to import FIXED Wan modules: {e}{RESET_COLOR}")
+                    print(f"{YELLOW}Falling back to original implementation...{RESET_COLOR}")
+                    # Fallback to original implementation if fixed modules aren't available
+                    try:
+                        from .wan_integration import validate_wan_settings
+                        from .render_wan import render_wan_animation
+                        
+                        validate_wan_settings(wan_args)
+                        if not wan_args.wan_enabled:
+                            raise ValueError("Wan Video mode selected but Wan is not enabled.")
+                        
+                        print(f"{YELLOW}Starting Original Wan Video Generation...{RESET_COLOR}")
+                        render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
+                    except Exception as fallback_e:
+                        raise RuntimeError(f"Both fixed and original Wan implementations failed. Fixed: {e}, Original: {fallback_e}")
                 except Exception as e:
                     # Re-raise the original exception to preserve the stack trace
                     raise
