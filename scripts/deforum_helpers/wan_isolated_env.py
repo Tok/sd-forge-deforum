@@ -32,6 +32,11 @@ class WanIsolatedEnvironment:
         self.original_sys_path = None
         self.isolation_active = False
         
+        # Cache states to avoid repeated attempts
+        self.wan_setup_attempted = False
+        self.wan_setup_failed = False
+        self.wan_repo_path = None
+        
     def is_environment_ready(self) -> bool:
         """Check if the isolated environment is set up and ready"""
         if not self.wan_env_dir.exists():
@@ -487,16 +492,29 @@ huggingface-hub>=0.20.0
         print("✅ Created minimal tokenizer config")
     
     def download_wan_components(self, model_path: str):
-        """Download missing pipeline components from HuggingFace"""
+        """Download missing pipeline components from HuggingFace - with better caching"""
         model_path = Path(model_path)
         
-        # Check if components already exist
+        # Check if components already exist with more comprehensive detection
         text_encoder_dir = model_path / "text_encoder"
-        if text_encoder_dir.exists() and any(text_encoder_dir.glob("*.safetensors")):
-            print("✅ Using existing cached components")
+        tokenizer_dir = model_path / "tokenizer"
+        
+        has_text_encoder = text_encoder_dir.exists() and (
+            any(text_encoder_dir.glob("*.safetensors")) or 
+            any(text_encoder_dir.glob("*.bin")) or
+            (text_encoder_dir / "config.json").exists()
+        )
+        
+        has_tokenizer = tokenizer_dir.exists() and (
+            (tokenizer_dir / "tokenizer_config.json").exists() or
+            (tokenizer_dir / "tokenizer.json").exists()
+        )
+        
+        if has_text_encoder and has_tokenizer:
+            print("✅ Using existing cached HuggingFace components")
             return
             
-        print("📥 Downloading missing pipeline components...")
+        print("📥 Downloading missing pipeline components (one-time setup)...")
         
         try:
             with self.isolated_imports():
@@ -507,17 +525,37 @@ huggingface-hub>=0.20.0
                 cache_dir = self.extension_root / "hf_cache"
                 cache_dir.mkdir(exist_ok=True)
                 os.environ['HF_HOME'] = str(cache_dir)
+                os.environ['TRANSFORMERS_CACHE'] = str(cache_dir)
                 
-                # Download CLIP text encoder if missing weights
-                if not any(text_encoder_dir.glob("*.safetensors")):
+                # Download CLIP text encoder if missing
+                if not has_text_encoder:
                     print("📥 Downloading CLIP text encoder...")
-                    snapshot_download(
-                        repo_id="openai/clip-vit-large-patch14",
-                        local_dir=str(text_encoder_dir),
-                        allow_patterns=["*.json", "*.safetensors", "*.txt"],
-                        local_dir_use_symlinks=False,
-                        cache_dir=cache_dir
-                    )
+                    try:
+                        snapshot_download(
+                            repo_id="openai/clip-vit-large-patch14",
+                            local_dir=str(text_encoder_dir),
+                            allow_patterns=["*.json", "*.safetensors", "*.txt"],
+                            local_dir_use_symlinks=False,
+                            cache_dir=cache_dir
+                        )
+                        print("✅ Text encoder downloaded")
+                    except Exception as te_error:
+                        print(f"⚠️ Text encoder download failed: {te_error}")
+                
+                # Download tokenizer if missing  
+                if not has_tokenizer:
+                    print("📥 Downloading CLIP tokenizer...")
+                    try:
+                        snapshot_download(
+                            repo_id="openai/clip-vit-large-patch14",
+                            local_dir=str(tokenizer_dir),
+                            allow_patterns=["tokenizer*", "vocab*", "merges*"],
+                            local_dir_use_symlinks=False,
+                            cache_dir=cache_dir
+                        )
+                        print("✅ Tokenizer downloaded")
+                    except Exception as tok_error:
+                        print(f"⚠️ Tokenizer download failed: {tok_error}")
                 
                 print("✅ Component download complete")
                 
@@ -554,22 +592,21 @@ class WanIsolatedGenerator:
         print("✅ Wan isolated generator setup complete!")
     
     def generate_video(self, prompt: str, **kwargs) -> List:
-        """Generate video using Wan 2.1 native inference system"""
+        """Generate video using diffusers with WAN model files - simplified approach"""
         if not self.env_manager or not self.prepared_model_path:
             raise RuntimeError("Generator not properly set up")
         
-        print(f"🎬 Generating video with Wan 2.1 native system: '{prompt}'")
+        print(f"🎬 Generating video with diffusers + WAN model: '{prompt}'")
         
         with self.env_manager.isolated_imports():
             import torch
             from PIL import Image
             import numpy as np
             import os
-            import sys
             from pathlib import Path
             
             try:
-                print("🧪 Loading Wan 2.1 model with native inference...")
+                print("🧪 Loading WAN model with diffusers approach...")
                 
                 model_path = Path(self.prepared_model_path)
                 
@@ -581,74 +618,71 @@ class WanIsolatedGenerator:
                 
                 print(f"📋 Found {len(shard_files)} WAN model shards")
                 
-                # Try to load Wan 2.1 native system
+                # Extract generation parameters
+                num_frames = kwargs.get('num_frames', 60)
+                width = kwargs.get('width', 1280) 
+                height = kwargs.get('height', 720)
+                num_inference_steps = kwargs.get('num_inference_steps', 50)
+                guidance_scale = kwargs.get('guidance_scale', 7.5)
+                generator = kwargs.get('generator', None)
+                image = kwargs.get('image', None)  # For img2video
+                
+                print(f"🎬 Generating {num_frames} frames at {width}x{height}")
+                
+                # Try to use diffusers with the prepared model structure
                 try:
-                    # Look for Wan repository or installation
-                    wan_repo_paths = [
-                        Path(self.env_manager.extension_root) / "Wan2.1",  # If cloned as submodule
-                        Path(self.env_manager.extension_root) / "wan",     # If installed in wan folder
-                        Path(self.env_manager.wan_site_packages) / "wan"   # If installed via pip
-                    ]
+                    from diffusers import DiffusionPipeline, StableVideoDiffusionPipeline
                     
-                    wan_repo_path = None
-                    for path in wan_repo_paths:
-                        if path.exists() and (path / "__init__.py").exists():
-                            wan_repo_path = path
-                            break
+                    print("🔄 Attempting to load with DiffusionPipeline...")
                     
-                    if wan_repo_path is None:
-                        # Try to install/clone Wan 2.1
-                        print("🔄 Wan 2.1 repository not found, attempting to set up...")
-                        wan_repo_path = self._setup_wan_repository()
-                    
-                    # Add Wan to Python path
-                    if str(wan_repo_path.parent) not in sys.path:
-                        sys.path.insert(0, str(wan_repo_path.parent))
-                    
-                    print(f"📁 Using Wan repository at: {wan_repo_path}")
-                    
-                    # Import Wan modules
-                    from wan.models import DiT_models
-                    from wan.utils.inference import generate_video_frames
-                    
-                    # Extract generation parameters
-                    num_frames = kwargs.get('num_frames', 60)
-                    width = kwargs.get('width', 1280) 
-                    height = kwargs.get('height', 720)
-                    num_inference_steps = kwargs.get('num_inference_steps', 50)
-                    guidance_scale = kwargs.get('guidance_scale', 7.5)
-                    generator = kwargs.get('generator', None)
-                    image = kwargs.get('image', None)  # For img2video
-                    
-                    print(f"🎬 Generating {num_frames} frames at {width}x{height}")
-                    
-                    # Load Wan model
-                    model_config = self._detect_wan_model_config(model_path)
-                    model = DiT_models[model_config['model_name']](
-                        input_size=model_config['input_size'],
-                        num_classes=model_config.get('num_classes', 1000)
+                    # Try DiffusionPipeline auto-detection first
+                    pipeline = DiffusionPipeline.from_pretrained(
+                        str(model_path),
+                        torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                        safety_checker=None,
+                        device_map="auto" if self.device == "cuda" else None,
+                        local_files_only=True,  # Don't download anything new
+                        trust_remote_code=True
                     )
                     
-                    # Load model weights from sharded files
-                    model = self._load_wan_sharded_weights(model, model_path, shard_files)
-                    model = model.to(self.device)
-                    model.eval()
+                    print("✅ Successfully loaded pipeline")
                     
-                    print(f"✅ Successfully loaded Wan {model_config['model_name']} model")
-                    
-                    # Generate video using Wan's native inference
+                    # Generate frames
                     with torch.no_grad():
-                        frames = generate_video_frames(
-                            model=model,
-                            prompt=prompt,
-                            image=image,
-                            num_frames=num_frames,
-                            width=width,
-                            height=height,
-                            num_inference_steps=num_inference_steps,
-                            guidance_scale=guidance_scale,
-                            generator=generator
-                        )
+                        if image is not None:
+                            # Image-to-video generation
+                            print("🎭 Running image-to-video generation...")
+                            result = pipeline(
+                                image=image,
+                                num_frames=min(num_frames, 16),  # Limit frames to avoid memory issues
+                                height=height,
+                                width=width,
+                                num_inference_steps=num_inference_steps,
+                                guidance_scale=guidance_scale,
+                                generator=generator
+                            )
+                        else:
+                            # Text-to-video generation  
+                            print("🎭 Running text-to-video generation...")
+                            result = pipeline(
+                                prompt=prompt,
+                                num_frames=min(num_frames, 16),  # Limit frames to avoid memory issues
+                                height=height,
+                                width=width,
+                                num_inference_steps=num_inference_steps,
+                                guidance_scale=guidance_scale,
+                                generator=generator
+                            )
+                    
+                    # Extract frames from result
+                    if hasattr(result, 'frames') and result.frames:
+                        frames = result.frames[0]  # Usually first batch
+                    elif hasattr(result, 'videos') and result.videos:
+                        frames = result.videos[0]  # Alternative attribute name
+                    elif isinstance(result, list):
+                        frames = result
+                    else:
+                        raise RuntimeError("Could not extract frames from pipeline result")
                     
                     # Convert to PIL Images
                     pil_frames = []
@@ -669,47 +703,27 @@ class WanIsolatedGenerator:
                                 frame_np = frame_np.transpose(1, 2, 0)
                             pil_frames.append(Image.fromarray(frame_np))
                     
-                    print(f"✅ Successfully generated {len(pil_frames)} frames with Wan 2.1")
+                    print(f"✅ Successfully generated {len(pil_frames)} frames with diffusers")
                     return pil_frames
                     
-                except ImportError as import_error:
-                    print(f"⚠️ Wan 2.1 modules not available: {import_error}")
+                except Exception as diffusers_error:
+                    print(f"⚠️ Diffusers approach failed: {diffusers_error}")
                     raise RuntimeError(f"""
-🚫 Wan 2.1 Installation Required
+🚫 WAN Video Generation Failed
 
-The Wan 2.1 native inference system could not be loaded. Please ensure:
+The WAN model could not generate video using diffusers. This could be due to:
 
-1. **Install Wan 2.1 manually**: 
-   - Download or clone https://github.com/Wan-Video/Wan2.1
-   - Place it in your extension directory as 'Wan2.1' folder
-   - Install its requirements: pip install -r requirements.txt
+1. **Model Compatibility**: Your WAN model might not be compatible with diffusers pipelines
+2. **GPU Memory**: Insufficient GPU memory for video generation  
+3. **Model Structure**: Missing or invalid pipeline configuration files
+4. **Dependencies**: Missing required diffusers components
 
-2. **Check Python Path**: Ensure Wan 2.1 modules are in Python path
+Error details: {diffusers_error}
 
-3. **Alternative**: Use a different video generation method
-
-Current error: {import_error}
-""")
-                    
-                except Exception as wan_error:
-                    print(f"⚠️ Wan 2.1 native inference failed: {wan_error}")
-                    raise RuntimeError(f"""
-🚫 Wan 2.1 Generation Failed
-
-The Wan 2.1 model could not generate the video. This could be due to:
-
-1. **Model Compatibility**: Your model might not be compatible with Wan 2.1
-2. **GPU Memory**: Insufficient GPU memory for the model
-3. **Model Files**: Corrupted or incomplete model files
-4. **System Requirements**: Missing dependencies or incompatible versions
-
-Troubleshooting steps:
-- Verify your model is a valid Wan 2.1 model
-- Check GPU memory usage
-- Ensure all model files are present and uncorrupted
-- Check the console for additional error details
-
-Error details: {wan_error}
+Suggestions:
+- Try reducing the number of frames or resolution
+- Ensure you have enough GPU memory available
+- Check that all model files are present and valid
 """)
                 
             except Exception as e:
@@ -728,171 +742,11 @@ Could not load the WAN model. Common causes:
 Error details: {e}
 """)
     
+    # Remove the complex repository setup methods since we're using diffusers approach
     def _setup_wan_repository(self) -> Path:
-        """Set up Wan 2.1 repository if not found"""
-        import subprocess
-        import shutil
-        import zipfile
-        import urllib.request
-        import time
-        
-        # Use a timestamped directory name to avoid conflicts with corrupted dirs
-        timestamp = int(time.time())
-        wan_repo_path = Path(self.env_manager.extension_root) / f"Wan2.1_{timestamp}"
-        
-        # If any old Wan directories exist, try to remove them (but don't fail if we can't)
-        for old_dir in self.env_manager.extension_root.glob("Wan2.1*"):
-            if old_dir.is_dir():
-                try:
-                    shutil.rmtree(old_dir)
-                    print(f"✅ Removed old Wan directory: {old_dir}")
-                except (PermissionError, OSError) as e:
-                    print(f"⚠️ Couldn't remove {old_dir}: {e}")
-                    # Continue anyway - we'll use a new directory name
-        
-        try:
-            # Try git clone first (might work on some systems)
-            print("📥 Trying git clone for Wan 2.1 repository...")
-            subprocess.run([
-                "git", "clone", "https://github.com/Wan-Video/Wan2.1.git", 
-                str(wan_repo_path)
-            ], check=True, capture_output=True, text=True, timeout=60)
-            print("✅ Git clone successful")
-            
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, PermissionError) as git_error:
-            print(f"⚠️ Git clone failed: {git_error}")
-            print("📥 Trying alternative: Download as ZIP...")
-            
-            try:
-                # Download as ZIP file instead
-                zip_url = "https://github.com/Wan-Video/Wan2.1/archive/refs/heads/main.zip"
-                zip_path = Path(self.env_manager.extension_root) / f"wan2.1_{timestamp}.zip"
-                
-                print(f"📥 Downloading {zip_url}...")
-                urllib.request.urlretrieve(zip_url, zip_path)
-                
-                # Extract ZIP to a clean directory
-                print("📦 Extracting ZIP file...")
-                extract_dir = Path(self.env_manager.extension_root) / f"wan_extract_{timestamp}"
-                extract_dir.mkdir(exist_ok=True)
-                
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(extract_dir)
-                
-                # Find the extracted folder and rename it
-                extracted_folders = list(extract_dir.glob("Wan2.1-*"))
-                if extracted_folders:
-                    extracted_path = extracted_folders[0]
-                    extracted_path.rename(wan_repo_path)
-                    extract_dir.rmdir()  # Remove empty extract dir
-                else:
-                    # Fallback: move the entire extract dir
-                    extract_dir.rename(wan_repo_path)
-                
-                # Clean up ZIP file
-                try:
-                    zip_path.unlink()
-                except OSError:
-                    pass  # Don't fail if we can't clean up
-                
-                print("✅ ZIP download and extraction successful")
-                
-            except Exception as zip_error:
-                print(f"❌ ZIP download failed: {zip_error}")
-                raise RuntimeError(f"Unable to download Wan 2.1 repository via git or zip: {zip_error}")
-        
-        # Try to install requirements if we have them
-        wan_code_path = wan_repo_path / "wan"
-        if not wan_code_path.exists():
-            # Look for the main code directory
-            possible_paths = [
-                wan_repo_path / "src",
-                wan_repo_path / "wan2.1", 
-                wan_repo_path,  # Sometimes code is in root
-            ]
-            for path in possible_paths:
-                if path.exists() and any(path.glob("*.py")):
-                    wan_code_path = path
-                    break
-        
-        try:
-            # Install Wan 2.1 requirements if available
-            requirements_file = wan_repo_path / "requirements.txt"
-            if requirements_file.exists():
-                print("📦 Installing Wan 2.1 requirements...")
-                result = subprocess.run([
-                    sys.executable, "-m", "pip", "install", "-r", str(requirements_file),
-                    "--target", str(self.env_manager.wan_site_packages),
-                    "--no-deps"  # Avoid conflicts
-                ], capture_output=True, text=True, timeout=300)
-                
-                if result.returncode != 0:
-                    print(f"⚠️ Requirements install failed: {result.stderr}")
-                    # Don't fail here, continue without requirements
-                else:
-                    print("✅ Requirements installed successfully")
-            else:
-                print("💡 No requirements.txt found, continuing without installing dependencies")
-                
-        except Exception as req_error:
-            print(f"⚠️ Requirements installation failed: {req_error}")
-            # Continue anyway
-        
-        return wan_code_path
+        """Deprecated - using diffusers approach instead"""
+        raise NotImplementedError("Using diffusers approach - no repository setup needed")
     
-    def _detect_wan_model_config(self, model_path: Path) -> dict:
-        """Detect Wan model configuration from model files"""
-        # Look for config files or infer from model size
-        config_file = model_path / "config.json"
-        if config_file.exists():
-            import json
-            with open(config_file) as f:
-                config = json.load(f)
-                if 'model_name' in config:
-                    return config
-        
-        # Estimate model size from sharded files
-        total_size = sum((model_path / f).stat().st_size for f in os.listdir(model_path) if f.endswith('.safetensors'))
-        size_gb = total_size / (1024**3)
-        
-        if size_gb < 5:
-            return {
-                'model_name': 'DiT-XL/2',
-                'input_size': 32,
-                'num_classes': 1000
-            }
-        else:
-            return {
-                'model_name': 'DiT-XL/2-14B', 
-                'input_size': 32,
-                'num_classes': 1000
-            }
-    
-    def _load_wan_sharded_weights(self, model, model_path: Path, shard_files: list):
-        """Load Wan model weights from sharded safetensors files"""
-        try:
-            from safetensors import safe_open
-            import torch
-            
-            state_dict = {}
-            
-            print(f"🔄 Loading weights from {len(shard_files)} shards...")
-            for shard_file in sorted(shard_files):
-                shard_path = model_path / shard_file
-                with safe_open(shard_path, framework="pt", device="cpu") as f:
-                    for key in f.keys():
-                        state_dict[key] = f.get_tensor(key)
-            
-            # Load state dict into model
-            missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-            
-            if missing_keys:
-                print(f"⚠️ Missing keys: {len(missing_keys)}")
-            if unexpected_keys:
-                print(f"⚠️ Unexpected keys: {len(unexpected_keys)}")
-            
-            print(f"✅ Loaded {len(state_dict)} tensors into model")
-            return model
-            
-        except Exception as e:
-            raise RuntimeError(f"Failed to load sharded weights: {e}")
+    def _find_wan_code_directory(self, repo_path: Path) -> Path:
+        """Deprecated - using diffusers approach instead"""
+        raise NotImplementedError("Using diffusers approach - no code directory needed")
