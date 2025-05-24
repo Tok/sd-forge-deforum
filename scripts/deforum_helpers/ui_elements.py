@@ -453,14 +453,11 @@ def wan_generate_video(*component_args):
         timestring = time.strftime('%Y%m%d%H%M%S')
         batch_name = args_dict.get('batch_name', 'Deforum')
         
-        # Use webui-forge's output directory structure with wan-images folder
-        webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        deforum_outdir = os.path.join(webui_root, 'outputs', 'wan-images', f"{batch_name}_{timestring}")
-        os.makedirs(deforum_outdir, exist_ok=True)
-        
         class MockProcessing:
             def __init__(self):
-                self.outpath_samples = deforum_outdir
+                # Use the correct webui-forge output directory structure for WAN
+                webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+                self.outpath_samples = os.path.join(webui_root, 'outputs', 'wan-images')
         
         args_dict['p'] = MockProcessing()
         

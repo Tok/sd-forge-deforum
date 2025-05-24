@@ -163,32 +163,34 @@ huggingface-hub>=0.20.0
         # Handle sharded model files - create index if we have sharded files
         sharded_files = [f for f in file_names if f.startswith("diffusion_pytorch_model-") and f.endswith(".safetensors")]
         if sharded_files and "diffusion_pytorch_model.safetensors.index.json" not in file_names:
-            # Create transformer subdirectory for better organization
-            transformer_dir = model_path / "transformer"
-            transformer_dir.mkdir(exist_ok=True)
+            # Keep sharded files in main directory (don't move to subdirectory)
+            # This is what diffusers expects for proper loading
+            self._create_sharded_model_index(model_path, sharded_files)
+            print("✅ Generated sharded model index in main directory")
             
-            # Move sharded files to transformer directory if they're in root
-            moved_files = []
-            for shard_file in sharded_files:
-                source_path = model_path / shard_file
-                target_path = transformer_dir / shard_file
-                if source_path.exists() and not target_path.exists():
-                    shutil.move(str(source_path), str(target_path))
-                    moved_files.append(shard_file)
-                elif target_path.exists():
-                    moved_files.append(shard_file)
-            
-            if moved_files:
-                self._create_sharded_model_index(transformer_dir, moved_files)
+            # Also ensure there's either a merged file or properly named shards
+            main_model_file = model_path / "diffusion_pytorch_model.safetensors"
+            if not main_model_file.exists():
+                # Check if we have the right naming pattern for shards
+                expected_pattern = any((model_path / f"diffusion_pytorch_model-{i:05d}-of-{len(sharded_files):05d}.safetensors").exists() for i in range(1, len(sharded_files)+1))
                 
-                # Also create transformer config
-                transformer_config = self._create_main_config()
-                with open(transformer_dir / "config.json", 'w', encoding='utf-8') as f:
-                    json.dump(transformer_config, f, indent=2)
-                
-                print("✅ Generated sharded model index in transformer directory")
-            else:
-                print("⚠️ No sharded files found to process")
+                if not expected_pattern:
+                    try:
+                        print("🔧 Attempting to merge sharded files...")
+                        self._merge_sharded_files(model_path, sharded_files)
+                        print("✅ Successfully merged sharded files")
+                    except Exception as merge_error:
+                        print(f"⚠️ Merge failed: {merge_error}")
+                        # Copy first shard as fallback
+                        first_shard = model_path / sharded_files[0]
+                        if first_shard.exists():
+                            try:
+                                shutil.copy2(first_shard, main_model_file)
+                                print(f"✅ Created main model file from first shard")
+                            except Exception as copy_error:
+                                print(f"❌ Copy fallback failed: {copy_error}")
+                else:
+                    print("✅ Sharded files already in correct naming pattern")
         
         # Generate main config.json (required by FluxPipeline)
         if "config.json" not in file_names:
@@ -229,50 +231,59 @@ huggingface-hub>=0.20.0
             print("✅ Generated text encoder config")
     
     def _create_main_config(self) -> Dict[str, Any]:
-        """Create main config.json that FluxPipeline expects"""
+        """Create main config.json that works with standard UNet models"""
         return {
-            "_class_name": "FluxTransformer2DModel",
+            "_class_name": "UNet2DConditionModel",
             "_diffusers_version": "0.26.0",
-            "axes_dims_rope": [16, 56, 56],
-            "guidance_embeds": False,
-            "hidden_size": 3072,
-            "mlp_ratio": 4.0,
-            "num_attention_heads": 24,
-            "num_layers": 19,
-            "num_single_layers": 38,
-            "patch_size": 1,
-            "pooled_projection_dim": 768,
-            "text_projection_dim": 4096,
-            "joint_attention_dim": 4096,
-            "in_channels": 64,
-            "out_channels": 64
+            "in_channels": 4,
+            "out_channels": 4,
+            "down_block_types": [
+                "CrossAttnDownBlock2D",
+                "CrossAttnDownBlock2D", 
+                "CrossAttnDownBlock2D",
+                "DownBlock2D"
+            ],
+            "up_block_types": [
+                "UpBlock2D",
+                "CrossAttnUpBlock2D",
+                "CrossAttnUpBlock2D",
+                "CrossAttnUpBlock2D"
+            ],
+            "block_out_channels": [320, 640, 1280, 1280],
+            "layers_per_block": 2,
+            "attention_head_dim": 8,
+            "norm_num_groups": 32,
+            "cross_attention_dim": 768,
+            "sample_size": 64
         }
     
     def _create_model_index(self) -> Dict[str, Any]:
-        """Create a basic model_index.json using available pipelines"""
+        """Create a basic model_index.json that works with multiple pipeline types"""
         return {
-            "_class_name": "FluxPipeline",
+            "_class_name": "DiffusionPipeline",
             "_diffusers_version": "0.26.0",
-            "scheduler": ["diffusers", "FlowMatchEulerDiscreteScheduler"],
-            "text_encoder": ["transformers", "CLIPTextModel"],
+            "scheduler": ["diffusers", "EulerDiscreteScheduler"],
+            "text_encoder": ["transformers", "CLIPTextModel"], 
             "tokenizer": ["transformers", "CLIPTokenizer"],
-            "transformer": ["diffusers", "FluxTransformer2DModel"],
+            "unet": ["diffusers", "UNet2DConditionModel"],
             "vae": ["diffusers", "AutoencoderKL"]
         }
     
     def _create_scheduler_config(self) -> Dict[str, Any]:
         """Create basic scheduler configuration"""
         return {
-            "_class_name": "FlowMatchEulerDiscreteScheduler",
+            "_class_name": "EulerDiscreteScheduler",
             "_diffusers_version": "0.26.0",
             "num_train_timesteps": 1000,
-            "beta_start": 0.0001,
-            "beta_end": 0.02,
-            "beta_schedule": "linear",
-            "base_image_seq_len": 256,
-            "max_image_seq_len": 4096,
-            "shift": 1.0,
-            "use_dynamic_shifting": False
+            "beta_start": 0.00085,
+            "beta_end": 0.012,
+            "beta_schedule": "scaled_linear",
+            "trained_betas": None,
+            "skip_prk_steps": True,
+            "set_alpha_to_one": False,
+            "prediction_type": "epsilon",
+            "timestep_spacing": "leading",
+            "steps_offset": 1
         }
     
     def _create_text_encoder_config(self) -> Dict[str, Any]:
@@ -352,29 +363,7 @@ huggingface-hub>=0.20.0
                     
         except Exception as e:
             print(f"⚠️ Failed to create proper sharded index: {e}")
-            print("💡 Attempting fallback: renaming first shard to main model file")
-            
-            # Fallback: just use the first shard as the main model file
-            # This works for some models if they're not too large
-            if sharded_files:
-                first_shard = model_path / sharded_files[0]
-                main_model = model_path / "diffusion_pytorch_model.safetensors"
-                
-                if not main_model.exists() and first_shard.exists():
-                    try:
-                        # Try to merge sharded files if possible
-                        self._merge_sharded_files(model_path, sharded_files)
-                        print(f"✅ Merged {len(sharded_files)} shards into main model file")
-                    except Exception as merge_error:
-                        print(f"⚠️ Merge failed: {merge_error}")
-                        try:
-                            # Final fallback: copy first shard as main model file
-                            import shutil
-                            shutil.copy2(first_shard, main_model)
-                            print(f"✅ Created main model file from {sharded_files[0]}")
-                        except Exception as copy_error:
-                            print(f"❌ All fallbacks failed: {copy_error}")
-                            raise RuntimeError(f"Cannot handle sharded model: {e}")
+            raise RuntimeError(f"Cannot create sharded model index: {e}")
     
     def _merge_sharded_files(self, model_path: Path, sharded_files: List[str]):
         """Attempt to merge sharded model files into a single file"""
@@ -575,7 +564,21 @@ class WanIsolatedGenerator:
             pipeline_classes = []
             
             try:
-                # First try dedicated video pipelines
+                # First try standard stable diffusion pipelines (most likely to work)
+                from diffusers import StableDiffusionPipeline
+                pipeline_classes.append(("StableDiffusionPipeline", StableDiffusionPipeline))
+            except ImportError:
+                pass
+                
+            try:
+                # Try generic DiffusionPipeline (auto-detects model type)
+                from diffusers import DiffusionPipeline
+                pipeline_classes.append(("DiffusionPipeline", DiffusionPipeline))
+            except ImportError:
+                pass
+            
+            try:
+                # Try dedicated video pipelines
                 from diffusers import I2VGenXLPipeline
                 pipeline_classes.append(("I2VGenXLPipeline", I2VGenXLPipeline))
             except ImportError:
@@ -588,15 +591,9 @@ class WanIsolatedGenerator:
                 pass
             
             try:
-                # Try standard image generation pipelines as fallback
+                # Try Flux as last resort (requires specific model format)
                 from diffusers import FluxPipeline
                 pipeline_classes.append(("FluxPipeline", FluxPipeline))
-            except ImportError:
-                pass
-                
-            try:
-                from diffusers import DiffusionPipeline
-                pipeline_classes.append(("DiffusionPipeline", DiffusionPipeline))
             except ImportError:
                 pass
             

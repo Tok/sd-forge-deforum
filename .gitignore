@@ -40,3 +40,4 @@ serverlog.txt
 wan_isolated_env/
 webui_log.txt
 webui_startup_log.txt
+hf_cache/
