@@ -449,13 +449,13 @@ def wan_generate_video(*component_args):
         # Force animation mode to Wan Video
         args_dict['animation_mode'] = 'Wan Video'
         
-        # Create proper output directory using Deforum's structure
+        # Create proper output directory for Wan images
         timestring = time.strftime('%Y%m%d%H%M%S')
         batch_name = args_dict.get('batch_name', 'Deforum')
         
-        # Use webui-forge's output directory structure
+        # Use webui-forge's output directory structure with wan-images folder
         webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        deforum_outdir = os.path.join(webui_root, 'outputs', 'deforum', f"{timestring}_{batch_name}")
+        deforum_outdir = os.path.join(webui_root, 'outputs', 'wan-images', f"{batch_name}_{timestring}")
         os.makedirs(deforum_outdir, exist_ok=True)
         
         class MockProcessing:

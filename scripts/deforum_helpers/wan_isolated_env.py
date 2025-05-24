@@ -160,6 +160,36 @@ huggingface-hub>=0.20.0
         
         print(f"📋 Existing files: {file_names}")
         
+        # Handle sharded model files - create index if we have sharded files
+        sharded_files = [f for f in file_names if f.startswith("diffusion_pytorch_model-") and f.endswith(".safetensors")]
+        if sharded_files and "diffusion_pytorch_model.safetensors.index.json" not in file_names:
+            # Create transformer subdirectory for better organization
+            transformer_dir = model_path / "transformer"
+            transformer_dir.mkdir(exist_ok=True)
+            
+            # Move sharded files to transformer directory if they're in root
+            moved_files = []
+            for shard_file in sharded_files:
+                source_path = model_path / shard_file
+                target_path = transformer_dir / shard_file
+                if source_path.exists() and not target_path.exists():
+                    shutil.move(str(source_path), str(target_path))
+                    moved_files.append(shard_file)
+                elif target_path.exists():
+                    moved_files.append(shard_file)
+            
+            if moved_files:
+                self._create_sharded_model_index(transformer_dir, moved_files)
+                
+                # Also create transformer config
+                transformer_config = self._create_main_config()
+                with open(transformer_dir / "config.json", 'w', encoding='utf-8') as f:
+                    json.dump(transformer_config, f, indent=2)
+                
+                print("✅ Generated sharded model index in transformer directory")
+            else:
+                print("⚠️ No sharded files found to process")
+        
         # Generate main config.json (required by FluxPipeline)
         if "config.json" not in file_names:
             main_config = self._create_main_config()
@@ -269,6 +299,120 @@ huggingface-hub>=0.20.0
             "vocab_size": 49408
         }
     
+    def _create_sharded_model_index(self, model_path: Path, sharded_files: List[str]):
+        """Create index file for sharded model files"""
+        print(f"🔧 Creating sharded model index for {len(sharded_files)} files...")
+        
+        try:
+            # Try to use safetensors to read the actual tensor names
+            with self.isolated_imports():
+                from safetensors import safe_open
+                
+                weight_map = {}
+                metadata = {"total_size": 0}
+                
+                # Sort the files to ensure proper ordering
+                sharded_files.sort()
+                
+                # Read each shard file to get tensor names
+                for shard_file in sharded_files:
+                    file_path = model_path / shard_file
+                    if not file_path.exists():
+                        continue
+                        
+                    try:
+                        # Open the safetensors file and read tensor names
+                        with safe_open(file_path, framework="pt", device="cpu") as f:
+                            for tensor_name in f.keys():
+                                weight_map[tensor_name] = shard_file
+                        
+                        # Add file size
+                        metadata["total_size"] += file_path.stat().st_size
+                        print(f"📋 Mapped tensors from {shard_file}")
+                        
+                    except Exception as e:
+                        print(f"⚠️ Could not read {shard_file}: {e}")
+                        continue
+                
+                if weight_map:
+                    # Create the index structure that diffusers expects
+                    index_data = {
+                        "metadata": metadata,
+                        "weight_map": weight_map
+                    }
+                    
+                    # Write the index file
+                    index_file = model_path / "diffusion_pytorch_model.safetensors.index.json"
+                    with open(index_file, 'w', encoding='utf-8') as f:
+                        json.dump(index_data, f, indent=2)
+                    
+                    print(f"✅ Created sharded model index with {len(weight_map)} tensors across {len(sharded_files)} shards")
+                else:
+                    raise ValueError("No tensors found in shard files")
+                    
+        except Exception as e:
+            print(f"⚠️ Failed to create proper sharded index: {e}")
+            print("💡 Attempting fallback: renaming first shard to main model file")
+            
+            # Fallback: just use the first shard as the main model file
+            # This works for some models if they're not too large
+            if sharded_files:
+                first_shard = model_path / sharded_files[0]
+                main_model = model_path / "diffusion_pytorch_model.safetensors"
+                
+                if not main_model.exists() and first_shard.exists():
+                    try:
+                        # Try to merge sharded files if possible
+                        self._merge_sharded_files(model_path, sharded_files)
+                        print(f"✅ Merged {len(sharded_files)} shards into main model file")
+                    except Exception as merge_error:
+                        print(f"⚠️ Merge failed: {merge_error}")
+                        try:
+                            # Final fallback: copy first shard as main model file
+                            import shutil
+                            shutil.copy2(first_shard, main_model)
+                            print(f"✅ Created main model file from {sharded_files[0]}")
+                        except Exception as copy_error:
+                            print(f"❌ All fallbacks failed: {copy_error}")
+                            raise RuntimeError(f"Cannot handle sharded model: {e}")
+    
+    def _merge_sharded_files(self, model_path: Path, sharded_files: List[str]):
+        """Attempt to merge sharded model files into a single file"""
+        print(f"🔧 Attempting to merge {len(sharded_files)} sharded files...")
+        
+        try:
+            with self.isolated_imports():
+                from safetensors import safe_open
+                import torch
+                
+                # Collect all tensors from all shards
+                merged_tensors = {}
+                
+                for shard_file in sorted(sharded_files):
+                    shard_path = model_path / shard_file
+                    if not shard_path.exists():
+                        continue
+                        
+                    with safe_open(shard_path, framework="pt", device="cpu") as f:
+                        for tensor_name in f.keys():
+                            if tensor_name in merged_tensors:
+                                print(f"⚠️ Duplicate tensor {tensor_name} found in {shard_file}")
+                                continue
+                            merged_tensors[tensor_name] = f.get_tensor(tensor_name)
+                
+                if not merged_tensors:
+                    raise ValueError("No tensors found to merge")
+                
+                # Save merged tensors
+                from safetensors.torch import save_file
+                output_path = model_path / "diffusion_pytorch_model.safetensors"
+                save_file(merged_tensors, str(output_path))
+                
+                print(f"✅ Successfully merged {len(merged_tensors)} tensors into single file")
+                
+        except Exception as e:
+            raise RuntimeError(f"Failed to merge sharded files: {e}")
+    
     def _setup_tokenizer_from_huggingface(self, tokenizer_dir: Path):
         """
         General solution: Use HuggingFace transformers to automatically setup tokenizer
@@ -276,12 +420,29 @@ huggingface-hub>=0.20.0
         """
         tokenizer_dir.mkdir(exist_ok=True)
         
+        # Check if tokenizer already exists and is complete
+        required_files = ["tokenizer.json", "tokenizer_config.json"]
+        if all((tokenizer_dir / f).exists() for f in required_files):
+            print("✅ Using existing cached tokenizer")
+            return
+        
         try:
             # Method 1: Try to use transformers AutoTokenizer (most reliable)
             with self.isolated_imports():
                 from transformers import CLIPTokenizer
+                import os
+                
+                # Set up persistent cache directory
+                cache_dir = self.extension_root / "hf_cache"
+                cache_dir.mkdir(exist_ok=True)
+                os.environ['TRANSFORMERS_CACHE'] = str(cache_dir)
+                os.environ['HF_HOME'] = str(cache_dir)
+                
                 print("📥 Downloading CLIP tokenizer from HuggingFace...")
-                tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
+                tokenizer = CLIPTokenizer.from_pretrained(
+                    "openai/clip-vit-large-patch14",
+                    cache_dir=cache_dir
+                )
                 tokenizer.save_pretrained(str(tokenizer_dir))
                 print("✅ Successfully setup tokenizer using transformers")
                 return
@@ -335,23 +496,35 @@ huggingface-hub>=0.20.0
     
     def download_wan_components(self, model_path: str):
         """Download missing pipeline components from HuggingFace"""
+        model_path = Path(model_path)
+        
+        # Check if components already exist
+        text_encoder_dir = model_path / "text_encoder"
+        if text_encoder_dir.exists() and any(text_encoder_dir.glob("*.safetensors")):
+            print("✅ Using existing cached components")
+            return
+            
         print("📥 Downloading missing pipeline components...")
         
         try:
             with self.isolated_imports():
                 from huggingface_hub import snapshot_download
+                import os
                 
-                model_path = Path(model_path)
+                # Set up persistent cache directory
+                cache_dir = self.extension_root / "hf_cache"
+                cache_dir.mkdir(exist_ok=True)
+                os.environ['HF_HOME'] = str(cache_dir)
                 
                 # Download CLIP text encoder if missing weights
-                text_encoder_dir = model_path / "text_encoder"
                 if not any(text_encoder_dir.glob("*.safetensors")):
                     print("📥 Downloading CLIP text encoder...")
                     snapshot_download(
                         repo_id="openai/clip-vit-large-patch14",
                         local_dir=str(text_encoder_dir),
                         allow_patterns=["*.json", "*.safetensors", "*.txt"],
-                        local_dir_use_symlinks=False
+                        local_dir_use_symlinks=False,
+                        cache_dir=cache_dir
                     )
                 
                 print("✅ Component download complete")
@@ -396,32 +569,118 @@ class WanIsolatedGenerator:
         print(f"🎬 Generating video with isolated environment: '{prompt}'")
         
         with self.env_manager.isolated_imports():
-            # Try to use available pipelines instead of fictional WanPipeline
+            import torch
+            
+            # Try different pipeline types in order of preference for video generation
+            pipeline_classes = []
+            
             try:
+                # First try dedicated video pipelines
+                from diffusers import I2VGenXLPipeline
+                pipeline_classes.append(("I2VGenXLPipeline", I2VGenXLPipeline))
+            except ImportError:
+                pass
+            
+            try:
+                from diffusers import StableVideoDiffusionPipeline
+                pipeline_classes.append(("StableVideoDiffusionPipeline", StableVideoDiffusionPipeline))
+            except ImportError:
+                pass
+            
+            try:
+                # Try standard image generation pipelines as fallback
                 from diffusers import FluxPipeline
-                import torch
+                pipeline_classes.append(("FluxPipeline", FluxPipeline))
+            except ImportError:
+                pass
                 
-                # Load available pipeline
-                pipeline = FluxPipeline.from_pretrained(
-                    self.prepared_model_path,
-                    torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
-                ).to(self.device)
-                
-                # Generate using available pipeline methods
-                result = pipeline(prompt=prompt, **kwargs)
-                
-                # Convert result to frames
-                if hasattr(result, 'images'):
-                    frames = result.images
-                elif hasattr(result, 'frames'):
-                    frames = result.frames[0] if isinstance(result.frames, list) else result.frames
-                elif isinstance(result, list):
-                    frames = result
-                else:
-                    frames = [result]
-                
-                print(f"✅ Generated {len(frames)} frames")
-                return frames
-                
-            except Exception as e:
-                raise RuntimeError(f"Pipeline generation failed: {e}")
+            try:
+                from diffusers import DiffusionPipeline
+                pipeline_classes.append(("DiffusionPipeline", DiffusionPipeline))
+            except ImportError:
+                pass
+            
+            if not pipeline_classes:
+                raise RuntimeError("No compatible pipeline classes found in diffusers")
+            
+            # Try loading pipelines in order
+            for pipeline_name, pipeline_class in pipeline_classes:
+                try:
+                    print(f"🧪 Attempting to load {pipeline_name}...")
+                    
+                    # Load pipeline
+                    pipeline = pipeline_class.from_pretrained(
+                        self.prepared_model_path,
+                        torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                        safety_checker=None,  # Disable safety checker for speed
+                        requires_safety_checker=False
+                    ).to(self.device)
+                    
+                    print(f"✅ Successfully loaded {pipeline_name}")
+                    
+                    # Handle different pipeline argument patterns
+                    generation_kwargs = kwargs.copy()
+                    
+                    # Check if we're doing image-to-video (image parameter provided)
+                    is_img2video = 'image' in generation_kwargs
+                    
+                    # Remove video-specific args that image pipelines don't understand
+                    if pipeline_name in ["FluxPipeline"]:
+                        generation_kwargs.pop('num_frames', None)
+                        generation_kwargs.pop('width', None)
+                        generation_kwargs.pop('height', None)
+                        
+                        # For image pipelines, generate multiple images as "frames"
+                        num_frames = kwargs.get('num_frames', 1)
+                        frames = []
+                        
+                        if is_img2video:
+                            # For img2video with image pipeline, use the image as init_image
+                            init_image = generation_kwargs.pop('image', None)
+                            if init_image:
+                                # Use image-to-image generation
+                                for i in range(num_frames):
+                                    result = pipeline(prompt=prompt, image=init_image, **generation_kwargs)
+                                    if hasattr(result, 'images') and result.images:
+                                        frames.extend(result.images)
+                                    else:
+                                        frames.append(result)
+                            else:
+                                # Fallback to text-to-image
+                                for i in range(num_frames):
+                                    result = pipeline(prompt=prompt, **generation_kwargs)
+                                    if hasattr(result, 'images') and result.images:
+                                        frames.extend(result.images)
+                                    else:
+                                        frames.append(result)
+                        else:
+                            # Text-to-image generation
+                            for i in range(num_frames):
+                                result = pipeline(prompt=prompt, **generation_kwargs)
+                                if hasattr(result, 'images') and result.images:
+                                    frames.extend(result.images)
+                                else:
+                                    frames.append(result)
+                    else:
+                        # For video pipelines, use all arguments
+                        result = pipeline(prompt=prompt, **generation_kwargs)
+                        
+                        # Convert result to frames
+                        if hasattr(result, 'frames'):
+                            frames = result.frames[0] if isinstance(result.frames, list) else result.frames
+                        elif hasattr(result, 'images'):
+                            frames = result.images
+                        elif isinstance(result, list):
+                            frames = result
+                        else:
+                            frames = [result]
+                    
+                    print(f"✅ Generated {len(frames)} frames using {pipeline_name}")
+                    return frames
+                    
+                except Exception as e:
+                    print(f"⚠️ {pipeline_name} failed: {e}")
+                    continue
+            
+            # If all pipelines failed
+            raise RuntimeError("All pipeline loading attempts failed")

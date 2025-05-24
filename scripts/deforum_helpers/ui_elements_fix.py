@@ -41,20 +41,13 @@ def wan_generate_video(*component_args):
         # Force animation mode to Wan Video
         args_dict['animation_mode'] = 'Wan Video'
         
-        # Create proper output directory in webui outputs instead of temp
-        # Use webui-forge\webui\outputs\wan-images with Deforum_{timestamp} subdirectory
-        webui_outputs_dir = shared.opts.outdir_samples or shared.opts.outdir_img2img_samples
-        if not webui_outputs_dir:
-            # Fallback to default webui outputs directory
-            webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-            webui_outputs_dir = os.path.join(webui_root, "outputs")
-        
-        wan_outputs_dir = os.path.join(os.path.dirname(webui_outputs_dir), "outputs", "wan-images")
-        os.makedirs(wan_outputs_dir, exist_ok=True)
-        
-        # Create timestamped subdirectory
+        # Create proper output directory for Wan images
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        deforum_output_dir = os.path.join(wan_outputs_dir, f"Deforum_{timestamp}")
+        batch_name = args_dict.get('batch_name', 'Deforum')
+        
+        # Use webui-forge's output directory structure with wan-images folder
+        webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        deforum_output_dir = os.path.join(webui_root, 'outputs', 'wan-images', f"{batch_name}_{timestamp}")
         os.makedirs(deforum_output_dir, exist_ok=True)
         
         class MockProcessing:
