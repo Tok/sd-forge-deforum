@@ -479,6 +479,21 @@ def wan_generate_video(*component_args):
         if not args_loaded_ok:
             return "❌ Failed to load arguments for Wan generation"
         
+        # Fix output directory after process_args in case it was overridden with template
+        timestring_final = time.strftime('%Y%m%d%H%M%S')
+        batch_name_final = args_dict.get('batch_name', 'Deforum')
+        
+        # Rebuild the correct output directory
+        current_file = os.path.abspath(__file__)
+        extensions_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+        webui_dir = os.path.dirname(extensions_dir)
+        output_subdir_final = f"{batch_name_final}_{timestring_final}"
+        wan_output_dir_final = os.path.join(webui_dir, 'outputs', 'wan-images', output_subdir_final)
+        os.makedirs(wan_output_dir_final, exist_ok=True)
+        
+        # Override args.outdir to ensure it's correct
+        args.outdir = wan_output_dir_final
+        
         # Validate Wan settings
         validation_errors = validate_wan_settings(wan_args)
         if validation_errors:

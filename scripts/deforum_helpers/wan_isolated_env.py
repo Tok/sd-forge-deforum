@@ -702,10 +702,16 @@ class WanIsolatedGenerator:
             requirements_file = wan_repo_path / "requirements.txt"
             if requirements_file.exists():
                 print("📦 Installing Wan 2.1 requirements...")
-                subprocess.run([
+                result = subprocess.run([
                     sys.executable, "-m", "pip", "install", "-r", str(requirements_file),
                     "--target", str(self.env_manager.wan_site_packages)
-                ], check=True, capture_output=True, text=True)
+                ], capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    print(f"❌ Pip install failed with code {result.returncode}")
+                    print(f"📋 Stdout: {result.stdout}")
+                    print(f"📋 Stderr: {result.stderr}")
+                    raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
             
             return wan_repo_path / "wan"
             
