@@ -11,6 +11,8 @@ from typing import Optional, Dict, Any, List
 import json
 import shutil
 from contextlib import contextmanager
+import zipfile
+import urllib.request
 
 
 class WanIsolatedEnvironment:
@@ -671,52 +673,155 @@ class WanIsolatedGenerator:
                     
                 except ImportError as import_error:
                     print(f"⚠️ Wan 2.1 modules not available: {import_error}")
-                    raise RuntimeError(f"Wan 2.1 installation required. Please install from: https://github.com/Wan-Video/Wan2.1")
+                    raise RuntimeError(f"""
+🚫 Wan 2.1 Installation Required
+
+The Wan 2.1 native inference system could not be loaded. Please ensure:
+
+1. **Install Wan 2.1 manually**: 
+   - Download or clone https://github.com/Wan-Video/Wan2.1
+   - Place it in your extension directory as 'Wan2.1' folder
+   - Install its requirements: pip install -r requirements.txt
+
+2. **Check Python Path**: Ensure Wan 2.1 modules are in Python path
+
+3. **Alternative**: Use a different video generation method
+
+Current error: {import_error}
+""")
                     
                 except Exception as wan_error:
                     print(f"⚠️ Wan 2.1 native inference failed: {wan_error}")
-                    raise RuntimeError(f"Failed to generate with Wan 2.1: {wan_error}")
+                    raise RuntimeError(f"""
+🚫 Wan 2.1 Generation Failed
+
+The Wan 2.1 model could not generate the video. This could be due to:
+
+1. **Model Compatibility**: Your model might not be compatible with Wan 2.1
+2. **GPU Memory**: Insufficient GPU memory for the model
+3. **Model Files**: Corrupted or incomplete model files
+4. **System Requirements**: Missing dependencies or incompatible versions
+
+Troubleshooting steps:
+- Verify your model is a valid Wan 2.1 model
+- Check GPU memory usage
+- Ensure all model files are present and uncorrupted
+- Check the console for additional error details
+
+Error details: {wan_error}
+""")
                 
             except Exception as e:
                 print(f"❌ WAN model loading failed: {e}")
-                raise RuntimeError(f"WAN video generation failed: {e}")
+                raise RuntimeError(f"""
+🚫 WAN Model Loading Failed
+
+Could not load the WAN model. Common causes:
+
+1. **Invalid Model Path**: Check that {self.prepared_model_path} exists and contains valid model files
+2. **Corrupted Files**: Model files might be corrupted or incomplete
+3. **Permissions**: Check file/folder permissions
+4. **Disk Space**: Ensure sufficient disk space
+5. **Memory**: Insufficient system or GPU memory
+
+Error details: {e}
+""")
     
     def _setup_wan_repository(self) -> Path:
         """Set up Wan 2.1 repository if not found"""
         import subprocess
         import shutil
+        import zipfile
+        import urllib.request
         
         wan_repo_path = Path(self.env_manager.extension_root) / "Wan2.1"
         
         if wan_repo_path.exists():
-            shutil.rmtree(wan_repo_path)
+            try:
+                shutil.rmtree(wan_repo_path)
+            except PermissionError:
+                print("⚠️ Cannot remove existing Wan2.1 directory due to permissions")
+                pass  # Continue anyway
         
         try:
-            print("📥 Cloning Wan 2.1 repository...")
+            # Try git clone first (might work on some systems)
+            print("📥 Trying git clone for Wan 2.1 repository...")
             subprocess.run([
                 "git", "clone", "https://github.com/Wan-Video/Wan2.1.git", 
                 str(wan_repo_path)
-            ], check=True, capture_output=True, text=True)
+            ], check=True, capture_output=True, text=True, timeout=60)
+            print("✅ Git clone successful")
             
-            # Install Wan 2.1 requirements
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, PermissionError) as git_error:
+            print(f"⚠️ Git clone failed: {git_error}")
+            print("📥 Trying alternative: Download as ZIP...")
+            
+            try:
+                # Download as ZIP file instead
+                zip_url = "https://github.com/Wan-Video/Wan2.1/archive/refs/heads/main.zip"
+                zip_path = Path(self.env_manager.extension_root) / "wan2.1.zip"
+                
+                print(f"📥 Downloading {zip_url}...")
+                urllib.request.urlretrieve(zip_url, zip_path)
+                
+                # Extract ZIP
+                print("📦 Extracting ZIP file...")
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(self.env_manager.extension_root)
+                
+                # Rename extracted folder
+                extracted_path = Path(self.env_manager.extension_root) / "Wan2.1-main"
+                if extracted_path.exists():
+                    if wan_repo_path.exists():
+                        shutil.rmtree(wan_repo_path)
+                    extracted_path.rename(wan_repo_path)
+                
+                # Clean up ZIP file
+                zip_path.unlink()
+                print("✅ ZIP download and extraction successful")
+                
+            except Exception as zip_error:
+                print(f"❌ ZIP download failed: {zip_error}")
+                raise RuntimeError(f"Unable to download Wan 2.1 repository via git or zip: {zip_error}")
+        
+        # Try to install requirements if we have them
+        wan_code_path = wan_repo_path / "wan"
+        if not wan_code_path.exists():
+            # Look for the main code directory
+            possible_paths = [
+                wan_repo_path / "src",
+                wan_repo_path / "wan2.1", 
+                wan_repo_path,  # Sometimes code is in root
+            ]
+            for path in possible_paths:
+                if path.exists() and any(path.glob("*.py")):
+                    wan_code_path = path
+                    break
+        
+        try:
+            # Install Wan 2.1 requirements if available
             requirements_file = wan_repo_path / "requirements.txt"
             if requirements_file.exists():
                 print("📦 Installing Wan 2.1 requirements...")
                 result = subprocess.run([
                     sys.executable, "-m", "pip", "install", "-r", str(requirements_file),
-                    "--target", str(self.env_manager.wan_site_packages)
-                ], capture_output=True, text=True)
+                    "--target", str(self.env_manager.wan_site_packages),
+                    "--no-deps"  # Avoid conflicts
+                ], capture_output=True, text=True, timeout=300)
                 
                 if result.returncode != 0:
-                    print(f"❌ Pip install failed with code {result.returncode}")
-                    print(f"📋 Stdout: {result.stdout}")
-                    print(f"📋 Stderr: {result.stderr}")
-                    raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
-            
-            return wan_repo_path / "wan"
-            
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to setup Wan 2.1 repository: {e}")
+                    print(f"⚠️ Requirements install failed: {result.stderr}")
+                    # Don't fail here, continue without requirements
+                else:
+                    print("✅ Requirements installed successfully")
+            else:
+                print("💡 No requirements.txt found, continuing without installing dependencies")
+                
+        except Exception as req_error:
+            print(f"⚠️ Requirements installation failed: {req_error}")
+            # Continue anyway
+        
+        return wan_code_path
     
     def _detect_wan_model_config(self, model_path: Path) -> dict:
         """Detect Wan model configuration from model files"""

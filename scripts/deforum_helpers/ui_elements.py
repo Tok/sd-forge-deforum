@@ -483,16 +483,21 @@ def wan_generate_video(*component_args):
         timestring_final = time.strftime('%Y%m%d%H%M%S')
         batch_name_final = args_dict.get('batch_name', 'Deforum')
         
-        # Rebuild the correct output directory
+        # Rebuild the correct output directory - fix template issues
         current_file = os.path.abspath(__file__)
         extensions_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
         webui_dir = os.path.dirname(extensions_dir)
+        # Fix: Ensure clean directory name without templates or extra underscores
         output_subdir_final = f"{batch_name_final}_{timestring_final}"
         wan_output_dir_final = os.path.join(webui_dir, 'outputs', 'wan-images', output_subdir_final)
         os.makedirs(wan_output_dir_final, exist_ok=True)
         
-        # Override args.outdir to ensure it's correct
+        # Override args.outdir to ensure it's correct and remove any template remnants
         args.outdir = wan_output_dir_final
+        print(f"🔧 Fixed output directory: {wan_output_dir_final}")
+        
+        # Also ensure root.timestring doesn't have template issues
+        root.timestring = timestring_final
         
         # Validate Wan settings
         validation_errors = validate_wan_settings(wan_args)
@@ -543,8 +548,8 @@ def wan_generate_video(*component_args):
                 clip_seed = wan_args.wan_seed if wan_args.wan_seed != -1 else -1
                 
                 try:
-                    if i == 0:
-                        # First clip: text-to-video
+                    if i == 0 or previous_frame is None:
+                        # First clip or previous clip failed: use text-to-video
                         print(f"🎭 Mode: Text-to-Video")
                         frames = wan_generator.generate_txt2video(
                             prompt=prompt,
@@ -557,7 +562,7 @@ def wan_generate_video(*component_args):
                             motion_strength=wan_args.wan_motion_strength
                         )
                     else:
-                        # Subsequent clips: image-to-video
+                        # Subsequent clips with valid previous frame: image-to-video
                         print(f"🖼️ Mode: Image-to-Video (using previous frame as init)")
                         frames = wan_generator.generate_img2video(
                             init_image=previous_frame,
