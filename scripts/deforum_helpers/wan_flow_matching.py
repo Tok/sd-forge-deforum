@@ -398,8 +398,6 @@ You have the DiT weights ({len(model_tensors)} tensors) but are missing the T5 a
 To get complete WAN 2.1 models:
 1. Download from: https://huggingface.co/Wan-Video/Wan2.1
 2. Or follow: https://github.com/Wan-Video/Wan2.1
-
-NO FALLBACKS as requested - either complete WAN or fail fast.
 """)
                     
                     # All required files exist - proceed with official WAN initialization
@@ -444,7 +442,12 @@ Model path: {checkpoint_dir}
 Config: {wan_config.__class__.__name__}
 Device: cuda:0
 
-NO FALLBACKS as requested - either working WAN or fail fast.
+To resolve:
+1. Ensure complete WAN 2.1 model download
+2. Verify all checkpoint files exist
+3. Check official documentation: https://github.com/Wan-Video/Wan2.1
+
+Current model path: {self.model_path}
 """)
                         
                 except ImportError as import_error:
@@ -461,8 +464,6 @@ Code directory: {self.wan_code_dir}
 
 Please re-clone the official repository:
 git clone https://github.com/Wan-Video/Wan2.1.git
-
-NO FALLBACKS as requested - either working WAN or fail fast.
 """)
                 
                 finally:
@@ -481,8 +482,6 @@ Required attributes missing:
 - wan_code_dir: Path to WAN source code
 
 This should have been set during environment setup.
-
-NO FALLBACKS as requested - either working WAN or fail fast.
 """)
                 
         except Exception as e:
@@ -502,9 +501,6 @@ Common causes:
 - Incomplete model files (missing T5/VAE checkpoints)
 - Repository corruption or version mismatch
 - Environment/dependency issues
-
-As requested: NO PROMPT GUESSING, NO FALLBACK IMAGES
-Either complete, working WAN 2.1 or fast failure.
 
 To resolve:
 1. Ensure complete WAN 2.1 model download
