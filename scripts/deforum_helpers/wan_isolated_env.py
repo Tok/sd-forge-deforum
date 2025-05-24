@@ -551,25 +551,22 @@ class WanIsolatedGenerator:
         print("✅ Wan isolated generator setup complete!")
     
     def generate_video(self, prompt: str, **kwargs) -> List:
-        """Generate video using WAN native approach (not diffusers)"""
+        """Generate video using WAN with diffusers pipelines"""
         if not self.env_manager or not self.prepared_model_path:
             raise RuntimeError("Generator not properly set up")
         
-        print(f"🎬 Generating video with WAN native approach: '{prompt}'")
+        print(f"🎬 Generating video with WAN using diffusers: '{prompt}'")
         
         with self.env_manager.isolated_imports():
             import torch
             from PIL import Image
             import numpy as np
             
-            # Try to load WAN model directly (not through diffusers)
+            # Try to load and use the model with diffusers pipelines
             try:
-                print("🧪 Attempting to load WAN model directly...")
+                print("🧪 Loading WAN model with diffusers...")
                 
-                # Look for the actual WAN model files
-                import os
                 from pathlib import Path
-                
                 model_path = Path(self.prepared_model_path)
                 
                 # Check for sharded safetensors files (the actual WAN model)
@@ -580,38 +577,120 @@ class WanIsolatedGenerator:
                 
                 print(f"📋 Found {len(shard_files)} WAN model shards")
                 
-                # For now, create placeholder frames since we need the actual WAN implementation
-                # This is where the real WAN model loading and inference would go
-                
-                num_frames = kwargs.get('num_frames', 60)
-                width = kwargs.get('width', 1280)
-                height = kwargs.get('height', 720)
-                
-                print(f"🎭 Creating {num_frames} placeholder frames ({width}x{height}) for WAN development")
-                print("💡 TODO: Replace with actual WAN model inference")
-                
-                # Create placeholder frames with gradual color change to simulate video
-                frames = []
-                for i in range(num_frames):
-                    # Create a gradient frame that changes over time
-                    frame_array = np.zeros((height, width, 3), dtype=np.uint8)
+                # Try to load with diffusers pipelines
+                try:
+                    from diffusers import DiffusionPipeline
+                    print("🔄 Attempting to load with DiffusionPipeline auto-detection...")
                     
-                    # Add some variation based on frame number and prompt
-                    color_shift = (i * 4) % 256
-                    frame_array[:, :, 0] = (100 + color_shift // 3) % 256  # Red channel
-                    frame_array[:, :, 1] = (50 + color_shift // 2) % 256   # Green channel  
-                    frame_array[:, :, 2] = (150 + color_shift) % 256       # Blue channel
+                    # Use DiffusionPipeline with auto-detection for the specific model type
+                    pipeline = DiffusionPipeline.from_pretrained(
+                        str(model_path),
+                        torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                        safety_checker=None,
+                        requires_safety_checker=False,
+                        local_files_only=True
+                    )
                     
-                    # Add some text overlay to show it's a placeholder
-                    # In a real implementation, this would be the actual WAN-generated frame
+                    if hasattr(pipeline, 'to'):
+                        pipeline = pipeline.to(self.device)
                     
-                    frame_image = Image.fromarray(frame_array)
-                    frames.append(frame_image)
-                
-                print(f"✅ Generated {len(frames)} placeholder frames")
-                print("⚠️  NOTE: These are placeholder frames. Actual WAN implementation needed.")
-                return frames
+                    print(f"✅ Successfully loaded pipeline: {type(pipeline).__name__}")
+                    
+                    # Extract generation parameters
+                    num_frames = kwargs.get('num_frames', 60)
+                    width = kwargs.get('width', 1280)
+                    height = kwargs.get('height', 720)
+                    num_inference_steps = kwargs.get('num_inference_steps', 50)
+                    guidance_scale = kwargs.get('guidance_scale', 7.5)
+                    generator = kwargs.get('generator', None)
+                    image = kwargs.get('image', None)  # For img2video
+                    
+                    print(f"🎬 Generating {num_frames} frames at {width}x{height}")
+                    
+                    # Generate based on pipeline type and available parameters
+                    generation_kwargs = {}
+                    
+                    # Common parameters
+                    if hasattr(pipeline, '__call__'):
+                        import inspect
+                        call_signature = inspect.signature(pipeline.__call__)
+                        
+                        # Add parameters that the pipeline supports
+                        if 'prompt' in call_signature.parameters:
+                            generation_kwargs['prompt'] = prompt
+                        if 'num_frames' in call_signature.parameters:
+                            generation_kwargs['num_frames'] = num_frames
+                        if 'width' in call_signature.parameters:
+                            generation_kwargs['width'] = width
+                        if 'height' in call_signature.parameters:
+                            generation_kwargs['height'] = height
+                        if 'num_inference_steps' in call_signature.parameters:
+                            generation_kwargs['num_inference_steps'] = num_inference_steps
+                        if 'guidance_scale' in call_signature.parameters:
+                            generation_kwargs['guidance_scale'] = guidance_scale
+                        if 'generator' in call_signature.parameters and generator is not None:
+                            generation_kwargs['generator'] = generator
+                        if 'image' in call_signature.parameters and image is not None:
+                            generation_kwargs['image'] = image
+                        
+                        print(f"🔧 Using generation parameters: {list(generation_kwargs.keys())}")
+                        
+                        # Generate the video
+                        result = pipeline(**generation_kwargs)
+                        
+                        # Extract frames from result
+                        if hasattr(result, 'frames') and result.frames is not None:
+                            frames = result.frames[0]  # Usually first element contains the frame sequence
+                        elif hasattr(result, 'images') and result.images is not None:
+                            frames = result.images
+                        elif isinstance(result, (list, tuple)):
+                            frames = result
+                        else:
+                            # Try to extract frames from result attributes
+                            frames = []
+                            for attr_name in ['frames', 'images', 'videos']:
+                                if hasattr(result, attr_name):
+                                    attr_value = getattr(result, attr_name)
+                                    if attr_value is not None:
+                                        if isinstance(attr_value, (list, tuple)) and len(attr_value) > 0:
+                                            frames = attr_value[0] if isinstance(attr_value[0], (list, tuple)) else attr_value
+                                            break
+                        
+                        if not frames:
+                            raise RuntimeError("No frames generated by pipeline")
+                        
+                        # Convert frames to PIL Images if needed
+                        pil_frames = []
+                        for i, frame in enumerate(frames):
+                            if isinstance(frame, Image.Image):
+                                pil_frames.append(frame)
+                            elif isinstance(frame, np.ndarray):
+                                if frame.dtype != np.uint8:
+                                    frame = (frame * 255).astype(np.uint8)
+                                pil_frames.append(Image.fromarray(frame))
+                            elif isinstance(frame, torch.Tensor):
+                                frame_np = frame.detach().cpu().numpy()
+                                if frame_np.dtype != np.uint8:
+                                    frame_np = (frame_np * 255).astype(np.uint8)
+                                if len(frame_np.shape) == 4:  # BCHW
+                                    frame_np = frame_np[0].transpose(1, 2, 0)  # CHW -> HWC
+                                elif len(frame_np.shape) == 3 and frame_np.shape[0] == 3:  # CHW
+                                    frame_np = frame_np.transpose(1, 2, 0)  # CHW -> HWC
+                                pil_frames.append(Image.fromarray(frame_np))
+                            else:
+                                print(f"⚠️ Unknown frame type: {type(frame)}")
+                                continue
+                        
+                        print(f"✅ Successfully generated {len(pil_frames)} frames")
+                        return pil_frames
+                    
+                    else:
+                        raise RuntimeError("Pipeline doesn't have callable interface")
+                        
+                except Exception as pipeline_error:
+                    print(f"⚠️ DiffusionPipeline failed: {pipeline_error}")
+                    raise RuntimeError(f"Failed to generate with diffusers pipeline: {pipeline_error}")
                 
             except Exception as e:
                 print(f"❌ WAN model loading failed: {e}")
-                raise RuntimeError(f"WAN native loading failed: {e}")
+                raise RuntimeError(f"WAN video generation failed: {e}")

@@ -462,7 +462,9 @@ def wan_generate_video(*component_args):
                 extensions_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
                 # Go up 1 more to get to webui directory
                 webui_dir = os.path.dirname(extensions_dir)
-                wan_output_dir = os.path.join(webui_dir, 'outputs', 'wan-images')
+                # Fix: Remove extra underscore from directory name and ensure proper timestring interpolation
+                output_subdir = f"{batch_name}_{timestring}"
+                wan_output_dir = os.path.join(webui_dir, 'outputs', 'wan-images', output_subdir)
                 # Create the directory if it doesn't exist
                 os.makedirs(wan_output_dir, exist_ok=True)
                 self.outpath_samples = wan_output_dir
@@ -588,6 +590,67 @@ def wan_generate_video(*component_args):
             print(f"\n🎉 Wan Video Generation Complete!")
             print(f"📊 Generated {len(prompt_schedule)} clips with {total_frames_generated} total frames")
             print(f"📁 Output directory: {args.outdir}")
+            
+            # Add video stitching like normal Deforum does
+            if not video_args.skip_video_creation and total_frames_generated > 0:
+                try:
+                    print(f"\n🎬 Creating final video from {total_frames_generated} frames...")
+                    
+                    # Import the video utilities
+                    from .video_audio_utilities import ffmpeg_stitch_video, get_ffmpeg_params
+                    
+                    # Get ffmpeg parameters
+                    f_location, f_crf, f_preset = get_ffmpeg_params()
+                    
+                    # Set up paths for video creation
+                    image_path = os.path.join(args.outdir, f"{root.timestring}_%09d.png")
+                    mp4_path = os.path.join(args.outdir, f"{root.timestring}_wan_video.mp4")
+                    
+                    # Handle audio
+                    real_audio_track = None
+                    add_soundtrack = 'None'
+                    if video_args.add_soundtrack != 'None' and video_args.soundtrack_path:
+                        add_soundtrack = video_args.add_soundtrack
+                        real_audio_track = video_args.soundtrack_path
+                    
+                    # Create the video
+                    ffmpeg_stitch_video(
+                        ffmpeg_location=f_location,
+                        fps=video_args.fps,
+                        outmp4_path=mp4_path,
+                        stitch_from_frame=0,
+                        stitch_to_frame=total_frames_generated,
+                        imgs_path=image_path,
+                        add_soundtrack=add_soundtrack,
+                        audio_path=real_audio_track,
+                        crf=f_crf,
+                        preset=f_preset
+                    )
+                    
+                    print(f"✅ Video created successfully: {mp4_path}")
+                    
+                    # Create GIF if requested
+                    if video_args.make_gif:
+                        try:
+                            from .video_audio_utilities import make_gifski_gif
+                            make_gifski_gif(
+                                imgs_raw_path=args.outdir,
+                                imgs_batch_id=root.timestring,
+                                fps=video_args.fps,
+                                models_folder=root.models_path,
+                                current_user_os=root.current_user_os
+                            )
+                            print(f"✅ GIF created successfully")
+                        except Exception as gif_error:
+                            print(f"⚠️ GIF creation failed: {gif_error}")
+                    
+                except Exception as video_error:
+                    print(f"⚠️ Video creation failed: {video_error}")
+                    print(f"💡 Frames are saved in: {args.outdir}")
+            else:
+                if video_args.skip_video_creation:
+                    print(f"📝 Skipping video creation (as requested)")
+                print(f"💾 {total_frames_generated} frames saved to: {args.outdir}")
             
             return f"✅ Wan video generation completed successfully!\n📊 Generated {total_frames_generated} frames\n📁 Output: {args.outdir}"
             
