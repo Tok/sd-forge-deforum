@@ -1,6 +1,7 @@
 """
-Wan 2.1 Integration Module for Deforum
-Handles text-to-video and image-to-video generation using Wan 2.1 with isolated environment
+WAN 2.1 Integration Module for Deforum
+Handles text-to-video and image-to-video generation using WAN 2.1 with isolated environment
+WAN uses Flow Matching framework, not traditional diffusion
 FAIL FAST - No fallbacks, proper error propagation, no placeholder generation
 """
 
@@ -15,7 +16,8 @@ from pathlib import Path
 
 class WanVideoGenerator:
     """
-    Main class for Wan 2.1 video generation integration using isolated environment - FAIL FAST
+    Main class for WAN 2.1 video generation integration using isolated environment - FAIL FAST
+    WAN uses Flow Matching framework with 3D causal VAE and T5 text encoder
     """
     
     def __init__(self, model_path: str, device: str = "cuda"):
@@ -25,12 +27,12 @@ class WanVideoGenerator:
         self.isolated_generator = None
         
     def is_wan_available(self) -> bool:
-        """Check if Wan 2.1 can be made available through isolated environment - FAIL FAST"""
+        """Check if WAN 2.1 can be made available through isolated environment - FAIL FAST"""
         if not self.model_path:
-            raise ValueError("Wan model path is required")
+            raise ValueError("WAN model path is required")
             
         if not os.path.exists(self.model_path):
-            raise FileNotFoundError(f"Wan model path does not exist: {self.model_path}")
+            raise FileNotFoundError(f"WAN model path does not exist: {self.model_path}")
             
         # Look for any model files that we can work with
         model_files = os.listdir(self.model_path)
@@ -47,11 +49,11 @@ class WanVideoGenerator:
         return True
         
     def load_model(self):
-        """Load Wan 2.1 model using isolated environment approach - FAIL FAST"""
+        """Load WAN 2.1 model using isolated environment approach - FAIL FAST"""
         if self.loaded:
             return
             
-        print("🔄 Loading Wan model using isolated environment...")
+        print("🔄 Loading WAN model using isolated environment...")
         
         # Check availability first - will raise exception if not available
         self.is_wan_available()
@@ -78,7 +80,7 @@ class WanVideoGenerator:
             raise RuntimeError(f"Failed to setup WAN isolated environment: {e}")
         
         self.loaded = True
-        print("✅ Wan 2.1 model loaded successfully")
+        print("✅ WAN 2.1 model loaded successfully")
     
     def generate_txt2video(self, 
                           prompt: str, 
@@ -90,7 +92,7 @@ class WanVideoGenerator:
                           seed: int = -1,
                           motion_strength: float = 1.0,
                           **kwargs) -> List[np.ndarray]:
-        """Generate video from text prompt using Wan 2.1 - FAIL FAST"""
+        """Generate video from text prompt using WAN 2.1 Flow Matching - FAIL FAST"""
         if not self.loaded:
             self.load_model()
             
@@ -156,7 +158,7 @@ class WanVideoGenerator:
                           seed: int = -1,
                           motion_strength: float = 1.0,
                           **kwargs) -> List[np.ndarray]:
-        """Generate video from initial image and text prompt using Wan 2.1 - FAIL FAST"""
+        """Generate video from initial image and text prompt using WAN 2.1 Flow Matching - FAIL FAST"""
         if not self.loaded:
             self.load_model()
             
@@ -313,7 +315,7 @@ class WanVideoGenerator:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         
-        print("🗑️ Wan model unloaded and GPU memory freed")
+        print("🗑️ WAN model unloaded and GPU memory freed")
         self.loaded = False
 
 
@@ -395,16 +397,16 @@ class WanPromptScheduler:
 
 def validate_wan_settings(wan_args) -> List[str]:
     """
-    Validate Wan 2.1 settings and return list of validation errors - FAIL FAST approach
+    Validate WAN 2.1 settings and return list of validation errors - FAIL FAST approach
     """
     errors = []
     
     if wan_args.wan_enabled:
         # Check model path - FAIL FAST
         if not wan_args.wan_model_path:
-            errors.append("Wan model path is required when Wan is enabled")
+            errors.append("WAN model path is required when WAN is enabled")
         elif not os.path.exists(wan_args.wan_model_path):
-            errors.append(f"Wan model path does not exist: {wan_args.wan_model_path}")
+            errors.append(f"WAN model path does not exist: {wan_args.wan_model_path}")
             
         # Validate resolution - FAIL FAST
         try:

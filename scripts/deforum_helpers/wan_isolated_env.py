@@ -1,6 +1,7 @@
 """
-Wan Isolated Environment Manager - FAIL FAST
-Creates and manages a completely isolated diffusers environment for Wan generation
+WAN Isolated Environment Manager - FAIL FAST
+Creates and manages a completely isolated environment for WAN generation
+WAN uses Flow Matching framework with T5 encoder and 3D causal VAE
 """
 
 import os
@@ -18,7 +19,8 @@ import time
 
 class WanIsolatedEnvironment:
     """
-    Manages an isolated Python environment specifically for Wan generation - FAIL FAST
+    Manages an isolated Python environment specifically for WAN generation - FAIL FAST
+    WAN uses Flow Matching framework with T5 encoder and 3D causal VAE
     """
     
     def __init__(self, extension_root: str):
@@ -73,10 +75,9 @@ class WanIsolatedEnvironment:
         print("✅ Wan isolated environment setup complete!")
     
     def _create_wan_requirements(self):
-        """Create requirements.txt with Wan-compatible versions"""
+        """Create requirements.txt with WAN-compatible versions"""
         wan_requirements = """
-# Wan-compatible diffusers and dependencies - compatible with webui-forge
-diffusers>=0.26.0,<0.33.0
+# WAN-compatible packages for Flow Matching framework - compatible with webui-forge
 transformers>=4.36.0,<4.46.0
 accelerate>=0.25.0,<0.31.0
 torch>=2.0.0
@@ -91,8 +92,8 @@ huggingface-hub>=0.20.0
             f.write(wan_requirements.strip())
     
     def _install_wan_packages(self):
-        """Install Wan-specific packages to isolated directory - FAIL FAST"""
-        print("📦 Installing Wan-compatible packages...")
+        """Install WAN-specific packages to isolated directory - FAIL FAST"""
+        print("📦 Installing WAN-compatible packages...")
         
         # Use pip with --target to install to specific directory
         cmd = [
@@ -108,7 +109,7 @@ huggingface-hub>=0.20.0
         if result.returncode != 0:
             raise RuntimeError(f"Package installation failed: {result.stderr}")
         
-        print("✅ Wan packages installed successfully")
+        print("✅ WAN packages installed successfully")
     
     @contextmanager
     def isolated_imports(self):
@@ -138,8 +139,8 @@ huggingface-hub>=0.20.0
             print("🔓 Deactivated isolated imports")
     
     def prepare_model_structure(self, source_model_path: str) -> str:
-        """Prepare model structure for Wan compatibility - FAIL FAST"""
-        print(f"🔄 Preparing Wan-compatible model structure from {source_model_path}")
+        """Prepare model structure for WAN compatibility - FAIL FAST"""
+        print(f"🔄 Preparing WAN-compatible model structure from {source_model_path}")
         
         source_path = Path(source_model_path)
         if not source_path.exists():
@@ -651,33 +652,36 @@ class WanIsolatedGenerator:
                     
                     print(f"✅ Loaded {len(model_tensors)} tensors from {len(shard_files)} shards")
                     
-                    # FAIL FAST: WAN diffusion pipeline not yet implemented
+                    # FAIL FAST: WAN Flow Matching pipeline not yet implemented
                     raise RuntimeError(f"""
-🚫 WAN Diffusion Pipeline Not Yet Implemented
+🚫 WAN Flow Matching Pipeline Not Yet Implemented
 
 WAN model loaded successfully ({len(model_tensors)} tensors from {len(shard_files)} shards)
-However, the actual WAN diffusion pipeline is not yet implemented.
+However, the actual WAN Flow Matching pipeline is not yet implemented.
 
 Current Status:
 ✅ Model loading and validation - WORKING
 ✅ Environment isolation - WORKING  
 ✅ Prompt scheduling - WORKING
 ✅ Frame saving - WORKING
-❌ WAN diffusion pipeline - NOT IMPLEMENTED
+❌ WAN Flow Matching pipeline - NOT IMPLEMENTED
 
 Next Steps Required:
-1. Implement UNet3D forward pass with loaded tensors
-2. Implement text encoder integration for prompt processing
-3. Implement scheduler/sampler integration
-4. Implement video-specific diffusion loop
+1. Implement WAN Flow Matching forward pass with loaded tensors
+2. Implement T5 text encoder integration for prompt processing
+3. Implement 3D causal VAE (Wan-VAE) integration
+4. Implement video-specific Flow Matching loop
+5. Implement cross-attention mechanisms for text embedding
 
 This is a complex implementation that requires:
-- Proper diffusion pipeline architecture
+- WAN Flow Matching framework architecture (not diffusion)
 - Text-to-video and image-to-video modes
 - Memory-efficient batching for video generation
 - Integration with WAN-specific sampling methods
+- T5 encoder for multilingual text input
+- 3D causal VAE for video encoding/decoding
 
-Error: WAN model tensors loaded but diffusion pipeline not implemented.
+Error: WAN model tensors loaded but Flow Matching pipeline not implemented.
 """)
                     
                 except Exception as load_error:

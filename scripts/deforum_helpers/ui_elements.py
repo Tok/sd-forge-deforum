@@ -480,32 +480,25 @@ def wan_generate_video(*component_args):
         if not args_loaded_ok:
             return "❌ Failed to load arguments for Wan generation"
         
-        # CRITICAL: Fix output directory after process_args since it mangles our clean path
-        timestring_final = time.strftime('%Y%m%d%H%M%S')
-        batch_name_final = args_dict.get('batch_name', 'Deforum')
+        # CRITICAL: Completely override args.outdir IMMEDIATELY after process_args
+        # Use direct path construction to avoid any template processing
+        current_file_path = os.path.abspath(__file__)
+        webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file_path)))))
         
-        # Debug: Check what process_args did to our directory
-        print(f"🔍 Debug - Original root.timestring: '{root.timestring}'")
-        print(f"🔍 Debug - Original args.outdir: '{args.outdir}'")
+        # Create clean timestamp and batch name
+        clean_timestamp = time.strftime('%Y%m%d%H%M%S')
+        clean_batch = args_dict.get('batch_name', 'Deforum')
         
-        # COMPLETELY REBUILD output directory to override any templates/corruption
-        current_file = os.path.abspath(__file__)
-        extensions_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
-        webui_dir = os.path.dirname(extensions_dir)
+        # Build completely clean path
+        clean_wan_dir = os.path.join(webui_root, 'outputs', 'wan-images', f"{clean_batch}_{clean_timestamp}")
+        os.makedirs(clean_wan_dir, exist_ok=True)
         
-        # Simple, clean directory name
-        clean_output_subdir = f"{batch_name_final}_{timestring_final}"
-        clean_wan_output_dir = os.path.join(webui_dir, 'outputs', 'wan-images', clean_output_subdir)
+        # FORCE override - completely replace corrupted path
+        args.outdir = clean_wan_dir
+        root.timestring = clean_timestamp
         
-        # Create directory
-        os.makedirs(clean_wan_output_dir, exist_ok=True)
-        
-        # FORCE override args.outdir with our clean path
-        args.outdir = clean_wan_output_dir
-        root.timestring = timestring_final
-        
-        print(f"🔧 FORCED clean output directory: {clean_wan_output_dir}")
-        print(f"🔧 Fixed root.timestring: '{root.timestring}'")
+        print(f"🔧 Clean WAN output directory: {clean_wan_dir}")
+        print(f"🔧 Clean timestamp: {clean_timestamp}")
         
         # Validate Wan settings
         validation_errors = validate_wan_settings(wan_args)
@@ -524,8 +517,8 @@ def wan_generate_video(*component_args):
         print(f"🎬 FPS: {wan_args.wan_fps}")
         print(f"⏱️ Clip Duration: {wan_args.wan_clip_duration}s")
         
-        # Initialize Wan generator with full isolation
-        print("🔧 Initializing Wan generator with full diffusers isolation...")
+        # Initialize WAN generator with Flow Matching isolation
+        print("🔧 Initializing WAN generator with isolated environment...")
         wan_generator = WanVideoGenerator(wan_args.wan_model_path, shared.device)
         
         try:
@@ -627,8 +620,8 @@ def wan_generate_video(*component_args):
                     print(error_msg)
                     
                     # FAIL FAST: If this is a pipeline not implemented error, don't continue
-                    if "WAN Diffusion Pipeline Not Yet Implemented" in str(e):
-                        print("🚫 WAN pipeline not implemented - stopping generation")
+                    if "WAN Flow Matching Pipeline Not Yet Implemented" in str(e):
+                        print("🚫 WAN Flow Matching pipeline not implemented - stopping generation")
                         raise e
                     
                     # For other errors, continue with next clip
