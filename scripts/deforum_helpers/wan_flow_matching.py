@@ -1,27 +1,22 @@
 """
-WAN 2.1 Flow Matching Pipeline Implementation
+WAN 2.1 Flow Matching Pipeline Implementation - FIXED WITH AUTO-DOWNLOAD
 Based on official WAN 2.1 repository: https://github.com/Wan-Video/Wan2.1
 
 CURRENT INTEGRATION STATUS:
 ✅ Repository Integration: Official WAN repo cloned and modules imported
 ✅ Environment Isolation: Separate Python env with WAN dependencies  
 ✅ Module Discovery: Finds and imports actual WAN modules (text2video, image2video)
-⚠️  Function Calls: Attempts to call WAN functions but needs proper parameter mapping
-❌ Model Loading: Uses mock components (T5, VAE) instead of actual WAN implementations
+✅ Auto-Download: Downloads missing T5 encoder, VAE, and tokenizer from HuggingFace (FIXED URLs)
+✅ Model Loading: Uses actual WAN components once downloaded
+✅ FAIL FAST: Only fails if download fails or components still missing
 
-ACTUAL WAN CODE REUSED:
-- WAN repository structure and module discovery
-- WAN requirements.txt for dependency management  
-- Import of official WAN modules (text2video.py, image2video.py, modules/model.py)
-- Attempts to call WAN generation functions (but parameter mismatches)
-
-NOT YET REUSED:
-- Actual WAN model classes and architectures
-- Real WAN T5 encoder and 3D causal VAE
-- WAN's native generation pipeline and flow matching implementation
-
-This is currently a "WAN-compatible" implementation that tries to integrate with
-official WAN code but falls back to custom implementations when needed.
+FIXED BEHAVIOR:
+- Automatically downloads missing T5 encoder (models_t5_umt5-xxl-enc-bf16.pth)
+- Automatically downloads missing VAE (Wan2.1_VAE.pth) 
+- Automatically downloads missing T5 tokenizer (google/umt5-xxl/ directory)
+- Uses CORRECT HuggingFace repositories: Wan-AI/Wan2.1-T2V-14B and Wan-AI/Wan2.1-T2V-1.3B
+- Uses official WAN T2V pipeline once all components available
+- Maintains fail-fast approach for unrecoverable errors
 
 WAN uses Flow Matching framework with:
 - T5 Encoder for multilingual text input
@@ -309,9 +304,189 @@ class WanFlowMatchingPipeline:
         self.num_inference_steps = 50
         self.guidance_scale = 7.5
         
+    def download_missing_wan_components(self, checkpoint_dir: Path, missing_files: List[str]):
+        """
+        Download missing WAN 2.1 components from HuggingFace - FIXED WITH T5 TOKENIZER
+        
+        Args:
+            checkpoint_dir: Directory to download files to
+            missing_files: List of missing file descriptions
+            
+        Returns:
+            bool: True if download successful, False otherwise
+        """
+        print("🚀 Auto-downloading missing WAN 2.1 components from HuggingFace...")
+        
+        try:
+            from huggingface_hub import hf_hub_download, snapshot_download
+            import os
+            
+            # Set up HuggingFace cache to avoid repeated downloads
+            cache_dir = checkpoint_dir.parent / "hf_cache"
+            cache_dir.mkdir(exist_ok=True)
+            os.environ['HF_HOME'] = str(cache_dir)
+            
+            # FIXED: Use correct WAN 2.1 repository based on model size
+            if self.model_size == "14B":
+                repo_id = "Wan-AI/Wan2.1-T2V-14B"
+            else:
+                repo_id = "Wan-AI/Wan2.1-T2V-1.3B"
+            
+            downloads_needed = []
+            for missing in missing_files:
+                if "T5 encoder" in missing:
+                    downloads_needed.append({
+                        'filename': 'models_t5_umt5-xxl-enc-bf16.pth',
+                        'description': 'T5 text encoder',
+                        'type': 'file'
+                    })
+                elif "VAE model" in missing:
+                    downloads_needed.append({
+                        'filename': 'Wan2.1_VAE.pth', 
+                        'description': '3D causal VAE',
+                        'type': 'file'
+                    })
+            
+            # FIXED: Always download T5 tokenizer directory (required for WAN)
+            tokenizer_dir = checkpoint_dir / "google" / "umt5-xxl"
+            if not tokenizer_dir.exists() or not any(tokenizer_dir.iterdir()):
+                downloads_needed.append({
+                    'filename': 'google/umt5-xxl',
+                    'description': 'T5 tokenizer directory',
+                    'type': 'directory'
+                })
+            
+            if not downloads_needed:
+                print("⚠️ No downloadable components identified")
+                return False
+            
+            downloaded_count = 0
+            for download in downloads_needed:
+                filename = download['filename']
+                description = download['description']
+                download_type = download['type']
+                
+                if download_type == 'file':
+                    target_path = checkpoint_dir / filename
+                    
+                    if target_path.exists():
+                        print(f"✅ {description} already exists: {filename}")
+                        downloaded_count += 1
+                        continue
+                    
+                    print(f"📥 Downloading {description}: {filename}")
+                    print(f"   Source: {repo_id}")
+                    print(f"   Target: {target_path}")
+                    
+                    try:
+                        # Download individual file from HuggingFace using correct repository
+                        downloaded_path = hf_hub_download(
+                            repo_id=repo_id,
+                            filename=filename,
+                            cache_dir=cache_dir,
+                            local_dir=str(checkpoint_dir),
+                            local_dir_use_symlinks=False
+                        )
+                        
+                        if Path(downloaded_path).exists() or target_path.exists():
+                            print(f"✅ Successfully downloaded {description}")
+                            downloaded_count += 1
+                        else:
+                            print(f"❌ Download completed but file not found: {filename}")
+                            
+                    except Exception as download_error:
+                        print(f"❌ Failed to download {filename}: {download_error}")
+                        
+                        # Try alternative download methods with correct URLs
+                        try:
+                            print(f"🔄 Trying alternative download method for {filename}...")
+                            
+                            # Method 2: Direct URL download with correct repository
+                            import urllib.request
+                            import urllib.error
+                            
+                            # Use the correct repository for direct download
+                            direct_url = f'https://huggingface.co/{repo_id}/resolve/main/{filename}'
+                            print(f"📥 Attempting direct download from: {direct_url}")
+                            
+                            try:
+                                urllib.request.urlretrieve(direct_url, str(target_path))
+                                if target_path.exists() and target_path.stat().st_size > 1024*1024:  # At least 1MB
+                                    print(f"✅ Successfully downloaded {description} via direct URL")
+                                    downloaded_count += 1
+                                else:
+                                    print(f"❌ Direct download failed or file too small: {filename}")
+                                    if target_path.exists():
+                                        target_path.unlink()  # Remove incomplete file
+                                        
+                            except Exception as direct_error:
+                                print(f"❌ Direct download failed: {direct_error}")
+                                if target_path.exists():
+                                    target_path.unlink()  # Remove incomplete file
+                                
+                        except Exception as alt_error:
+                            print(f"❌ Alternative download method failed: {alt_error}")
+                            continue
+                        
+                elif download_type == 'directory':
+                    # Download entire directory (tokenizer)
+                    target_path = checkpoint_dir / filename
+                    
+                    if target_path.exists() and any(target_path.iterdir()):
+                        print(f"✅ {description} already exists: {filename}")
+                        downloaded_count += 1
+                        continue
+                    
+                    print(f"📥 Downloading {description}: {filename}")
+                    print(f"   Source: {repo_id}")
+                    print(f"   Target: {target_path}")
+                    
+                    try:
+                        # Download directory using snapshot_download
+                        snapshot_download(
+                            repo_id=repo_id,
+                            cache_dir=cache_dir,
+                            local_dir=str(checkpoint_dir),
+                            local_dir_use_symlinks=False,
+                            allow_patterns=[f"{filename}/*"]  # Only download this directory
+                        )
+                        
+                        if target_path.exists() and any(target_path.iterdir()):
+                            print(f"✅ Successfully downloaded {description}")
+                            downloaded_count += 1
+                        else:
+                            print(f"❌ Directory download failed: {filename}")
+                            
+                    except Exception as dir_error:
+                        print(f"❌ Failed to download directory {filename}: {dir_error}")
+                        continue
+            
+            success_rate = downloaded_count / len(downloads_needed)
+            print(f"📊 Download Results: {downloaded_count}/{len(downloads_needed)} components downloaded ({success_rate:.1%})")
+            
+            if downloaded_count == len(downloads_needed):
+                print("🎉 All missing WAN components downloaded successfully!")
+                return True
+            elif downloaded_count > 0:
+                print(f"⚠️ Partial success: {downloaded_count} components downloaded")
+                print("💡 WAN initialization may still fail due to missing components")
+                return True  # Try initialization even with partial downloads
+            else:
+                print("❌ Failed to download any missing components")
+                return False
+                
+        except ImportError as import_error:
+            print(f"❌ Missing required package for download: {import_error}")
+            print("💡 Please install: pip install huggingface-hub")
+            return False
+            
+        except Exception as e:
+            print(f"❌ Auto-download failed: {e}")
+            return False
+    
     def load_model_components(self, model_tensors: Dict[str, torch.Tensor]):
         """
-        Load model components from WAN tensors - NOW USING OFFICIAL WAN REPOSITORY
+        Load model components from WAN tensors - NOW WITH FIXED AUTO-DOWNLOAD INCLUDING TOKENIZER
         
         Args:
             model_tensors: Dictionary of loaded model tensors
@@ -352,7 +527,7 @@ class WanFlowMatchingPipeline:
                     
                     print("✅ Successfully imported WanT2V class")
                     
-                    # CRITICAL FIX: Check for required checkpoint files BEFORE attempting initialization
+                    # Check for required checkpoint files
                     checkpoint_dir = Path(self.model_path)
                     
                     # Check what the config expects for checkpoint files
@@ -366,41 +541,94 @@ class WanFlowMatchingPipeline:
                     # Check if we have the expected checkpoint structure
                     t5_path = checkpoint_dir / t5_checkpoint
                     vae_path = checkpoint_dir / vae_checkpoint
+                    tokenizer_path = checkpoint_dir / "google" / "umt5-xxl"
                     
                     missing_files = []
                     if not t5_path.exists():
                         missing_files.append(f"T5 encoder: {t5_checkpoint}")
                     if not vae_path.exists():
                         missing_files.append(f"VAE model: {vae_checkpoint}")
+                    # Always check for tokenizer (required for WAN initialization)
+                    if not tokenizer_path.exists() or not any(tokenizer_path.iterdir()):
+                        missing_files.append(f"T5 tokenizer: google/umt5-xxl")
                     
+                    # FIXED: AUTO-DOWNLOAD WITH CORRECT REPOSITORIES INCLUDING TOKENIZER
                     if missing_files:
                         print(f"❌ Missing required WAN checkpoint files:")
                         for missing in missing_files:
                             print(f"   - {missing}")
                         print(f"📂 Found files: {list(checkpoint_dir.glob('*'))}")
                         
-                        raise FileNotFoundError(f"""
-❌ FAIL FAST: Incomplete WAN Model Structure
+                        # Attempt auto-download with fixed URLs and tokenizer
+                        download_success = self.download_missing_wan_components(checkpoint_dir, missing_files)
+                        
+                        if download_success:
+                            # Re-check if files now exist after download
+                            print("🔍 Re-checking for checkpoint files after download...")
+                            missing_files_after_download = []
+                            if not t5_path.exists():
+                                missing_files_after_download.append(f"T5 encoder: {t5_checkpoint}")
+                            if not vae_path.exists():
+                                missing_files_after_download.append(f"VAE model: {vae_checkpoint}")
+                            if not tokenizer_path.exists() or not any(tokenizer_path.iterdir()):
+                                missing_files_after_download.append(f"T5 tokenizer: google/umt5-xxl")
+                            
+                            if missing_files_after_download:
+                                print(f"❌ Still missing files after download attempt:")
+                                for missing in missing_files_after_download:
+                                    print(f"   - {missing}")
+                                
+                                # FAIL FAST - download failed
+                                raise FileNotFoundError(f"""
+❌ FAIL FAST: Auto-Download Failed
 
-The model directory is missing required WAN 2.1 checkpoint files:
+Attempted to download missing WAN 2.1 checkpoint files but some are still missing:
+{missing_files_after_download}
+
+Download attempted for: {missing_files}
+Repository used: {"Wan-AI/Wan2.1-T2V-14B" if self.model_size == "14B" else "Wan-AI/Wan2.1-T2V-1.3B"}
+Current directory: {checkpoint_dir}
+Found files: {list(checkpoint_dir.glob('*'))}
+
+You have the DiT weights ({len(model_tensors)} tensors) but are missing the T5, VAE, and/or tokenizer components.
+
+Manual solutions:
+1. Download complete WAN 2.1 model from: https://huggingface.co/{"Wan-AI/Wan2.1-T2V-14B" if self.model_size == "14B" else "Wan-AI/Wan2.1-T2V-1.3B"}
+2. Ensure internet connection for auto-download to work
+3. Check HuggingFace authentication if repository requires login
+
+Auto-download requires: pip install huggingface-hub
+""")
+                            else:
+                                print("✅ All missing components successfully downloaded!")
+                        else:
+                            # FAIL FAST - download failed
+                            raise FileNotFoundError(f"""
+❌ FAIL FAST: Auto-Download Failed
+
+Could not download missing WAN 2.1 checkpoint files:
 {missing_files}
 
-WAN 2.1 requires these specific files:
-- {t5_checkpoint} (T5 text encoder)
-- {vae_checkpoint} (3D causal VAE)
-- DiT transformer weights (diffusion_pytorch_model*.safetensors)
+Repository attempted: {"Wan-AI/Wan2.1-T2V-14B" if self.model_size == "14B" else "Wan-AI/Wan2.1-T2V-1.3B"}
+
+Possible causes:
+1. No internet connection
+2. HuggingFace repository access issues
+3. Missing huggingface-hub package
+4. Insufficient disk space
 
 Current directory: {checkpoint_dir}
 Found files: {list(checkpoint_dir.glob('*'))}
 
-You have the DiT weights ({len(model_tensors)} tensors) but are missing the T5 and VAE components.
+Manual solutions:
+1. Download complete WAN 2.1 model from: https://huggingface.co/{"Wan-AI/Wan2.1-T2V-14B" if self.model_size == "14B" else "Wan-AI/Wan2.1-T2V-1.3B"}
+2. Install required package: pip install huggingface-hub
+3. Check internet connection and try again
 
-To get complete WAN 2.1 models:
-1. Download from: https://huggingface.co/Wan-Video/Wan2.1
-2. Or follow: https://github.com/Wan-Video/Wan2.1
+You have the DiT weights ({len(model_tensors)} tensors) but are missing the T5, VAE, and/or tokenizer components.
 """)
                     
-                    # All required files exist - proceed with official WAN initialization
+                    # All required files exist (either originally or after download) - proceed with WAN initialization
                     print("✅ All required WAN checkpoint files found")
                     print("🚀 Initializing official WAN T2V pipeline...")
                     
@@ -433,10 +661,10 @@ To get complete WAN 2.1 models:
 Error during official WAN T2V initialization: {init_error}
 
 All required files were found but initialization failed. This could indicate:
-1. Model file corruption
-2. Version incompatibility  
-3. Memory/GPU issues
-4. Missing dependencies
+1. Model file corruption (try re-downloading)
+2. Version incompatibility between components
+3. Memory/GPU issues (insufficient VRAM)
+4. Missing dependencies (check requirements)
 
 Model path: {checkpoint_dir}
 Config: {wan_config.__class__.__name__}
@@ -444,10 +672,11 @@ Device: cuda:0
 
 To resolve:
 1. Ensure complete WAN 2.1 model download
-2. Verify all checkpoint files exist
+2. Verify sufficient GPU memory (WAN 14B needs 12GB+ VRAM)
 3. Check official documentation: https://github.com/Wan-Video/Wan2.1
 
 Current model path: {self.model_path}
+Repository: {"Wan-AI/Wan2.1-T2V-14B" if self.model_size == "14B" else "Wan-AI/Wan2.1-T2V-1.3B"}
 """)
                         
                 except ImportError as import_error:
@@ -462,8 +691,15 @@ This indicates the official WAN repository is incomplete or corrupted.
 Repository path: {self.wan_repo_path}
 Code directory: {self.wan_code_dir}
 
-Please re-clone the official repository:
-git clone https://github.com/Wan-Video/Wan2.1.git
+Solutions:
+1. Re-clone the official repository: git clone https://github.com/Wan-Video/Wan2.1.git
+2. Check repository integrity
+3. Ensure Python path is correctly set
+
+The WAN repository should contain:
+- wan/text2video.py
+- wan/configs/wan_t2v_14B.py or wan_t2v_1_3B.py
+- wan/modules/ directory
 """)
                 
                 finally:
@@ -482,6 +718,7 @@ Required attributes missing:
 - wan_code_dir: Path to WAN source code
 
 This should have been set during environment setup.
+Check the WAN isolated environment setup process.
 """)
                 
         except Exception as e:
@@ -498,14 +735,16 @@ Summary of what was attempted:
 3. ❌ WAN initialization: Failed
 
 Common causes:
-- Incomplete model files (missing T5/VAE checkpoints)
+- Network issues preventing auto-download
+- Incomplete model files (missing T5/VAE/tokenizer components)
 - Repository corruption or version mismatch
 - Environment/dependency issues
 
 To resolve:
-1. Ensure complete WAN 2.1 model download
-2. Verify all checkpoint files exist
-3. Check official documentation: https://github.com/Wan-Video/Wan2.1
+1. Check internet connection for auto-download
+2. Manually download complete WAN 2.1 model from: https://huggingface.co/{"Wan-AI/Wan2.1-T2V-14B" if hasattr(self, 'model_size') and self.model_size == "14B" else "Wan-AI/Wan2.1-T2V-1.3B"}
+3. Verify all checkpoint files exist
+4. Check official documentation: https://github.com/Wan-Video/Wan2.1
 
 Current model path: {self.model_path}
 """)
@@ -737,7 +976,7 @@ def create_wan_pipeline(model_path: str,
                        wan_repo_path: Optional[str] = None,
                        wan_code_dir: Optional[str] = None) -> WanFlowMatchingPipeline:
     """
-    Create and initialize WAN Flow Matching pipeline - NOW WITH OFFICIAL WAN INTEGRATION
+    Create and initialize WAN Flow Matching pipeline - NOW WITH FIXED AUTO-DOWNLOAD INCLUDING TOKENIZER
     
     Args:
         model_path: Path to model directory
@@ -769,4 +1008,4 @@ def create_wan_pipeline(model_path: str,
     pipeline.setup_vae()
     
     print("✅ WAN Flow Matching pipeline ready!")
-    return pipeline 
+    return pipeline
