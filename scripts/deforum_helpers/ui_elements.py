@@ -619,12 +619,7 @@ def wan_generate_video(*component_args):
                     error_msg = f"❌ CLIP {i+1} GENERATION FAILED: {e}"
                     print(error_msg)
                     
-                    # FAIL FAST: If this is a pipeline not implemented error, don't continue
-                    if "WAN Flow Matching Pipeline Not Yet Implemented" in str(e):
-                        print("🚫 WAN Flow Matching pipeline not implemented - stopping generation")
-                        raise e
-                    
-                    # For other errors, continue with next clip
+                    # For errors, continue with next clip (Flow Matching pipeline is now implemented)
                     print(f"⚠️ Continuing with next clip after error in clip {i+1}")
                     continue
             
