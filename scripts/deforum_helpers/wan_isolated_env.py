@@ -551,22 +551,23 @@ class WanIsolatedGenerator:
         print("✅ Wan isolated generator setup complete!")
     
     def generate_video(self, prompt: str, **kwargs) -> List:
-        """Generate video using WAN with diffusers pipelines"""
+        """Generate video using Wan 2.1 native inference system"""
         if not self.env_manager or not self.prepared_model_path:
             raise RuntimeError("Generator not properly set up")
         
-        print(f"🎬 Generating video with WAN using diffusers: '{prompt}'")
+        print(f"🎬 Generating video with Wan 2.1 native system: '{prompt}'")
         
         with self.env_manager.isolated_imports():
             import torch
             from PIL import Image
             import numpy as np
+            import os
+            import sys
+            from pathlib import Path
             
-            # Try to load and use the model with diffusers pipelines
             try:
-                print("🧪 Loading WAN model with diffusers...")
+                print("🧪 Loading Wan 2.1 model with native inference...")
                 
-                from pathlib import Path
                 model_path = Path(self.prepared_model_path)
                 
                 # Check for sharded safetensors files (the actual WAN model)
@@ -577,28 +578,39 @@ class WanIsolatedGenerator:
                 
                 print(f"📋 Found {len(shard_files)} WAN model shards")
                 
-                # Try to load with diffusers pipelines
+                # Try to load Wan 2.1 native system
                 try:
-                    from diffusers import DiffusionPipeline
-                    print("🔄 Attempting to load with DiffusionPipeline auto-detection...")
+                    # Look for Wan repository or installation
+                    wan_repo_paths = [
+                        Path(self.env_manager.extension_root) / "Wan2.1",  # If cloned as submodule
+                        Path(self.env_manager.extension_root) / "wan",     # If installed in wan folder
+                        Path(self.env_manager.wan_site_packages) / "wan"   # If installed via pip
+                    ]
                     
-                    # Use DiffusionPipeline with auto-detection for the specific model type
-                    pipeline = DiffusionPipeline.from_pretrained(
-                        str(model_path),
-                        torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                        safety_checker=None,
-                        requires_safety_checker=False,
-                        local_files_only=True
-                    )
+                    wan_repo_path = None
+                    for path in wan_repo_paths:
+                        if path.exists() and (path / "__init__.py").exists():
+                            wan_repo_path = path
+                            break
                     
-                    if hasattr(pipeline, 'to'):
-                        pipeline = pipeline.to(self.device)
+                    if wan_repo_path is None:
+                        # Try to install/clone Wan 2.1
+                        print("🔄 Wan 2.1 repository not found, attempting to set up...")
+                        wan_repo_path = self._setup_wan_repository()
                     
-                    print(f"✅ Successfully loaded pipeline: {type(pipeline).__name__}")
+                    # Add Wan to Python path
+                    if str(wan_repo_path.parent) not in sys.path:
+                        sys.path.insert(0, str(wan_repo_path.parent))
+                    
+                    print(f"📁 Using Wan repository at: {wan_repo_path}")
+                    
+                    # Import Wan modules
+                    from wan.models import DiT_models
+                    from wan.utils.inference import generate_video_frames
                     
                     # Extract generation parameters
                     num_frames = kwargs.get('num_frames', 60)
-                    width = kwargs.get('width', 1280)
+                    width = kwargs.get('width', 1280) 
                     height = kwargs.get('height', 720)
                     num_inference_steps = kwargs.get('num_inference_steps', 50)
                     guidance_scale = kwargs.get('guidance_scale', 7.5)
@@ -607,90 +619,152 @@ class WanIsolatedGenerator:
                     
                     print(f"🎬 Generating {num_frames} frames at {width}x{height}")
                     
-                    # Generate based on pipeline type and available parameters
-                    generation_kwargs = {}
+                    # Load Wan model
+                    model_config = self._detect_wan_model_config(model_path)
+                    model = DiT_models[model_config['model_name']](
+                        input_size=model_config['input_size'],
+                        num_classes=model_config.get('num_classes', 1000)
+                    )
                     
-                    # Common parameters
-                    if hasattr(pipeline, '__call__'):
-                        import inspect
-                        call_signature = inspect.signature(pipeline.__call__)
-                        
-                        # Add parameters that the pipeline supports
-                        if 'prompt' in call_signature.parameters:
-                            generation_kwargs['prompt'] = prompt
-                        if 'num_frames' in call_signature.parameters:
-                            generation_kwargs['num_frames'] = num_frames
-                        if 'width' in call_signature.parameters:
-                            generation_kwargs['width'] = width
-                        if 'height' in call_signature.parameters:
-                            generation_kwargs['height'] = height
-                        if 'num_inference_steps' in call_signature.parameters:
-                            generation_kwargs['num_inference_steps'] = num_inference_steps
-                        if 'guidance_scale' in call_signature.parameters:
-                            generation_kwargs['guidance_scale'] = guidance_scale
-                        if 'generator' in call_signature.parameters and generator is not None:
-                            generation_kwargs['generator'] = generator
-                        if 'image' in call_signature.parameters and image is not None:
-                            generation_kwargs['image'] = image
-                        
-                        print(f"🔧 Using generation parameters: {list(generation_kwargs.keys())}")
-                        
-                        # Generate the video
-                        result = pipeline(**generation_kwargs)
-                        
-                        # Extract frames from result
-                        if hasattr(result, 'frames') and result.frames is not None:
-                            frames = result.frames[0]  # Usually first element contains the frame sequence
-                        elif hasattr(result, 'images') and result.images is not None:
-                            frames = result.images
-                        elif isinstance(result, (list, tuple)):
-                            frames = result
-                        else:
-                            # Try to extract frames from result attributes
-                            frames = []
-                            for attr_name in ['frames', 'images', 'videos']:
-                                if hasattr(result, attr_name):
-                                    attr_value = getattr(result, attr_name)
-                                    if attr_value is not None:
-                                        if isinstance(attr_value, (list, tuple)) and len(attr_value) > 0:
-                                            frames = attr_value[0] if isinstance(attr_value[0], (list, tuple)) else attr_value
-                                            break
-                        
-                        if not frames:
-                            raise RuntimeError("No frames generated by pipeline")
-                        
-                        # Convert frames to PIL Images if needed
-                        pil_frames = []
-                        for i, frame in enumerate(frames):
-                            if isinstance(frame, Image.Image):
-                                pil_frames.append(frame)
-                            elif isinstance(frame, np.ndarray):
-                                if frame.dtype != np.uint8:
-                                    frame = (frame * 255).astype(np.uint8)
-                                pil_frames.append(Image.fromarray(frame))
-                            elif isinstance(frame, torch.Tensor):
-                                frame_np = frame.detach().cpu().numpy()
-                                if frame_np.dtype != np.uint8:
-                                    frame_np = (frame_np * 255).astype(np.uint8)
-                                if len(frame_np.shape) == 4:  # BCHW
-                                    frame_np = frame_np[0].transpose(1, 2, 0)  # CHW -> HWC
-                                elif len(frame_np.shape) == 3 and frame_np.shape[0] == 3:  # CHW
-                                    frame_np = frame_np.transpose(1, 2, 0)  # CHW -> HWC
-                                pil_frames.append(Image.fromarray(frame_np))
-                            else:
-                                print(f"⚠️ Unknown frame type: {type(frame)}")
-                                continue
-                        
-                        print(f"✅ Successfully generated {len(pil_frames)} frames")
-                        return pil_frames
+                    # Load model weights from sharded files
+                    model = self._load_wan_sharded_weights(model, model_path, shard_files)
+                    model = model.to(self.device)
+                    model.eval()
                     
-                    else:
-                        raise RuntimeError("Pipeline doesn't have callable interface")
-                        
-                except Exception as pipeline_error:
-                    print(f"⚠️ DiffusionPipeline failed: {pipeline_error}")
-                    raise RuntimeError(f"Failed to generate with diffusers pipeline: {pipeline_error}")
+                    print(f"✅ Successfully loaded Wan {model_config['model_name']} model")
+                    
+                    # Generate video using Wan's native inference
+                    with torch.no_grad():
+                        frames = generate_video_frames(
+                            model=model,
+                            prompt=prompt,
+                            image=image,
+                            num_frames=num_frames,
+                            width=width,
+                            height=height,
+                            num_inference_steps=num_inference_steps,
+                            guidance_scale=guidance_scale,
+                            generator=generator
+                        )
+                    
+                    # Convert to PIL Images
+                    pil_frames = []
+                    for frame in frames:
+                        if isinstance(frame, Image.Image):
+                            pil_frames.append(frame)
+                        elif isinstance(frame, np.ndarray):
+                            if frame.dtype != np.uint8:
+                                frame = (frame * 255).astype(np.uint8)
+                            pil_frames.append(Image.fromarray(frame))
+                        elif isinstance(frame, torch.Tensor):
+                            frame_np = frame.detach().cpu().numpy()
+                            if frame_np.dtype != np.uint8:
+                                frame_np = (frame_np * 255).astype(np.uint8)
+                            if len(frame_np.shape) == 4:  # BCHW
+                                frame_np = frame_np[0].transpose(1, 2, 0)
+                            elif len(frame_np.shape) == 3 and frame_np.shape[0] == 3:  # CHW  
+                                frame_np = frame_np.transpose(1, 2, 0)
+                            pil_frames.append(Image.fromarray(frame_np))
+                    
+                    print(f"✅ Successfully generated {len(pil_frames)} frames with Wan 2.1")
+                    return pil_frames
+                    
+                except ImportError as import_error:
+                    print(f"⚠️ Wan 2.1 modules not available: {import_error}")
+                    raise RuntimeError(f"Wan 2.1 installation required. Please install from: https://github.com/Wan-Video/Wan2.1")
+                    
+                except Exception as wan_error:
+                    print(f"⚠️ Wan 2.1 native inference failed: {wan_error}")
+                    raise RuntimeError(f"Failed to generate with Wan 2.1: {wan_error}")
                 
             except Exception as e:
                 print(f"❌ WAN model loading failed: {e}")
                 raise RuntimeError(f"WAN video generation failed: {e}")
+    
+    def _setup_wan_repository(self) -> Path:
+        """Set up Wan 2.1 repository if not found"""
+        import subprocess
+        import shutil
+        
+        wan_repo_path = Path(self.env_manager.extension_root) / "Wan2.1"
+        
+        if wan_repo_path.exists():
+            shutil.rmtree(wan_repo_path)
+        
+        try:
+            print("📥 Cloning Wan 2.1 repository...")
+            subprocess.run([
+                "git", "clone", "https://github.com/Wan-Video/Wan2.1.git", 
+                str(wan_repo_path)
+            ], check=True, capture_output=True, text=True)
+            
+            # Install Wan 2.1 requirements
+            requirements_file = wan_repo_path / "requirements.txt"
+            if requirements_file.exists():
+                print("📦 Installing Wan 2.1 requirements...")
+                subprocess.run([
+                    sys.executable, "-m", "pip", "install", "-r", str(requirements_file),
+                    "--target", str(self.env_manager.wan_site_packages)
+                ], check=True, capture_output=True, text=True)
+            
+            return wan_repo_path / "wan"
+            
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Failed to setup Wan 2.1 repository: {e}")
+    
+    def _detect_wan_model_config(self, model_path: Path) -> dict:
+        """Detect Wan model configuration from model files"""
+        # Look for config files or infer from model size
+        config_file = model_path / "config.json"
+        if config_file.exists():
+            import json
+            with open(config_file) as f:
+                config = json.load(f)
+                if 'model_name' in config:
+                    return config
+        
+        # Estimate model size from sharded files
+        total_size = sum((model_path / f).stat().st_size for f in os.listdir(model_path) if f.endswith('.safetensors'))
+        size_gb = total_size / (1024**3)
+        
+        if size_gb < 5:
+            return {
+                'model_name': 'DiT-XL/2',
+                'input_size': 32,
+                'num_classes': 1000
+            }
+        else:
+            return {
+                'model_name': 'DiT-XL/2-14B', 
+                'input_size': 32,
+                'num_classes': 1000
+            }
+    
+    def _load_wan_sharded_weights(self, model, model_path: Path, shard_files: list):
+        """Load Wan model weights from sharded safetensors files"""
+        try:
+            from safetensors import safe_open
+            import torch
+            
+            state_dict = {}
+            
+            print(f"🔄 Loading weights from {len(shard_files)} shards...")
+            for shard_file in sorted(shard_files):
+                shard_path = model_path / shard_file
+                with safe_open(shard_path, framework="pt", device="cpu") as f:
+                    for key in f.keys():
+                        state_dict[key] = f.get_tensor(key)
+            
+            # Load state dict into model
+            missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
+            
+            if missing_keys:
+                print(f"⚠️ Missing keys: {len(missing_keys)}")
+            if unexpected_keys:
+                print(f"⚠️ Unexpected keys: {len(unexpected_keys)}")
+            
+            print(f"✅ Loaded {len(state_dict)} tensors into model")
+            return model
+            
+        except Exception as e:
+            raise RuntimeError(f"Failed to load sharded weights: {e}")
