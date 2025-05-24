@@ -18,7 +18,7 @@ import random
 
 class WanVideoGenerator:
     """
-    Wan 2.1 video generator - Real implementation
+    Wan 2.1 video generator - Real implementation with comprehensive model validation
     """
     
     def __init__(self, model_path: str, device: str = "cuda"):
@@ -42,6 +42,95 @@ class WanVideoGenerator:
             raise FileNotFoundError(f"No valid model files found in {self.model_path}")
             
         return True
+    
+    def validate_model_structure(self) -> Dict[str, Any]:
+        """Validate WAN model file structure and provide detailed feedback"""
+        print("🔍 Validating WAN model structure...")
+        
+        # Expected files for official WAN pipeline
+        expected_files = {
+            # T5 Text Encoder (required for both T2V and I2V)
+            't5_encoder': [
+                'models_t5_umt5-xxl-enc-bf16.pth',
+                'umt5-xxl-enc-bf16.safetensors',
+                'models_t5_umt5-xxl-enc-bf16.safetensors'
+            ],
+            # VAE (required for both T2V and I2V) 
+            'vae': [
+                'Wan2.1_VAE.pth',
+                'wan_2.1_vae.safetensors',
+                'Wan2_1_VAE_fp32.safetensors',
+                'Wan2_1_VAE_bf16.safetensors'
+            ],
+            # CLIP (required for I2V)
+            'clip': [
+                'models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth',
+                'clip_vision_h.safetensors'
+            ]
+        }
+        
+        # Find all files in model directory
+        all_files = list(self.model_path.glob("*"))
+        file_names = [f.name for f in all_files if f.is_file()]
+        
+        print(f"📁 Found files in {self.model_path}:")
+        for file_name in sorted(file_names):
+            file_path = self.model_path / file_name
+            size_mb = file_path.stat().st_size / (1024*1024)
+            print(f"  📄 {file_name} ({size_mb:.1f} MB)")
+        
+        # Check for expected files
+        validation_result = {
+            'has_required_files': True,
+            'found_files': {},
+            'missing_files': {},
+            'can_use_official_pipeline': False,
+            'recommendations': []
+        }
+        
+        for component, possible_files in expected_files.items():
+            found = False
+            for expected_file in possible_files:
+                if expected_file in file_names:
+                    validation_result['found_files'][component] = expected_file
+                    print(f"✅ Found {component}: {expected_file}")
+                    found = True
+                    break
+            
+            if not found:
+                validation_result['missing_files'][component] = possible_files[0]  # Show primary expected file
+                validation_result['has_required_files'] = False
+                print(f"❌ Missing {component}: Expected one of {possible_files}")
+        
+        # Check if we can use official pipeline
+        has_t5 = 't5_encoder' in validation_result['found_files']
+        has_vae = 'vae' in validation_result['found_files']
+        has_dit_models = any('safetensors' in name or 'bin' in name or 'pth' in name 
+                           for name in file_names if name not in [
+                               validation_result['found_files'].get('t5_encoder', ''),
+                               validation_result['found_files'].get('vae', ''),
+                               validation_result['found_files'].get('clip', '')
+                           ])
+        
+        validation_result['can_use_official_pipeline'] = has_t5 and has_vae and has_dit_models
+        
+        if not validation_result['can_use_official_pipeline']:
+            validation_result['recommendations'].append(
+                "💡 To use official WAN pipeline, ensure you have downloaded the complete model from:"
+            )
+            validation_result['recommendations'].append(
+                "   • Hugging Face: https://huggingface.co/Wan-AI/Wan2.1-T2V-14B"
+            )
+            validation_result['recommendations'].append(
+                "   • Or: https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B"
+            )
+            validation_result['recommendations'].append(
+                "🔄 Will use fallback implementation for now"
+            )
+        else:
+            print("🎉 Model structure validation passed! Can use official WAN pipeline")
+        
+        return validation_result
         
     def setup_wan_repository(self) -> Path:
         """Setup official Wan 2.1 repository"""
@@ -147,8 +236,20 @@ class WanVideoGenerator:
             print(f"📊 Detected 1.3B model (total size: {total_size_gb:.1f}GB)")
             return "1_3B"
     
+    def get_device_id(self) -> int:
+        """Get proper device ID for WAN initialization"""
+        if self.device == "cuda":
+            return 0  # First GPU
+        elif self.device.startswith("cuda:"):
+            try:
+                return int(self.device.split(":")[1])
+            except (ValueError, IndexError):
+                return 0
+        else:
+            return 0  # Default to first GPU
+    
     def load_model(self):
-        """Load Wan model - Real implementation"""
+        """Load Wan model - Real implementation with enhanced validation"""
         if self.loaded:
             return
             
@@ -156,6 +257,9 @@ class WanVideoGenerator:
         
         # Check availability
         self.is_wan_available()
+        
+        # Validate model structure
+        validation_result = self.validate_model_structure()
         
         # Setup repository
         self.wan_repo_path = self.setup_wan_repository()
@@ -168,42 +272,39 @@ class WanVideoGenerator:
             sys.path.insert(0, str(self.wan_repo_path))
         
         try:
-            # Check if the model files are in the expected format
-            model_files = list(self.model_path.glob("*.safetensors")) + list(self.model_path.glob("*.bin")) + list(self.model_path.glob("*.pth"))
-            if not model_files:
-                raise FileNotFoundError("No model files found")
-            
-            print(f"📋 Found {len(model_files)} model files")
-            
             # Import WAN modules
             print("📦 Importing WAN modules...")
             
-            try:
-                # Try to import the official WAN modules
-                from wan.text2video import WanT2V
-                from wan.image2video import WanI2V
-                
-                print("✅ Successfully imported WAN modules")
-                
-                # Initialize the pipeline with model path
-                print(f"🔧 Initializing WAN pipeline with model: {self.model_path}")
-                
-                # Initialize the WAN pipeline
-                self._initialize_wan_pipeline(WanT2V, WanI2V)
-                print("✅ WAN pipeline initialized successfully")
-                
-            except ImportError as e:
-                print(f"⚠️ Could not import official WAN modules: {e}")
-                print("🔄 Using fallback implementation...")
-                
-                # Create a simplified interface that mimics WAN API
+            if validation_result['can_use_official_pipeline']:
+                try:
+                    # Try to import the official WAN modules
+                    from wan.text2video import WanT2V
+                    from wan.image2video import WanI2V
+                    
+                    print("✅ Successfully imported WAN modules")
+                    
+                    # Initialize the pipeline with model path
+                    print(f"🔧 Initializing WAN pipeline with model: {self.model_path}")
+                    
+                    # Initialize the WAN pipeline
+                    self._initialize_wan_pipeline(WanT2V, WanI2V)
+                    print("✅ WAN pipeline initialized successfully")
+                    
+                except Exception as e:
+                    print(f"⚠️ Official WAN pipeline initialization failed: {e}")
+                    print("🔄 Falling back to simplified implementation...")
+                    self._create_simplified_wan_interface()
+            else:
+                print("⚠️ Model structure validation failed - using fallback implementation")
+                for recommendation in validation_result['recommendations']:
+                    print(recommendation)
                 self._create_simplified_wan_interface()
             
             self.loaded = True
             print("🎉 WAN model loaded successfully!")
             
         except Exception as e:
-            print(f"⚠️ Failed to initialize official WAN pipeline: {e}")
+            print(f"⚠️ Failed to initialize WAN pipeline: {e}")
             print("🔄 Using fallback implementation...")
             self._create_fallback_pipeline()
             self.loaded = True
@@ -215,6 +316,9 @@ class WanVideoGenerator:
         
         # Detect model size and load appropriate config
         model_size = self.detect_model_size()
+        device_id = self.get_device_id()
+        
+        print(f"🔧 Using device_id: {device_id}")
         
         try:
             if model_size == "14B":
@@ -223,9 +327,8 @@ class WanVideoGenerator:
                 print("📋 Using 14B model configuration")
             else:
                 from wan.configs.wan_t2v_1_3B import t2v_1_3B as t2v_config
-                # For 1.3B, we'll use the same config for i2v (adapt as needed)
-                t2v_config_copy = dict(t2v_config)
-                i2v_config = type(t2v_config)(t2v_config_copy)
+                # For 1.3B, we'll use the t2v config for i2v as well (adapt as needed)
+                i2v_config = t2v_config
                 print("📋 Using 1.3B model configuration")
             
             # Initialize T2V pipeline
@@ -233,7 +336,7 @@ class WanVideoGenerator:
             self.wan_t2v_pipeline = WanT2V(
                 config=t2v_config,
                 checkpoint_dir=str(self.model_path),
-                device_id=0 if self.device == "cuda" else -1,
+                device_id=device_id,
                 rank=0,
                 t5_cpu=False,  # Keep T5 on GPU for better performance
                 t5_fsdp=False,
@@ -241,19 +344,24 @@ class WanVideoGenerator:
             )
             print("✅ Text-to-Video pipeline initialized")
             
-            # Initialize I2V pipeline
-            print("🔧 Initializing Image-to-Video pipeline...")  
-            self.wan_i2v_pipeline = WanI2V(
-                config=i2v_config,
-                checkpoint_dir=str(self.model_path),
-                device_id=0 if self.device == "cuda" else -1,
-                rank=0,
-                t5_cpu=False,
-                t5_fsdp=False,
-                dit_fsdp=False,
-                init_on_cpu=True  # Initialize on CPU to save VRAM
-            )
-            print("✅ Image-to-Video pipeline initialized")
+            # Initialize I2V pipeline (only if we have CLIP)
+            validation_result = self.validate_model_structure()
+            if 'clip' in validation_result['found_files']:
+                print("🔧 Initializing Image-to-Video pipeline...")  
+                self.wan_i2v_pipeline = WanI2V(
+                    config=i2v_config,
+                    checkpoint_dir=str(self.model_path),
+                    device_id=device_id,
+                    rank=0,
+                    t5_cpu=False,
+                    t5_fsdp=False,
+                    dit_fsdp=False,
+                    init_on_cpu=True  # Initialize on CPU to save VRAM
+                )
+                print("✅ Image-to-Video pipeline initialized")
+            else:
+                print("⚠️ CLIP model not found - I2V pipeline will use fallback")
+                self.wan_i2v_pipeline = None
             
         except Exception as e:
             # If official initialization fails, fall back to simplified interface
@@ -373,6 +481,7 @@ class WanVideoGenerator:
             # Check if we have the official pipeline
             if hasattr(self.wan_t2v_pipeline, 'generate') and callable(getattr(self.wan_t2v_pipeline, 'generate')):
                 # Use official WAN T2V pipeline
+                print("🚀 Using official WAN T2V pipeline")
                 video_tensor = self.wan_t2v_pipeline.generate(
                     input_prompt=prompt,
                     size=(width, height),
@@ -453,14 +562,18 @@ class WanVideoGenerator:
         print(f"  Init image shape: {init_image.shape}")
         
         try:
-            # Check if we have the official pipeline
-            if hasattr(self.wan_i2v_pipeline, 'generate') and callable(getattr(self.wan_i2v_pipeline, 'generate')):
+            # Check if we have the official I2V pipeline
+            if (self.wan_i2v_pipeline is not None and 
+                hasattr(self.wan_i2v_pipeline, 'generate') and 
+                callable(getattr(self.wan_i2v_pipeline, 'generate'))):
+                
                 # Convert numpy array to PIL Image for WAN I2V
                 if init_image.dtype != np.uint8:
                     init_image = (init_image * 255).astype(np.uint8)
                 pil_image = Image.fromarray(init_image).resize((width, height))
                 
                 # Use official WAN I2V pipeline
+                print("🚀 Using official WAN I2V pipeline")
                 video_tensor = self.wan_i2v_pipeline.generate(
                     input_prompt=prompt,
                     img=pil_image,
@@ -492,6 +605,7 @@ class WanVideoGenerator:
                     raise RuntimeError("WAN I2V returned None")
             else:
                 # Use simplified pipeline
+                print("🎭 Using simplified I2V pipeline (official pipeline unavailable)")
                 frames = self.wan_i2v_pipeline.generate_image2video(
                     image=init_image,
                     prompt=prompt,
