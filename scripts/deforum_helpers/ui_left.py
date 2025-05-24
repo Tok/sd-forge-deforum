@@ -21,7 +21,7 @@ from .gradio_funcs import change_css, handle_change_functions
 from .args import DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, RootArgs, LoopArgs, FreeUArgs, KohyaHRFixArgs, WanArgs
 from .deforum_controlnet import setup_controlnet_ui
 from .ui_elements import (get_tab_run, get_tab_keyframes, get_tab_prompts, get_tab_init,
-                          get_tab_hybrid, get_tab_output, get_tab_freeu, get_tab_kohya_hrfix, get_tab_wan)
+                          get_tab_hybrid, get_tab_output, get_tab_freeu, get_tab_kohya_hrfix)
 
 def set_arg_lists():
     # convert dicts to NameSpaces for easy working (args.param instead of args['param']
@@ -54,7 +54,9 @@ def setup_deforum_left_side_ui():
             controlnet_dict = setup_controlnet_ui()  # ControlNet tab
             tab_freeu_params = get_tab_freeu(dfu)  # FreeU tab
             tab_kohya_hrfix_params = get_tab_kohya_hrfix(dku)  # Kohya tab
-            tab_wan_params = get_tab_wan(dw)  # Wan tab
+            # Re-enable Wan tab (UI only, imports still isolated)
+            from .ui_elements import get_tab_wan
+            tab_wan_params = get_tab_wan(dw)  # Re-enable Wan tab
             tab_hybrid_params = get_tab_hybrid(da)  # Hybrid tab
             tab_output_params = get_tab_output(da, dv)  # Output tab
             # add returned gradio elements from main tabs to locals()

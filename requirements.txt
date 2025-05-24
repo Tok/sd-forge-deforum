@@ -6,3 +6,6 @@ pims
 imageio_ffmpeg
 rich
 gdown
+diffusers>=0.33.1
+transformers>=4.46.0
+accelerate>=0.31.0

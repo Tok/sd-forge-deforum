@@ -151,8 +151,14 @@ def substitute_placeholders(template, arg_list, base_folder_path):
     values = {attr.lower(): getattr(arg_obj, attr)
               for arg_obj in arg_list
               for attr in dir(arg_obj) if not callable(getattr(arg_obj, attr)) and not attr.startswith('__')}
+    
+    # FIXED: Properly handle placeholder substitution without leaving stray characters
+    # First, substitute valid placeholders
     formatted_string = re.sub(r"{(\w+)}", lambda m: custom_placeholder_format(values, m), template)
+    # Then, clean up any remaining invalid placeholders or stray braces
+    formatted_string = re.sub(r'[{}]', '_', formatted_string)  # Replace any remaining braces with underscores
     formatted_string = re.sub(r'[<>:"/\\|?*\s,]', '_', formatted_string)
+    
     return formatted_string[:max_length]
 
 

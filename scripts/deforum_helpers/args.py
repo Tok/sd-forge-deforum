@@ -1152,8 +1152,8 @@ def WanArgs():
         "wan_model_path": {
             "label": "Wan Model Path",
             "type": "textbox", 
-            "value": "webui-forge\\webui\\models\\wan",
-            "info": "Path to Wan 2.1 model checkpoint. Default: webui-forge\\webui\\models\\wan"
+            "value": "models/wan",
+            "info": "Path to Wan 2.1 model checkpoint. Default: models/wan (relative to webui folder)"
         },
         "wan_clip_duration": {
             "label": "Clip Duration (seconds)",
@@ -1170,7 +1170,7 @@ def WanArgs():
             "minimum": 8,
             "maximum": 60,
             "step": 1,
-            "value": 24,
+            "value": 60,
             "info": "Frames per second for Wan video generation"
         },
         "wan_resolution": {
@@ -1372,6 +1372,7 @@ def DeforumOutputArgs():
 
 
 def get_component_names():
+    # Re-enable Wan components (UI level, imports still isolated)
     return ['override_settings_with_file', 'custom_settings_file', *DeforumAnimArgs().keys(), 'animation_prompts',
             'animation_prompts_positive', 'animation_prompts_negative',
             *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(), *LoopArgs().keys(),

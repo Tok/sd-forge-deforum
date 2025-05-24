@@ -15,21 +15,21 @@
 # Contact the authors: https://deforum.github.io/
 
 """
-Wan Video Rendering Module
-Handles the main rendering loop for Wan video generation
+Wan Video Rendering Module - FAIL FAST
+Handles the main rendering loop for Wan video generation with no fallbacks
 """
 
 import os
 import json
 import time
 import math
-import cv2
+# cv2 import moved inside functions to prevent any potential conflicts
 import numpy as np
 from PIL import Image
 from typing import List, Tuple, Dict, Any
 import modules.shared as shared
 
-from .wan_integration import WanVideoGenerator, WanPromptScheduler
+# Wan integration imports moved inside functions to prevent diffusers corruption
 from .video_audio_utilities import ffmpeg_stitch_video, get_ffmpeg_params, get_ffmpeg_paths
 from .save_images import save_image
 from .rendering.util.log_utils import YELLOW, GREEN, RED, RESET_COLOR
@@ -37,17 +37,23 @@ from .rendering.util.log_utils import YELLOW, GREEN, RED, RESET_COLOR
 
 def render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root):
     """
-    Main rendering function for Wan video generation
+    Main rendering function for Wan video generation - FAIL FAST
     
     Process:
-    1. Parse prompts and calculate timing
-    2. Generate first clip using txt2video
-    3. For subsequent clips, use img2video with last frame as init
-    4. Handle frame overlaps and transitions
-    5. Stitch clips together with FFmpeg
+    1. Validate all arguments - FAIL FAST on any errors
+    2. Parse prompts and calculate timing
+    3. Generate first clip using txt2video
+    4. For subsequent clips, use img2video with last frame as init
+    5. Handle frame overlaps and transitions
+    6. Stitch clips together with FFmpeg
+    
+    NO FALLBACKS - Any error terminates the process immediately
     """
     
-    print(f"{YELLOW}=== Starting Wan 2.1 Video Generation ==={RESET_COLOR}")
+    # Import Wan classes only when needed to prevent diffusers corruption
+    from .wan_integration import WanVideoGenerator, WanPromptScheduler, validate_wan_settings
+    
+    print(f"{YELLOW}=== Starting Wan 2.1 Video Generation (FAIL FAST) ==={RESET_COLOR}")
     print(f"Model Path: {wan_args.wan_model_path}")
     print(f"Resolution: {wan_args.wan_resolution}")
     print(f"FPS: {wan_args.wan_fps}")
@@ -55,21 +61,39 @@ def render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loo
     print(f"Inference Steps: {wan_args.wan_inference_steps}")
     print(f"Guidance Scale: {wan_args.wan_guidance_scale}")
     
-    # Initialize Wan generator
-    wan_generator = WanVideoGenerator(wan_args.wan_model_path, root.device)
+    # FAIL FAST: Validate all arguments before starting
+    try:
+        validate_wan_settings(wan_args)
+    except ValueError as e:
+        print(f"{RED}VALIDATION ERROR: {e}{RESET_COLOR}")
+        raise RuntimeError(f"Wan validation failed: {e}")
+    
+    # FAIL FAST: Validate that we have prompts
+    if not hasattr(root, 'animation_prompts') or not root.animation_prompts:
+        raise ValueError("No animation prompts provided")
+    
+    # Initialize Wan generator - FAIL FAST
+    try:
+        wan_generator = WanVideoGenerator(wan_args.wan_model_path, root.device)
+    except Exception as e:
+        raise RuntimeError(f"Failed to initialize WAN generator: {e}")
     
     try:
+        # This will fail fast if Wan is not available
         wan_generator.load_model()
         
-        # Parse animation prompts and calculate timing
-        prompt_scheduler = WanPromptScheduler(root.animation_prompts, wan_args, video_args)
-        prompt_schedule = prompt_scheduler.parse_prompts_and_timing()
+        # Parse animation prompts and calculate timing - FAIL FAST
+        try:
+            prompt_scheduler = WanPromptScheduler(root.animation_prompts, wan_args, video_args)
+            prompt_schedule = prompt_scheduler.parse_prompts_and_timing()
+        except Exception as e:
+            raise RuntimeError(f"Failed to parse prompts: {e}")
         
         print(f"Generated {len(prompt_schedule)} video clips:")
         for i, (prompt, start_time, duration) in enumerate(prompt_schedule):
             print(f"  Clip {i+1}: '{prompt[:50]}...' (start: {start_time:.1f}s, duration: {duration:.1f}s)")
         
-        # Generate video clips
+        # Generate video clips - FAIL FAST on any errors
         all_clips = []
         all_frames = []
         previous_frame = None
@@ -77,8 +101,7 @@ def render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loo
         
         for i, (prompt, start_time, duration) in enumerate(prompt_schedule):
             if shared.state.interrupted:
-                print(f"{RED}Generation interrupted by user{RESET_COLOR}")
-                break
+                raise RuntimeError("Generation interrupted by user")
                 
             print(f"\n{YELLOW}Generating clip {i+1}/{len(prompt_schedule)}: {prompt[:50]}...{RESET_COLOR}")
             
@@ -101,6 +124,9 @@ def render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loo
                     )
                 else:
                     # Subsequent clips: image-to-video
+                    if previous_frame is None:
+                        raise RuntimeError(f"No previous frame available for clip {i+1}")
+                    
                     print(f"Mode: Image-to-Video (using previous frame as init)")
                     frames = wan_generator.generate_img2video(
                         init_image=previous_frame,
@@ -114,25 +140,35 @@ def render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loo
                         motion_strength=wan_args.wan_motion_strength
                     )
                 
+                # FAIL FAST: No empty frame tolerance
                 if not frames:
-                    print(f"{RED}ERROR: No frames generated for clip {i+1}{RESET_COLOR}")
-                    continue
+                    raise RuntimeError(f"No frames generated for clip {i+1}")
                 
                 print(f"{GREEN}Generated {len(frames)} frames for clip {i+1}{RESET_COLOR}")
                 
-                # Handle frame overlap and save frames
-                processed_frames = handle_frame_overlap(frames, previous_frame, wan_args.wan_frame_overlap, i > 0)
+                # Handle frame overlap and save frames - FAIL FAST
+                try:
+                    processed_frames = handle_frame_overlap(frames, previous_frame, wan_args.wan_frame_overlap, i > 0)
+                except Exception as e:
+                    raise RuntimeError(f"Frame overlap processing failed for clip {i+1}: {e}")
                 
-                # Save frames to disk
-                saved_frame_count = save_clip_frames(processed_frames, args.outdir, root.timestring, i, total_frames_generated)
+                # Save frames to disk - FAIL FAST
+                try:
+                    saved_frame_count = save_clip_frames(processed_frames, args.outdir, root.timestring, i, total_frames_generated)
+                except Exception as e:
+                    raise RuntimeError(f"Frame saving failed for clip {i+1}: {e}")
+                
                 total_frames_generated += saved_frame_count
                 
                 # Add frames to the all_frames list for video stitching
                 all_frames.extend(processed_frames)
                 all_clips.append(processed_frames)
                 
-                # Extract last frame for next clip initialization
-                previous_frame = wan_generator.extract_last_frame(frames)
+                # Extract last frame for next clip initialization - FAIL FAST
+                try:
+                    previous_frame = wan_generator.extract_last_frame(frames)
+                except Exception as e:
+                    raise RuntimeError(f"Failed to extract last frame from clip {i+1}: {e}")
                 
                 # Update progress (this integrates with Deforum's progress system)
                 shared.state.job = f"Wan clip {i+1}/{len(prompt_schedule)}"
@@ -142,9 +178,8 @@ def render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loo
                 print(f"{GREEN}Clip {i+1} completed successfully{RESET_COLOR}")
                 
             except Exception as e:
-                print(f"{RED}ERROR generating clip {i+1}: {e}{RESET_COLOR}")
-                # Continue with next clip instead of failing completely
-                continue
+                # FAIL FAST: No continuing with failed clips
+                raise RuntimeError(f"FATAL ERROR generating clip {i+1}: {e}")
         
         # Update anim_args.max_frames to match the total number of frames generated
         anim_args.max_frames = total_frames_generated
@@ -153,6 +188,8 @@ def render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loo
         # Set first frame for Deforum's processed output
         if all_frames:
             root.first_frame = Image.fromarray(all_frames[0])
+        else:
+            raise RuntimeError("No frames were generated")
         
         # Create a summary of the generation
         generation_info = create_generation_summary(prompt_schedule, wan_args, total_frames_generated)
@@ -166,17 +203,20 @@ def render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loo
         print(f"{RED}FATAL ERROR in Wan video generation: {e}{RESET_COLOR}")
         import traceback
         traceback.print_exc()
-        raise
+        raise RuntimeError(f"Wan generation failed: {e}")
         
     finally:
         # Always unload the model to free GPU memory
-        wan_generator.unload_model()
-        print(f"Wan model unloaded, GPU memory freed")
+        try:
+            wan_generator.unload_model()
+            print(f"Wan model unloaded, GPU memory freed")
+        except Exception as e:
+            print(f"Warning: Error during model cleanup: {e}")
 
 
 def handle_frame_overlap(frames: List[np.ndarray], previous_frame: np.ndarray, overlap_count: int, is_continuation: bool) -> List[np.ndarray]:
     """
-    Handle frame overlapping between clips for smooth transitions
+    Handle frame overlapping between clips for smooth transitions - FAIL FAST
     
     Args:
         frames: List of frames from the current clip
@@ -187,8 +227,11 @@ def handle_frame_overlap(frames: List[np.ndarray], previous_frame: np.ndarray, o
     Returns:
         List of processed frames with overlaps handled
     """
+    # Import cv2 only when needed to prevent any potential conflicts
+    import cv2
+    
     if not frames:
-        return frames
+        raise ValueError("Cannot process empty frames list")
     
     if not is_continuation or previous_frame is None or overlap_count <= 0:
         # No overlap needed for first clip or when overlap is disabled
@@ -205,11 +248,18 @@ def handle_frame_overlap(frames: List[np.ndarray], previous_frame: np.ndarray, o
     if overlap_count > 0:
         first_frame = frames[0]
         
+        # Validate frame compatibility - FAIL FAST
+        if previous_frame.shape != first_frame.shape:
+            raise ValueError(f"Frame shape mismatch: {previous_frame.shape} vs {first_frame.shape}")
+        
         # Create smooth transitions by blending frames
         for i in range(overlap_count):
             alpha = (i + 1) / (overlap_count + 1)
-            blended_frame = cv2.addWeighted(previous_frame, 1.0 - alpha, first_frame, alpha, 0)
-            processed_frames.append(blended_frame)
+            try:
+                blended_frame = cv2.addWeighted(previous_frame, 1.0 - alpha, first_frame, alpha, 0)
+                processed_frames.append(blended_frame)
+            except Exception as e:
+                raise RuntimeError(f"Frame blending failed at overlap {i}: {e}")
     
     # Add the original frames (skip first frame if we have overlap)
     start_idx = 1 if overlap_count > 0 else 0
@@ -220,7 +270,7 @@ def handle_frame_overlap(frames: List[np.ndarray], previous_frame: np.ndarray, o
 
 def save_clip_frames(frames: List[np.ndarray], outdir: str, timestring: str, clip_index: int, start_frame_number: int) -> int:
     """
-    Save frames from a clip to disk using Deforum's save system
+    Save frames from a clip to disk using Deforum's save system - FAIL FAST
     
     Args:
         frames: List of frames to save
@@ -232,6 +282,12 @@ def save_clip_frames(frames: List[np.ndarray], outdir: str, timestring: str, cli
     Returns:
         Number of frames saved
     """
+    if not frames:
+        raise ValueError("Cannot save empty frames list")
+    
+    if not os.path.exists(outdir):
+        raise FileNotFoundError(f"Output directory does not exist: {outdir}")
+    
     saved_count = 0
     
     for i, frame in enumerate(frames):
@@ -258,8 +314,8 @@ def save_clip_frames(frames: List[np.ndarray], outdir: str, timestring: str, cli
                 print(f"  Saved frame {global_frame_number} (clip {clip_index+1}, frame {i+1}/{len(frames)})")
             
         except Exception as e:
-            print(f"{RED}Error saving frame {i} of clip {clip_index}: {e}{RESET_COLOR}")
-            continue
+            # FAIL FAST: Don't continue if frame saving fails
+            raise RuntimeError(f"Failed to save frame {i} of clip {clip_index}: {e}")
     
     print(f"{GREEN}Saved {saved_count} frames from clip {clip_index+1}{RESET_COLOR}")
     return saved_count
@@ -305,7 +361,7 @@ Clip Breakdown:"""
 
 def validate_wan_animation_args(args, anim_args, video_args, wan_args):
     """
-    Validate arguments specifically for Wan animation mode
+    Validate arguments specifically for Wan animation mode - FAIL FAST
     
     Args:
         args: Deforum args
@@ -313,8 +369,8 @@ def validate_wan_animation_args(args, anim_args, video_args, wan_args):
         video_args: Video args
         wan_args: Wan args
     
-    Returns:
-        List of validation error messages
+    Raises:
+        ValueError: If validation fails
     """
     errors = []
     
@@ -324,8 +380,10 @@ def validate_wan_animation_args(args, anim_args, video_args, wan_args):
     
     # Check Wan-specific validations
     from .wan_integration import validate_wan_settings
-    wan_errors = validate_wan_settings(wan_args)
-    errors.extend(wan_errors)
+    try:
+        validate_wan_settings(wan_args)  # This will raise if validation fails
+    except ValueError as e:
+        errors.extend([str(e)])
     
     # Check for conflicting settings
     if anim_args.use_depth_warping:
@@ -341,7 +399,9 @@ def validate_wan_animation_args(args, anim_args, video_args, wan_args):
     if not hasattr(args, 'animation_prompts') or not args.animation_prompts:
         errors.append("Animation prompts are required for Wan video generation")
     
-    return errors
+    # FAIL FAST: Immediate validation error
+    if errors:
+        raise ValueError("Wan animation validation failed: " + "; ".join(errors))
 
 
 def estimate_wan_generation_time(prompt_schedule: List[Tuple[str, float, float]], wan_args) -> float:

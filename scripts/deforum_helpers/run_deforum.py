@@ -129,22 +129,29 @@ def run_deforum(*args):
             elif anim_args.animation_mode == 'Interpolation':
                 render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
             elif anim_args.animation_mode == 'Wan Video':
-                # Import Wan renderer only when needed
-                from .wan_integration import validate_wan_settings
-                from .render_wan import render_wan_animation
-                
-                # Validate Wan settings before proceeding
-                validation_errors = validate_wan_settings(wan_args)
-                if validation_errors:
-                    error_msg = "Wan validation failed:\n" + "\n".join(f"- {error}" for error in validation_errors)
-                    print(f"{RED}ERROR!{RESET_COLOR} {error_msg}")
-                    raise ValueError(error_msg)
-                
-                if not wan_args.wan_enabled:
-                    raise ValueError("Wan Video mode selected but Wan is not enabled. Please enable Wan in the Wan Video tab.")
-                
-                print(f"{YELLOW}Starting Wan 2.1 Video Generation...{RESET_COLOR}")
-                render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
+                # Import Wan renderer only when needed to prevent any diffusers corruption
+                try:
+                    from .wan_integration import validate_wan_settings
+                    from .render_wan import render_wan_animation
+                    
+                    # Validate Wan settings before proceeding
+                    validation_errors = validate_wan_settings(wan_args)
+                    if validation_errors:
+                        error_msg = "Wan validation failed:\n" + "\n".join(f"- {error}" for error in validation_errors)
+                        print(f"{RED}ERROR!{RESET_COLOR} {error_msg}")
+                        raise ValueError(error_msg)
+                    
+                    if not wan_args.wan_enabled:
+                        raise ValueError("Wan Video mode selected but Wan is not enabled. Please enable Wan in the Wan Video tab.")
+                    
+                    print(f"{YELLOW}Starting Wan 2.1 Video Generation...{RESET_COLOR}")
+                    render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
+                    
+                except ImportError as e:
+                    raise RuntimeError(f"Failed to import Wan integration modules: {e}. Please check the Wan integration installation.")
+                except Exception as e:
+                    # Re-raise the original exception to preserve the stack trace
+                    raise
             else:
                 print('Other modes are not available yet!')
         except Exception as e:

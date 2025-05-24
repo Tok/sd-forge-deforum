@@ -37,3 +37,6 @@ serverlog.txt
 
 # Pycharm stuff
 .idea/
+wan_isolated_env/
+webui_log.txt
+webui_startup_log.txt

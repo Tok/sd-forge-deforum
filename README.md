@@ -1,4 +1,3 @@
-
 # Fluxabled Fork of the Deforum Stable Diffusion Extension for Forge
 
 Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum)
@@ -13,6 +12,17 @@ This fork of the extension is _basically working_.
 &#x26A0;&#xFE0F; Configurations that use the **experimental render core** by enabling the 
 new keyframe distribution feature, may require that some unsupported features are being kept disabled.
 
+## Wan 2.1 Video Integration
+
+Integrated support for Wan 2.1 video generation using isolated environment to prevent WebUI conflicts. Select "Wan Video" animation mode, configure model path, and generate videos with automatic pipeline setup. Requires 12GB+ GPU memory and Wan 2.1 model files in `webui-forge/webui/models/wan/`.
+
+**Key Features:**
+- **Isolated Environment**: Prevents diffusers conflicts with WebUI
+- **Auto-Configuration**: Downloads missing pipeline components automatically
+- **Fail-Fast Operation**: Clear error reporting, no fallback attempts
+- **Model Flexibility**: Works with various Wan model formats
+
+Configure prompts using standard Deforum format and let the system handle the rest.
 
 ## Requirements
 
