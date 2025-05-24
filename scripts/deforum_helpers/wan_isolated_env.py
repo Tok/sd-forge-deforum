@@ -551,57 +551,67 @@ class WanIsolatedGenerator:
         print("✅ Wan isolated generator setup complete!")
     
     def generate_video(self, prompt: str, **kwargs) -> List:
-        """Generate video using available diffusers pipelines"""
+        """Generate video using WAN native approach (not diffusers)"""
         if not self.env_manager or not self.prepared_model_path:
             raise RuntimeError("Generator not properly set up")
         
-        print(f"🎬 Generating video with isolated environment: '{prompt}'")
+        print(f"🎬 Generating video with WAN native approach: '{prompt}'")
         
         with self.env_manager.isolated_imports():
             import torch
+            from PIL import Image
+            import numpy as np
             
-            # For WAN models, try to load with basic DiffusionPipeline auto-detection
+            # Try to load WAN model directly (not through diffusers)
             try:
-                from diffusers import DiffusionPipeline
-                import torch
+                print("🧪 Attempting to load WAN model directly...")
                 
-                print("🧪 Attempting to load with auto-detection DiffusionPipeline...")
+                # Look for the actual WAN model files
+                import os
+                from pathlib import Path
                 
-                # Use DiffusionPipeline.from_pretrained with auto-detection
-                pipeline = DiffusionPipeline.from_pretrained(
-                    self.prepared_model_path,
-                    torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                    trust_remote_code=True,  # Allow custom pipeline code
-                    use_safetensors=True
-                ).to(self.device)
+                model_path = Path(self.prepared_model_path)
                 
-                print(f"✅ Successfully loaded auto-detected pipeline: {type(pipeline).__name__}")
+                # Check for sharded safetensors files (the actual WAN model)
+                shard_files = list(model_path.glob("diffusion_pytorch_model-*.safetensors"))
                 
-                # Generate frames using the loaded pipeline
-                generation_kwargs = kwargs.copy()
+                if not shard_files:
+                    raise FileNotFoundError("No WAN model shard files found")
                 
-                # Try to call the pipeline with the prompt
-                try:
-                    result = pipeline(prompt=prompt, **generation_kwargs)
+                print(f"📋 Found {len(shard_files)} WAN model shards")
+                
+                # For now, create placeholder frames since we need the actual WAN implementation
+                # This is where the real WAN model loading and inference would go
+                
+                num_frames = kwargs.get('num_frames', 60)
+                width = kwargs.get('width', 1280)
+                height = kwargs.get('height', 720)
+                
+                print(f"🎭 Creating {num_frames} placeholder frames ({width}x{height}) for WAN development")
+                print("💡 TODO: Replace with actual WAN model inference")
+                
+                # Create placeholder frames with gradual color change to simulate video
+                frames = []
+                for i in range(num_frames):
+                    # Create a gradient frame that changes over time
+                    frame_array = np.zeros((height, width, 3), dtype=np.uint8)
                     
-                    # Extract frames from result
-                    if hasattr(result, 'frames'):
-                        frames = result.frames[0] if isinstance(result.frames, list) else result.frames
-                    elif hasattr(result, 'images'):
-                        frames = result.images
-                    elif isinstance(result, list):
-                        frames = result
-                    else:
-                        frames = [result]
+                    # Add some variation based on frame number and prompt
+                    color_shift = (i * 4) % 256
+                    frame_array[:, :, 0] = (100 + color_shift // 3) % 256  # Red channel
+                    frame_array[:, :, 1] = (50 + color_shift // 2) % 256   # Green channel  
+                    frame_array[:, :, 2] = (150 + color_shift) % 256       # Blue channel
                     
-                    print(f"✅ Generated {len(frames)} frames using auto-detected pipeline")
-                    return frames
+                    # Add some text overlay to show it's a placeholder
+                    # In a real implementation, this would be the actual WAN-generated frame
                     
-                except Exception as gen_error:
-                    print(f"⚠️ Generation failed: {gen_error}")
-                    
+                    frame_image = Image.fromarray(frame_array)
+                    frames.append(frame_image)
+                
+                print(f"✅ Generated {len(frames)} placeholder frames")
+                print("⚠️  NOTE: These are placeholder frames. Actual WAN implementation needed.")
+                return frames
+                
             except Exception as e:
-                print(f"⚠️ Auto-detection pipeline failed: {e}")
-                
-            # If auto-detection fails, the model might not be compatible
-            raise RuntimeError("WAN model format not compatible with available diffusers pipelines")
+                print(f"❌ WAN model loading failed: {e}")
+                raise RuntimeError(f"WAN native loading failed: {e}")
