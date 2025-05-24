@@ -483,6 +483,10 @@ def wan_generate_video(*component_args):
         timestring_final = time.strftime('%Y%m%d%H%M%S')
         batch_name_final = args_dict.get('batch_name', 'Deforum')
         
+        # Debug: Check what root.timestring contains
+        print(f"🔍 Debug - Original root.timestring: '{root.timestring}'")
+        print(f"🔍 Debug - Original args.outdir: '{args.outdir}'")
+        
         # Rebuild the correct output directory - fix template issues
         current_file = os.path.abspath(__file__)
         extensions_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
@@ -494,10 +498,13 @@ def wan_generate_video(*component_args):
         
         # Override args.outdir to ensure it's correct and remove any template remnants
         args.outdir = wan_output_dir_final
-        print(f"🔧 Fixed output directory: {wan_output_dir_final}")
         
-        # Also ensure root.timestring doesn't have template issues
+        # Also ensure root.timestring doesn't have template issues - COMPLETELY override it
         root.timestring = timestring_final
+        
+        print(f"🔧 Fixed output directory: {wan_output_dir_final}")
+        print(f"🔧 Fixed root.timestring: '{root.timestring}'")
+        print(f"🔧 Final args.outdir: '{args.outdir}'")
         
         # Validate Wan settings
         validation_errors = validate_wan_settings(wan_args)

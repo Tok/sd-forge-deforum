@@ -13,6 +13,7 @@ import shutil
 from contextlib import contextmanager
 import zipfile
 import urllib.request
+import time
 
 
 class WanIsolatedEnvironment:
@@ -733,15 +734,21 @@ Error details: {e}
         import shutil
         import zipfile
         import urllib.request
+        import time
         
-        wan_repo_path = Path(self.env_manager.extension_root) / "Wan2.1"
+        # Use a timestamped directory name to avoid conflicts with corrupted dirs
+        timestamp = int(time.time())
+        wan_repo_path = Path(self.env_manager.extension_root) / f"Wan2.1_{timestamp}"
         
-        if wan_repo_path.exists():
-            try:
-                shutil.rmtree(wan_repo_path)
-            except PermissionError:
-                print("⚠️ Cannot remove existing Wan2.1 directory due to permissions")
-                pass  # Continue anyway
+        # If any old Wan directories exist, try to remove them (but don't fail if we can't)
+        for old_dir in self.env_manager.extension_root.glob("Wan2.1*"):
+            if old_dir.is_dir():
+                try:
+                    shutil.rmtree(old_dir)
+                    print(f"✅ Removed old Wan directory: {old_dir}")
+                except (PermissionError, OSError) as e:
+                    print(f"⚠️ Couldn't remove {old_dir}: {e}")
+                    # Continue anyway - we'll use a new directory name
         
         try:
             # Try git clone first (might work on some systems)
@@ -759,25 +766,35 @@ Error details: {e}
             try:
                 # Download as ZIP file instead
                 zip_url = "https://github.com/Wan-Video/Wan2.1/archive/refs/heads/main.zip"
-                zip_path = Path(self.env_manager.extension_root) / "wan2.1.zip"
+                zip_path = Path(self.env_manager.extension_root) / f"wan2.1_{timestamp}.zip"
                 
                 print(f"📥 Downloading {zip_url}...")
                 urllib.request.urlretrieve(zip_url, zip_path)
                 
-                # Extract ZIP
+                # Extract ZIP to a clean directory
                 print("📦 Extracting ZIP file...")
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(self.env_manager.extension_root)
+                extract_dir = Path(self.env_manager.extension_root) / f"wan_extract_{timestamp}"
+                extract_dir.mkdir(exist_ok=True)
                 
-                # Rename extracted folder
-                extracted_path = Path(self.env_manager.extension_root) / "Wan2.1-main"
-                if extracted_path.exists():
-                    if wan_repo_path.exists():
-                        shutil.rmtree(wan_repo_path)
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(extract_dir)
+                
+                # Find the extracted folder and rename it
+                extracted_folders = list(extract_dir.glob("Wan2.1-*"))
+                if extracted_folders:
+                    extracted_path = extracted_folders[0]
                     extracted_path.rename(wan_repo_path)
+                    extract_dir.rmdir()  # Remove empty extract dir
+                else:
+                    # Fallback: move the entire extract dir
+                    extract_dir.rename(wan_repo_path)
                 
                 # Clean up ZIP file
-                zip_path.unlink()
+                try:
+                    zip_path.unlink()
+                except OSError:
+                    pass  # Don't fail if we can't clean up
+                
                 print("✅ ZIP download and extraction successful")
                 
             except Exception as zip_error:
