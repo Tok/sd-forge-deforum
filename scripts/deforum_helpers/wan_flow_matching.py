@@ -18,6 +18,7 @@ from PIL import Image
 import math
 from pathlib import Path
 import os
+import importlib.util
 
 
 class WanTimeEmbedding(nn.Module):
@@ -300,7 +301,7 @@ class WanFlowMatchingPipeline:
         try:
             # This should be set by the isolated environment
             if hasattr(self, 'wan_repo_path') and hasattr(self, 'wan_code_dir'):
-                print(f"�� Using official WAN code from: {self.wan_code_dir}")
+                print(f"🔧 Using official WAN code from: {self.wan_code_dir}")
                 
                 # Add WAN code directory to Python path temporarily
                 import sys
@@ -322,113 +323,146 @@ class WanFlowMatchingPipeline:
                         for file in files:
                             if file.endswith('.py') and not file.startswith('__'):
                                 rel_path = os.path.relpath(os.path.join(root, file), wan_code_path)
-                                module_name = rel_path.replace(os.sep, '.').replace('.py', '')
-                                python_files.append((module_name, os.path.join(root, file)))
+                                module_name = rel_path.replace('\\', '.').replace('/', '.').replace('.py', '')
+                                python_files.append(module_name)
                     
                     print(f"📄 Found {len(python_files)} Python modules:")
-                    for module_name, file_path in python_files[:15]:  # Show first 15
-                        print(f"  📄 {module_name}")
+                    for f in python_files[:15]:  # Show first 15
+                        print(f"  📄 {f}")
                     
-                    # Try to import modules that might contain WAN models
-                    wan_modules = [
-                        'modeling_wan',
-                        'models.modeling_wan', 
-                        'wan.modeling_wan',
-                        'wan_model',
-                        'models.wan_model',
-                        'inference',
-                        'models.inference',
-                        'pipeline',
-                        'models.pipeline',
-                        'wan',
-                        'models',
-                        'src.models',
-                        'src.modeling_wan'
-                    ]
+                    # Try to import the ACTUAL modules we found
+                    print("🔍 Importing discovered WAN modules...")
                     
-                    # Also add any modules we found that contain relevant keywords
-                    for module_name, file_path in python_files:
-                        if any(keyword in module_name.lower() for keyword in ['model', 'wan', 'inference', 'pipeline']):
-                            wan_modules.append(module_name)
+                    # Add the WAN code directory to Python path for imports
+                    if str(wan_code_path) not in sys.path:
+                        sys.path.insert(0, str(wan_code_path))
                     
-                    # Remove duplicates while preserving order
-                    wan_modules = list(dict.fromkeys(wan_modules))
+                    # Import the key WAN modules that actually exist
+                    wan_modules = {}
                     
-                    print(f"🔍 Trying to import {len(wan_modules)} potential WAN modules...")
+                    # Try text2video module
+                    try:
+                        import text2video
+                        wan_modules['text2video'] = text2video
+                        print("✅ Successfully imported text2video module")
+                        
+                        # Check what functions are available
+                        text2video_functions = [name for name in dir(text2video) if not name.startswith('_')]
+                        print(f"🔧 text2video functions: {text2video_functions[:5]}...")
+                        
+                    except Exception as e:
+                        print(f"⚠️ Failed to import text2video: {e}")
                     
-                    wan_model_class = None
-                    successful_imports = []
+                    # Try image2video module
+                    try:
+                        import image2video
+                        wan_modules['image2video'] = image2video
+                        print("✅ Successfully imported image2video module")
+                        
+                        # Check what functions are available
+                        image2video_functions = [name for name in dir(image2video) if not name.startswith('_')]
+                        print(f"🔧 image2video functions: {image2video_functions[:5]}...")
+                        
+                    except Exception as e:
+                        print(f"⚠️ Failed to import image2video: {e}")
                     
-                    for module_name in wan_modules:
-                        try:
-                            import importlib
-                            print(f"  🔄 Trying: {module_name}")
-                            module = importlib.import_module(module_name)
-                            successful_imports.append(module_name)
+                    # Try modules.model
+                    try:
+                        from modules import model
+                        wan_modules['model'] = model
+                        print("✅ Successfully imported modules.model")
+                        
+                        # Check what classes are available
+                        model_classes = [name for name in dir(model) if not name.startswith('_') and name[0].isupper()]
+                        print(f"🔧 Model classes: {model_classes[:5]}...")
+                        
+                    except Exception as e:
+                        print(f"⚠️ Failed to import modules.model: {e}")
+                    
+                    # Try vace module for VAE
+                    try:
+                        import vace
+                        wan_modules['vace'] = vace
+                        print("✅ Successfully imported vace module")
+                        
+                    except Exception as e:
+                        print(f"⚠️ Failed to import vace: {e}")
+                    
+                    if wan_modules:
+                        print(f"🎉 Successfully imported {len(wan_modules)} WAN modules: {list(wan_modules.keys())}")
+                        
+                        # Now try to actually run WAN generation
+                        print("🚀 Attempting WAN video generation using official modules...")
+                        
+                        if 'text2video' in wan_modules:
+                            # Use the official text2video module
+                            text2video_module = wan_modules['text2video']
                             
-                            # Look for model classes
-                            for attr_name in dir(module):
-                                if attr_name.startswith('_'):
-                                    continue
-                                    
+                            # Look for generation functions in the module
+                            generation_functions = [name for name in dir(text2video_module) 
+                                                  if 'generate' in name.lower() or 'infer' in name.lower() or 'run' in name.lower()]
+                            
+                            print(f"🔧 Available generation functions: {generation_functions}")
+                            
+                            if generation_functions:
+                                # Try to use the first generation function
+                                gen_func_name = generation_functions[0]
+                                gen_func = getattr(text2video_module, gen_func_name)
+                                
+                                print(f"🎬 Attempting generation using {gen_func_name}...")
+                                
                                 try:
-                                    attr = getattr(module, attr_name)
-                                    if isinstance(attr, type):
-                                        # Check if this looks like a model class
-                                        class_name_lower = attr_name.lower()
-                                        if any(keyword in class_name_lower for keyword in ['wan', 'model', 'transformer', 'diffusion', 'flow']):
-                                            wan_model_class = attr
-                                            print(f"✅ Found potential WAN model class: {module_name}.{attr_name}")
-                                            print(f"   📋 Class MRO: {[cls.__name__ for cls in attr.__mro__[:3]]}")
-                                            break
-                                except Exception as attr_error:
-                                    continue
+                                    # Try to call the generation function with our parameters
+                                    # This is experimental - the actual API may be different
+                                    result = gen_func(
+                                        prompt=prompt,
+                                        num_frames=num_frames,
+                                        height=height,
+                                        width=width,
+                                        num_inference_steps=num_inference_steps,
+                                        guidance_scale=guidance_scale
+                                    )
                                     
-                            if wan_model_class:
-                                break
-                                
-                        except ImportError as import_error:
-                            print(f"  ❌ Import failed: {module_name} - {import_error}")
-                            continue
-                        except Exception as other_error:
-                            print(f"  ⚠️ Error with {module_name}: {other_error}")
-                            continue
-                    
-                    print(f"✅ Successfully imported {len(successful_imports)} modules: {successful_imports[:5]}")
-                    
-                    if wan_model_class:
-                        # Initialize the official WAN model
-                        print(f"🔧 Initializing official WAN model: {wan_model_class.__name__}")
+                                    if result:
+                                        print(f"🎉 WAN generation successful using official module!")
+                                        # Convert result to our expected format
+                                        frames = self._convert_wan_result_to_frames(result)
+                                        print(f"✅ Generated {len(frames)} frames using official WAN")
+                                        return frames
+                                    else:
+                                        print("⚠️ WAN generation returned empty result")
+                                        
+                                except Exception as gen_error:
+                                    print(f"⚠️ Generation function failed: {gen_error}")
+                                    print(f"🔧 Function signature may be different - attempting fallback...")
+                            else:
+                                print("⚠️ No generation functions found in text2video module")
                         
-                        # Try to load with the actual tensors
-                        try:
-                            self.flow_model = wan_model_class.from_pretrained(
-                                str(self.model_path),
-                                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                                device_map=self.device
-                            )
-                            print("✅ Official WAN model loaded successfully!")
-                            
-                        except Exception as load_error:
-                            print(f"⚠️ Official model loading failed: {load_error}")
-                            # Try alternative loading methods
-                            try:
-                                self.flow_model = wan_model_class()
-                                # Manually load state dict
-                                self.flow_model.load_state_dict(model_tensors, strict=False)
-                                self.flow_model = self.flow_model.to(self.device)
-                                print("✅ WAN model loaded with manual state dict!")
-                                
-                            except Exception as manual_error:
-                                print(f"⚠️ Manual loading also failed: {manual_error}")
-                                raise RuntimeError(f"Could not load WAN model: {load_error}")
-                        
-                        # Set to evaluation mode
-                        self.flow_model.eval()
-                        
+                        # If we get here, direct module usage failed - FAIL FAST
+                        raise RuntimeError(f"""
+❌ FAIL FAST: WAN Official Module Integration Failed
+
+Successfully imported {len(wan_modules)} official WAN modules but could not run generation.
+
+Imported modules: {list(wan_modules.keys())}
+
+This indicates the model weights or API interface is incompatible with the 
+official WAN 2.1 codebase.
+
+NO FALLBACKS - Please ensure:
+1. Model weights are compatible with WAN 2.1 architecture
+2. All dependencies are correctly installed  
+3. GPU memory is sufficient for the model size
+
+Reference: https://github.com/Wan-Video/Wan2.1
+""")
                     else:
-                        raise ImportError(f"No WAN model class found. Tried {len(wan_modules)} modules, {len(successful_imports)} imported successfully")
-                    
+                        raise RuntimeError("❌ FAIL FAST: No WAN modules could be imported from official repository")
+                        
+                except Exception as official_error:
+                    print(f"❌ Official WAN import failed: {official_error}")
+                    raise RuntimeError(f"Failed to use official WAN modules: {official_error}")
+                
                 finally:
                     # Clean up sys.path
                     if wan_code_str in sys.path:
@@ -616,6 +650,84 @@ Reference: https://github.com/Wan-Video/Wan2.1
             
         print(f"✅ Generated {len(frames)} frames using WAN Flow Matching")
         return frames
+
+    def _convert_wan_result_to_frames(self, wan_result):
+        """
+        Convert WAN generation result to our expected frame format
+        
+        Args:
+            wan_result: Result from official WAN generation function
+            
+        Returns:
+            List of numpy arrays representing frames
+        """
+        try:
+            frames = []
+            
+            # Handle different possible result formats from WAN
+            if isinstance(wan_result, list):
+                # Result is already a list of frames
+                for frame in wan_result:
+                    if hasattr(frame, 'mode'):  # PIL Image
+                        frames.append(np.array(frame))
+                    elif isinstance(frame, np.ndarray):
+                        frames.append(frame)
+                    elif isinstance(frame, torch.Tensor):
+                        # Convert tensor to numpy
+                        frame_np = frame.detach().cpu().numpy()
+                        if frame_np.ndim == 4:  # (1, C, H, W)
+                            frame_np = frame_np.squeeze(0).transpose(1, 2, 0)  # (H, W, C)
+                        elif frame_np.ndim == 3:  # (C, H, W)
+                            frame_np = frame_np.transpose(1, 2, 0)  # (H, W, C)
+                        
+                        # Normalize to 0-255 if needed
+                        if frame_np.max() <= 1.0:
+                            frame_np = (frame_np * 255).astype(np.uint8)
+                        else:
+                            frame_np = frame_np.astype(np.uint8)
+                            
+                        frames.append(frame_np)
+                        
+            elif isinstance(wan_result, torch.Tensor):
+                # Result is a tensor with shape (batch, frames, channels, height, width) or similar
+                result_np = wan_result.detach().cpu().numpy()
+                
+                if result_np.ndim == 5:  # (B, T, C, H, W)
+                    result_np = result_np.squeeze(0)  # (T, C, H, W)
+                
+                if result_np.ndim == 4:  # (T, C, H, W)
+                    for i in range(result_np.shape[0]):
+                        frame_np = result_np[i].transpose(1, 2, 0)  # (H, W, C)
+                        
+                        # Normalize to 0-255 if needed
+                        if frame_np.max() <= 1.0:
+                            frame_np = (frame_np * 255).astype(np.uint8)
+                        else:
+                            frame_np = frame_np.astype(np.uint8)
+                            
+                        frames.append(frame_np)
+                        
+            elif hasattr(wan_result, 'frames') and wan_result.frames:
+                # Result has a frames attribute
+                return self._convert_wan_result_to_frames(wan_result.frames)
+                
+            elif hasattr(wan_result, 'videos') and wan_result.videos:
+                # Result has a videos attribute
+                return self._convert_wan_result_to_frames(wan_result.videos)
+                
+            else:
+                raise ValueError(f"Unknown WAN result format: {type(wan_result)}")
+            
+            if not frames:
+                raise ValueError("No frames extracted from WAN result")
+                
+            print(f"✅ Converted WAN result to {len(frames)} frames")
+            return frames
+            
+        except Exception as e:
+            raise RuntimeError(f"Failed to convert WAN result to frames: {e}")
+            
+    def _create_mock_frames(self, prompt: str, num_frames: int, height: int, width: int) -> List[np.ndarray]:
 
 
 def create_wan_pipeline(model_path: str, 
