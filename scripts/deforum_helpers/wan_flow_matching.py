@@ -288,26 +288,49 @@ class WanFlowMatchingPipeline:
         
     def load_model_components(self, model_tensors: Dict[str, torch.Tensor]):
         """
-        Load model components from WAN tensors
+        Load model components from WAN tensors - FAIL FAST if not possible
         
         Args:
             model_tensors: Dictionary of loaded model tensors
         """
         print(f"🔧 Initializing WAN Flow Matching model ({self.model_size})...")
         
-        # Initialize flow matching model
-        self.flow_model = WanFlowMatchingModel(
-            model_size=self.model_size,
-            input_channels=16,
-            output_channels=16
-        ).to(self.device)
+        # FAIL FAST: Check if we have the actual WAN model tensors needed
+        required_keys = ['transformer.layers.0.norm1.weight', 'transformer.layers.0.attn1.to_q.weight']
+        missing_keys = [key for key in required_keys if key not in model_tensors]
         
-        # Load model weights (simplified - would need proper weight mapping)
-        # This is where we'd map the loaded tensors to model components
-        print(f"📊 Model initialized with {sum(p.numel() for p in self.flow_model.parameters())} parameters")
+        if missing_keys:
+            raise RuntimeError(f"""
+❌ FAIL FAST: WAN model tensors missing required keys: {missing_keys}
+
+This is not a valid WAN 2.1 model. Expected transformer architecture with:
+- transformer.layers.*.norm1.weight  
+- transformer.layers.*.attn1.to_q.weight
+- etc.
+
+Current model has {len(model_tensors)} tensors but wrong structure.
+NO FALLBACKS - please provide a valid WAN 2.1 model or disable WAN generation.
+""")
         
-        # Set to evaluation mode
-        self.flow_model.eval()
+        # FAIL FAST: Don't attempt to initialize huge models in mock mode
+        # Real WAN would load the actual weights, but we can't do that without proper implementation
+        raise RuntimeError(f"""
+❌ FAIL FAST: WAN Flow Matching NOT FULLY IMPLEMENTED
+
+Found valid WAN model structure with {len(model_tensors)} tensors, but actual WAN inference
+requires the complete official WAN 2.1 codebase integration.
+
+Current status:
+✅ Model loading and validation
+✅ Tensor structure verification  
+✅ Architecture implementation
+❌ Actual WAN inference - REQUIRES OFFICIAL WAN 2.1 INTEGRATION
+
+NO FALLBACKS, NO FAKE FRAMES, NO PROMPT GUESSING.
+Either integrate the full official WAN 2.1 codebase or disable WAN generation.
+
+Reference: https://github.com/Wan-Video/Wan2.1
+""")
         
     def setup_text_encoder(self):
         """Setup T5 text encoder for multilingual support"""
@@ -455,52 +478,13 @@ class WanFlowMatchingPipeline:
         frames = []
         video_np = video_tensor.squeeze(0).cpu().numpy()  # (3, frames, height, width)
         video_np = np.transpose(video_np, (1, 2, 3, 0))  # (frames, height, width, 3)
+        video_np = np.clip((video_np + 1.0) * 127.5, 0, 255).astype(np.uint8)
         
-        # Generate more realistic frames instead of pure noise
-        # Create a simple animation effect for testing
         for frame_idx in range(num_frames):
-            # Create a base pattern
-            frame_data = np.zeros((height, width, 3), dtype=np.float32)
-            
-            # Add some color gradients and movement for testing
-            x = np.linspace(0, 1, width)
-            y = np.linspace(0, 1, height)
-            X, Y = np.meshgrid(x, y)
-            
-            # Animate the pattern based on frame index and prompt
-            time_factor = frame_idx / max(num_frames - 1, 1)
-            
-            # Create different patterns based on prompt keywords
-            prompt_lower = prompt.lower()
-            if 'bunny' in prompt_lower:
-                # Bunny-themed colors (brown/white)
-                frame_data[:, :, 0] = 0.6 + 0.2 * np.sin(X * 4 + time_factor * 2)  # Red
-                frame_data[:, :, 1] = 0.4 + 0.2 * np.sin(Y * 4 + time_factor * 2)  # Green  
-                frame_data[:, :, 2] = 0.2 + 0.1 * np.sin((X + Y) * 2)  # Blue
-            elif 'cyberpunk' in prompt_lower or 'neon' in prompt_lower:
-                # Cyberpunk/neon colors (purple/blue/pink)
-                frame_data[:, :, 0] = 0.7 + 0.3 * np.sin(X * 6 + time_factor * 3)  # Red
-                frame_data[:, :, 1] = 0.2 + 0.3 * np.sin(Y * 6 + time_factor * 3)  # Green
-                frame_data[:, :, 2] = 0.9 + 0.1 * np.sin((X + Y) * 3 + time_factor)  # Blue
-            elif 'synthwave' in prompt_lower:
-                # Synthwave colors (pink/purple/cyan)
-                frame_data[:, :, 0] = 0.8 + 0.2 * np.sin(X * 5 + time_factor * 4)  # Red
-                frame_data[:, :, 1] = 0.3 + 0.4 * np.sin(Y * 3 + time_factor * 2)  # Green
-                frame_data[:, :, 2] = 0.9 + 0.1 * np.cos((X + Y) * 4 + time_factor * 3)  # Blue
-            else:
-                # Default gradient
-                frame_data[:, :, 0] = X + 0.1 * np.sin(time_factor * 2)
-                frame_data[:, :, 1] = Y + 0.1 * np.cos(time_factor * 2)
-                frame_data[:, :, 2] = 0.5 + 0.2 * np.sin((X + Y) + time_factor)
-            
-            # Normalize to [0, 255] range
-            frame_data = np.clip(frame_data * 255, 0, 255).astype(np.uint8)
-            
-            # Convert to PIL Image and then back to numpy for consistency
-            frame_pil = Image.fromarray(frame_data)
+            frame_pil = Image.fromarray(video_np[frame_idx])
             frames.append(np.array(frame_pil))
             
-        print(f"✅ Generated {len(frames)} realistic test frames successfully")
+        print(f"✅ Generated {len(frames)} frames using WAN Flow Matching")
         return frames
 
 
