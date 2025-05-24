@@ -1,7 +1,7 @@
 def wan_generate_video(*component_args):
     """
     Function to handle Wan video generation from the Wan tab
-    This bypasses run_deforum to avoid diffusers corruption during model loading
+    This bypasses run_deforum and generates video directly using WAN 2.1
     """
     try:
         # Import here to avoid circular imports - only what we need for direct Wan generation
@@ -65,9 +65,10 @@ def wan_generate_video(*component_args):
             return "❌ Failed to load arguments for Wan generation"
         
         # Validate Wan settings
-        validation_errors = validate_wan_settings(wan_args)
-        if validation_errors:
-            error_msg = "❌ Wan validation failed:\n" + "\n".join(f"- {error}" for error in validation_errors)
+        try:
+            validate_wan_settings(wan_args)
+        except ValueError as e:
+            error_msg = f"❌ Wan validation failed: {e}"
             print(error_msg)
             return error_msg
         
@@ -81,55 +82,63 @@ def wan_generate_video(*component_args):
         print(f"🎬 FPS: {wan_args.wan_fps}")
         print(f"⏱️ Clip Duration: {wan_args.wan_clip_duration}s")
         
-        # Initialize Wan generator with full isolation
-        print("🔧 Initializing Wan generator with full diffusers isolation...")
-        wan_generator = WanVideoGenerator(wan_args.wan_model_path, shared.device)
+        # Initialize Wan generator
+        print("🔧 Initializing Wan generator...")
+        try:
+            wan_generator = WanVideoGenerator(wan_args.wan_model_path, shared.device)
+            
+            # Load the WAN model
+            print("🔄 Loading WAN model...")
+            wan_generator.load_model()
+            print("✅ WAN model loaded successfully")
+            
+        except Exception as e:
+            # Handle any errors during initialization
+            error_msg = f"""❌ WAN Generation Error
+
+Failed to initialize or load WAN generator: {e}
+
+This could indicate:
+- Model path issues: {wan_args.wan_model_path}
+- Missing dependencies  
+- Repository setup problems
+- File system access issues
+
+Check the console output above for more details.
+"""
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
+            return error_msg
         
         try:
-            # This will fail fast if Wan is not available - NO diffusers corruption
-            wan_generator.load_model()
-            
-            # Parse animation prompts and calculate timing
+            # Parse prompts and calculate timing
+            print("📋 Parsing animation prompts...")
             prompt_scheduler = WanPromptScheduler(root.animation_prompts, wan_args, video_args)
             prompt_schedule = prompt_scheduler.parse_prompts_and_timing()
             
-            print(f"📝 Generated {len(prompt_schedule)} video clips:")
+            print(f"Found {len(prompt_schedule)} clips to generate:")
             for i, (prompt, start_time, duration) in enumerate(prompt_schedule):
-                print(f"  Clip {i+1}: '{prompt[:50]}...' (start: {start_time:.1f}s, duration: {duration:.1f}s)")
+                frame_count = int(duration * wan_args.wan_fps)
+                print(f"  Clip {i+1}: {frame_count} frames ({duration:.1f}s) - '{prompt[:50]}{'...' if len(prompt) > 50 else ''}'")
             
-            # Generate video clips with full isolation
+            # Generate video clips
             all_frames = []
-            previous_frame = None
             total_frames_generated = 0
+            previous_frame = None
             
-            for i, (prompt, start_time, duration) in enumerate(prompt_schedule):
-                if shared.state.interrupted:
-                    print("⏹️ Generation interrupted by user")
-                    break
-                    
-                print(f"\n🎬 Generating clip {i+1}/{len(prompt_schedule)}: {prompt[:50]}...")
-                
-                # Calculate seed for this clip
-                clip_seed = wan_args.wan_seed if wan_args.wan_seed != -1 else -1
+            for clip_index, (prompt, start_time, duration) in enumerate(prompt_schedule):
+                print(f"\n🎬 Generating Clip {clip_index + 1}/{len(prompt_schedule)}")
+                print(f"Prompt: {prompt}")
+                print(f"Duration: {duration}s")
                 
                 try:
-                    if i == 0:
-                        # First clip: text-to-video
-                        print(f"🎭 Mode: Text-to-Video")
-                        frames = wan_generator.generate_txt2video(
-                            prompt=prompt,
-                            duration=duration,
-                            fps=wan_args.wan_fps,
-                            resolution=wan_args.wan_resolution,
-                            steps=wan_args.wan_inference_steps,
-                            guidance_scale=wan_args.wan_guidance_scale,
-                            seed=clip_seed,
-                            motion_strength=wan_args.wan_motion_strength
-                        )
-                    else:
-                        # Subsequent clips: image-to-video
-                        print(f"🖼️ Mode: Image-to-Video (using previous frame as init)")
-                        frames = wan_generator.generate_img2video(
+                    # Determine if this is a continuation (image2video) or new generation (text2video)
+                    is_continuation = (clip_index > 0 and previous_frame is not None and wan_args.wan_frame_overlap > 0)
+                    
+                    if is_continuation:
+                        print(f"🔗 Generating image-to-video continuation from previous frame")
+                        clip_frames = wan_generator.generate_img2video(
                             init_image=previous_frame,
                             prompt=prompt,
                             duration=duration,
@@ -137,61 +146,96 @@ def wan_generate_video(*component_args):
                             resolution=wan_args.wan_resolution,
                             steps=wan_args.wan_inference_steps,
                             guidance_scale=wan_args.wan_guidance_scale,
-                            seed=clip_seed,
+                            seed=args.seed if hasattr(args, 'seed') else -1,
+                            motion_strength=wan_args.wan_motion_strength
+                        )
+                    else:
+                        print(f"🎨 Generating text-to-video from prompt")
+                        clip_frames = wan_generator.generate_txt2video(
+                            prompt=prompt,
+                            duration=duration,
+                            fps=wan_args.wan_fps,
+                            resolution=wan_args.wan_resolution,
+                            steps=wan_args.wan_inference_steps,
+                            guidance_scale=wan_args.wan_guidance_scale,
+                            seed=args.seed if hasattr(args, 'seed') else -1,
                             motion_strength=wan_args.wan_motion_strength
                         )
                     
-                    if not frames:
-                        print(f"❌ ERROR: No frames generated for clip {i+1}")
-                        continue
+                    if not clip_frames:
+                        raise RuntimeError(f"No frames generated for clip {clip_index + 1}")
                     
-                    print(f"✅ Generated {len(frames)} frames for clip {i+1}")
+                    print(f"✅ Generated {len(clip_frames)} frames for clip {clip_index + 1}")
                     
-                    # Handle frame overlap and save frames
-                    processed_frames = handle_frame_overlap(frames, previous_frame, wan_args.wan_frame_overlap, i > 0)
+                    # Handle frame overlapping between clips
+                    if clip_index > 0 and wan_args.wan_frame_overlap > 0:
+                        processed_frames = handle_frame_overlap(
+                            frames=clip_frames,
+                            previous_frame=previous_frame,
+                            overlap_count=wan_args.wan_frame_overlap,
+                            is_continuation=True
+                        )
+                    else:
+                        processed_frames = clip_frames
                     
                     # Save frames to disk
-                    saved_frame_count = save_clip_frames(processed_frames, args.outdir, root.timestring, i, total_frames_generated)
-                    total_frames_generated += saved_frame_count
+                    frames_saved = save_clip_frames(
+                        frames=processed_frames,
+                        outdir=args.outdir,
+                        timestring=root.timestring,
+                        clip_index=clip_index,
+                        start_frame_number=total_frames_generated
+                    )
                     
-                    # Add frames to the all_frames list
                     all_frames.extend(processed_frames)
+                    total_frames_generated += frames_saved
                     
-                    # Extract last frame for next clip initialization
-                    previous_frame = wan_generator.extract_last_frame(frames)
+                    # Store last frame for potential continuation
+                    if processed_frames:
+                        previous_frame = wan_generator.extract_last_frame(processed_frames)
                     
-                    # Update progress
-                    shared.state.job = f"Wan clip {i+1}/{len(prompt_schedule)}"
-                    shared.state.job_no = i + 1
-                    shared.state.job_count = len(prompt_schedule)
-                    
-                    print(f"✅ Clip {i+1} completed successfully")
+                    print(f"✅ Clip {clip_index + 1} completed: {frames_saved} frames saved")
                     
                 except Exception as e:
-                    print(f"❌ ERROR generating clip {i+1}: {e}")
-                    # Continue with next clip instead of failing completely
-                    continue
+                    error_msg = f"❌ Error generating clip {clip_index + 1}: {e}"
+                    print(error_msg)
+                    return error_msg
             
-            print(f"\n🎉 Wan Video Generation Complete!")
-            print(f"📊 Generated {len(prompt_schedule)} clips with {total_frames_generated} total frames")
-            print(f"📁 Output directory: {args.outdir}")
+            # Create generation summary
+            summary = create_generation_summary(prompt_schedule, wan_args, total_frames_generated)
+            print(f"\n{summary}")
             
-            return f"✅ Wan video generation completed successfully!\n📊 Generated {total_frames_generated} frames\n📁 Output: {args.outdir}"
+            success_msg = f"""✅ WAN Video Generation Completed Successfully!
+
+Total frames generated: {total_frames_generated}
+Total clips: {len(prompt_schedule)}
+Output directory: {args.outdir}
+
+{summary}
+
+You can now create a video from the generated frames using Deforum's video creation tools or external software.
+"""
+            
+            print(success_msg)
+            return success_msg
             
         except Exception as e:
-            error_msg = f"❌ FATAL ERROR in Wan video generation: {str(e)}"
+            error_msg = f"❌ Error during WAN video generation: {str(e)}"
             print(error_msg)
             import traceback
             traceback.print_exc()
             return error_msg
             
         finally:
-            # Always unload the model to free GPU memory
-            wan_generator.unload_model()
-            print("🧹 Wan model unloaded, GPU memory freed")
+            # Always attempt cleanup
+            try:
+                wan_generator.unload_model()
+                print("🧹 WAN model cleanup completed")
+            except Exception as e:
+                print(f"Warning: Error during model cleanup: {e}")
             
     except Exception as e:
-        error_msg = f"❌ Error during Wan video generation: {str(e)}"
+        error_msg = f"❌ CRITICAL ERROR during Wan video generation setup: {str(e)}"
         print(error_msg)
         import traceback
         traceback.print_exc()
