@@ -339,10 +339,10 @@ class WanFlowMatchingPipeline:
                     
                     # Import the config for the appropriate model size
                     if self.model_size == "14B":
-                        from wan.configs.wan_t2v_14B import config as wan_config
+                        from wan.configs.wan_t2v_14B import t2v_14B as wan_config
                         print("✅ Loaded WAN 14B config")
                     else:
-                        from wan.configs.wan_t2v_1_3B import config as wan_config
+                        from wan.configs.wan_t2v_1_3B import t2v_1_3B as wan_config
                         print("✅ Loaded WAN 1.3B config")
                     
                     # Check if we can import the main class
