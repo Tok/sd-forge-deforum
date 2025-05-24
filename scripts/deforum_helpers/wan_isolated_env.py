@@ -622,6 +622,37 @@ Or install GitPython: pip install GitPython
         """
         Find the main WAN code directory in the repository
         """
+        print(f"🔍 Exploring WAN repository structure at: {repo_path}")
+        
+        # First, let's see what's actually in the repository
+        if repo_path.exists():
+            print(f"📂 Repository contents:")
+            for item in repo_path.iterdir():
+                if item.is_dir():
+                    print(f"  📁 {item.name}/")
+                    # Show first level subdirectories  
+                    try:
+                        for subitem in item.iterdir():
+                            if subitem.is_file() and subitem.suffix == '.py':
+                                print(f"    📄 {subitem.name}")
+                            elif subitem.is_dir():
+                                print(f"    📁 {subitem.name}/")
+                    except PermissionError:
+                        print(f"    ❌ Permission denied")
+                else:
+                    print(f"  📄 {item.name}")
+        
+        # Look for Python files containing "model" or "wan" 
+        print(f"🔍 Searching for Python files...")
+        python_files = list(repo_path.rglob("*.py"))
+        model_files = [f for f in python_files if any(keyword in f.name.lower() for keyword in ['model', 'wan', 'inference', 'pipeline'])]
+        
+        print(f"📄 Found {len(python_files)} Python files total")
+        print(f"📄 Found {len(model_files)} potentially relevant files:")
+        for f in model_files[:10]:  # Show first 10
+            relative_path = f.relative_to(repo_path)
+            print(f"  📄 {relative_path}")
+        
         possible_dirs = [
             repo_path,
             repo_path / "src",
@@ -647,13 +678,18 @@ Or install GitPython: pip install GitPython
                 
         # Look for any Python files that might be WAN related
         for py_file in repo_path.rglob("*.py"):
-            if any(keyword in py_file.read_text(errors='ignore').lower() 
-                   for keyword in ['flow matching', 'wan', 'text2video']):
-                code_dir = py_file.parent
-                print(f"✅ Found WAN code directory: {code_dir}")
-                return code_dir
+            try:
+                content = py_file.read_text(errors='ignore').lower()
+                if any(keyword in content for keyword in ['flow matching', 'wan', 'text2video']):
+                    code_dir = py_file.parent
+                    print(f"✅ Found WAN code directory: {code_dir}")
+                    return code_dir
+            except Exception:
+                continue
                 
-        raise RuntimeError(f"Could not find WAN code directory in {repo_path}")
+        # If we get here, just return the repository root and let the import search handle it
+        print(f"⚠️ No specific WAN code directory found, using repository root: {repo_path}")
+        return repo_path
     
     def setup_wan_requirements_from_repo(self, repo_path: Path):
         """

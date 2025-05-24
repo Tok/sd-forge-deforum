@@ -17,6 +17,7 @@ import numpy as np
 from PIL import Image
 import math
 from pathlib import Path
+import os
 
 
 class WanTimeEmbedding(nn.Module):
@@ -299,7 +300,7 @@ class WanFlowMatchingPipeline:
         try:
             # This should be set by the isolated environment
             if hasattr(self, 'wan_repo_path') and hasattr(self, 'wan_code_dir'):
-                print(f"📂 Using official WAN code from: {self.wan_code_dir}")
+                print(f"�� Using official WAN code from: {self.wan_code_dir}")
                 
                 # Add WAN code directory to Python path temporarily
                 import sys
@@ -311,7 +312,24 @@ class WanFlowMatchingPipeline:
                     # Try to import official WAN modules
                     print("📦 Importing official WAN modules...")
                     
-                    # Common WAN module names to try
+                    # First, let's see what Python files are available
+                    wan_code_path = Path(self.wan_code_dir)
+                    print(f"🔍 Searching for modules in: {wan_code_path}")
+                    
+                    # Find all Python files in the WAN repository
+                    python_files = []
+                    for root, dirs, files in os.walk(wan_code_path):
+                        for file in files:
+                            if file.endswith('.py') and not file.startswith('__'):
+                                rel_path = os.path.relpath(os.path.join(root, file), wan_code_path)
+                                module_name = rel_path.replace(os.sep, '.').replace('.py', '')
+                                python_files.append((module_name, os.path.join(root, file)))
+                    
+                    print(f"📄 Found {len(python_files)} Python modules:")
+                    for module_name, file_path in python_files[:15]:  # Show first 15
+                        print(f"  📄 {module_name}")
+                    
+                    # Try to import modules that might contain WAN models
                     wan_modules = [
                         'modeling_wan',
                         'models.modeling_wan', 
@@ -319,28 +337,64 @@ class WanFlowMatchingPipeline:
                         'wan_model',
                         'models.wan_model',
                         'inference',
-                        'models.inference'
+                        'models.inference',
+                        'pipeline',
+                        'models.pipeline',
+                        'wan',
+                        'models',
+                        'src.models',
+                        'src.modeling_wan'
                     ]
                     
+                    # Also add any modules we found that contain relevant keywords
+                    for module_name, file_path in python_files:
+                        if any(keyword in module_name.lower() for keyword in ['model', 'wan', 'inference', 'pipeline']):
+                            wan_modules.append(module_name)
+                    
+                    # Remove duplicates while preserving order
+                    wan_modules = list(dict.fromkeys(wan_modules))
+                    
+                    print(f"🔍 Trying to import {len(wan_modules)} potential WAN modules...")
+                    
                     wan_model_class = None
+                    successful_imports = []
+                    
                     for module_name in wan_modules:
                         try:
                             import importlib
+                            print(f"  🔄 Trying: {module_name}")
                             module = importlib.import_module(module_name)
+                            successful_imports.append(module_name)
                             
                             # Look for model classes
                             for attr_name in dir(module):
-                                attr = getattr(module, attr_name)
-                                if isinstance(attr, type) and 'wan' in attr_name.lower():
-                                    wan_model_class = attr
-                                    print(f"✅ Found WAN model class: {module_name}.{attr_name}")
-                                    break
+                                if attr_name.startswith('_'):
+                                    continue
+                                    
+                                try:
+                                    attr = getattr(module, attr_name)
+                                    if isinstance(attr, type):
+                                        # Check if this looks like a model class
+                                        class_name_lower = attr_name.lower()
+                                        if any(keyword in class_name_lower for keyword in ['wan', 'model', 'transformer', 'diffusion', 'flow']):
+                                            wan_model_class = attr
+                                            print(f"✅ Found potential WAN model class: {module_name}.{attr_name}")
+                                            print(f"   📋 Class MRO: {[cls.__name__ for cls in attr.__mro__[:3]]}")
+                                            break
+                                except Exception as attr_error:
+                                    continue
                                     
                             if wan_model_class:
                                 break
                                 
-                        except ImportError as e:
+                        except ImportError as import_error:
+                            print(f"  ❌ Import failed: {module_name} - {import_error}")
                             continue
+                        except Exception as other_error:
+                            print(f"  ⚠️ Error with {module_name}: {other_error}")
+                            continue
+                    
+                    print(f"✅ Successfully imported {len(successful_imports)} modules: {successful_imports[:5]}")
                     
                     if wan_model_class:
                         # Initialize the official WAN model
@@ -373,7 +427,7 @@ class WanFlowMatchingPipeline:
                         self.flow_model.eval()
                         
                     else:
-                        raise ImportError("No WAN model class found in official repository")
+                        raise ImportError(f"No WAN model class found. Tried {len(wan_modules)} modules, {len(successful_imports)} imported successfully")
                     
                 finally:
                     # Clean up sys.path

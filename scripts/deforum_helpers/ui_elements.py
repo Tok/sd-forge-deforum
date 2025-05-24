@@ -539,11 +539,17 @@ def wan_generate_video(*component_args):
             previous_frame = None
             total_frames_generated = 0
             frame_offset = 0
+            wan_failed = False  # Track if WAN has failed
             
             for i, (prompt, start_time, duration) in enumerate(prompt_schedule):
                 if shared.state.interrupted:
                     print("⏹️ Generation interrupted by user")
                     break
+                    
+                # FAIL FAST: If WAN failed on previous clip, skip remaining clips
+                if wan_failed:
+                    print(f"⏭️ Skipping clip {i+1}/{len(prompt_schedule)} - WAN generation already failed")
+                    continue
                     
                 print(f"\n🎬 Generating clip {i+1}/{len(prompt_schedule)}: {prompt[:50]}...")
                 
@@ -619,9 +625,10 @@ def wan_generate_video(*component_args):
                     error_msg = f"❌ CLIP {i+1} GENERATION FAILED: {e}"
                     print(error_msg)
                     
-                    # For errors, continue with next clip (Flow Matching pipeline is now implemented)
-                    print(f"⚠️ Continuing with next clip after error in clip {i+1}")
-                    continue
+                    # FAIL FAST: Mark WAN as failed to skip remaining clips
+                    wan_failed = True
+                    print(f"🚫 WAN generation failed - skipping remaining {len(prompt_schedule) - i - 1} clips")
+                    break  # Exit the loop immediately
             
             print(f"\n🎉 Wan Video Generation Complete!")
             print(f"📊 Generated {len(prompt_schedule)} clips with {total_frames_generated} total frames")
