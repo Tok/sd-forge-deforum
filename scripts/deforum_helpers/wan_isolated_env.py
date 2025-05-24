@@ -79,7 +79,7 @@ safetensors>=0.4.0
 huggingface-hub>=0.20.0
 """
         
-        with open(self.requirements_file, 'w') as f:
+        with open(self.requirements_file, 'w', encoding='utf-8') as f:
             f.write(wan_requirements.strip())
     
     def _install_wan_packages(self):
@@ -163,7 +163,7 @@ huggingface-hub>=0.20.0
         # Generate model_index.json if missing
         if "model_index.json" not in file_names:
             model_index = self._create_wan_model_index()
-            with open(model_path / "model_index.json", 'w') as f:
+            with open(model_path / "model_index.json", 'w', encoding='utf-8') as f:
                 json.dump(model_index, f, indent=2)
             print("✅ Generated model_index.json")
         
@@ -172,7 +172,7 @@ huggingface-hub>=0.20.0
         if not scheduler_dir.exists():
             scheduler_dir.mkdir()
             scheduler_config = self._create_scheduler_config()
-            with open(scheduler_dir / "scheduler_config.json", 'w') as f:
+            with open(scheduler_dir / "scheduler_config.json", 'w', encoding='utf-8') as f:
                 json.dump(scheduler_config, f, indent=2)
             print("✅ Generated scheduler config")
         
@@ -187,7 +187,7 @@ huggingface-hub>=0.20.0
         if not text_encoder_dir.exists():
             text_encoder_dir.mkdir()
             text_encoder_config = self._create_text_encoder_config()
-            with open(text_encoder_dir / "config.json", 'w') as f:
+            with open(text_encoder_dir / "config.json", 'w', encoding='utf-8') as f:
                 json.dump(text_encoder_config, f, indent=2)
             print("✅ Generated text encoder config")
     
@@ -259,7 +259,7 @@ huggingface-hub>=0.20.0
             "unk_token": "<|endoftext|>"
         }
         
-        with open(tokenizer_dir / "tokenizer_config.json", 'w') as f:
+        with open(tokenizer_dir / "tokenizer_config.json", 'w', encoding='utf-8') as f:
             json.dump(tokenizer_config, f, indent=2)
             
         # Create a proper CLIP vocabulary - this is the key fix for the tokenizer error
@@ -306,11 +306,11 @@ huggingface-hub>=0.20.0
             token_id += 1
         
         # Write vocab.json - this fixes the "NoneType has no vocab_file" error
-        with open(tokenizer_dir / "vocab.json", 'w') as f:
-            json.dump(clip_vocab, f, indent=2)
+        with open(tokenizer_dir / "vocab.json", 'w', encoding='utf-8') as f:
+            json.dump(clip_vocab, f, indent=2, ensure_ascii=False)
             
-        # Create merges.txt for BPE tokenizer
-        with open(tokenizer_dir / "merges.txt", 'w') as f:
+        # Create merges.txt for BPE tokenizer - FIXED: Added UTF-8 encoding
+        with open(tokenizer_dir / "merges.txt", 'w', encoding='utf-8') as f:
             f.write("#version: 0.2\n")
             # Add some basic merges
             f.write("Ġ t\n")
