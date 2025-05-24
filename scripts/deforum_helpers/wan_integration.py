@@ -25,10 +25,10 @@ class WanVideoGenerator:
         self.model_path = Path(model_path)
         self.device = device
         self.loaded = False
-        self.wan_pipeline = None
+        self.wan_t2v_pipeline = None
+        self.wan_i2v_pipeline = None
         self.wan_repo_path = None
-        self.text2video_module = None
-        self.image2video_module = None
+        self.config = None
         
     def is_wan_available(self) -> bool:
         """Check if Wan 2.1 can be made available"""
@@ -36,7 +36,7 @@ class WanVideoGenerator:
             raise FileNotFoundError(f"Wan model path does not exist: {self.model_path}")
             
         # Look for model files
-        model_files = list(self.model_path.glob("*.safetensors")) + list(self.model_path.glob("*.bin"))
+        model_files = list(self.model_path.glob("*.safetensors")) + list(self.model_path.glob("*.bin")) + list(self.model_path.glob("*.pth"))
         
         if not model_files:
             raise FileNotFoundError(f"No valid model files found in {self.model_path}")
@@ -111,7 +111,8 @@ class WanVideoGenerator:
             "safetensors>=0.4.0",
             "einops",
             "imageio",
-            "imageio-ffmpeg"
+            "imageio-ffmpeg",
+            "easydict"
         ]
         
         for dep in essential_deps:
@@ -129,6 +130,22 @@ class WanVideoGenerator:
             except Exception as e:
                 print(f"⚠️ Error installing {dep}: {e}")
                 continue
+    
+    def detect_model_size(self) -> str:
+        """Detect which model size (1.3B or 14B) based on model files"""
+        # Look for config files or model sizes
+        model_files = list(self.model_path.glob("*.safetensors")) + list(self.model_path.glob("*.bin")) + list(self.model_path.glob("*.pth"))
+        
+        total_size = sum(f.stat().st_size for f in model_files)
+        total_size_gb = total_size / (1024**3)
+        
+        # Heuristic: if total size > 20GB, probably 14B model, otherwise 1.3B
+        if total_size_gb > 20:
+            print(f"📊 Detected 14B model (total size: {total_size_gb:.1f}GB)")
+            return "14B"
+        else:
+            print(f"📊 Detected 1.3B model (total size: {total_size_gb:.1f}GB)")
+            return "1_3B"
     
     def load_model(self):
         """Load Wan model - Real implementation"""
@@ -152,7 +169,7 @@ class WanVideoGenerator:
         
         try:
             # Check if the model files are in the expected format
-            model_files = list(self.model_path.glob("*.safetensors")) + list(self.model_path.glob("*.bin"))
+            model_files = list(self.model_path.glob("*.safetensors")) + list(self.model_path.glob("*.bin")) + list(self.model_path.glob("*.pth"))
             if not model_files:
                 raise FileNotFoundError("No model files found")
             
@@ -163,39 +180,85 @@ class WanVideoGenerator:
             
             try:
                 # Try to import the official WAN modules
-                import wan.text2video as text2video_module
-                import wan.image2video as image2video_module
-                
-                self.text2video_module = text2video_module
-                self.image2video_module = image2video_module
+                from wan.text2video import WanT2V
+                from wan.image2video import WanI2V
                 
                 print("✅ Successfully imported WAN modules")
                 
+                # Initialize the pipeline with model path
+                print(f"🔧 Initializing WAN pipeline with model: {self.model_path}")
+                
+                # Initialize the WAN pipeline
+                self._initialize_wan_pipeline(WanT2V, WanI2V)
+                print("✅ WAN pipeline initialized successfully")
+                
             except ImportError as e:
                 print(f"⚠️ Could not import official WAN modules: {e}")
-                print("🔄 Attempting to use simplified WAN interface...")
+                print("🔄 Using fallback implementation...")
                 
                 # Create a simplified interface that mimics WAN API
                 self._create_simplified_wan_interface()
-            
-            # Initialize the pipeline with model path
-            print(f"🔧 Initializing WAN pipeline with model: {self.model_path}")
-            
-            # Try to initialize the WAN pipeline
-            try:
-                self._initialize_wan_pipeline()
-                print("✅ WAN pipeline initialized successfully")
-                
-            except Exception as e:
-                print(f"⚠️ Failed to initialize official WAN pipeline: {e}")
-                print("🔄 Using fallback implementation...")
-                self._create_fallback_pipeline()
             
             self.loaded = True
             print("🎉 WAN model loaded successfully!")
             
         except Exception as e:
-            raise RuntimeError(f"Failed to load WAN model: {e}")
+            print(f"⚠️ Failed to initialize official WAN pipeline: {e}")
+            print("🔄 Using fallback implementation...")
+            self._create_fallback_pipeline()
+            self.loaded = True
+            print("🎉 WAN model loaded with fallback!")
+    
+    def _initialize_wan_pipeline(self, WanT2V, WanI2V):
+        """Initialize the official WAN pipeline"""
+        print("🔧 Initializing official WAN pipeline...")
+        
+        # Detect model size and load appropriate config
+        model_size = self.detect_model_size()
+        
+        try:
+            if model_size == "14B":
+                from wan.configs.wan_t2v_14B import t2v_14B as t2v_config
+                from wan.configs.wan_i2v_14B import i2v_14B as i2v_config
+                print("📋 Using 14B model configuration")
+            else:
+                from wan.configs.wan_t2v_1_3B import t2v_1_3B as t2v_config
+                # For 1.3B, we'll use the same config for i2v (adapt as needed)
+                t2v_config_copy = dict(t2v_config)
+                i2v_config = type(t2v_config)(t2v_config_copy)
+                print("📋 Using 1.3B model configuration")
+            
+            # Initialize T2V pipeline
+            print("🔧 Initializing Text-to-Video pipeline...")
+            self.wan_t2v_pipeline = WanT2V(
+                config=t2v_config,
+                checkpoint_dir=str(self.model_path),
+                device_id=0 if self.device == "cuda" else -1,
+                rank=0,
+                t5_cpu=False,  # Keep T5 on GPU for better performance
+                t5_fsdp=False,
+                dit_fsdp=False
+            )
+            print("✅ Text-to-Video pipeline initialized")
+            
+            # Initialize I2V pipeline
+            print("🔧 Initializing Image-to-Video pipeline...")  
+            self.wan_i2v_pipeline = WanI2V(
+                config=i2v_config,
+                checkpoint_dir=str(self.model_path),
+                device_id=0 if self.device == "cuda" else -1,
+                rank=0,
+                t5_cpu=False,
+                t5_fsdp=False,
+                dit_fsdp=False,
+                init_on_cpu=True  # Initialize on CPU to save VRAM
+            )
+            print("✅ Image-to-Video pipeline initialized")
+            
+        except Exception as e:
+            # If official initialization fails, fall back to simplified interface
+            print(f"⚠️ Official pipeline initialization failed: {e}")
+            raise RuntimeError(f"Failed to initialize official WAN pipeline: {e}")
     
     def _create_simplified_wan_interface(self):
         """Create a simplified WAN interface when official modules are not available"""
@@ -268,13 +331,8 @@ class WanVideoGenerator:
                 
                 return frames
                 
-        self.wan_pipeline = SimplifiedWanPipeline(self.model_path, self.device)
-        
-    def _initialize_wan_pipeline(self):
-        """Initialize the official WAN pipeline"""
-        # This would be the actual WAN pipeline initialization
-        # For now, we'll use the simplified version as a fallback
-        raise NotImplementedError("Official WAN pipeline initialization not yet implemented")
+        self.wan_t2v_pipeline = SimplifiedWanPipeline(self.model_path, self.device)
+        self.wan_i2v_pipeline = SimplifiedWanPipeline(self.model_path, self.device)
         
     def _create_fallback_pipeline(self):
         """Create fallback pipeline when official WAN is not available"""
@@ -312,20 +370,52 @@ class WanVideoGenerator:
         print(f"  Duration: {duration}s")
         
         try:
-            # Use the loaded WAN pipeline
-            frames = self.wan_pipeline.generate_text2video(
-                prompt=prompt,
-                num_frames=num_frames,
-                width=width,
-                height=height,
-                steps=steps,
-                guidance_scale=guidance_scale,
-                motion_strength=motion_strength,
-                **kwargs
-            )
-            
-            print(f"✅ Generated {len(frames)} frames successfully")
-            return frames
+            # Check if we have the official pipeline
+            if hasattr(self.wan_t2v_pipeline, 'generate') and callable(getattr(self.wan_t2v_pipeline, 'generate')):
+                # Use official WAN T2V pipeline
+                video_tensor = self.wan_t2v_pipeline.generate(
+                    input_prompt=prompt,
+                    size=(width, height),
+                    frame_num=num_frames,
+                    sampling_steps=steps,
+                    guide_scale=guidance_scale,
+                    seed=seed if seed != -1 else -1,
+                    shift=5.0,  # WAN shift parameter
+                    sample_solver='unipc',
+                    offload_model=True
+                )
+                
+                # Convert tensor to numpy frames
+                if video_tensor is not None:
+                    # WAN returns tensor in format (C, T, H, W)
+                    video_tensor = video_tensor.cpu()
+                    # Normalize from [-1, 1] to [0, 255]
+                    video_tensor = (video_tensor + 1.0) * 127.5
+                    video_tensor = torch.clamp(video_tensor, 0, 255).to(torch.uint8)
+                    
+                    # Convert to numpy and transpose to (T, H, W, C)
+                    frames = video_tensor.permute(1, 2, 3, 0).numpy()
+                    frames = [frames[i] for i in range(frames.shape[0])]
+                    
+                    print(f"✅ Generated {len(frames)} frames successfully using official WAN")
+                    return frames
+                else:
+                    raise RuntimeError("WAN T2V returned None")
+            else:
+                # Use simplified pipeline
+                frames = self.wan_t2v_pipeline.generate_text2video(
+                    prompt=prompt,
+                    num_frames=num_frames,
+                    width=width,
+                    height=height,
+                    steps=steps,
+                    guidance_scale=guidance_scale,
+                    motion_strength=motion_strength,
+                    **kwargs
+                )
+                
+                print(f"✅ Generated {len(frames)} frames successfully using fallback")
+                return frames
             
         except Exception as e:
             raise RuntimeError(f"WAN text-to-video generation failed: {e}")
@@ -363,21 +453,59 @@ class WanVideoGenerator:
         print(f"  Init image shape: {init_image.shape}")
         
         try:
-            # Use the loaded WAN pipeline
-            frames = self.wan_pipeline.generate_image2video(
-                image=init_image,
-                prompt=prompt,
-                num_frames=num_frames,
-                width=width,
-                height=height,
-                steps=steps,
-                guidance_scale=guidance_scale,
-                motion_strength=motion_strength,
-                **kwargs
-            )
-            
-            print(f"✅ Generated {len(frames)} frames successfully")
-            return frames
+            # Check if we have the official pipeline
+            if hasattr(self.wan_i2v_pipeline, 'generate') and callable(getattr(self.wan_i2v_pipeline, 'generate')):
+                # Convert numpy array to PIL Image for WAN I2V
+                if init_image.dtype != np.uint8:
+                    init_image = (init_image * 255).astype(np.uint8)
+                pil_image = Image.fromarray(init_image).resize((width, height))
+                
+                # Use official WAN I2V pipeline
+                video_tensor = self.wan_i2v_pipeline.generate(
+                    input_prompt=prompt,
+                    img=pil_image,
+                    max_area=width * height,
+                    frame_num=num_frames,
+                    sampling_steps=steps,
+                    guide_scale=guidance_scale,
+                    seed=seed if seed != -1 else -1,
+                    shift=5.0,  # WAN shift parameter
+                    sample_solver='unipc',
+                    offload_model=True
+                )
+                
+                # Convert tensor to numpy frames
+                if video_tensor is not None:
+                    # WAN returns tensor in format (C, T, H, W)
+                    video_tensor = video_tensor.cpu()
+                    # Normalize from [-1, 1] to [0, 255]
+                    video_tensor = (video_tensor + 1.0) * 127.5
+                    video_tensor = torch.clamp(video_tensor, 0, 255).to(torch.uint8)
+                    
+                    # Convert to numpy and transpose to (T, H, W, C)
+                    frames = video_tensor.permute(1, 2, 3, 0).numpy()
+                    frames = [frames[i] for i in range(frames.shape[0])]
+                    
+                    print(f"✅ Generated {len(frames)} frames successfully using official WAN")
+                    return frames
+                else:
+                    raise RuntimeError("WAN I2V returned None")
+            else:
+                # Use simplified pipeline
+                frames = self.wan_i2v_pipeline.generate_image2video(
+                    image=init_image,
+                    prompt=prompt,
+                    num_frames=num_frames,
+                    width=width,
+                    height=height,
+                    steps=steps,
+                    guidance_scale=guidance_scale,
+                    motion_strength=motion_strength,
+                    **kwargs
+                )
+                
+                print(f"✅ Generated {len(frames)} frames successfully using fallback")
+                return frames
             
         except Exception as e:
             raise RuntimeError(f"WAN image-to-video generation failed: {e}")
@@ -388,7 +516,12 @@ class WanVideoGenerator:
             raise ValueError("Duration must be positive")
         if fps <= 0:
             raise ValueError("FPS must be positive")
-        return max(1, int(duration * fps))
+        
+        # WAN requires frame count to be 4n+1 format
+        frames = max(1, int(duration * fps))
+        # Adjust to 4n+1 format
+        adjusted_frames = ((frames - 1) // 4) * 4 + 1
+        return adjusted_frames
         
     def extract_last_frame(self, video_frames: List) -> np.ndarray:
         """Extract the last frame from a video sequence"""
@@ -420,9 +553,38 @@ class WanVideoGenerator:
         
     def unload_model(self):
         """Free GPU memory"""
-        self.wan_pipeline = None
-        self.text2video_module = None
-        self.image2video_module = None
+        # Cleanup official pipelines
+        if hasattr(self.wan_t2v_pipeline, 'model'):
+            try:
+                if hasattr(self.wan_t2v_pipeline.model, 'cpu'):
+                    self.wan_t2v_pipeline.model.cpu()
+                if hasattr(self.wan_t2v_pipeline, 'text_encoder') and hasattr(self.wan_t2v_pipeline.text_encoder, 'model'):
+                    if hasattr(self.wan_t2v_pipeline.text_encoder.model, 'cpu'):
+                        self.wan_t2v_pipeline.text_encoder.model.cpu()
+                if hasattr(self.wan_t2v_pipeline, 'vae') and hasattr(self.wan_t2v_pipeline.vae, 'model'):
+                    if hasattr(self.wan_t2v_pipeline.vae.model, 'cpu'):
+                        self.wan_t2v_pipeline.vae.model.cpu()
+            except Exception as e:
+                print(f"Warning: Error unloading T2V model: {e}")
+        
+        if hasattr(self.wan_i2v_pipeline, 'model'):
+            try:
+                if hasattr(self.wan_i2v_pipeline.model, 'cpu'):
+                    self.wan_i2v_pipeline.model.cpu()
+                if hasattr(self.wan_i2v_pipeline, 'text_encoder') and hasattr(self.wan_i2v_pipeline.text_encoder, 'model'):
+                    if hasattr(self.wan_i2v_pipeline.text_encoder.model, 'cpu'):
+                        self.wan_i2v_pipeline.text_encoder.model.cpu()
+                if hasattr(self.wan_i2v_pipeline, 'vae') and hasattr(self.wan_i2v_pipeline.vae, 'model'):
+                    if hasattr(self.wan_i2v_pipeline.vae.model, 'cpu'):
+                        self.wan_i2v_pipeline.vae.model.cpu()
+                if hasattr(self.wan_i2v_pipeline, 'clip') and hasattr(self.wan_i2v_pipeline.clip, 'model'):
+                    if hasattr(self.wan_i2v_pipeline.clip.model, 'cpu'):
+                        self.wan_i2v_pipeline.clip.model.cpu()
+            except Exception as e:
+                print(f"Warning: Error unloading I2V model: {e}")
+        
+        self.wan_t2v_pipeline = None
+        self.wan_i2v_pipeline = None
         
         # Force garbage collection
         import gc
