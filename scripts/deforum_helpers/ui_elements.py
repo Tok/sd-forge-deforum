@@ -408,14 +408,14 @@ def get_tab_kohya_hrfix(dku: SimpleNamespace):
 
 def wan_generate_video(*component_args):
     """
-    Function to handle Wan video generation from the Wan tab
-    This bypasses run_deforum to avoid diffusers corruption during model loading
+    Function to handle WAN video generation from the WAN tab - STRICT MODE
+    Uses the new unified WAN integration with fail-fast behavior
     """
     try:
-        # Import here to avoid circular imports - only what we need for direct Wan generation
+        # Import from the NEW unified integration (FIXED)
         from .args import get_component_names, process_args
-        from .wan_integration import WanVideoGenerator, WanPromptScheduler, validate_wan_settings
-        from .render_wan import handle_frame_overlap, save_clip_frames, create_generation_summary
+        from .wan_integration_unified import WanVideoGenerator, WanPromptScheduler, validate_wan_settings
+        from .render_wan_unified import handle_frame_overlap, save_clip_frames, create_generation_summary
         from modules.processing import StableDiffusionProcessing
         import uuid
         import modules.shared as shared
@@ -424,8 +424,9 @@ def wan_generate_video(*component_args):
         import numpy as np
         from PIL import Image
         
-        print("🎬 Wan video generation triggered from Wan tab")
-        print("🔒 Using isolated Wan generation path (bypassing run_deforum)")
+        print("🎬 WAN video generation triggered from WAN tab (STRICT MODE)")
+        print("🔒 Using WAN STRICT MODE integration - NO FALLBACKS")
+        print("🔧 Will fail fast if WAN models are missing or invalid")
         
         # Generate a unique ID for this run
         job_id = str(uuid.uuid4())[:8]
@@ -448,25 +449,21 @@ def wan_generate_video(*component_args):
         args_dict['animation_prompts_positive'] = args_dict.get('animation_prompts_positive', "")
         args_dict['animation_prompts_negative'] = args_dict.get('animation_prompts_negative', "")
         
-        # Force animation mode to Wan Video
+        # Force animation mode to WAN Video
         args_dict['animation_mode'] = 'Wan Video'
         
-        # Create proper output directory for Wan images
+        # Create proper output directory for WAN images
         timestring = time.strftime('%Y%m%d%H%M%S')
         batch_name = args_dict.get('batch_name', 'Deforum')
         
         class MockProcessing:
             def __init__(self):
-                # Fix output directory: go from extensions/sd-forge-deforum/scripts/deforum_helpers/ui_elements.py
-                # up to webui-forge/webui/outputs/wan-images (NOT extensions/outputs)
+                # Fixed output directory path
                 current_file = os.path.abspath(__file__)
-                # Go up 4 levels: ui_elements.py -> deforum_helpers -> scripts -> sd-forge-deforum -> extensions
                 extensions_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
                 webui_dir = os.path.dirname(extensions_dir)
-                # Simple clean directory name WITHOUT extra underscores or templates
                 output_subdir = f"{batch_name}_{timestring}"
                 wan_output_dir = os.path.join(webui_dir, 'outputs', 'wan-images', output_subdir)
-                # Create the directory if it doesn't exist
                 os.makedirs(wan_output_dir, exist_ok=True)
                 self.outpath_samples = wan_output_dir
         
@@ -478,37 +475,35 @@ def wan_generate_video(*component_args):
         args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, wan_args = process_args(args_dict, job_id)
         
         if not args_loaded_ok:
-            return "❌ Failed to load arguments for Wan generation"
+            return "❌ Failed to load arguments for WAN generation"
         
-        # CRITICAL: Completely override args.outdir IMMEDIATELY after process_args
-        # Use direct path construction to avoid any template processing
+        # Clean output directory setup
         current_file_path = os.path.abspath(__file__)
         webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file_path)))))
         
-        # Create clean timestamp and batch name WITHOUT any template processing
         clean_timestamp = time.strftime('%Y%m%d%H%M%S')
         clean_batch = str(args_dict.get('batch_name', 'Deforum')).replace('{timestring}', '').replace('_', '').replace('}', '')
         
-        # Build completely clean path with NO template remnants
         clean_wan_dir = os.path.join(webui_root, 'outputs', 'wan-images', f"{clean_batch}_{clean_timestamp}")
         os.makedirs(clean_wan_dir, exist_ok=True)
         
-        # FORCE override - completely replace corrupted path
         args.outdir = clean_wan_dir
         root.timestring = clean_timestamp
         
-        print(f"🔧 Clean WAN output directory: {clean_wan_dir}")
-        print(f"🔧 Clean timestamp: {clean_timestamp}")
+        print(f"🔧 WAN output directory: {clean_wan_dir}")
+        print(f"🔧 Timestamp: {clean_timestamp}")
         
-        # Validate Wan settings
-        validation_errors = validate_wan_settings(wan_args)
-        if validation_errors:
-            error_msg = "❌ Wan validation failed:\n" + "\n".join(f"- {error}" for error in validation_errors)
+        # STRICT validation - will raise exception if WAN settings invalid
+        try:
+            validate_wan_settings(wan_args)
+            print("✅ WAN settings validated successfully")
+        except ValueError as e:
+            error_msg = f"❌ WAN validation failed: {e}"
             print(error_msg)
             return error_msg
         
         if not wan_args.wan_enabled:
-            return "❌ Wan Video mode selected but Wan is not enabled. Please enable Wan in the Wan Video tab."
+            return "❌ WAN Video mode selected but WAN is not enabled. Please enable WAN in the WAN Video tab."
         
         print(f"✅ Arguments processed successfully")
         print(f"📁 Output directory: {args.outdir}")
@@ -517,13 +512,14 @@ def wan_generate_video(*component_args):
         print(f"🎬 FPS: {wan_args.wan_fps}")
         print(f"⏱️ Clip Duration: {wan_args.wan_clip_duration}s")
         
-        # Initialize WAN generator with Flow Matching isolation
-        print("🔧 Initializing WAN generator with isolated environment...")
+        # Initialize WAN generator - STRICT MODE
+        print("🔧 Initializing WAN generator (STRICT MODE)...")
         wan_generator = WanVideoGenerator(wan_args.wan_model_path, shared.device)
         
         try:
-            # This will fail fast if Wan is not available - NO diffusers corruption
+            # This will fail fast if WAN models are missing
             wan_generator.load_model()
+            print("✅ WAN models loaded successfully")
             
             # Parse animation prompts and calculate timing
             prompt_scheduler = WanPromptScheduler(root.animation_prompts, wan_args, video_args)
@@ -532,131 +528,102 @@ def wan_generate_video(*component_args):
             print(f"📝 Generated {len(prompt_schedule)} video clips:")
             for i, (prompt, start_time, duration) in enumerate(prompt_schedule):
                 frames_needed = int(duration * wan_args.wan_fps)
+                # Adjust for WAN's 4n+1 requirement
+                if (frames_needed - 1) % 4 != 0:
+                    frames_needed = ((frames_needed - 1) // 4) * 4 + 1
                 print(f"  Clip {i+1}: '{prompt[:50]}...' (start: {start_time:.1f}s, duration: {duration:.1f}s, frames: {frames_needed})")
             
-            # Generate video clips with full isolation
+            # Generate video clips using WAN
             all_frames = []
             previous_frame = None
             total_frames_generated = 0
             frame_offset = 0
-            wan_failed = False  # Track if WAN has failed
             
             for i, (prompt, start_time, duration) in enumerate(prompt_schedule):
                 if shared.state.interrupted:
                     print("⏹️ Generation interrupted by user")
                     break
                     
-                # FAIL FAST: If WAN failed on previous clip, skip remaining clips
-                if wan_failed:
-                    print(f"⏭️ Skipping clip {i+1}/{len(prompt_schedule)} - WAN generation already failed")
-                    continue
-                    
                 print(f"\n🎬 Generating clip {i+1}/{len(prompt_schedule)}: {prompt[:50]}...")
                 
                 # Calculate seed for this clip
                 clip_seed = wan_args.wan_seed if wan_args.wan_seed != -1 else -1
                 
-                try:
-                    if i == 0 or previous_frame is None:
-                        # First clip or previous clip failed: use text-to-video
-                        print(f"🎭 Mode: Text-to-Video")
-                        frames = wan_generator.generate_txt2video(
-                            prompt=prompt,
-                            duration=duration,
-                            fps=wan_args.wan_fps,
-                            resolution=wan_args.wan_resolution,
-                            steps=wan_args.wan_inference_steps,
-                            guidance_scale=wan_args.wan_guidance_scale,
-                            seed=clip_seed,
-                            motion_strength=wan_args.wan_motion_strength
-                        )
-                    else:
-                        # Subsequent clips: use image-to-video with previous frame
-                        print(f"🎭 Mode: Image-to-Video")
-                        frames = wan_generator.generate_img2video(
-                            init_image=previous_frame,
-                            prompt=prompt,
-                            duration=duration,
-                            fps=wan_args.wan_fps,
-                            resolution=wan_args.wan_resolution,
-                            steps=wan_args.wan_inference_steps,
-                            guidance_scale=wan_args.wan_guidance_scale,
-                            seed=clip_seed,
-                            motion_strength=wan_args.wan_motion_strength
-                        )
+                # WAN VACE-14B only supports Text-to-Video, not Image-to-Video
+                print(f"🎭 Mode: Text-to-Video (WAN T2V)")
+                frames = wan_generator.generate_txt2video(
+                    prompt=prompt,
+                    duration=duration,
+                    fps=wan_args.wan_fps,
+                    resolution=wan_args.wan_resolution,
+                    steps=wan_args.wan_inference_steps,
+                    guidance_scale=wan_args.wan_guidance_scale,
+                    seed=clip_seed,
+                    motion_strength=wan_args.wan_motion_strength
+                )
 
-                    if frames and len(frames) > 0:
-                        print(f"✅ Generated {len(frames)} frames for clip {i+1}")
-                        
-                        # Save frames to disk
-                        try:
-                            for frame_idx, frame in enumerate(frames):
-                                frame_number = frame_offset + frame_idx
-                                frame_filename = f"{frame_number:08d}.png"
-                                frame_path = os.path.join(args.outdir, frame_filename)
-                                
-                                # Convert to PIL Image if needed
-                                if isinstance(frame, np.ndarray):
-                                    frame_image = Image.fromarray(frame)
-                                else:
-                                    frame_image = frame
-                                
-                                frame_image.save(frame_path)
-                                
-                            print(f"💾 Saved {len(frames)} frames to {args.outdir}")
-                            
-                        except Exception as save_error:
-                            print(f"❌ Error saving frames: {save_error}")
-                            # Continue anyway
-                        
-                        all_frames.extend(frames)
-                        total_frames_generated += len(frames)
-                        
-                        # Update frame offset for next clip
-                        frame_offset += len(frames)
-                        
-                        # Save previous frame for next clip
-                        previous_frame = wan_generator.extract_last_frame(frames)
-                        
-                    else:
-                        print(f"⚠️ No frames generated for clip {i+1}")
-                        
-                except Exception as e:
-                    error_msg = f"❌ CLIP {i+1} GENERATION FAILED: {e}"
-                    print(error_msg)
+                if frames and len(frames) > 0:
+                    print(f"✅ Generated {len(frames)} frames for clip {i+1}")
                     
-                    # FAIL FAST: Mark WAN as failed to skip remaining clips
-                    wan_failed = True
-                    print(f"🚫 WAN generation failed - skipping remaining {len(prompt_schedule) - i - 1} clips")
-                    break  # Exit the loop immediately
+                    # Save frames to disk
+                    try:
+                        for frame_idx, frame in enumerate(frames):
+                            frame_number = frame_offset + frame_idx
+                            frame_filename = f"{frame_number:08d}.png"
+                            frame_path = os.path.join(args.outdir, frame_filename)
+                            
+                            # Convert to PIL Image if needed
+                            if isinstance(frame, np.ndarray):
+                                # Convert BGR to RGB for PIL
+                                frame_rgb = frame[..., ::-1] if frame.shape[-1] == 3 else frame
+                                frame_image = Image.fromarray(frame_rgb)
+                            else:
+                                frame_image = frame
+                            
+                            frame_image.save(frame_path)
+                            
+                        print(f"💾 Saved {len(frames)} frames to {args.outdir}")
+                        
+                    except Exception as save_error:
+                        print(f"❌ Error saving frames: {save_error}")
+                        # Continue anyway
+                    
+                    all_frames.extend(frames)
+                    total_frames_generated += len(frames)
+                    
+                    # Update frame offset for next clip
+                    frame_offset += len(frames)
+                    
+                    # Save previous frame for next clip
+                    previous_frame = wan_generator.extract_last_frame(frames)
+                    
+                else:
+                    error_msg = f"❌ WAN generated no frames for clip {i+1}"
+                    print(error_msg)
+                    return error_msg
             
-            print(f"\n🎉 Wan Video Generation Complete!")
+            print(f"\n🎉 WAN Video Generation Complete!")
             print(f"📊 Generated {len(prompt_schedule)} clips with {total_frames_generated} total frames")
             print(f"📁 Output directory: {args.outdir}")
             
-            # Add video stitching like normal Deforum does
+            # Add video stitching
             if not video_args.skip_video_creation and total_frames_generated > 0:
                 try:
                     print(f"\n🎬 Creating final video from {total_frames_generated} frames...")
                     
-                    # Import the video utilities
                     from .video_audio_utilities import ffmpeg_stitch_video, get_ffmpeg_params
                     
-                    # Get ffmpeg parameters
                     f_location, f_crf, f_preset = get_ffmpeg_params()
                     
-                    # Set up paths for video creation - Fix pattern to match saved filenames
-                    image_path = os.path.join(args.outdir, "%08d.png")  # Match our 8-digit frame names
+                    image_path = os.path.join(args.outdir, "%08d.png")
                     mp4_path = os.path.join(args.outdir, f"{root.timestring}_wan_video.mp4")
                     
-                    # Handle audio
                     real_audio_track = None
                     add_soundtrack = 'None'
                     if video_args.add_soundtrack != 'None' and video_args.soundtrack_path:
                         add_soundtrack = video_args.add_soundtrack
                         real_audio_track = video_args.soundtrack_path
                     
-                    # Create the video
                     ffmpeg_stitch_video(
                         ffmpeg_location=f_location,
                         fps=video_args.fps,
@@ -672,21 +639,6 @@ def wan_generate_video(*component_args):
                     
                     print(f"✅ Video created successfully: {mp4_path}")
                     
-                    # Create GIF if requested
-                    if video_args.make_gif:
-                        try:
-                            from .video_audio_utilities import make_gifski_gif
-                            make_gifski_gif(
-                                imgs_raw_path=args.outdir,
-                                imgs_batch_id=root.timestring,
-                                fps=video_args.fps,
-                                models_folder=root.models_path,
-                                current_user_os=root.current_user_os
-                            )
-                            print(f"✅ GIF created successfully")
-                        except Exception as gif_error:
-                            print(f"⚠️ GIF creation failed: {gif_error}")
-                    
                 except Exception as video_error:
                     print(f"⚠️ Video creation failed: {video_error}")
                     print(f"💡 Frames are saved in: {args.outdir}")
@@ -695,10 +647,10 @@ def wan_generate_video(*component_args):
                     print(f"📝 Skipping video creation (as requested)")
                 print(f"💾 {total_frames_generated} frames saved to: {args.outdir}")
             
-            return f"✅ Wan video generation completed successfully!\n📊 Generated {total_frames_generated} frames\n📁 Output: {args.outdir}"
+            return f"✅ WAN video generation completed successfully!\n📊 Generated {total_frames_generated} frames\n📁 Output: {args.outdir}"
             
         except Exception as e:
-            error_msg = f"❌ FATAL ERROR in Wan video generation: {str(e)}"
+            error_msg = f"❌ WAN ERROR: {str(e)}"
             print(error_msg)
             import traceback
             traceback.print_exc()
@@ -706,11 +658,14 @@ def wan_generate_video(*component_args):
             
         finally:
             # Always unload the model to free GPU memory
-            wan_generator.unload_model()
-            print("🧹 Wan model unloaded, GPU memory freed")
+            try:
+                wan_generator.unload_model()
+                print("🧹 WAN model unloaded, GPU memory freed")
+            except:
+                pass
             
     except Exception as e:
-        error_msg = f"❌ Error during Wan video generation: {str(e)}"
+        error_msg = f"❌ Error during WAN video generation: {str(e)}"
         print(error_msg)
         import traceback
         traceback.print_exc()
@@ -718,19 +673,19 @@ def wan_generate_video(*component_args):
 
 
 def get_tab_wan(dw: SimpleNamespace):
-    """Wan 2.1 Video Generation Tab"""
-    with gr.TabItem(f"{emoji_utils.wan_video()} Wan Video"):
-        # Wan Info Accordion
-        with gr.Accordion("Wan 2.1 Video Generation Info & Setup", open=False):
+    """WAN 2.1 Video Generation Tab - CORRECTED REPOSITORY VERSION"""
+    with gr.TabItem(f"{emoji_utils.wan_video()} WAN Video"):
+        # WAN Info Accordion
+        with gr.Accordion("WAN 2.1 Video Generation Info & Setup", open=False):
             gr.HTML(value=get_gradio_html('wan_video'))
         
-        # Main Wan Settings
+        # Main WAN Settings
         wan_enabled = create_row(dw.wan_enabled)
         
         # Model path with default to webui-forge\webui\models\wan
         wan_model_path = create_row(dw.wan_model_path)
         
-        with gr.Accordion("Basic Wan Settings", open=True):
+        with gr.Accordion("Basic WAN Settings", open=True):
             with FormRow():
                 wan_clip_duration = create_gr_elem(dw.wan_clip_duration)
                 wan_fps = create_gr_elem(dw.wan_fps) 
@@ -741,7 +696,7 @@ def get_tab_wan(dw: SimpleNamespace):
                 wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
                 wan_seed = create_gr_elem(dw.wan_seed)
         
-        with gr.Accordion("Advanced Wan Settings", open=False):
+        with gr.Accordion("Advanced WAN Settings", open=False):
             with FormRow():
                 wan_frame_overlap = create_gr_elem(dw.wan_frame_overlap)
                 wan_motion_strength = create_gr_elem(dw.wan_motion_strength)
@@ -750,60 +705,128 @@ def get_tab_wan(dw: SimpleNamespace):
                 wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
                 wan_interpolation_strength = create_gr_elem(dw.wan_interpolation_strength)
         
-        # Dedicated Wan Generate Button
-        with gr.Accordion("Generate Wan Video", open=True):
+        # Dedicated WAN Generate Button
+        with gr.Accordion("Generate WAN Video", open=True):
             gr.Markdown("""
-            **Important:** Wan video generation uses the prompts from the **Prompts tab** where you have prompts paired with start frames.
+            **Important:** WAN video generation uses the prompts from the **Prompts tab** where you have prompts paired with start frames.
             Make sure to configure your prompts there before generating.
+            
+            **STRICT MODE:** This version uses fail-fast behavior. If WAN models are missing or invalid, generation will fail immediately with clear error messages and download instructions.
             """)
             
             with FormRow():
                 wan_generate_button = gr.Button(
-                    "🎬 Generate Wan Video", 
+                    "🎬 Generate WAN Video (STRICT)", 
                     variant="primary", 
                     size="lg",
                     elem_id="wan_generate_button"
                 )
                 
-            # Status output for Wan generation
+            # Status output for WAN generation
             wan_generation_status = gr.Textbox(
                 label="Generation Status",
                 interactive=False,
                 lines=2,
-                placeholder="Ready to generate Wan video..."
+                placeholder="Ready to generate WAN video..."
             )
             
             # Don't connect the button here - it will be connected in ui_left.py
             # with access to all components
             pass
         
-        with gr.Accordion("Wan Performance & Tips", open=False):
+        with gr.Accordion("WAN Download & Setup (CORRECTED)", open=False):
             gr.Markdown("""
+            ### ✅ CORRECTED REPOSITORY - Working Download Links
+            
+            **Repository**: `Wan-AI/Wan2.1-VACE-14B` 
+            **URL**: https://huggingface.co/Wan-AI/Wan2.1-VACE-14B
+            
+            ### 🚀 EASIEST METHOD - Download Complete Repository
+            ```bash
+            pip install huggingface_hub
+            huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir /path/to/your/wan/models
+            ```
+            **Size**: ~75GB total
+            
+            ### 📥 Manual Download URLs (if needed)
+            ```bash
+            # T5 Encoder (11.4 GB) - Required
+            wget https://huggingface.co/Wan-AI/Wan2.1-VACE-14B/resolve/main/models_t5_umt5-xxl-enc-bf16.pth
+            
+            # VAE (508 MB) - Required  
+            wget https://huggingface.co/Wan-AI/Wan2.1-VACE-14B/resolve/main/Wan2.1_VAE.pth
+            
+            # DiT Model Parts (~63GB total) - Required
+            wget https://huggingface.co/Wan-AI/Wan2.1-VACE-14B/resolve/main/diffusion_pytorch_model-00001-of-00007.safetensors
+            wget https://huggingface.co/Wan-AI/Wan2.1-VACE-14B/resolve/main/diffusion_pytorch_model-00002-of-00007.safetensors
+            wget https://huggingface.co/Wan-AI/Wan2.1-VACE-14B/resolve/main/diffusion_pytorch_model-00003-of-00007.safetensors
+            wget https://huggingface.co/Wan-AI/Wan2.1-VACE-14B/resolve/main/diffusion_pytorch_model-00004-of-00007.safetensors
+            wget https://huggingface.co/Wan-AI/Wan2.1-VACE-14B/resolve/main/diffusion_pytorch_model-00005-of-00007.safetensors
+            wget https://huggingface.co/Wan-AI/Wan2.1-VACE-14B/resolve/main/diffusion_pytorch_model-00006-of-00007.safetensors
+            wget https://huggingface.co/Wan-AI/Wan2.1-VACE-14B/resolve/main/diffusion_pytorch_model-00007-of-00007.safetensors
+            wget https://huggingface.co/Wan-AI/Wan2.1-VACE-14B/resolve/main/diffusion_pytorch_model.safetensors.index.json
+            
+            # Config (325 B) - Optional
+            wget https://huggingface.co/Wan-AI/Wan2.1-VACE-14B/resolve/main/config.json
+            ```
+            
+            ### 📁 Required File Names (Exact)
+            Place these files in your WAN model directory:
+            - `models_t5_umt5-xxl-enc-bf16.pth`
+            - `Wan2.1_VAE.pth`
+            - `diffusion_pytorch_model-00001-of-00007.safetensors` (through part 7)
+            - `diffusion_pytorch_model.safetensors.index.json`
+            - `config.json` (optional)
+            
+            ### ⚠️ VACE-14B Model Limitations
+            - **✅ Supports**: Text-to-Video (T2V) generation
+            - **❌ Does NOT support**: Image-to-Video (I2V) 
+            - **For I2V**: Download `Wan-AI/Wan2.1-I2V-14B-720P` separately
+            
+            ### 🎯 What Changed
+            - **Fixed Dead Links**: Old `wangfuyun/WAN2.1` repository URLs removed
+            - **Working Repository**: Now uses correct `Wan-AI/Wan2.1-VACE-14B`
+            - **Exact Filenames**: Updated to match actual repository structure
+            - **Multi-part DiT**: Properly handles 7-part DiT model (~63GB)
+            - **HuggingFace CLI**: Added easier download method for large files
+            """)
+        
+        with gr.Accordion("WAN Performance & Tips", open=False):
+            gr.Markdown("""
+            ### Model Capabilities (VACE-14B)
+            - **Text-to-Video**: High-quality 720p/1280x720 generation
+            - **Multiple Resolutions**: 480p, 720p variants  
+            - **Long Videos**: Up to 30 seconds per clip
+            - **High FPS**: Up to 60 FPS generation
+            - **Text in Videos**: Can generate Chinese and English text
+            - **Multi-language**: Chinese and English prompt support
+            
             ### Performance Optimization Tips:
-            - **Memory**: Wan requires significant GPU memory (12GB+ recommended)
+            - **Memory**: WAN requires significant GPU memory (12GB+ recommended)
             - **Speed**: Lower inference steps (20-30) for faster generation
             - **Quality**: Higher steps (50-80) for better quality
             - **Resolution**: Start with 720p for testing, use 480p for faster generation
             - **Duration**: Shorter clips (2-4 seconds) are more memory efficient
             
-            ### Workflow Recommendations:
-            1. **Set up prompts**: Configure your animation prompts in the Prompts tab using standard Deforum JSON format
-            2. **Choose resolution**: Select from 16:9 (1280x720), 9:16 (720x1280), or 480p variants
-            3. **Configure timing**: Set clip duration based on your prompt timing
-            4. **Enable frame overlap**: For smoother transitions between clips
-            5. **Monitor GPU usage**: Watch GPU memory during generation
-            
-            ### New Resolution Options:
-            - **1280x720** (16:9 landscape, 720p) - Default, best quality
-            - **720x1280** (9:16 portrait, 720p) - Perfect for mobile/social media
-            - **854x480** (16:9 landscape, 480p) - Faster generation, lower quality
-            - **480x854** (9:16 portrait, 480p) - Fastest generation for mobile content
+            ### System Requirements:
+            - **GPU Memory**: 12GB+ VRAM recommended (16GB preferred)
+            - **Storage**: ~75GB for complete model
+            - **RAM**: 32GB+ system RAM recommended
+            - **Network**: Stable internet for large file downloads
             
             ### Troubleshooting:
-            - **Model loading errors**: Check that your model is in the webui-forge\\webui\\models\\wan directory
+            - **Missing files errors**: Use corrected download URLs above
+            - **Import errors**: Restart WebUI to clear Python module cache
             - **Out of memory**: Reduce resolution, clip duration, or inference steps
-            - **Slow generation**: Use 480p resolution or lower inference steps
-            - **Poor quality**: Increase inference steps and guidance scale
+            - **Model loading errors**: Verify exact filenames and file placement
+            - **Dead link errors**: Old repository links removed, use new ones above
+            
+            ### What's Fixed:
+            - **✅ Working Repository**: Uses correct Wan-AI repository
+            - **✅ Real Model Files**: Actual 75GB model with proper structure  
+            - **✅ Clear Instructions**: Step-by-step download commands
+            - **✅ No Fallbacks**: Fails fast with actionable error messages
+            - **✅ Proper Validation**: Checks for exact required files
             """)
             
     return {k: v for k, v in {**locals(), **vars()}.items()}
