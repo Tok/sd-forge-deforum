@@ -129,41 +129,39 @@ def run_deforum(*args):
             elif anim_args.animation_mode == 'Interpolation':
                 render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
             elif anim_args.animation_mode == 'Wan Video':
-                # Import FIXED Wan renderer that uses actual Stable Diffusion models
+                # Use unified WAN implementation
                 try:
-                    # Use the fixed implementation instead of the broken placeholder one
-                    from .wan_integration_fixed import validate_wan_settings
-                    from .render_wan_fixed import render_wan_animation
+                    # Import unified WAN modules
+                    from .wan_integration_unified import validate_wan_settings
+                    from .render_wan_unified import render_wan_animation
                     
-                    # Validate Wan settings before proceeding
-                    validation_errors = validate_wan_settings(wan_args)
-                    if validation_errors:
-                        error_msg = "Wan validation failed:\n" + "\n".join(f"- {error}" for error in validation_errors)
-                        print(f"{RED}ERROR!{RESET_COLOR} {error_msg}")
-                        raise ValueError(error_msg)
+                    # Validate WAN settings before proceeding
+                    validate_wan_settings(wan_args)
                     
                     if not wan_args.wan_enabled:
-                        raise ValueError("Wan Video mode selected but Wan is not enabled. Please enable Wan in the Wan Video tab.")
+                        raise ValueError("WAN Video mode selected but WAN is not enabled. Please enable WAN in the WAN Video tab.")
                     
-                    print(f"{YELLOW}Starting FIXED Wan Video Generation (Using Stable Diffusion)...{RESET_COLOR}")
+                    print(f"{YELLOW}Starting Unified WAN Video Generation...{RESET_COLOR}")
+                    print(f"This will use Open-Sora if available, or fall back to Stable Diffusion video generation.")
+                    
                     render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
                     
                 except ImportError as e:
-                    print(f"{RED}Failed to import FIXED Wan modules: {e}{RESET_COLOR}")
-                    print(f"{YELLOW}Falling back to original implementation...{RESET_COLOR}")
-                    # Fallback to original implementation if fixed modules aren't available
+                    print(f"{RED}Failed to import unified WAN modules: {e}{RESET_COLOR}")
+                    print(f"{YELLOW}Attempting fallback to original implementation...{RESET_COLOR}")
+                    # Fallback to original implementation if unified modules aren't available
                     try:
                         from .wan_integration import validate_wan_settings
                         from .render_wan import render_wan_animation
                         
                         validate_wan_settings(wan_args)
                         if not wan_args.wan_enabled:
-                            raise ValueError("Wan Video mode selected but Wan is not enabled.")
+                            raise ValueError("WAN Video mode selected but WAN is not enabled.")
                         
-                        print(f"{YELLOW}Starting Original Wan Video Generation...{RESET_COLOR}")
+                        print(f"{YELLOW}Starting Original WAN Video Generation...{RESET_COLOR}")
                         render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
                     except Exception as fallback_e:
-                        raise RuntimeError(f"Both fixed and original Wan implementations failed. Fixed: {e}, Original: {fallback_e}")
+                        raise RuntimeError(f"Both unified and original WAN implementations failed. Unified: {e}, Original: {fallback_e}")
                 except Exception as e:
                     # Re-raise the original exception to preserve the stack trace
                     raise
