@@ -1,187 +1,224 @@
-# SD-Forge Deforum Extension
+# Fluxabled Fork of the Deforum Stable Diffusion Extension for Forge
 
-A comprehensive Deforum extension for Stable Diffusion WebUI Forge, featuring advanced animation capabilities and WAN 2.1 video generation with precise audio synchronization.
+Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum)
+for [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge), 
+fix'd up to work with Flux.1, integrate Parseq keyframe redistribution logic, and support **WAN 2.1 AI Video Generation**.
+Integrates dynamic camera shake effects with data sourced from EatTheFutures 'Camera Shakify' Blender plugin.
 
-## Features
+## Current status
 
-- **Traditional Deforum Animation**: Advanced keyframe-based image animation with motion, depth warping, and coherence controls
-- **WAN 2.1 Video Generation**: State-of-the-art AI video generation using Alibaba WAN models with **precise frame timing for audio sync**
-- **Prompt Scheduling**: Complex prompt interpolation and transitions with exact frame-based timing
-- **Motion Control**: Advanced camera and motion effects including 3D transformations
-- **Multiple Output Formats**: Support for various video formats and resolutions
-- **Audio Synchronization**: Frame-perfect timing for music video generation and audio-visual projects
+This fork of the extension is _basically working_.
 
-## WAN 2.1 Video Generation ✨
+&#x26A0;&#xFE0F; Configurations that use the **experimental render core** by enabling the 
+new keyframe distribution feature, may require that some unsupported features are being kept disabled.
 
-### 🎯 **NEW: Precision Frame Timing**
-- **Audio Sync Perfect**: Frame counts calculated exactly from prompt schedule (e.g., prompt at frame 0 with next at frame 12 = exactly 12 frames)
-- **No Duration Guessing**: Uses actual frame differences between prompts for precise timing
-- **Music Video Ready**: Perfect for synchronized audio-visual content
+## Requirements
 
-### 🚀 **Auto-Discovery System**
-- **Zero Configuration**: Automatically finds WAN models in common locations
-- **Smart Detection**: Scans `models/wan/`, `models/WAN/`, HuggingFace cache, Downloads folder
-- **Model Validation**: Ensures all required files are present before generation
+### Get SD WebUI Forge
+Install, update and run the 'one-click installation package' of
+[Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge)
+as described. Includes:
+* Python 3.10.6
+* CUDA 12.1
+* Pytorch 2.3.1
 
-### 📊 **Model Options**
-| Model | Size | VRAM | Speed | Quality | Best For |
-|-------|------|------|--------|---------|----------|
-| **T2V-1.3B** | ~17GB | 8GB+ | Fast | Good | Testing, Most Users ⭐ |
-| **T2V-14B** | ~75GB | 16GB+ | Slow | Excellent | High-end Systems |
+Other versions _may_ work with this extension, but have not been properly tested.
+
+### Run Flux on Forge
+
+Get `flux1-dev-bnb-nf4-v2.safetensors` from huggingface and put it into your `<forge_install_dir>/models/Stable-diffusion/Flux`:
+https://huggingface.co/lllyasviel/flux1-dev-bnb-nf4/blob/main/flux1-dev-bnb-nf4-v2.safetensors
+
+Get the following 3 files from huggingface and put them into `<forge_install_dir>/models/VAE`
+* `ae.safetensors` https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main
+* `clip_l.safetensors` https://huggingface.co/comfyanonymous/flux_text_encoders/tree/main
+* `t5xxl_fp16.safetensors` https://huggingface.co/comfyanonymous/flux_text_encoders/tree/main
+
+Restart Forge, set mode to "flux", select the flux checkpoint and all the 3 VAEs in "VAE / Text Encoder" and test with Txt2Img.
 
 ## Installation
 
-1. Clone this repository into your `webui/extensions` directory:
-```bash
-cd webui/extensions
-git clone https://github.com/deforum-art/sd-forge-deforum
-```
+### Directly in Forge (recommended)
 
-2. Install requirements:
-```bash
+Go to tab "Extensions" - "Install from URL" and use this: https://github.com/Tok/sd-forge-deforum.git
+
+### From the commandline
+
+Open commandline and run `<forge_install_dir>/venv/Scripts/activate.bat` 
+to activate the virtual environment (venv) for Python used by Forge.
+
+With the venv from Forge activated, do:
+```
+cd <forge_install_dir>/extensions
+git clone https://github.com/Tok/sd-forge-deforum
+cd sd-forge-deforum
 pip install -r requirements.txt
 ```
 
-3. Restart WebUI Forge
+### Update Deforum Settings
 
-## WAN Setup (Super Easy!)
+Get the latest default-settings.txt and place it directly into your 'webui' directory, then click "Load All Settings":
+https://raw.githubusercontent.com/Tok/sd-forge-deforum/main/scripts/default_settings.txt
+Rename it to `deforum_settings.txt` (or whatever matches the name of your settings file in the UI) and put it directly into your 'webui' directory.
 
-### 🎯 Quick Start (Recommended)
-```bash
-# Install HuggingFace CLI (if not installed)
-pip install huggingface_hub
+&#x26A0;&#xFE0F; Some Settings are currently not properly loaded or are not persisted 
+in `default_settings.txt` and may need to be set manually the first time:
+* Tab "Prompts" - "Prompts negative" not resetting
+  * Consider removing the defaults because they're not used with Flux.
 
-# Download 1.3B model (recommended for testing)
-huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
-```
+Recommendation: **Use ForgeUIs "Settings" - "Defaults" to save your settings.**
 
-### 🏆 High Quality Option
-```bash
-# Download 14B model (requires 16GB+ VRAM)
-huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan
-```
+## WAN 2.1 AI Video Generation ✨
 
-### ✅ That's It!
-The extension will automatically discover your model. No manual path configuration needed!
+### **NEW: Precision Text-to-Video Generation**
 
-## Usage
+The extension now includes **WAN 2.1** (Alibaba's state-of-the-art video generation model) as an additional function alongside traditional Deforum animation.
 
-### Traditional Deforum Animation
-1. Go to the **Deforum** tab in WebUI Forge
-2. Set up your prompts in the **Prompts** tab with frame timing
-3. Configure motion parameters in **Keyframes** tab
-4. Click **Generate** to create your animation
+#### 🎯 **Key Features**
+- **Frame-Perfect Timing**: Uses exact frame differences from prompt schedules for audio sync
+- **Auto-Discovery**: Automatically finds WAN models without manual configuration
+- **Flash Attention Compatible**: Works with or without flash-attn for maximum compatibility
+- **Memory Optimized**: Efficient handling of large video generations
 
-### WAN Video Generation
-1. Go to the **WAN Video** tab
-2. Enable WAN and select your preferred model size
-3. Set up **frame-based prompts** in the Prompts tab:
-   ```json
-   {
-     "0": "A serene landscape at dawn",
-     "30": "The same landscape with morning sun",
-     "60": "Golden hour lighting on the landscape",
-     "90": "Sunset colors filling the sky"
-   }
+#### 🚀 **Quick Setup**
+
+1. **Download WAN Models** (choose one):
+   ```bash
+   # Recommended: 1.3B model (8GB+ VRAM)
+   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
+   
+   # High Quality: 14B model (16GB+ VRAM) 
+   huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan
    ```
-4. Click **Generate WAN Video** for precise frame-timed generation
 
-### 🎵 **Audio Sync Example**
-For a 60 FPS video with music:
+2. **That's it!** The extension auto-discovers models in:
+   - `models/wan/`
+   - `models/WAN/` 
+   - HuggingFace cache
+   - Downloads folder
+
+#### 🎬 **Usage**
+Access WAN video generation through the **WAN** tab in Deforum. Set up frame-based prompts for precise timing:
+
 ```json
 {
-  "0": "Beat drop - explosive energy",
-  "240": "Verse starts - calm flowing motion", 
-  "480": "Chorus hits - dynamic camera movement",
-  "720": "Bridge section - intimate close-up"
+  "0": "A serene mountain landscape at dawn",
+  "30": "Morning mist rising from the valleys", 
+  "60": "Golden sunlight breaking through clouds",
+  "90": "Full daylight illuminating the peaks"
 }
 ```
-This creates exactly 240 frames (4 seconds), 240 frames, 240 frames, ensuring perfect sync with your audio track.
 
-## Key Features
+Creates exactly 30, 30, 30 frames respectively - perfect for audio synchronization!
 
-### 🎯 **Precision Timing**
-- **Frame-Perfect**: Uses exact frame differences from prompt schedule
-- **Audio Sync**: No approximations - each clip has precisely calculated frame count
-- **Music Video Ready**: Perfect for beat-matched content
+#### 🛠️ **Compatibility Layer**
+- **No Flash Attention Required**: Automatically falls back to PyTorch native attention
+- **Original WAN Repo Untouched**: Uses compatibility layer without modifying official code
+- **Robust Error Handling**: Clear error messages and troubleshooting guidance
 
-### 🔍 **Smart Discovery** 
-- **Zero Config**: Models found automatically in common locations
-- **Multi-Location**: Scans multiple directories and caches
-- **Validation**: Ensures all required model files present
+#### 📊 **Model Comparison**
+| Model | Size | VRAM | Speed | Quality | Best For |
+|-------|------|------|--------|---------|----------|
+| **T2V-1.3B** | ~17GB | 8GB+ | Fast | Good | Most Users ⭐ |
+| **T2V-14B** | ~75GB | 16GB+ | Slow | Excellent | High-end Systems |
 
-### 🚀 **Performance Optimized**
-- **Memory Management**: Fixed imageio memory limits for large videos
-- **Efficient Generation**: Smart frame calculation prevents excessive clip count
-- **Error Recovery**: Robust fallback systems and clear error messages
+## Default Bunny Testrun
 
-### 🛠️ **Developer Friendly**
-- **Organized Codebase**: All WAN code in `scripts/deforum_helpers/wan/` structure
-- **Clean APIs**: Unified integration with clear interfaces
-- **Extensible**: Easy to add new pipeline types and model formats
+After installation, you can test the setup by generating the default bunny with
+"Distribution" set to "Keyframes Only" and "Animation Mode" set to "3D".
+This also downloads the MiDaS model for depth warping when ran for the first time
+and demonstrates prompt synchronization in a no-cadence setup.
 
-## System Requirements
+The default bunnies contain 333 frames at 720p, but only 19 of them are actually diffused.
+The diffused frames are placed in the clip according to the keyframes defined in the prompts.
+The prompts themselves are aligned to be synchronized at 60 FPS with the beat of an 
+amen break you can find linked in the settings (enable sound):
 
-### Minimum (1.3B Model)
-- **GPU**: 8GB+ VRAM
-- **Storage**: 20GB free space  
-- **RAM**: 16GB+ system RAM
+https://github.com/user-attachments/assets/5f637a04-104f-4d87-8439-15a386685a5e
 
-### Recommended (14B Model)
-- **GPU**: 16GB+ VRAM
-- **Storage**: 80GB free space
-- **RAM**: 32GB+ system RAM
+If you used other versions of the Deforum plugin before, it may also be necessary
+to update or adjust your Deforum settings. The latest example settings with for the default bunny can also be downloaded here:
+
+https://github.com/Tok/sd-forge-deforum/blob/main/scripts/default_settings.txt
+
+## What should work, what doesn't and what's untested
+
+### Should work:
+
+#### WAN 2.1 Video Generation
+* **Text-to-Video**: High-quality AI video generation with precise frame timing
+* **Auto-Discovery**: Automatic model detection and validation
+* **Flash Attention Fallback**: Compatible with systems without flash-attn
+* **Audio Synchronization**: Frame-perfect timing for music videos
+* **Multiple Resolutions**: Support for various output sizes
+
+#### Keyframe Distribution
+Causes the rendering to run on an experimental core that can rearrange keyframes,
+which makes it possible to set up fast generations with less jitter at high or no cadence.
+
+##### New sub-tab under "Keyframes"
+* Can now be used **with- or without- Parseq**.
+* Allows for precise sync at high cadence.
+* Detailed info and recommendations on new tab.
+
+#### Asynchronous Subtitle generation
+All subtitles are now generated and written to an .srt file in advance.
+Complex subtitle generations should work fine with Parseq but are currently limited with Deforum-only setups.
+* New Deforum setting for skipping the prompt-part to a new line in .srt files.
+* New Deforum setting for choosing simple (non-technical) subtitles that contain only the text from the prompt.
+  * Complex subtitles should work fine when Parseq is used, but are otherwise limited to essential information only.
+  * Recommendation: turn on for now if not using Parseq
+* Removed emtpy "--neg" param from being written into the subtitles
+  because negative prompts are ignored in Flux workflows.
+* Improved padding of technical information so subtitles jitter less.
+
+### Camera Shakify Effects
+
+Add camera shake effects to your renders on top of your other movement.
+
+##### New sub-sub-tab under "Keyframes"
+
+This feature enhances the realism of your animations by simulating natural camera movements, adding a layer of depth
+and engagement to your visuals. Perfect for creating action sequences or adding a sense of spontaneity, 
+it allows for customizable shake parameters to fit your specific needs.
+
+The shake data is available under Creative Commons CC0 1.0 Universal license and was sourced from the
+['Camera Shakify' Blender plugin by EatTheFuture](https://github.com/EatTheFuture/camera_shakify).
+
+### Perhaps working (untested)
+* Flux schnell
+  * There's not a lot of precision for fine-tuning strength values when only 4 steps are required.
+* Control Net
+* Hybrid Video
+* Non-Flux workflows
+
+### Currently not working with experimental core
+* Kohya HR Fix
+  * may need to be left disabled
+* FreeU
+  * may need to be left disabled
+* Control Net
+
+### Other Stuff
+* Includes a new default setup to generate default bunny at 60 FPS in 720p with keyframes only.
+* Non-essential emojis can be turned off with a checkbox under "Settings" - "Deforum".
+* Seed and Subseed tabs unified.
 
 ## Troubleshooting
 
-### WAN Issues
-- **No models found**: Run download commands above
-- **Generation fails**: Try 1.3B model if using 14B
-- **Out of memory**: Reduce resolution or inference steps
-- **Audio sync off**: Check frame numbers in prompt schedule
+### WAN 2.1 Issues
+* **No models found**: Download WAN models using the commands above
+* **Generation fails**: Try the 1.3B model if using 14B, check VRAM usage
+* **Flash attention errors**: Compatibility layer should handle this automatically
+* **Audio sync problems**: Verify frame numbers in prompt schedule match your timing needs
+
+### Settings file
+During active development, content and structure of the `deforum_settings.txt` file 
+can change quickly been updated. Settings from older versions may not behave as expected.
+If necessary, the latest deforum-settings.txt are available for download here:
+https://github.com/Tok/sd-forge-deforum/blob/main/scripts/default_settings.txt
 
 ### General Issues
-- **Import errors**: Restart WebUI after installation
-- **Missing dependencies**: Run `pip install -r requirements.txt`
-- **Performance issues**: Check VRAM usage and reduce settings
-
-## File Structure
-
-```
-scripts/deforum_helpers/wan/
-├── configs/          # Model configurations
-├── models/           # Model components  
-├── utils/            # Utility functions
-├── pipelines/        # Pipeline implementations
-└── integration/      # Integration layer
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## License
-
-This project is licensed under the GNU Affero General Public License v3.0 - see the LICENSE file for details.
-
-## Acknowledgments
-
-- **Deforum Team**: Original animation framework
-- **Alibaba WAN Team**: WAN 2.1 video generation models
-- **WebUI Forge**: Advanced Stable Diffusion interface
-- **Community Contributors**: Continuous improvements and bug fixes
-
-## Support
-
-- **Documentation**: Check the built-in help in each tab
-- **Issues**: Report bugs via GitHub Issues
-- **Community**: Join discussions in WebUI communities
-- **Updates**: Watch repository for latest improvements
-
----
-
-**🎬 Ready to create frame-perfect AI videos with audio sync? Download a model and start generating!**
+* **Import errors**: Restart WebUI after installation
+* **Missing dependencies**: Run `pip install -r requirements.txt`
+* **Performance issues**: Check VRAM usage and reduce settings
