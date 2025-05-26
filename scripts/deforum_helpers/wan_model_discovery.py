@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-WAN Model Discovery System
-Auto-discovers WAN models from common locations without requiring manual paths
+Wan Model Discovery System
+Auto-discovers Wan models from common locations without requiring manual paths
 """
 
 import os
@@ -11,14 +11,14 @@ from typing import List, Dict, Optional, Tuple
 import sys
 
 class WanModelDiscovery:
-    """Smart WAN model discovery that finds models automatically"""
+    """Smart Wan model discovery that finds models automatically"""
     
     def __init__(self):
         self.common_model_locations = self._get_common_model_locations()
         self.discovered_models = []
         
     def _get_common_model_locations(self) -> List[Path]:
-        """Get common locations where WAN models might be stored"""
+        """Get common locations where Wan models might be stored"""
         locations = []
         
         # Current extension directory
@@ -28,7 +28,7 @@ class WanModelDiscovery:
         potential_locations = [
             # Webui model directories
             current_dir.parent.parent / "models" / "wan",
-            current_dir.parent.parent / "models" / "WAN",
+            current_dir.parent.parent / "models" / "wan",
             current_dir.parent.parent / "models" / "Wan",
             current_dir.parent.parent / "models" / "wan_models",
             
@@ -41,13 +41,13 @@ class WanModelDiscovery:
             
             # Common download locations
             Path.home() / "Downloads",
-            Path("C:/") / "AI_Models" / "WAN" if os.name == 'nt' else Path.home() / "AI_Models" / "WAN",
+            Path("C:/") / "AI_Models" / "wan" if os.name == 'nt' else Path.home() / "AI_Models" / "wan",
             
-            # Official WAN repo model locations
+            # Official Wan repo model locations
             current_dir / "wan_official_repo" / "models",
             
             # User's documents (common on Windows)
-            Path.home() / "Documents" / "AI_Models" / "WAN" if os.name == 'nt' else None,
+            Path.home() / "Documents" / "AI_Models" / "wan" if os.name == 'nt' else None,
         ]
         
         # Filter out None values and add existing paths
@@ -58,8 +58,8 @@ class WanModelDiscovery:
         return locations
     
     def discover_models(self) -> List[Dict]:
-        """Discover all available WAN models automatically"""
-        print("🔍 Auto-discovering WAN models...")
+        """Discover all available Wan models automatically"""
+        print("🔍 Auto-discovering Wan models...")
         
         discovered = []
         
@@ -77,16 +77,16 @@ class WanModelDiscovery:
         self.discovered_models = self._sort_models_by_preference(unique_models)
         
         if self.discovered_models:
-            print(f"✅ Found {len(self.discovered_models)} WAN model(s):")
+            print(f"✅ Found {len(self.discovered_models)} Wan model(s):")
             for i, model in enumerate(self.discovered_models):
                 print(f"   {i+1}. {model['name']} ({model['type']}, {model['size']}) - {model['path']}")
         else:
-            print("❌ No WAN models found in common locations")
+            print("❌ No Wan models found in common locations")
             
         return self.discovered_models
     
     def _scan_directory_for_models(self, directory: Path) -> List[Dict]:
-        """Scan a directory for WAN model files"""
+        """Scan a directory for Wan model files"""
         models = []
         
         try:
@@ -110,7 +110,7 @@ class WanModelDiscovery:
         return models
     
     def _scan_huggingface_cache(self) -> List[Dict]:
-        """Scan HuggingFace cache for WAN models"""
+        """Scan HuggingFace cache for Wan models"""
         models = []
         hf_cache = Path.home() / ".cache" / "huggingface" / "hub"
         
@@ -137,7 +137,7 @@ class WanModelDiscovery:
         return models
     
     def _is_wan_model_directory(self, directory: Path) -> bool:
-        """Check if a directory contains WAN model files"""
+        """Check if a directory contains Wan model files"""
         required_files = [
             'diffusion_pytorch_model.safetensors',
             'Wan2.1_VAE.pth',
@@ -327,18 +327,18 @@ class WanModelDiscovery:
         return self.discovered_models[0] if self.discovered_models else None
 
 def discover_wan_models() -> List[Dict]:
-    """Convenience function to discover WAN models"""
+    """Convenience function to discover Wan models"""
     discovery = WanModelDiscovery()
     return discovery.discover_models()
 
 def get_best_wan_model() -> Optional[Dict]:
-    """Convenience function to get the best available WAN model"""
+    """Convenience function to get the best available Wan model"""
     discovery = WanModelDiscovery()
     return discovery.get_best_model()
 
 if __name__ == "__main__":
     # Test the discovery system
-    print("🧪 Testing WAN Model Discovery System...")
+    print("🧪 Testing Wan Model Discovery System...")
     
     discovery = WanModelDiscovery()
     models = discovery.discover_models()
@@ -349,7 +349,7 @@ if __name__ == "__main__":
         print(f"🏆 Best model: {best['name']} ({best['type']}, {best['size']})")
         print(f"📁 Path: {best['path']}")
     else:
-        print("\n❌ No models found - you may need to download WAN models first")
+        print("\n❌ No models found - you may need to download Wan models first")
         print("💡 Suggested locations to place models:")
         for loc in discovery.common_model_locations:
-            print(f"   📂 {loc}") 
+            print(f"   📂 {loc}")

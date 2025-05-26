@@ -43,7 +43,7 @@ webui_startup_log.txt
 hf_cache/
 Wan2.1/
 
-# WAN official repository (dynamically downloaded)
+# Wan official repository (dynamically downloaded)
 wan_official_repo/
 
 # Model files

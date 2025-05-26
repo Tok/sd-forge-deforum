@@ -2,7 +2,7 @@
 
 Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum)
 for [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge), 
-fix'd up to work with Flux.1, integrate Parseq keyframe redistribution logic, and support **WAN 2.1 AI Video Generation**.
+fix'd up to work with Flux.1, integrate Parseq keyframe redistribution logic, and support **Wan 2.1 AI Video Generation**.
 Integrates dynamic camera shake effects with data sourced from EatTheFutures 'Camera Shakify' Blender plugin.
 
 ## Current status
@@ -68,21 +68,21 @@ in `default_settings.txt` and may need to be set manually the first time:
 
 Recommendation: **Use ForgeUIs "Settings" - "Defaults" to save your settings.**
 
-## WAN 2.1 AI Video Generation ✨
+## Wan 2.1 AI Video Generation ✨
 
 ### **NEW: Precision Text-to-Video Generation**
 
-The extension now includes **WAN 2.1** (Alibaba's state-of-the-art video generation model) as an additional function alongside traditional Deforum animation.
+The extension now includes **Wan 2.1** (Alibaba's state-of-the-art video generation model) as an additional function alongside traditional Deforum animation.
 
 #### 🎯 **Key Features**
 - **Frame-Perfect Timing**: Uses exact frame differences from prompt schedules for audio sync
-- **Auto-Discovery**: Automatically finds WAN models without manual configuration
+- **Auto-Discovery**: Automatically finds Wan models without manual configuration
 - **Flash Attention Compatible**: Works with or without flash-attn for maximum compatibility
 - **Memory Optimized**: Efficient handling of large video generations
 
 #### 🚀 **Quick Setup**
 
-1. **Download WAN Models** (choose one):
+1. **Download Wan Models** (choose one):
    ```bash
    # Recommended: 1.3B model (8GB+ VRAM)
    huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
@@ -98,7 +98,7 @@ The extension now includes **WAN 2.1** (Alibaba's state-of-the-art video generat
    - Downloads folder
 
 #### 🎬 **Usage**
-Access WAN video generation through the **WAN** tab in Deforum. Set up frame-based prompts for precise timing:
+Access Wan video generation through the **Wan** tab in Deforum. Set up frame-based prompts for precise timing:
 
 ```json
 {
@@ -113,7 +113,7 @@ Creates exactly 30, 30, 30 frames respectively - perfect for audio synchronizati
 
 #### 🛠️ **Compatibility Layer**
 - **No Flash Attention Required**: Automatically falls back to PyTorch native attention
-- **Original WAN Repo Untouched**: Uses compatibility layer without modifying official code
+- **Original Wan Repo Untouched**: Uses compatibility layer without modifying official code
 - **Robust Error Handling**: Clear error messages and troubleshooting guidance
 
 #### 📊 **Model Comparison**
@@ -145,7 +145,7 @@ https://github.com/Tok/sd-forge-deforum/blob/main/scripts/default_settings.txt
 
 ### Should work:
 
-#### WAN 2.1 Video Generation
+#### Wan 2.1 Video Generation
 * **Text-to-Video**: High-quality AI video generation with precise frame timing
 * **Auto-Discovery**: Automatic model detection and validation
 * **Flash Attention Fallback**: Compatible with systems without flash-attn
@@ -206,8 +206,8 @@ The shake data is available under Creative Commons CC0 1.0 Universal license and
 
 ## Troubleshooting
 
-### WAN 2.1 Issues
-* **No models found**: Download WAN models using the commands above
+### Wan 2.1 Issues
+* **No models found**: Download Wan models using the commands above
 * **Generation fails**: Try the 1.3B model if using 14B, check VRAM usage
 * **Flash attention errors**: Compatibility layer should handle this automatically
 * **Audio sync problems**: Verify frame numbers in prompt schedule match your timing needs

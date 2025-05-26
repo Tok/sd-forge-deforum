@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-WAN Simple Integration - Direct Model Loading Without Complex Dependencies
-A simpler, more reliable approach that directly loads WAN models
+Wan Simple Integration - Direct Model Loading Without Complex Dependencies
+A simpler, more reliable approach that directly loads Wan models
 """
 
 import os
@@ -14,7 +14,7 @@ from PIL import Image
 import tempfile
 
 class WanSimpleIntegration:
-    """Simple, robust WAN integration that directly loads models"""
+    """Simple, robust Wan integration that directly loads models"""
     
     def __init__(self):
         self.extension_root = Path(__file__).parent.parent.parent
@@ -23,7 +23,7 @@ class WanSimpleIntegration:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         
     def discover_models(self) -> List[Dict]:
-        """Discover WAN models using our discovery system"""
+        """Discover Wan models using our discovery system"""
         try:
             from .wan_model_discovery import WanModelDiscovery
         except ImportError:
@@ -43,27 +43,27 @@ class WanSimpleIntegration:
         return self.discovered_models[0] if self.discovered_models else None
     
     def load_simple_wan_pipeline(self, model_info: Dict) -> bool:
-        """Load WAN models properly - create custom pipeline for WAN format"""
+        """Load Wan models properly - create custom pipeline for Wan format"""
         try:
-            print(f"🔧 Loading WAN model: {model_info['name']}")
+            print(f"🔧 Loading Wan model: {model_info['name']}")
             print(f"📁 Model path: {model_info['path']}")
             
-            # WAN models are not standard Diffusers format, we need a custom loader
-            print("🚀 Creating custom WAN pipeline...")
+            # Wan models are not standard Diffusers format, we need a custom loader
+            print("🚀 Creating custom Wan pipeline...")
             
-            # Create a custom WAN pipeline class
+            # Create a custom Wan pipeline class
             pipeline = self._create_custom_wan_pipeline(model_info)
             
             self.pipeline = pipeline
-            print("✅ WAN model loaded successfully with custom pipeline")
+            print("✅ Wan model loaded successfully with custom pipeline")
             return True
                 
         except Exception as e:
-            print(f"❌ Failed to load WAN model: {e}")
-            raise RuntimeError(f"WAN model loading failed: {e}")
+            print(f"❌ Failed to load Wan model: {e}")
+            raise RuntimeError(f"Wan model loading failed: {e}")
     
     def _create_custom_wan_pipeline(self, model_info: Dict):
-        """Create a custom WAN pipeline that can handle the specific WAN model format"""
+        """Create a custom Wan pipeline that can handle the specific Wan model format"""
         
         class CustomWanPipeline:
             def __init__(self, model_path: str, device: str):
@@ -75,28 +75,28 @@ class WanSimpleIntegration:
                 with open(config_path, 'r') as f:
                     self.config = json.load(f)
                 
-                print(f"📋 WAN Model config: {self.config}")
+                print(f"📋 Wan Model config: {self.config}")
                 
-                # For now, this is a stub that will demonstrate proper WAN loading
+                # For now, this is a stub that will demonstrate proper Wan loading
                 # In a full implementation, we would load the actual model components
                 self.loaded = True
                 
             def __call__(self, prompt, height, width, num_frames, num_inference_steps, guidance_scale, **kwargs):
-                """Generate video using WAN model - FAIL FAST ON ARCHITECTURE ISSUES"""
+                """Generate video using Wan model - FAIL FAST ON ARCHITECTURE ISSUES"""
                 
-                print(f"🎬 Generating video with WAN model...")
-                print(f"🎬 Running WAN inference...")
+                print(f"🎬 Generating video with Wan model...")
+                print(f"🎬 Running Wan inference...")
                 print(f"   📝 Prompt: {prompt[:50]}...")
                 print(f"   📐 Size: {width}x{height}")
                 print(f"   🎬 Frames: {num_frames}")
                 print(f"   🔧 Steps: {num_inference_steps}")
                 print(f"   📏 Guidance: {guidance_scale}")
                 
-                print(f"🚀 Starting WAN model inference...")
+                print(f"🚀 Starting Wan model inference...")
                 
-                                    # Use the REAL WAN implementation from the official repo
+                                    # Use the REAL Wan implementation from the official repo
                 try:
-                    print(f"🔄 Trying REAL WAN implementation...")
+                    print(f"🔄 Trying REAL Wan implementation...")
                     
                     # Import the real implementation
                     import importlib
@@ -109,7 +109,7 @@ class WanSimpleIntegration:
                         sys.path.insert(0, str(current_dir))
                     
                     try:
-                        # Import the real WAN implementation
+                        # Import the real Wan implementation
                         module = importlib.import_module("wan_real_implementation")
                     except ImportError:
                         try:
@@ -125,7 +125,7 @@ class WanSimpleIntegration:
                     # Load the model
                     success = integration.load_pipeline(str(self.model_path))
                     if not success:
-                        raise RuntimeError("Failed to load real WAN pipeline")
+                        raise RuntimeError("Failed to load real Wan pipeline")
                     
                     # Generate video directly to the output
                     import tempfile
@@ -134,7 +134,7 @@ class WanSimpleIntegration:
                     with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp_file:
                         temp_output = tmp_file.name
                     
-                    # Generate video using the REAL WAN implementation
+                    # Generate video using the REAL Wan implementation
                     generation_success = integration.generate_video(
                         prompt=prompt,
                         output_path=temp_output,
@@ -147,7 +147,7 @@ class WanSimpleIntegration:
                     )
                     
                     if generation_success and os.path.exists(temp_output):
-                        print(f"✅ WAN video generated successfully with REAL WAN implementation!")
+                        print(f"✅ Wan video generated successfully with REAL Wan implementation!")
                         
                         # Load video frames to return
                         import imageio
@@ -173,11 +173,11 @@ class WanSimpleIntegration:
                         
                         return frames_tensor
                     else:
-                        raise RuntimeError("Real WAN implementation failed to generate video")
+                        raise RuntimeError("Real Wan implementation failed to generate video")
                         
                 except Exception as e:
-                    print(f"❌ Real WAN Implementation Failed: {e}")
-                    print(f"❌ CRITICAL: Failed to use real WAN implementation from official repository!")
+                    print(f"❌ Real Wan Implementation Failed: {e}")
+                    print(f"❌ CRITICAL: Failed to use real Wan implementation from official repository!")
                     print(f"❌ This could be due to:")
                     print(f"   • Missing dependencies from wan_official_repo")
                     print(f"   • Import path issues")
@@ -186,16 +186,16 @@ class WanSimpleIntegration:
                     
                     # Re-raise the exception to fail fast - NO FALLBACKS
                     raise RuntimeError(
-                        f"WAN video generation failed: {e}\n\n"
-                        "CRITICAL: Real WAN implementation failed. "
+                        f"Wan video generation failed: {e}\n\n"
+                        "CRITICAL: Real Wan implementation failed. "
                         "Check that wan_official_repo is properly set up and all dependencies are installed. "
-                        "No fallbacks available - real WAN implementation required."
+                        "No fallbacks available - real Wan implementation required."
                     )
         
         return CustomWanPipeline(model_info['path'], self.device)
     
     def _validate_wan_model(self, model_info: Dict) -> bool:
-        """Validate WAN model has required files"""
+        """Validate Wan model has required files"""
         model_path = Path(model_info['path'])
         
         # Check for required files
@@ -226,7 +226,7 @@ class WanSimpleIntegration:
             print(f"❌ Missing required model files: {missing_files}")
             return False
             
-        print("✅ All required WAN model files found")
+        print("✅ All required Wan model files found")
         return True
     
     def _generate_with_wan_pipeline(self, 
@@ -238,12 +238,12 @@ class WanSimpleIntegration:
                                   guidance_scale: float,
                                   seed: int,
                                   output_path: str) -> bool:
-        """Generate video using the loaded WAN pipeline"""
+        """Generate video using the loaded Wan pipeline"""
         try:
             if not self.pipeline:
-                raise RuntimeError("WAN pipeline not loaded")
+                raise RuntimeError("Wan pipeline not loaded")
             
-            print(f"🎬 Running WAN inference...")
+            print(f"🎬 Running Wan inference...")
             print(f"   📝 Prompt: {prompt[:50]}...")
             print(f"   📐 Size: {width}x{height}")
             print(f"   🎬 Frames: {num_frames}")
@@ -283,7 +283,7 @@ class WanSimpleIntegration:
                 if 'return_dict' in sig.parameters:
                     generation_kwargs['return_dict'] = False
             
-            print("🚀 Starting WAN model inference...")
+            print("🚀 Starting Wan model inference...")
             
             # Generate the video
             with torch.no_grad():
@@ -302,14 +302,14 @@ class WanSimpleIntegration:
             # Save frames as video
             self._save_frames_as_video(frames, output_path, fps=8)
             
-            print(f"✅ WAN video saved to: {output_path}")
+            print(f"✅ Wan video saved to: {output_path}")
             return True
             
         except Exception as e:
-            print(f"❌ WAN pipeline generation failed: {e}")
+            print(f"❌ Wan pipeline generation failed: {e}")
             import traceback
             traceback.print_exc()
-            raise RuntimeError(f"WAN pipeline generation failed: {e}")
+            raise RuntimeError(f"Wan pipeline generation failed: {e}")
     
     def _save_frames_as_video(self, frames, output_path: str, fps: int = 8):
         """Save frames as video file"""
@@ -411,9 +411,9 @@ class WanSimpleIntegration:
                             guidance_scale: float = 7.5,
                             seed: int = -1,
                             **kwargs) -> Optional[str]:
-        """Generate video using simple WAN integration"""
+        """Generate video using simple Wan integration"""
         
-        print(f"🎬 Generating video using SIMPLE WAN integration...")
+        print(f"🎬 Generating video using SIMPLE Wan integration...")
         print(f"   📝 Prompt: {prompt}")
         print(f"   📐 Size: {width}x{height}")
         print(f"   🎬 Frames: {num_frames}")
@@ -421,7 +421,7 @@ class WanSimpleIntegration:
         
         # Validate model first
         if not self._validate_wan_model(model_info):
-            raise RuntimeError("WAN model validation failed - missing required files")
+            raise RuntimeError("Wan model validation failed - missing required files")
         
         # Load the model if not loaded
         if not self.pipeline:
@@ -437,9 +437,9 @@ class WanSimpleIntegration:
             output_filename = f"wan_video_{timestamp}.mp4"
             output_path = os.path.join(output_dir, output_filename)
             
-            print("🎬 Generating video with WAN model...")
+            print("🎬 Generating video with Wan model...")
             
-            # Real WAN video generation
+            # Real Wan video generation
             result = self._generate_with_wan_pipeline(
                 prompt=prompt,
                 width=width,
@@ -452,14 +452,14 @@ class WanSimpleIntegration:
             )
             
             if result:
-                print(f"✅ WAN video generated: {output_path}")
+                print(f"✅ Wan video generated: {output_path}")
                 return output_path
             else:
-                raise RuntimeError("WAN video generation returned no result")
+                raise RuntimeError("Wan video generation returned no result")
                 
         except Exception as e:
-            print(f"❌ WAN video generation failed: {e}")
-            raise RuntimeError(f"WAN video generation failed: {e}")
+            print(f"❌ Wan video generation failed: {e}")
+            raise RuntimeError(f"Wan video generation failed: {e}")
     
     def unload_model(self):
         """Unload the model to free memory"""
@@ -473,7 +473,7 @@ class WanSimpleIntegration:
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                     
-                print("🧹 WAN model unloaded, memory freed")
+                print("🧹 Wan model unloaded, memory freed")
             except Exception as e:
                 print(f"⚠️ Error unloading model: {e}")
 
@@ -486,16 +486,16 @@ def generate_video_with_simple_wan(prompt: str,
                                  guidance_scale: float = 7.5,
                                  seed: int = -1,
                                  **kwargs) -> str:
-    """Convenience function to generate video using WAN - fail fast if no models"""
+    """Convenience function to generate video using Wan - fail fast if no models"""
     
     integration = WanSimpleIntegration()
     
     # Find the best model
     best_model = integration.get_best_model()
     if not best_model:
-        raise RuntimeError("""❌ No WAN models found!
+        raise RuntimeError("""❌ No Wan models found!
 
-💡 SOLUTION: Download a WAN model first:
+💡 SOLUTION: Download a Wan model first:
    huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir ./models/wan
 
 Then restart generation.""")
@@ -523,7 +523,7 @@ Then restart generation.""")
 
 if __name__ == "__main__":
     # Test the simple integration
-    print("🧪 Testing WAN Simple Integration...")
+    print("🧪 Testing Wan Simple Integration...")
     
     integration = WanSimpleIntegration()
     
@@ -536,7 +536,7 @@ if __name__ == "__main__":
         
         # Test simple loading
         if integration.load_simple_wan_pipeline(best):
-            print("✅ Simple WAN integration ready")
+            print("✅ Simple Wan integration ready")
             
             # Test demo generation
             output = integration.generate_video_simple(
@@ -551,6 +551,6 @@ if __name__ == "__main__":
             else:
                 print("❌ Demo generation failed")
         else:
-            print("❌ Failed to load WAN models")
+            print("❌ Failed to load Wan models")
     else:
-        print("❌ No models found") 
+        print("❌ No models found")

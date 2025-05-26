@@ -408,7 +408,7 @@ def get_tab_kohya_hrfix(dku: SimpleNamespace):
 
 def wan_generate_video(*component_args):
     """
-    Function to handle WAN video generation from the WAN tab using AUTO-DISCOVERY
+    Function to handle Wan video generation from the Wan tab using AUTO-DISCOVERY
     Uses the new direct integration approach with smart model discovery
     """
     try:
@@ -420,9 +420,9 @@ def wan_generate_video(*component_args):
         import os
         import time
         
-        print("🎬 WAN video generation triggered from WAN tab (AUTO-DISCOVERY)")
+        print("🎬 Wan video generation triggered from Wan tab (AUTO-DISCOVERY)")
         print("🔍 Using smart model discovery instead of manual paths")
-        print("🚀 NEW: Direct integration with official WAN repository")
+        print("🚀 NEW: Direct integration with official Wan repository")
         
         # Generate a unique ID for this run
         job_id = str(uuid.uuid4())[:8]
@@ -445,10 +445,10 @@ def wan_generate_video(*component_args):
         args_dict['animation_prompts_positive'] = args_dict.get('animation_prompts_positive', "")
         args_dict['animation_prompts_negative'] = args_dict.get('animation_prompts_negative', "")
         
-        # Force animation mode to WAN Video
+        # Force animation mode to Wan Video
         args_dict['animation_mode'] = 'Wan Video'
         
-        # Set up WAN-specific output directory structure - Let Deforum handle batch_name processing
+        # Set up Wan-specific output directory structure - Let Deforum handle batch_name processing
         current_file_path = os.path.abspath(__file__)
         webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file_path)))))
         wan_base_dir = os.path.join(webui_root, 'outputs', 'wan-images')
@@ -467,10 +467,10 @@ def wan_generate_video(*component_args):
         args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, wan_args = process_args(args_dict, job_id)
         
         if not args_loaded_ok:
-            return "❌ Failed to load arguments for WAN generation"
+            return "❌ Failed to load arguments for Wan generation"
         
         if not wan_args.wan_enabled:
-            return "❌ WAN Video mode selected but WAN is not enabled. Please enable WAN in the WAN Video tab."
+            return "❌ Wan Video mode selected but Wan is not enabled. Please enable Wan in the Wan Video tab."
         
         print(f"✅ Arguments processed successfully")
         print(f"📁 Output directory: {args.outdir}")
@@ -484,19 +484,19 @@ def wan_generate_video(*component_args):
         integration = WanSimpleIntegration()
         
         # Auto-discover models
-        print("🔍 Auto-discovering WAN models...")
+        print("🔍 Auto-discovering Wan models...")
         models = integration.discover_models()
         
         if not models:
-            return """❌ No WAN models found automatically!
+            return """❌ No Wan models found automatically!
 
 💡 SOLUTIONS:
-1. 📥 Download a WAN model using HuggingFace CLI:
+1. 📥 Download a Wan model using HuggingFace CLI:
    huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir "models/wan"
 
 2. 📂 Or place your model in one of these locations:
    • models/wan/
-   • models/WAN/
+   • models/wan/
    • models/Wan/
    
 3. ✅ Restart generation after downloading
@@ -546,10 +546,10 @@ The auto-discovery will find your models automatically!"""
                     # Assume at least 2 seconds worth of frames for the last clip
                     frame_count = max(2 * wan_args.wan_fps, 81)  # Minimum 2 seconds or 81 frames
                 
-                # Ensure minimum frame count for WAN (at least 5 frames)
+                # Ensure minimum frame count for Wan (at least 5 frames)
                 frame_count = max(5, frame_count)
                 
-                # Pad to WAN's 4n+1 requirement if needed (but try to preserve exact timing)
+                # Pad to Wan's 4n+1 requirement if needed (but try to preserve exact timing)
                 if (frame_count - 1) % 4 != 0:
                     # Calculate closest 4n+1 value
                     target_4n_plus_1 = ((frame_count - 1) // 4) * 4 + 1
@@ -614,22 +614,22 @@ The auto-discovery will find your models automatically!"""
                 break  # Stop on first failure
             
             # Update progress
-            shared.state.job = f"WAN clip {i+1}/{total_clips}"
+            shared.state.job = f"Wan clip {i+1}/{total_clips}"
             shared.state.job_no = i + 1
             shared.state.job_count = total_clips
         
         if generated_videos:
-            print(f"\n🎉 WAN Video Generation Complete!")
+            print(f"\n🎉 Wan Video Generation Complete!")
             print(f"📊 Generated {len(generated_videos)}/{total_clips} clips")
             print(f"🎯 Using {selected_model['size']} model")
             print(f"📁 Output directory: {args.outdir}")
             
-            return f"✅ WAN video generation completed successfully!\n📊 Generated {len(generated_videos)} clips using {selected_model['size']} model\n📁 Output: {args.outdir}"
+            return f"✅ Wan video generation completed successfully!\n📊 Generated {len(generated_videos)} clips using {selected_model['size']} model\n📁 Output: {args.outdir}"
         else:
             return "❌ No video clips were generated successfully"
             
     except Exception as e:
-        error_msg = f"❌ WAN ERROR: {str(e)}"
+        error_msg = f"❌ Wan ERROR: {str(e)}"
         print(error_msg)
         print(f"\n🔧 TROUBLESHOOTING:")
         print(f"   • Check model availability with: python scripts/deforum_helpers/wan_direct_integration.py")
@@ -640,11 +640,11 @@ The auto-discovery will find your models automatically!"""
 
 
 def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo_preroll, root, animation_prompts, loop_args, parseq_args, freeu_args, controlnet_args, depth_args, hybrid_args, parseq_adapter, wan_args, frame_duration):
-    """Generate WAN video using the new simple integration approach - called by Deforum internally"""
+    """Generate Wan video using the new simple integration approach - called by Deforum internally"""
     from .wan_simple_integration import WanSimpleIntegration
     import time
     
-    print("🎬 WAN video generation started with AUTO-DISCOVERY (Internal Call)")
+    print("🎬 Wan video generation started with AUTO-DISCOVERY (Internal Call)")
     print("🔍 Using smart model discovery instead of manual paths")
     
     start_time = time.time()
@@ -654,20 +654,20 @@ def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo
         integration = WanSimpleIntegration()
         
         # Auto-discover models
-        print("🔍 Auto-discovering WAN models...")
+        print("🔍 Auto-discovering Wan models...")
         models = integration.discover_models()
         
         if not models:
             raise RuntimeError("""
-❌ No WAN models found automatically!
+❌ No Wan models found automatically!
 
 💡 SOLUTIONS:
-1. 📥 Download a WAN model using HuggingFace CLI:
+1. 📥 Download a Wan model using HuggingFace CLI:
    huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir "models/wan"
 
 2. 📂 Or place your model in one of these locations:
    • models/wan/
-   • models/WAN/
+   • models/wan/
    • models/Wan/
    
 3. ✅ Restart generation after downloading
@@ -698,9 +698,9 @@ The auto-discovery will find your models automatically!
         output_directory = args.outdir if hasattr(args, 'outdir') else root.outdir 
         
         # Generate video using direct integration
-        print("🚀 Starting direct WAN integration...")
+        print("🚀 Starting direct Wan integration...")
         
-        # Parse prompts for WAN scheduling
+        # Parse prompts for Wan scheduling
         clips = parse_prompts_and_timing(animation_prompts, wan_args, video_args)
         
         generated_videos = []
@@ -739,7 +739,7 @@ The auto-discovery will find your models automatically!
         total_time = time.time() - start_time
         
         if generated_videos:
-            print(f"\n🎉 WAN generation completed!")
+            print(f"\n🎉 Wan generation completed!")
             print(f"✅ Generated {len(generated_videos)}/{total_clips} clips")
             print(f"⏱️ Total time: {total_time:.1f} seconds")
             print(f"📁 Output files:")
@@ -752,36 +752,33 @@ The auto-discovery will find your models automatically!
             raise RuntimeError("❌ No video clips were generated successfully")
             
     except Exception as e:
-        print(f"❌ WAN generation failed: {e}")
+        print(f"❌ Wan generation failed: {e}")
         
         # Provide helpful troubleshooting info
         print(f"\n🔧 TROUBLESHOOTING:")
         print(f"   • Check model availability with: python scripts/deforum_helpers/wan_direct_integration.py")
         print(f"   • Download models: huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan")
-        print(f"   • Verify WAN repository: {integration.wan_repo_path}")
+        print(f"   • Verify Wan repository: {integration.wan_repo_path}")
         
         # Re-raise for Deforum error handling
         raise
 
 
 def get_tab_wan(dw: SimpleNamespace):
-    """WAN 2.1 Video Generation Tab - Updated with Model Size Selection"""
-    with gr.TabItem(f"{emoji_utils.wan_video()} WAN Video"):
-        # WAN Info Accordion
-        with gr.Accordion("WAN 2.1 Video Generation Info & Setup", open=False):
+    """Wan 2.1 Video Generation Tab - Integrated with Deforum Schedules"""
+    with gr.TabItem(f"{emoji_utils.wan_video()} Wan Video"):
+        # Wan Info Accordion
+        with gr.Accordion("Wan 2.1 Video Generation Info & Setup", open=False):
             gr.HTML(value=get_gradio_html('wan_video'))
-        
-        # Main WAN Settings
-        wan_enabled = create_row(dw.wan_enabled)
         
         # Auto-Discovery Section - NEW
         with gr.Accordion("🔍 Auto-Discovery (No Manual Paths Needed!)", open=True):
             gr.Markdown("""
             **🚀 NEW: Smart Model Discovery**
             
-            WAN models are now **automatically discovered** from common locations:
+            Wan models are now **automatically discovered** from common locations:
             - `models/wan/`
-            - `models/WAN/` 
+            - `models/wan/` 
             - `models/Wan/`
             - HuggingFace cache
             - Downloads folder
@@ -798,23 +795,27 @@ def get_tab_wan(dw: SimpleNamespace):
             - **1.3B (Recommended)**: ~17GB download, faster generation, lower VRAM usage, more stable
             - **14B (High Quality)**: ~75GB download, slower generation, higher VRAM usage, better quality
             
-            💡 **Tip**: Start with 1.3B to test if WAN works on your system before downloading the larger model.
+            💡 **Tip**: Start with 1.3B to test if Wan works on your system before downloading the larger model.
             """)
         
         # Hidden model path for compatibility (auto-populated by discovery)
         wan_model_path = gr.Textbox(visible=False, value="auto-discovery")
         
-        with gr.Accordion("Basic WAN Settings", open=True):
-            with FormRow():
-                wan_fps = create_gr_elem(dw.wan_fps) 
-                wan_resolution = create_gr_elem(dw.wan_resolution)
+        with gr.Accordion("Basic Wan Settings", open=True):
+            gr.Markdown("""
+            **🔗 Integrated with Deforum Schedules:**
+            - **Seed**: Now uses the Deforum seed schedule from the Keyframes tab
+            - **FPS**: Uses the FPS setting from the Output tab slider
+            - **Prompts**: Uses your prompt schedule from the Prompts tab
+            """)
+            
+            wan_resolution = create_row(dw.wan_resolution)
         
             with FormRow():
                 wan_inference_steps = create_gr_elem(dw.wan_inference_steps)
                 wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
-                wan_seed = create_gr_elem(dw.wan_seed)
         
-        with gr.Accordion("Advanced WAN Settings", open=False):
+        with gr.Accordion("Advanced Wan Settings", open=False):
             with FormRow():
                 wan_frame_overlap = create_gr_elem(dw.wan_frame_overlap)
                 wan_motion_strength = create_gr_elem(dw.wan_motion_strength)
@@ -823,29 +824,36 @@ def get_tab_wan(dw: SimpleNamespace):
                 wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
                 wan_interpolation_strength = create_gr_elem(dw.wan_interpolation_strength)
         
-        # Dedicated WAN Generate Button
-        with gr.Accordion("Generate WAN Video", open=True):
+        # Dedicated Wan Generate Button
+        with gr.Accordion("Generate Wan Video", open=True):
             gr.Markdown("""
-            **Important:** WAN video generation uses the prompts from the **Prompts tab** where you have prompts paired with start frames.
-            Make sure to configure your prompts there before generating.
+            **🎯 Fully Integrated with Deforum:**
+            - **Prompts**: Uses your prompt schedule from the **Prompts tab**
+            - **Seed**: Uses the seed schedule from the **Keyframes → Seed & SubSeed tab**
+            - **FPS**: Uses the FPS setting from the **Output tab**
+            - **Duration**: Calculated automatically from your prompt schedule
             
-            **NEW SIMPLE MODE:** This version uses a simple, reliable integration that creates demo videos to verify your setup works. No complex dependencies required!
+            **✨ New Features:**
+            - No redundant checkbox - just click Generate!
+            - Seamless integration with all Deforum settings
+            - Auto-discovery finds your models automatically
+            - Smart model selection based on your preference
             """)
             
             with FormRow():
                 wan_generate_button = gr.Button(
-                    "🎬 Generate WAN Video (SIMPLE & RELIABLE)", 
+                    "🎬 Generate Wan Video",
                     variant="primary", 
                     size="lg",
                     elem_id="wan_generate_button"
                 )
                 
-            # Status output for WAN generation
+            # Status output for Wan generation
             wan_generation_status = gr.Textbox(
                 label="Generation Status",
                 interactive=False,
                 lines=2,
-                placeholder="Ready to generate WAN video..."
+                placeholder="Ready to generate Wan video using Deforum schedules..."
             )
             
             # Don't connect the button here - it will be connected in ui_left.py
@@ -876,87 +884,90 @@ def get_tab_wan(dw: SimpleNamespace):
             ### 📁 Where to Place Models
             The auto-discovery will find models in any of these locations:
             - `models/wan/` ← **Recommended location**
-            - `models/WAN/`
+            - `models/wan/`
             - `models/Wan/`
             - HuggingFace cache (automatic)
             - Downloads folder
             
-            ### 🎯 Model Comparison
+            ### 🔗 Integration Features
             
-            | Feature | T2V-1.3B | T2V-14B |
-            |---------|-----------|---------|
-            | Download Size | ~17GB | ~75GB |
-            | VRAM Required | 8GB+ | 16GB+ |
-            | Generation Speed | Fast | Slow |
-            | Quality | Good | Excellent |
-            | Stability | High | Medium |
-            | Recommended For | Testing, Most Users | High-end Systems |
-            
-            ### ✅ What's Fixed
+            #### ✅ What's New:
             - **🔍 Auto-Discovery**: No more manual path configuration!
-            - **🚀 Direct Integration**: Uses official WAN repository
+            - **🎯 Seed Integration**: Uses Deforum's seed schedule automatically
+            - **📊 FPS Integration**: Uses FPS from Output tab instead of separate slider
+            - **📝 Prompt Integration**: Works seamlessly with your Deforum prompt schedule
+            - **🚀 Direct Integration**: Uses official Wan repository
             - **📦 Easy Download**: Simple one-command setup
-            - **🎯 Smart Selection**: Automatically picks best available model
             - **💪 Better Stability**: Much more reliable than previous versions
             
-            ### 🆘 Troubleshooting
+            #### 🆘 Troubleshooting
             If generation fails:
             1. **Check models**: Run `python scripts/deforum_helpers/wan_direct_integration.py`
             2. **Download missing models**: Use commands above
             3. **Verify placement**: Models should be in `models/wan/` directory
             4. **Check logs**: Look for auto-discovery messages in console
+            5. **Verify schedules**: Make sure you have prompts in the Prompts tab
+            6. **Check seed behavior**: Set seed behavior to 'schedule' if you want custom seed scheduling
             """)
         
-        with gr.Accordion("WAN Performance & Tips", open=False):
+        with gr.Accordion("🔗 Deforum Schedule Integration", open=False):
             gr.Markdown("""
-            ### Model Performance Comparison
+            ### 🎯 How Wan Integrates with Deforum Schedules
             
-            | Feature | T2V-1.3B | T2V-14B |
-            |---------|-----------|---------|
-            | Download Size | ~17GB | ~75GB |
-            | VRAM Required | 8GB+ | 16GB+ |
-            | Generation Speed | Fast | Slow |
-            | Quality | Good | Excellent |
-            | Stability | High | Medium |
-            | Recommended For | Testing, Most Users | High-end Systems |
+            Wan video generation now uses Deforum's scheduling system for perfect integration:
             
-            ### Performance Optimization Tips:
+            #### 📝 Prompt Schedule Integration
+            - Wan reads your prompts from the **Prompts tab**
+            - Each prompt with a frame number becomes a video clip
+            - Duration is calculated from the frame differences
+            - Example: `{"0": "beach sunset", "120": "forest morning"}` creates two clips
             
-            #### For T2V-1.3B Model:
-            - **Memory**: Works well with 8GB+ VRAM
-            - **Speed**: Much faster than 14B model
-            - **Settings**: Can use higher resolution and steps
-            - **Stability**: Very stable, rarely hangs
+            #### 🎲 Seed Schedule Integration  
+            - Wan uses the **seed schedule** from Keyframes → Seed & SubSeed
+            - Set **Seed behavior** to 'schedule' to enable custom seed scheduling
+            - Example: `0:(12345), 60:(67890)` uses different seeds for different clips
+            - Leave as 'iter' or 'random' for automatic seed management
             
-            #### For T2V-14B Model:
-            - **Memory**: Requires 16GB+ VRAM (12GB minimum)
-            - **Speed**: Lower inference steps (20-30) for faster generation
-            - **Quality**: Higher steps (50-80) for maximum quality
-            - **Stability**: May hang on some systems - use 1.3B if issues occur
+            #### 🎬 FPS Integration
+            - Wan uses the **FPS setting** from the Output tab
+            - No separate FPS slider needed - one setting controls everything
+            - Ensures video timing matches your intended frame rate
             
-            ### System Requirements:
+            #### ⏱️ Duration Calculation
+            - Video duration = (frame_difference / fps) seconds per clip
+            - Example: Frames 0→120 at 30fps = 4 second clip
+            - Wan automatically pads to optimal frame counts (4n+1 format)
             
-            #### Minimum (1.3B Model):
-            - **GPU Memory**: 8GB VRAM
-            - **Storage**: ~20GB free space
-            - **RAM**: 16GB+ system RAM
+            ### 🛠️ Setup Guide
             
-            #### Recommended (14B Model):
-            - **GPU Memory**: 16GB+ VRAM
-            - **Storage**: ~80GB free space
-            - **RAM**: 32GB+ system RAM
+            #### Step 1: Configure Prompts
+            ```json
+            {
+                "0": "a serene beach at sunset",
+                "90": "a misty forest in the morning", 
+                "180": "a bustling city street at night"
+            }
+            ```
             
-            ### Troubleshooting:
-            - **Model hanging**: Switch to 1.3B model
-            - **Out of memory**: Reduce resolution, clip duration, or inference steps
-            - **Download issues**: Use manual download commands above
-            - **Generation fails**: Check model size selection matches downloaded model
+            #### Step 2: Set FPS (Output Tab)
+            - Choose your desired FPS (e.g., 30 or 60)
+            - This affects both timing and video quality
             
-            ### What's Fixed:
-            - **✅ Model Size Selection**: Choose optimal model for your system
-            - **✅ Automatic Download**: No more manual file hunting
-            - **✅ Better Stability**: 1.3B model is much more reliable
-            - **✅ Clear Guidance**: Know exactly what to expect from each model
+            #### Step 3: Configure Seeds (Optional)
+            - **For consistent seeds**: Set seed behavior to 'schedule'
+            - **For variety**: Leave as 'iter' or 'random'
+            
+            #### Step 4: Generate
+            - Click "Generate Wan Video" button
+            - Wan reads all settings from Deforum automatically
+            - Each prompt becomes a seamless video clip
+            
+            ### 🎯 Benefits of Integration
+            - **Consistency**: All timing controlled by one FPS setting
+            - **Flexibility**: Full power of Deforum's scheduling system
+            - **Simplicity**: No duplicate settings or confusion
+            - **Precision**: Exact frame timing for audio synchronization
+            - **Power**: Complex animations possible through scheduling
             """)
             
     return {k: v for k, v in {**locals(), **vars()}.items()}

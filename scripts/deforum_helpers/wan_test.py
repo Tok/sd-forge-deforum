@@ -185,7 +185,7 @@ def print_integration_report():
     Print a comprehensive integration report
     """
     print("\n" + "="*60)
-    print("WAN 2.1 INTEGRATION STATUS REPORT")
+    print("Wan 2.1 INTEGRATION STATUS REPORT")
     print("="*60)
     
     status = get_wan_integration_status()
@@ -220,13 +220,13 @@ def print_integration_report():
     print(f"OVERALL PROGRESS: {total_completed}/{total_items} ({overall_percentage:.1f}%)")
     
     if overall_percentage == 100:
-        print("🎉 WAN 2.1 INTEGRATION COMPLETE!")
+        print("🎉 Wan 2.1 INTEGRATION COMPLETE!")
     elif overall_percentage >= 75:
-        print("🚀 WAN 2.1 INTEGRATION NEARLY COMPLETE!")
+        print("🚀 Wan 2.1 INTEGRATION NEARLY COMPLETE!")
     elif overall_percentage >= 50:
-        print("⚡ WAN 2.1 INTEGRATION IN PROGRESS...")
+        print("⚡ Wan 2.1 INTEGRATION IN PROGRESS...")
     else:
-        print("🔧 WAN 2.1 INTEGRATION STARTING...")
+        print("🔧 Wan 2.1 INTEGRATION STARTING...")
     
     print("="*60)
 

@@ -1141,13 +1141,13 @@ def KohyaHRFixArgs():
 
 
 def WanArgs():
-    """Wan 2.1 video generation arguments"""
+    """Wan 2.1 video generation arguments - Updated to integrate with Deforum schedules"""
     return {
         "wan_enabled": {
-            "label": "Enable Wan Video Generation",
+            "label": "Enable Wan",
             "type": "checkbox",
-            "value": False,
-            "info": "Use Wan 2.1 for video generation instead of traditional diffusion"
+            "value": True,
+            "info": "Enable Wan video generation"
         },
         "wan_model_path": {
             "label": "Wan Model Path",
@@ -1160,16 +1160,7 @@ def WanArgs():
             "type": "dropdown",
             "choices": ["1.3B (Recommended)", "14B (High Quality)"],
             "value": "1.3B (Recommended)",
-            "info": "Select WAN model size. 1.3B is faster, uses less memory, and more stable. 14B is higher quality but slower and requires more VRAM."
-        },
-        "wan_fps": {
-            "label": "Wan FPS",
-            "type": "slider", 
-            "minimum": 8,
-            "maximum": 60,
-            "step": 1,
-            "value": 60,
-            "info": "Frames per second for Wan video generation. Duration is calculated automatically from prompt schedule."
+            "info": "Select Wan model size. 1.3B is faster, uses less memory, and more stable. 14B is higher quality but slower and requires more VRAM."
         },
         "wan_resolution": {
             "label": "Wan Resolution",
@@ -1177,6 +1168,22 @@ def WanArgs():
             "choices": ["1280x720", "720x1280", "854x480", "480x854"],
             "value": "1280x720",
             "info": "Resolution for Wan video generation. 16:9 landscape, 9:16 portrait, both in 720p and 480p"
+        },
+        "wan_fps": {
+            "label": "Wan FPS",
+            "type": "slider",
+            "minimum": 15,
+            "maximum": 60,
+            "step": 1,
+            "value": 30,
+            "info": "Frames per second for Wan video generation"
+        },
+        "wan_seed": {
+            "label": "Wan Seed",
+            "type": "number",
+            "precision": 0,
+            "value": -1,
+            "info": "Seed for Wan generation. -1 for random, 0+ for fixed seed"
         },
         "wan_inference_steps": {
             "label": "Inference Steps",
@@ -1195,13 +1202,6 @@ def WanArgs():
             "step": 0.5,
             "value": 7.5,
             "info": "Guidance scale for prompt adherence"
-        },
-        "wan_seed": {
-            "label": "Wan Seed",
-            "type": "number",
-            "precision": 0,
-            "value": -1,
-            "info": "Seed for Wan generation (-1 for random)"
         },
         "wan_frame_overlap": {
             "label": "Frame Overlap",
