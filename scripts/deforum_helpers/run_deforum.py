@@ -129,41 +129,36 @@ def run_deforum(*args):
             elif anim_args.animation_mode == 'Interpolation':
                 render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
             elif anim_args.animation_mode == 'Wan Video':
-                # Use unified WAN implementation
+                # Use NEW direct WAN integration
                 try:
-                    # Import unified WAN modules
-                    from .wan_integration_unified import validate_wan_settings
-                    from .render_wan_unified import render_wan_animation
+                    # Simple WAN validation (inline replacement)
+                    def validate_wan_settings(wan_args):
+                        """Simple WAN settings validation"""
+                        if not wan_args.wan_enabled:
+                            raise ValueError("WAN Video mode selected but WAN is not enabled. Please enable WAN in the WAN Video tab.")
+                        
+                        if wan_args.wan_fps <= 0:
+                            raise ValueError("WAN FPS must be greater than 0")
+                            
+                        print("✅ WAN settings validated")
+                    
+                    # Import NEW generation function from ui_elements
+                    from .ui_elements import generate_wan_video
                     
                     # Validate WAN settings before proceeding
                     validate_wan_settings(wan_args)
                     
-                    if not wan_args.wan_enabled:
-                        raise ValueError("WAN Video mode selected but WAN is not enabled. Please enable WAN in the WAN Video tab.")
+                    print(f"{YELLOW}Starting NEW WAN Video Generation (AUTO-DISCOVERY)...{RESET_COLOR}")
+                    print(f"Using smart model discovery and direct integration.")
                     
-                    print(f"{YELLOW}Starting Unified WAN Video Generation...{RESET_COLOR}")
-                    print(f"This will use Open-Sora if available, or fall back to Stable Diffusion video generation.")
+                    # Use the NEW generate function that handles everything
+                    output_dir = generate_wan_video(args, anim_args, video_args, 0, False, False, root, root.animation_prompts, loop_args, parseq_args, freeu_args, controlnet_args, None, None, None, wan_args, None)
                     
-                    render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
+                    print(f"✅ WAN video generation completed successfully!")
+                    print(f"📁 Output directory: {output_dir}")
                     
-                except ImportError as e:
-                    print(f"{RED}Failed to import unified WAN modules: {e}{RESET_COLOR}")
-                    print(f"{YELLOW}Attempting fallback to original implementation...{RESET_COLOR}")
-                    # Fallback to original implementation if unified modules aren't available
-                    try:
-                        from .wan_integration import validate_wan_settings
-                        from .render_wan import render_wan_animation
-                        
-                        validate_wan_settings(wan_args)
-                        if not wan_args.wan_enabled:
-                            raise ValueError("WAN Video mode selected but WAN is not enabled.")
-                        
-                        print(f"{YELLOW}Starting Original WAN Video Generation...{RESET_COLOR}")
-                        render_wan_animation(args, anim_args, video_args, wan_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
-                    except Exception as fallback_e:
-                        raise RuntimeError(f"Both unified and original WAN implementations failed. Unified: {e}, Original: {fallback_e}")
                 except Exception as e:
-                    # Re-raise the original exception to preserve the stack trace
+                    print(f"{RED}WAN video generation failed: {e}{RESET_COLOR}")
                     raise
             else:
                 print('Other modes are not available yet!')

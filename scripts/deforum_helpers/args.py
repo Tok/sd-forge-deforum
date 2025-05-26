@@ -1155,14 +1155,12 @@ def WanArgs():
             "value": "models/wan",
             "info": "Path to Wan 2.1 model checkpoint. Default: models/wan (relative to webui folder)"
         },
-        "wan_clip_duration": {
-            "label": "Clip Duration (seconds)",
-            "type": "slider",
-            "minimum": 1.0,
-            "maximum": 30.0,
-            "step": 0.5,
-            "value": 4.0,
-            "info": "Duration of each generated video clip"
+        "wan_model_size": {
+            "label": "Model Size",
+            "type": "dropdown",
+            "choices": ["1.3B (Recommended)", "14B (High Quality)"],
+            "value": "1.3B (Recommended)",
+            "info": "Select WAN model size. 1.3B is faster, uses less memory, and more stable. 14B is higher quality but slower and requires more VRAM."
         },
         "wan_fps": {
             "label": "Wan FPS",
@@ -1171,7 +1169,7 @@ def WanArgs():
             "maximum": 60,
             "step": 1,
             "value": 60,
-            "info": "Frames per second for Wan video generation"
+            "info": "Frames per second for Wan video generation. Duration is calculated automatically from prompt schedule."
         },
         "wan_resolution": {
             "label": "Wan Resolution",
