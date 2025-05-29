@@ -45,17 +45,17 @@ class WanSimpleIntegration:
         return self.discovered_models[0] if self.discovered_models else None
     
     def test_wan_setup(self) -> bool:
-        """Test if WAN setup is working properly"""
+        """Test if Wan setup is working properly"""
         try:
-            print("🧪 Testing WAN setup...")
+            print("🧪 Testing Wan setup...")
             
             # Check if models are available
             models = self.discover_models()
             if not models:
-                print("❌ No WAN models found")
+                print("❌ No Wan models found")
                 return False
             
-            print(f"✅ Found {len(models)} WAN models")
+            print(f"✅ Found {len(models)} Wan models")
             
             # Try to load a model
             best_model = models[0]
@@ -78,7 +78,7 @@ class WanSimpleIntegration:
                 return False
                 
         except Exception as e:
-            print(f"❌ WAN setup test failed: {e}")
+            print(f"❌ Wan setup test failed: {e}")
             return False
     
     def load_simple_wan_pipeline(self, model_info: Dict) -> bool:
@@ -919,7 +919,7 @@ Error: {e}
                     if frames_np.shape[1] == 3:  # (F, C, H, W)
                         frames_np = frames_np.transpose(0, 2, 3, 1)  # (F, H, W, C)
                 
-                # Debug: Check if we need to swap color channels
+                # Debug: Check tensor value range and normalize if needed
                 print(f"🎨 Tensor value range: min={frames_np.min():.3f}, max={frames_np.max():.3f}")
                 print(f"🎨 Tensor dtype: {frames_np.dtype}")
                 
@@ -948,20 +948,8 @@ Error: {e}
                         else:
                             frame = np.clip(frame, 0, 255).astype(np.uint8)
                     
-                    # EXPERIMENTAL: Try BGR->RGB conversion if colors look wrong
-                    # This is a common issue with different image processing libraries
-                    if len(frame.shape) == 3 and frame.shape[2] == 3:
-                        # Check if this might be BGR by looking at color distribution
-                        # If the blue channel (index 2) has much higher values than red (index 0),
-                        # it might be BGR that needs to be converted to RGB
-                        blue_mean = np.mean(frame[:, :, 2])
-                        red_mean = np.mean(frame[:, :, 0])
-                        
-                        # If blue channel is significantly brighter than red, try BGR->RGB
-                        if blue_mean > red_mean * 1.5:
-                            print(f"🎨 Frame {i}: Detected potential BGR format (B:{blue_mean:.1f} > R:{red_mean:.1f}), converting to RGB")
-                            frame = frame[:, :, ::-1]  # BGR -> RGB
-                    
+                    # Wan outputs RGB format consistently for both T2V and I2V
+                    # No BGR conversion needed
                     processed_frames.append(frame)
             
             else:
@@ -983,13 +971,6 @@ Error: {e}
                     if len(frame_np.shape) == 3 and frame_np.shape[0] == 3:  # (C, H, W)
                         frame_np = frame_np.transpose(1, 2, 0)
                     
-                    # Fix potential BGR->RGB conversion issue
-                    if len(frame_np.shape) == 3 and frame_np.shape[2] == 3:
-                        # Check if this looks like BGR (common issue with CV2/OpenCV)
-                        # Wan typically outputs RGB, but sometimes gets mixed up
-                        # We'll add a debug flag to check this
-                        pass  # Keep as RGB for now
-                    
                     # Ensure 3 channels
                     if len(frame_np.shape) == 2:  # Grayscale
                         frame_np = np.stack([frame_np, frame_np, frame_np], axis=2)
@@ -1005,15 +986,8 @@ Error: {e}
                         else:
                             frame_np = np.clip(frame_np, 0, 255).astype(np.uint8)
                     
-                    # EXPERIMENTAL: Try BGR->RGB conversion if colors look wrong
-                    if len(frame_np.shape) == 3 and frame_np.shape[2] == 3:
-                        blue_mean = np.mean(frame_np[:, :, 2])
-                        red_mean = np.mean(frame_np[:, :, 0])
-                        
-                        if blue_mean > red_mean * 1.5:
-                            print(f"🎨 Frame {i}: Detected potential BGR format (B:{blue_mean:.1f} > R:{red_mean:.1f}), converting to RGB")
-                            frame_np = frame_np[:, :, ::-1]  # BGR -> RGB
-                    
+                    # Wan outputs RGB format consistently for both T2V and I2V
+                    # No BGR conversion needed
                     processed_frames.append(frame_np)
             
             # Save each frame as PNG
@@ -1085,8 +1059,9 @@ Error: {e}
                                        steps: int = 20,
                                        guidance_scale: float = 7.5,
                                        seed: int = -1,
+                                       anim_args=None,
                                        **kwargs) -> Optional[str]:
-        """Generate video using I2V chaining for better continuity between clips - with unified frame output"""
+        """Generate video using I2V chaining for better continuity between clips - with unified frame output and strength scheduling"""
         try:
             import shutil
             import os
@@ -1094,6 +1069,26 @@ Error: {e}
             
             print(f"🎬 Starting I2V chained generation with {len(clips)} clips...")
             print(f"📁 Model: {model_info['name']} ({model_info['type']}, {model_info['size']})")
+            
+            # Parse strength schedule if available
+            strength_values = {}
+            if anim_args and hasattr(anim_args, 'strength_schedule'):
+                try:
+                    # Parse the strength schedule (format: "0: (0.85), 60: (0.7)")
+                    import re
+                    strength_schedule = anim_args.strength_schedule
+                    print(f"🎯 Using Deforum strength schedule: {strength_schedule}")
+                    
+                    # Extract frame:value pairs
+                    matches = re.findall(r'(\d+):\s*\(([0-9.]+)\)', strength_schedule)
+                    for frame_str, strength_str in matches:
+                        frame_num = int(frame_str)
+                        strength_val = float(strength_str)
+                        strength_values[frame_num] = strength_val
+                        
+                    print(f"📊 Parsed strength schedule: {strength_values}")
+                except Exception as e:
+                    print(f"⚠️ Failed to parse strength schedule: {e}, using default strength")
             
             # Validate model first
             if not self._validate_wan_model(model_info):
@@ -1134,6 +1129,26 @@ Error: {e}
                 print(f"   📝 Prompt: {clip['prompt'][:50]}...")
                 print(f"   🎞️ Frames: {clip['num_frames']}")
                 
+                # Calculate strength for this clip based on its start frame
+                clip_strength = 0.85  # Default strength
+                if strength_values:
+                    # Find the appropriate strength value for this clip's start frame
+                    clip_start_frame = clip['start_frame']
+                    
+                    # Find the closest strength value at or before this frame
+                    applicable_frames = [f for f in strength_values.keys() if f <= clip_start_frame]
+                    if applicable_frames:
+                        closest_frame = max(applicable_frames)
+                        clip_strength = strength_values[closest_frame]
+                        print(f"   💪 Using strength {clip_strength} (from frame {closest_frame} schedule)")
+                    else:
+                        # Use the first strength value if no earlier frame found
+                        first_frame = min(strength_values.keys())
+                        clip_strength = strength_values[first_frame]
+                        print(f"   💪 Using strength {clip_strength} (from first scheduled frame {first_frame})")
+                else:
+                    print(f"   💪 Using default strength {clip_strength}")
+                
                 # Create temporary directory for this clip
                 temp_clip_dir = os.path.join(output_dir, f"_temp_clip_{clip_idx:03d}")
                 os.makedirs(temp_clip_dir, exist_ok=True)
@@ -1161,8 +1176,9 @@ Error: {e}
                         frames_dir=temp_clip_dir
                     )
                 else:
-                    # Subsequent clips: use I2V with last frame
+                    # Subsequent clips: use I2V with last frame and strength scheduling
                     print(f"🔗 Using I2V chaining from: {os.path.basename(last_frame_path)}")
+                    print(f"💪 I2V strength: {clip_strength} (controls influence of previous frame)")
                     clip_frames = self._generate_wan_i2v_frames(
                         prompt=clip['prompt'],
                         init_image_path=last_frame_path,
@@ -1172,7 +1188,8 @@ Error: {e}
                         steps=steps,
                         guidance_scale=guidance_scale,
                         seed=seed if seed > 0 else -1,
-                        frames_dir=temp_clip_dir
+                        frames_dir=temp_clip_dir,
+                        strength=clip_strength  # Pass strength to I2V generation
                     )
                 
                 if not clip_frames:
@@ -1209,6 +1226,9 @@ Error: {e}
             print(f"\n✅ All clips generated! Total frames: {len(all_frame_paths)}")
             print(f"📁 All frames saved to: {unified_frames_dir}")
             
+            if strength_values:
+                print(f"💪 Strength scheduling was applied across {len(clips)} clips")
+            
             # No need to create video here - Deforum will handle it with ffmpeg
             # Just return the output directory
             return unified_frames_dir
@@ -1226,8 +1246,9 @@ Error: {e}
                                steps: int,
                                guidance_scale: float,
                                seed: int,
-                               frames_dir: str) -> List[str]:
-        """Generate frames using Wan I2V (Image-to-Video) mode"""
+                               frames_dir: str,
+                               strength: float = 0.85) -> List[str]:
+        """Generate frames using Wan I2V (Image-to-Video) mode with strength control"""
         try:
             from PIL import Image
             
@@ -1235,6 +1256,7 @@ Error: {e}
             print(f"   🖼️ Init image: {init_image_path}")
             print(f"   📝 Prompt: {prompt[:50]}...")
             print(f"   📐 Size: {width}x{height}")
+            print(f"   💪 Strength: {strength} (influence of init image)")
             
             # Load and prepare the initial image
             if not os.path.exists(init_image_path):
@@ -1271,14 +1293,26 @@ Error: {e}
                     "guidance_scale": guidance_scale,
                 }
                 
+                # Add strength parameter if supported
+                import inspect
+                sig = inspect.signature(self.pipeline.generate_image2video)
+                if 'strength' in sig.parameters:
+                    generation_kwargs['strength'] = strength
+                    print(f"✅ Added strength parameter: {strength}")
+                elif 'image_guidance_scale' in sig.parameters:
+                    # Some I2V models use image_guidance_scale instead of strength
+                    # Convert strength to image guidance scale (inverse relationship)
+                    image_guidance = guidance_scale * (1.0 - strength)
+                    generation_kwargs['image_guidance_scale'] = image_guidance
+                    print(f"✅ Using image_guidance_scale: {image_guidance} (derived from strength {strength})")
+                else:
+                    print(f"⚠️ Strength parameter not supported by this I2V method")
+                
                 # Add seed if supported
-                if seed > 0:
-                    import inspect
-                    sig = inspect.signature(self.pipeline.generate_image2video)
-                    if 'generator' in sig.parameters:
-                        generator = torch.Generator(device=self.device)
-                        generator.manual_seed(seed)
-                        generation_kwargs['generator'] = generator
+                if seed > 0 and 'generator' in sig.parameters:
+                    generator = torch.Generator(device=self.device)
+                    generator.manual_seed(seed)
+                    generation_kwargs['generator'] = generator
                 
                 with torch.no_grad():
                     result = self.pipeline.generate_image2video(**generation_kwargs)
@@ -1316,6 +1350,15 @@ Error: {e}
                     elif 'init_image' in sig.parameters:
                         generation_kwargs['init_image'] = init_image
                     
+                    # Add strength parameter if supported
+                    if 'strength' in sig.parameters:
+                        generation_kwargs['strength'] = strength
+                        print(f"✅ Added strength parameter: {strength}")
+                    elif 'image_guidance_scale' in sig.parameters:
+                        image_guidance = guidance_scale * (1.0 - strength)
+                        generation_kwargs['image_guidance_scale'] = image_guidance
+                        print(f"✅ Using image_guidance_scale: {image_guidance}")
+                    
                     # Add seed if supported
                     if 'generator' in sig.parameters and seed > 0:
                         generator = torch.Generator(device=self.device)
@@ -1342,8 +1385,15 @@ Error: {e}
             if frames is None:
                 print("🔄 Using enhanced T2V with image-aware prompt as I2V fallback")
                 
-                # Create a more detailed prompt that references the starting image
-                enhanced_prompt = f"Continuing from the previous scene, {prompt}. Maintain visual continuity and smooth motion."
+                # Create a more detailed prompt that references the starting image and strength
+                if strength > 0.7:
+                    continuity_desc = "maintaining strong visual continuity from the previous scene"
+                elif strength > 0.4:
+                    continuity_desc = "with moderate visual continuity from the previous scene"
+                else:
+                    continuity_desc = "with subtle visual continuity from the previous scene"
+                
+                enhanced_prompt = f"Continuing from the previous scene, {prompt}. {continuity_desc}."
                 
                 generation_kwargs = {
                     "prompt": enhanced_prompt,
@@ -1390,7 +1440,7 @@ Error: {e}
             # Save frames as PNGs
             saved_frames = self._save_frames_as_pngs(frames, frames_dir)
             
-            print(f"✅ Generated and saved {len(saved_frames)} I2V PNG frames")
+            print(f"✅ Generated and saved {len(saved_frames)} I2V PNG frames with strength {strength}")
             return saved_frames
             
         except Exception as e:

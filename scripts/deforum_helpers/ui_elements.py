@@ -412,7 +412,7 @@ def wan_generate_video(*component_args):
     This function calls the main Deforum generation pipeline with Wan mode
     """
     try:
-        print("🎬 Wan video generation button clicked!")
+        print(f"🎬 Wan video generation button clicked! Received {len(component_args)} arguments")
         
         # Import the main Deforum run function
         from .run_deforum import run_deforum
@@ -445,8 +445,32 @@ def wan_generate_video(*component_args):
         for i, model in enumerate(models, 1):
             print(f"   {i}. {model['name']} ({model['size']}) - {model['path']}")
         
+        # Get component names to find the animation_prompts index
+        from .args import get_component_names
+        component_names = get_component_names()
+        
+        # Find animation_prompts in the component list
+        animation_prompts = '{"0": "a beautiful landscape"}'  # Default
+        animation_mode_index = None
+        animation_prompts_index = None
+        
+        try:
+            animation_prompts_index = component_names.index('animation_prompts')
+            if animation_prompts_index < len(component_args):
+                animation_prompts = component_args[animation_prompts_index]
+                print(f"📝 Found animation_prompts at index {animation_prompts_index}")
+            else:
+                print(f"⚠️ animation_prompts index {animation_prompts_index} out of range (have {len(component_args)} args)")
+        except ValueError:
+            print("⚠️ Could not find animation_prompts in component names")
+        
+        try:
+            animation_mode_index = component_names.index('animation_mode')
+            print(f"📝 Found animation_mode at index {animation_mode_index}")
+        except ValueError:
+            print("⚠️ Could not find animation_mode in component names")
+        
         # Validate prompts
-        animation_prompts = component_args[2] if len(component_args) > 2 else '{"0": "a beautiful landscape"}'
         if not animation_prompts or animation_prompts.strip() == '{"0": "a beautiful landscape"}':
             return """❌ No prompts configured!
 
@@ -466,30 +490,47 @@ Example prompts:
 }"""
         
         # Force animation mode to Wan Video
-        # Find the animation_mode argument and set it
         component_args = list(component_args)
         
-        # Get component names to find the animation_mode index
-        from .args import get_component_names
-        component_names = get_component_names()
-        
-        try:
-            animation_mode_index = component_names.index('animation_mode')
+        if animation_mode_index is not None and animation_mode_index < len(component_args):
             component_args[animation_mode_index] = 'Wan Video'
-            print(f"✅ Set animation mode to 'Wan Video'")
-        except (ValueError, IndexError):
-            print("⚠️ Could not find animation_mode in component args")
+            print(f"✅ Set animation mode to 'Wan Video' at index {animation_mode_index}")
+        else:
+            print("⚠️ Could not set animation mode - index not found or out of range")
         
         # Generate a unique job ID
         import uuid
         job_id = str(uuid.uuid4())[:8]
         
         print(f"🚀 Starting Wan video generation with job ID: {job_id}")
-        print(f"📝 Using prompts: {animation_prompts[:100]}...")
+        print(f"📝 Using prompts: {str(animation_prompts)[:100]}...")
         
         # Call the main Deforum generation function
-        # The run_deforum function expects: job_id, custom_settings_file, *component_args
-        result = run_deforum(job_id, None, *component_args)
+        # run_deforum expects: job_id, custom_settings_file, *component_values
+        # where component_values must match exactly with get_component_names()
+        
+        from .args import get_component_names
+        component_names = get_component_names()
+        expected_component_count = len(component_names)
+        
+        print(f"🔧 Debug: Expected {expected_component_count} components, have {len(component_args)} args")
+        print(f"🔧 Debug: Component names count: {len(component_names)}")
+        
+        # We need exactly: [job_id, custom_settings_file] + component_values
+        # So total args should be 2 + len(component_names)
+        final_args = [job_id, None]  # job_id and custom_settings_file
+        
+        # Add the component values, ensuring we have exactly the right number
+        for i in range(expected_component_count):
+            if i < len(component_args):
+                final_args.append(component_args[i])
+            else:
+                print(f"⚠️ Warning: Missing component at index {i}, using None")
+                final_args.append(None)
+        
+        print(f"🔧 Debug: Final args count: {len(final_args)} (should be {2 + expected_component_count})")
+        
+        result = run_deforum(*final_args)
         
         if result and len(result) >= 4:
             # run_deforum returns (images, seed, info, comments)
@@ -645,7 +686,8 @@ The auto-discovery will find your models automatically!
             height=height,
             steps=wan_args.wan_inference_steps,
             guidance_scale=wan_args.wan_guidance_scale,
-            seed=wan_args.wan_seed if wan_args.wan_seed > 0 else -1
+            seed=wan_args.wan_seed if wan_args.wan_seed > 0 else -1,
+            anim_args=anim_args  # Pass anim_args for strength scheduling
         )
         
         generated_videos = [output_file] if output_file else []
@@ -813,9 +855,7 @@ def get_tab_wan(dw: SimpleNamespace):
                 placeholder="Ready to generate Wan video using Deforum schedules..."
             )
             
-            # Don't connect the button here - it will be connected in ui_left.py
-            # with access to all components
-            pass
+            # Button connection is handled in ui_left.py with access to all components
         
         with gr.Accordion("📥 Easy Model Download (AUTO-DISCOVERY)", open=False):
             gr.Markdown("""
@@ -885,6 +925,15 @@ def get_tab_wan(dw: SimpleNamespace):
             - Example: `0:(12345), 60:(67890)` uses different seeds for different clips
             - Leave as 'iter' or 'random' for automatic seed management
             
+            #### 💪 Strength Schedule Integration (NEW!)
+            - **NEW**: Wan I2V chaining now supports **Deforum's strength schedule**!
+            - Controls how much the previous frame influences the next clip generation
+            - Found in **Keyframes → Strength tab** as "Strength schedule"
+            - Higher values (0.7-0.9): Strong continuity, smoother transitions
+            - Lower values (0.3-0.6): More creative freedom, less continuity
+            - Example: `0:(0.85), 120:(0.6)` - strong continuity at start, more freedom later
+            - **Perfect for**: Controlling narrative flow and visual consistency across clips
+            
             #### 🎬 FPS Integration
             - Wan uses the **FPS setting** from the Output tab
             - No separate FPS slider needed - one setting controls everything
@@ -895,7 +944,7 @@ def get_tab_wan(dw: SimpleNamespace):
             - Example: Frames 0→120 at 30fps = 4 second clip
             - **Wan 4n+1 Requirement**: Wan requires frame counts to follow 4n+1 format (5, 9, 13, 17, 21, etc.)
             - **Automatic Calculation**: System calculates the nearest 4n+1 value ≥ your requested frames
-            - **Frame Discarding**: Extra frames are discarded from the end to match your exact timing
+            - **Frame Discarding**: Extra frames are discarded from the middle to match your exact timing
             - **Display Info**: Console shows exactly which frames will be discarded before generation
             
             **Example Frame Calculation:**
@@ -918,14 +967,19 @@ def get_tab_wan(dw: SimpleNamespace):
             - Choose your desired FPS (e.g., 30 or 60)
             - This affects both timing and video quality
             
-            #### Step 3: Configure Seeds (Optional)
+            #### Step 3: Configure Strength Schedule (Optional but Recommended)
+            - Go to **Keyframes → Strength tab**
+            - Set "Strength schedule" to control I2V continuity
+            - Example: `0:(0.85), 60:(0.7), 120:(0.5)` for gradual creative freedom
+            
+            #### Step 4: Configure Seeds (Optional)
             - **For consistent seeds**: Set seed behavior to 'schedule'
             - **For variety**: Leave as 'iter' or 'random'
             
-            #### Step 4: Generate
+            #### Step 5: Generate
             - Click "Generate Wan Video" button
             - Wan reads all settings from Deforum automatically
-            - Each prompt becomes a seamless video clip
+            - Each prompt becomes a seamless video clip with strength-controlled transitions
             
             ### 🎯 Benefits of Integration
             - **Consistency**: All timing controlled by one FPS setting
@@ -933,6 +987,8 @@ def get_tab_wan(dw: SimpleNamespace):
             - **Simplicity**: No duplicate settings or confusion
             - **Precision**: Exact frame timing for audio synchronization
             - **Power**: Complex animations possible through scheduling
+            - **NEW**: Strength scheduling for perfect I2V continuity control
+            
             """)
             
     return {k: v for k, v in {**locals(), **vars()}.items()}

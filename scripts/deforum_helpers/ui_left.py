@@ -152,25 +152,49 @@ def setup_deforum_left_side_ui():
             
             # Create list of all UI components in the correct order
             component_inputs = []
+            missing_components = []
             for name in component_names:
                 if name in locals():
                     component_inputs.append(locals()[name])
                 else:
+                    missing_components.append(name)
                     print(f"⚠️ Warning: Component '{name}' not found in locals()")
             
             print(f"📊 Found {len(component_inputs)} UI components for Wan generation")
+            if missing_components:
+                print(f"⚠️ Missing {len(missing_components)} components: {missing_components[:5]}...")
+            
+            # Create a wrapper function with better error handling
+            def wan_generate_wrapper(*args):
+                try:
+                    print(f"🎬 Wan generate button clicked! Received {len(args)} arguments")
+                    print("🔄 Calling wan_generate_video_main...")
+                    result = wan_generate_video_main(*args)
+                    print(f"✅ Wan generation completed: {str(result)[:100]}...")
+                    return result
+                except Exception as e:
+                    error_msg = f"❌ Wan generation error: {str(e)}"
+                    print(error_msg)
+                    import traceback
+                    traceback.print_exc()
+                    return error_msg
             
             locals()['wan_generate_button'].click(
-                fn=wan_generate_video_main,
+                fn=wan_generate_wrapper,
                 inputs=component_inputs,  # Pass all UI component values
                 outputs=[locals()['wan_generation_status']]
             )
             print("✅ Wan generate button connected successfully")
         except Exception as e:
             print(f"⚠️ Warning: Failed to connect Wan generate button: {e}")
+            import traceback
+            traceback.print_exc()
             # Fallback to the simple placeholder function
+            def simple_wan_test():
+                return "🧪 Simple Wan test - button connection working but full integration failed"
+            
             locals()['wan_generate_button'].click(
-                fn=wan_generate_video,
+                fn=simple_wan_test,
                 inputs=[],
                 outputs=[locals()['wan_generation_status']]
             )

@@ -10,7 +10,7 @@
     "sampler": "Euler",
     "scheduler": "Simple",
     "steps": 20,
-    "batch_name": "Deforum_{timestring}}",
+    "batch_name": "Deforum_{timestring}",
     "keyframe_distribution": "Keyframes Only",
     "seed_behavior": "iter",
     "seed_iter_N": 1,
