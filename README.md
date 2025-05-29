@@ -133,7 +133,7 @@ For comprehensive documentation, see:
 
 After installation, you can test the setup by generating the default bunny with
 "Distribution" set to "Keyframes Only" and "Animation Mode" set to "3D".
-This also downloads the MiDaS model for depth warping when ran for the first time
+This also downloads Depth-Anything V2 or the MiDaS model for depth warping when ran for the first time
 and demonstrates prompt synchronization in a no-cadence setup.
 
 The default bunnies contain 333 frames at 720p, but only 19 of them are actually diffused.

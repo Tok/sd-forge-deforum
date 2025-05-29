@@ -525,7 +525,6 @@ Error: {e}
         
         # Check for required files
         required_files = [
-            "diffusion_pytorch_model.safetensors",
             "config.json"
         ]
         
@@ -538,6 +537,23 @@ Error: {e}
         for file in required_files:
             if not (model_path / file).exists():
                 missing_files.append(file)
+        
+        # Check for diffusion model files (single file OR multi-part)
+        single_diffusion_file = model_path / "diffusion_pytorch_model.safetensors"
+        multi_part_index = model_path / "diffusion_pytorch_model.safetensors.index.json"
+        
+        if single_diffusion_file.exists():
+            print("✅ Found single diffusion model file")
+        elif multi_part_index.exists():
+            print("✅ Found multi-part diffusion model (14B style)")
+            # Verify at least some multi-part files exist
+            multi_part_files = list(model_path.glob("diffusion_pytorch_model-*-of-*.safetensors"))
+            if not multi_part_files:
+                missing_files.append("multi-part diffusion model files (diffusion_pytorch_model-*-of-*.safetensors)")
+            else:
+                print(f"✅ Found {len(multi_part_files)} multi-part diffusion files")
+        else:
+            missing_files.append("diffusion model (diffusion_pytorch_model.safetensors OR multi-part files)")
         
         # Check for at least one VAE file
         if not any((model_path / vae).exists() for vae in vae_files):
@@ -1279,7 +1295,7 @@ Error: {e}
                 # Generate frames for this clip
                 if clip_idx == 0 or last_frame_path is None:
                     # First clip: use T2V
-                    print("🚀 Using T2V for first clip")
+                    print("🚀 Using T2V for first clip (T2V model will be loaded)")
                     clip_frames = self._generate_wan_frames(
                         prompt=clip['prompt'],
                         width=width,
@@ -1293,6 +1309,7 @@ Error: {e}
                 else:
                     # Subsequent clips: use I2V with last frame and enhanced continuity
                     print(f"🔗 Using I2V chaining from: {os.path.basename(last_frame_path)}")
+                    print(f"🔄 Model will switch: T2V → I2V (unload T2V, load I2V)")
                     print(f"💪 I2V strength: {clip_strength} (controls influence of previous frame)")
                     
                     # Enhanced I2V with proper parameters for maximum continuity
@@ -1356,6 +1373,11 @@ Error: {e}
         except Exception as e:
             print(f"❌ I2V chained video generation failed: {e}")
             raise RuntimeError(f"I2V chained video generation failed: {e}")
+        finally:
+            # Clean up loaded models
+            if hasattr(self.pipeline, 'cleanup'):
+                print("🧹 Cleaning up Wan models...")
+                self.pipeline.cleanup()
     
     def _generate_wan_i2v_frames_enhanced(self,
                                prompt: str,
@@ -1732,21 +1754,37 @@ Error: {e}
                 print(f"✅ Using custom I2V path: {custom_path}")
                 
             else:
-                # Specific I2V model selection (1.3B I2V, 14B I2V)
-                if "1.3B" in i2v_selection:
-                    target_model = "1.3B I2V"
-                elif "14B" in i2v_selection:
-                    target_model = "14B I2V"
+                # Specific I2V model selection (14B I2V 720P, 14B I2V 480P)
+                if "14B I2V 720P" in i2v_selection:
+                    target_model = "14B I2V 720P"
+                elif "14B I2V 480P" in i2v_selection:
+                    target_model = "14B I2V 480P"
+                elif "1.3B I2V" in i2v_selection:
+                    # 1.3B I2V doesn't exist, fallback to T2V with warning
+                    print("⚠️ 1.3B I2V model doesn't exist! Using T2V model instead.")
+                    print("💡 Tip: Use '14B I2V 720P' or '14B I2V 480P' for real I2V functionality.")
+                    results['i2v'] = results['t2v']
+                    return results
+                elif "14B I2V" in i2v_selection:
+                    # Legacy support - default to 720P
+                    target_model = "14B I2V 720P"
                 else:
                     target_model = i2v_selection
                 
                 # Try to download if auto-download enabled
                 if auto_download:
-                    results['i2v'] = self._download_model_if_needed(target_model, preferred_size)
-                    if results['i2v']:
-                        print(f"✅ Downloaded {target_model}")
-                    else:
-                        print(f"❌ Failed to download {target_model}, using T2V for I2V")
+                    try:
+                        from .wan_model_downloader import WanModelDownloader
+                        downloader = WanModelDownloader()
+                        
+                        if downloader.download_model(target_model):
+                            results['i2v'] = downloader.get_model_path(target_model)
+                            print(f"✅ Downloaded {target_model}")
+                        else:
+                            print(f"❌ Failed to download {target_model}, using T2V for I2V")
+                            results['i2v'] = results['t2v']
+                    except Exception as e:
+                        print(f"❌ Download failed for {target_model}: {e}, using T2V for I2V")
                         results['i2v'] = results['t2v']
                 else:
                     print(f"❌ {target_model} not found and auto-download disabled, using T2V for I2V")
@@ -1822,24 +1860,46 @@ Error: {e}
                 self.t2v_path = t2v_path
                 self.i2v_path = i2v_path
                 self.device = device
-                self.t2v_model = None
-                self.i2v_model = None
+                self.current_model = None
+                self.current_model_type = None
                 self.loaded = False
                 
-                print(f"🔧 Initializing separate Wan pipeline")
+                print(f"🔧 Initializing separate Wan pipeline with model switching")
                 print(f"   🎬 T2V: {t2v_path}")
                 print(f"   🔗 I2V: {i2v_path}")
                 
-                # Load the models
-                self._load_separate_models()
+                # Start by loading T2V model for first clip
+                self._load_t2v_model()
             
-            def _load_separate_models(self):
-                """Load separate T2V and I2V models"""
+            def _unload_current_model(self):
+                """Unload the currently loaded model to free memory"""
+                if self.current_model is not None:
+                    print(f"🧹 Unloading {self.current_model_type} model to free memory...")
+                    try:
+                        # Move model to CPU and delete references
+                        if hasattr(self.current_model, 'to'):
+                            self.current_model.to('cpu')
+                        del self.current_model
+                        self.current_model = None
+                        self.current_model_type = None
+                        
+                        # Force garbage collection and clear CUDA cache
+                        import gc
+                        gc.collect()
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                            
+                        print(f"✅ Model unloaded, memory freed")
+                    except Exception as e:
+                        print(f"⚠️ Warning during model unload: {e}")
+            
+            def _load_t2v_model(self):
+                """Load T2V model"""
                 try:
-                    # Strategy 1: Try to import and use official Wan
-                    print("🔄 Attempting to load separate Wan models...")
+                    print("🔄 Loading T2V model...")
+                    self._unload_current_model()  # Unload any existing model first
                     
-                    # Add Wan2.1 to path if it exists
+                    # Import and setup Wan components
                     import sys
                     from pathlib import Path
                     
@@ -1859,96 +1919,158 @@ Error: {e}
                             print(f"⚠️ Could not apply compatibility patches: {patch_e}")
                         
                         # Import Wan components
+                        import wan  # type: ignore
+                        from wan.text2video import WanT2V  # type: ignore
+                        
+                        # Load configs
                         try:
-                            import wan  # type: ignore
-                            from wan.text2video import WanT2V  # type: ignore
-                            from wan.image2video import WanI2V  # type: ignore
-                            print("✅ Successfully imported WanT2V and WanI2V classes")
-                            
-                            # Load configs (use minimal if official not available)
-                            try:
-                                from wan.configs.wan_t2v_14B import t2v_14B as t2v_config
-                                from wan.configs.wan_i2v_14B import i2v_14B as i2v_config
-                                print("✅ Loaded official Wan configs")
-                            except ImportError:
-                                print("⚠️ Using minimal configs")
-                                # Create minimal config structure
-                                class MinimalConfig:
-                                    def __init__(self):
-                                        self.model = type('obj', (object,), {
-                                            'num_attention_heads': 32,
-                                            'attention_head_dim': 128,
-                                            'in_channels': 4,
-                                            'out_channels': 4,
-                                            'num_layers': 28,
-                                            'sample_size': 32,
-                                            'patch_size': 2,
-                                            'num_vector_embeds': None,
-                                            'activation_fn': "geglu",
-                                            'num_embeds_ada_norm': 1000,
-                                            'norm_elementwise_affine': False,
-                                            'norm_eps': 1e-6,
-                                            'attention_bias': True,
-                                            'caption_channels': 4096
-                                        })
-                                        
-                                t2v_config = MinimalConfig()
-                                i2v_config = MinimalConfig()
-                            
-                            # Initialize T2V model
-                            print(f"🚀 Initializing WanT2V with checkpoint dir: {self.t2v_path}")
-                            self.t2v_model = WanT2V(
-                                config=t2v_config,
-                                checkpoint_dir=self.t2v_path,
-                                device_id=0,
-                                rank=0,
-                                dit_fsdp=False,
-                                t5_fsdp=False
-                            )
-                            
-                            # Initialize I2V model (if different path)
-                            if self.i2v_path != self.t2v_path:
-                                try:
-                                    print(f"🚀 Initializing WanI2V with checkpoint dir: {self.i2v_path}")
-                                    self.i2v_model = WanI2V(
-                                        config=i2v_config,
-                                        checkpoint_dir=self.i2v_path,
-                                        device_id=0,
-                                        rank=0,
-                                        dit_fsdp=False,
-                                        t5_fsdp=False
-                                    )
-                                    print("✅ Separate I2V model loaded")
-                                except Exception as e:
-                                    print(f"⚠️ Separate I2V model failed, will use T2V: {e}")
-                                    self.i2v_model = None
-                            else:
-                                print("✅ Using T2V model for I2V (same path)")
-                                self.i2v_model = None
-                            
-                            self.loaded = True
-                            print("✅ Separate Wan models loaded successfully")
-                            return
-                            
-                        except ImportError as import_e:
-                            print(f"❌ Failed to import wan module: {import_e}")
-                            raise RuntimeError("Wan import failed")
+                            from wan.configs.wan_t2v_14B import t2v_14B as t2v_config
+                        except ImportError:
+                            # Create minimal config structure
+                            class MinimalConfig:
+                                def __init__(self):
+                                    self.model = type('obj', (object,), {
+                                        'num_attention_heads': 32,
+                                        'attention_head_dim': 128,
+                                        'in_channels': 4,
+                                        'out_channels': 4,
+                                        'num_layers': 28,
+                                        'sample_size': 32,
+                                        'patch_size': 2,
+                                        'num_vector_embeds': None,
+                                        'activation_fn': "geglu",
+                                        'num_embeds_ada_norm': 1000,
+                                        'norm_elementwise_affine': False,
+                                        'norm_eps': 1e-6,
+                                        'attention_bias': True,
+                                        'caption_channels': 4096
+                                    })
+                            t2v_config = MinimalConfig()
+                        
+                        # Initialize T2V model
+                        print(f"🚀 Initializing WanT2V with checkpoint dir: {self.t2v_path}")
+                        self.current_model = WanT2V(
+                            config=t2v_config,
+                            checkpoint_dir=self.t2v_path,
+                            device_id=0,
+                            rank=0,
+                            dit_fsdp=False,
+                            t5_fsdp=False
+                        )
+                        
+                        self.current_model_type = "T2V"
+                        self.loaded = True
+                        print("✅ T2V model loaded successfully")
+                        return True
                     else:
                         raise RuntimeError("Wan repository not found")
                     
                 except Exception as e:
-                    print(f"❌ Separate model loading failed: {e}")
-                    raise RuntimeError(f"Failed to load separate models: {e}")
+                    print(f"❌ T2V model loading failed: {e}")
+                    return False
+            
+            def _load_i2v_model(self):
+                """Load I2V model"""
+                try:
+                    # If I2V path is same as T2V, just switch mode (don't reload)
+                    if self.i2v_path == self.t2v_path:
+                        print("✅ Using T2V model for I2V (same path)")
+                        if self.current_model_type != "T2V":
+                            return self._load_t2v_model()
+                        return True
+                    
+                    print("🔄 Loading I2V model...")
+                    self._unload_current_model()  # Unload T2V model first
+                    
+                    # Import and setup Wan components
+                    import sys
+                    from pathlib import Path
+                    
+                    # Look for Wan2.1 directory in the extension root
+                    extension_root = Path(__file__).parent.parent.parent
+                    wan_repo_path = extension_root / "Wan2.1"
+                    
+                    if wan_repo_path.exists() and (wan_repo_path / "wan").exists():
+                        if str(wan_repo_path) not in sys.path:
+                            sys.path.insert(0, str(wan_repo_path))
+                        
+                        # Apply Flash Attention compatibility patches
+                        try:
+                            from scripts.deforum_helpers.wan_flash_attention_patch import apply_wan_compatibility_patches
+                            apply_wan_compatibility_patches()
+                        except Exception as patch_e:
+                            print(f"⚠️ Could not apply compatibility patches: {patch_e}")
+                        
+                        # Import Wan components
+                        import wan  # type: ignore
+                        from wan.image2video import WanI2V  # type: ignore
+                        
+                        # Load configs
+                        try:
+                            from wan.configs.wan_i2v_14B import i2v_14B as i2v_config
+                        except ImportError:
+                            # Create minimal config structure
+                            class MinimalConfig:
+                                def __init__(self):
+                                    self.model = type('obj', (object,), {
+                                        'num_attention_heads': 32,
+                                        'attention_head_dim': 128,
+                                        'in_channels': 4,
+                                        'out_channels': 4,
+                                        'num_layers': 28,
+                                        'sample_size': 32,
+                                        'patch_size': 2,
+                                        'num_vector_embeds': None,
+                                        'activation_fn': "geglu",
+                                        'num_embeds_ada_norm': 1000,
+                                        'norm_elementwise_affine': False,
+                                        'norm_eps': 1e-6,
+                                        'attention_bias': True,
+                                        'caption_channels': 4096
+                                    })
+                            i2v_config = MinimalConfig()
+                        
+                        # Initialize I2V model
+                        print(f"🚀 Initializing WanI2V with checkpoint dir: {self.i2v_path}")
+                        self.current_model = WanI2V(
+                            config=i2v_config,
+                            checkpoint_dir=self.i2v_path,
+                            device_id=0,
+                            rank=0,
+                            dit_fsdp=False,
+                            t5_fsdp=False
+                        )
+                        
+                        self.current_model_type = "I2V"
+                        self.loaded = True
+                        print("✅ I2V model loaded successfully")
+                        return True
+                    else:
+                        raise RuntimeError("Wan repository not found")
+                    
+                except Exception as e:
+                    print(f"❌ I2V model loading failed: {e}")
+                    # Fallback to T2V if I2V fails
+                    print("🔄 Falling back to T2V model...")
+                    return self._load_t2v_model()
+            
+            def _ensure_model_loaded(self, model_type: str):
+                """Ensure the correct model is loaded for the operation"""
+                if model_type == "T2V" and self.current_model_type != "T2V":
+                    return self._load_t2v_model()
+                elif model_type == "I2V" and self.current_model_type != "I2V":
+                    return self._load_i2v_model()
+                return True
             
             def __call__(self, prompt, height, width, num_frames, num_inference_steps, guidance_scale, **kwargs):
                 """Generate video frames using T2V model"""
-                if not self.loaded or not self.t2v_model:
-                    raise RuntimeError("T2V model not loaded")
+                if not self._ensure_model_loaded("T2V"):
+                    raise RuntimeError("Failed to load T2V model")
                 
-                print(f"🎬 Generating {num_frames} frames with separate T2V model...")
+                print(f"🎬 Generating {num_frames} frames with T2V model...")
                 
                 try:
-                    result = self.t2v_model.generate(
+                    result = self.current_model.generate(
                         input_prompt=prompt,
                         size=(width, height),
                         frame_num=num_frames,
@@ -1966,17 +2088,28 @@ Error: {e}
                     raise RuntimeError(f"T2V generation failed: {e}")
             
             def generate_image2video(self, image, prompt, height, width, num_frames, num_inference_steps, guidance_scale, **kwargs):
-                """Generate video from image using I2V model (or T2V if no I2V)"""
-                if not self.loaded:
-                    raise RuntimeError("Models not loaded")
-                
+                """Generate video from image using I2V model (with model switching)"""
                 print(f"🎬 Generating I2V {num_frames} frames...")
                 
+                # Try to load I2V model (will unload T2V if different)
+                if not self._ensure_model_loaded("I2V"):
+                    print("⚠️ Failed to load I2V model, falling back to T2V with enhanced prompt")
+                    # Fallback to T2V with enhanced prompt
+                    enhanced_prompt = f"Starting from the given image, {prompt}. Maintain visual continuity."
+                    
+                    if not self._ensure_model_loaded("T2V"):
+                        raise RuntimeError("Failed to load any model")
+                    
+                    return self.__call__(
+                        enhanced_prompt, height, width, num_frames, 
+                        num_inference_steps, guidance_scale, **kwargs
+                    )
+                
                 try:
-                    # Use dedicated I2V model if available
-                    if self.i2v_model:
+                    # Use dedicated I2V model if successfully loaded
+                    if self.current_model_type == "I2V":
                         print("🚀 Using dedicated I2V model")
-                        result = self.i2v_model.generate(
+                        result = self.current_model.generate(
                             input_prompt=prompt,
                             img=image,
                             max_area=height * width,
@@ -1990,9 +2123,9 @@ Error: {e}
                         )
                         return result
                     
-                    # Fallback to T2V with enhanced prompt
+                    # If we somehow don't have I2V, use T2V with enhanced prompt
                     else:
-                        print("🔄 Using T2V model for I2V (enhanced prompt)")
+                        print("⚠️ Warning: Using T2V model for I2V (enhanced prompt)")
                         enhanced_prompt = f"Starting from the given image, {prompt}. Maintain visual continuity."
                         
                         return self.__call__(
@@ -2003,6 +2136,10 @@ Error: {e}
                 except Exception as e:
                     print(f"❌ I2V generation failed: {e}")
                     raise RuntimeError(f"I2V generation failed: {e}")
+            
+            def cleanup(self):
+                """Clean up and unload all models"""
+                self._unload_current_model()
         
         # Create and return the separate pipeline
         return SeparateWanPipeline(t2v_path, i2v_path, self.device)

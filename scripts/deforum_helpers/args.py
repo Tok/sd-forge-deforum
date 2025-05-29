@@ -1147,15 +1147,15 @@ def WanArgs():
             "label": "T2V Model",
             "type": "dropdown",
             "choices": ["Auto-Detect", "1.3B T2V", "14B T2V", "Custom Path"],
-            "value": "Auto-Detect",
-            "info": "Text-to-Video model for first clip generation. Auto-detect finds best available model."
+            "value": "14B T2V",
+            "info": "Text-to-Video model for first clip generation. 14B recommended for I2V chaining."
         },
         "wan_i2v_model": {
             "label": "I2V Model", 
             "type": "dropdown",
-            "choices": ["Auto-Detect", "1.3B I2V", "14B I2V", "Use T2V Model (No Continuity)", "Custom Path"],
-            "value": "Auto-Detect",
-            "info": "Image-to-Video model for clip chaining. 'Use T2V Model' breaks continuity but may work if I2V models unavailable."
+            "choices": ["Auto-Detect", "14B I2V 720P", "14B I2V 480P", "Use T2V Model (No Continuity)", "Custom Path"],
+            "value": "14B I2V 720P",
+            "info": "Image-to-Video model for clip chaining. ⚠️ Note: No 1.3B I2V models exist, only 14B. For best results, use 14B T2V + 14B I2V."
         },
         "wan_auto_download": {
             "label": "Auto-Download Models",
@@ -1166,9 +1166,9 @@ def WanArgs():
         "wan_preferred_size": {
             "label": "Preferred Model Size",
             "type": "dropdown",
-            "choices": ["1.3B (Recommended)", "14B (High Quality)"],
-            "value": "1.3B (Recommended)",
-            "info": "Preferred model size when auto-detecting. 1.3B is faster and uses less VRAM."
+            "choices": ["14B (T2V + I2V - Best Quality)", "1.3B (T2V Only - Faster)"],
+            "value": "14B (T2V + I2V - Best Quality)",
+            "info": "14B: Real I2V chaining with continuity. 1.3B: Faster but no real I2V (uses T2V for all clips)."
         },
         "wan_model_path": {
             "label": "Custom Model Path",

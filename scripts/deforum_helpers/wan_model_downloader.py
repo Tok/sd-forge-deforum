@@ -19,26 +19,26 @@ class WanModelDownloader:
         self.available_models = {
             "1.3B T2V": {
                 "repo_id": "Wan-AI/Wan2.1-T2V-1.3B",
-                "local_dir": "models/wan/t2v_1.3b",
-                "description": "1.3B Text-to-Video model (recommended)",
-                "size_gb": 17
+                "local_dir": str(self.models_dir / "Wan2.1-T2V-1.3B"),
+                "description": "1.3B Text-to-Video model (480P)",
+                "size_gb": 8
             },
             "14B T2V": {
                 "repo_id": "Wan-AI/Wan2.1-T2V-14B", 
-                "local_dir": "models/wan/t2v_14b",
-                "description": "14B Text-to-Video model (high quality)",
+                "local_dir": str(self.models_dir / "Wan2.1-T2V-14B"),
+                "description": "14B Text-to-Video model (480P/720P)",
                 "size_gb": 75
             },
-            "1.3B I2V": {
-                "repo_id": "Wan-AI/Wan2.1-I2V-1.3B",
-                "local_dir": "models/wan/i2v_1.3b", 
-                "description": "1.3B Image-to-Video model",
-                "size_gb": 17
+            "14B I2V 720P": {
+                "repo_id": "Wan-AI/Wan2.1-I2V-14B-720P",
+                "local_dir": str(self.models_dir / "Wan2.1-I2V-14B-720P"),
+                "description": "14B Image-to-Video model (720P)",
+                "size_gb": 75
             },
-            "14B I2V": {
-                "repo_id": "Wan-AI/Wan2.1-I2V-14B",
-                "local_dir": "models/wan/i2v_14b",
-                "description": "14B Image-to-Video model",
+            "14B I2V 480P": {
+                "repo_id": "Wan-AI/Wan2.1-I2V-14B-480P", 
+                "local_dir": str(self.models_dir / "Wan2.1-I2V-14B-480P"),
+                "description": "14B Image-to-Video model (480P)",
                 "size_gb": 75
             }
         }
@@ -162,22 +162,28 @@ class WanModelDownloader:
         
         # Check for essential files
         required_files = [
-            "diffusion_pytorch_model.safetensors",
             "config.json"
         ]
         
         for file in required_files:
             if not (local_dir / file).exists():
-                # Check for multi-part models (14B)
-                if file == "diffusion_pytorch_model.safetensors":
-                    multi_part_exists = any(
-                        (local_dir / f"diffusion_pytorch_model-{i:05d}-of-00007.safetensors").exists()
-                        for i in range(1, 8)
-                    )
-                    if not multi_part_exists:
-                        return False
-                else:
-                    return False
+                return False
+        
+        # Check for diffusion model files (single file OR multi-part)
+        single_diffusion_file = local_dir / "diffusion_pytorch_model.safetensors"
+        multi_part_index = local_dir / "diffusion_pytorch_model.safetensors.index.json"
+        
+        if single_diffusion_file.exists():
+            # Single file model (1.3B)
+            pass
+        elif multi_part_index.exists():
+            # Multi-part model (14B) - verify at least some files exist
+            multi_part_files = list(local_dir.glob("diffusion_pytorch_model-*-of-*.safetensors"))
+            if not multi_part_files:
+                return False
+        else:
+            # No diffusion model found
+            return False
         
         return True
     
@@ -210,7 +216,8 @@ class WanModelDownloader:
         print("🎯 Auto-downloading recommended model: 1.3B T2V")
         if self.download_model("1.3B T2V"):
             results["t2v"] = self.get_model_path("1.3B T2V")
-            results["i2v"] = results["t2v"]  # Use same model for I2V
+            results["i2v"] = results["t2v"]  # Use same model for I2V (no 1.3B I2V exists)
+            print("⚠️ Warning: Using T2V model for I2V (no 1.3B I2V model exists). This will break continuity.")
         else:
             print("❌ Failed to download recommended model")
         
@@ -223,25 +230,39 @@ class WanModelDownloader:
         # Determine which models to download
         if prefer_size.startswith("1.3B"):
             t2v_model = "1.3B T2V"
-            i2v_model = "1.3B I2V" if download_i2v else None
+            if download_i2v:
+                print("⚠️ WARNING: No 1.3B I2V model exists!")
+                print("💡 RECOMMENDATION: Either use 1.3B T2V only (T2V for all clips)")
+                print("                   OR upgrade to 14B T2V + 14B I2V for real I2V chaining")
+                print("🔄 Will use 1.3B T2V for both T2V and I2V (breaks continuity)")
+                i2v_model = None  # Will use T2V
+            else:
+                i2v_model = None
         else:
             t2v_model = "14B T2V"
-            i2v_model = "14B I2V" if download_i2v else None
+            i2v_model = "14B I2V 720P" if download_i2v else None
+            if download_i2v:
+                print("✅ Using proper 14B T2V + 14B I2V combination for best results")
         
         # Download T2V model
-        print(f"📥 Downloading preferred T2V model: {t2v_model}")
+        print(f"📥 Downloading T2V model: {t2v_model}")
         if self.download_model(t2v_model):
             results["t2v"] = self.get_model_path(t2v_model)
         
-        # Download I2V model if requested
+        # Download I2V model if requested and exists
         if i2v_model:
             print(f"📥 Downloading I2V model: {i2v_model}")
             if self.download_model(i2v_model):
                 results["i2v"] = self.get_model_path(i2v_model)
+            else:
+                print(f"❌ Failed to download {i2v_model}, will use T2V for I2V")
+                results["i2v"] = results["t2v"]
         
         # Use T2V for I2V if no separate I2V model
         if "i2v" not in results and "t2v" in results:
             results["i2v"] = results["t2v"]
+            if download_i2v:
+                print("⚠️ Using T2V model for I2V - this will break visual continuity between clips")
         
         return results
 
