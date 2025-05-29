@@ -44,7 +44,7 @@ class WanModelDiscovery:
             Path("C:/") / "AI_Models" / "wan" if os.name == 'nt' else Path.home() / "AI_Models" / "wan",
             
             # Official Wan repo model locations
-            current_dir / "wan_official_repo" / "models",
+            current_dir / "Wan2.1" / "models",
             
             # User's documents (common on Windows)
             Path.home() / "Documents" / "AI_Models" / "wan" if os.name == 'nt' else None,

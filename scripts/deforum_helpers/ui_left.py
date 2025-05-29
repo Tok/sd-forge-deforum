@@ -36,6 +36,77 @@ def set_arg_lists():
     dloopArgs = SimpleNamespace(**LoopArgs())  # Guided imgs args
     return d, da, dp, dv, dr, dfu, dku, dw, dloopArgs
 
+def wan_generate_video():
+    """
+    Simple placeholder function for Wan video generation button
+    Returns a status message indicating the feature is integrated but needs models
+    """
+    try:
+        print("🎬 Wan video generation button clicked!")
+        
+        # Try to discover models to check if setup is complete
+        try:
+            from .wan_simple_integration import WanSimpleIntegration
+            integration = WanSimpleIntegration()
+            models = integration.discover_models()
+            
+            if models:
+                return f"""✅ Wan integration is working!
+
+Found {len(models)} model(s):
+{chr(10).join([f"• {model['name']} ({model['size']})" for model in models[:3]])}
+
+🔧 TODO: Full generation requires connecting to Deforum's argument system.
+For now, you can test model discovery is working.
+
+💡 Next steps:
+1. Ensure your prompts are configured in the Prompts tab
+2. Set your desired FPS in the Output tab  
+3. Choose animation mode 'Wan Video' in the Keyframes tab
+4. Click the main Generate button in Deforum
+
+📁 Models found in: {models[0]['path']}"""
+            else:
+                return """❌ No Wan models found!
+
+💡 SETUP REQUIRED:
+1. Download a Wan model:
+   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
+
+2. Or place your Wan models in:
+   • models/wan/
+   • models/Wan/
+   • HuggingFace cache (automatic)
+
+3. Restart the WebUI after downloading
+
+The auto-discovery will find your models automatically!"""
+                
+        except ImportError as e:
+            return f"""⚠️ Wan integration partially loaded
+
+The Wan tab is integrated but some dependencies may be missing.
+
+Error: {str(e)}
+
+💡 To complete setup:
+1. Download Wan models as instructed above
+2. Ensure all Wan dependencies are installed
+3. Check the console for any import errors"""
+            
+        except Exception as e:
+            return f"""❌ Wan integration error: {str(e)}
+
+💡 Troubleshooting:
+1. Check that Wan models are downloaded and placed correctly
+2. Verify all dependencies are installed
+3. Check console output for detailed error messages
+4. Try restarting the WebUI"""
+            
+    except Exception as e:
+        print(f"❌ Wan button error: {e}")
+        return f"❌ Error: {str(e)}"
+
 def setup_deforum_left_side_ui():
     d, da, dp, dv, dr, dfu, dku, dw, dloopArgs = set_arg_lists()
     # set up main info accordion on top of the UI
@@ -67,28 +138,41 @@ def setup_deforum_left_side_ui():
     show_info_on_ui.change(fn=change_css, inputs=show_info_on_ui, outputs=[gr.HTML()])
     handle_change_functions(locals())
 
-    # Set up Wan Generate button if it exists
+    # Set up Wan Generate button if it exists - with better error handling
     if 'wan_generate_button' in locals() and 'wan_generation_status' in locals():
-        from .args import get_component_names
-        from .ui_elements import wan_generate_video
-        
-        # Get all components in the same order as the main generate button
-        component_names = get_component_names()
-        component_list = []
-        
-        # Add components in the correct order
-        for name in component_names:
-            if name in locals():
-                component_list.append(locals()[name])
-            else:
-                # Use a default value if component is missing
-                component_list.append(None)
-        
-        # Connect the Wan generate button
-        locals()['wan_generate_button'].click(
-            fn=wan_generate_video,
-            inputs=component_list,
-            outputs=[locals()['wan_generation_status']]
-        )
+        try:
+            print("🔗 Connecting Wan generate button...")
+            
+            # Import the real Wan generation function from ui_elements
+            from .ui_elements import wan_generate_video as wan_generate_video_main
+            
+            # Get all component values to pass to the Wan generation function
+            from .args import get_component_names
+            component_names = get_component_names()
+            
+            # Create list of all UI components in the correct order
+            component_inputs = []
+            for name in component_names:
+                if name in locals():
+                    component_inputs.append(locals()[name])
+                else:
+                    print(f"⚠️ Warning: Component '{name}' not found in locals()")
+            
+            print(f"📊 Found {len(component_inputs)} UI components for Wan generation")
+            
+            locals()['wan_generate_button'].click(
+                fn=wan_generate_video_main,
+                inputs=component_inputs,  # Pass all UI component values
+                outputs=[locals()['wan_generation_status']]
+            )
+            print("✅ Wan generate button connected successfully")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to connect Wan generate button: {e}")
+            # Fallback to the simple placeholder function
+            locals()['wan_generate_button'].click(
+                fn=wan_generate_video,
+                inputs=[],
+                outputs=[locals()['wan_generation_status']]
+            )
 
     return locals()

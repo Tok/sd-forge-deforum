@@ -20,7 +20,7 @@ class WanEnvironmentManager:
     
     def __init__(self, extension_root: str):
         self.extension_root = Path(extension_root)
-        self.wan_repo_dir = self.extension_root / "wan_official_repo"
+        self.wan_repo_dir = self.extension_root / "Wan2.1"
         
     def setup_wan_repository(self) -> Path:
         """

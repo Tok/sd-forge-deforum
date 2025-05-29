@@ -1,0 +1,14 @@
+{
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none"
+    },
+    "python.analysis.ignore": [
+        "**/wan_simple_integration.py",
+        "**/test_wan_improvements.py", 
+        "**/verify_wan_ui_fix.py"
+    ],
+    "python.analysis.extraPaths": [
+        "./scripts",
+        "./scripts/deforum_helpers"
+    ]
+} 

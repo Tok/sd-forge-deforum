@@ -408,232 +408,103 @@ def get_tab_kohya_hrfix(dku: SimpleNamespace):
 
 def wan_generate_video(*component_args):
     """
-    Function to handle Wan video generation from the Wan tab using AUTO-DISCOVERY
-    Uses the new direct integration approach with smart model discovery
+    Function to handle Wan video generation from the Wan tab
+    This function calls the main Deforum generation pipeline with Wan mode
     """
     try:
-        # Import from the NEW direct integration
-        from .args import get_component_names, process_args
-        from .wan_direct_integration import WanDirectIntegration
-        import uuid
-        import modules.shared as shared
-        import os
-        import time
+        print("🎬 Wan video generation button clicked!")
         
-        print("🎬 Wan video generation triggered from Wan tab (AUTO-DISCOVERY)")
-        print("🔍 Using smart model discovery instead of manual paths")
-        print("🚀 NEW: Direct integration with official Wan repository")
-        
-        # Generate a unique ID for this run
-        job_id = str(uuid.uuid4())[:8]
-        
-        # Get component names to understand the argument structure
-        component_names = get_component_names()
-        
-        # Create the arguments dict for processing
-        args_dict = {}
-        for i, name in enumerate(component_names):
-            if i < len(component_args):
-                args_dict[name] = component_args[i]
-            else:
-                args_dict[name] = None
-        
-        # Add required fields for process_args
-        args_dict['override_settings_with_file'] = False
-        args_dict['custom_settings_file'] = ""
-        args_dict['animation_prompts'] = args_dict.get('animation_prompts', '{"0": "a beautiful landscape"}')
-        args_dict['animation_prompts_positive'] = args_dict.get('animation_prompts_positive', "")
-        args_dict['animation_prompts_negative'] = args_dict.get('animation_prompts_negative', "")
-        
-        # Force animation mode to Wan Video
-        args_dict['animation_mode'] = 'Wan Video'
-        
-        # Set up Wan-specific output directory structure - Let Deforum handle batch_name processing
-        current_file_path = os.path.abspath(__file__)
-        webui_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file_path)))))
-        wan_base_dir = os.path.join(webui_root, 'outputs', 'wan-images')
-        os.makedirs(wan_base_dir, exist_ok=True)
-        
-        class MockProcessing:
-            def __init__(self):
-                # Let Deforum create the final directory structure
-                self.outpath_samples = wan_base_dir
-        
-        args_dict['p'] = MockProcessing()
-        
-        print(f"📊 Processing {len(component_args)} component arguments...")
-        
-        # Process arguments using Deforum's argument processing
-        args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, wan_args = process_args(args_dict, job_id)
-        
-        if not args_loaded_ok:
-            return "❌ Failed to load arguments for Wan generation"
-        
-        if not wan_args.wan_enabled:
-            return "❌ Wan Video mode selected but Wan is not enabled. Please enable Wan in the Wan Video tab."
-        
-        print(f"✅ Arguments processed successfully")
-        print(f"📁 Output directory: {args.outdir}")
-        print(f"🎯 Model size preference: {getattr(wan_args, 'wan_model_size', '1.3B')}")
-        print(f"📐 Resolution: {wan_args.wan_resolution}")
-        print(f"🎬 FPS: {wan_args.wan_fps}")
-        print(f"⏱️ Duration: Calculated automatically from prompt schedule")
-        
-        # Initialize the simple integration (more reliable)
+        # Import the main Deforum run function
+        from .run_deforum import run_deforum
         from .wan_simple_integration import WanSimpleIntegration
-        integration = WanSimpleIntegration()
         
-        # Auto-discover models
-        print("🔍 Auto-discovering Wan models...")
+        # Auto-discover models first to validate setup
+        integration = WanSimpleIntegration()
         models = integration.discover_models()
         
         if not models:
-            return """❌ No Wan models found automatically!
+            return """❌ No Wan models found!
 
-💡 SOLUTIONS:
-1. 📥 Download a Wan model using HuggingFace CLI:
-   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir "models/wan"
+🔧 SETUP REQUIRED:
+1. 📥 Install Flash Attention (required for Wan):
+   pip install flash-attn --no-build-isolation
 
-2. 📂 Or place your model in one of these locations:
-   • models/wan/
-   • models/wan/
-   • models/Wan/
-   
-3. ✅ Restart generation after downloading
+2. 📥 Install Wan repository:
+   git clone https://github.com/Wan-AI/Wan2.1.git
+   cd Wan2.1
+   pip install -e .
 
-The auto-discovery will find your models automatically!"""
+3. 📂 Download models to: models/wan/
+   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
+
+4. ✅ Restart WebUI after setup
+
+💡 Wan requires Flash Attention and the official Wan repository."""
         
-        # Select the best model (or use user's size preference)
-        selected_model = None
-        user_preferred_size = wan_args.wan_model_size.replace(" (Recommended)", "").replace(" (High Quality)", "")
+        print(f"✅ Found {len(models)} Wan model(s):")
+        for i, model in enumerate(models, 1):
+            print(f"   {i}. {model['name']} ({model['size']}) - {model['path']}")
         
-        for model in models:
-            if user_preferred_size in model['size']:
-                selected_model = model
-                break
-                
-        # Fallback to best available model
-        if not selected_model:
-            selected_model = models[0]
-            print(f"⚠️ User requested {user_preferred_size} but using available: {selected_model['size']}")
-            
-        print(f"🎯 Selected model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
-        print(f"📁 Model path: {selected_model['path']}")
+        # Validate prompts
+        animation_prompts = component_args[2] if len(component_args) > 2 else '{"0": "a beautiful landscape"}'
+        if not animation_prompts or animation_prompts.strip() == '{"0": "a beautiful landscape"}':
+            return """❌ No prompts configured!
+
+🔧 SETUP REQUIRED:
+1. 📝 Go to the **Prompts tab** and configure your animation prompts
+2. 🎬 Set your desired FPS in the **Output tab**
+3. 🎯 Optionally configure seeds in **Keyframes → Seed & SubSeed tab**
+4. 🎬 Click **Generate Wan Video** again
+
+💡 Wan needs your prompt schedule to know what to generate!
+
+Example prompts:
+{
+  "0": "a serene beach at sunset",
+  "60": "a misty forest in the morning",
+  "120": "a bustling city street at night"
+}"""
         
-        # Parse animation prompts and calculate timing (simple replacement for WanPromptScheduler)
-        def parse_prompts_and_timing(animation_prompts, wan_args, video_args):
-            """Calculate exact frame counts from prompt schedule for audio sync precision"""
-            prompt_schedule = []
-            
-            # Sort prompts by frame number
-            sorted_prompts = sorted(animation_prompts.items(), key=lambda x: int(x[0]))
-            
-            if not sorted_prompts:
-                return [("a beautiful landscape", 0, 81)]  # Default: 0 start frame, 81 frames
-            
-            # Calculate frame differences between prompts
-            for i, (frame_str, prompt) in enumerate(sorted_prompts):
-                start_frame = int(frame_str)
-                clean_prompt = prompt.split('--neg')[0].strip()
-                
-                # Calculate end frame (frame count for this clip)
-                if i < len(sorted_prompts) - 1:
-                    # Next prompt exists - calculate difference
-                    next_frame = int(sorted_prompts[i + 1][0])
-                    frame_count = next_frame - start_frame
-                else:
-                    # Last prompt - use default or calculate from total expected frames
-                    # Assume at least 2 seconds worth of frames for the last clip
-                    frame_count = max(2 * wan_args.wan_fps, 81)  # Minimum 2 seconds or 81 frames
-                
-                # Ensure minimum frame count for Wan (at least 5 frames)
-                frame_count = max(5, frame_count)
-                
-                # Pad to Wan's 4n+1 requirement if needed (but try to preserve exact timing)
-                if (frame_count - 1) % 4 != 0:
-                    # Calculate closest 4n+1 value
-                    target_4n_plus_1 = ((frame_count - 1) // 4) * 4 + 1
-                    next_4n_plus_1 = target_4n_plus_1 + 4
-                    
-                    # Choose the closest one
-                    if abs(frame_count - target_4n_plus_1) <= abs(frame_count - next_4n_plus_1):
-                        frame_count = target_4n_plus_1
-                    else:
-                        frame_count = next_4n_plus_1
-                
-                # Add to schedule: (prompt, start_frame, frame_count)
-                prompt_schedule.append((clean_prompt, start_frame, frame_count))
-                
-                print(f"  Clip {i+1}: '{clean_prompt[:50]}...' (start: frame {start_frame}, frames: {frame_count})")
-            
-            return prompt_schedule
+        # Force animation mode to Wan Video
+        # Find the animation_mode argument and set it
+        component_args = list(component_args)
         
-        prompt_schedule = parse_prompts_and_timing(root.animation_prompts, wan_args, video_args)
+        # Get component names to find the animation_mode index
+        from .args import get_component_names
+        component_names = get_component_names()
         
-        print(f"📝 Generated {len(prompt_schedule)} video clips:")
-        # Note: parse_prompts_and_timing now returns (prompt, start_frame, frame_count)
+        try:
+            animation_mode_index = component_names.index('animation_mode')
+            component_args[animation_mode_index] = 'Wan Video'
+            print(f"✅ Set animation mode to 'Wan Video'")
+        except (ValueError, IndexError):
+            print("⚠️ Could not find animation_mode in component args")
         
-        # Generate video clips using direct integration
-        generated_videos = []
-        total_clips = len(prompt_schedule)
+        # Generate a unique job ID
+        import uuid
+        job_id = str(uuid.uuid4())[:8]
         
-        print(f"\n🎬 Starting generation with direct integration...")
+        print(f"🚀 Starting Wan video generation with job ID: {job_id}")
+        print(f"📝 Using prompts: {animation_prompts[:100]}...")
         
-        for i, (prompt, start_frame, frame_count) in enumerate(prompt_schedule):
-            if shared.state.interrupted:
-                print("⏹️ Generation interrupted by user")
-                break
-                
-            print(f"\n🎬 Generating clip {i+1}/{total_clips}: {prompt[:50]}...")
-            print(f"   📍 Frame range: {start_frame} to {start_frame + frame_count} ({frame_count} frames)")
+        # Call the main Deforum generation function
+        # The run_deforum function expects: job_id, custom_settings_file, *component_args
+        result = run_deforum(job_id, None, *component_args)
+        
+        if result and len(result) >= 4:
+            # run_deforum returns (images, seed, info, comments)
+            images, seed, info, comments = result
             
-            # Use the exact frame count from the prompt schedule for audio sync precision
-            num_frames = frame_count
-            
-            # Parse resolution
-            width, height = map(int, wan_args.wan_resolution.split('x'))
-            
-            # Generate this clip using simple integration
-            output_file = integration.generate_video_simple(
-                prompt=prompt,
-                model_info=selected_model,
-                output_dir=str(args.outdir),
-                width=width,
-                height=height,
-                num_frames=num_frames,
-                steps=wan_args.wan_inference_steps,
-                guidance_scale=wan_args.wan_guidance_scale,
-                seed=wan_args.wan_seed if wan_args.wan_seed > 0 else -1
-            )
-            
-            if output_file:
-                generated_videos.append(output_file)
-                print(f"✅ Clip {i+1} generated: {output_file}")
+            if comments and "Error" in str(comments):
+                return f"❌ Wan generation failed: {comments}"
             else:
-                print(f"❌ Clip {i+1} failed")
-                break  # Stop on first failure
-            
-            # Update progress
-            shared.state.job = f"Wan clip {i+1}/{total_clips}"
-            shared.state.job_no = i + 1
-            shared.state.job_count = total_clips
-        
-        if generated_videos:
-            print(f"\n🎉 Wan Video Generation Complete!")
-            print(f"📊 Generated {len(generated_videos)}/{total_clips} clips")
-            print(f"🎯 Using {selected_model['size']} model")
-            print(f"📁 Output directory: {args.outdir}")
-            
-            return f"✅ Wan video generation completed successfully!\n📊 Generated {len(generated_videos)} clips using {selected_model['size']} model\n📁 Output: {args.outdir}"
+                return f"✅ Wan video generation completed successfully!\n📊 Job ID: {job_id}\n💡 Check the Output tab for your video files."
         else:
-            return "❌ No video clips were generated successfully"
+            return "✅ Wan video generation started!\n💡 Check the console for progress and the Output tab for results."
             
     except Exception as e:
-        error_msg = f"❌ Wan ERROR: {str(e)}"
+        error_msg = f"❌ Wan generation error: {str(e)}"
         print(error_msg)
-        print(f"\n🔧 TROUBLESHOOTING:")
-        print(f"   • Check model availability with: python scripts/deforum_helpers/wan_direct_integration.py")
-        print(f"   • Download models: huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan")
         import traceback
         traceback.print_exc()
         return error_msg
@@ -701,55 +572,97 @@ The auto-discovery will find your models automatically!
         print("🚀 Starting direct Wan integration...")
         
         # Parse prompts for Wan scheduling
+        def parse_prompts_and_timing(animation_prompts, wan_args, video_args):
+            """Calculate exact frame counts from prompt schedule for audio sync precision"""
+            prompt_schedule = []
+            
+            # Sort prompts by frame number
+            sorted_prompts = sorted(animation_prompts.items(), key=lambda x: int(x[0]))
+            
+            if not sorted_prompts:
+                return [("a beautiful landscape", 0, 81)]  # Default: 0 start frame, 81 frames
+            
+            # Calculate frame differences between prompts
+            for i, (frame_str, prompt) in enumerate(sorted_prompts):
+                start_frame = int(frame_str)
+                clean_prompt = prompt.split('--neg')[0].strip()
+                
+                # Calculate end frame (frame count for this clip)
+                if i < len(sorted_prompts) - 1:
+                    # Next prompt exists - calculate difference
+                    next_frame = int(sorted_prompts[i + 1][0])
+                    frame_count = next_frame - start_frame
+                else:
+                    # Last prompt - use default or calculate from total expected frames
+                    # Assume at least 2 seconds worth of frames for the last clip
+                    frame_count = max(2 * wan_args.wan_fps, 81)  # Minimum 2 seconds or 81 frames
+                
+                # Ensure minimum frame count for Wan (at least 5 frames)
+                frame_count = max(5, frame_count)
+                
+                # Pad to Wan's 4n+1 requirement if needed (but try to preserve exact timing)
+                if (frame_count - 1) % 4 != 0:
+                    # Calculate closest 4n+1 value
+                    target_4n_plus_1 = ((frame_count - 1) // 4) * 4 + 1
+                    next_4n_plus_1 = target_4n_plus_1 + 4
+                    
+                    # Choose the closest one
+                    if abs(frame_count - target_4n_plus_1) <= abs(frame_count - next_4n_plus_1):
+                        frame_count = target_4n_plus_1
+                    else:
+                        frame_count = next_4n_plus_1
+                
+                # Add to schedule: (prompt, start_frame, frame_count)
+                prompt_schedule.append((clean_prompt, start_frame, frame_count))
+                
+                print(f"  Clip {i+1}: '{clean_prompt[:50]}...' (start: frame {start_frame}, frames: {frame_count})")
+            
+            return prompt_schedule
+        
         clips = parse_prompts_and_timing(animation_prompts, wan_args, video_args)
         
-        generated_videos = []
-        total_clips = len(clips)
+        # Parse resolution
+        width, height = map(int, wan_args.wan_resolution.split('x'))
         
+        # Prepare clips data for I2V chaining
+        clips_data = []
         for i, (prompt, start_frame, frame_count) in enumerate(clips):
-            print(f"\n🎬 Generating clip {i+1}/{total_clips}: {prompt[:50]}...")
-            print(f"   📍 Frame range: {start_frame} to {start_frame + frame_count} ({frame_count} frames)")
-            
-            # Use the exact frame count from the prompt schedule for audio sync precision
-            num_frames = frame_count
-            
-            # Parse resolution
-            width, height = map(int, wan_args.wan_resolution.split('x'))
-            
-            # Generate this clip using simple integration
-            output_file = integration.generate_video_simple(
-                prompt=prompt,
-                model_info=selected_model,
-                output_dir=str(output_directory),
-                width=width,
-                height=height,
-                num_frames=num_frames,
-                steps=wan_args.wan_inference_steps,
-                guidance_scale=wan_args.wan_guidance_scale,
-                seed=wan_args.wan_seed if wan_args.wan_seed > 0 else -1
-            )
-            
-            if output_file:
-                generated_videos.append(output_file)
-                print(f"✅ Clip {i+1} generated: {output_file}")
-            else:
-                print(f"❌ Clip {i+1} failed")
-                break  # Stop on first failure
+            clips_data.append({
+                'prompt': prompt,
+                'start_frame': start_frame,
+                'end_frame': start_frame + frame_count,
+                'num_frames': frame_count
+            })
+        
+        print(f"\n🔗 Using I2V chaining for better continuity between {len(clips_data)} clips")
+        
+        # Generate video using I2V chaining
+        output_file = integration.generate_video_with_i2v_chaining(
+            clips=clips_data,
+            model_info=selected_model,
+            output_dir=str(output_directory),
+            width=width,
+            height=height,
+            steps=wan_args.wan_inference_steps,
+            guidance_scale=wan_args.wan_guidance_scale,
+            seed=wan_args.wan_seed if wan_args.wan_seed > 0 else -1
+        )
+        
+        generated_videos = [output_file] if output_file else []
         
         total_time = time.time() - start_time
         
         if generated_videos:
-            print(f"\n🎉 Wan generation completed!")
-            print(f"✅ Generated {len(generated_videos)}/{total_clips} clips")
+            print(f"\n🎉 Wan I2V chained generation completed!")
+            print(f"✅ Generated seamless video with {len(clips_data)} clips using I2V chaining")
             print(f"⏱️ Total time: {total_time:.1f} seconds")
-            print(f"📁 Output files:")
-            for video in generated_videos:
-                print(f"   🎬 {video}")
+            print(f"📁 Output file: {generated_videos[0]}")
+            print(f"🔗 I2V chaining ensures smooth transitions between clips")
                 
             # Return the output directory for Deforum's video processing
             return str(output_directory)
         else:
-            raise RuntimeError("❌ No video clips were generated successfully")
+            raise RuntimeError("❌ I2V chained video generation failed")
             
     except Exception as e:
         print(f"❌ Wan generation failed: {e}")
@@ -758,7 +671,7 @@ The auto-discovery will find your models automatically!
         print(f"\n🔧 TROUBLESHOOTING:")
         print(f"   • Check model availability with: python scripts/deforum_helpers/wan_direct_integration.py")
         print(f"   • Download models: huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan")
-        print(f"   • Verify Wan repository: {integration.wan_repo_path}")
+        print(f"   • Verify Wan models are in: models/wan/ directory")
         
         # Re-raise for Deforum error handling
         raise
@@ -801,18 +714,52 @@ def get_tab_wan(dw: SimpleNamespace):
         # Hidden model path for compatibility (auto-populated by discovery)
         wan_model_path = gr.Textbox(visible=False, value="auto-discovery")
         
+        # Hidden wan_fps and wan_seed for compatibility (integrated with Deforum schedules)
+        wan_fps = gr.Slider(
+            minimum=dw.wan_fps["minimum"], 
+            maximum=dw.wan_fps["maximum"], 
+            step=dw.wan_fps["step"], 
+            value=dw.wan_fps["value"],
+            visible=False
+        )
+        wan_seed = gr.Number(
+            precision=dw.wan_seed["precision"], 
+            value=dw.wan_seed["value"],
+            visible=False
+        )
+        
+        with gr.Accordion("🔗 Deforum Integration Status", open=True):
+            gr.Markdown("""
+            **Wan uses these settings from other Deforum tabs:**
+            """)
+            
+            with FormRow():
+                with FormColumn():
+                    gr.Markdown("**📝 Prompts:** From Prompts tab")
+                    gr.Markdown("**🎬 FPS:** From Output tab")
+                with FormColumn():
+                    gr.Markdown("**🎲 Seed:** From Keyframes → Seed & SubSeed tab")
+                    gr.Markdown("**⏱️ Duration:** Auto-calculated from prompt timing")
+        
         with gr.Accordion("Basic Wan Settings", open=True):
             gr.Markdown("""
-            **🔗 Integrated with Deforum Schedules:**
-            - **Seed**: Now uses the Deforum seed schedule from the Keyframes tab
-            - **FPS**: Uses the FPS setting from the Output tab slider
-            - **Prompts**: Uses your prompt schedule from the Prompts tab
+            **✨ Configure your Wan-specific settings below:**
             """)
             
             wan_resolution = create_row(dw.wan_resolution)
         
             with FormRow():
-                wan_inference_steps = create_gr_elem(dw.wan_inference_steps)
+                # DIRECT FIX: Create slider manually with minimum=5 (bypass all caching)
+                print("🔧 DEBUG: Creating Wan inference steps slider with minimum=5")
+                wan_inference_steps = gr.Slider(
+                    label="Inference Steps (Fixed Min=5)",  # Changed label to confirm this is our version
+                    minimum=5,  # FORCE minimum to 5
+                    maximum=100,
+                    step=5,
+                    value=50,
+                    elem_id="wan_inference_steps_fixed",  # Unique ID to identify our slider
+                    info="Number of inference steps for Wan generation. Lower values (5-15) for quick testing, higher values (30-50) for quality"
+                )
                 wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
         
         with gr.Accordion("Advanced Wan Settings", open=False):
@@ -827,17 +774,27 @@ def get_tab_wan(dw: SimpleNamespace):
         # Dedicated Wan Generate Button
         with gr.Accordion("Generate Wan Video", open=True):
             gr.Markdown("""
-            **🎯 Fully Integrated with Deforum:**
-            - **Prompts**: Uses your prompt schedule from the **Prompts tab**
-            - **Seed**: Uses the seed schedule from the **Keyframes → Seed & SubSeed tab**
-            - **FPS**: Uses the FPS setting from the **Output tab**
-            - **Duration**: Calculated automatically from your prompt schedule
+            **🎯 Ready to Generate Wan Videos:**
             
-            **✨ New Features:**
-            - No redundant checkbox - just click Generate!
-            - Seamless integration with all Deforum settings
-            - Auto-discovery finds your models automatically
-            - Smart model selection based on your preference
+            1. **Configure your prompts** in the **Prompts tab** (REQUIRED)
+            2. **Set your FPS** in the **Output tab** (REQUIRED)
+            3. **Configure seeds** in the **Keyframes → Seed & SubSeed tab** (optional)
+            4. **Choose your model size** above (if you have multiple models)
+            5. **Click Generate Wan Video** below!
+            
+            **✨ Fully Integrated Workflow:**
+            - ✅ Uses Deforum's prompt scheduling system
+            - ✅ Uses Deforum's FPS and seed settings  
+            - ✅ Auto-discovery finds your models automatically
+            - ✅ Smart model selection based on your preference
+            - ✅ Calls the full Deforum generation pipeline
+            
+            **🚀 NEW: I2V Chaining & PNG Frame Output**
+            - **PNG Frames**: Each clip generates individual PNG frames first
+            - **I2V Chaining**: Subsequent clips use the last frame of the previous clip as starting image
+            - **4n+1 Calculation**: Automatically handles Wan's frame requirements with discarding info
+            - **Better Continuity**: Seamless transitions between clips using Image-to-Video
+            - **Improved Quality**: I2V typically follows prompts more accurately than pure T2V
             """)
             
             with FormRow():
@@ -933,10 +890,18 @@ def get_tab_wan(dw: SimpleNamespace):
             - No separate FPS slider needed - one setting controls everything
             - Ensures video timing matches your intended frame rate
             
-            #### ⏱️ Duration Calculation
+            #### ⏱️ Duration Calculation & Frame Management
             - Video duration = (frame_difference / fps) seconds per clip
             - Example: Frames 0→120 at 30fps = 4 second clip
-            - Wan automatically pads to optimal frame counts (4n+1 format)
+            - **Wan 4n+1 Requirement**: Wan requires frame counts to follow 4n+1 format (5, 9, 13, 17, 21, etc.)
+            - **Automatic Calculation**: System calculates the nearest 4n+1 value ≥ your requested frames
+            - **Frame Discarding**: Extra frames are discarded from the end to match your exact timing
+            - **Display Info**: Console shows exactly which frames will be discarded before generation
+            
+            **Example Frame Calculation:**
+            - Requested: 15 frames → Wan generates: 17 frames (4×4+1) → Discards: 2 frames (frames 15-16)
+            - Requested: 20 frames → Wan generates: 21 frames (4×5+1) → Discards: 1 frame (frame 20)
+            - Requested: 21 frames → Wan generates: 21 frames (4×5+1) → Discards: 0 frames (perfect match)
             
             ### 🛠️ Setup Guide
             

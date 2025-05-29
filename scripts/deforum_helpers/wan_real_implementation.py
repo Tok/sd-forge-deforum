@@ -16,12 +16,18 @@ import imageio
 
 # Import compatibility layer first
 try:
+    # Try relative import first (when imported as module)
     from .wan_compatibility import ensure_wan_compatibility
-    print("✅ WAN compatibility layer imported")
-except ImportError as e:
-    print(f"❌ Failed to import WAN compatibility layer: {e}")
-    print("💡 Ensure wan_compatibility.py is in the same directory")
-    raise
+    print("✅ WAN compatibility layer imported (relative)")
+except ImportError:
+    try:
+        # Try absolute import (when run standalone)
+        from wan_compatibility import ensure_wan_compatibility
+        print("✅ WAN compatibility layer imported (absolute)")
+    except ImportError as e:
+        print(f"❌ Failed to import WAN compatibility layer: {e}")
+        print("💡 Ensure wan_compatibility.py is in the same directory")
+        raise
 
 
 class WanRealIntegration:

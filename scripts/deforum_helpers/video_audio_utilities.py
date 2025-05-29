@@ -279,14 +279,19 @@ def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch
             '-pix_fmt', 'yuv420p',
             '-crf', str(crf),
             '-preset', preset,
-            '-pattern_type', 'sequence'
+            '-pattern_type', 'sequence',
+            outmp4_path
         ]
-        cmd.append('-vcodec')
-        cmd.append('png' if imgs_path[0].find('.png') != -1 else 'libx264')
-        cmd.append(outmp4_path)
 
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         stdout, stderr = process.communicate()
+        
+        # Check if the process was successful
+        if process.returncode != 0:
+            print(f"FFmpeg stderr: {stderr}")
+            print(f"FFmpeg stdout: {stdout}")
+            raise RuntimeError(f"FFmpeg failed with return code {process.returncode}: {stderr}")
+            
     except FileNotFoundError:
         print("\r" + " " * len(msg_to_print), end="", flush=True)
         print(f"\r{msg_to_print}", flush=True)

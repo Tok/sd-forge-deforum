@@ -3,10 +3,10 @@
 ## 🎯 **PROBLEM SOLVED**
 
 **Original Issues:**
-1. ❌ **Scattered WAN Code**: 58+ WAN-related files scattered across the codebase
+1. ❌ **Scattered WAN Code**: 58+ Wan-related files scattered across the codebase
 2. ❌ **Mixed Pipelines**: Diffusers and VACE pipelines mixed together
-3. ❌ **Unorganized Utils**: WAN utilities spread across multiple directories
-4. ❌ **Config Chaos**: WAN configurations in root-level configs directory
+3. ❌ **Unorganized Utils**: Wan utilities spread across multiple directories
+4. ❌ **Config Chaos**: Wan configurations in root-level configs directory
 5. ❌ **Tensor Format Errors**: Video generation failing due to channel format issues
 
 ## ✅ **COMPLETE SOLUTION IMPLEMENTED**

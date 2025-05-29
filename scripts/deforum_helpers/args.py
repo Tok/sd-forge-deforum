@@ -1143,12 +1143,6 @@ def KohyaHRFixArgs():
 def WanArgs():
     """Wan 2.1 video generation arguments - Updated to integrate with Deforum schedules"""
     return {
-        "wan_enabled": {
-            "label": "Enable Wan",
-            "type": "checkbox",
-            "value": True,
-            "info": "Enable Wan video generation"
-        },
         "wan_model_path": {
             "label": "Wan Model Path",
             "type": "textbox", 
@@ -1188,11 +1182,11 @@ def WanArgs():
         "wan_inference_steps": {
             "label": "Inference Steps",
             "type": "slider",
-            "minimum": 20,
+            "minimum": 5,
             "maximum": 100,
             "step": 5,
             "value": 50,
-            "info": "Number of inference steps for Wan generation"
+            "info": "Number of inference steps for Wan generation. Lower values (5-15) for quick testing, higher values (30-50) for quality"
         },
         "wan_guidance_scale": {
             "label": "Guidance Scale",

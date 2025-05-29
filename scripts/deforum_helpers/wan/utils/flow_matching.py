@@ -49,7 +49,7 @@ class WanFlowMatchingPipeline:
         
         # Get extension root directory  
         extension_root = Path(__file__).parent.parent.parent
-        wan_repo_dir = extension_root / "wan_official_repo"
+        wan_repo_dir = extension_root / "Wan2.1"
         
         if wan_repo_dir.exists():
             key_files = [

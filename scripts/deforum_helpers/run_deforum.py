@@ -134,9 +134,6 @@ def run_deforum(*args):
                     # Simple Wan validation (inline replacement)
                     def validate_wan_settings(wan_args):
                         """Simple Wan settings validation"""
-                        if not wan_args.wan_enabled:
-                            raise ValueError("Wan Video mode selected but Wan is not enabled. Please enable Wan in the Wan Video tab.")
-                        
                         if wan_args.wan_fps <= 0:
                             raise ValueError("Wan FPS must be greater than 0")
                             
