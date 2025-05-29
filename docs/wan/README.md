@@ -1,227 +1,174 @@
-# Wan 2.1 Video Generation
+# Wan 2.1 Video Generation Integration
 
-Wan 2.1 is Alibaba's state-of-the-art text-to-video generation model, fully integrated with Deforum's scheduling system for precision video creation.
+## Overview
+
+This integration provides seamless Wan 2.1 video generation within Deforum, featuring:
+
+- **🔍 Auto-Discovery**: Automatically finds and loads Wan models from common locations
+- **📥 Auto-Download**: Downloads missing models from HuggingFace automatically  
+- **🔗 Deforum Integration**: Uses Deforum's prompt scheduling, FPS, and seed systems
+- **🎬 I2V Chaining**: Seamless transitions between clips using Image-to-Video
+- **⚡ Flash Attention Compatibility**: Automatic fallback when Flash Attention unavailable
+- **💪 Strength Scheduling**: Control continuity vs creativity with Deforum schedules
 
 ## Quick Start
 
-### 1. Install Models
+1. **Configure Prompts** (Prompts tab):
+   ```json
+   {
+     "0": "a serene beach at sunset",
+     "90": "a misty forest in the morning", 
+     "180": "a bustling city street at night"
+   }
+   ```
 
-Choose one model based on your system capabilities:
+2. **Set FPS** (Output tab): Choose your desired FPS (e.g., 30 or 60)
 
-```bash
-# Recommended: 1.3B model (8GB+ VRAM)
-huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
+3. **Choose Model** (Wan Video tab): Select model size preference
 
-# High Quality: 14B model (16GB+ VRAM) 
-huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan
-```
+4. **Generate**: Click "Generate Wan Video"
 
-### 2. Configure Prompts
+## Model Management
 
-Set up your prompt schedule in the **Prompts tab**:
-
-```json
-{
-  "0": "A serene mountain landscape at dawn",
-  "30": "Morning mist rising from the valleys", 
-  "60": "Golden sunlight breaking through clouds",
-  "90": "Full daylight illuminating the peaks"
-}
-```
-
-### 3. Set FPS
-
-Configure your desired frame rate in the **Output tab** (e.g., 30 FPS).
-
-### 4. Generate
-
-Go to the **Wan Video tab** and click **"Generate Wan Video"**.
-
-## Features
-
-### 🎯 Deforum Integration
-
-- **Prompt Scheduling**: Uses Deforum's prompt system for precise timing
-- **FPS Integration**: Single FPS setting controls everything
-- **Seed Scheduling**: Optional seed control for consistency
-- **Strength Scheduling**: I2V chaining with continuity control
-
-### 🔍 Auto-Discovery
-
+### Auto-Discovery
 Models are automatically discovered from:
 - `models/wan/`
-- `models/WAN/`
+- `models/wan/` 
+- `models/Wan/`
 - HuggingFace cache
-- Downloads folder
 
-### 🚀 Advanced Features
+### Auto-Download
+Missing models are downloaded automatically when enabled:
 
-- **I2V Chaining**: Seamless transitions between clips
-- **4n+1 Frame Calculation**: Automatic Wan frame requirement handling
-- **PNG Frame Output**: Individual frames before video compilation
-- **Flash Attention Fallback**: Works with or without flash-attn
+```bash
+# 1.3B model (recommended) - ~17GB
+huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
 
-## Model Comparison
+# 14B model (high quality) - ~75GB  
+huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir models/wan
+```
 
-| Model | Size | VRAM | Speed | Quality | Best For |
-|-------|------|------|--------|---------|----------|
-| **T2V-1.3B** | ~17GB | 8GB+ | Fast | Good | Most Users ⭐ |
-| **T2V-14B** | ~75GB | 16GB+ | Slow | Excellent | High-end Systems |
+### Model Selection Options
+- **Auto-Detect**: Finds best available model automatically
+- **1.3B T2V/I2V**: Faster, lower VRAM usage
+- **14B T2V/I2V**: Higher quality, more VRAM required
+- **Use T2V Model (No Continuity)**: ⚠️ Uses T2V for I2V - equivalent to Deforum strength 0.0
+- **Custom Path**: Use your own model directory
+
+**I2V Model Impact:**
+- **Continuity Options (Auto-Detect/I2V models)**: Uses last frame from previous clip as input, respects Deforum strength schedules, creates seamless transitions
+- **No Continuity Option (T2V model)**: Generates each clip independently from text only, maximum creative freedom but abrupt transitions between clips
+
+**Note**: The "Use T2V Model (No Continuity)" option gives the model complete creative freedom to interpret each prompt independently, similar to setting Deforum strength to 0.0. This results in more creative interpretations but breaks visual continuity between clips.
+
+## Deforum Integration
+
+### Settings Sources
+Wan uses these settings from other Deforum tabs:
+
+- **📝 Prompts**: From Prompts tab
+- **🎬 FPS**: From Output tab (no separate Wan FPS needed)
+- **🎲 Seed**: From Keyframes → Seed & SubSeed tab  
+- **💪 Strength**: From Keyframes → Strength tab (for I2V chaining)
+- **⏱️ Duration**: Auto-calculated from prompt timing
+
+### Prompt Schedule Integration
+- Each prompt with a frame number becomes a video clip
+- Duration calculated from frame differences
+- Example: `{"0": "beach", "120": "forest"}` creates two clips
+- Frame 0→120 at 30fps = 4 second clips
+
+### Strength Schedule Integration  
+Control I2V chaining continuity:
+- **Higher values (0.7-0.9)**: Strong continuity, smoother transitions
+- **Lower values (0.3-0.6)**: More creative freedom, less continuity
+- **Override option**: Use fixed strength for maximum continuity
+
+### Seed Schedule Integration
+- Uses Deforum's seed schedule from Keyframes → Seed & SubSeed
+- Set **Seed behavior** to 'schedule' for custom seed scheduling
+- Example: `0:(12345), 60:(67890)` uses different seeds per clip
+
+## Advanced Features
+
+### I2V Chaining
+- Uses last frame of previous clip as input for next clip
+- Ensures seamless transitions between prompt changes
+- Supports Deforum strength scheduling for continuity control
+- Enhanced parameters for maximum continuity
+
+### Frame Management
+- **Wan 4n+1 Requirement**: Automatically calculates proper frame counts
+- **Frame Discarding**: Removes excess frames to match exact timing
+- **PNG Output**: High-quality frame sequences
+
+### Flash Attention Compatibility
+- Automatic detection of Flash Attention availability
+- Seamless fallback to PyTorch native attention
+- No manual installation required
 
 ## Settings Reference
 
 ### Essential Settings
-
-- **Model Size**: Choose between 1.3B (recommended) or 14B (high quality)
-- **Resolution**: Output video resolution (e.g., 1024x576, 1280x720)
-- **Inference Steps**: 5-15 (quick test), 20-50 (quality), 50+ (high quality)
-- **Guidance Scale**: 7.5 (default), higher for stronger prompt adherence
+- **T2V Model**: Text-to-Video model selection
+- **I2V Model**: Image-to-Video model for chaining (separate from T2V for continuity)
+- **Auto-Download**: Automatic model downloading
+- **Preferred Size**: 1.3B (recommended) or 14B (high quality)
+- **Resolution**: 1280x720, 720x1280, 854x480, 480x854
+- **Inference Steps**: 5-100 (5-15 for testing, 20-50 for quality)
+- **Guidance Scale**: 1.0-20.0 (prompt adherence)
 
 ### Advanced Settings
-
-- **Frame Overlap**: Overlapping frames between clips (default: 2)
-- **Motion Strength**: Strength of motion in videos (default: 1.0)
+- **Frame Overlap**: Overlapping frames between clips (0-10)
+- **Motion Strength**: Strength of motion in videos (0.0-2.0)
 - **Enable Interpolation**: Frame interpolation between clips
-- **Interpolation Strength**: Strength of interpolation (default: 0.5)
+- **Interpolation Strength**: Strength of interpolation (0.0-1.0)
 
-## Scheduling Integration
-
-### Prompt Schedule
-
-Each prompt with a frame number becomes a video clip:
-
-```json
-{
-  "0": "beach sunset",     // Clip 1: frames 0-59
-  "60": "forest morning",  // Clip 2: frames 60-119  
-  "120": "city night"      // Clip 3: frames 120+
-}
-```
-
-Duration = (frame_difference / fps) seconds per clip.
-
-### Seed Schedule
-
-Control seeds for consistency (set Seed behavior to 'schedule'):
-
-```
-0:(12345), 60:(67890), 120:(54321)
-```
-
-### Strength Schedule
-
-Control I2V continuity (Keyframes → Strength tab):
-
-```
-0:(0.85), 60:(0.7), 120:(0.5)
-```
-
-- Higher values (0.7-0.9): Strong continuity, smoother transitions
-- Lower values (0.3-0.6): More creative freedom, less continuity
-
-## Frame Calculation
-
-Wan requires frame counts in 4n+1 format (5, 9, 13, 17, 21, etc.):
-
-- **Requested**: 15 frames → **Generated**: 17 frames → **Discarded**: 2 frames
-- **Requested**: 20 frames → **Generated**: 21 frames → **Discarded**: 1 frame
-- **Requested**: 21 frames → **Generated**: 21 frames → **Discarded**: 0 frames
-
-The system automatically calculates the nearest 4n+1 value and discards extra frames from the middle.
+### Continuity Control
+- **Strength Override**: Override Deforum schedules with fixed value
+- **Fixed Strength**: 1.0 = maximum continuity, 0.0 = maximum creativity
 
 ## Troubleshooting
 
 ### Common Issues
 
-**No models found**
-- Download models using the commands above
-- Check that models are in `models/wan/` directory
-- Restart WebUI after downloading
+**No models found:**
+```bash
+# Download recommended model
+huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
+```
 
-**Generation fails**
-- Try the 1.3B model if using 14B
-- Check VRAM usage (8GB+ required for 1.3B, 16GB+ for 14B)
-- Verify prompts are configured in Prompts tab
+**Flash Attention errors:**
+- Automatic fallback is applied
+- No manual installation required
+- Check console for compatibility messages
 
-**Flash attention errors**
-- Compatibility layer should handle this automatically
-- No manual flash-attn installation required
-
-**Button not working**
-- Restart WebUI completely
-- Check console for error messages
-- Verify prompts are configured
+**Generation fails:**
+1. Verify prompts in Prompts tab
+2. Check FPS setting in Output tab
+3. Ensure models are downloaded
+4. Check console for detailed errors
 
 ### Performance Tips
-
-- Start with 1.3B model for testing
-- Use lower inference steps (5-15) for quick tests
-- Reduce resolution for faster generation
-- Monitor VRAM usage during generation
+- Use 1.3B models for faster generation
+- Lower inference steps (5-15) for testing
+- Higher steps (30-50) for final quality
+- Monitor VRAM usage with 14B models
 
 ## Technical Details
 
-### I2V Chaining Process
+### Model Requirements
+- **1.3B models**: ~8GB VRAM minimum
+- **14B models**: ~24GB VRAM minimum
+- **Storage**: 17GB (1.3B) or 75GB (14B) per model
 
-1. **First Clip**: Generated using Text-to-Video (T2V)
-2. **Subsequent Clips**: Use last frame of previous clip as starting image (I2V)
-3. **Strength Control**: Deforum strength schedule controls influence
-4. **Seamless Transitions**: Better continuity than pure T2V
+### Frame Calculation
+- Duration = (frame_difference / fps) seconds
+- Automatic 4n+1 frame count calculation
+- Frame discarding for exact timing preservation
 
-### Compatibility
-
-- **Flash Attention**: Optional, automatic fallback to PyTorch native
-- **Original Wan Repo**: Uses compatibility layer without modifications
-- **Error Handling**: Comprehensive error messages and guidance
-- **Memory Management**: Efficient handling of large generations
-
-### Output Structure
-
-```
-output_directory/
-├── clip_0_frames/          # PNG frames for clip 1
-├── clip_1_frames/          # PNG frames for clip 2  
-├── clip_2_frames/          # PNG frames for clip 3
-└── final_video.mp4         # Stitched final video
-```
-
-## Examples
-
-### Music Video (60 FPS)
-
-```json
-{
-  "0": "drummer on stage, dramatic lighting",
-  "60": "guitar solo, crowd cheering",
-  "120": "bass drop, strobing lights",
-  "180": "finale, confetti falling"
-}
-```
-
-Each clip = 1 second at 60 FPS.
-
-### Nature Documentary (30 FPS)
-
-```json
-{
-  "0": "sunrise over savanna, golden hour",
-  "90": "elephants walking to watering hole", 
-  "180": "lions resting under acacia tree",
-  "270": "sunset, birds flying home"
-}
-```
-
-Each clip = 3 seconds at 30 FPS.
-
-### Abstract Art (24 FPS)
-
-```json
-{
-  "0": "swirling colors, fluid motion",
-  "48": "geometric patterns emerging",
-  "96": "crystalline structures forming",
-  "144": "dissolution into particles"
-}
-```
-
-Each clip = 2 seconds at 24 FPS. 
+### Integration Architecture
+- Direct pipeline integration with Deforum
+- Separate T2V and I2V model loading
+- Enhanced I2V parameters for continuity
+- Automatic compatibility patching 

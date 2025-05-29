@@ -591,7 +591,7 @@ The auto-discovery will find your models automatically!
         selected_model = None
         
         # Try to find a model matching user's size preference
-        user_preferred_size = wan_args.wan_model_size.replace(" (Recommended)", "").replace(" (High Quality)", "")
+        user_preferred_size = wan_args.wan_preferred_size.replace(" (Recommended)", "").replace(" (High Quality)", "")
         
         for model in models:
             if user_preferred_size in model['size']:
@@ -636,7 +636,7 @@ The auto-discovery will find your models automatically!
                 else:
                     # Last prompt - use default or calculate from total expected frames
                     # Assume at least 2 seconds worth of frames for the last clip
-                    frame_count = max(2 * wan_args.wan_fps, 81)  # Minimum 2 seconds or 81 frames
+                    frame_count = max(2 * video_args.fps, 81)  # Minimum 2 seconds or 81 frames
                 
                 # Ensure minimum frame count for Wan (at least 5 frames)
                 frame_count = max(5, frame_count)
@@ -687,7 +687,8 @@ The auto-discovery will find your models automatically!
             steps=wan_args.wan_inference_steps,
             guidance_scale=wan_args.wan_guidance_scale,
             seed=wan_args.wan_seed if wan_args.wan_seed > 0 else -1,
-            anim_args=anim_args  # Pass anim_args for strength scheduling
+            anim_args=anim_args,  # Pass anim_args for strength scheduling
+            wan_args=wan_args     # Pass wan_args for strength override settings
         )
         
         generated_videos = [output_file] if output_file else []
@@ -750,37 +751,33 @@ def get_tab_wan(dw: SimpleNamespace):
                 placeholder="Ready to generate Wan video using Deforum schedules..."
             )
         
-        # Essential Settings - Always Visible
+        # Essential Settings - Open by default
         with gr.Accordion("Essential Settings", open=True):
-            # Model size preference
-            wan_model_size = create_row(dw.wan_model_size)
-            wan_resolution = create_row(dw.wan_resolution)
-            
             with FormRow():
-                # AGGRESSIVE FIX: Force minimum=5 with multiple approaches
-                print("🔧 DEBUG: Creating Wan inference steps slider with minimum=5, maximum=100")
+                wan_t2v_model = create_gr_elem(dw.wan_t2v_model)
+                wan_i2v_model = create_gr_elem(dw.wan_i2v_model)
                 
-                # Try creating with explicit kwargs
-                slider_kwargs = {
-                    "label": "Inference Steps (Min: 5, Max: 100)",
-                    "minimum": 5,
-                    "maximum": 100,
-                    "step": 5,
-                    "value": 50,
-                    "interactive": True,
-                    "elem_id": "wan_steps_min5_max100",
-                    "info": "Inference steps: 5-15 (quick test), 20-50 (quality), 50+ (high quality)"
-                }
+            with FormRow():
+                wan_auto_download = create_gr_elem(dw.wan_auto_download)
+                wan_preferred_size = create_gr_elem(dw.wan_preferred_size)
                 
-                wan_inference_steps = gr.Slider(**slider_kwargs)
+            with FormRow():
+                wan_model_path = create_gr_elem(dw.wan_model_path)
                 
-                print(f"🔧 DEBUG: Slider properties - min: {wan_inference_steps.minimum}, max: {wan_inference_steps.maximum}, value: {wan_inference_steps.value}")
+            with FormRow():
+                wan_resolution = create_gr_elem(dw.wan_resolution)
                 
-                # Verify the slider was created correctly
-                assert wan_inference_steps.minimum == 5, f"ERROR: Slider minimum is {wan_inference_steps.minimum}, expected 5"
-                assert wan_inference_steps.maximum == 100, f"ERROR: Slider maximum is {wan_inference_steps.maximum}, expected 100"
-                print("✅ DEBUG: Slider validation passed - minimum=5, maximum=100")
-                
+            with FormRow():
+                # Explicitly create steps slider with unique ID to force refresh
+                wan_inference_steps = gr.Slider(
+                    label="Inference Steps (Min: 5)",
+                    minimum=5,
+                    maximum=100,
+                    step=1,
+                    value=20,
+                    elem_id="wan_inference_steps_fixed_min_5",
+                    info="Number of inference steps for Wan generation. Lower values (5-15) for quick testing, higher values (20-50) for quality"
+                )
                 wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
         
         # Advanced Settings - Open by default and moved up
@@ -792,6 +789,38 @@ def get_tab_wan(dw: SimpleNamespace):
             with FormRow():
                 wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
                 wan_interpolation_strength = create_gr_elem(dw.wan_interpolation_strength)
+                
+            # Strength Override Section
+            with gr.Accordion("🔗 I2V Continuity Control", open=False):
+                gr.Markdown("""
+                **For Maximum Continuity Between Clips:**
+                
+                Enable "Strength Override" to ignore Deforum strength schedules and use a fixed value.
+                - **1.0**: Maximum continuity (clips look very similar)
+                - **0.8-0.9**: Strong continuity with some variation
+                - **0.5-0.7**: Balanced continuity and creativity
+                - **0.0-0.4**: More creative freedom, less continuity
+                
+                **⚠️ I2V Model Selection Impact:**
+                
+                **Continuity Options (Recommended):**
+                - **Auto-Detect/1.3B I2V/14B I2V**: Uses dedicated I2V models
+                  - Takes the last frame from previous clip as input for next clip
+                  - Respects Deforum strength schedules for smooth transitions
+                  - Creates seamless video flow between clips
+                
+                **No Continuity Option (Creative Freedom):**
+                - **Use T2V Model (No Continuity)**: Uses T2V for all clips
+                  - ⚠️ **Equivalent to setting Deforum strength to 0.0** - ignores previous frames completely
+                  - Each clip generated independently from text prompt only
+                  - **Upside**: Maximum creativity - model has complete freedom to interpret each prompt
+                  - **Downside**: Abrupt changes between clips, like separate videos stitched together
+                  - **Use when**: You want completely independent scenes or I2V models unavailable
+                """)
+                
+                with FormRow():
+                    wan_strength_override = create_gr_elem(dw.wan_strength_override)
+                    wan_fixed_strength = create_gr_elem(dw.wan_fixed_strength)
         
         # Auto-Discovery Info - Collapsed by default
         with gr.Accordion("🔍 Auto-Discovery & Setup", open=False):
@@ -799,8 +828,6 @@ def get_tab_wan(dw: SimpleNamespace):
             **Smart Model Discovery**
             
             Wan models are automatically discovered from common locations:
-            - `models/wan/`
-            - `models/wan/` 
             - `models/Wan/`
             - HuggingFace cache
             
@@ -824,14 +851,7 @@ def get_tab_wan(dw: SimpleNamespace):
         # Hidden model path for compatibility (auto-populated by discovery)
         wan_model_path = gr.Textbox(visible=False, value="auto-discovery")
         
-        # Hidden wan_fps and wan_seed for compatibility (integrated with Deforum schedules)
-        wan_fps = gr.Slider(
-            minimum=dw.wan_fps["minimum"], 
-            maximum=dw.wan_fps["maximum"], 
-            step=dw.wan_fps["step"], 
-            value=dw.wan_fps["value"],
-            visible=False
-        )
+        # Hidden wan_seed for compatibility (integrated with Deforum schedules)
         wan_seed = gr.Number(
             precision=dw.wan_seed["precision"], 
             value=dw.wan_seed["value"],
@@ -844,7 +864,7 @@ def get_tab_wan(dw: SimpleNamespace):
             **Wan uses these settings from other Deforum tabs:**
             
             - **📝 Prompts:** From Prompts tab
-            - **🎬 FPS:** From Output tab  
+            - **🎬 FPS:** From Output tab (no separate Wan FPS needed)
             - **🎲 Seed:** From Keyframes → Seed & SubSeed tab
             - **💪 Strength:** From Keyframes → Strength tab (for I2V chaining)
             - **⏱️ Duration:** Auto-calculated from prompt timing
@@ -939,6 +959,9 @@ def get_tab_wan(dw: SimpleNamespace):
                 6. **Check seed behavior**: Set seed behavior to 'schedule' if you want custom seed scheduling
                 """)
             
+    # Ensure wan_inference_steps is properly captured
+    locals()['wan_inference_steps'] = wan_inference_steps
+    
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 

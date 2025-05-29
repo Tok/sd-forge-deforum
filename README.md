@@ -124,6 +124,7 @@ For comprehensive documentation, see:
 
 #### 🛠️ **Advanced Features**
 - **I2V Chaining**: Seamless transitions between clips using last frame as starting image
+- **Continuity Control**: Strength override for maximum clip-to-clip continuity
 - **4n+1 Frame Calculation**: Automatic handling of Wan's frame requirements
 - **Flash Attention Fallback**: Works with or without flash-attn
 - **Memory Optimization**: Efficient VRAM usage for large generations

@@ -1143,18 +1143,38 @@ def KohyaHRFixArgs():
 def WanArgs():
     """Wan 2.1 video generation arguments - Updated to integrate with Deforum schedules"""
     return {
-        "wan_model_path": {
-            "label": "Wan Model Path",
-            "type": "textbox", 
-            "value": "models/wan",
-            "info": "Path to Wan 2.1 model checkpoint. Default: models/wan (relative to webui folder)"
+        "wan_t2v_model": {
+            "label": "T2V Model",
+            "type": "dropdown",
+            "choices": ["Auto-Detect", "1.3B T2V", "14B T2V", "Custom Path"],
+            "value": "Auto-Detect",
+            "info": "Text-to-Video model for first clip generation. Auto-detect finds best available model."
         },
-        "wan_model_size": {
-            "label": "Model Size",
+        "wan_i2v_model": {
+            "label": "I2V Model", 
+            "type": "dropdown",
+            "choices": ["Auto-Detect", "1.3B I2V", "14B I2V", "Use T2V Model (No Continuity)", "Custom Path"],
+            "value": "Auto-Detect",
+            "info": "Image-to-Video model for clip chaining. 'Use T2V Model' breaks continuity but may work if I2V models unavailable."
+        },
+        "wan_auto_download": {
+            "label": "Auto-Download Models",
+            "type": "checkbox",
+            "value": True,
+            "info": "Automatically download missing models from HuggingFace"
+        },
+        "wan_preferred_size": {
+            "label": "Preferred Model Size",
             "type": "dropdown",
             "choices": ["1.3B (Recommended)", "14B (High Quality)"],
             "value": "1.3B (Recommended)",
-            "info": "Select Wan model size. 1.3B is faster, uses less memory, and more stable. 14B is higher quality but slower and requires more VRAM."
+            "info": "Preferred model size when auto-detecting. 1.3B is faster and uses less VRAM."
+        },
+        "wan_model_path": {
+            "label": "Custom Model Path",
+            "type": "textbox", 
+            "value": "models/wan",
+            "info": "Custom path to Wan model (used when 'Custom Path' is selected)"
         },
         "wan_resolution": {
             "label": "Wan Resolution",
@@ -1162,15 +1182,6 @@ def WanArgs():
             "choices": ["1280x720", "720x1280", "854x480", "480x854"],
             "value": "1280x720",
             "info": "Resolution for Wan video generation. 16:9 landscape, 9:16 portrait, both in 720p and 480p"
-        },
-        "wan_fps": {
-            "label": "Wan FPS",
-            "type": "slider",
-            "minimum": 15,
-            "maximum": 60,
-            "step": 1,
-            "value": 30,
-            "info": "Frames per second for Wan video generation"
         },
         "wan_seed": {
             "label": "Wan Seed",
@@ -1184,8 +1195,8 @@ def WanArgs():
             "type": "slider",
             "minimum": 5,
             "maximum": 100,
-            "step": 5,
-            "value": 50,
+            "step": 1,
+            "value": 20,
             "info": "Number of inference steps for Wan generation. Lower values (5-15) for quick testing, higher values (30-50) for quality"
         },
         "wan_guidance_scale": {
@@ -1196,6 +1207,21 @@ def WanArgs():
             "step": 0.5,
             "value": 7.5,
             "info": "Guidance scale for prompt adherence"
+        },
+        "wan_strength_override": {
+            "label": "Strength Override",
+            "type": "checkbox",
+            "value": False,
+            "info": "Override Deforum strength schedule with fixed value for maximum continuity"
+        },
+        "wan_fixed_strength": {
+            "label": "Fixed Strength",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "step": 0.05,
+            "value": 1.0,
+            "info": "Fixed strength value for I2V chaining (1.0 = maximum continuity, 0.0 = maximum creativity)"
         },
         "wan_frame_overlap": {
             "label": "Frame Overlap",
