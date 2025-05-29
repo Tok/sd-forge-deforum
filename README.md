@@ -70,15 +70,16 @@ Recommendation: **Use ForgeUIs "Settings" - "Defaults" to save your settings.**
 
 ## Wan 2.1 AI Video Generation ✨
 
-### **NEW: Precision Text-to-Video Generation**
+### **Precision Text-to-Video with Deforum Integration**
 
-The extension now includes **Wan 2.1** (Alibaba's state-of-the-art video generation model) as an additional function alongside traditional Deforum animation.
+The extension includes **Wan 2.1** (Alibaba's state-of-the-art video generation model) fully integrated with Deforum's scheduling system for frame-perfect video creation.
 
-#### 🎯 **Key Features**
-- **Frame-Perfect Timing**: Uses exact frame differences from prompt schedules for audio sync
+#### 🎯 **Deforum Integration Features**
+- **Prompt Scheduling**: Uses Deforum's prompt system for precise clip timing
+- **FPS Integration**: Single FPS setting controls both Deforum and Wan
+- **Seed Scheduling**: Optional seed control from Keyframes → Seed & SubSeed tab
+- **Strength Scheduling**: I2V chaining with continuity control from Keyframes → Strength tab
 - **Auto-Discovery**: Automatically finds Wan models without manual configuration
-- **Flash Attention Compatible**: Works with or without flash-attn for maximum compatibility
-- **Memory Optimized**: Efficient handling of large video generations
 
 #### 🚀 **Quick Setup**
 
@@ -91,14 +92,12 @@ The extension now includes **Wan 2.1** (Alibaba's state-of-the-art video generat
    huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan
    ```
 
-2. **That's it!** The extension auto-discovers models in:
-   - `models/wan/`
-   - `models/WAN/` 
-   - HuggingFace cache
-   - Downloads folder
+2. **Configure in Deforum**:
+   - Set prompts in **Prompts tab** with frame numbers
+   - Set FPS in **Output tab**
+   - Go to **Wan Video tab** and click **"Generate Wan Video"**
 
-#### 🎬 **Usage**
-Access Wan video generation through the **Wan** tab in Deforum. Set up frame-based prompts for precise timing:
+#### 🎬 **Deforum Workflow Example**
 
 ```json
 {
@@ -109,18 +108,25 @@ Access Wan video generation through the **Wan** tab in Deforum. Set up frame-bas
 }
 ```
 
-Creates exactly 30, 30, 30 frames respectively - perfect for audio synchronization!
-
-#### 🛠️ **Compatibility Layer**
-- **No Flash Attention Required**: Automatically falls back to PyTorch native attention
-- **Original Wan Repo Untouched**: Uses compatibility layer without modifying official code
-- **Robust Error Handling**: Clear error messages and troubleshooting guidance
+At 30 FPS, this creates exactly 1-second clips with seamless I2V transitions.
 
 #### 📊 **Model Comparison**
 | Model | Size | VRAM | Speed | Quality | Best For |
 |-------|------|------|--------|---------|----------|
 | **T2V-1.3B** | ~17GB | 8GB+ | Fast | Good | Most Users ⭐ |
 | **T2V-14B** | ~75GB | 16GB+ | Slow | Excellent | High-end Systems |
+
+#### 📚 **Documentation**
+
+For comprehensive documentation, see:
+- **[Wan User Guide](docs/wan/README.md)** - Complete setup and usage guide
+- **[Technical Reference](docs/wan/TECHNICAL.md)** - Developer documentation
+
+#### 🛠️ **Advanced Features**
+- **I2V Chaining**: Seamless transitions between clips using last frame as starting image
+- **4n+1 Frame Calculation**: Automatic handling of Wan's frame requirements
+- **Flash Attention Fallback**: Works with or without flash-attn
+- **Memory Optimization**: Efficient VRAM usage for large generations
 
 ## Default Bunny Testrun
 
