@@ -722,35 +722,103 @@ The auto-discovery will find your models automatically!
 def get_tab_wan(dw: SimpleNamespace):
     """Wan 2.1 Video Generation Tab - Integrated with Deforum Schedules"""
     with gr.TabItem(f"{emoji_utils.wan_video()} Wan Video"):
-        # Wan Info Accordion
-        with gr.Accordion("Wan 2.1 Video Generation Info & Setup", open=False):
-            gr.HTML(value=get_gradio_html('wan_video'))
-        
-        # Auto-Discovery Section - NEW
-        with gr.Accordion("🔍 Auto-Discovery (No Manual Paths Needed!)", open=True):
+        # Quick Start Section - Most Important
+        with gr.Accordion("🚀 Quick Start", open=True):
             gr.Markdown("""
-            **🚀 NEW: Smart Model Discovery**
+            **Ready to Generate Wan Videos:**
             
-            Wan models are now **automatically discovered** from common locations:
+            1. **Configure prompts** in the **Prompts tab** (REQUIRED)
+            2. **Set FPS** in the **Output tab** (REQUIRED)  
+            3. **Choose model size** below
+            4. **Click Generate Wan Video**
+            """)
+            
+            # Generate Button - Prominently placed at top
+            with FormRow():
+                wan_generate_button = gr.Button(
+                    "🎬 Generate Wan Video",
+                    variant="primary", 
+                    size="lg",
+                    elem_id="wan_generate_button"
+                )
+                
+            # Status output for Wan generation
+            wan_generation_status = gr.Textbox(
+                label="Generation Status",
+                interactive=False,
+                lines=2,
+                placeholder="Ready to generate Wan video using Deforum schedules..."
+            )
+        
+        # Essential Settings - Always Visible
+        with gr.Accordion("Essential Settings", open=True):
+            # Model size preference
+            wan_model_size = create_row(dw.wan_model_size)
+            wan_resolution = create_row(dw.wan_resolution)
+            
+            with FormRow():
+                # AGGRESSIVE FIX: Force minimum=5 with multiple approaches
+                print("🔧 DEBUG: Creating Wan inference steps slider with minimum=5, maximum=100")
+                
+                # Try creating with explicit kwargs
+                slider_kwargs = {
+                    "label": "Inference Steps (Min: 5, Max: 100)",
+                    "minimum": 5,
+                    "maximum": 100,
+                    "step": 5,
+                    "value": 50,
+                    "interactive": True,
+                    "elem_id": "wan_steps_min5_max100",
+                    "info": "Inference steps: 5-15 (quick test), 20-50 (quality), 50+ (high quality)"
+                }
+                
+                wan_inference_steps = gr.Slider(**slider_kwargs)
+                
+                print(f"🔧 DEBUG: Slider properties - min: {wan_inference_steps.minimum}, max: {wan_inference_steps.maximum}, value: {wan_inference_steps.value}")
+                
+                # Verify the slider was created correctly
+                assert wan_inference_steps.minimum == 5, f"ERROR: Slider minimum is {wan_inference_steps.minimum}, expected 5"
+                assert wan_inference_steps.maximum == 100, f"ERROR: Slider maximum is {wan_inference_steps.maximum}, expected 100"
+                print("✅ DEBUG: Slider validation passed - minimum=5, maximum=100")
+                
+                wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
+        
+        # Advanced Settings - Open by default and moved up
+        with gr.Accordion("Advanced Settings", open=True):
+            with FormRow():
+                wan_frame_overlap = create_gr_elem(dw.wan_frame_overlap)
+                wan_motion_strength = create_gr_elem(dw.wan_motion_strength)
+                
+            with FormRow():
+                wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
+                wan_interpolation_strength = create_gr_elem(dw.wan_interpolation_strength)
+        
+        # Auto-Discovery Info - Collapsed by default
+        with gr.Accordion("🔍 Auto-Discovery & Setup", open=False):
+            gr.Markdown("""
+            **Smart Model Discovery**
+            
+            Wan models are automatically discovered from common locations:
             - `models/wan/`
             - `models/wan/` 
             - `models/Wan/`
             - HuggingFace cache
-            - Downloads folder
             
-            **No manual path configuration required!** Just download your model and it will be found automatically.
-            """)
-            
-            # Model size preference
-            wan_model_size = create_row(dw.wan_model_size)
-            
-            # Information about model sizes
-            gr.Markdown("""
             **Model Size Information:**
-            - **1.3B (Recommended)**: ~17GB download, faster generation, lower VRAM usage, more stable
+            - **1.3B (Recommended)**: ~17GB download, faster generation, lower VRAM usage
             - **14B (High Quality)**: ~75GB download, slower generation, higher VRAM usage, better quality
             
-            💡 **Tip**: Start with 1.3B to test if Wan works on your system before downloading the larger model.
+            **Quick Download:**
+            ```bash
+            # Install HuggingFace CLI (if not already installed)
+            pip install huggingface_hub
+            
+            # Download 1.3B model (recommended)
+            huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
+            
+            # Or download 14B model (high quality)
+            huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan
+            ```
             """)
         
         # Hidden model path for compatibility (auto-populated by discovery)
@@ -770,226 +838,106 @@ def get_tab_wan(dw: SimpleNamespace):
             visible=False
         )
         
-        with gr.Accordion("🔗 Deforum Integration Status", open=True):
+        # Integration Status - Collapsed by default
+        with gr.Accordion("🔗 Deforum Integration", open=False):
             gr.Markdown("""
             **Wan uses these settings from other Deforum tabs:**
-            """)
             
-            with FormRow():
-                with FormColumn():
-                    gr.Markdown("**📝 Prompts:** From Prompts tab")
-                    gr.Markdown("**🎬 FPS:** From Output tab")
-                with FormColumn():
-                    gr.Markdown("**🎲 Seed:** From Keyframes → Seed & SubSeed tab")
-                    gr.Markdown("**⏱️ Duration:** Auto-calculated from prompt timing")
-        
-        with gr.Accordion("Basic Wan Settings", open=True):
-            gr.Markdown("""
-            **✨ Configure your Wan-specific settings below:**
-            """)
+            - **📝 Prompts:** From Prompts tab
+            - **🎬 FPS:** From Output tab  
+            - **🎲 Seed:** From Keyframes → Seed & SubSeed tab
+            - **💪 Strength:** From Keyframes → Strength tab (for I2V chaining)
+            - **⏱️ Duration:** Auto-calculated from prompt timing
             
-            wan_resolution = create_row(dw.wan_resolution)
-        
-            with FormRow():
-                # DIRECT FIX: Create slider manually with minimum=5 (bypass all caching)
-                print("🔧 DEBUG: Creating Wan inference steps slider with minimum=5")
-                wan_inference_steps = gr.Slider(
-                    label="Inference Steps (Fixed Min=5)",  # Changed label to confirm this is our version
-                    minimum=5,  # FORCE minimum to 5
-                    maximum=100,
-                    step=5,
-                    value=50,
-                    elem_id="wan_inference_steps_fixed",  # Unique ID to identify our slider
-                    info="Number of inference steps for Wan generation. Lower values (5-15) for quick testing, higher values (30-50) for quality"
-                )
-                wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
-        
-        with gr.Accordion("Advanced Wan Settings", open=False):
-            with FormRow():
-                wan_frame_overlap = create_gr_elem(dw.wan_frame_overlap)
-                wan_motion_strength = create_gr_elem(dw.wan_motion_strength)
-                
-            with FormRow():
-                wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
-                wan_interpolation_strength = create_gr_elem(dw.wan_interpolation_strength)
-        
-        # Dedicated Wan Generate Button
-        with gr.Accordion("Generate Wan Video", open=True):
-            gr.Markdown("""
-            **🎯 Ready to Generate Wan Videos:**
-            
-            1. **Configure your prompts** in the **Prompts tab** (REQUIRED)
-            2. **Set your FPS** in the **Output tab** (REQUIRED)
-            3. **Configure seeds** in the **Keyframes → Seed & SubSeed tab** (optional)
-            4. **Choose your model size** above (if you have multiple models)
-            5. **Click Generate Wan Video** below!
-            
-            **✨ Fully Integrated Workflow:**
+            **Features:**
             - ✅ Uses Deforum's prompt scheduling system
             - ✅ Uses Deforum's FPS and seed settings  
             - ✅ Auto-discovery finds your models automatically
             - ✅ Smart model selection based on your preference
             - ✅ Calls the full Deforum generation pipeline
-            
-            **🚀 NEW: I2V Chaining & PNG Frame Output**
-            - **PNG Frames**: Each clip generates individual PNG frames first
-            - **I2V Chaining**: Subsequent clips use the last frame of the previous clip as starting image
-            - **4n+1 Calculation**: Automatically handles Wan's frame requirements with discarding info
-            - **Better Continuity**: Seamless transitions between clips using Image-to-Video
-            - **Improved Quality**: I2V typically follows prompts more accurately than pure T2V
+            - ✅ I2V chaining for seamless transitions between clips
+            - ✅ PNG frame output with 4n+1 calculation
+            - ✅ Strength scheduling for continuity control
             """)
-            
-            with FormRow():
-                wan_generate_button = gr.Button(
-                    "🎬 Generate Wan Video",
-                    variant="primary", 
-                    size="lg",
-                    elem_id="wan_generate_button"
-                )
+        
+        # Detailed Documentation - Collapsed by default
+        with gr.Accordion("📚 Detailed Documentation", open=False):
+            with gr.Accordion("🎯 How Wan Integrates with Deforum Schedules", open=False):
+                gr.Markdown("""
+                ### Prompt Schedule Integration
+                - Wan reads your prompts from the **Prompts tab**
+                - Each prompt with a frame number becomes a video clip
+                - Duration is calculated from the frame differences
+                - Example: `{"0": "beach sunset", "120": "forest morning"}` creates two clips
                 
-            # Status output for Wan generation
-            wan_generation_status = gr.Textbox(
-                label="Generation Status",
-                interactive=False,
-                lines=2,
-                placeholder="Ready to generate Wan video using Deforum schedules..."
-            )
-            
-            # Button connection is handled in ui_left.py with access to all components
-        
-        with gr.Accordion("📥 Easy Model Download (AUTO-DISCOVERY)", open=False):
-            gr.Markdown("""
-            ### 🚀 SUPER EASY SETUP - Just Download & Go!
-            
-            **NEW**: Models are automatically discovered - no path configuration needed!
-            
-            #### 🎯 Quick Start (Recommended)
-            ```bash
-            # Install HuggingFace CLI (if not already installed)
-            pip install huggingface_hub
-            
-            # Download 1.3B model (recommended for testing)
-            huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
-            ```
-            
-            #### 🏆 High Quality Option
-            ```bash
-            # Download 14B model (higher quality, needs more VRAM)
-            huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan
-            ```
-            
-            ### 📁 Where to Place Models
-            The auto-discovery will find models in any of these locations:
-            - `models/wan/` ← **Recommended location**
-            - `models/wan/`
-            - `models/Wan/`
-            - HuggingFace cache (automatic)
-            - Downloads folder
-            
-            ### 🔗 Integration Features
-            
-            #### ✅ What's New:
-            - **🔍 Auto-Discovery**: No more manual path configuration!
-            - **🎯 Seed Integration**: Uses Deforum's seed schedule automatically
-            - **📊 FPS Integration**: Uses FPS from Output tab instead of separate slider
-            - **📝 Prompt Integration**: Works seamlessly with your Deforum prompt schedule
-            - **🚀 Direct Integration**: Uses official Wan repository
-            - **📦 Easy Download**: Simple one-command setup
-            - **💪 Better Stability**: Much more reliable than previous versions
-            
-            #### 🆘 Troubleshooting
-            If generation fails:
-            1. **Check models**: Run `python scripts/deforum_helpers/wan_direct_integration.py`
-            2. **Download missing models**: Use commands above
-            3. **Verify placement**: Models should be in `models/wan/` directory
-            4. **Check logs**: Look for auto-discovery messages in console
-            5. **Verify schedules**: Make sure you have prompts in the Prompts tab
-            6. **Check seed behavior**: Set seed behavior to 'schedule' if you want custom seed scheduling
-            """)
-        
-        with gr.Accordion("🔗 Deforum Schedule Integration", open=False):
-            gr.Markdown("""
-            ### 🎯 How Wan Integrates with Deforum Schedules
-            
-            Wan video generation now uses Deforum's scheduling system for perfect integration:
-            
-            #### 📝 Prompt Schedule Integration
-            - Wan reads your prompts from the **Prompts tab**
-            - Each prompt with a frame number becomes a video clip
-            - Duration is calculated from the frame differences
-            - Example: `{"0": "beach sunset", "120": "forest morning"}` creates two clips
-            
-            #### 🎲 Seed Schedule Integration  
-            - Wan uses the **seed schedule** from Keyframes → Seed & SubSeed
-            - Set **Seed behavior** to 'schedule' to enable custom seed scheduling
-            - Example: `0:(12345), 60:(67890)` uses different seeds for different clips
-            - Leave as 'iter' or 'random' for automatic seed management
-            
-            #### 💪 Strength Schedule Integration (NEW!)
-            - **NEW**: Wan I2V chaining now supports **Deforum's strength schedule**!
-            - Controls how much the previous frame influences the next clip generation
-            - Found in **Keyframes → Strength tab** as "Strength schedule"
-            - Higher values (0.7-0.9): Strong continuity, smoother transitions
-            - Lower values (0.3-0.6): More creative freedom, less continuity
-            - Example: `0:(0.85), 120:(0.6)` - strong continuity at start, more freedom later
-            - **Perfect for**: Controlling narrative flow and visual consistency across clips
-            
-            #### 🎬 FPS Integration
-            - Wan uses the **FPS setting** from the Output tab
-            - No separate FPS slider needed - one setting controls everything
-            - Ensures video timing matches your intended frame rate
-            
-            #### ⏱️ Duration Calculation & Frame Management
-            - Video duration = (frame_difference / fps) seconds per clip
-            - Example: Frames 0→120 at 30fps = 4 second clip
-            - **Wan 4n+1 Requirement**: Wan requires frame counts to follow 4n+1 format (5, 9, 13, 17, 21, etc.)
-            - **Automatic Calculation**: System calculates the nearest 4n+1 value ≥ your requested frames
-            - **Frame Discarding**: Extra frames are discarded from the middle to match your exact timing
-            - **Display Info**: Console shows exactly which frames will be discarded before generation
-            
-            **Example Frame Calculation:**
-            - Requested: 15 frames → Wan generates: 17 frames (4×4+1) → Discards: 2 frames (frames 15-16)
-            - Requested: 20 frames → Wan generates: 21 frames (4×5+1) → Discards: 1 frame (frame 20)
-            - Requested: 21 frames → Wan generates: 21 frames (4×5+1) → Discards: 0 frames (perfect match)
-            
-            ### 🛠️ Setup Guide
-            
-            #### Step 1: Configure Prompts
-            ```json
-            {
-                "0": "a serene beach at sunset",
-                "90": "a misty forest in the morning", 
-                "180": "a bustling city street at night"
-            }
-            ```
-            
-            #### Step 2: Set FPS (Output Tab)
-            - Choose your desired FPS (e.g., 30 or 60)
-            - This affects both timing and video quality
-            
-            #### Step 3: Configure Strength Schedule (Optional but Recommended)
-            - Go to **Keyframes → Strength tab**
-            - Set "Strength schedule" to control I2V continuity
-            - Example: `0:(0.85), 60:(0.7), 120:(0.5)` for gradual creative freedom
-            
-            #### Step 4: Configure Seeds (Optional)
-            - **For consistent seeds**: Set seed behavior to 'schedule'
-            - **For variety**: Leave as 'iter' or 'random'
-            
-            #### Step 5: Generate
-            - Click "Generate Wan Video" button
-            - Wan reads all settings from Deforum automatically
-            - Each prompt becomes a seamless video clip with strength-controlled transitions
-            
-            ### 🎯 Benefits of Integration
-            - **Consistency**: All timing controlled by one FPS setting
-            - **Flexibility**: Full power of Deforum's scheduling system
-            - **Simplicity**: No duplicate settings or confusion
-            - **Precision**: Exact frame timing for audio synchronization
-            - **Power**: Complex animations possible through scheduling
-            - **NEW**: Strength scheduling for perfect I2V continuity control
-            
-            """)
+                ### Seed Schedule Integration  
+                - Wan uses the **seed schedule** from Keyframes → Seed & SubSeed
+                - Set **Seed behavior** to 'schedule' to enable custom seed scheduling
+                - Example: `0:(12345), 60:(67890)` uses different seeds for different clips
+                - Leave as 'iter' or 'random' for automatic seed management
+                
+                ### Strength Schedule Integration
+                - Wan I2V chaining supports **Deforum's strength schedule**!
+                - Controls how much the previous frame influences the next clip generation
+                - Found in **Keyframes → Strength tab** as "Strength schedule"
+                - Higher values (0.7-0.9): Strong continuity, smoother transitions
+                - Lower values (0.3-0.6): More creative freedom, less continuity
+                - Example: `0:(0.85), 120:(0.6)` - strong continuity at start, more freedom later
+                
+                ### FPS Integration
+                - Wan uses the **FPS setting** from the Output tab
+                - No separate FPS slider needed - one setting controls everything
+                - Ensures video timing matches your intended frame rate
+                
+                ### Duration Calculation & Frame Management
+                - Video duration = (frame_difference / fps) seconds per clip
+                - Example: Frames 0→120 at 30fps = 4 second clip
+                - **Wan 4n+1 Requirement**: Wan requires frame counts to follow 4n+1 format (5, 9, 13, 17, 21, etc.)
+                - **Automatic Calculation**: System calculates the nearest 4n+1 value ≥ your requested frames
+                - **Frame Discarding**: Extra frames are discarded from the middle to match your exact timing
+                - **Display Info**: Console shows exactly which frames will be discarded before generation
+                """)
+                
+            with gr.Accordion("🛠️ Setup Guide", open=False):
+                gr.Markdown("""
+                #### Step 1: Configure Prompts
+                ```json
+                {
+                    "0": "a serene beach at sunset",
+                    "90": "a misty forest in the morning", 
+                    "180": "a bustling city street at night"
+                }
+                ```
+                
+                #### Step 2: Set FPS (Output Tab)
+                - Choose your desired FPS (e.g., 30 or 60)
+                - This affects both timing and video quality
+                
+                #### Step 3: Configure Strength Schedule (Optional but Recommended)
+                - Go to **Keyframes → Strength tab**
+                - Set "Strength schedule" to control I2V continuity
+                - Example: `0:(0.85), 60:(0.7), 120:(0.5)` for gradual creative freedom
+                
+                #### Step 4: Configure Seeds (Optional)
+                - **For consistent seeds**: Set seed behavior to 'schedule'
+                - **For variety**: Leave as 'iter' or 'random'
+                
+                #### Step 5: Generate
+                - Click "Generate Wan Video" button
+                - Wan reads all settings from Deforum automatically
+                - Each prompt becomes a seamless video clip with strength-controlled transitions
+                """)
+                
+            with gr.Accordion("🆘 Troubleshooting", open=False):
+                gr.Markdown("""
+                If generation fails:
+                1. **Check models**: Run `python scripts/deforum_helpers/wan_direct_integration.py`
+                2. **Download missing models**: Use commands in Auto-Discovery section
+                3. **Verify placement**: Models should be in `models/wan/` directory
+                4. **Check logs**: Look for auto-discovery messages in console
+                5. **Verify schedules**: Make sure you have prompts in the Prompts tab
+                6. **Check seed behavior**: Set seed behavior to 'schedule' if you want custom seed scheduling
+                """)
             
     return {k: v for k, v in {**locals(), **vars()}.items()}
 

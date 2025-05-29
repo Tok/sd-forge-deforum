@@ -156,8 +156,11 @@ def substitute_placeholders(template, arg_list, base_folder_path):
     # First, substitute valid placeholders
     formatted_string = re.sub(r"{(\w+)}", lambda m: custom_placeholder_format(values, m), template)
     # Then, clean up any remaining invalid placeholders or stray braces
-    formatted_string = re.sub(r'[{}]', '_', formatted_string)  # Replace any remaining braces with underscores
+    # Remove any remaining braces entirely instead of replacing with underscores
+    formatted_string = re.sub(r'[{}]+', '', formatted_string)  # Remove any remaining braces completely
     formatted_string = re.sub(r'[<>:"/\\|?*\s,]', '_', formatted_string)
+    # Clean up any trailing underscores that might result from the cleaning process
+    formatted_string = formatted_string.rstrip('_')
     
     return formatted_string[:max_length]
 
