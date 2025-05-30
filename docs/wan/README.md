@@ -10,6 +10,34 @@ This integration provides seamless Wan 2.1 video generation within Deforum, feat
 - **🎬 I2V Chaining**: Seamless transitions between clips using Image-to-Video
 - **⚡ Flash Attention Compatibility**: Automatic fallback when Flash Attention unavailable
 - **💪 Strength Scheduling**: Control continuity vs creativity with Deforum schedules
+- **🎯 VACE Support**: All-in-one T2V+I2V models for perfect consistency
+
+## VACE Models - Recommended Architecture ✨
+
+**VACE (Video Adaptive Conditional Enhancement)** represents Wan's latest unified architecture that handles both Text-to-Video and Image-to-Video generation with a single model:
+
+### 🔄 **Unified Architecture Benefits**
+- **Single Model**: One model handles both T2V and I2V generation
+- **Perfect Consistency**: Same weights ensure visual continuity between clips
+- **Memory Efficient**: No need to load separate T2V and I2V models
+- **Enhanced Quality**: Latest architecture with improved video generation
+
+### 🎯 **VACE T2V Mode**
+VACE models can generate pure text-to-video content by using blank frame transformation:
+- Creates dummy blank frames as input
+- Transforms them based on text prompts
+- Produces high-quality T2V output with I2V architecture benefits
+- Maintains consistency for later I2V chaining
+
+### 📊 **VACE vs T2V Model Comparison**
+| Feature | VACE Models | T2V Models | I2V Models |
+|---------|-------------|------------|------------|
+| **T2V Generation** | ✅ Via blank frame transformation | ✅ Native | ❌ Not supported |
+| **I2V Generation** | ✅ Native | ❌ Not supported | ✅ Native |
+| **I2V Chaining** | ✅ Perfect continuity | ❌ No continuity | ✅ Good continuity |
+| **Memory Usage** | ⚡ Single model load | 🔄 T2V model only | 🔄 I2V model only |
+| **Consistency** | 🎯 Perfect (same weights) | ⚠️ Variable (different models) | ⚠️ I2V only (no T2V) |
+| **Status** | 🆕 Latest | 🔄 Legacy | 🔄 Legacy |
 
 ## Quick Start
 
@@ -24,7 +52,7 @@ This integration provides seamless Wan 2.1 video generation within Deforum, feat
 
 2. **Set FPS** (Output tab): Choose your desired FPS (e.g., 30 or 60)
 
-3. **Choose Model** (Wan Video tab): Select model size preference
+3. **Choose Model** (Wan Video tab): Select VACE model for best results
 
 4. **Generate**: Click "Generate Wan Video"
 
@@ -41,27 +69,82 @@ Models are automatically discovered from:
 Missing models are downloaded automatically when enabled:
 
 ```bash
-# 1.3B model (recommended) - ~17GB
+# VACE 1.3B model (recommended) - ~17GB - All-in-one T2V+I2V
+huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan
+
+# VACE 14B model (high quality) - ~75GB - All-in-one T2V+I2V
+huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan
+
+# T2V 1.3B model (T2V only) - ~17GB - No I2V chaining
 huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
 
-# 14B model (high quality) - ~75GB  
+# T2V 14B model (T2V only) - ~75GB - No I2V chaining  
 huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir models/wan
+
+# I2V 1.3B model (I2V only) - ~17GB - Legacy I2V chaining
+huggingface-cli download Wan-AI/Wan2.1-I2V-1.3B --local-dir models/wan
+
+# I2V 14B model (I2V only) - ~75GB - Legacy I2V chaining
+huggingface-cli download Wan-AI/Wan2.1-I2V-14B --local-dir models/wan
 ```
 
 ### Model Selection Options
-- **Auto-Detect**: Finds best available model automatically
-- **1.3B T2V/I2V**: Faster, lower VRAM usage
-- **14B T2V/I2V**: Higher quality, more VRAM required
-- **Use T2V Model (No Continuity)**: ⚠️ Uses T2V for I2V - equivalent to Deforum strength 0.0
+- **Auto-Detect**: Finds best available model automatically (prefers VACE)
+- **VACE 1.3B**: All-in-one T2V+I2V, faster, lower VRAM usage ⭐
+- **VACE 14B**: All-in-one T2V+I2V, higher quality, more VRAM required
+- **T2V 1.3B**: T2V only, no I2V chaining capability
+- **T2V 14B**: T2V only, no I2V chaining capability
+- **I2V 1.3B**: I2V only, legacy model for I2V chaining
+- **I2V 14B**: I2V only, legacy model for I2V chaining
 - **Custom Path**: Use your own model directory
 
-**I2V Model Impact:**
-- **Continuity Options (Auto-Detect/I2V models)**: Uses last frame from previous clip as input, respects Deforum strength schedules, creates seamless transitions
-- **No Continuity Option (T2V model)**: Generates each clip independently from text only, maximum creative freedom but abrupt transitions between clips
+**VACE Model Impact:**
+- **Perfect Continuity**: Uses same model for both T2V and I2V, ensuring visual consistency
+- **Seamless Transitions**: Last frame from previous clip becomes input for next clip
+- **Strength Scheduling**: Respects Deforum strength schedules for continuity control
+- **T2V Mode**: Can generate pure T2V content using blank frame transformation
 
-**Note**: The "Use T2V Model (No Continuity)" option gives the model complete creative freedom to interpret each prompt independently, similar to setting Deforum strength to 0.0. This results in more creative interpretations but breaks visual continuity between clips.
+**T2V Model Impact:**
+- **Independent Generation**: Each clip generated independently from text only
+- **No Continuity**: Maximum creative freedom but abrupt transitions between clips
+- **Memory Efficient**: Smaller model footprint for T2V-only workflows
+
+**I2V Model Impact (Legacy):**
+- **I2V Only**: Can only perform image-to-video generation, no T2V capability
+- **Good Continuity**: Designed for I2V chaining but requires separate T2V model for initial frame
+- **Legacy Compatibility**: Useful for existing workflows that rely on separate T2V+I2V model pairs
+- **Two-Stage Process**: Requires T2V model to generate first frame, then I2V for chaining
+
+**💡 Recommendation**: Use VACE models for I2V chaining workflows, T2V models only for independent clip generation.
 
 ## Deforum Integration
+
+### **Legacy T2V + I2V Workflow (Pre-VACE)**
+
+Before VACE models, Wan 2.1 used separate models for text-to-video and image-to-video generation. This approach is still supported for compatibility:
+
+#### **When to Use Legacy Models:**
+- **Existing Workflows**: You have working setups with T2V + I2V model pairs
+- **Specialized Use Cases**: Need pure T2V or pure I2V generation only
+- **Resource Constraints**: Want to load only T2V or I2V models to save VRAM
+- **Compatibility**: Working with older scripts that expect separate models
+
+#### **Legacy Workflow Process:**
+1. **T2V Model**: Generates the first frame/clip from text prompt
+2. **I2V Model**: Takes the last frame from T2V output and generates the next clip
+3. **Chaining**: Repeats I2V process for each subsequent prompt
+4. **Result**: Video with I2V transitions, but requires two separate model loads
+
+#### **Legacy vs VACE Comparison:**
+| Aspect | Legacy (T2V + I2V) | VACE |
+|--------|-------------------|------|
+| **Model Count** | 2 separate models | 1 unified model |
+| **Memory Usage** | Need both T2V + I2V loaded | Single model load |
+| **Setup Complexity** | More complex (two models) | Simple (one model) |
+| **Consistency** | Different model weights | Same weights throughout |
+| **Compatibility** | Older workflows | Latest approach |
+
+**💡 Migration Tip**: If you're using legacy T2V + I2V workflows, consider switching to VACE models for better consistency and simpler setup.
 
 ### Settings Sources
 Wan uses these settings from other Deforum tabs:

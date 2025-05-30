@@ -47,8 +47,8 @@ class WanFlowMatchingPipeline:
         """
         print("🚀 Setting up official Wan 2.1 repository...")
         
-        # Get extension root directory  
-        extension_root = Path(__file__).parent.parent.parent
+        # Get extension root directory
+        extension_root = Path(__file__).parent.parent.parent.parent
         wan_repo_dir = extension_root / "Wan2.1"
         
         if wan_repo_dir.exists():

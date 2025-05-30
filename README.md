@@ -85,17 +85,33 @@ The extension includes **Wan 2.1** (Alibaba's state-of-the-art video generation 
 
 1. **Download Wan Models** (choose one):
    ```bash
-   # Recommended: 1.3B model (8GB+ VRAM)
+   # Recommended: VACE 1.3B model (8GB+ VRAM) - All-in-one T2V+I2V
+   huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan
+   
+   # High Quality: VACE 14B model (16GB+ VRAM) - All-in-one T2V+I2V
+   huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan
+   
+   # Alternative: Separate T2V models (no I2V chaining)
    huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
    
-   # High Quality: 14B model (16GB+ VRAM) 
-   huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan
+   # Legacy: Separate I2V models (for compatibility with older setups)
+   huggingface-cli download Wan-AI/Wan2.1-I2V-1.3B --local-dir models/wan
+   huggingface-cli download Wan-AI/Wan2.1-I2V-14B --local-dir models/wan
    ```
 
 2. **Configure in Deforum**:
    - Set prompts in **Prompts tab** with frame numbers
    - Set FPS in **Output tab**
    - Go to **Wan Video tab** and click **"Generate Wan Video"**
+
+#### 🎬 **VACE Models - Recommended for Seamless Video Generation**
+
+**VACE (Video Adaptive Conditional Enhancement)** models are Wan's latest all-in-one architecture that handles both Text-to-Video and Image-to-Video generation with a single model, providing superior consistency for I2V chaining:
+
+- **🔄 Unified Architecture**: Single model handles both T2V and I2V generation
+- **🎯 Perfect Consistency**: Same model ensures visual continuity between clips
+- **⚡ Efficient Memory**: No need to load separate T2V and I2V models
+- **🎨 Enhanced Quality**: Latest architecture with improved video generation
 
 #### 🎬 **Deforum Workflow Example**
 
@@ -108,13 +124,19 @@ The extension includes **Wan 2.1** (Alibaba's state-of-the-art video generation 
 }
 ```
 
-At 30 FPS, this creates exactly 1-second clips with seamless I2V transitions.
+At 30 FPS, this creates exactly 1-second clips with seamless I2V transitions using VACE's unified architecture.
 
 #### 📊 **Model Comparison**
-| Model | Size | VRAM | Speed | Quality | Best For |
-|-------|------|------|--------|---------|----------|
-| **T2V-1.3B** | ~17GB | 8GB+ | Fast | Good | Most Users ⭐ |
-| **T2V-14B** | ~75GB | 16GB+ | Slow | Excellent | High-end Systems |
+| Model | Type | Size | VRAM | Speed | Quality | I2V Chaining | Best For |
+|-------|------|------|------|--------|---------|--------------|----------|
+| **VACE-1.3B** | All-in-one | ~17GB | 8GB+ | Fast | Good | ✅ Perfect | Most Users ⭐ |
+| **VACE-14B** | All-in-one | ~75GB | 16GB+ | Slow | Excellent | ✅ Perfect | High-end Systems |
+| **T2V-1.3B** | T2V Only | ~17GB | 8GB+ | Fast | Good | ❌ None | Independent Clips |
+| **T2V-14B** | T2V Only | ~75GB | 16GB+ | Slow | Excellent | ❌ None | Independent Clips |
+| **I2V-1.3B** | I2V Only | ~17GB | 8GB+ | Fast | Good | ✅ Good | Legacy I2V Chaining |
+| **I2V-14B** | I2V Only | ~75GB | 16GB+ | Slow | Excellent | ✅ Good | Legacy I2V Chaining |
+
+**💡 Recommendation**: Use VACE models for I2V chaining workflows, T2V models only for independent clip generation.
 
 #### 📚 **Documentation**
 
@@ -128,6 +150,7 @@ For comprehensive documentation, see:
 - **4n+1 Frame Calculation**: Automatic handling of Wan's frame requirements
 - **Flash Attention Fallback**: Works with or without flash-attn
 - **Memory Optimization**: Efficient VRAM usage for large generations
+- **VACE T2V Mode**: Uses blank frame transformation for pure text-to-video generation
 
 ## Default Bunny Testrun
 

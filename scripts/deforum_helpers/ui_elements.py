@@ -15,6 +15,7 @@
 # Contact the authors: https://deforum.github.io/
 
 from types import SimpleNamespace
+from pathlib import Path
 
 # noinspection PyUnresolvedReferences
 import gradio as gr
@@ -416,30 +417,171 @@ def wan_generate_video(*component_args):
         
         # Import the main Deforum run function
         from .run_deforum import run_deforum
-        from .wan_simple_integration import WanSimpleIntegration
+        from .wan.wan_simple_integration import WanSimpleIntegration
         
         # Auto-discover models first to validate setup
         integration = WanSimpleIntegration()
         models = integration.discover_models()
         
+        # Get wan_args from the components to check auto-download setting
+        from .args import get_component_names
+        component_names = get_component_names()
+        wan_auto_download = True  # Default value
+        
+        try:
+            auto_download_index = component_names.index('wan_auto_download')
+            if auto_download_index < len(component_args):
+                wan_auto_download = component_args[auto_download_index]
+        except (ValueError, IndexError):
+            print("⚠️ Could not find wan_auto_download setting, using default: True")
+        
+        # If no models found and auto-download is enabled, try to download
+        if not models and wan_auto_download:
+            print("📥 No models found and auto-download enabled. Downloading recommended model...")
+            
+            try:
+                from .wan.wan_model_downloader import WanModelDownloader
+                downloader = WanModelDownloader()
+                
+                # Try to download 1.3B VACE first (most user-friendly)
+                print("📥 Downloading Wan 1.3B VACE model (recommended: 8GB VRAM, consumer-friendly)...")
+                if downloader.download_model("1.3B VACE"):
+                    print("✅ 1.3B VACE model download completed!")
+                    # Re-discover models after download
+                    models = integration.discover_models()
+                else:
+                    print("❌ 1.3B VACE download failed, trying 14B VACE...")
+                    # Fallback to 14B VACE
+                    if downloader.download_model("14B VACE"):
+                        print("✅ 14B VACE model download completed!")
+                        models = integration.discover_models()
+                    else:
+                        print("❌ All model downloads failed")
+                        
+            except Exception as e:
+                print(f"❌ Auto-download failed: {e}")
+        
+        # If we have models but they might be corrupted, validate them
+        if models:
+            print("🔍 Validating discovered models...")
+            valid_models = []
+            corrupted_models = []
+            
+            for model in models:
+                if model['type'] == 'VACE':
+                    # Check if VACE model has required I2V components
+                    is_valid = integration._validate_vace_weights(Path(model['path']))
+                    if is_valid:
+                        valid_models.append(model)
+                        print(f"✅ {model['name']}: Valid VACE model")
+                    else:
+                        corrupted_models.append(model)
+                        print(f"❌ {model['name']}: Corrupted/incomplete VACE model")
+                elif model['type'] in ['T2V', 'I2V']:
+                    # Legacy T2V/I2V models - check for basic structure
+                    model_path = Path(model['path'])
+                    if (model_path / "model_index.json").exists():
+                        valid_models.append(model)
+                        print(f"✅ {model['name']}: Valid {model['type']} model")
+                    else:
+                        corrupted_models.append(model)
+                        print(f"❌ {model['name']}: Incomplete {model['type']} model")
+                else:
+                    # Unknown model type - likely invalid leftover files
+                    model_path = Path(model['path'])
+                    # Check if it has any recognizable Wan model structure
+                    has_valid_structure = (
+                        (model_path / "model_index.json").exists() or
+                        (model_path / "transformer").exists() or
+                        any(f.name.startswith("wan") for f in model_path.rglob("*.pth")) or
+                        any(f.name.startswith("wan") for f in model_path.rglob("*.safetensors"))
+                    )
+                    
+                    if has_valid_structure:
+                        valid_models.append(model)
+                        print(f"✅ {model['name']}: Valid legacy model")
+                    else:
+                        corrupted_models.append(model)
+                        print(f"❌ {model['name']}: Invalid/leftover files (not a proper Wan model)")
+            
+            # If we found corrupted models and auto-download is enabled, offer repair
+            if corrupted_models and wan_auto_download:
+                print(f"⚠️ Found {len(corrupted_models)} corrupted model(s)")
+                print("🛠️ MANUAL CLEANUP INSTRUCTIONS:")
+                print("For safety, corrupted models are NOT automatically deleted.")
+                print("If you want to remove them, please:")
+                print()
+                
+                for corrupted_model in corrupted_models:
+                    print(f"❌ {corrupted_model['name']}: {corrupted_model['path']}")
+                
+                print()
+                print("🗑️ To manually remove corrupted models:")
+                for corrupted_model in corrupted_models:
+                    print(f"   rm -rf \"{corrupted_model['path']}\"")
+                
+                print()
+                print("📥 To re-download models:")
+                for corrupted_model in corrupted_models:
+                    model_name = corrupted_model['name'].lower()
+                    if '1.3b' in model_name and 'vace' in model_name:
+                        print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan/Wan2.1-VACE-1.3B")
+                    elif '14b' in model_name and 'vace' in model_name:
+                        print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan/Wan2.1-VACE-14B")
+                    elif '1.3b' in model_name and 't2v' in model_name:
+                        print(f"   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan/Wan2.1-T2V-1.3B")
+                    elif '14b' in model_name and 't2v' in model_name:
+                        print(f"   huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir models/wan/Wan2.1-T2V-14B")
+                    elif '1.3b' in model_name and 'i2v' in model_name:
+                        print(f"   huggingface-cli download Wan-AI/Wan2.1-I2V-1.3B --local-dir models/wan/Wan2.1-I2V-1.3B")
+                    elif '14b' in model_name and 'i2v' in model_name:
+                        print(f"   huggingface-cli download Wan-AI/Wan2.1-I2V-14B --local-dir models/wan/Wan2.1-I2V-14B")
+                
+                print()
+                print("💡 TIP: Enable 'Auto-Download Models' for automatic downloading of missing models")
+                print("⚠️ SAFETY: Always verify corruption before deleting - some errors may be temporary")
+            
+            # Update models list to only include valid models
+            models = valid_models
+        
         if not models:
-            return """❌ No Wan models found!
+            auto_download_help = """
 
-🔧 SETUP REQUIRED:
-1. 📥 Install Flash Attention (required for Wan):
-   pip install flash-attn --no-build-isolation
+🔧 AUTO-DOWNLOAD OPTIONS:
+1. ✅ Enable "Auto-Download Models" in the Wan tab (recommended)
+2. 📥 Manual download with HuggingFace CLI:
+   
+   **For 1.3B VACE (Recommended - 8GB VRAM):**
+   huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan/Wan2.1-VACE-1.3B
+   
+   **For 14B VACE (High Quality - 480P+720P):**
+   huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan/Wan2.1-VACE-14B
 
-2. 📥 Install Wan repository:
-   git clone https://github.com/Wan-AI/Wan2.1.git
-   cd Wan2.1
-   pip install -e .
+3. ✅ Restart generation after downloading
 
-3. 📂 Download models to: models/wan/
-   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
+🔧 AUTO-REPAIR: Corrupted models are automatically detected and re-downloaded!""" if not wan_auto_download else """
 
-4. ✅ Restart WebUI after setup
+🔧 TROUBLESHOOTING:
+1. 📶 Check internet connection for downloads
+2. 💾 Ensure enough disk space (1.3B: ~17GB, 14B: ~75GB)
+3. 🔄 Try manual download with HuggingFace CLI (see Auto-Discovery tab)
+4. 🔧 Corrupted models are detected - follow manual cleanup instructions"""
 
-💡 Wan requires Flash Attention and the official Wan repository."""
+            return f"""❌ No Wan models found!
+
+💡 QUICK SETUP:
+VACE models are all-in-one (T2V + I2V) - recommended for I2V chaining!
+
+• **1.3B VACE**: 8GB VRAM, 480P, fast (perfect for most users)
+• **14B VACE**: 480P+720P, slower, higher quality (for power users)
+
+{auto_download_help}
+
+💡 VACE models handle both text-to-video and image-to-video in one model, perfect for seamless I2V chaining!
+
+🔧 **If you have T2V models but want I2V chaining:**
+Set I2V Model to "Use T2V Model (No Continuity)" for independent clips, 
+or download a VACE model for seamless transitions."""
         
         print(f"✅ Found {len(models)} Wan model(s):")
         for i, model in enumerate(models, 1):
@@ -480,14 +622,16 @@ def wan_generate_video(*component_args):
 3. 🎯 Optionally configure seeds in **Keyframes → Seed & SubSeed tab**
 4. 🎬 Click **Generate Wan Video** again
 
-💡 Wan needs your prompt schedule to know what to generate!
+💡 I2V chaining needs your prompt schedule to know what to generate!
 
-Example prompts:
+Example prompts for seamless I2V chaining:
 {
   "0": "a serene beach at sunset",
   "60": "a misty forest in the morning",
   "120": "a bustling city street at night"
-}"""
+}
+
+Each prompt will be smoothly connected using I2V continuity!"""
         
         # Force animation mode to Wan Video
         component_args = list(component_args)
@@ -541,7 +685,7 @@ Example prompts:
             else:
                 return f"✅ Wan video generation completed successfully!\n📊 Job ID: {job_id}\n💡 Check the Output tab for your video files."
         else:
-            return "✅ Wan video generation started!\n💡 Check the console for progress and the Output tab for results."
+            raise RuntimeError(f"❌ Wan generation failed")
             
     except Exception as e:
         error_msg = f"❌ Wan generation error: {str(e)}"
@@ -553,7 +697,7 @@ Example prompts:
 
 def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo_preroll, root, animation_prompts, loop_args, parseq_args, freeu_args, controlnet_args, depth_args, hybrid_args, parseq_adapter, wan_args, frame_duration):
     """Generate Wan video using the new simple integration approach - called by Deforum internally"""
-    from .wan_simple_integration import WanSimpleIntegration
+    from .wan.wan_simple_integration import WanSimpleIntegration
     import time
     
     print("🎬 Wan video generation started with AUTO-DISCOVERY (Internal Call)")
@@ -665,7 +809,7 @@ The auto-discovery will find your models automatically!
         # Parse resolution
         width, height = map(int, wan_args.wan_resolution.split('x'))
         
-        # Prepare clips data for I2V chaining
+        # Prepare clips data for generation
         clips_data = []
         for i, (prompt, start_frame, frame_count) in enumerate(clips):
             clips_data.append({
@@ -675,37 +819,62 @@ The auto-discovery will find your models automatically!
                 'num_frames': frame_count
             })
         
-        print(f"\n🔗 Using I2V chaining for better continuity between {len(clips_data)} clips")
+        # Check if user wants T2V mode (no continuity)
+        use_t2v_only = wan_args.wan_i2v_model == "Use T2V Model (No Continuity)"
+        mode_description = "generation"  # Default fallback
         
-        # Generate video using I2V chaining
-        output_file = integration.generate_video_with_i2v_chaining(
-            clips=clips_data,
-            model_info=selected_model,
-            output_dir=str(output_directory),
-            width=width,
-            height=height,
-            steps=wan_args.wan_inference_steps,
-            guidance_scale=wan_args.wan_guidance_scale,
-            seed=wan_args.wan_seed if wan_args.wan_seed > 0 else -1,
-            anim_args=anim_args,  # Pass anim_args for strength scheduling
-            wan_args=wan_args     # Pass wan_args for strength override settings
-        )
+        if use_t2v_only:
+            print(f"\n🎬 Using T2V mode (no continuity) for {len(clips_data)} independent clips")
+            print("⚠️ Each clip will be generated independently - no frame continuity between clips")
+            
+            # Generate video using T2V for all clips (no chaining)
+            output_file = integration.generate_video_t2v_only(
+                clips=clips_data,
+                model_info=selected_model,
+                output_dir=str(output_directory),
+                width=width,
+                height=height,
+                steps=wan_args.wan_inference_steps,
+                guidance_scale=wan_args.wan_guidance_scale,
+                seed=wan_args.wan_seed if wan_args.wan_seed > 0 else -1,
+                wan_args=wan_args
+            )
+            
+            mode_description = "T2V independent clips"
+        else:
+            print(f"\n🔗 Using I2V chaining for better continuity between {len(clips_data)} clips")
+            
+            # Generate video using I2V chaining
+            output_file = integration.generate_video_with_i2v_chaining(
+                clips=clips_data,
+                model_info=selected_model,
+                output_dir=str(output_directory),
+                width=width,
+                height=height,
+                steps=wan_args.wan_inference_steps,
+                guidance_scale=wan_args.wan_guidance_scale,
+                seed=wan_args.wan_seed if wan_args.wan_seed > 0 else -1,
+                anim_args=anim_args,  # Pass anim_args for strength scheduling
+                wan_args=wan_args     # Pass wan_args for strength override settings
+            )
+            
+            mode_description = "I2V chaining"
         
         generated_videos = [output_file] if output_file else []
         
         total_time = time.time() - start_time
         
         if generated_videos:
-            print(f"\n🎉 Wan I2V chained generation completed!")
-            print(f"✅ Generated seamless video with {len(clips_data)} clips using I2V chaining")
+            print(f"\n🎉 Wan {mode_description} generation completed!")
+            print(f"✅ Generated seamless video with {len(clips_data)} clips using {mode_description}")
             print(f"⏱️ Total time: {total_time:.1f} seconds")
             print(f"📁 Output file: {generated_videos[0]}")
-            print(f"🔗 I2V chaining ensures smooth transitions between clips")
+            print(f"🔗 {mode_description} ensures smooth transitions between clips")
                 
             # Return the output directory for Deforum's video processing
             return str(output_directory)
         else:
-            raise RuntimeError("❌ I2V chained video generation failed")
+            raise RuntimeError(f"❌ Wan {mode_description} failed")
             
     except Exception as e:
         print(f"❌ Wan generation failed: {e}")
@@ -726,18 +895,20 @@ def get_tab_wan(dw: SimpleNamespace):
         # Quick Start Section - Most Important
         with gr.Accordion("🚀 Quick Start", open=True):
             gr.Markdown("""
-            **Ready to Generate Wan Videos:**
+            **Ready to Generate Wan Videos with I2V Chaining:**
             
             1. **Configure prompts** in the **Prompts tab** (REQUIRED)
             2. **Set FPS** in the **Output tab** (REQUIRED)  
-            3. **Choose model size** below
-            4. **Click Generate Wan Video**
+            3. **Choose VACE model** below (1.3B recommended for most users)
+            4. **Click Generate Wan Video** for seamless I2V chaining
+            
+            **💡 I2V Chaining**: Each clip uses the last frame from the previous clip as input, creating smooth transitions!
             """)
             
             # Generate Button - Prominently placed at top
             with FormRow():
                 wan_generate_button = gr.Button(
-                    "🎬 Generate Wan Video",
+                    "🎬 Generate Wan Video (I2V Chaining)",
                     variant="primary", 
                     size="lg",
                     elem_id="wan_generate_button"
@@ -748,11 +919,17 @@ def get_tab_wan(dw: SimpleNamespace):
                 label="Generation Status",
                 interactive=False,
                 lines=2,
-                placeholder="Ready to generate Wan video using Deforum schedules..."
+                placeholder="Ready to generate Wan video with I2V chaining using Deforum schedules..."
             )
         
         # Essential Settings - Open by default
         with gr.Accordion("Essential Settings", open=True):
+            gr.Markdown("""
+            **🔥 VACE Models Recommended**: All-in-one models that handle both T2V and I2V in one package!
+            - **1.3B VACE**: 8GB VRAM, 480P, fast (perfect for most users)
+            - **14B VACE**: 480P+720P, slower, higher quality (for power users)
+            """)
+            
             with FormRow():
                 wan_t2v_model = create_gr_elem(dw.wan_t2v_model)
                 wan_i2v_model = create_gr_elem(dw.wan_i2v_model)
@@ -793,29 +970,25 @@ def get_tab_wan(dw: SimpleNamespace):
             # Strength Override Section
             with gr.Accordion("🔗 I2V Continuity Control", open=False):
                 gr.Markdown("""
-                **For Maximum Continuity Between Clips:**
+                **Default: I2V Chaining for Seamless Transitions**
                 
-                Enable "Strength Override" to ignore Deforum strength schedules and use a fixed value.
-                - **1.0**: Maximum continuity (clips look very similar)
-                - **0.8-0.9**: Strong continuity with some variation
-                - **0.5-0.7**: Balanced continuity and creativity
-                - **0.0-0.4**: More creative freedom, less continuity
+                By default, Wan uses **I2V chaining** where each clip takes the last frame from the previous clip as input.
+                This creates smooth, seamless transitions between your prompt changes.
                 
-                **⚠️ I2V Model Selection Impact:**
+                **Strength Control (for I2V Chaining):**
+                - **High (0.8-0.9)**: Strong continuity, very smooth transitions
+                - **Medium (0.5-0.7)**: Balanced continuity and creative freedom  
+                - **Low (0.3-0.5)**: More creative freedom, less strict continuity
                 
-                **Continuity Options (Recommended):**
-                - **Auto-Detect/1.3B I2V/14B I2V**: Uses dedicated I2V models
-                  - Takes the last frame from previous clip as input for next clip
-                  - Respects Deforum strength schedules for smooth transitions
-                  - Creates seamless video flow between clips
+                **Override Deforum Strength**: Enable to ignore Deforum strength schedules and use a fixed value.
                 
-                **No Continuity Option (Creative Freedom):**
-                - **Use T2V Model (No Continuity)**: Uses T2V for all clips
-                  - ⚠️ **Equivalent to setting Deforum strength to 0.0** - ignores previous frames completely
-                  - Each clip generated independently from text prompt only
-                  - **Upside**: Maximum creativity - model has complete freedom to interpret each prompt
-                  - **Downside**: Abrupt changes between clips, like separate videos stitched together
-                  - **Use when**: You want completely independent scenes or I2V models unavailable
+                **⚠️ Alternative: T2V Mode (No Continuity)**
+                
+                If you select **"Use T2V Model (No Continuity)"** above:
+                - ✅ **Upside**: Maximum creativity - each clip generated independently from prompt only
+                - ⚠️ **Downside**: Abrupt changes between clips, like separate videos stitched together
+                - 🎯 **Use when**: You want completely independent scenes or dramatic scene changes
+                - 📝 **Equivalent to**: Setting Deforum strength to 0.0 (ignores previous frames)
                 """)
                 
                 with FormRow():
@@ -825,27 +998,93 @@ def get_tab_wan(dw: SimpleNamespace):
         # Auto-Discovery Info - Collapsed by default
         with gr.Accordion("🔍 Auto-Discovery & Setup", open=False):
             gr.Markdown("""
-            **Smart Model Discovery**
+            **Smart Model Discovery & Auto-Download**
             
             Wan models are automatically discovered from common locations:
-            - `models/Wan/`
+            - `models/wan/` (recommended location)
             - HuggingFace cache
             
-            **Model Size Information:**
-            - **1.3B (Recommended)**: ~17GB download, faster generation, lower VRAM usage
-            - **14B (High Quality)**: ~75GB download, slower generation, higher VRAM usage, better quality
+            **🔥 VACE Models (Recommended for I2V Chaining):**
+            - **1.3B VACE (Default)**: ~17GB download, 8GB VRAM, 480P, consumer-friendly
+            - **14B VACE**: ~75GB download, 480P+720P, slower, higher quality
             
-            **Quick Download:**
+            **💡 Why VACE Models?**
+            - All-in-one: Handle both T2V and I2V in single model
+            - Perfect for I2V chaining with seamless transitions
+            - No need for separate I2V models
+            """)
+            
+            # Model Validation Section
+            with gr.Accordion("🔍 Model Validation & Integrity Check", open=False):
+                gr.Markdown("""
+                **Advanced Model Validation with Checksum Verification**
+                
+                Verify your downloaded Wan models are complete and not corrupted:
+                - ✅ **File size validation**: Detect suspiciously small files
+                - ✅ **JSON config validation**: Verify configuration files
+                - ✅ **Safetensors integrity**: Check model weights are readable
+                - ✅ **Git LFS detection**: Find incomplete downloads (pointer files)
+                - ✅ **Checksum verification**: Calculate and verify file hashes
+                - ✅ **Structure validation**: Ensure all required files are present
+                """)
+                
+                with FormRow():
+                    validate_models_btn = gr.Button(
+                        "🔍 Validate All Models",
+                        variant="secondary",
+                        elem_id="wan_validate_models_btn"
+                    )
+                    cleanup_invalid_btn = gr.Button(
+                        "🗑️ Clean Up Invalid Models",
+                        variant="secondary",
+                        elem_id="wan_cleanup_invalid_btn"
+                    )
+                    
+                with FormRow():
+                    compute_checksums_btn = gr.Button(
+                        "🔐 Compute Model Checksums",
+                        variant="secondary",
+                        elem_id="wan_compute_checksums_btn"
+                    )
+                    verify_integrity_btn = gr.Button(
+                        "✅ Full Integrity Check",
+                        variant="primary",
+                        elem_id="wan_verify_integrity_btn"
+                    )
+                
+                # Validation output
+                validation_output = gr.Textbox(
+                    label="Validation Results",
+                    interactive=False,
+                    lines=10,
+                    placeholder="Click a validation button to check your Wan models...",
+                    elem_id="wan_validation_output"
+                )
+                
+                # Model details output
+                model_details_output = gr.JSON(
+                    label="Model Details & Checksums",
+                    visible=False,
+                    elem_id="wan_model_details"
+                )
+            
+            gr.Markdown("""
+            **Quick Download Commands:**
             ```bash
             # Install HuggingFace CLI (if not already installed)
             pip install huggingface_hub
             
-            # Download 1.3B model (recommended)
-            huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
+            # Download 1.3B VACE (recommended default)
+            huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan/Wan2.1-VACE-1.3B
             
-            # Or download 14B model (high quality)
-            huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan
+            # Or download 14B VACE (high quality)
+            huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan/Wan2.1-VACE-14B
             ```
+            
+            **⚠️ Legacy Models** (for compatibility):
+            - T2V models: Text-to-video only
+            - I2V models: Separate models for image-to-video
+            - Less convenient than VACE, but still supported
             """)
         
         # Hidden model path for compatibility (auto-populated by discovery)

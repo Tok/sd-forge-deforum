@@ -46,7 +46,7 @@ def wan_generate_video():
         
         # Try to discover models to check if setup is complete
         try:
-            from .wan_simple_integration import WanSimpleIntegration
+            from .wan.wan_simple_integration import WanSimpleIntegration
             integration = WanSimpleIntegration()
             models = integration.discover_models()
             
@@ -198,5 +198,297 @@ def setup_deforum_left_side_ui():
                 inputs=[],
                 outputs=[locals()['wan_generation_status']]
             )
+
+    # Set up Wan Model Validation buttons
+    try:
+        from .wan.wan_model_validator import WanModelValidator
+        
+        # Validation functions
+        def wan_validate_models():
+            """Validate Wan models with HuggingFace checksums when possible"""
+            try:
+                validator = WanModelValidator()
+                models = validator.discover_models()
+                
+                if not models:
+                    return "❌ No Wan models found for validation."
+                
+                results = []
+                results.append("🔐 WAN MODEL VALIDATION WITH OFFICIAL CHECKSUMS")
+                results.append("=" * 55)
+                
+                valid_models = 0
+                total_models = len(models)
+                
+                for model in models:
+                    results.append(f"\n📁 {model['name']} ({model['size_formatted']}):")
+                    
+                    from pathlib import Path
+                    model_path = Path(model['path'])
+                    
+                    # Try HuggingFace checksum validation first
+                    hf_validation = validator.validate_against_huggingface_checksums(model_path)
+                    
+                    if hf_validation['checked_files']:
+                        # HuggingFace validation was possible
+                        if hf_validation['valid']:
+                            valid_count = len([f for f in hf_validation['checked_files'].values() if f['status'] == 'valid'])
+                            total_count = len(hf_validation['checked_files'])
+                            results.append(f"   ✅ VALID - {valid_count}/{total_count} files verified with official checksums")
+                            valid_models += 1
+                        else:
+                            results.append(f"   ❌ INVALID - Checksum verification failed")
+                            for error in hf_validation['errors']:
+                                results.append(f"      🚨 {error}")
+                    else:
+                        # Fall back to basic validation if HuggingFace validation not possible
+                        results.append(f"   ⚠️ Official checksums not available, using basic validation...")
+                        validation_result = validator.validate_model_integrity(model_path)
+                        
+                        if validation_result['valid']:
+                            results.append(f"   ✅ VALID (basic structure check)")
+                            valid_models += 1
+                        else:
+                            results.append(f"   ❌ INVALID")
+                            for error in validation_result['errors']:
+                                results.append(f"      🚨 {error}")
+                    
+                    if hf_validation['warnings']:
+                        for warning in hf_validation['warnings']:
+                            results.append(f"   ⚠️ {warning}")
+                
+                summary = f"📊 SUMMARY: {valid_models}/{total_models} models valid"
+                if valid_models == total_models:
+                    summary = f"✅ {summary} - All models verified!"
+                else:
+                    summary = f"⚠️ {summary} - Some models have issues"
+                
+                results.append(f"\n{summary}")
+                results.append(f"💡 Using official HuggingFace checksums for maximum reliability")
+                
+                return "\n".join(results)
+                
+            except Exception as e:
+                return f"❌ Validation error: {str(e)}"
+        
+        def cleanup_invalid_models():
+            """Clean up invalid models with confirmation"""
+            try:
+                validator = WanModelValidator()
+                models = validator.discover_models()
+                
+                if not models:
+                    return "❌ No models found to validate."
+                
+                # Find invalid models
+                invalid_models = []
+                results = []
+                results.append("🔍 Checking all models for corruption...")
+                results.append("=" * 50)
+                
+                for model in models:
+                    from pathlib import Path
+                    model_path = Path(model['path'])
+                    
+                    # Use HuggingFace validation if possible, otherwise basic validation
+                    hf_validation = validator.validate_against_huggingface_checksums(model_path)
+                    
+                    if hf_validation['checked_files']:
+                        # Use HuggingFace validation result
+                        is_valid = hf_validation['valid']
+                        errors = hf_validation['errors']
+                    else:
+                        # Fall back to basic validation
+                        validation_result = validator.validate_model_integrity(model_path)
+                        is_valid = validation_result['valid']
+                        errors = validation_result['errors']
+                    
+                    if not is_valid:
+                        invalid_models.append({
+                            'name': model['name'],
+                            'path': model['path'],
+                            'size': model['size_formatted'],
+                            'errors': errors
+                        })
+                
+                if not invalid_models:
+                    return "✅ All models passed validation! No cleanup needed."
+                
+                results.append(f"\n⚠️ Found {len(invalid_models)} invalid model(s):")
+                for i, invalid in enumerate(invalid_models, 1):
+                    results.append(f"\n{i}. {invalid['name']} ({invalid['size']})")
+                    results.append(f"   Issues: {', '.join(invalid['errors'])}")
+                
+                results.append(f"\n🗑️ Use the 'Clean Up Invalid Models' button to remove these automatically.")
+                results.append("⚠️ This action will permanently delete the invalid model directories!")
+                
+                return "\n".join(results)
+                
+            except Exception as e:
+                return f"❌ Cleanup scan error: {str(e)}"
+        
+        def compute_model_checksums():
+            """Compute checksums for all model files"""
+            try:
+                validator = WanModelValidator()
+                models = validator.discover_models()
+                
+                if not models:
+                    return "❌ No models found to checksum.", {}
+                
+                results = []
+                results.append("🔐 Computing checksums for all models...")
+                results.append("=" * 60)
+                
+                checksums = {}
+                
+                for model in models:
+                    results.append(f"\n📁 {model['name']}:")
+                    model_checksums = {}
+                    
+                    from pathlib import Path
+                    model_path = Path(model['path'])
+                    
+                    # Compute checksums for important files
+                    important_files = [
+                        "diffusion_pytorch_model.safetensors",
+                        "diffusion_pytorch_model-00001-of-00007.safetensors",
+                        "models_t5_umt5-xxl-enc-bf16.pth",
+                        "Wan2.1_VAE.pth",
+                        "config.json"
+                    ]
+                    
+                    for file_name in important_files:
+                        file_path = model_path / file_name
+                        if file_path.exists():
+                            file_hash = validator.compute_file_hash(file_path)
+                            if file_hash:
+                                model_checksums[file_name] = file_hash
+                                results.append(f"   ✅ {file_name}: {file_hash[:16]}...")
+                            else:
+                                results.append(f"   ❌ {file_name}: Failed to compute hash")
+                    
+                    checksums[model['name']] = model_checksums
+                
+                results.append(f"\n✅ Checksum computation complete!")
+                results.append("💾 Full checksums available in the Model Details output below.")
+                
+                return "\n".join(results), checksums
+                
+            except Exception as e:
+                return f"❌ Checksum error: {str(e)}", {}
+        
+        def full_integrity_check():
+            """Comprehensive integrity check with HuggingFace checksum validation"""
+            try:
+                validator = WanModelValidator()
+                models = validator.discover_models()
+                
+                if not models:
+                    return "❌ No models found for integrity check.", {}
+                
+                results = []
+                results.append("🔍 COMPREHENSIVE INTEGRITY CHECK WITH OFFICIAL CHECKSUMS")
+                results.append("=" * 70)
+                
+                all_details = {}
+                overall_status = "✅ ALL GOOD"
+                
+                for model in models:
+                    results.append(f"\n📁 {model['name']} ({model['size_formatted']}):")
+                    results.append("-" * 50)
+                    
+                    from pathlib import Path
+                    model_path = Path(model['path'])
+                    
+                    # Run HuggingFace checksum validation first
+                    hf_validation = validator.validate_against_huggingface_checksums(model_path)
+                    
+                    model_details = {
+                        'path': model['path'],
+                        'size': model['size_formatted'],
+                        'type': model['type'],
+                        'hf_checksum_validation': hf_validation,
+                        'basic_validation': None
+                    }
+                    
+                    # Report HuggingFace validation results
+                    if hf_validation['valid']:
+                        checked_count = len(hf_validation['checked_files'])
+                        valid_count = sum(1 for f in hf_validation['checked_files'].values() if f['status'] == 'valid')
+                        results.append(f"   ✅ HuggingFace Checksum Validation: {valid_count}/{checked_count} files verified")
+                        
+                        for file_name, file_info in hf_validation['checked_files'].items():
+                            if file_info['status'] == 'valid':
+                                results.append(f"      ✅ {file_name}: Official checksum verified")
+                            else:
+                                results.append(f"      ❌ {file_name}: Checksum mismatch")
+                                overall_status = "⚠️ CHECKSUM ISSUES FOUND"
+                    else:
+                        results.append(f"   ❌ HuggingFace Checksum Validation: FAILED")
+                        overall_status = "⚠️ CHECKSUM ISSUES FOUND"
+                        for error in hf_validation['errors']:
+                            results.append(f"      🚨 {error}")
+                    
+                    if hf_validation['warnings']:
+                        for warning in hf_validation['warnings']:
+                            results.append(f"      ⚠️ {warning}")
+                    
+                    # Only run basic validation if HuggingFace validation had issues
+                    if not hf_validation['valid'] or hf_validation['warnings']:
+                        basic_validation = validator.validate_model_integrity(model_path)
+                        model_details['basic_validation'] = basic_validation
+                        
+                        if basic_validation['valid']:
+                            results.append(f"   ✅ Basic Structure Validation: PASS")
+                        else:
+                            results.append(f"   ❌ Basic Structure Validation: FAIL")
+                            for error in basic_validation['errors']:
+                                results.append(f"      🚨 {error}")
+                    
+                    all_details[model['name']] = model_details
+                
+                results.insert(1, f"🎯 OVERALL STATUS: {overall_status}")
+                results.append(f"\n💡 **Using Official HuggingFace Checksums for Maximum Reliability**")
+                results.append(f"💾 Detailed results saved to Model Details output.")
+                
+                return "\n".join(results), all_details
+                
+            except Exception as e:
+                return f"❌ Integrity check error: {str(e)}", {}
+        
+        # Connect validation buttons if they exist
+        validation_buttons = [
+            ('validate_models_btn', wan_validate_models),
+            ('cleanup_invalid_btn', cleanup_invalid_models),
+            ('compute_checksums_btn', compute_model_checksums),
+            ('verify_integrity_btn', full_integrity_check)
+        ]
+        
+        for button_name, callback_fn in validation_buttons:
+            if button_name in locals():
+                # Determine output based on function return signature
+                if button_name in ['compute_checksums_btn', 'verify_integrity_btn']:
+                    # These functions return tuple (text, dict)
+                    locals()[button_name].click(
+                        fn=callback_fn,
+                        inputs=[],
+                        outputs=[locals()['validation_output'], locals()['model_details_output']]
+                    )
+                else:
+                    # These functions return just text
+                    locals()[button_name].click(
+                        fn=callback_fn,
+                        inputs=[],
+                        outputs=[locals()['validation_output']]
+                    )
+                print(f"✅ Connected {button_name}")
+            
+        print("✅ All Wan model validation buttons connected")
+        
+    except ImportError:
+        print("⚠️ WanModelValidator not available - validation buttons will not work")
+    except Exception as e:
+        print(f"⚠️ Failed to set up validation buttons: {e}")
 
     return locals()

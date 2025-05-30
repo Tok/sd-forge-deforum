@@ -1144,31 +1144,31 @@ def WanArgs():
     """Wan 2.1 video generation arguments - Updated to integrate with Deforum schedules"""
     return {
         "wan_t2v_model": {
-            "label": "T2V Model",
+            "label": "Primary Model",
             "type": "dropdown",
-            "choices": ["Auto-Detect", "1.3B T2V", "14B T2V", "Custom Path"],
-            "value": "14B T2V",
-            "info": "Text-to-Video model for first clip generation. 14B recommended for I2V chaining."
+            "choices": ["Auto-Detect", "1.3B VACE", "14B VACE", "1.3B T2V (Legacy)", "14B T2V (Legacy)", "Custom Path"],
+            "value": "1.3B VACE",
+            "info": "Primary Wan model. VACE models handle both T2V and I2V in one model (recommended). 1.3B VACE: 8GB VRAM, consumer-friendly."
         },
         "wan_i2v_model": {
-            "label": "I2V Model", 
+            "label": "I2V Model (Legacy)", 
             "type": "dropdown",
-            "choices": ["Auto-Detect", "14B I2V 720P", "14B I2V 480P", "Use T2V Model (No Continuity)", "Custom Path"],
-            "value": "14B I2V 720P",
-            "info": "Image-to-Video model for clip chaining. ⚠️ Note: No 1.3B I2V models exist, only 14B. For best results, use 14B T2V + 14B I2V."
+            "choices": ["Auto-Detect", "Use Primary Model", "Use T2V Model (No Continuity)", "14B I2V 720P (Legacy)", "14B I2V 480P (Legacy)", "Custom Path"],
+            "value": "Use Primary Model",
+            "info": "I2V chaining mode. 'Use Primary Model' uses VACE for seamless transitions (recommended). 'Use T2V Model' = independent clips."
         },
         "wan_auto_download": {
             "label": "Auto-Download Models",
             "type": "checkbox",
             "value": True,
-            "info": "Automatically download missing models from HuggingFace"
+            "info": "Automatically download missing models from HuggingFace (recommended for first-time setup)"
         },
         "wan_preferred_size": {
             "label": "Preferred Model Size",
             "type": "dropdown",
-            "choices": ["14B (T2V + I2V - Best Quality)", "1.3B (T2V Only - Faster)"],
-            "value": "14B (T2V + I2V - Best Quality)",
-            "info": "14B: Real I2V chaining with continuity. 1.3B: Faster but no real I2V (uses T2V for all clips)."
+            "choices": ["1.3B VACE (Recommended)", "14B VACE (High Quality)", "Legacy Models"],
+            "value": "1.3B VACE (Recommended)",
+            "info": "VACE models are all-in-one (T2V + I2V). 1.3B: 8GB VRAM, 480P, fast. 14B: 480P+720P, slower, better quality."
         },
         "wan_model_path": {
             "label": "Custom Model Path",
