@@ -809,6 +809,42 @@ The auto-discovery will find your models automatically!
         # Parse resolution
         width, height = map(int, wan_args.wan_resolution.split('x'))
         
+        # Model/Resolution validation
+        model_size = selected_model['size']
+        model_name = selected_model['name']
+        is_720p = (width >= 1280 and height >= 720) or (width >= 720 and height >= 1280)
+        is_480p = (width <= 864 and height <= 480) or (width <= 480 and height <= 864)
+        
+        print(f"\n🔍 Model/Resolution Validation:")
+        print(f"   📦 Model: {model_name} ({model_size})")
+        print(f"   📐 Resolution: {width}x{height} ({'720p' if is_720p else '480p' if is_480p else 'Custom'})")
+        
+        # Check for resolution/model mismatches and warn
+        if "1.3B" in model_size and is_720p:
+            print(f"\n⚠️  WARNING: VACE 1.3B + 720p Resolution Mismatch")
+            print(f"   📦 Model: {model_name} (optimized for 480p)")
+            print(f"   📐 Resolution: {width}x{height} (720p)")
+            print(f"   💡 RECOMMENDATION: Use 864x480 for better performance with VACE 1.3B")
+            print(f"   🚀 Continuing anyway - VACE 1.3B may struggle with 720p...")
+            
+        elif "14B" in model_size and is_480p:
+            print(f"\n💡 INFO: VACE 14B + 480p Resolution")
+            print(f"   📦 Model: {model_name} (supports both 480p and 720p)")
+            print(f"   📐 Resolution: {width}x{height} (480p)")
+            print(f"   ✅ This combination works well, but you could use 1280x720 for higher quality")
+            
+        elif "1.3B" in model_size and is_480p:
+            print(f"\n✅ Perfect Match: VACE 1.3B + 480p")
+            print(f"   📦 Model: {model_name} (optimized for 480p)")
+            print(f"   📐 Resolution: {width}x{height} (480p)")
+            print(f"   🎯 Optimal configuration for VACE 1.3B!")
+            
+        elif "14B" in model_size and is_720p:
+            print(f"\n✅ Perfect Match: VACE 14B + 720p")
+            print(f"   📦 Model: {model_name} (supports 720p)")
+            print(f"   📐 Resolution: {width}x{height} (720p)")
+            print(f"   🎯 High quality configuration!")
+        
         # Prepare clips data for generation
         clips_data = []
         for i, (prompt, start_frame, frame_count) in enumerate(clips):

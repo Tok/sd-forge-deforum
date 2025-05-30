@@ -1148,7 +1148,7 @@ def WanArgs():
             "type": "dropdown",
             "choices": ["Auto-Detect", "1.3B VACE", "14B VACE", "1.3B T2V (Legacy)", "14B T2V (Legacy)", "Custom Path"],
             "value": "1.3B VACE",
-            "info": "Primary Wan model. VACE models handle both T2V and I2V in one model (recommended). 1.3B VACE: 8GB VRAM, consumer-friendly."
+            "info": "Primary Wan model. VACE 1.3B: 480p, 8GB VRAM. VACE 14B: 480p+720p, 16GB+ VRAM. VACE models handle both T2V and I2V."
         },
         "wan_i2v_model": {
             "label": "I2V Model (Legacy)", 
@@ -1168,7 +1168,7 @@ def WanArgs():
             "type": "dropdown",
             "choices": ["1.3B VACE (Recommended)", "14B VACE (High Quality)", "Legacy Models"],
             "value": "1.3B VACE (Recommended)",
-            "info": "VACE models are all-in-one (T2V + I2V). 1.3B: 8GB VRAM, 480P, fast. 14B: 480P+720P, slower, better quality."
+            "info": "VACE 1.3B: 480p, 8GB VRAM, fast. VACE 14B: 480p+720p, 16GB+ VRAM, better quality."
         },
         "wan_model_path": {
             "label": "Custom Model Path",
@@ -1179,9 +1179,9 @@ def WanArgs():
         "wan_resolution": {
             "label": "Wan Resolution",
             "type": "dropdown",
-            "choices": ["1280x720", "720x1280", "854x480", "480x854"],
-            "value": "1280x720",
-            "info": "Resolution for Wan video generation. 16:9 landscape, 9:16 portrait, both in 720p and 480p"
+            "choices": ["864x480", "480x864", "1280x720", "720x1280"],
+            "value": "864x480",
+            "info": "Resolution for Wan video generation. 480p for VACE 1.3B, 720p for VACE 14B. Will warn if mismatched."
         },
         "wan_seed": {
             "label": "Wan Seed",

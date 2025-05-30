@@ -129,7 +129,7 @@ def run_deforum(*args):
             elif anim_args.animation_mode == 'Interpolation':
                 render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
             elif anim_args.animation_mode == 'Wan Video':
-                # Use NEW direct Wan integration
+                # Use direct Wan integration
                 try:
                     # Simple Wan validation (inline replacement)
                     def validate_wan_settings(wan_args):
@@ -139,16 +139,16 @@ def run_deforum(*args):
                             
                         print("✅ Wan settings validated")
                     
-                    # Import NEW generation function from ui_elements
+                    # Import generation function from ui_elements
                     from .ui_elements import generate_wan_video
                     
                     # Validate Wan settings before proceeding
                     validate_wan_settings(wan_args)
                     
-                    print(f"{YELLOW}Starting NEW Wan Video Generation (AUTO-DISCOVERY)...{RESET_COLOR}")
+                    print(f"{YELLOW}Starting Wan Video Generation (AUTO-DISCOVERY)...{RESET_COLOR}")
                     print(f"Using smart model discovery and direct integration.")
                     
-                    # Use the NEW generate function that handles everything
+                    # Use the generate function that handles everything
                     output_dir = generate_wan_video(args, anim_args, video_args, 0, False, False, root, root.animation_prompts, loop_args, parseq_args, freeu_args, controlnet_args, None, None, None, wan_args, None)
                     
                     print(f"✅ Wan video generation completed successfully!")
@@ -260,7 +260,7 @@ def run_deforum(*args):
 
         if shared.opts.data.get("deforum_enable_persistent_settings", False):
             persistent_sett_path = shared.opts.data.get("deforum_persistent_settings_path")
-            save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root, persistent_sett_path)
+            save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root, persistent_sett_path, wan_args)
 
         # Close the pipeline, not to interfere with ControlNet
         try:

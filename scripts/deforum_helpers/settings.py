@@ -22,7 +22,7 @@ import modules.shared as sh
 from modules.sd_models import FakeInitialModel
 
 from .args import DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, get_settings_component_names, \
-    pack_args, FreeUArgs, KohyaHRFixArgs
+    pack_args, FreeUArgs, KohyaHRFixArgs, WanArgs
 from .defaults import mask_fill_choices, get_camera_shake_list
 from .deforum_controlnet import controlnet_component_names
 from .deprecation_utils import handle_deprecated_settings
@@ -73,7 +73,7 @@ def load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlne
         return True
 
 # save settings function that get calls when run_deforum is being called
-def save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root, full_out_file_path = None):
+def save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root, full_out_file_path = None, wan_args = None):
     if full_out_file_path:
         args.__dict__["seed"] = root.raw_seed
         args.__dict__["batch_name"] = root.raw_batch_name
@@ -84,7 +84,12 @@ def save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, co
     settings_filename = full_out_file_path if full_out_file_path else os.path.join(args.outdir, f"{root.timestring}_settings.txt")
     with open(settings_filename, "w+", encoding="utf-8") as f:
         s = {}
-        for d in (args.__dict__, anim_args.__dict__, parseq_args.__dict__, loop_args.__dict__, controlnet_args.__dict__, freeu_args.__dict__, kohya_hrfix_args.__dict__, video_args.__dict__):
+        # Include all argument dictionaries, including wan_args if provided
+        dicts_to_merge = [args.__dict__, anim_args.__dict__, parseq_args.__dict__, loop_args.__dict__, controlnet_args.__dict__, freeu_args.__dict__, kohya_hrfix_args.__dict__, video_args.__dict__]
+        if wan_args is not None:
+            dicts_to_merge.append(wan_args.__dict__)
+        
+        for d in dicts_to_merge:
             s.update({k: v for k, v in d.items() if k not in exclude_keys})
         s["sd_model_name"] = sh.sd_model.sd_checkpoint_info.name
         s["sd_model_hash"] = sh.sd_model.sd_checkpoint_info.hash
@@ -137,8 +142,9 @@ def save_settings(*args, **kwargs):
     controlnet_dict = pack_args(data, controlnet_component_names)
     freeu_args_dict = pack_args(data, FreeUArgs)
     kohya_hrfix_args_dict = pack_args(data, KohyaHRFixArgs)
+    wan_args_dict = pack_args(data, WanArgs)
     video_args_dict = pack_args(data, DeforumOutputArgs)
-    combined = {**args_dict, **anim_args_dict, **parseq_dict, **loop_dict, **controlnet_dict, **freeu_args_dict, **kohya_hrfix_args_dict, **video_args_dict}
+    combined = {**args_dict, **anim_args_dict, **parseq_dict, **loop_dict, **controlnet_dict, **freeu_args_dict, **kohya_hrfix_args_dict, **wan_args_dict, **video_args_dict}
     exclude_keys = get_keys_to_exclude()
     filtered_combined = {k: v for k, v in combined.items() if k not in exclude_keys}
     
