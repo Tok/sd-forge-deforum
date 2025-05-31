@@ -22,11 +22,10 @@ from types import SimpleNamespace
 
 import gradio as gr
 from modules.ui_components import FormRow, FormColumn, ToolButton
-from .general_utils import get_gradio_html
 from .deprecation_utils import handle_deprecated_settings
 from .ffmpeg_utils import FFmpegProcessor
 from .rendering.util import emoji_utils
-from .defaults import DeforumAnimPrompts
+from .defaults import DeforumAnimPrompts, get_gradio_html
 from .gradio_funcs import upload_pics_to_interpolate, upload_vid_to_depth, ncnn_upload_vid_to_upscale
 from .video_audio_utilities import ffmpeg_stitch_video, direct_stitch_vid_from_frames
 
