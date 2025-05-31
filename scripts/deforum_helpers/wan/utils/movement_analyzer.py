@@ -208,9 +208,9 @@ class MovementAnalyzer:
     
     def __init__(self, sensitivity: float = 1.0):
         self.sensitivity = sensitivity
-        self.min_translation_threshold = 0.1 * sensitivity  # Much lower threshold for subtle movement
-        self.min_rotation_threshold = 0.05 * sensitivity   # Much lower threshold for subtle rotation
-        self.min_zoom_threshold = 0.001 * sensitivity      # Much lower threshold for subtle zoom
+        self.min_translation_threshold = 0.001 * sensitivity  # Much more sensitive threshold for subtle movement
+        self.min_rotation_threshold = 0.001 * sensitivity     # Much more sensitive threshold for subtle rotation
+        self.min_zoom_threshold = 0.0001 * sensitivity        # Much more sensitive threshold for subtle zoom
     
     def analyze_frame_ranges(self, values: List[float], movement_type: str) -> List[Dict]:
         """
@@ -355,41 +355,119 @@ class MovementAnalyzer:
         # Sort segments by frame order
         all_segments.sort(key=lambda s: s['start_frame'])
         
-        # Generate combined description
-        descriptions = []
+        # Group similar movements that are close together or overlapping
+        grouped_movements = self._group_similar_segments(all_segments, max_frames)
+        
+        # Generate specific directional descriptions
+        movement_descriptions = []
         total_strength = 0.0
         
-        for segment in all_segments:
-            desc = self.generate_segment_description(segment, max_frames)
-            descriptions.append(desc)
-            # Calculate strength based on range and duration
-            duration = segment['end_frame'] - segment['start_frame']
-            strength = (segment['total_range'] * duration) / (max_frames * 10.0)
-            total_strength += strength
+        for group in grouped_movements:
+            desc, strength = self._generate_group_description(group, max_frames)
+            if desc:
+                movement_descriptions.append(desc)
+                total_strength += strength
         
-        # Combine descriptions intelligently
-        if len(descriptions) == 1:
-            final_desc = f"camera movement with {descriptions[0]}"
-        elif len(descriptions) <= 3:
-            final_desc = f"camera movement with {', '.join(descriptions[:-1])} and {descriptions[-1]}"
+        # Create final description with specific directional information
+        if not movement_descriptions:
+            return "static camera position", 0.0
+        
+        if len(movement_descriptions) == 1:
+            final_desc = f"camera movement with {movement_descriptions[0]}"
+        elif len(movement_descriptions) <= 4:
+            final_desc = f"camera movement with {', '.join(movement_descriptions[:-1])} and {movement_descriptions[-1]}"
         else:
-            # Too many segments - summarize
-            main_movements = set()
-            for segment in all_segments:
-                if "panning" in self.generate_segment_description(segment, max_frames):
-                    main_movements.add("panning movement")
-                elif "dolly" in self.generate_segment_description(segment, max_frames):
-                    main_movements.add("dolly movement")
-                elif "moving" in self.generate_segment_description(segment, max_frames):
-                    main_movements.add("vertical movement")
-            
-            if main_movements:
-                final_desc = f"complex camera movement with {', '.join(main_movements)}"
-            else:
-                final_desc = "dynamic camera movement with multiple motion phases"
+            # Even with many movements, preserve directionality
+            final_desc = f"complex camera movement with {', '.join(movement_descriptions[:3])} and {len(movement_descriptions)-3} additional motion phases"
         
         return final_desc, min(total_strength, 2.0)  # Cap at 2.0
     
+    def _group_similar_segments(self, segments: List[Dict], max_frames: int) -> List[List[Dict]]:
+        """
+        Group similar movement segments that happen close together or represent the same motion type
+        """
+        if not segments:
+            return []
+        
+        groups = []
+        current_group = [segments[0]]
+        
+        for i in range(1, len(segments)):
+            current_seg = segments[i]
+            prev_seg = segments[i-1]
+            
+            # Check if segments should be grouped together
+            same_movement_type = current_seg['movement_type'] == prev_seg['movement_type']
+            same_direction = current_seg['direction'] == prev_seg['direction']
+            close_frames = current_seg['start_frame'] - prev_seg['end_frame'] <= max_frames * 0.1  # Within 10% of total frames
+            
+            if same_movement_type and same_direction and close_frames:
+                # Add to current group
+                current_group.append(current_seg)
+            else:
+                # Start new group
+                groups.append(current_group)
+                current_group = [current_seg]
+        
+        # Add the last group
+        groups.append(current_group)
+        
+        return groups
+    
+    def _generate_group_description(self, group: List[Dict], max_frames: int) -> Tuple[str, float]:
+        """
+        Generate a specific directional description for a group of similar movement segments
+        """
+        if not group:
+            return "", 0.0
+        
+        # Use the first segment to determine movement type and direction
+        main_segment = group[0]
+        movement_type = main_segment['movement_type']
+        direction = main_segment['direction']
+        
+        # Calculate total range and duration for the entire group
+        start_frame = min(seg['start_frame'] for seg in group)
+        end_frame = max(seg['end_frame'] for seg in group)
+        total_duration = end_frame - start_frame + 1
+        total_range = sum(seg['total_range'] for seg in group)
+        
+        # Determine movement intensity
+        if total_range < 1.0:
+            intensity = "subtle"
+        elif total_range < 10.0:
+            intensity = "gentle"
+        elif total_range < 50.0:
+            intensity = "moderate"
+        else:
+            intensity = "strong"
+        
+        # Generate specific directional description
+        if movement_type == "translation_x":
+            motion = "panning right" if direction == "increasing" else "panning left"
+        elif movement_type == "translation_y":
+            motion = "moving up" if direction == "increasing" else "moving down"
+        elif movement_type == "translation_z":
+            motion = "dolly forward" if direction == "increasing" else "dolly backward"
+        else:
+            motion = f"{movement_type} {direction}"
+        
+        # Frame range description
+        if total_duration < max_frames * 0.2:
+            duration_desc = "brief"
+        elif total_duration < max_frames * 0.5:
+            duration_desc = "extended"
+        else:
+            duration_desc = "sustained"
+        
+        # Combine into final description
+        description = f"{intensity} {motion} ({duration_desc})"
+        
+        # Calculate strength
+        strength = (total_range * total_duration) / (max_frames * 10.0)
+        
+        return description, strength
+
     def analyze_rotation(self, x_rot: str, y_rot: str, z_rot: str, max_frames: int) -> Tuple[str, float]:
         """Enhanced rotation analysis with frame-by-frame detection"""
         # Parse schedules
@@ -415,42 +493,87 @@ class MovementAnalyzer:
         # Sort segments by frame order
         all_segments.sort(key=lambda s: s['start_frame'])
         
-        # Generate combined description
-        descriptions = []
+        # Group similar movements that are close together or overlapping
+        grouped_movements = self._group_similar_segments(all_segments, max_frames)
+        
+        # Generate specific directional descriptions
+        movement_descriptions = []
         total_strength = 0.0
         
-        for segment in all_segments:
-            desc = self.generate_segment_description(segment, max_frames)
-            descriptions.append(desc)
-            # Calculate strength based on range and duration
-            duration = segment['end_frame'] - segment['start_frame']
-            # Rotation strength calculation (degrees are smaller numbers)
-            strength = (segment['total_range'] * duration) / (max_frames * 2.0)  # More sensitive for rotation
-            total_strength += strength
+        for group in grouped_movements:
+            desc, strength = self._generate_rotation_group_description(group, max_frames)
+            if desc:
+                movement_descriptions.append(desc)
+                total_strength += strength
         
-        # Combine descriptions intelligently
-        if len(descriptions) == 1:
-            final_desc = descriptions[0]
-        elif len(descriptions) <= 3:
-            final_desc = f"{', '.join(descriptions[:-1])} and {descriptions[-1]}"
+        # Create final description with specific directional information
+        if not movement_descriptions:
+            return "", 0.0
+        
+        if len(movement_descriptions) == 1:
+            final_desc = movement_descriptions[0]
+        elif len(movement_descriptions) <= 4:
+            final_desc = f"{', '.join(movement_descriptions[:-1])} and {movement_descriptions[-1]}"
         else:
-            # Too many segments - summarize
-            main_movements = set()
-            for segment in all_segments:
-                if "tilting" in self.generate_segment_description(segment, max_frames):
-                    main_movements.add("tilting movement")
-                elif "rotating" in self.generate_segment_description(segment, max_frames):
-                    main_movements.add("rotation movement")
-                elif "rolling" in self.generate_segment_description(segment, max_frames):
-                    main_movements.add("roll movement")
-            
-            if main_movements:
-                final_desc = f"complex {', '.join(main_movements)}"
-            else:
-                final_desc = "dynamic rotation with multiple phases"
+            # Even with many movements, preserve directionality
+            final_desc = f"{', '.join(movement_descriptions[:3])} and {len(movement_descriptions)-3} additional rotation phases"
         
         return final_desc, min(total_strength, 2.0)  # Cap at 2.0
     
+    def _generate_rotation_group_description(self, group: List[Dict], max_frames: int) -> Tuple[str, float]:
+        """
+        Generate a specific directional description for a group of similar rotation segments
+        """
+        if not group:
+            return "", 0.0
+        
+        # Use the first segment to determine movement type and direction
+        main_segment = group[0]
+        movement_type = main_segment['movement_type']
+        direction = main_segment['direction']
+        
+        # Calculate total range and duration for the entire group
+        start_frame = min(seg['start_frame'] for seg in group)
+        end_frame = max(seg['end_frame'] for seg in group)
+        total_duration = end_frame - start_frame + 1
+        total_range = sum(seg['total_range'] for seg in group)
+        
+        # Determine movement intensity
+        if total_range < 1.0:
+            intensity = "subtle"
+        elif total_range < 10.0:
+            intensity = "gentle"
+        elif total_range < 50.0:
+            intensity = "moderate"
+        else:
+            intensity = "strong"
+        
+        # Generate specific directional description
+        if movement_type == "rotation_x":
+            motion = "tilting up" if direction == "increasing" else "tilting down"
+        elif movement_type == "rotation_y":
+            motion = "rotating right" if direction == "increasing" else "rotating left"
+        elif movement_type == "rotation_z":
+            motion = "rolling clockwise" if direction == "increasing" else "rolling counter-clockwise"
+        else:
+            motion = f"{movement_type} {direction}"
+        
+        # Frame range description
+        if total_duration < max_frames * 0.2:
+            duration_desc = "brief"
+        elif total_duration < max_frames * 0.5:
+            duration_desc = "extended"
+        else:
+            duration_desc = "sustained"
+        
+        # Combine into final description
+        description = f"{intensity} {motion} ({duration_desc})"
+        
+        # Calculate strength
+        strength = (total_range * total_duration) / (max_frames * 10.0)
+        
+        return description, strength
+
     def analyze_zoom(self, zoom_schedule: str, max_frames: int) -> Tuple[str, float]:
         """Enhanced zoom analysis with frame-by-frame detection and proper static detection"""
         # Parse zoom schedule
@@ -651,13 +774,10 @@ class MovementAnalyzer:
 
 def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: int = 120) -> Tuple[str, float]:
     """
-    Enhanced movement analysis with full Camera Shakify integration
-    Creates combined movement schedules like the experimental render core does
+    Enhanced movement analysis with full Camera Shakify integration and frame-by-frame directional analysis
+    Creates combined movement schedules like the experimental render core does, then analyzes the actual resulting movement
     """
     analyzer = MovementAnalyzer(sensitivity)
-    
-    descriptions = []
-    strengths = []
     
     # 1. Handle Camera Shakify integration first
     shake_name = getattr(anim_args, 'shake_name', 'None')
@@ -693,6 +813,14 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
         print(f"   📐 Combined Translation X: {combined_translation_x[:50]}...")
         print(f"   📐 Combined Rotation Y: {combined_rotation_y[:50]}...")
         
+        # Store combined schedules in anim_args for motion intensity calculation
+        anim_args.combined_translation_x = combined_translation_x
+        anim_args.combined_translation_y = combined_translation_y
+        anim_args.combined_translation_z = combined_translation_z
+        anim_args.combined_rotation_x = combined_rotation_x
+        anim_args.combined_rotation_y = combined_rotation_y
+        anim_args.combined_rotation_z = combined_rotation_z
+        
     else:
         # Use original schedules if no shake
         combined_translation_x = anim_args.translation_x
@@ -701,62 +829,138 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
         combined_rotation_x = anim_args.rotation_3d_x
         combined_rotation_y = anim_args.rotation_3d_y
         combined_rotation_z = anim_args.rotation_3d_z
+        
+        # Store originals as combined schedules for motion intensity calculation
+        anim_args.combined_translation_x = combined_translation_x
+        anim_args.combined_translation_y = combined_translation_y
+        anim_args.combined_translation_z = combined_translation_z
+        anim_args.combined_rotation_x = combined_rotation_x
+        anim_args.combined_rotation_y = combined_rotation_y
+        anim_args.combined_rotation_z = combined_rotation_z
     
-    # 3. Analyze combined movement schedules
-    # Translation analysis
-    translation_desc, translation_strength = analyzer.analyze_translation(
-        combined_translation_x, combined_translation_y, combined_translation_z, max_frames)
+    # 3. Parse combined schedules for frame-by-frame analysis
+    print(f"🔍 Parsing combined schedules for frame-by-frame analysis...")
     
-    if translation_desc and translation_desc != "static camera position":
-        descriptions.append(translation_desc)
-        strengths.append(translation_strength)
+    # Parse combined schedules into frame values
+    tx_keyframes = parse_schedule_string(combined_translation_x, max_frames)
+    ty_keyframes = parse_schedule_string(combined_translation_y, max_frames)
+    tz_keyframes = parse_schedule_string(combined_translation_z, max_frames)
+    rx_keyframes = parse_schedule_string(combined_rotation_x, max_frames)
+    ry_keyframes = parse_schedule_string(combined_rotation_y, max_frames)
+    rz_keyframes = parse_schedule_string(combined_rotation_z, max_frames)
     
-    # Rotation analysis for complex patterns
-    rotation_desc, rotation_strength, motion_type = analyzer.analyze_rotation_pattern(
-        combined_rotation_x, combined_rotation_y, combined_rotation_z, max_frames)
+    # Also parse zoom schedule (not affected by Camera Shakify)
+    zoom_keyframes = parse_schedule_string(anim_args.zoom, max_frames)
     
-    if rotation_desc:
-        descriptions.append(rotation_desc)
-        strengths.append(rotation_strength)
+    # Interpolate values across all frames
+    tx_values = interpolate_schedule(tx_keyframes, max_frames)
+    ty_values = interpolate_schedule(ty_keyframes, max_frames)
+    tz_values = interpolate_schedule(tz_keyframes, max_frames)
+    rx_values = interpolate_schedule(rx_keyframes, max_frames)
+    ry_values = interpolate_schedule(ry_keyframes, max_frames)
+    rz_values = interpolate_schedule(rz_keyframes, max_frames)
+    zoom_values = interpolate_schedule(zoom_keyframes, max_frames)
     
-    # Zoom analysis (if not complex rotation)
-    if motion_type not in ['circular', 'roll']:
-        zoom_desc, zoom_strength = analyzer.analyze_zoom(anim_args.zoom, max_frames)
-        if zoom_desc:
-            descriptions.append(zoom_desc)
-            strengths.append(zoom_strength)
+    print(f"📊 Frame 0 values: TX={tx_values[0]:.4f}, TY={ty_values[0]:.4f}, TZ={tz_values[0]:.4f}, Zoom={zoom_values[0]:.4f}")
+    print(f"📊 Frame 10 values: TX={tx_values[10]:.4f}, TY={ty_values[10]:.4f}, TZ={tz_values[10]:.4f}, Zoom={zoom_values[10]:.4f}")
+    print(f"📊 Frame 20 values: TX={tx_values[20]:.4f}, TY={ty_values[20]:.4f}, TZ={tz_values[20]:.4f}, Zoom={zoom_values[20]:.4f}")
     
-    # 4. Add Camera Shakify description if it was the primary movement source
-    if shakify_data and not descriptions:
-        # Only add shake description if no other movement was detected
-        shake_desc, shake_strength = analyzer.analyze_camera_shake(shake_name, shake_intensity, shake_speed)
-        if shake_desc:
-            descriptions.append(shake_desc)
-            strengths.append(shake_strength)
+    # 4. Analyze frame-by-frame movement segments with detailed descriptions
+    descriptions = []
+    strengths = []
     
-    # 5. Generate final description
-    if not descriptions:
-        return "static camera position", 0.0
+    # Analyze translation movements (frame-by-frame)
+    tx_segments = analyzer.analyze_frame_ranges(tx_values, "translation_x")
+    ty_segments = analyzer.analyze_frame_ranges(ty_values, "translation_y")
+    tz_segments = analyzer.analyze_frame_ranges(tz_values, "translation_z")
     
-    # Combine descriptions naturally
-    if len(descriptions) == 1:
-        combined_description = f"camera movement with {descriptions[0]}"
-    elif len(descriptions) == 2:
-        combined_description = f"camera movement with {descriptions[0]} and {descriptions[1]}"
+    # Analyze rotation movements (frame-by-frame)
+    rx_segments = analyzer.analyze_frame_ranges(rx_values, "rotation_x")
+    ry_segments = analyzer.analyze_frame_ranges(ry_values, "rotation_y")
+    rz_segments = analyzer.analyze_frame_ranges(rz_values, "rotation_z")
+    
+    # Analyze zoom movements (frame-by-frame)
+    zoom_segments = analyzer.analyze_frame_ranges(zoom_values, "zoom")
+    
+    # Combine all movement segments
+    all_segments = tx_segments + ty_segments + tz_segments + rx_segments + ry_segments + rz_segments + zoom_segments
+    
+    print(f"🔍 Found {len(all_segments)} movement segments:")
+    for i, seg in enumerate(all_segments):
+        print(f"   {i+1}. {seg['movement_type']} {seg['direction']} frames {seg['start_frame']}-{seg['end_frame']}")
+    
+    if all_segments:
+        # Sort segments by frame order for chronological descriptions
+        all_segments.sort(key=lambda s: s['start_frame'])
+        
+        # Group similar segments to reduce redundancy and improve descriptions
+        analyzer_instance = MovementAnalyzer(sensitivity)
+        grouped_movements = analyzer_instance._group_similar_segments(all_segments, max_frames)
+        
+        print(f"📊 Grouped into {len(grouped_movements)} movement groups:")
+        for i, group in enumerate(grouped_movements):
+            group_type = group[0]['movement_type']
+            group_direction = group[0]['direction']
+            group_start = min(seg['start_frame'] for seg in group)
+            group_end = max(seg['end_frame'] for seg in group)
+            print(f"   Group {i+1}: {group_type} {group_direction} frames {group_start}-{group_end} ({len(group)} segments)")
+        
+        # Generate detailed descriptions for each group
+        total_strength = 0.0
+        movement_descriptions = []
+        
+        for group in grouped_movements:
+            if group[0]['movement_type'].startswith('translation'):
+                desc, strength = analyzer_instance._generate_group_description(group, max_frames)
+            elif group[0]['movement_type'].startswith('rotation'):
+                desc, strength = analyzer_instance._generate_rotation_group_description(group, max_frames)
+            elif group[0]['movement_type'] == 'zoom':
+                # For zoom, use individual segment description for now
+                desc = analyzer_instance.generate_segment_description(group[0], max_frames)
+                strength = (group[0]['total_range'] * (group[0]['end_frame'] - group[0]['start_frame'])) / (max_frames * 0.1)
+            else:
+                desc = f"unknown movement type: {group[0]['movement_type']}"
+                strength = 0.0
+            
+            if desc:
+                movement_descriptions.append(desc)
+                total_strength += strength
+                print(f"   Generated: '{desc}' (strength: {strength:.3f})")
+        
+        # Create final description with specific directional information
+        if not movement_descriptions:
+            print(f"📷 No valid movement descriptions generated")
+            return "static camera position", 0.0
+        
+        if len(movement_descriptions) == 1:
+            combined_description = f"camera movement with {movement_descriptions[0]}"
+        elif len(movement_descriptions) <= 4:
+            combined_description = f"camera movement with {', '.join(movement_descriptions[:-1])} and {movement_descriptions[-1]}"
+        else:
+            # Even with many movements, preserve directionality
+            main_movements = movement_descriptions[:3]
+            additional_count = len(movement_descriptions) - 3
+            combined_description = f"complex camera movement with {', '.join(main_movements)} and {additional_count} additional motion phases"
+        
+        final_strength = min(total_strength, 2.0)  # Cap at 2.0
+        
+        print(f"🎯 Generated combined description: {combined_description}")
+        print(f"🎯 Total movement strength: {final_strength:.3f}")
+        
+        return combined_description, final_strength
+    
     else:
-        combined_description = f"dynamic camera movement with {', '.join(descriptions[:-1])}, and {descriptions[-1]}"
-    
-    combined_strength = max(strengths) if strengths else 0.0
-    
-    return combined_description, combined_strength
+        # No movement segments detected
+        print(f"📷 No movement segments detected in combined schedules")
+        return "static camera position", 0.0
 
 
 def generate_wan_motion_intensity_schedule(anim_args, max_frames: int = 100, sensitivity: float = 1.0) -> str:
     """
-    Generate a Wan motion intensity schedule from Deforum movement schedules
+    Generate a Wan motion intensity schedule from combined Deforum + Camera Shakify movement schedules
     
     Args:
-        anim_args: Object with Deforum animation arguments
+        anim_args: Object with Deforum animation arguments (including combined schedules if Camera Shakify applied)
         max_frames: Maximum frames to analyze
         sensitivity: Movement detection sensitivity
         
@@ -766,13 +970,25 @@ def generate_wan_motion_intensity_schedule(anim_args, max_frames: int = 100, sen
     
     analyzer = MovementAnalyzer(sensitivity)
     
-    # Get schedule strings from anim_args
-    translation_x = str(getattr(anim_args, 'translation_x', "0: (0)"))
-    translation_y = str(getattr(anim_args, 'translation_y', "0: (0)"))
-    translation_z = str(getattr(anim_args, 'translation_z', "0: (0)"))
-    rotation_3d_x = str(getattr(anim_args, 'rotation_3d_x', "0: (0)"))
-    rotation_3d_y = str(getattr(anim_args, 'rotation_3d_y', "0: (0)"))
-    rotation_3d_z = str(getattr(anim_args, 'rotation_3d_z', "0: (0)"))
+    # Use combined schedules if available (with Camera Shakify applied), otherwise use originals
+    if hasattr(anim_args, 'combined_translation_x'):
+        print(f"📊 Using combined schedules (with Camera Shakify) for motion intensity")
+        translation_x = str(anim_args.combined_translation_x)
+        translation_y = str(anim_args.combined_translation_y)
+        translation_z = str(anim_args.combined_translation_z)
+        rotation_3d_x = str(anim_args.combined_rotation_x)
+        rotation_3d_y = str(anim_args.combined_rotation_y)
+        rotation_3d_z = str(anim_args.combined_rotation_z)
+    else:
+        print(f"📊 Using original schedules for motion intensity")
+        translation_x = str(getattr(anim_args, 'translation_x', "0: (0)"))
+        translation_y = str(getattr(anim_args, 'translation_y', "0: (0)"))
+        translation_z = str(getattr(anim_args, 'translation_z', "0: (0)"))
+        rotation_3d_x = str(getattr(anim_args, 'rotation_3d_x', "0: (0)"))
+        rotation_3d_y = str(getattr(anim_args, 'rotation_3d_y', "0: (0)"))
+        rotation_3d_z = str(getattr(anim_args, 'rotation_3d_z', "0: (0)"))
+    
+    # Zoom and angle are not modified by Camera Shakify
     zoom = str(getattr(anim_args, 'zoom', "0: (1.0)"))
     angle = str(getattr(anim_args, 'angle', "0: (0)"))
     
@@ -796,6 +1012,11 @@ def generate_wan_motion_intensity_schedule(anim_args, max_frames: int = 100, sen
     zoom_values = interpolate_schedule(zoom_keyframes, max_frames)
     angle_values = interpolate_schedule(angle_keyframes, max_frames)
     
+    print(f"📊 Motion intensity calculation - sample values:")
+    print(f"   Frame 0: TX={tx_values[0]:.4f}, RY={ry_values[0]:.4f}")
+    print(f"   Frame 10: TX={tx_values[10]:.4f}, RY={ry_values[10]:.4f}")
+    print(f"   Frame 20: TX={tx_values[20]:.4f}, RY={ry_values[20]:.4f}")
+    
     # Calculate motion intensity for each frame
     motion_intensities = []
     
@@ -804,27 +1025,31 @@ def generate_wan_motion_intensity_schedule(anim_args, max_frames: int = 100, sen
         if frame == 0:
             frame_intensity = 0.0
         else:
-            # Translation deltas
-            tx_delta = abs(tx_values[frame] - tx_values[frame-1]) * sensitivity
-            ty_delta = abs(ty_values[frame] - ty_values[frame-1]) * sensitivity
-            tz_delta = abs(tz_values[frame] - tz_values[frame-1]) * sensitivity
+            # Translation deltas with improved sensitivity
+            tx_delta = abs(tx_values[frame] - tx_values[frame-1]) * sensitivity * 100  # Much more sensitive
+            ty_delta = abs(ty_values[frame] - ty_values[frame-1]) * sensitivity * 100
+            tz_delta = abs(tz_values[frame] - tz_values[frame-1]) * sensitivity * 100
             
-            # Rotation deltas
-            rx_delta = abs(rx_values[frame] - rx_values[frame-1]) * sensitivity * 10  # Scale rotation
-            ry_delta = abs(ry_values[frame] - ry_values[frame-1]) * sensitivity * 10
-            rz_delta = abs(rz_values[frame] - rz_values[frame-1]) * sensitivity * 10
+            # Rotation deltas with improved sensitivity  
+            rx_delta = abs(rx_values[frame] - rx_values[frame-1]) * sensitivity * 1000  # Very sensitive for rotation
+            ry_delta = abs(ry_values[frame] - ry_values[frame-1]) * sensitivity * 1000
+            rz_delta = abs(rz_values[frame] - rz_values[frame-1]) * sensitivity * 1000
             
             # Zoom delta
             zoom_delta = abs(zoom_values[frame] - zoom_values[frame-1]) * sensitivity * 20  # Scale zoom
             
             # Angle delta
-            angle_delta = abs(angle_values[frame] - angle_values[frame-1]) * sensitivity * 10
+            angle_delta = abs(angle_values[frame] - angle_values[frame-1]) * sensitivity * 100
             
             # Combine all deltas into motion intensity
             total_delta = tx_delta + ty_delta + tz_delta + rx_delta + ry_delta + rz_delta + zoom_delta + angle_delta
             
             # Normalize to 0.0-2.0 range for Wan motion strength
-            frame_intensity = min(2.0, total_delta / 20.0)  # Adjust divisor to tune sensitivity
+            frame_intensity = min(2.0, total_delta / 100.0)  # Adjusted divisor for better range
+            
+            # Debug output for first few frames
+            if frame <= 5:
+                print(f"   Frame {frame}: TX_delta={tx_delta:.4f}, RY_delta={ry_delta:.4f}, total={total_delta:.4f}, intensity={frame_intensity:.4f}")
         
         motion_intensities.append(frame_intensity)
     
