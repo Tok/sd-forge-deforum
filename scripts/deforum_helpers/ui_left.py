@@ -268,6 +268,37 @@ def setup_deforum_left_side_ui():
         import traceback
         traceback.print_exc()
 
+    # Set up Wan prompt template loading buttons
+    if 'load_wan_prompts_btn' in locals() and 'animation_prompts' in locals():
+        try:
+            print("🔗 Connecting Wan prompt loading button...")
+            
+            from .ui_elements import load_wan_prompts_handler
+            
+            locals()['load_wan_prompts_btn'].click(
+                fn=load_wan_prompts_handler,
+                inputs=[],
+                outputs=[locals()['animation_prompts']]
+            )
+            print("✅ Wan prompt loading button connected")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to connect Wan prompt button: {e}")
+    
+    if 'load_deforum_prompts_btn' in locals() and 'animation_prompts' in locals():
+        try:
+            print("🔗 Connecting Deforum prompts loading button...")
+            
+            from .ui_elements import load_deforum_prompts_handler
+            
+            locals()['load_deforum_prompts_btn'].click(
+                fn=load_deforum_prompts_handler,
+                inputs=[],
+                outputs=[locals()['animation_prompts']]
+            )
+            print("✅ Deforum prompts loading button connected")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to connect Deforum prompts button: {e}")
+
     # Set up Wan Model Validation buttons
     try:
         from .wan.wan_model_validator import WanModelValidator

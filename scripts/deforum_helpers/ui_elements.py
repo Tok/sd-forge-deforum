@@ -1090,6 +1090,31 @@ def get_tab_wan(dw: SimpleNamespace):
             4. You can manually edit the results before video generation
             """)
             
+            # Quick Start Templates
+            with gr.Accordion("🐰 Quick Start Templates", open=False):
+                gr.Markdown("""
+                **Content-Optimized Prompt Templates**
+                
+                These templates are specifically designed for different generation types:
+                - **📝 Wan Prompts**: Optimized for Wan video generation (no text rendering)
+                - **⏱️ Audio Sync**: Frame timings perfectly synchronized to amen break audio
+                - **🎬 Content-Friendly**: Focused on visual transformation and evolution
+                """)
+                
+                with FormRow():
+                    load_wan_prompts_btn = gr.Button(
+                        "📝 Load Wan Prompts",
+                        variant="secondary",
+                        size="sm",
+                        elem_id="load_wan_prompts_btn"
+                    )
+                    load_deforum_prompts_btn = gr.Button(
+                        "🏢 Load Deforum Prompts",
+                        variant="secondary",
+                        size="sm",
+                        elem_id="load_deforum_prompts_btn"
+                    )
+            
             with FormRow():
                 wan_qwen_model = create_gr_elem(dw.wan_qwen_model)
                 wan_qwen_language = create_gr_elem(dw.wan_qwen_language)
@@ -1558,6 +1583,15 @@ def get_tab_wan(dw: SimpleNamespace):
         outputs=[qwen_model_status]
     )
     
+    # Connect prompt template loading buttons
+    # NOTE: These will be properly connected in ui_left.py where animation_prompts is accessible
+    
+    # Store button references for connection in ui_left.py
+    if 'load_wan_prompts_btn' in locals():
+        locals()['load_wan_prompts_btn']._handler = load_wan_prompts_handler
+    if 'load_deforum_prompts_btn' in locals():
+        locals()['load_deforum_prompts_btn']._handler = load_deforum_prompts_handler
+    
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
@@ -1914,9 +1948,9 @@ def enhance_prompts_handler(qwen_model, language, auto_download, movement_sensit
 1. 📝 Go to the **Prompts tab** and configure your animation prompts
 2. 📋 Make sure your prompts are in proper JSON format like:
    {
-     "0": "a cute bunny in a meadow",
-     "60": "a synthwave bunny with neon colors",
-     "120": "a cyberpunk bunny deity with glowing eyes"
+     "0": "a peaceful landscape scene",
+     "60": "a synthwave aesthetic with neon colors",
+     "120": "a cyberpunk environment with glowing elements"
    }
 3. 🎨 Click **Enhance Prompts** again after setting up prompts
 
@@ -1935,12 +1969,12 @@ If you have prompts configured but this message appears, you can copy your promp
 2. ✏️ Replace the default prompt with your actual animation sequence
 3. 🎨 Click **Enhance Prompts** again
 
-💡 **For your synthwave bunny animation:**
+💡 **For your animation sequence:**
 Set up prompts like:
 {
-  "0": "A cute bunny, hopping on grass, photorealistic",
-  "18": "A bunny with glowing fur, neon colors, synthwave aesthetic",
-  "36": "A cyberpunk bunny with LED patterns, digital environment"
+  "0": "A peaceful scene, photorealistic",
+  "18": "A scene with glowing effects, neon colors, synthwave aesthetic",
+  "36": "A cyberpunk scene with LED patterns, digital environment"
 }"""
         
         print(f"🎨 Enhancing {len(animation_prompts)} animation prompts with {qwen_model}")
@@ -2346,3 +2380,77 @@ def cleanup_qwen_cache_handler():
     except Exception as e:
         print(f"❌ Error during Qwen cache cleanup: {e}")
         return f"❌ <span style='color: #f44336;'>Cleanup error: {str(e)}</span>"
+
+
+def load_wan_prompts_handler():
+    """Load Wan-optimized prompts from default settings"""
+    try:
+        import json
+        import os
+        
+        # Load prompts from default_settings.txt
+        settings_path = os.path.join(os.path.dirname(__file__), '..', 'default_settings.txt')
+        
+        if not os.path.exists(settings_path):
+            print(f"❌ Default settings file not found: {settings_path}")
+            return "0: A peaceful landscape scene, photorealistic"
+        
+        with open(settings_path, 'r', encoding='utf-8') as f:
+            settings = json.load(f)
+        
+        # Get wan_prompts from settings
+        wan_prompts = settings.get('wan_prompts', {})
+        
+        if not wan_prompts:
+            print("⚠️ No wan_prompts found in default settings, falling back to basic prompt")
+            return "0: A peaceful landscape scene, photorealistic"
+        
+        # Convert prompts dict to textarea format (frame: prompt)
+        prompt_lines = []
+        for frame, prompt in sorted(wan_prompts.items(), key=lambda x: int(x[0])):
+            prompt_lines.append(f"{frame}: {prompt}")
+        
+        result = "\n".join(prompt_lines)
+        print(f"✅ Loaded {len(wan_prompts)} Wan prompts from default settings")
+        return result
+        
+    except Exception as e:
+        print(f"❌ Error loading Wan prompts: {e}")
+        return f"0: Error loading prompts: {str(e)}"
+
+
+def load_deforum_prompts_handler():
+    """Load original Deforum prompts from default settings"""
+    try:
+        import json
+        import os
+        
+        # Load prompts from default_settings.txt
+        settings_path = os.path.join(os.path.dirname(__file__), '..', 'default_settings.txt')
+        
+        if not os.path.exists(settings_path):
+            print(f"❌ Default settings file not found: {settings_path}")
+            return "0: A peaceful landscape scene, photorealistic"
+        
+        with open(settings_path, 'r', encoding='utf-8') as f:
+            settings = json.load(f)
+        
+        # Get prompts from settings (main prompts section)
+        deforum_prompts = settings.get('prompts', {})
+        
+        if not deforum_prompts:
+            print("⚠️ No prompts found in default settings, falling back to basic prompt")
+            return "0: A peaceful landscape scene, photorealistic"
+        
+        # Convert prompts dict to textarea format (frame: prompt)
+        prompt_lines = []
+        for frame, prompt in sorted(deforum_prompts.items(), key=lambda x: int(x[0])):
+            prompt_lines.append(f"{frame}: {prompt}")
+        
+        result = "\n".join(prompt_lines)
+        print(f"✅ Loaded {len(deforum_prompts)} Deforum prompts from default settings")
+        return result
+        
+    except Exception as e:
+        print(f"❌ Error loading Deforum prompts: {e}")
+        return f"0: Error loading prompts: {str(e)}"
