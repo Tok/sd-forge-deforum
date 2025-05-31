@@ -1170,7 +1170,7 @@ def get_tab_wan(dw: SimpleNamespace):
                 gr.Markdown("""
                 **Two Prompt Template Options**
                 
-                - **📝 Load Wan Prompts**: Bunny evolution optimized for Wan (no text signs)
+                - **📝 Load Wan Prompts**: Default Wan prompts optimized for visual generation (no text signs)
                 - **🏢 Load Deforum Prompts**: Landscape evolution with text signs  
                 
                 **💡 Choose Based On:**
@@ -2271,73 +2271,14 @@ def analyze_movement_handler(movement_sensitivity):
             except Exception as e:
                 print(f"⚠️ Could not update wan prompts: {e}")
         
-        # Build detailed result text for UI display
-        result_lines = [
-            "🎯 **DEFORUM MOVEMENT ANALYSIS COMPLETE**",
-            "",
-            f"**Movement Description:** {movement_desc}",
-            f"**Average Motion Strength:** {average_motion_strength:.2f}",
-            "",
-            "✅ **Wan Prompts Updated:** Movement descriptions added to existing prompts",
-            "",
-            "**Wan Motion Intensity Schedule:**",
-            f"{motion_intensity_schedule}",
-            "",
-            "✅ **HOW THIS WORKS:**",
-            "",
-            "**🎬 Uses Same Movement System as Normal Deforum Renders:**",
-            "• Wan uses your **exact same movement schedules** from Keyframes → Motion tab",
-            "• Translation X/Y/Z, Rotation 3D X/Y/Z, Zoom, and Angle schedules",
-            "• **Parseq schedules are also supported** if you're using Parseq",
-            "• Same schedule format: `0:(0), 100:(50)` etc.",
-            "",
-            "1. **Deforum Movement Schedules**: Your camera movement controls both Deforum and Wan",
-            f"2. **Movement Description**: \"{movement_desc}\" added to your wan prompts",
-            "3. **Motion Intensity**: Frame-by-frame motion strength for Wan's internal system",
-            "",
-            "📊 **CURRENT DEFORUM MOVEMENT SCHEDULES:**",
-            f"• **Translation X**: {anim_args.translation_x}",
-            f"• **Translation Y**: {anim_args.translation_y}",
-            f"• **Translation Z**: {anim_args.translation_z}",
-            f"• **Rotation Y**: {anim_args.rotation_3d_y}",
-            f"• **Zoom**: {anim_args.zoom}",
-            "",
-            "🎬 **NEXT STEP - ENHANCE PROMPTS (OPTIONAL):**",
-            "",
-            "Your prompts now include movement descriptions. You can:",
-            "• **🎬 Generate directly** - use current prompts with movement descriptions",
-            "• **🎨 Enhance with AI** - further improve prompts with Qwen models",
-            "",
-            "**Example Updated Prompt:**",
-            f"*\"A sterile hallway illuminated by bright fluorescent lights, clinical environment with metallic surfaces. {movement_desc}\"*",
-            "",
-            "🎬 **DURING WAN GENERATION:**",
-            "",
-            "**Motion Control:**",
-            f"- Frame 0: Motion intensity {motion_intensity_schedule.split(',')[0].split('(')[1].split(')')[0] if '(' in motion_intensity_schedule else '0.0'}",
-            "- Dynamic motion values adapt to movement complexity",
-            "- Wan's internal motion syncs with your Deforum camera movement",
-            "",
-            "💡 **BENEFITS:**",
-            "• **Automatic Integration**: Movement descriptions added to your wan prompts",
-            "• **Motion Synchronization**: Wan's motion matches your Deforum schedules",
-            "• **Better Continuity**: Motion intensity adapts to movement complexity",
-            "",
-            "🚀 **READY FOR GENERATION:**",
-            "Your wan prompts now include movement descriptions! You can generate directly or enhance further with AI.",
-            "",
-            f"💡 **TIP**: Adjust Movement Sensitivity (current: {movement_sensitivity:.1f}) to fine-tune:",
-            "• **Lower values** (0.5): Only detect significant movements",
-            "• **Higher values** (1.5): Detect subtle movements too"
-        ]
-        
-        result = "\n".join(result_lines)
-        
-        print(f"✅ Movement analysis completed - description: {movement_desc}")
-        print(f"📐 Motion intensity schedule: {motion_intensity_schedule}")
-        print(f"🖥️ Returning UI result text ({len(result)} characters)")
-        
-        return result
+        # Simple result text for UI display
+        return f"""✅ Movement analysis complete!
+
+Movement: "{movement_desc}"
+Motion strength: {average_motion_strength:.2f}
+
+✅ Wan prompts updated with movement descriptions.
+Ready for enhancement or generation."""
         
     except Exception as e:
         error_msg = f"❌ Error in movement analysis: {str(e)}"
@@ -2656,35 +2597,19 @@ def load_deforum_to_wan_prompts_handler():
 
 
 def load_wan_defaults_handler():
-    """Load default bunny prompts into Wan prompts field"""
+    """Load default Wan prompts from settings file"""
     try:
         import json
         import os
         
-        # Load default bunny prompts from settings
+        # Load default prompts from settings
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'default_settings.txt')
         
         if not os.path.exists(settings_path):
-            # Fallback to hardcoded defaults
+            # Fallback to simple defaults
             return json.dumps({
-                "0": "A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic",
-                "12": "A white bunny with slightly glowing fur, sitting in a meadow with subtle magical sparkles",
-                "43": "A bunny with soft neon highlights on its fur, sitting in a meadow with digital aurora effects",
-                "74": "A bunny with cyberpunk fur patterns, glowing blue and purple, in an urban meadow setting",
-                "85": "A bunny with LED-trimmed ears and glowing whiskers, cyberpunk aesthetic, neon city background",
-                "106": "A tech bunny with holographic fur patterns, sitting in a futuristic garden environment",
-                "119": "A bunny wearing sleek chrome accessories, reflective metallic fur highlights, sci-fi setting",
-                "126": "A drip bunny with golden chains and designer accessories, confident pose, luxury environment",
-                "147": "A swag bunny with diamond earrings and platinum fur trim, posing with attitude",
-                "158": "A boss bunny with bling accessories and designer sunglasses, standing confidently",
-                "178": "A supreme drip bunny with ice-cold chains, golden grillz, and designer everything",
-                "210": "A legendary bunny deity with cosmic bling, floating in space with stellar accessories",
-                "241": "An ascended bunny with celestial drip, surrounded by floating diamonds and gold",
-                "262": "A transcendent bunny overlord with reality-bending bling, fractal jewelry patterns",
-                "272": "A hyperdimensional drip bunny with impossible geometry accessories, glowing with power",
-                "293": "An omnipotent bunny god with universal bling, commanding cosmic forces",
-                "314": "A supreme bunny entity with reality-warping drip, existing beyond time and space",
-                "324": "The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"
+                "0": "A peaceful landscape scene, photorealistic",
+                "60": "A serene natural environment, beautiful lighting"
             }, ensure_ascii=False, indent=2)
         
         try:
@@ -2696,21 +2621,21 @@ def load_wan_defaults_handler():
             if wan_prompts:
                 # Return as JSON
                 result = json.dumps(wan_prompts, ensure_ascii=False, indent=2)
-                print(f"✅ Loaded {len(wan_prompts)} default bunny prompts")
+                print(f"✅ Loaded {len(wan_prompts)} default Wan prompts from settings")
                 return result
             else:
                 # Use fallback
                 return json.dumps({
-                    "0": "A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic",
-                    "324": "The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"
+                    "0": "A peaceful landscape scene, photorealistic",
+                    "60": "A serene natural environment, beautiful lighting"
                 }, ensure_ascii=False, indent=2)
                 
         except Exception as e:
             print(f"⚠️ Error loading default settings: {e}")
             # Return simple fallback
             return json.dumps({
-                "0": "A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic",
-                "324": "The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"
+                "0": "A peaceful landscape scene, photorealistic",
+                "60": "A serene natural environment, beautiful lighting"
             }, ensure_ascii=False, indent=2)
             
     except Exception as e:
