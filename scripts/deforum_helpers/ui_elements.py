@@ -767,10 +767,37 @@ The auto-discovery will find your models automatically!
             if not sorted_prompts:
                 return [("a beautiful landscape", 0, 81)]  # Default: 0 start frame, 81 frames
             
+            # Check if prompt enhancement is enabled and enhanced prompts are available
+            final_prompts = animation_prompts.copy()
+            
+            if wan_args.wan_enable_prompt_enhancement and wan_args.wan_enhanced_prompts:
+                try:
+                    # Try to parse enhanced prompts
+                    import json
+                    enhanced_prompts_data = json.loads(wan_args.wan_enhanced_prompts)
+                    if enhanced_prompts_data:
+                        print("🎨 Using enhanced prompts from QwenPromptExpander")
+                        final_prompts = enhanced_prompts_data
+                except (json.JSONDecodeError, ValueError):
+                    print("⚠️ Could not parse enhanced prompts, using original prompts")
+            
+            # Add movement description if enabled
+            movement_description = ""
+            if wan_args.wan_enable_movement_analysis and wan_args.wan_movement_description:
+                movement_description = wan_args.wan_movement_description.split('\n')[0]  # Get first line
+                print(f"📐 Adding movement description: {movement_description}")
+            
+            # Re-sort with final prompts
+            sorted_prompts = sorted(final_prompts.items(), key=lambda x: int(x[0]))
+            
             # Calculate frame differences between prompts
             for i, (frame_str, prompt) in enumerate(sorted_prompts):
                 start_frame = int(frame_str)
                 clean_prompt = prompt.split('--neg')[0].strip()
+                
+                # Append movement description if available
+                if movement_description:
+                    clean_prompt = f"{clean_prompt}. {movement_description}"
                 
                 # Calculate end frame (frame count for this clip)
                 if i < len(sorted_prompts) - 1:
@@ -800,11 +827,39 @@ The auto-discovery will find your models automatically!
                 # Add to schedule: (prompt, start_frame, frame_count)
                 prompt_schedule.append((clean_prompt, start_frame, frame_count))
                 
-                print(f"  Clip {i+1}: '{clean_prompt[:50]}...' (start: frame {start_frame}, frames: {frame_count})")
+                # Show enhanced/movement prompt info
+                if wan_args.wan_enable_prompt_enhancement or wan_args.wan_enable_movement_analysis:
+                    print(f"  🎨 Enhanced Clip {i+1}: '{clean_prompt[:80]}...' (frames: {frame_count})")
+                else:
+                    print(f"  Clip {i+1}: '{clean_prompt[:50]}...' (start: frame {start_frame}, frames: {frame_count})")
             
             return prompt_schedule
         
         clips = parse_prompts_and_timing(animation_prompts, wan_args, video_args)
+        
+        # Calculate dynamic motion strength if enabled
+        motion_strength = wan_args.wan_motion_strength  # Default value
+        
+        if wan_args.wan_enable_movement_analysis and not wan_args.wan_motion_strength_override:
+            try:
+                from .wan.utils.movement_analyzer import analyze_deforum_movement
+                
+                print("🎬 Calculating dynamic motion strength from movement schedules...")
+                _, dynamic_motion_strength = analyze_deforum_movement(
+                    anim_args=anim_args,
+                    sensitivity=wan_args.wan_movement_sensitivity,
+                    max_frames=min(anim_args.max_frames, 100)
+                )
+                
+                motion_strength = dynamic_motion_strength
+                print(f"✅ Dynamic motion strength: {motion_strength:.2f} (override disabled)")
+                
+            except Exception as e:
+                print(f"⚠️ Dynamic motion strength calculation failed: {e}, using default: {motion_strength}")
+        elif wan_args.wan_motion_strength_override:
+            print(f"🔧 Using manual motion strength override: {motion_strength}")
+        else:
+            print(f"📊 Using default motion strength: {motion_strength}")
         
         # Parse resolution
         width, height = map(int, wan_args.wan_resolution.split('x'))
@@ -997,7 +1052,7 @@ def get_tab_wan(dw: SimpleNamespace):
         with gr.Accordion("Advanced Settings", open=True):
             with FormRow():
                 wan_frame_overlap = create_gr_elem(dw.wan_frame_overlap)
-                wan_motion_strength = create_gr_elem(dw.wan_motion_strength)
+                # Remove wan_motion_strength from here - moved to overrides
                 
             with FormRow():
                 wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
@@ -1070,6 +1125,105 @@ def get_tab_wan(dw: SimpleNamespace):
                 with FormRow():
                     wan_guidance_override = create_gr_elem(dw.wan_guidance_override)
                     wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
+                    
+                gr.Markdown("**🎬 Motion Control (Advanced)**")
+                with FormRow():
+                    wan_motion_strength_override = create_gr_elem(dw.wan_motion_strength_override)
+                    wan_motion_strength = create_gr_elem(dw.wan_motion_strength)
+        
+        # Prompt Enhancement Section - NEW
+        with gr.Accordion("🎨 AI Prompt Enhancement (QwenPromptExpander)", open=False):
+            gr.Markdown("""
+            **Intelligent Prompt Enhancement with QwenPromptExpander**
+            
+            Automatically enhance your prompts using advanced AI models for better video quality:
+            - **🧠 AI Enhancement**: Refines and expands prompts for better clarity and detail
+            - **🎬 Movement Integration**: Analyzes Deforum schedules and adds camera movement descriptions
+            - **✏️ Manual Editing**: Enhanced prompts are editable before generation
+            - **🌍 Multi-Language**: Support for English and Chinese enhancement
+            
+            **💡 How it works:**
+            1. Your original prompts are analyzed by Qwen AI models
+            2. Movement schedules (rotation, translation, zoom) are translated to English
+            3. Enhanced prompts with movement descriptions are generated
+            4. You can manually edit the results before video generation
+            """)
+            
+            with FormRow():
+                wan_enable_prompt_enhancement = create_gr_elem(dw.wan_enable_prompt_enhancement)
+                wan_qwen_auto_download = create_gr_elem(dw.wan_qwen_auto_download)
+                
+            with FormRow():
+                wan_qwen_model = create_gr_elem(dw.wan_qwen_model)
+                wan_qwen_language = create_gr_elem(dw.wan_qwen_language)
+                
+            # Movement Analysis Section
+            with gr.Accordion("📐 Movement Analysis Settings", open=False):
+                gr.Markdown("""
+                **Deforum Schedule → English Translation**
+                
+                Automatically translate your Deforum movement schedules into natural language descriptions:
+                - **Translation**: X/Y/Z position changes → "left pan", "forward dolly", etc.
+                - **Rotation**: 3D rotations → "upward pitch", "clockwise roll", "right yaw"
+                - **Zoom**: Zoom changes → "slow zoom in", "fast zoom out"
+                - **Speed Detection**: Automatically classifies movement speed (slow/medium/fast)
+                - **Dynamic Motion Strength**: Calculates optimal motion strength from schedules
+                """)
+                
+                with FormRow():
+                    wan_enable_movement_analysis = create_gr_elem(dw.wan_enable_movement_analysis)
+                    wan_movement_sensitivity = create_gr_elem(dw.wan_movement_sensitivity)
+                    
+                wan_movement_description = create_gr_elem(dw.wan_movement_description)
+                
+            # Enhancement Controls
+            with FormRow():
+                enhance_prompts_btn = gr.Button(
+                    "🎨 Enhance Prompts with AI",
+                    variant="secondary",
+                    size="lg",
+                    elem_id="wan_enhance_prompts_btn"
+                )
+                analyze_movement_btn = gr.Button(
+                    "📐 Analyze Movement Schedules",
+                    variant="secondary",
+                    size="lg",
+                    elem_id="wan_analyze_movement_btn"
+                )
+                
+            # Enhanced Prompts Display
+            wan_enhanced_prompts = create_gr_elem(dw.wan_enhanced_prompts)
+            
+            # Qwen Model Status
+            with gr.Accordion("🧠 Qwen Model Status & Management", open=False):
+                gr.Markdown("""
+                **Model Information & Auto-Download Status**
+                
+                Monitor Qwen model availability and manage downloads:
+                """)
+                
+                qwen_model_status = gr.HTML(
+                    label="Qwen Model Status",
+                    value="⏳ Checking model availability...",
+                    elem_id="wan_qwen_model_status"
+                )
+                
+                with FormRow():
+                    check_qwen_models_btn = gr.Button(
+                        "🔍 Check Model Status",
+                        variant="secondary",
+                        elem_id="wan_check_qwen_models_btn"
+                    )
+                    download_qwen_model_btn = gr.Button(
+                        "📥 Download Selected Model",
+                        variant="primary",
+                        elem_id="wan_download_qwen_model_btn"
+                    )
+                    cleanup_qwen_cache_btn = gr.Button(
+                        "🧹 Cleanup Model Cache",
+                        variant="secondary",
+                        elem_id="wan_cleanup_qwen_cache_btn"
+                    )
         
         # Auto-Discovery Info - Collapsed by default
         with gr.Accordion("🔍 Auto-Discovery & Setup", open=False):
@@ -1331,6 +1485,258 @@ def get_tab_wan(dw: SimpleNamespace):
         wan_flash_attention_status.value = get_flash_attention_status_html()
     except Exception:
         wan_flash_attention_status.value = "⚠️ <span style='color: #FF9800;'>Status check unavailable</span>"
+    
+    # QwenPromptExpander and Movement Analysis Event Handlers
+    def enhance_prompts_handler(enable_enhancement, qwen_model, language, auto_download, enable_movement, movement_sensitivity, *component_args):
+        """Handle prompt enhancement with QwenPromptExpander"""
+        if not enable_enhancement:
+            return "❌ Prompt enhancement is disabled. Enable it first."
+            
+        try:
+            from .wan.utils.qwen_manager import qwen_manager
+            from .args import get_component_names
+            
+            # Get animation prompts from component args
+            component_names = get_component_names()
+            try:
+                animation_prompts_index = component_names.index('animation_prompts')
+                if animation_prompts_index < len(component_args):
+                    animation_prompts_json = component_args[animation_prompts_index]
+                    
+                    # Parse animation prompts
+                    import json
+                    if isinstance(animation_prompts_json, str):
+                        animation_prompts = json.loads(animation_prompts_json)
+                    else:
+                        animation_prompts = animation_prompts_json
+                        
+                else:
+                    return "❌ Animation prompts not found. Please configure prompts in the Prompts tab."
+            except (ValueError, IndexError, json.JSONDecodeError):
+                return "❌ Could not parse animation prompts. Please check the Prompts tab."
+            
+            if not animation_prompts:
+                return "❌ No animation prompts found. Please configure prompts in the Prompts tab."
+                
+            # Clean prompts (remove negative prompt parts)
+            clean_prompts = {}
+            for frame, prompt in animation_prompts.items():
+                clean_prompt = prompt.split('--neg')[0].strip()
+                clean_prompts[frame] = clean_prompt
+                
+            print(f"🎨 Enhancing {len(clean_prompts)} prompts...")
+            
+            # Enhance prompts with QwenPromptExpander
+            enhanced_prompts = qwen_manager.enhance_prompts(
+                prompts=clean_prompts,
+                model_name=qwen_model,
+                language=language,
+                auto_download=auto_download
+            )
+            
+            # Format enhanced prompts for display
+            formatted_prompts = []
+            for frame in sorted(enhanced_prompts.keys(), key=int):
+                enhanced = enhanced_prompts[frame]
+                formatted_prompts.append(f'"{frame}": "{enhanced}"')
+                
+            result = "{\n  " + ",\n  ".join(formatted_prompts) + "\n}"
+            
+            print(f"✅ Enhanced {len(enhanced_prompts)} prompts successfully")
+            return result
+            
+        except Exception as e:
+            print(f"❌ Error enhancing prompts: {e}")
+            return f"❌ Error enhancing prompts: {str(e)}"
+    
+    def analyze_movement_handler(enable_movement, movement_sensitivity, *component_args):
+        """Handle movement analysis from Deforum schedules"""
+        if not enable_movement:
+            return "❌ Movement analysis is disabled. Enable it first."
+            
+        try:
+            from .wan.utils.movement_analyzer import analyze_deforum_movement
+            from .args import get_component_names
+            from types import SimpleNamespace
+            
+            # Extract animation arguments from component args
+            component_names = get_component_names()
+            
+            # Create a mock anim_args object with the required fields
+            anim_args = SimpleNamespace()
+            
+            # Get the indices for movement-related fields
+            movement_fields = [
+                'angle', 'zoom', 'translation_x', 'translation_y', 'translation_z',
+                'rotation_3d_x', 'rotation_3d_y', 'rotation_3d_z',
+                'perspective_flip_theta', 'perspective_flip_phi', 'perspective_flip_gamma',
+                'perspective_flip_fv', 'max_frames'
+            ]
+            
+            for field in movement_fields:
+                try:
+                    field_index = component_names.index(field)
+                    if field_index < len(component_args):
+                        setattr(anim_args, field, component_args[field_index])
+                    else:
+                        # Set default values
+                        if field == 'max_frames':
+                            setattr(anim_args, field, 100)
+                        else:
+                            setattr(anim_args, field, "0: (0)")
+                except ValueError:
+                    # Field not found, set default
+                    if field == 'max_frames':
+                        setattr(anim_args, field, 100)
+                    else:
+                        setattr(anim_args, field, "0: (0)")
+            
+            # Analyze movement
+            movement_desc, motion_strength = analyze_deforum_movement(
+                anim_args=anim_args,
+                sensitivity=movement_sensitivity,
+                max_frames=min(anim_args.max_frames, 100)
+            )
+            
+            detailed_desc = f"{movement_desc}\n\nCalculated motion strength: {motion_strength:.2f}"
+            
+            print(f"📐 Movement analysis complete: {movement_desc}")
+            print(f"🎬 Dynamic motion strength: {motion_strength:.2f}")
+            
+            return detailed_desc
+            
+        except Exception as e:
+            print(f"❌ Error analyzing movement: {e}")
+            return f"❌ Error analyzing movement: {str(e)}"
+    
+    def check_qwen_models_handler(qwen_model):
+        """Check Qwen model status and availability"""
+        try:
+            from .wan.utils.qwen_manager import qwen_manager
+            
+            model_info = qwen_manager.get_model_info(qwen_model)
+            is_downloaded = qwen_manager.is_model_downloaded(qwen_model)
+            available_vram = qwen_manager.get_available_vram()
+            
+            if qwen_model == "Auto-Select":
+                selected = qwen_manager.auto_select_model()
+                selected_info = qwen_manager.get_model_info(selected)
+                
+                status_html = f"""
+                <div style="padding: 10px; border-radius: 5px; background-color: #f0f8ff;">
+                <h4>🧠 Auto-Selected Model: {selected}</h4>
+                <p><strong>Description:</strong> {selected_info.get('description', 'N/A')}</p>
+                <p><strong>VRAM Required:</strong> {selected_info.get('vram_gb', 0)}GB</p>
+                <p><strong>Available VRAM:</strong> {available_vram:.1f}GB</p>
+                <p><strong>Vision-Language:</strong> {'Yes' if selected_info.get('is_vl', False) else 'No'}</p>
+                <p><strong>Status:</strong> {'✅ Downloaded' if qwen_manager.is_model_downloaded(selected) else '❌ Not Downloaded'}</p>
+                </div>
+                """
+            else:
+                status_color = "#d4edda" if is_downloaded else "#f8d7da"
+                status_icon = "✅" if is_downloaded else "❌"
+                status_text = "Downloaded" if is_downloaded else "Not Downloaded"
+                
+                status_html = f"""
+                <div style="padding: 10px; border-radius: 5px; background-color: {status_color};">
+                <h4>🧠 Model: {qwen_model}</h4>
+                <p><strong>Description:</strong> {model_info.get('description', 'N/A')}</p>
+                <p><strong>VRAM Required:</strong> {model_info.get('vram_gb', 0)}GB</p>
+                <p><strong>Available VRAM:</strong> {available_vram:.1f}GB</p>
+                <p><strong>Vision-Language:</strong> {'Yes' if model_info.get('is_vl', False) else 'No'}</p>
+                <p><strong>Status:</strong> {status_icon} {status_text}</p>
+                </div>
+                """
+                
+            return status_html
+            
+        except Exception as e:
+            return f"""
+            <div style="padding: 10px; border-radius: 5px; background-color: #f8d7da;">
+            <h4>❌ Error Checking Model Status</h4>
+            <p>{str(e)}</p>
+            </div>
+            """
+    
+    def download_qwen_model_handler(qwen_model, auto_download):
+        """Download the selected Qwen model"""
+        if not auto_download:
+            return "❌ Auto-download is disabled. Enable it first."
+            
+        try:
+            from .wan.utils.qwen_manager import qwen_manager
+            
+            if qwen_manager.download_model(qwen_model):
+                return f"✅ Successfully downloaded {qwen_model}"
+            else:
+                return f"❌ Failed to download {qwen_model}"
+                
+        except Exception as e:
+            return f"❌ Error downloading model: {str(e)}"
+    
+    def cleanup_qwen_cache_handler():
+        """Cleanup Qwen model cache to free VRAM"""
+        try:
+            from .wan.utils.qwen_manager import qwen_manager
+            qwen_manager.cleanup_cache()
+            return "🧹 Qwen model cache cleaned up successfully"
+        except Exception as e:
+            return f"❌ Error cleaning up cache: {str(e)}"
+    
+    # Get all component names for the handlers
+    from .args import get_component_names
+    component_names = get_component_names()
+    
+    # Create component list for input
+    all_components = []
+    for name in component_names:
+        if name in locals():
+            all_components.append(locals()[name])
+        elif name in vars():
+            all_components.append(vars()[name])
+    
+    # Connect event handlers for prompt enhancement
+    enhance_prompts_btn.click(
+        fn=enhance_prompts_handler,
+        inputs=[
+            wan_enable_prompt_enhancement, wan_qwen_model, wan_qwen_language, 
+            wan_qwen_auto_download, wan_enable_movement_analysis, wan_movement_sensitivity
+        ] + all_components,
+        outputs=[wan_enhanced_prompts]
+    )
+    
+    # Connect event handlers for movement analysis
+    analyze_movement_btn.click(
+        fn=analyze_movement_handler,
+        inputs=[wan_enable_movement_analysis, wan_movement_sensitivity] + all_components,
+        outputs=[wan_movement_description]
+    )
+    
+    # Connect event handlers for Qwen model management
+    check_qwen_models_btn.click(
+        fn=check_qwen_models_handler,
+        inputs=[wan_qwen_model],
+        outputs=[qwen_model_status]
+    )
+    
+    download_qwen_model_btn.click(
+        fn=download_qwen_model_handler,
+        inputs=[wan_qwen_model, wan_qwen_auto_download],
+        outputs=[qwen_model_status]
+    )
+    
+    cleanup_qwen_cache_btn.click(
+        fn=cleanup_qwen_cache_handler,
+        inputs=[],
+        outputs=[qwen_model_status]
+    )
+    
+    # Auto-update model status when model selection changes
+    wan_qwen_model.change(
+        fn=check_qwen_models_handler,
+        inputs=[wan_qwen_model],
+        outputs=[qwen_model_status]
+    )
     
     return {k: v for k, v in {**locals(), **vars()}.items()}
 

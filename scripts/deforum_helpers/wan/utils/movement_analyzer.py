@@ -1,0 +1,358 @@
+"""
+Movement Analysis Utility for Deforum Schedule Translation
+Translates xyz rotation/translation schedules into English descriptions for prompt enhancement
+"""
+
+import re
+import math
+from typing import Dict, List, Tuple, Optional
+
+# Try to import DeformAnimKeys, but fall back to standalone parsing if not available
+try:
+    from ...animation_key_frames import DeformAnimKeys
+    DEFORUM_AVAILABLE = True
+except ImportError:
+    DEFORUM_AVAILABLE = False
+
+
+def parse_schedule_string(schedule_str: str, max_frames: int = 100) -> List[Tuple[int, float]]:
+    """
+    Parse Deforum schedule string into frame-value pairs
+    
+    Format: "0:(1.0), 30:(2.0), 60:(1.5)"
+    Returns: [(0, 1.0), (30, 2.0), (60, 1.5)]
+    """
+    if not schedule_str or schedule_str.strip() == "":
+        return [(0, 0.0)]
+        
+    # Clean the string
+    schedule_str = schedule_str.strip()
+    
+    # Pattern to match frame:(value) pairs
+    pattern = r'(\d+):\s*\(([^)]+)\)'
+    matches = re.findall(pattern, schedule_str)
+    
+    if not matches:
+        # Try to parse as single value
+        try:
+            value = float(schedule_str)
+            return [(0, value)]
+        except ValueError:
+            return [(0, 0.0)]
+    
+    # Convert matches to frame-value pairs
+    keyframes = []
+    for frame_str, value_str in matches:
+        try:
+            frame = int(frame_str)
+            value = float(value_str)
+            keyframes.append((frame, value))
+        except ValueError:
+            continue
+    
+    # Sort by frame number
+    keyframes.sort(key=lambda x: x[0])
+    
+    return keyframes if keyframes else [(0, 0.0)]
+
+
+def interpolate_schedule(keyframes: List[Tuple[int, float]], max_frames: int) -> List[float]:
+    """
+    Interpolate schedule values across all frames
+    """
+    if not keyframes:
+        return [0.0] * max_frames
+    
+    values = []
+    
+    for frame in range(max_frames):
+        # Find surrounding keyframes
+        prev_kf = None
+        next_kf = None
+        
+        for kf in keyframes:
+            if kf[0] <= frame:
+                prev_kf = kf
+            if kf[0] >= frame and next_kf is None:
+                next_kf = kf
+        
+        if prev_kf is None:
+            values.append(keyframes[0][1])
+        elif next_kf is None:
+            values.append(prev_kf[1])
+        elif prev_kf[0] == next_kf[0]:
+            values.append(prev_kf[1])
+        else:
+            # Linear interpolation
+            t = (frame - prev_kf[0]) / (next_kf[0] - prev_kf[0])
+            value = prev_kf[1] + t * (next_kf[1] - prev_kf[1])
+            values.append(value)
+    
+    return values
+
+
+class MovementAnalyzer:
+    """Analyzes Deforum movement schedules and translates them to English descriptions"""
+    
+    def __init__(self, sensitivity: float = 1.0):
+        """
+        Initialize movement analyzer
+        
+        Args:
+            sensitivity: Sensitivity for movement detection (0.1-2.0)
+                        Higher values detect smaller movements
+        """
+        self.sensitivity = max(0.1, min(2.0, sensitivity))
+    
+    def analyze_translation(self, x_schedule: str, y_schedule: str, z_schedule: str, max_frames: int) -> Tuple[str, float]:
+        """Analyze translation schedules and return description + strength"""
+        
+        # Parse schedules
+        x_keyframes = parse_schedule_string(x_schedule, max_frames)
+        y_keyframes = parse_schedule_string(y_schedule, max_frames)
+        z_keyframes = parse_schedule_string(z_schedule, max_frames)
+        
+        # Interpolate values
+        x_values = interpolate_schedule(x_keyframes, max_frames)
+        y_values = interpolate_schedule(y_keyframes, max_frames)
+        z_values = interpolate_schedule(z_keyframes, max_frames)
+        
+        # Calculate movement magnitudes
+        x_range = max(x_values) - min(x_values)
+        y_range = max(y_values) - min(y_values)
+        z_range = max(z_values) - min(z_values)
+        
+        # Apply sensitivity
+        x_range *= self.sensitivity
+        y_range *= self.sensitivity
+        z_range *= self.sensitivity
+        
+        # Determine primary movements
+        movements = []
+        total_movement = 0
+        
+        # X-axis (horizontal pan)
+        if x_range > 5:
+            x_delta = x_values[-1] - x_values[0]
+            if x_delta > 0:
+                movements.append("right pan")
+            else:
+                movements.append("left pan")
+            total_movement += x_range
+        
+        # Y-axis (vertical pan) 
+        if y_range > 5:
+            y_delta = y_values[-1] - y_values[0]
+            if y_delta > 0:
+                movements.append("upward pan")
+            else:
+                movements.append("downward pan")
+            total_movement += y_range
+        
+        # Z-axis (dolly)
+        if z_range > 5:
+            z_delta = z_values[-1] - z_values[0]
+            if z_delta > 0:
+                movements.append("forward dolly")
+            else:
+                movements.append("backward dolly")
+            total_movement += z_range
+        
+        # Generate description
+        if not movements:
+            return "static camera", 0.0
+        
+        # Determine speed
+        speed = "slow"
+        if total_movement > 100:
+            speed = "fast"
+        elif total_movement > 50:
+            speed = "medium"
+        
+        description = f"{speed} {', '.join(movements)}"
+        strength = min(1.0, total_movement / 200.0)  # Normalize to 0-1
+        
+        return description, strength
+    
+    def analyze_rotation(self, x_rot: str, y_rot: str, z_rot: str, max_frames: int) -> Tuple[str, float]:
+        """Analyze rotation schedules and return description + strength"""
+        
+        # Parse schedules
+        x_keyframes = parse_schedule_string(x_rot, max_frames)
+        y_keyframes = parse_schedule_string(y_rot, max_frames)
+        z_keyframes = parse_schedule_string(z_rot, max_frames)
+        
+        # Interpolate values
+        x_values = interpolate_schedule(x_keyframes, max_frames)
+        y_values = interpolate_schedule(y_keyframes, max_frames)
+        z_values = interpolate_schedule(z_keyframes, max_frames)
+        
+        # Calculate rotation ranges
+        x_range = max(x_values) - min(x_values)
+        y_range = max(y_values) - min(y_values)
+        z_range = max(z_values) - min(z_values)
+        
+        # Apply sensitivity
+        x_range *= self.sensitivity
+        y_range *= self.sensitivity
+        z_range *= self.sensitivity
+        
+        # Determine rotations
+        rotations = []
+        total_rotation = 0
+        
+        # X-axis rotation (pitch)
+        if x_range > 1:
+            x_delta = x_values[-1] - x_values[0]
+            if x_delta > 0:
+                rotations.append("upward pitch")
+            else:
+                rotations.append("downward pitch")
+            total_rotation += x_range
+        
+        # Y-axis rotation (yaw)
+        if y_range > 1:
+            y_delta = y_values[-1] - y_values[0]
+            if y_delta > 0:
+                rotations.append("right yaw")
+            else:
+                rotations.append("left yaw")
+            total_rotation += y_range
+        
+        # Z-axis rotation (roll)
+        if z_range > 1:
+            z_delta = z_values[-1] - z_values[0]
+            if z_delta > 0:
+                rotations.append("clockwise roll")
+            else:
+                rotations.append("counterclockwise roll")
+            total_rotation += z_range
+        
+        # Generate description
+        if not rotations:
+            return "", 0.0
+        
+        # Determine speed
+        speed = "slow"
+        if total_rotation > 30:
+            speed = "fast"
+        elif total_rotation > 15:
+            speed = "medium"
+        
+        description = f"{speed} {', '.join(rotations)}"
+        strength = min(1.0, total_rotation / 60.0)  # Normalize to 0-1
+        
+        return description, strength
+    
+    def analyze_zoom(self, zoom_schedule: str, max_frames: int) -> Tuple[str, float]:
+        """Analyze zoom schedule and return description + strength"""
+        
+        # Parse schedule
+        zoom_keyframes = parse_schedule_string(zoom_schedule, max_frames)
+        zoom_values = interpolate_schedule(zoom_keyframes, max_frames)
+        
+        if not zoom_values or len(zoom_values) < 2:
+            return "", 0.0
+        
+        # Calculate zoom change
+        zoom_start = zoom_values[0]
+        zoom_end = zoom_values[-1]
+        zoom_delta = zoom_end - zoom_start
+        zoom_range = max(zoom_values) - min(zoom_values)
+        
+        # Apply sensitivity
+        zoom_range *= self.sensitivity
+        
+        if abs(zoom_delta) < 0.1:
+            return "", 0.0
+        
+        # Determine zoom direction and speed
+        if zoom_delta > 0:
+            direction = "zoom in"
+        else:
+            direction = "zoom out"
+        
+        # Determine speed
+        speed = "slow"
+        if zoom_range > 1.0:
+            speed = "fast"
+        elif zoom_range > 0.5:
+            speed = "medium"
+        
+        description = f"{speed} {direction}"
+        strength = min(1.0, zoom_range / 2.0)  # Normalize to 0-1
+        
+        return description, strength
+
+
+def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: int = 100) -> Tuple[str, float]:
+    """
+    Analyze Deforum movement schedules and return English description + motion strength
+    
+    Args:
+        anim_args: Object with Deforum animation arguments
+        sensitivity: Movement detection sensitivity (0.1-2.0)
+        max_frames: Maximum frames to analyze
+    
+    Returns:
+        Tuple of (description_string, motion_strength_float)
+    """
+    
+    analyzer = MovementAnalyzer(sensitivity)
+    
+    # Get schedule strings from anim_args
+    translation_x = getattr(anim_args, 'translation_x', "0: (0)")
+    translation_y = getattr(anim_args, 'translation_y', "0: (0)")
+    translation_z = getattr(anim_args, 'translation_z', "0: (0)")
+    rotation_3d_x = getattr(anim_args, 'rotation_3d_x', "0: (0)")
+    rotation_3d_y = getattr(anim_args, 'rotation_3d_y', "0: (0)")
+    rotation_3d_z = getattr(anim_args, 'rotation_3d_z', "0: (0)")
+    zoom = getattr(anim_args, 'zoom', "0: (1.0)")
+    angle = getattr(anim_args, 'angle', "0: (0)")
+    
+    # Analyze each type of movement
+    translation_desc, translation_strength = analyzer.analyze_translation(
+        translation_x, translation_y, translation_z, max_frames
+    )
+    
+    rotation_desc, rotation_strength = analyzer.analyze_rotation(
+        rotation_3d_x, rotation_3d_y, rotation_3d_z, max_frames
+    )
+    
+    zoom_desc, zoom_strength = analyzer.analyze_zoom(zoom, max_frames)
+    
+    # Handle 2D angle rotation if present
+    angle_desc, angle_strength = "", 0.0
+    if angle != "0: (0)":
+        angle_desc, angle_strength = analyzer.analyze_zoom(angle, max_frames)  # Reuse zoom logic
+        if angle_desc:
+            angle_desc = angle_desc.replace("zoom", "rotation")
+    
+    # Combine descriptions
+    descriptions = []
+    strengths = []
+    
+    if translation_desc and translation_desc != "static camera":
+        descriptions.append(translation_desc)
+        strengths.append(translation_strength)
+    
+    if rotation_desc:
+        descriptions.append(rotation_desc)
+        strengths.append(rotation_strength)
+    
+    if zoom_desc:
+        descriptions.append(zoom_desc)
+        strengths.append(zoom_strength)
+    
+    if angle_desc:
+        descriptions.append(angle_desc)
+        strengths.append(angle_strength)
+    
+    # Generate final description
+    if not descriptions:
+        return "static camera shot", 0.0
+    
+    combined_description = "camera movement with " + ", ".join(descriptions)
+    combined_strength = max(strengths) if strengths else 0.0
+    
+    return combined_description, combined_strength 
