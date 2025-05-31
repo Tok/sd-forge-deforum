@@ -1091,14 +1091,26 @@ def get_tab_wan(dw: SimpleNamespace):
             """)
             
             # Quick Start Templates
-            with gr.Accordion("🐰 Quick Start Templates", open=False):
+            with gr.Accordion("📝 Quick Start Templates", open=False):
                 gr.Markdown("""
-                **Content-Optimized Prompt Templates**
+                **Two Prompt Template Options**
                 
-                These templates are specifically designed for different generation types:
-                - **📝 Wan Prompts**: Optimized for Wan video generation (no text rendering)
-                - **⏱️ Audio Sync**: Frame timings perfectly synchronized to amen break audio
-                - **🎬 Content-Friendly**: Focused on visual transformation and evolution
+                Choose the right template for your generation type:
+                
+                - **📝 Load Wan Prompts**: Bunny evolution optimized for Wan (no text signs)
+                  - Pure visual transformation: cute bunny → cosmic drip bunny
+                  - No text rendering (Wan doesn't excel at text generation)
+                  - Smooth visual progression with perfect audio sync timing
+                
+                - **🏢 Load Deforum Prompts**: Landscape evolution with text signs  
+                  - Diverse scene progression: landscape → cyberpunk → digital realm
+                  - Includes "Deforum & Forge" text signs (great for Flux models)
+                  - Good for traditional Deforum generation with text elements
+                
+                **💡 Choose Based On:**
+                - **Wan Generation**: Use Wan Prompts (visual focus, no text)
+                - **Flux Generation**: Use Deforum Prompts (text rendering capable)
+                - **Testing**: Either works, but content will be different
                 """)
                 
                 with FormRow():
@@ -2021,6 +2033,19 @@ Model download started automatically. This may take a few minutes.
                 auto_download=auto_download
             )
             
+            # Check if movement descriptions are available and append them
+            movement_description = ""
+            if hasattr(enhance_prompts_handler, '_movement_description'):
+                movement_description = enhance_prompts_handler._movement_description
+                print(f"📐 Found movement description to append: {movement_description}")
+            
+            # Append movement descriptions to enhanced prompts if available
+            if movement_description and movement_description.strip():
+                for frame_key in enhanced_prompts_dict:
+                    original_prompt = enhanced_prompts_dict[frame_key]
+                    enhanced_prompts_dict[frame_key] = f"{original_prompt}. {movement_description}"
+                print(f"✅ Appended movement description to {len(enhanced_prompts_dict)} enhanced prompts")
+            
             # Format the enhanced prompts as JSON
             enhanced_json = json.dumps(enhanced_prompts_dict, ensure_ascii=False, indent=2)
             
@@ -2129,6 +2154,10 @@ def analyze_movement_handler(movement_sensitivity):
             except Exception as e:
                 print(f"⚠️ Could not update wan_movement_description component: {e}")
         
+        # Store movement description for enhance_prompts_handler to use
+        enhance_prompts_handler._movement_description = movement_desc
+        print(f"💾 Stored movement description for prompt enhancement: {movement_desc}")
+        
         result = f"""🎯 **Movement Analysis Complete**
 
 **Movement Description Generated:**
@@ -2142,7 +2171,7 @@ def analyze_movement_handler(movement_sensitivity):
 ✅ **How This Works:**
 
 1. **Deforum Schedules (Unchanged)**: Your rotation/translation schedules control actual camera movement
-2. **Text Description**: "{movement_desc}" will be appended to each enhanced prompt
+2. **Text Description**: "{movement_desc}" will be appended to enhanced prompts automatically
 3. **Motion Intensity Schedule**: Controls Wan's internal motion strength frame-by-frame
 
 📊 **Current Deforum Movement Analysis:**
@@ -2152,27 +2181,30 @@ def analyze_movement_handler(movement_sensitivity):
 • **Rotation Y**: {anim_args.rotation_3d_y}
 • **Zoom**: {anim_args.zoom}
 
-🎬 **Integration During Wan Generation:**
+🎬 **Next Step - Enhance Prompts:**
 
-**Enhanced Prompts + Movement:**
-*"A sterile hallway, illuminated by bright fluorescent lights. {movement_desc}"*
+Click "🎨 Enhance Prompts with AI" to:
+• **Enhance your prompts** with AI
+• **Automatically append** "{movement_desc}" to each enhanced prompt
+• **Generate final prompts** ready for Wan generation
 
-**Wan Motion Control:**
+**Example Final Prompt:**
+*"A sterile hallway illuminated by bright fluorescent lights, clinical environment with metallic surfaces. {movement_desc}"*
+
+🎬 **During Wan Generation:**
+
+**Motion Control:**
 - Frame 0: Motion intensity {motion_intensity_schedule.split(',')[0].split('(')[1].split(')')[0]}
-- Frame 50: Motion intensity varies based on movement
-- Frame 100: Motion intensity {motion_intensity_schedule.split(',')[-1].split('(')[1].split(')')[0]}
+- Dynamic motion values adapt to movement complexity
+- Wan's internal motion syncs with your Deforum camera movement
 
 💡 **Benefits:**
-• **Prompt Enhancement**: AI knows what camera movement to expect
-• **Motion Synchronization**: Wan's motion matches your Deforum schedules
+• **Automatic Integration**: Movement descriptions append to enhanced prompts
+• **Motion Synchronization**: Wan's motion matches your Deforum schedules  
 • **Better Continuity**: Motion intensity adapts to movement complexity
 
-🚀 **Ready for Generation:**
-Your movement analysis is complete! When you generate Wan video:
-1. Text descriptions automatically append to prompts
-2. Motion intensity schedule controls Wan's internal motion
-3. Deforum schedules control actual camera movement
-4. Perfect synchronization between all systems
+🚀 **Ready for Enhancement:**
+Your movement analysis is complete! Now click "🎨 Enhance Prompts" to create the final prompts with integrated movement descriptions.
 
 💡 **Tip**: Adjust Movement Sensitivity (current: {movement_sensitivity:.1f}) to fine-tune:
 • **Lower values** (0.5): Only detect significant movements
