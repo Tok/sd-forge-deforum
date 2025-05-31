@@ -1199,20 +1199,11 @@ def WanArgs():
             "value": 20,
             "info": "Number of inference steps for Wan generation. Lower values (5-15) for quick testing, higher values (30-50) for quality"
         },
-        "wan_guidance_scale": {
-            "label": "Guidance Scale",
-            "type": "slider",
-            "minimum": 1.0,
-            "maximum": 20.0,
-            "step": 0.5,
-            "value": 7.5,
-            "info": "Guidance scale for prompt adherence"
-        },
         "wan_strength_override": {
             "label": "Strength Override",
             "type": "checkbox",
-            "value": False,
-            "info": "Override Deforum strength schedule with fixed value for maximum continuity"
+            "value": True,
+            "info": "Override Deforum strength schedule with fixed value for maximum continuity (recommended for I2V chaining)"
         },
         "wan_fixed_strength": {
             "label": "Fixed Strength",
@@ -1222,6 +1213,21 @@ def WanArgs():
             "step": 0.05,
             "value": 1.0,
             "info": "Fixed strength value for I2V chaining (1.0 = maximum continuity, 0.0 = maximum creativity)"
+        },
+        "wan_guidance_override": {
+            "label": "Guidance Scale Override",
+            "type": "checkbox",
+            "value": True,
+            "info": "Override Deforum CFG scale schedule with fixed value (recommended for consistent Wan generation)"
+        },
+        "wan_guidance_scale": {
+            "label": "Fixed Guidance Scale",
+            "type": "slider",
+            "minimum": 1.0,
+            "maximum": 20.0,
+            "step": 0.5,
+            "value": 7.5,
+            "info": "Fixed guidance scale for prompt adherence (only used when Guidance Scale Override is enabled)"
         },
         "wan_frame_overlap": {
             "label": "Frame Overlap",
@@ -1255,6 +1261,13 @@ def WanArgs():
             "step": 0.1,
             "value": 0.5,
             "info": "Strength of interpolation between consecutive clips"
+        },
+        "wan_flash_attention_mode": {
+            "label": "Flash Attention Mode",
+            "type": "dropdown",
+            "choices": ["Auto (Recommended)", "Force Flash Attention", "Force PyTorch Fallback"],
+            "value": "Auto (Recommended)",
+            "info": "Flash Attention mode: Auto tries Flash Attention then falls back to PyTorch. Force options override detection."
         }
     }
 

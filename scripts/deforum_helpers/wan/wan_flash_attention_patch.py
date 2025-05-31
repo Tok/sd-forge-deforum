@@ -1,421 +1,423 @@
-#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Flash Attention Patch for Wan
-Attempts to enable Flash Attention with proper error handling and fallback to PyTorch native attention
+Wan Flash Attention Monkey Patch
+=================================
+
+This module provides a monkey patch for the Wan flash attention implementation
+to add PyTorch fallback support when flash attention is not available.
+
+This ensures the original Wan repository remains untouched while providing
+compatibility for systems without flash attention.
 """
 
 import torch
 import warnings
 import sys
-import os
-import importlib.util
 
-# Global flags to track patching status
-_PATCH_APPLIED = False
-_FLASH_ATTENTION_AVAILABLE = None
-_FLASH_ATTENTION_ERROR = None
 
-def check_flash_attention_availability():
-    """Check if Flash Attention is actually available and working"""
-    global _FLASH_ATTENTION_AVAILABLE, _FLASH_ATTENTION_ERROR
+def patched_flash_attention(
+    q,
+    k,
+    v,
+    q_lens=None,
+    k_lens=None,
+    dropout_p=0.,
+    softmax_scale=None,
+    q_scale=None,
+    causal=False,
+    window_size=(-1, -1),
+    deterministic=False,
+    dtype=torch.bfloat16,
+    version=None,
+):
+    """
+    Patched flash attention function with PyTorch fallback support.
     
-    if _FLASH_ATTENTION_AVAILABLE is not None:
-        return _FLASH_ATTENTION_AVAILABLE
+    This replaces the original flash_attention function to provide compatibility
+    when flash attention libraries are not available.
+    """
+    # DEBUG: Uncomment next line to verify our function is being called
+    # print("🔧 PATCHED flash_attention function called!")
     
+    # Import flash attention modules dynamically
     try:
-        # Try to import flash_attn
+        import flash_attn_interface
+        FLASH_ATTN_3_AVAILABLE = True
+    except ModuleNotFoundError:
+        FLASH_ATTN_3_AVAILABLE = False
+
+    try:
         import flash_attn
-        from flash_attn import flash_attn_varlen_func
-        
-        # Test with a small tensor to see if it actually works
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        if device.type != 'cuda':
-            _FLASH_ATTENTION_ERROR = "Flash Attention requires CUDA"
-            _FLASH_ATTENTION_AVAILABLE = False
-            return False
-        
-        # Try a simple flash attention call
-        try:
-            test_q = torch.randn(1, 32, 64, dtype=torch.float16, device=device)
-            test_k = torch.randn(1, 32, 64, dtype=torch.float16, device=device)
-            test_v = torch.randn(1, 32, 64, dtype=torch.float16, device=device)
-            
-            # Try calling flash attention
-            _ = torch.nn.functional.scaled_dot_product_attention(test_q, test_k, test_v)
-            
-            # If that works, try flash_attn_varlen_func with minimal setup
-            q_flattened = test_q.view(-1, 64)
-            k_flattened = test_k.view(-1, 64) 
-            v_flattened = test_v.view(-1, 64)
-            cu_seqlens = torch.tensor([0, 32], dtype=torch.int32, device=device)
-            
-            _ = flash_attn_varlen_func(
-                q_flattened, k_flattened, v_flattened,
-                cu_seqlens, cu_seqlens,
-                max_seqlen_q=32, max_seqlen_k=32,
-                dropout_p=0.0,
-                causal=False
-            )
-            
-            _FLASH_ATTENTION_AVAILABLE = True
-            _FLASH_ATTENTION_ERROR = None
-            print("✅ Flash Attention test passed - Flash Attention is available")
-            return True
-            
-        except Exception as test_e:
-            _FLASH_ATTENTION_ERROR = f"Flash Attention test failed: {test_e}"
-            _FLASH_ATTENTION_AVAILABLE = False
-            print(f"⚠️ Flash Attention test failed: {test_e}")
-            return False
-            
-    except ImportError as e:
-        _FLASH_ATTENTION_ERROR = f"Flash Attention import failed: {e}"
-        _FLASH_ATTENTION_AVAILABLE = False
-        print(f"⚠️ Flash Attention not available: {e}")
-        return False
-    except Exception as e:
-        _FLASH_ATTENTION_ERROR = f"Flash Attention check failed: {e}"
-        _FLASH_ATTENTION_AVAILABLE = False
-        print(f"⚠️ Flash Attention availability check failed: {e}")
-        return False
+        FLASH_ATTN_2_AVAILABLE = True
+    except ModuleNotFoundError:
+        FLASH_ATTN_2_AVAILABLE = False
 
-def _create_smart_flash_attention():
-    """Create a smart flash_attention function that tries Flash Attention first, falls back to PyTorch"""
+    # Check global mode setting
+    global _FLASH_ATTENTION_MODE
+    mode_setting = _FLASH_ATTENTION_MODE
     
-    def smart_flash_attention(
-        q,
-        k,
-        v,
-        q_lens=None,
-        k_lens=None,
-        dropout_p=0.,
-        softmax_scale=None,
-        q_scale=None,
-        causal=False,
-        window_size=(-1, -1),
-        deterministic=False,
-        dtype=torch.bfloat16,
-        version=None,
-    ):
-        """Smart flash_attention that tries Flash Attention first, then falls back to PyTorch"""
-        
-        # Check if Flash Attention is available
-        if check_flash_attention_availability():
-            try:
-                # Try to use real Flash Attention
-                from flash_attn import flash_attn_varlen_func
-                
-                # Prepare inputs for flash attention
-                batch_size, seq_len_q, head_dim = q.shape
-                seq_len_k = k.shape[1]
-                
-                # Convert to flat format for flash_attn_varlen_func
-                q_flat = q.contiguous().view(-1, head_dim).to(dtype)
-                k_flat = k.contiguous().view(-1, head_dim).to(dtype)
-                v_flat = v.contiguous().view(-1, head_dim).to(dtype)
-                
-                # Create sequence length arrays
-                if q_lens is None:
-                    q_lens = [seq_len_q] * batch_size
-                if k_lens is None:
-                    k_lens = [seq_len_k] * batch_size
-                
-                # Create cumulative sequence lengths
-                cu_seqlens_q = torch.cat([
-                    torch.tensor([0], dtype=torch.int32, device=q.device),
-                    torch.cumsum(torch.tensor(q_lens, dtype=torch.int32, device=q.device), dim=0)
-                ])
-                cu_seqlens_k = torch.cat([
-                    torch.tensor([0], dtype=torch.int32, device=k.device),
-                    torch.cumsum(torch.tensor(k_lens, dtype=torch.int32, device=k.device), dim=0)
-                ])
-                
-                max_seqlen_q = max(q_lens)
-                max_seqlen_k = max(k_lens)
-                
-                # Apply q_scale if provided
-                if q_scale is not None:
-                    q_flat = q_flat * q_scale
-                
-                # Call Flash Attention
-                out_flat = flash_attn_varlen_func(
-                    q_flat, k_flat, v_flat,
-                    cu_seqlens_q, cu_seqlens_k,
-                    max_seqlen_q=max_seqlen_q,
-                    max_seqlen_k=max_seqlen_k,
-                    dropout_p=dropout_p,
-                    softmax_scale=softmax_scale,
-                    causal=causal,
-                    window_size=window_size,
-                    deterministic=deterministic
-                )
-                
-                # Reshape back to original format
-                out = out_flat.view(batch_size, seq_len_q, head_dim).contiguous()
-                
-                # Convert back to original dtype
-                return out.to(q.dtype)
-                
-            except Exception as fa_error:
-                # Flash Attention failed, log warning and fall back
-                print(f"⚠️ Flash Attention failed, falling back to PyTorch: {fa_error}")
-                # Continue to PyTorch fallback below
-        
-        # PyTorch native attention fallback
-        if q_lens is not None or k_lens is not None:
-            warnings.warn(
-                '⚠️ Using PyTorch attention fallback. Padding masks disabled for performance.',
-                UserWarning
-            )
-        
-        # Convert to proper format for PyTorch attention
-        q = q.transpose(-3, -2).to(dtype)  # (batch, heads, seq, dim)
-        k = k.transpose(-3, -2).to(dtype)
-        v = v.transpose(-3, -2).to(dtype)
-        
-        if q_scale is not None:
-            q = q * q_scale
+    # Override availability based on mode setting
+    if mode_setting == "Force PyTorch Fallback":
+        FLASH_ATTN_2_AVAILABLE = False
+        FLASH_ATTN_3_AVAILABLE = False
+    elif mode_setting == "Force Flash Attention":
+        if not (FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE):
+            raise RuntimeError("Flash Attention forced but not available!")
+    # For Auto mode, use actual availability (checked above)
 
-        # Apply PyTorch native attention
-        out = torch.nn.functional.scaled_dot_product_attention(
-            q, k, v, 
-            attn_mask=None, 
-            is_causal=causal, 
+    half_dtypes = (torch.float16, torch.bfloat16)
+    assert dtype in half_dtypes
+    assert q.device.type == 'cuda' and q.size(-1) <= 256
+
+    # params
+    b, lq, lk, out_dtype = q.size(0), q.size(1), k.size(1), q.dtype
+
+    def half(x):
+        return x if x.dtype in half_dtypes else x.to(dtype)
+
+    # preprocess query
+    if q_lens is None:
+        q = half(q.flatten(0, 1))
+        q_lens = torch.tensor(
+            [lq] * b, dtype=torch.int32).to(
+                device=q.device, non_blocking=True)
+    else:
+        q = half(torch.cat([u[:v] for u, v in zip(q, q_lens)]))
+
+    # preprocess key, value
+    if k_lens is None:
+        k = half(k.flatten(0, 1))
+        v = half(v.flatten(0, 1))
+        k_lens = torch.tensor(
+            [lk] * b, dtype=torch.int32).to(
+                device=k.device, non_blocking=True)
+    else:
+        k = half(torch.cat([u[:v] for u, v in zip(k, k_lens)]))
+        v = half(torch.cat([u[:v] for u, v in zip(v, k_lens)]))
+
+    q = q.to(v.dtype)
+    k = k.to(v.dtype)
+
+    if q_scale is not None:
+        q = q * q_scale
+
+    if version is not None and version == 3 and not FLASH_ATTN_3_AVAILABLE:
+        warnings.warn(
+            'Flash attention 3 is not available, use flash attention 2 instead.'
+        )
+
+    # apply attention
+    if (version is None or version == 3) and FLASH_ATTN_3_AVAILABLE:
+        # Note: dropout_p, window_size are not supported in FA3 now.
+        x = flash_attn_interface.flash_attn_varlen_func(
+            q=q,
+            k=k,
+            v=v,
+            cu_seqlens_q=torch.cat([q_lens.new_zeros([1]), q_lens]).cumsum(
+                0, dtype=torch.int32).to(q.device, non_blocking=True),
+            cu_seqlens_k=torch.cat([k_lens.new_zeros([1]), k_lens]).cumsum(
+                0, dtype=torch.int32).to(q.device, non_blocking=True),
+            seqused_q=None,
+            seqused_k=None,
+            max_seqlen_q=lq,
+            max_seqlen_k=lk,
+            softmax_scale=softmax_scale,
+            causal=causal,
+            deterministic=deterministic)[0].unflatten(0, (b, lq))
+    elif FLASH_ATTN_2_AVAILABLE:
+        x = flash_attn.flash_attn_varlen_func(
+            q=q,
+            k=k,
+            v=v,
+            cu_seqlens_q=torch.cat([q_lens.new_zeros([1]), q_lens]).cumsum(
+                0, dtype=torch.int32).to(q.device, non_blocking=True),
+            cu_seqlens_k=torch.cat([k_lens.new_zeros([1]), k_lens]).cumsum(
+                0, dtype=torch.int32).to(q.device, non_blocking=True),
+            max_seqlen_q=lq,
+            max_seqlen_k=lk,
             dropout_p=dropout_p,
+            softmax_scale=softmax_scale,
+            causal=causal,
+            window_size=window_size,
+            deterministic=deterministic).unflatten(0, (b, lq))
+    else:
+        # PyTorch fallback when flash attention is not available
+        warnings.warn(
+            'Flash attention is not available, falling back to PyTorch scaled_dot_product_attention. '
+            'Performance may be reduced but functionality will be preserved.'
+        )
+        
+        # The input tensors are already flattened: q=[B*Lq, Nq, C], k=[B*Lk, Nk, C], v=[B*Lk, Nk, C2]
+        # We need to reconstruct the batch structure for PyTorch attention
+        
+        # Get dimensions
+        total_q_len, num_heads_q, head_dim = q.shape
+        total_k_len, num_heads_k, _ = k.shape
+        v_head_dim = v.shape[2]  # Get the head dimension from v tensor
+        
+        # Unflatten to batch structure for PyTorch attention: [B, Lq/Lk, Nq/Nk, C]
+        q_unflat = q.view(b, lq, num_heads_q, head_dim)
+        k_unflat = k.view(b, lk, num_heads_k, head_dim)  
+        v_unflat = v.view(b, lk, num_heads_k, v_head_dim)
+        
+        # Transpose to PyTorch format: [B, Nq/Nk, Lq/Lk, C]
+        q_pt = q_unflat.transpose(1, 2)
+        k_pt = k_unflat.transpose(1, 2)
+        v_pt = v_unflat.transpose(1, 2)
+        
+        # Apply PyTorch attention
+        x_pt = torch.nn.functional.scaled_dot_product_attention(
+            q_pt, k_pt, v_pt, 
+            attn_mask=None, 
+            dropout_p=dropout_p, 
+            is_causal=causal,
             scale=softmax_scale
         )
-
-        # Transpose back and ensure correct output format
-        out = out.transpose(-3, -2).contiguous()
         
-        # Return with original dtype
-        return out.to(q.dtype)
-    
-    # Mark as patched
-    smart_flash_attention._is_patched_by_deforum = True
-    smart_flash_attention._uses_flash_attention = check_flash_attention_availability()
-    return smart_flash_attention
-
-def _create_smart_attention():
-    """Create a smart attention function that tries Flash Attention first"""
-    
-    def smart_attention(
-        q,
-        k,
-        v,
-        q_lens=None,
-        k_lens=None,
-        dropout_p=0.,
-        softmax_scale=None,
-        q_scale=None,
-        causal=False,
-        window_size=(-1, -1),
-        deterministic=False,
-        dtype=torch.bfloat16,
-        fa_version=None,
-    ):
-        """Smart attention that tries Flash Attention first, then falls back to PyTorch"""
+        # Transpose back to [B, Lq, Nq, C] format to match flash attention output
+        x_unflat = x_pt.transpose(1, 2).contiguous()  # [B, Lq, Nq, C]
         
-        # Use the same logic as smart_flash_attention
-        return _create_smart_flash_attention()(
-            q, k, v, q_lens, k_lens, dropout_p, softmax_scale, q_scale,
-            causal, window_size, deterministic, dtype, fa_version
-        )
-    
-    # Mark as patched
-    smart_attention._is_patched_by_deforum = True
-    smart_attention._uses_flash_attention = check_flash_attention_availability()
-    return smart_attention
+        # Flash attention returns unflattened format [B, Lq, Nq, C] - match this exactly
+        x = x_unflat   # [B, Lq, Nq, C_out]
 
-def force_disable_flash_attention():
-    """Force disable flash attention flags as a last resort"""
+    # output
+    return x.type(out_dtype)
+
+
+def apply_flash_attention_patch():
+    """
+    Apply the flash attention monkey patch to the Wan modules.
+    
+    This function dynamically patches the flash_attention function in the Wan
+    attention module to provide PyTorch fallback support.
+    
+    Returns:
+        bool: True if patch was applied successfully, False otherwise
+    """
     try:
-        # Mock flash_attn modules if they're not available
-        if 'flash_attn' not in sys.modules:
-            import types
-            mock_flash_attn = types.ModuleType('flash_attn')
-            
-            def mock_flash_attn_varlen_func(*args, **kwargs):
-                raise RuntimeError("Flash Attention not available - use PyTorch native attention")
-            
-            mock_flash_attn.flash_attn_varlen_func = mock_flash_attn_varlen_func
-            sys.modules['flash_attn'] = mock_flash_attn
-        
-        # Set flags to False in attention module if loaded
-        if 'wan.modules.attention' in sys.path:
-            attention_module = sys.modules['wan.modules.attention']
-            attention_module.FLASH_ATTN_2_AVAILABLE = False
-            attention_module.FLASH_ATTN_3_AVAILABLE = False
-            print("🔧 Set Flash Attention flags to False in loaded module")
-            
-    except Exception as e:
-        print(f"⚠️ Could not modify flash attention flags: {e}")
-
-def _patch_wan_flash_attention_internal():
-    """Internal patching function with smart Flash Attention support"""
-    global _PATCH_APPLIED
-    
-    if _PATCH_APPLIED:
-        print("✅ Flash Attention patch already applied")
-        return True
-    
-    try:
-        print("🔧 Attempting Flash Attention patching with smart fallback...")
-        
-        # Check Flash Attention availability first
-        flash_available = check_flash_attention_availability()
-        
-        if flash_available:
-            print("⚡ Flash Attention is available - will use Flash Attention with PyTorch fallback")
+        # Try to import the Wan attention module
+        if 'wan.modules.attention' in sys.modules:
+            wan_attention = sys.modules['wan.modules.attention']
         else:
-            print(f"⚠️ Flash Attention not available ({_FLASH_ATTENTION_ERROR}) - will use PyTorch attention")
+            # Try to find and import the module
+            try:
+                import wan.modules.attention as wan_attention
+            except ImportError:
+                print("⚠️ Wan attention module not found - skipping flash attention patch")
+                return False
         
-        # Try to find and add Wan2.1 path
-        wan_dir = None
-        
-        # Method 1: Use the path from flash attention patch file location
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        extension_dir = os.path.dirname(os.path.dirname(current_dir))
-        potential_wan_dir = os.path.join(extension_dir, 'Wan2.1')
-        
-        if os.path.exists(potential_wan_dir) and os.path.exists(os.path.join(potential_wan_dir, 'wan')):
-            wan_dir = potential_wan_dir
+        # Check if the module has the flash_attention function
+        if hasattr(wan_attention, 'flash_attention'):
+            # Store the original function for reference
+            if not hasattr(wan_attention, '_original_flash_attention'):
+                wan_attention._original_flash_attention = wan_attention.flash_attention
             
-        # Method 2: Check if Wan2.1 is already in sys.path
-        if not wan_dir:
-            for path in sys.path:
-                if 'Wan2.1' in path and os.path.exists(os.path.join(path, 'wan')):
-                    wan_dir = path
-                    break
-        
-        # Method 3: Search common locations
-        if not wan_dir:
-            search_paths = [
-                os.path.join(extension_dir, 'Wan2.1'),
-                os.path.join(os.path.dirname(extension_dir), 'Wan2.1'),
-                './Wan2.1',
-                '../Wan2.1'
-            ]
-            for search_path in search_paths:
-                abs_path = os.path.abspath(search_path)
-                if os.path.exists(abs_path) and os.path.exists(os.path.join(abs_path, 'wan')):
-                    wan_dir = abs_path
-                    break
-        
-        # Add Wan2.1 to Python path if found
-        if wan_dir and wan_dir not in sys.path:
-            sys.path.insert(0, wan_dir)
-            print(f"✅ Added Wan repo to path for Flash Attention patch: {wan_dir}")
-        elif wan_dir:
-            print(f"✅ Wan repo already in path: {wan_dir}")
-        else:
-            print("⚠️ Wan repository not found - proceeding without repo-specific patches")
-        
-        # Try to import and patch the attention module
-        try:
-            import wan.modules.attention as attention_module
-            print("✅ Successfully imported Wan attention module")
+            # CRITICAL: Also patch the module-level variables to allow fallback
+            # This prevents the assertion error
+            original_flash_attn_2 = getattr(wan_attention, 'FLASH_ATTN_2_AVAILABLE', False)
+            original_flash_attn_3 = getattr(wan_attention, 'FLASH_ATTN_3_AVAILABLE', False)
             
-            # Apply smart patching - try Flash Attention first, fall back to PyTorch
-            if hasattr(attention_module, 'flash_attention'):
-                attention_module.flash_attention = _create_smart_flash_attention()
-                print("✅ Patched flash_attention with smart Flash Attention support")
+            # Store originals
+            wan_attention._original_FLASH_ATTN_2_AVAILABLE = original_flash_attn_2
+            wan_attention._original_FLASH_ATTN_3_AVAILABLE = original_flash_attn_3
             
-            if hasattr(attention_module, 'attention'):
-                attention_module.attention = _create_smart_attention()
-                print("✅ Patched attention with smart Flash Attention support")
+            # CRITICAL: Also ensure flash_attn is available in module namespace
+            # If flash_attn is not defined, create a dummy module to prevent NameError
+            if not hasattr(wan_attention, 'flash_attn') or wan_attention.flash_attn is None:
+                try:
+                    import flash_attn
+                    wan_attention.flash_attn = flash_attn
+                except ImportError:
+                    # Create a dummy flash_attn module to prevent NameError
+                    class DummyFlashAttn:
+                        @staticmethod
+                        def flash_attn_varlen_func(*args, **kwargs):
+                            print("⚠️ WARNING: Original flash_attn called instead of patched function!")
+                            # Fall back to our patched function logic
+                            # This should not happen, but provides safety
+                            return patched_flash_attention(*args, **kwargs).unflatten(0, args[0].shape[:2])
+                    
+                    wan_attention.flash_attn = DummyFlashAttn()
+                    print("🔧 Added dummy flash_attn to module namespace to prevent NameError")
             
-            # Set availability flags based on actual Flash Attention availability
-            if hasattr(attention_module, 'FLASH_ATTN_2_AVAILABLE'):
-                attention_module.FLASH_ATTN_2_AVAILABLE = flash_available
-            if hasattr(attention_module, 'FLASH_ATTN_3_AVAILABLE'):
-                attention_module.FLASH_ATTN_3_AVAILABLE = flash_available
+            # Same for flash_attn_interface
+            if not hasattr(wan_attention, 'flash_attn_interface') or wan_attention.flash_attn_interface is None:
+                try:
+                    import flash_attn_interface
+                    wan_attention.flash_attn_interface = flash_attn_interface
+                except ImportError:
+                    # Create a dummy flash_attn_interface module
+                    class DummyFlashAttnInterface:
+                        @staticmethod
+                        def flash_attn_varlen_func(*args, **kwargs):
+                            raise RuntimeError("Flash Attention 3 not available - this should not be called with patched function")
+                    
+                    wan_attention.flash_attn_interface = DummyFlashAttnInterface()
+            
+            # Override based on mode
+            global _FLASH_ATTENTION_MODE
+            if _FLASH_ATTENTION_MODE == "Force PyTorch Fallback":
+                # Force use of PyTorch fallback
+                wan_attention.FLASH_ATTN_2_AVAILABLE = False
+                wan_attention.FLASH_ATTN_3_AVAILABLE = False
+                print("🔧 Forced Flash Attention to False for PyTorch fallback")
+            elif _FLASH_ATTENTION_MODE == "Force Flash Attention":
+                # Keep original values but will fail if flash attention not available
+                wan_attention.FLASH_ATTN_2_AVAILABLE = original_flash_attn_2
+                wan_attention.FLASH_ATTN_3_AVAILABLE = original_flash_attn_3
+                if not (original_flash_attn_2 or original_flash_attn_3):
+                    print("⚠️ Force Flash Attention requested but Flash Attention not available!")
+            else:  # Auto mode
+                # Set FLASH_ATTN_2_AVAILABLE = True to bypass assertion, our patched function handles fallback
+                wan_attention.FLASH_ATTN_2_AVAILABLE = True
+                wan_attention.FLASH_ATTN_3_AVAILABLE = original_flash_attn_3
+                print("🔧 Auto mode: Set FLASH_ATTN_2_AVAILABLE = True for assertion bypass")
+            
+            # Apply the patch - replace the function EVERYWHERE
+            wan_attention.flash_attention = patched_flash_attention
+            
+            # Also patch any cached references if they exist
+            if hasattr(wan_attention, '_flash_attention'):
+                wan_attention._flash_attention = patched_flash_attention
                 
-            if flash_available:
-                print("⚡ Flash Attention flags set to True - will attempt Flash Attention")
-            else:
-                print("🔧 Flash Attention flags set to False - will use PyTorch attention")
+            # Replace in globals() if needed  
+            if 'flash_attention' in wan_attention.__dict__:
+                wan_attention.__dict__['flash_attention'] = patched_flash_attention
+                
+            print("🔧 Patched flash_attention function comprehensively")
             
-        except ImportError:
-            print("⚠️ Wan attention module not found - will patch when imported")
-        except Exception as e:
-            print(f"⚠️ Error patching attention module: {e}")
-        
-        _PATCH_APPLIED = True
-        
-        if flash_available:
-            print("✅ Smart Flash Attention patch applied successfully! (Flash Attention enabled)")
+            # CRITICAL: Also patch the model.py module which imports flash_attention directly
+            # This is the key fix - model.py has "from .attention import flash_attention"
+            try:
+                if 'wan.modules.model' in sys.modules:
+                    wan_model = sys.modules['wan.modules.model']
+                    if hasattr(wan_model, 'flash_attention'):
+                        wan_model._original_flash_attention = wan_model.flash_attention
+                        wan_model.flash_attention = patched_flash_attention
+                        print("🔧 Also patched flash_attention reference in wan.modules.model")
+                else:
+                    # Try to import and patch
+                    try:
+                        import wan.modules.model as wan_model
+                        if hasattr(wan_model, 'flash_attention'):
+                            wan_model._original_flash_attention = wan_model.flash_attention
+                            wan_model.flash_attention = patched_flash_attention
+                            print("🔧 Also patched flash_attention reference in wan.modules.model")
+                    except ImportError:
+                        print("⚠️ Could not import wan.modules.model for patching")
+            except Exception as e:
+                print(f"⚠️ Could not patch wan.modules.model: {e}")
+            
+            # ALSO patch the attention function if it exists to ensure it uses our patched version
+            if hasattr(wan_attention, 'attention'):
+                if not hasattr(wan_attention, '_original_attention'):
+                    wan_attention._original_attention = wan_attention.attention
+                
+                def patched_attention(
+                    q, k, v, q_lens=None, k_lens=None, dropout_p=0., softmax_scale=None,
+                    q_scale=None, causal=False, window_size=(-1, -1), deterministic=False,
+                    dtype=torch.bfloat16, fa_version=None,
+                ):
+                    """Patched attention that uses our patched flash_attention"""
+                    # Always use our patched flash_attention function
+                    return patched_flash_attention(
+                        q=q, k=k, v=v, q_lens=q_lens, k_lens=k_lens, dropout_p=dropout_p,
+                        softmax_scale=softmax_scale, q_scale=q_scale, causal=causal,
+                        window_size=window_size, deterministic=deterministic, dtype=dtype,
+                        version=fa_version,
+                    )
+                
+                wan_attention.attention = patched_attention
+                print("   ✅ Also patched attention function")
+            
+            print("✅ Applied flash attention monkey patch successfully")
+            print(f"   📊 FLASH_ATTN_2_AVAILABLE: {wan_attention.FLASH_ATTN_2_AVAILABLE}")
+            print(f"   📊 FLASH_ATTN_3_AVAILABLE: {wan_attention.FLASH_ATTN_3_AVAILABLE}")
+            print(f"   🔧 Mode: {_FLASH_ATTENTION_MODE}")
+            return True
         else:
-            print("✅ Smart Flash Attention patch applied successfully! (PyTorch fallback mode)")
-        
-        return True
-        
+            print("⚠️ flash_attention function not found in Wan attention module")
+            return False
+            
     except Exception as e:
-        print(f"❌ Flash Attention patching failed: {e}")
+        print(f"❌ Failed to apply flash attention patch: {e}")
         import traceback
         traceback.print_exc()
         return False
 
-def ensure_flash_attention_patched():
-    """Ensure Flash Attention compatibility is patched"""
-    return _patch_wan_flash_attention_internal()
 
-def apply_wan_flash_attention_when_imported():
-    """Apply Flash Attention patches after Wan module is imported"""
+def check_flash_attention_availability():
+    """
+    Check which flash attention implementations are available.
+    
+    Returns:
+        dict: Status of different flash attention implementations
+    """
+    status = {
+        'flash_attn_2': False,
+        'flash_attn_3': False,
+        'pytorch_fallback': True
+    }
+    
     try:
-        if 'wan.modules.attention' in sys.modules:
-            print("🔧 Applying delayed Flash Attention patches to imported Wan module...")
-            attention_module = sys.modules['wan.modules.attention']
-            
-            # Check Flash Attention availability
-            flash_available = check_flash_attention_availability()
-            
-            # Apply smart patching
-            if hasattr(attention_module, 'flash_attention'):
-                attention_module.flash_attention = _create_smart_flash_attention()
-                print("✅ Patched flash_attention with smart support (delayed)")
-            
-            if hasattr(attention_module, 'attention'):
-                attention_module.attention = _create_smart_attention()
-                print("✅ Patched attention with smart support (delayed)")
-            
-            # Set flags based on availability
-            if hasattr(attention_module, 'FLASH_ATTN_2_AVAILABLE'):
-                attention_module.FLASH_ATTN_2_AVAILABLE = flash_available
-            if hasattr(attention_module, 'FLASH_ATTN_3_AVAILABLE'):
-                attention_module.FLASH_ATTN_3_AVAILABLE = flash_available
-            
-            if flash_available:
-                print("⚡ Delayed Flash Attention patches applied successfully! (Flash Attention enabled)")
-            else:
-                print("🔧 Delayed Flash Attention patches applied successfully! (PyTorch fallback)")
-                
+        import flash_attn
+        status['flash_attn_2'] = True
+    except ImportError:
+        pass
+    
+    try:
+        import flash_attn_interface
+        status['flash_attn_3'] = True
+    except ImportError:
+        pass
+    
+    return status
+
+
+def get_flash_attention_status_html():
+    """
+    Get HTML formatted flash attention status for UI display.
+    
+    Returns:
+        str: HTML formatted status string
+    """
+    status = check_flash_attention_availability()
+    
+    if status['flash_attn_3'] or status['flash_attn_2']:
+        if status['flash_attn_3']:
+            return "⚡ <span style='color: #4CAF50;'>Flash Attention 3 Available</span>"
         else:
-            print("⚠️ Wan attention module not yet imported for delayed patching")
-            
-    except Exception as e:
-        print(f"⚠️ Error applying delayed Flash Attention patches: {e}")
+            return "⚡ <span style='color: #2196F3;'>Flash Attention 2 Available</span>"
+    else:
+        return "🔄 <span style='color: #FF9800;'>PyTorch Fallback Only</span>"
 
-def apply_wan_compatibility_patches():
-    """Apply all Wan compatibility patches"""
-    try:
-        print("🔧 Applying Wan compatibility patches...")
-        
-        # Apply Flash Attention patches
-        _patch_wan_flash_attention_internal()
-        
-        # Also try delayed patching if module is already loaded
-        apply_wan_flash_attention_when_imported()
-        
-        print("✅ Flash Attention compatibility patch completed!")
-        
-    except Exception as e:
-        print(f"❌ Flash Attention compatibility patching failed: {e}")
-        # Don't raise - continue with other patches
 
-# Auto-apply patches when module is imported
-if __name__ != "__main__":
-    try:
-        ensure_flash_attention_patched()
-    except Exception:
-        pass  # Silent fail on import
+def update_patched_flash_attention_mode(mode="Auto (Recommended)"):
+    """
+    Update the flash attention mode for the patched function.
+    
+    Args:
+        mode (str): One of "Auto (Recommended)", "Force Flash Attention", "Force PyTorch Fallback"
+    """
+    global _FLASH_ATTENTION_MODE
+    _FLASH_ATTENTION_MODE = mode
+    print(f"🔧 Flash Attention mode set to: {mode}")
+
+
+# Global variable to track flash attention mode
+_FLASH_ATTENTION_MODE = "Auto (Recommended)"
+
+
+if __name__ == "__main__":
+    # Test the patch application
+    print("🔍 Flash Attention Availability:")
+    status = check_flash_attention_availability()
+    for impl, available in status.items():
+        print(f"   {impl}: {'✅' if available else '❌'}")
+    
+    print(f"\n🔧 Testing monkey patch (won't apply without Wan module loaded)...")
+    success = apply_flash_attention_patch()
+    if success:
+        print("✅ Patch applied successfully!")
+    else:
+        print("❌ Patch could not be applied (normal when Wan not loaded)") 

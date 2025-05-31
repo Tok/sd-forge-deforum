@@ -991,7 +991,7 @@ def get_tab_wan(dw: SimpleNamespace):
                     elem_id="wan_inference_steps_fixed_min_5",
                     info="Number of inference steps for Wan generation. Lower values (5-15) for quick testing, higher values (20-50) for quality"
                 )
-                wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
+                # wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)  # Moved to override section
         
         # Advanced Settings - Open by default and moved up
         with gr.Accordion("Advanced Settings", open=True):
@@ -1003,33 +1003,73 @@ def get_tab_wan(dw: SimpleNamespace):
                 wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
                 wan_interpolation_strength = create_gr_elem(dw.wan_interpolation_strength)
                 
-            # Strength Override Section
-            with gr.Accordion("🔗 I2V Continuity Control", open=False):
+            # Flash Attention Settings Section
+            with gr.Accordion("⚡ Flash Attention Settings", open=False):
                 gr.Markdown("""
-                **Default: I2V Chaining for Seamless Transitions**
+                **Flash Attention Performance Control**
                 
-                By default, Wan uses **I2V chaining** where each clip takes the last frame from the previous clip as input.
-                This creates smooth, seamless transitions between your prompt changes.
+                Flash Attention provides faster and more memory-efficient attention computation.
                 
-                **Strength Control (for I2V Chaining):**
-                - **High (0.8-0.9)**: Strong continuity, very smooth transitions
-                - **Medium (0.5-0.7)**: Balanced continuity and creative freedom  
-                - **Low (0.3-0.5)**: More creative freedom, less strict continuity
-                
-                **Override Deforum Strength**: Enable to ignore Deforum strength schedules and use a fixed value.
-                
-                **⚠️ Alternative: T2V Mode (No Continuity)**
-                
-                If you select **"Use T2V Model (No Continuity)"** above:
-                - ✅ **Upside**: Maximum creativity - each clip generated independently from prompt only
-                - ⚠️ **Downside**: Abrupt changes between clips, like separate videos stitched together
-                - 🎯 **Use when**: You want completely independent scenes or dramatic scene changes
-                - 📝 **Equivalent to**: Setting Deforum strength to 0.0 (ignores previous frames)
+                **Modes:**
+                - **Auto (Recommended)**: Try Flash Attention, fall back to PyTorch if unavailable
+                - **Force Flash Attention**: Force Flash Attention (fails if not available)
+                - **Force PyTorch Fallback**: Always use PyTorch attention (slower but compatible)
                 """)
                 
                 with FormRow():
+                    wan_flash_attention_mode = create_gr_elem(dw.wan_flash_attention_mode)
+                    
+                with FormRow():
+                    wan_flash_attention_status = gr.HTML(
+                        label="Flash Attention Status",
+                        value="⏳ Checking availability...",
+                        elem_id="wan_flash_attention_status"
+                    )
+                    check_flash_attention_btn = gr.Button(
+                        "🔍 Check Flash Attention",
+                        variant="secondary",
+                        size="sm",
+                        elem_id="wan_check_flash_attention_btn"
+                    )
+                
+            # Strength Override Section
+            with gr.Accordion("🔗 Schedule Override Controls", open=True):
+                gr.Markdown("""
+                **Deforum Schedule Integration (Recommended)**
+                
+                By default, Wan respects Deforum's scheduling system:
+                - **📈 Strength Schedule**: From Keyframes → Strength tab (controls I2V continuity)
+                - **📊 CFG Scale Schedule**: From Keyframes → CFG tab (controls prompt adherence)
+                
+                **Override Options (Advanced)**
+                
+                Enable overrides below to use fixed values instead of Deforum schedules:
+                
+                **Strength Override**: 
+                - Controls how much the previous frame influences the next clip
+                - High (0.8-0.9): Strong continuity, smooth transitions
+                - Low (0.3-0.5): More creative freedom, less continuity
+                
+                **Guidance Scale Override**:
+                - Controls how closely generation follows the prompt
+                - Higher values (7.5-12): Strong prompt adherence
+                - Lower values (3-6): More creative interpretation
+                
+                **💡 When to Use Overrides:**
+                - For consistent I2V chaining (strength override)
+                - For stable prompt adherence across clips (guidance override)
+                - When you want fixed values instead of scheduled changes
+                """)
+                
+                gr.Markdown("**🔧 Strength Control (I2V Continuity)**")
+                with FormRow():
                     wan_strength_override = create_gr_elem(dw.wan_strength_override)
                     wan_fixed_strength = create_gr_elem(dw.wan_fixed_strength)
+                
+                gr.Markdown("**🎯 Guidance Scale Control (Prompt Adherence)**")
+                with FormRow():
+                    wan_guidance_override = create_gr_elem(dw.wan_guidance_override)
+                    wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
         
         # Auto-Discovery Info - Collapsed by default
         with gr.Accordion("🔍 Auto-Discovery & Setup", open=False):
@@ -1142,6 +1182,7 @@ def get_tab_wan(dw: SimpleNamespace):
             - **🎬 FPS:** From Output tab (no separate Wan FPS needed)
             - **🎲 Seed:** From Keyframes → Seed & SubSeed tab
             - **💪 Strength:** From Keyframes → Strength tab (for I2V chaining)
+            - **📊 CFG Scale:** From Keyframes → CFG tab (for prompt adherence)
             - **⏱️ Duration:** Auto-calculated from prompt timing
             
             **Features:**
@@ -1153,6 +1194,7 @@ def get_tab_wan(dw: SimpleNamespace):
             - ✅ I2V chaining for seamless transitions between clips
             - ✅ PNG frame output with 4n+1 calculation
             - ✅ Strength scheduling for continuity control
+            - ✅ CFG scale scheduling for prompt adherence control
             """)
         
         # Detailed Documentation - Collapsed by default
@@ -1178,6 +1220,14 @@ def get_tab_wan(dw: SimpleNamespace):
                 - Higher values (0.7-0.9): Strong continuity, smoother transitions
                 - Lower values (0.3-0.6): More creative freedom, less continuity
                 - Example: `0:(0.85), 120:(0.6)` - strong continuity at start, more freedom later
+                
+                ### CFG Scale Schedule Integration
+                - Wan supports **Deforum's CFG scale schedule**!
+                - Controls how closely generation follows the prompt across clips
+                - Found in **Keyframes → CFG tab** as "CFG scale schedule"
+                - Higher values (7.5-12): Strong prompt adherence, less creative interpretation
+                - Lower values (3-6): More creative interpretation, looser prompt following
+                - Example: `0:(7.5), 120:(10.0)` - moderate adherence at start, stronger later
                 
                 ### FPS Integration
                 - Wan uses the **FPS setting** from the Output tab
@@ -1213,11 +1263,16 @@ def get_tab_wan(dw: SimpleNamespace):
                 - Set "Strength schedule" to control I2V continuity
                 - Example: `0:(0.85), 60:(0.7), 120:(0.5)` for gradual creative freedom
                 
-                #### Step 4: Configure Seeds (Optional)
+                #### Step 4: Configure CFG Scale Schedule (Optional but Recommended)
+                - Go to **Keyframes → CFG tab**
+                - Set "CFG scale schedule" to control prompt adherence
+                - Example: `0:(7.5), 60:(9.0), 120:(6.0)` for varying prompt adherence
+                
+                #### Step 5: Configure Seeds (Optional)
                 - **For consistent seeds**: Set seed behavior to 'schedule'
                 - **For variety**: Leave as 'iter' or 'random'
                 
-                #### Step 5: Generate
+                #### Step 6: Generate
                 - Click "Generate Wan Video" button
                 - Wan reads all settings from Deforum automatically
                 - Each prompt becomes a seamless video clip with strength-controlled transitions
@@ -1236,6 +1291,46 @@ def get_tab_wan(dw: SimpleNamespace):
             
     # Ensure wan_inference_steps is properly captured
     locals()['wan_inference_steps'] = wan_inference_steps
+    
+    # Button handlers for flash attention
+    def check_flash_attention_status():
+        """Check flash attention availability and return status"""
+        try:
+            from .wan.wan_flash_attention_patch import get_flash_attention_status_html
+            return get_flash_attention_status_html()
+        except Exception as e:
+            return f"❌ <span style='color: #f44336;'>Error checking status: {e}</span>"
+    
+    def update_flash_attention_mode(mode):
+        """Update flash attention mode and return updated status"""
+        try:
+            from .wan.wan_flash_attention_patch import update_patched_flash_attention_mode, get_flash_attention_status_html
+            update_patched_flash_attention_mode(mode)
+            status = get_flash_attention_status_html()
+            return f"{status} - Mode: {mode}"
+        except Exception as e:
+            return f"❌ <span style='color: #f44336;'>Error updating mode: {e}</span>"
+    
+    # Connect button click to status check
+    check_flash_attention_btn.click(
+        fn=check_flash_attention_status,
+        inputs=[],
+        outputs=[wan_flash_attention_status]
+    )
+    
+    # Connect mode change to status update
+    wan_flash_attention_mode.change(
+        fn=update_flash_attention_mode,
+        inputs=[wan_flash_attention_mode],
+        outputs=[wan_flash_attention_status]
+    )
+    
+    # Initialize status on load
+    try:
+        from .wan.wan_flash_attention_patch import get_flash_attention_status_html
+        wan_flash_attention_status.value = get_flash_attention_status_html()
+    except Exception:
+        wan_flash_attention_status.value = "⚠️ <span style='color: #FF9800;'>Status check unavailable</span>"
     
     return {k: v for k, v in {**locals(), **vars()}.items()}
 

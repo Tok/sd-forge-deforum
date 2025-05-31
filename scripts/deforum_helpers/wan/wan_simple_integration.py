@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 import torch
 import os
+import numpy as np
 
 class WanSimpleIntegration:
     """Simple integration class for Wan video generation in Deforum"""
@@ -245,19 +246,16 @@ class WanSimpleIntegration:
         print(f"🎯 Best model selected: {best_model['name']} ({best_model['type']}, {best_model['size']})")
         return best_model
     
-    def load_simple_wan_pipeline(self, model_info: Dict) -> bool:
+    def load_simple_wan_pipeline(self, model_info: Dict, wan_args=None) -> bool:
         """Load a simple Wan pipeline with Flash Attention fixes"""
         try:
             print(f"🔧 Loading Wan model: {model_info['name']}")
             
-            # Apply Flash Attention compatibility patches FIRST
-            try:
-                from .wan_flash_attention_patch import apply_wan_compatibility_patches
-                apply_wan_compatibility_patches()
-                print("✅ Flash Attention patches applied successfully")
-            except Exception as patch_e:
-                print(f"⚠️ Flash Attention patch failed: {patch_e}")
-                print("🔄 Continuing without patches...")
+            # Store flash attention mode for later use
+            self.flash_attention_mode = "Auto (Recommended)"
+            if wan_args and hasattr(wan_args, 'wan_flash_attention_mode'):
+                self.flash_attention_mode = wan_args.wan_flash_attention_mode
+                print(f"🔧 Setting Flash Attention mode to: {self.flash_attention_mode}")
             
             # Import torch
             import torch
@@ -300,17 +298,35 @@ class WanSimpleIntegration:
                     
                     print("🚀 Using official Wan VACE implementation")
                     
+                    # NOW apply Flash Attention patches after Wan modules are imported
+                    try:
+                        from .wan_flash_attention_patch import apply_flash_attention_patch, update_patched_flash_attention_mode
+                        
+                        # Update mode if stored
+                        if hasattr(self, 'flash_attention_mode'):
+                            update_patched_flash_attention_mode(self.flash_attention_mode)
+                        
+                        success = apply_flash_attention_patch()
+                        if success:
+                            print("✅ Flash Attention monkey patch applied successfully")
+                        else:
+                            print("⚠️ Flash Attention patch could not be applied - may be already patched")
+                    except Exception as patch_e:
+                        print(f"⚠️ Flash Attention patch failed: {patch_e}")
+                        print("🔄 Continuing without patches...")
+                    
                     # Create VACE config
                     class VACEConfig:
                         def __init__(self):
                             self.num_train_timesteps = 1000
                             self.param_dtype = torch.bfloat16
-                            self.t5_dtype = torch.bfloat16
+                            self.t5_dtype = torch.float16  # Use fp16 for T5 to save memory
                             self.text_len = 512
                             self.vae_stride = [4, 8, 8]
                             self.patch_size = [1, 2, 2]
-                            self.sample_neg_prompt = "Low quality, blurry, distorted"
-                            self.sample_fps = 24
+                            self.sample_neg_prompt = "Low quality, blurry, distorted, artifacts, bad anatomy"
+                            self.sample_fps = 8  # Lower FPS for stability
+                            # Use relative paths that VACE will resolve
                             self.t5_checkpoint = 'models_t5_umt5-xxl-enc-bf16.pth'
                             self.vae_checkpoint = 'Wan2.1_VAE.pth'
                             self.t5_tokenizer = 'google/umt5-xxl'
@@ -340,36 +356,68 @@ class WanSimpleIntegration:
                             if aligned_width != width or aligned_height != height:
                                 print(f"🔧 VACE dimension alignment: {width}x{height} -> {aligned_width}x{aligned_height}")
                             
-                            # For T2V mode, create dummy blank frames for VACE to transform
-                            blank_frame = torch.zeros((3, num_frames, aligned_height, aligned_width), 
-                                                    device=self.vace_model.device)
-                            full_mask = torch.ones((1, num_frames, aligned_height, aligned_width), 
-                                                 device=self.vace_model.device)
+                            print(f"🎬 VACE generating: {prompt[:50]}...")
+                            print(f"🔧 Parameters: {aligned_width}x{aligned_height}, {num_frames} frames, {num_inference_steps} steps, guidance={guidance_scale}")
                             
-                            return self.vace_model.generate(
-                                input_prompt=prompt,
-                                size=(aligned_width, aligned_height),
-                                frame_num=num_frames,
-                                sampling_steps=num_inference_steps,
-                                guide_scale=guidance_scale,
-                                input_frames=[blank_frame],
-                                input_masks=[full_mask],
-                                input_ref_images=[None],
-                                **kwargs
-                            )
+                            try:
+                                # For T2V mode with VACE, provide empty tensor structures (not None)
+                                # VACE expects tensor structures even for T2V generation
+                                empty_frames = torch.zeros((3, num_frames, aligned_height, aligned_width), 
+                                                         device=self.vace_model.device)
+                                empty_masks = torch.zeros((1, num_frames, aligned_height, aligned_width), 
+                                                        device=self.vace_model.device)
+                                
+                                result = self.vace_model.generate(
+                                    input_prompt=prompt,
+                                    size=(aligned_width, aligned_height),
+                                    frame_num=num_frames,
+                                    sampling_steps=num_inference_steps,
+                                    guide_scale=guidance_scale,
+                                    input_frames=[empty_frames],  # Empty tensors for T2V
+                                    input_masks=[empty_masks],    # Empty masks for T2V
+                                    input_ref_images=None,        # No reference images for T2V
+                                    seed=42,  # Fixed seed for debugging
+                                    **kwargs
+                                )
+                                
+                                if result is not None:
+                                    print(f"✅ VACE generation completed, output shape: {result.shape}")
+                                    print(f"🔧 Output value range: min={result.min():.3f}, max={result.max():.3f}")
+                                else:
+                                    print("⚠️ VACE returned None result")
+                                
+                                return result
+                                
+                            except Exception as e:
+                                print(f"❌ VACE generation failed: {e}")
+                                import traceback
+                                traceback.print_exc()
+                                raise
                         
                         def generate_image2video(self, image, prompt, height, width, num_frames, num_inference_steps, guidance_scale, **kwargs):
                             # I2V with VACE - use image as reference
                             aligned_width = ((width + 15) // 16) * 16
                             aligned_height = ((height + 15) // 16) * 16
                             
-                            # Resize image if needed
-                            if hasattr(image, 'size') and image.size != (aligned_width, aligned_height):
-                                from PIL import Image as PILImage
-                                image = image.resize((aligned_width, aligned_height), PILImage.Resampling.LANCZOS)
-                            
                             # Enhanced prompt for continuity
                             enhanced_prompt = f"Continuing seamlessly from the provided image, {prompt}. Maintaining visual continuity and style."
+                            
+                            # Convert PIL image to proper tensor format for VACE
+                            if image is not None:
+                                import torchvision.transforms.functional as TF
+                                
+                                # Resize image if needed
+                                if hasattr(image, 'size') and image.size != (aligned_width, aligned_height):
+                                    from PIL import Image as PILImage
+                                    image = image.resize((aligned_width, aligned_height), PILImage.Resampling.LANCZOS)
+                                
+                                # Convert to tensor format expected by VACE
+                                # VACE expects tensor format: (C, 1, H, W) normalized to [-1, 1]
+                                image_tensor = TF.to_tensor(image).sub_(0.5).div_(0.5).unsqueeze(1)  # (C, 1, H, W)
+                                image_tensor = image_tensor.to(self.vace_model.device)
+                                processed_ref_images = [[image_tensor]]  # List of lists as expected by VACE
+                            else:
+                                processed_ref_images = [[None]]
                             
                             # Create dummy frames but use image as reference
                             blank_frame = torch.zeros((3, num_frames, aligned_height, aligned_width), 
@@ -383,9 +431,9 @@ class WanSimpleIntegration:
                                 frame_num=num_frames,
                                 sampling_steps=num_inference_steps,
                                 guide_scale=guidance_scale,
-                                input_frames=[blank_frame],
-                                input_masks=[full_mask],
-                                input_ref_images=[image] if image else [None],
+                                input_frames=[blank_frame],  # Provide frame structure for I2V
+                                input_masks=[full_mask],     # Provide mask structure for I2V
+                                input_ref_images=processed_ref_images,
                                 **kwargs
                             )
                     
@@ -426,12 +474,22 @@ class WanSimpleIntegration:
                     import wan
                     from wan.text2video import WanT2V
                     
-                    # Apply delayed Flash Attention patches
+                    # Apply Flash Attention patches AFTER Wan modules are imported
                     try:
-                        from .wan_flash_attention_patch import apply_wan_flash_attention_when_imported
-                        apply_wan_flash_attention_when_imported()
-                    except Exception:
-                        pass
+                        from .wan_flash_attention_patch import apply_flash_attention_patch, update_patched_flash_attention_mode
+                        
+                        # Update mode if stored
+                        if hasattr(self, 'flash_attention_mode'):
+                            update_patched_flash_attention_mode(self.flash_attention_mode)
+                        
+                        success = apply_flash_attention_patch()
+                        if success:
+                            print("✅ Flash Attention monkey patch applied successfully")
+                        else:
+                            print("⚠️ Flash Attention patch could not be applied - may be already patched")
+                    except Exception as patch_e:
+                        print(f"⚠️ Flash Attention patch failed: {patch_e}")
+                        print("🔄 Continuing without patches...")
                     
                     print("🚀 Loading with official Wan T2V...")
                     
@@ -573,7 +631,7 @@ Diffusers error: {diffusers_e}
             print(f"❌ Standard model loading failed: {e}")
             return False
     
-    def generate_video_with_i2v_chaining(self, clips, model_info, output_dir, **kwargs):
+    def generate_video_with_i2v_chaining(self, clips, model_info, output_dir, wan_args=None, **kwargs):
         """Generate video using I2V chaining for better continuity between clips"""
         try:
             import shutil
@@ -585,7 +643,7 @@ Diffusers error: {diffusers_e}
             # Load the model if not loaded
             if not self.pipeline:
                 print("🔧 Loading Wan pipeline for I2V chaining...")
-                if not self.load_simple_wan_pipeline(model_info):
+                if not self.load_simple_wan_pipeline(model_info, wan_args):
                     raise RuntimeError("Failed to load Wan pipeline")
             
             # Extract parameters
@@ -708,6 +766,7 @@ Diffusers error: {diffusers_e}
             if hasattr(frames_data, 'cpu'):  # Tensor
                 frames_tensor = frames_data.cpu()
                 print(f"🔧 Processing tensor frames: {frames_tensor.shape}")
+                print(f"🔧 Tensor value range: min={frames_tensor.min():.3f}, max={frames_tensor.max():.3f}")
                 
                 # Handle different tensor formats
                 if len(frames_tensor.shape) == 5:  # (B, C, F, H, W)
@@ -718,10 +777,15 @@ Diffusers error: {diffusers_e}
                         frame_tensor = frames_tensor[:, frame_idx, :, :]  # (C, H, W)
                         frame_np = frame_tensor.permute(1, 2, 0).numpy()  # (H, W, C)
                         
-                        # Normalize to 0-255
-                        if frame_np.max() <= 1.0:
+                        # VACE outputs in [-1, 1] range, convert to [0, 255]
+                        if frame_np.min() < -0.5:  # Likely [-1, 1] range
+                            # Convert from [-1, 1] to [0, 1] then to [0, 255]
+                            frame_np = (frame_np + 1.0) / 2.0  # [-1, 1] -> [0, 1]
+                            frame_np = np.clip(frame_np, 0, 1)  # Ensure valid range
                             frame_np = (frame_np * 255).astype(np.uint8)
-                        else:
+                        elif frame_np.max() <= 1.0:  # [0, 1] range
+                            frame_np = (frame_np * 255).astype(np.uint8)
+                        else:  # Already in [0, 255] range
                             frame_np = np.clip(frame_np, 0, 255).astype(np.uint8)
                         
                         frames.append(frame_np)
@@ -730,8 +794,17 @@ Diffusers error: {diffusers_e}
                     # Try to treat as single frame
                     if len(frames_tensor.shape) == 3:  # (C, H, W)
                         frame_np = frames_tensor.permute(1, 2, 0).numpy()
-                        if frame_np.max() <= 1.0:
+                        
+                        # Apply same normalization fix
+                        if frame_np.min() < -0.5:  # Likely [-1, 1] range
+                            frame_np = (frame_np + 1.0) / 2.0
+                            frame_np = np.clip(frame_np, 0, 1)
                             frame_np = (frame_np * 255).astype(np.uint8)
+                        elif frame_np.max() <= 1.0:
+                            frame_np = (frame_np * 255).astype(np.uint8)
+                        else:
+                            frame_np = np.clip(frame_np, 0, 255).astype(np.uint8)
+                            
                         frames.append(frame_np)
             
             elif isinstance(frames_data, list):  # List of PIL Images or arrays
