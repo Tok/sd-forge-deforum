@@ -208,15 +208,13 @@ def setup_deforum_left_side_ui():
             from .ui_elements import enhance_prompts_handler
             enhance_prompts_handler._animation_prompts_component = locals()['animation_prompts']
             
-            # Connect the enhance button with all required inputs
+            # Connect the enhance button with simplified inputs (no enable flags)
             locals()['enhance_prompts_btn'].click(
                 fn=enhance_prompts_handler,
                 inputs=[
-                    locals()['wan_enable_prompt_enhancement'], 
                     locals()['wan_qwen_model'], 
                     locals()['wan_qwen_language'],
                     locals()['wan_qwen_auto_download'], 
-                    locals()['wan_enable_movement_analysis'], 
                     locals()['wan_movement_sensitivity']
                 ],
                 outputs=[locals()['wan_enhanced_prompts']]
