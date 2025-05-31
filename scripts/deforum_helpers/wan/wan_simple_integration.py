@@ -292,13 +292,13 @@ class WanSimpleIntegration:
                     sys.path.insert(0, str(wan_repo_path))
                 
                 try:
-                    # Try to load with official Wan VACE implementation
+                    # Load only VACE model (not T2V)
                     import wan
                     from wan.vace import WanVace
                     
-                    print("🚀 Using official Wan VACE implementation")
+                    print("🚀 Using official Wan VACE implementation (single model)")
                     
-                    # NOW apply Flash Attention patches after Wan modules are imported
+                    # Apply Flash Attention patches after Wan modules are imported
                     try:
                         from .wan_flash_attention_patch import apply_flash_attention_patch, update_patched_flash_attention_mode
                         
@@ -333,7 +333,8 @@ class WanSimpleIntegration:
                     
                     vace_config = VACEConfig()
                     
-                    # Initialize VACE model
+                    # Initialize only VACE model
+                    print("🔧 Loading WanVace for both T2V and I2V generation...")
                     vace_model = WanVace(
                         config=vace_config,
                         checkpoint_dir=model_info['path'],
@@ -343,102 +344,180 @@ class WanSimpleIntegration:
                         t5_fsdp=False
                     )
                     
-                    # Create wrapper for VACE
-                    class VACEWrapper:
+                    # Create VACE wrapper that handles T2V and I2V correctly
+                    class SmartVACEWrapper:
                         def __init__(self, vace_model):
                             self.vace_model = vace_model
-                        
+                            
+                            # Determine optimal resolution based on VACE model size
+                            # Extract model size from the checkpoint directory path
+                            model_path = str(model_info['path']).lower()
+                            if '14b' in model_path:
+                                # 14B VACE model optimized for 720p
+                                self.optimal_width = 1280
+                                self.optimal_height = 720
+                                self.model_size = "14B"
+                            else:
+                                # 1.3B VACE model optimized for 480p
+                                self.optimal_width = 832
+                                self.optimal_height = 480
+                                self.model_size = "1.3B"
+                            
+                            print(f"🎯 VACE {self.model_size} model detected - using optimal resolution {self.optimal_width}x{self.optimal_height}")
+            
                         def __call__(self, prompt, height, width, num_frames, num_inference_steps, guidance_scale, **kwargs):
-                            # VACE dimension alignment
-                            aligned_width = ((width + 15) // 16) * 16
-                            aligned_height = ((height + 15) // 16) * 16
+                            # T2V mode: Use VACE correctly for pure text-to-video generation
+                            
+                            # Use optimal resolution for this VACE model
+                            aligned_width = self.optimal_width
+                            aligned_height = self.optimal_height
                             
                             if aligned_width != width or aligned_height != height:
-                                print(f"🔧 VACE dimension alignment: {width}x{height} -> {aligned_width}x{aligned_height}")
+                                print(f"🔧 VACE T2V resolution correction: {width}x{height} -> {aligned_width}x{aligned_height}")
+                                print(f"🔧 VACE {self.model_size} optimized for {aligned_width}x{aligned_height}")
                             
-                            print(f"🎬 VACE generating: {prompt[:50]}...")
+                            print(f"🎬 VACE T2V generating: {prompt[:50]}...")
                             print(f"🔧 Parameters: {aligned_width}x{aligned_height}, {num_frames} frames, {num_inference_steps} steps, guidance={guidance_scale}")
                             
                             try:
-                                # For T2V mode with VACE, provide empty tensor structures (not None)
-                                # VACE expects tensor structures even for T2V generation
-                                empty_frames = torch.zeros((3, num_frames, aligned_height, aligned_width), 
-                                                         device=self.vace_model.device)
-                                empty_masks = torch.zeros((1, num_frames, aligned_height, aligned_width), 
-                                                        device=self.vace_model.device)
+                                # For pure T2V: Use prepare_source but with all None inputs
+                                # This creates proper blank tensors for T2V generation
+                                src_video, src_mask, src_ref_images = self.vace_model.prepare_source(
+                                    [None],  # T2V: no source video
+                                    [None],  # T2V: no source mask
+                                    [None],  # T2V: no reference images
+                                    num_frames,
+                                    (aligned_height, aligned_width),  # Note: VACE expects (H, W) order
+                                    self.vace_model.device
+                                )
+                                
+                                print(f"🔧 T2V prepared tensors - video: {len(src_video)}, mask: {len(src_mask)}, ref: {src_ref_images}")
+                                if src_video and src_video[0] is not None:
+                                    print(f"🔧 src_video shape: {src_video[0].shape}, range: [{src_video[0].min():.3f}, {src_video[0].max():.3f}]")
+                                if src_mask and src_mask[0] is not None:
+                                    print(f"🔧 src_mask shape: {src_mask[0].shape}, range: [{src_mask[0].min():.3f}, {src_mask[0].max():.3f}]")
                                 
                                 result = self.vace_model.generate(
                                     input_prompt=prompt,
+                                    input_frames=src_video,
+                                    input_masks=src_mask,
+                                    input_ref_images=src_ref_images,
                                     size=(aligned_width, aligned_height),
                                     frame_num=num_frames,
                                     sampling_steps=num_inference_steps,
                                     guide_scale=guidance_scale,
-                                    input_frames=[empty_frames],  # Empty tensors for T2V
-                                    input_masks=[empty_masks],    # Empty masks for T2V
-                                    input_ref_images=None,        # No reference images for T2V
+                                    shift=16,  # VACE uses higher shift than T2V
                                     seed=42,  # Fixed seed for debugging
                                     **kwargs
                                 )
                                 
                                 if result is not None:
-                                    print(f"✅ VACE generation completed, output shape: {result.shape}")
+                                    print(f"✅ VACE T2V generation completed, output shape: {result.shape}")
                                     print(f"🔧 Output value range: min={result.min():.3f}, max={result.max():.3f}")
                                 else:
-                                    print("⚠️ VACE returned None result")
+                                    print("⚠️ VACE T2V returned None result")
                                 
                                 return result
                                 
                             except Exception as e:
-                                print(f"❌ VACE generation failed: {e}")
+                                print(f"❌ VACE T2V generation failed: {e}")
                                 import traceback
                                 traceback.print_exc()
                                 raise
                         
                         def generate_image2video(self, image, prompt, height, width, num_frames, num_inference_steps, guidance_scale, **kwargs):
-                            # I2V with VACE - use image as reference
-                            aligned_width = ((width + 15) // 16) * 16
-                            aligned_height = ((height + 15) // 16) * 16
+                            # I2V mode: Use VACE with proper image conditioning
+                            
+                            # Use optimal resolution for this VACE model
+                            aligned_width = self.optimal_width
+                            aligned_height = self.optimal_height
                             
                             # Enhanced prompt for continuity
                             enhanced_prompt = f"Continuing seamlessly from the provided image, {prompt}. Maintaining visual continuity and style."
                             
-                            # Convert PIL image to proper tensor format for VACE
-                            if image is not None:
-                                import torchvision.transforms.functional as TF
-                                
-                                # Resize image if needed
-                                if hasattr(image, 'size') and image.size != (aligned_width, aligned_height):
+                            if aligned_width != width or aligned_height != height:
+                                print(f"🔧 VACE I2V resolution correction: {width}x{height} -> {aligned_width}x{aligned_height}")
+                                print(f"🔧 VACE {self.model_size} optimized for {aligned_width}x{aligned_height}")
+                            
+                            print(f"🎬 VACE I2V generating: {enhanced_prompt[:50]}...")
+                            print(f"🔧 Parameters: {aligned_width}x{aligned_height}, {num_frames} frames, {num_inference_steps} steps, guidance={guidance_scale}")
+                            
+                            try:
+                                if image is not None:
+                                    import tempfile
+                                    import os
                                     from PIL import Image as PILImage
-                                    image = image.resize((aligned_width, aligned_height), PILImage.Resampling.LANCZOS)
+                                    
+                                    # Ensure image is PIL Image
+                                    if not hasattr(image, 'save'):
+                                        # Convert tensor/array to PIL if needed
+                                        if hasattr(image, 'numpy'):
+                                            image_np = image.numpy()
+                                        else:
+                                            image_np = image
+                                        image = PILImage.fromarray((image_np * 255).astype('uint8'))
+                                    
+                                    # Resize image to match VACE dimensions if needed
+                                    if image.size != (aligned_width, aligned_height):
+                                        image = image.resize((aligned_width, aligned_height), PILImage.Resampling.LANCZOS)
+                                    
+                                    # Save image temporarily for VACE processing
+                                    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
+                                        image.save(tmp_file.name, 'PNG')
+                                        temp_image_path = tmp_file.name
+                                    
+                                    try:
+                                        # Use VACE's prepare_source for proper I2V setup
+                                        src_video, src_mask, src_ref_images = self.vace_model.prepare_source(
+                                            [None],  # I2V: no source video (will create blank frames)
+                                            [None],  # I2V: no source mask (will create ones)
+                                            [[temp_image_path]],  # I2V: reference image for conditioning
+                                            num_frames,
+                                            (aligned_height, aligned_width),
+                                            self.vace_model.device
+                                        )
+                                        
+                                        print(f"🔧 I2V prepared tensors - video: {len(src_video)}, mask: {len(src_mask)}, ref: {len(src_ref_images[0]) if src_ref_images and src_ref_images[0] else 'None'}")
+                                        
+                                        result = self.vace_model.generate(
+                                            input_prompt=enhanced_prompt,
+                                            input_frames=src_video,
+                                            input_masks=src_mask,
+                                            input_ref_images=src_ref_images,
+                                            size=(aligned_width, aligned_height),
+                                            frame_num=num_frames,
+                                            sampling_steps=num_inference_steps,
+                                            guide_scale=guidance_scale,
+                                            shift=16,  # VACE uses higher shift
+                                            **kwargs
+                                        )
+                                        
+                                        if result is not None:
+                                            print(f"✅ VACE I2V generation completed, output shape: {result.shape}")
+                                            print(f"🔧 Output value range: min={result.min():.3f}, max={result.max():.3f}")
+                                        else:
+                                            print("⚠️ VACE I2V returned None result")
+                                            
+                                        return result
+                                        
+                                    finally:
+                                        # Clean up temporary file
+                                        try:
+                                            os.unlink(temp_image_path)
+                                        except:
+                                            pass
+                                else:
+                                    # No image provided, fallback to T2V
+                                    return self.__call__(prompt, height, width, num_frames, num_inference_steps, guidance_scale, **kwargs)
                                 
-                                # Convert to tensor format expected by VACE
-                                # VACE expects tensor format: (C, 1, H, W) normalized to [-1, 1]
-                                image_tensor = TF.to_tensor(image).sub_(0.5).div_(0.5).unsqueeze(1)  # (C, 1, H, W)
-                                image_tensor = image_tensor.to(self.vace_model.device)
-                                processed_ref_images = [[image_tensor]]  # List of lists as expected by VACE
-                            else:
-                                processed_ref_images = [[None]]
-                            
-                            # Create dummy frames but use image as reference
-                            blank_frame = torch.zeros((3, num_frames, aligned_height, aligned_width), 
-                                                    device=self.vace_model.device)
-                            full_mask = torch.ones((1, num_frames, aligned_height, aligned_width), 
-                                                 device=self.vace_model.device)
-                            
-                            return self.vace_model.generate(
-                                input_prompt=enhanced_prompt,
-                                size=(aligned_width, aligned_height),
-                                frame_num=num_frames,
-                                sampling_steps=num_inference_steps,
-                                guide_scale=guidance_scale,
-                                input_frames=[blank_frame],  # Provide frame structure for I2V
-                                input_masks=[full_mask],     # Provide mask structure for I2V
-                                input_ref_images=processed_ref_images,
-                                **kwargs
-                            )
+                            except Exception as e:
+                                print(f"❌ VACE I2V generation failed: {e}")
+                                import traceback
+                                traceback.print_exc()
+                                raise
                     
-                    self.pipeline = VACEWrapper(vace_model)
-                    print("✅ VACE model loaded successfully with official implementation")
+                    self.pipeline = SmartVACEWrapper(vace_model)
+                    print("✅ Smart VACE model loaded successfully (single model for both T2V and I2V)")
                     return True
                     
                 except Exception as wan_e:
