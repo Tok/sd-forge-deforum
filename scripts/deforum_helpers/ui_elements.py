@@ -1125,7 +1125,29 @@ def get_tab_wan(dw: SimpleNamespace):
             with FormRow():
                 wan_auto_download = create_gr_elem(dw.wan_auto_download)
                 wan_preferred_size = create_gr_elem(dw.wan_preferred_size)
-                wan_resolution = create_gr_elem(dw.wan_resolution)
+                # Fix resolution dropdown to handle old format values
+                wan_resolution_elem = create_gr_elem(dw.wan_resolution)
+                
+                # Update resolution value to handle old format (e.g., "864x480" -> "864x480 (Landscape)")
+                def update_resolution_format(current_value):
+                    """Convert old resolution format to new format with labels"""
+                    if current_value and '(' not in current_value:
+                        # Old format detected, convert to new format
+                        if current_value == "864x480":
+                            return "864x480 (Landscape)"
+                        elif current_value == "480x864":
+                            return "480x864 (Portrait)"
+                        elif current_value == "1280x720":
+                            return "1280x720 (Landscape)"
+                        elif current_value == "720x1280":
+                            return "720x1280 (Portrait)"
+                    return current_value
+                
+                # Apply format update on component creation
+                if hasattr(wan_resolution_elem, 'value'):
+                    wan_resolution_elem.value = update_resolution_format(wan_resolution_elem.value)
+                
+                wan_resolution = wan_resolution_elem
                 
             with FormRow():
                 wan_inference_steps = gr.Slider(
@@ -1462,6 +1484,13 @@ def get_tab_wan(dw: SimpleNamespace):
     
     # Connect generate button with validation
     wan_generate_button.click(
+        fn=validate_wan_generation,
+        inputs=[wan_enhanced_prompts],
+        outputs=[wan_generation_status]
+    )
+    
+    # Add automatic validation status updates when prompts change
+    wan_enhanced_prompts.change(
         fn=validate_wan_generation,
         inputs=[wan_enhanced_prompts],
         outputs=[wan_generation_status]
@@ -2577,41 +2606,55 @@ def validate_wan_generation(current_prompts):
     try:
         import json
         
+        # Check if prompts are empty
         if not current_prompts or current_prompts.strip() == "":
-            return """❌ No prompts configured!
+            return """⚠️ **Prompts Required**
 
-🔧 **REQUIRED STEPS:**
-1. 📋 Click "Load from Deforum Prompts" or "Load Default Prompts" above
-2. 📐 Optionally add movement descriptions
-3. 🎨 Optionally enhance with AI
-4. 🎬 Click Generate again
+📋 **Load prompts to get started:**
+• Click "Load from Deforum Prompts" to use your animation prompts
+• Or click "Load Default Wan Prompts" for examples
+• Then optionally enhance with AI or add movement descriptions"""
+        
+        # Check if it's just placeholder text
+        if any(placeholder in current_prompts.lower() for placeholder in ["required:", "load prompts", "placeholder"]):
+            return """⚠️ **Load Real Prompts**
 
-**Prompts are essential for Wan video generation!**"""
+📋 **Replace placeholder text:**
+• Click "Load from Deforum Prompts" to copy your animation prompts
+• Or click "Load Default Wan Prompts" for examples"""
         
         # Try to parse as JSON
         try:
             prompts_dict = json.loads(current_prompts)
             if not prompts_dict:
-                return "❌ Empty prompts! Add some prompts first."
+                return "⚠️ **Empty prompts** - Add some prompts first"
             
-            # Check if prompts are just placeholders
+            # Check if prompts are just basic placeholders
             first_prompt = list(prompts_dict.values())[0].lower()
-            if any(placeholder in first_prompt for placeholder in ["prompt text", "load prompts", "required"]):
-                return """❌ Placeholder prompts detected!
+            if any(placeholder in first_prompt for placeholder in ["prompt text", "beautiful landscape", "load prompts"]):
+                return """⚠️ **Default/Placeholder Prompts Detected**
 
-🔧 **Load real prompts:**
-1. 📋 Click "Load from Deforum Prompts" to copy your animation prompts
-2. 📝 Or click "Load Default Prompts" for examples
-3. ✏️ Edit the prompts as needed
-4. 🎬 Click Generate again"""
+📋 **Load your real prompts:**
+• Click "Load from Deforum Prompts" to copy your animation prompts
+• Or edit the prompts manually to describe your desired video"""
                 
-            return f"✅ Ready to generate! Found {len(prompts_dict)} prompt(s) for Wan video generation."
+            # All good - ready to generate!
+            num_prompts = len(prompts_dict)
+            return f"""✅ **Ready to Generate!** 
+
+🎬 **Found {num_prompts} prompt{'s' if num_prompts != 1 else ''}** for Wan video generation
+🔥 **Click "Generate Wan Video" above** to start I2V chaining generation
+⚡ **Optional:** Add movement descriptions or AI enhancement first"""
             
         except json.JSONDecodeError:
-            return "❌ Invalid JSON format! Please fix the prompts format first."
+            return """❌ **Invalid JSON Format**
+
+🔧 **Fix the format:**
+• Prompts should be in JSON format like: {"0": "prompt text", "60": "another prompt"}
+• Check for missing quotes, commas, or brackets"""
     
     except Exception as e:
-        return f"❌ Validation error: {str(e)}"
+        return f"❌ **Validation Error:** {str(e)}"
 
 
 def wan_generate_with_validation(*component_args):
