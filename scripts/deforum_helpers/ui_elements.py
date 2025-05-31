@@ -1059,14 +1059,41 @@ def get_tab_wan(dw: SimpleNamespace):
                     size="lg",
                     elem_id="wan_enhance_prompts_btn"
                 )
-                
-            # Movement Analysis Results - Always visible for feedback
+            
+            # Camera Shakify Integration Control
+            with FormRow():
+                wan_enable_shakify = gr.Checkbox(
+                    label="🎬 Include Camera Shakify with Movement Analysis",
+                    value=True,
+                    info="Enable Camera Shakify integration for movement analysis (uses settings from Keyframes → Motion → Shakify tab)",
+                    elem_id="wan_enable_shakify_checkbox"
+                )
+                wan_movement_sensitivity_override = gr.Checkbox(
+                    label="Manual Sensitivity Override",
+                    value=False,
+                    info="Override auto-calculated sensitivity (normally auto-calculated from movement magnitude)",
+                    elem_id="wan_sensitivity_override_checkbox"
+                )
+            
+            # Manual Sensitivity Control (hidden by default)
+            with FormRow(visible=False) as manual_sensitivity_row:
+                wan_manual_sensitivity = gr.Slider(
+                    label="Manual Movement Sensitivity",
+                    minimum=0.1,
+                    maximum=5.0,
+                    step=0.1,
+                    value=1.0,
+                    info="Higher values detect subtler movements (0.1: only large movements, 5.0: very sensitive)",
+                    elem_id="wan_manual_sensitivity_slider"
+                )
+            
+            # Movement Analysis Results - Enhanced with frame-by-frame details
             wan_movement_description = gr.Textbox(
                 label="Movement Analysis Results",
-                lines=4,
+                lines=6,
                 interactive=False,
-                placeholder="Movement analysis results will appear here...",
-                info="Movement descriptions are automatically added to prompts above.",
+                placeholder="Movement analysis results will appear here...\n\n💡 TIP: This shows frame-by-frame movement detection with Camera Shakify integration.",
+                info="Fine-grained movement descriptions with specific frame ranges and Camera Shakify effects.",
                 elem_id="wan_movement_description_textbox",
                 visible=True  # Always visible for immediate feedback
             )
@@ -1578,11 +1605,18 @@ def get_tab_wan(dw: SimpleNamespace):
     
     # NOTE: enhance_prompts_btn connection is now handled in ui_left.py for proper component access
     
-    # Connect event handlers for movement analysis - updated to use auto-calculated sensitivity
+    # Connect event handlers for movement analysis - updated with Camera Shakify and sensitivity controls
     analyze_movement_btn.click(
         fn=analyze_movement_handler,
-        inputs=[wan_enhanced_prompts],  # Only current_prompts - sensitivity is auto-calculated
+        inputs=[wan_enhanced_prompts, wan_enable_shakify, wan_movement_sensitivity_override, wan_manual_sensitivity],
         outputs=[wan_enhanced_prompts, wan_movement_description]
+    )
+    
+    # Connect sensitivity override toggle to show/hide manual sensitivity slider
+    wan_movement_sensitivity_override.change(
+        fn=lambda override_enabled: gr.update(visible=override_enabled),
+        inputs=[wan_movement_sensitivity_override],
+        outputs=[manual_sensitivity_row]
     )
     
     # Connect generate button with validation
@@ -2145,14 +2179,16 @@ Model download started automatically. This may take a few minutes.
         return error_msg, f"❌ Fatal error: {str(e)}"
 
 
-def analyze_movement_handler(current_prompts):
-    """Handle movement analysis from Deforum schedules with Camera Shakify integration and motion intensity scheduling"""
+def analyze_movement_handler(current_prompts, enable_shakify=True, sensitivity_override=False, manual_sensitivity=1.0):
+    """Handle movement analysis from Deforum schedules with enhanced Camera Shakify integration and fine-grained sensitivity control"""
     try:
         from .wan.utils.movement_analyzer import analyze_deforum_movement, generate_wan_motion_intensity_schedule, MovementAnalyzer
         from types import SimpleNamespace
         import json
         
-        print("🎬 Starting enhanced movement analysis with Camera Shakify support...")
+        print("🎬 Starting enhanced movement analysis with fine-grained detection...")
+        print(f"🎬 Camera Shakify: {'ENABLED' if enable_shakify else 'DISABLED'}")
+        print(f"🎯 Sensitivity: {'MANUAL ({:.1f})'.format(manual_sensitivity) if sensitivity_override else 'AUTO-CALCULATED'}")
         
         # Validate current prompts
         if not current_prompts or current_prompts.strip() == "":
@@ -2198,7 +2234,7 @@ Movement descriptions will be added to your existing prompts."""
                 
             except Exception as e:
                 print(f"⚠️ Could not access movement schedules: {e}")
-                # Use static defaults for Camera Shakify testing
+                # Use static defaults for testing
                 anim_args.translation_x = "0:(0)"
                 anim_args.translation_y = "0:(0)"
                 anim_args.translation_z = "0:(0)"
@@ -2210,7 +2246,7 @@ Movement descriptions will be added to your existing prompts."""
                 anim_args.max_frames = 120
         else:
             print("⚠️ No stored movement schedule references found")
-            # Use static defaults for Camera Shakify testing
+            # Use static defaults for testing
             anim_args.translation_x = "0:(0)"
             anim_args.translation_y = "0:(0)"
             anim_args.translation_z = "0:(0)"
@@ -2221,107 +2257,119 @@ Movement descriptions will be added to your existing prompts."""
             anim_args.angle = "0:(0)"
             anim_args.max_frames = 120
         
-        # Get Camera Shakify settings from stored UI component references
-        try:
-            # Try to get Camera Shakify settings from stored component references first
-            if hasattr(analyze_movement_handler, '_movement_components'):
-                components = analyze_movement_handler._movement_components
-                anim_args.shake_name = components.get('shake_name', "None")
-                anim_args.shake_intensity = float(components.get('shake_intensity', 1.0))
-                anim_args.shake_speed = float(components.get('shake_speed', 1.0))
-                print(f"✅ Using Camera Shakify settings from UI components")
-            else:
-                # Fallback to reading from DeforumArgs if component references not available
-                from .args import DeforumArgs
-                current_args = DeforumArgs()
-                anim_args.shake_name = getattr(current_args, 'shake_name', "None")
-                anim_args.shake_intensity = getattr(current_args, 'shake_intensity', 1.0)
-                anim_args.shake_speed = getattr(current_args, 'shake_speed', 1.0)
-                print(f"✅ Using Camera Shakify settings from DeforumArgs fallback")
-            
-            # Camera Shakify is enabled when shake_name is not "None"
-            camera_shake_enabled = anim_args.shake_name and anim_args.shake_name != "None"
-            
-            if camera_shake_enabled:
-                print(f"🎬 Camera Shakify ENABLED:")
-                print(f"   Shake Name: {anim_args.shake_name}")
-                print(f"   Intensity: {anim_args.shake_intensity}")
-                print(f"   Speed: {anim_args.shake_speed}")
-            else:
-                print(f"📷 Camera Shakify disabled")
-        except Exception as e:
-            print(f"⚠️ Could not read Camera Shakify settings: {e}")
-            # TEST: Enable Shakify with INVESTIGATION pattern for testing
-            anim_args.shake_name = "INVESTIGATION"
-            anim_args.shake_intensity = 1.5
+        # Get Camera Shakify settings if enabled
+        if enable_shakify:
+            try:
+                # Try to get Camera Shakify settings from stored component references first
+                if hasattr(analyze_movement_handler, '_movement_components'):
+                    components = analyze_movement_handler._movement_components
+                    anim_args.shake_name = components.get('shake_name', "None")
+                    anim_args.shake_intensity = float(components.get('shake_intensity', 1.0))
+                    anim_args.shake_speed = float(components.get('shake_speed', 1.0))
+                    print(f"✅ Using Camera Shakify settings from UI components")
+                else:
+                    # Fallback to reading from DeforumArgs if component references not available
+                    from .args import DeforumArgs
+                    current_args = DeforumArgs()
+                    anim_args.shake_name = getattr(current_args, 'shake_name', "None")
+                    anim_args.shake_intensity = getattr(current_args, 'shake_intensity', 1.0)
+                    anim_args.shake_speed = getattr(current_args, 'shake_speed', 1.0)
+                    print(f"✅ Using Camera Shakify settings from DeforumArgs fallback")
+                
+                # Camera Shakify is enabled when shake_name is not "None"
+                camera_shake_enabled = anim_args.shake_name and anim_args.shake_name != "None"
+                
+                if camera_shake_enabled:
+                    print(f"🎬 Camera Shakify ENABLED:")
+                    print(f"   Shake Name: {anim_args.shake_name}")
+                    print(f"   Intensity: {anim_args.shake_intensity}")
+                    print(f"   Speed: {anim_args.shake_speed}")
+                else:
+                    print(f"📷 Camera Shakify disabled (shake_name: {anim_args.shake_name})")
+            except Exception as e:
+                print(f"⚠️ Could not read Camera Shakify settings: {e}")
+                # Disable Shakify on error
+                anim_args.shake_name = "None"
+                anim_args.shake_intensity = 1.0
+                anim_args.shake_speed = 1.0
+        else:
+            # Disable Camera Shakify when checkbox is unchecked
+            anim_args.shake_name = "None"
+            anim_args.shake_intensity = 1.0
             anim_args.shake_speed = 1.0
-            print(f"🧪 TEST MODE: Using Camera Shakify '{anim_args.shake_name}' with intensity {anim_args.shake_intensity}")
+            print(f"🎬 Camera Shakify manually disabled via UI checkbox")
         
-        # Auto-calculate movement sensitivity from the schedules
-        print("🧮 Auto-calculating movement sensitivity from Deforum schedules...")
-        
-        # Create a MovementAnalyzer to calculate optimal sensitivity
-        analyzer = MovementAnalyzer(sensitivity=1.0)  # Start with baseline
-        
-        # Calculate movement ranges to determine optimal sensitivity
-        from .wan.utils.movement_analyzer import parse_schedule_string, interpolate_schedule
-        
-        try:
-            # Parse all movement schedules
-            x_keyframes = parse_schedule_string(anim_args.translation_x, anim_args.max_frames)
-            y_keyframes = parse_schedule_string(anim_args.translation_y, anim_args.max_frames)
-            z_keyframes = parse_schedule_string(anim_args.translation_z, anim_args.max_frames)
-            zoom_keyframes = parse_schedule_string(anim_args.zoom, anim_args.max_frames)
+        # Determine sensitivity
+        if sensitivity_override:
+            sensitivity = manual_sensitivity
+            sensitivity_reason = f"manual override ({sensitivity:.1f})"
+            print(f"🎯 Using manual sensitivity: {sensitivity}")
+        else:
+            # Auto-calculate movement sensitivity from the schedules
+            print("🧮 Auto-calculating movement sensitivity from Deforum schedules...")
             
-            # Interpolate to get value ranges
-            x_values = interpolate_schedule(x_keyframes, anim_args.max_frames)
-            y_values = interpolate_schedule(y_keyframes, anim_args.max_frames)
-            z_values = interpolate_schedule(z_keyframes, anim_args.max_frames)
-            zoom_values = interpolate_schedule(zoom_keyframes, anim_args.max_frames)
+            # Create a MovementAnalyzer to calculate optimal sensitivity
+            analyzer = MovementAnalyzer(sensitivity=1.0)  # Start with baseline
             
-            # Calculate movement ranges
-            x_range = max(x_values) - min(x_values) if x_values else 0
-            y_range = max(y_values) - min(y_values) if y_values else 0
-            z_range = max(z_values) - min(z_values) if z_values else 0
-            zoom_range = max(zoom_values) - min(zoom_values) if zoom_values else 0
+            # Calculate movement ranges to determine optimal sensitivity
+            from .wan.utils.movement_analyzer import parse_schedule_string, interpolate_schedule
             
-            # Calculate total movement magnitude
-            total_movement = x_range + y_range + z_range + (zoom_range * 50)  # Zoom weighted higher
-            
-            # Auto-calculate optimal sensitivity based on movement magnitude
-            if total_movement < 10:
-                # Very small movement - high sensitivity to detect subtle motion
-                auto_sensitivity = 2.0
-                sensitivity_reason = "high sensitivity for subtle movement"
-            elif total_movement < 30:
-                # Small movement - moderate sensitivity
-                auto_sensitivity = 1.5
-                sensitivity_reason = "moderate sensitivity for small movement"
-            elif total_movement < 100:
-                # Normal movement - standard sensitivity
-                auto_sensitivity = 1.0
-                sensitivity_reason = "standard sensitivity for normal movement"
-            elif total_movement < 300:
-                # Large movement - reduced sensitivity to avoid over-detection
-                auto_sensitivity = 0.7
-                sensitivity_reason = "reduced sensitivity for large movement"
-            else:
-                # Very large movement - low sensitivity
-                auto_sensitivity = 0.5
-                sensitivity_reason = "low sensitivity for very large movement"
-            
-            print(f"📊 Total movement magnitude: {total_movement:.1f}")
-            print(f"🎯 Auto-calculated sensitivity: {auto_sensitivity} ({sensitivity_reason})")
-            
-        except Exception as e:
-            print(f"⚠️ Could not auto-calculate sensitivity: {e}, using default 1.0")
-            auto_sensitivity = 1.0
-            sensitivity_reason = "default (calculation failed)"
+            try:
+                # Parse all movement schedules
+                x_keyframes = parse_schedule_string(anim_args.translation_x, anim_args.max_frames)
+                y_keyframes = parse_schedule_string(anim_args.translation_y, anim_args.max_frames)
+                z_keyframes = parse_schedule_string(anim_args.translation_z, anim_args.max_frames)
+                zoom_keyframes = parse_schedule_string(anim_args.zoom, anim_args.max_frames)
+                
+                # Interpolate to get value ranges
+                x_values = interpolate_schedule(x_keyframes, anim_args.max_frames)
+                y_values = interpolate_schedule(y_keyframes, anim_args.max_frames)
+                z_values = interpolate_schedule(z_keyframes, anim_args.max_frames)
+                zoom_values = interpolate_schedule(zoom_keyframes, anim_args.max_frames)
+                
+                # Calculate movement ranges
+                x_range = max(x_values) - min(x_values) if x_values else 0
+                y_range = max(y_values) - min(y_values) if y_values else 0
+                z_range = max(z_values) - min(z_values) if z_values else 0
+                zoom_range = max(zoom_values) - min(zoom_values) if zoom_values else 0
+                
+                # Calculate total movement magnitude
+                total_movement = x_range + y_range + z_range + (zoom_range * 50)  # Zoom weighted higher
+                
+                # Auto-calculate optimal sensitivity based on movement magnitude
+                if total_movement < 5:
+                    # Very small movement - high sensitivity to detect subtle motion
+                    sensitivity = 3.0
+                    sensitivity_reason = "high sensitivity for very subtle movement"
+                elif total_movement < 15:
+                    # Small movement - moderate-high sensitivity
+                    sensitivity = 2.0
+                    sensitivity_reason = "high sensitivity for subtle movement"
+                elif total_movement < 50:
+                    # Normal movement - standard sensitivity
+                    sensitivity = 1.0
+                    sensitivity_reason = "standard sensitivity for normal movement"
+                elif total_movement < 200:
+                    # Large movement - reduced sensitivity to avoid over-detection
+                    sensitivity = 0.7
+                    sensitivity_reason = "reduced sensitivity for large movement"
+                else:
+                    # Very large movement - low sensitivity
+                    sensitivity = 0.5
+                    sensitivity_reason = "low sensitivity for very large movement"
+                
+                print(f"📊 Total movement magnitude: {total_movement:.1f}")
+                print(f"🎯 Auto-calculated sensitivity: {sensitivity} ({sensitivity_reason})")
+                
+            except Exception as e:
+                print(f"⚠️ Could not auto-calculate sensitivity: {e}, using default 2.0")
+                sensitivity = 2.0
+                sensitivity_reason = "default (calculation failed)"
         
         # Generate movement description using enhanced analysis with Camera Shakify
         movement_desc, average_motion_strength = analyze_deforum_movement(
             anim_args=anim_args,
-            sensitivity=auto_sensitivity,
+            sensitivity=sensitivity,
             max_frames=anim_args.max_frames
         )
         
@@ -2329,10 +2377,10 @@ Movement descriptions will be added to your existing prompts."""
         motion_intensity_schedule = generate_wan_motion_intensity_schedule(
             anim_args,
             max_frames=anim_args.max_frames,
-            sensitivity=auto_sensitivity
+            sensitivity=sensitivity
         )
         
-        print(f"🎯 Movement analysis result:")
+        print(f"🎯 Enhanced movement analysis result:")
         print(f"   Description: {movement_desc}")
         print(f"   Strength: {average_motion_strength:.3f}")
         print(f"   Motion Intensity Schedule: {motion_intensity_schedule}")
@@ -2362,32 +2410,64 @@ Movement descriptions will be added to your existing prompts."""
         # Convert back to JSON
         updated_json = json.dumps(updated_prompts, ensure_ascii=False, indent=2)
         
-        # Enhanced result message with Camera Shakify and motion intensity info
+        # Enhanced result message with frame-by-frame details and Camera Shakify info
+        camera_shakify_status = ""
+        if enable_shakify and hasattr(anim_args, 'shake_name') and anim_args.shake_name != "None":
+            camera_shakify_status = f"""
+🎬 **Camera Shakify Integration:**
+- Pattern: {anim_args.shake_name}
+- Intensity: {anim_args.shake_intensity}
+- Speed: {anim_args.shake_speed}
+- Status: ✅ Active and applied to movement schedules"""
+        elif enable_shakify:
+            camera_shakify_status = f"""
+🎬 **Camera Shakify Integration:**
+- Status: ⚠️ Enabled but no shake pattern selected
+- Go to Keyframes → Motion → Shakify tab to configure"""
+        else:
+            camera_shakify_status = f"""
+🎬 **Camera Shakify Integration:**
+- Status: ❌ Disabled via checkbox
+- Enable checkbox above to include shake effects"""
+        
         if average_motion_strength > 0:
-            result_message = f"""✅ Enhanced movement analysis complete!
+            result_message = f"""✅ Enhanced fine-grained movement analysis complete!
 
-Movement: "{movement_desc}"
-Motion strength: {average_motion_strength:.2f}
-Auto-calculated sensitivity: {auto_sensitivity} ({sensitivity_reason})
+🎯 **Movement Detection:**
+"{movement_desc}"
 
-📊 **Motion Intensity Schedule for Wan:**
+📊 **Analysis Details:**
+- Motion strength: {average_motion_strength:.3f}
+- Sensitivity: {sensitivity} ({sensitivity_reason})
+- Detection method: Frame-by-frame analysis with enhanced thresholds
+{camera_shakify_status}
+
+📐 **Motion Intensity Schedule for Wan:**
 {motion_intensity_schedule}
 
 💡 **Copy the schedule above to Wan's Motion Intensity field for synchronized movement effects!**
 
 ✅ Movement descriptions applied to {len(updated_prompts)} prompts.
-Prompts updated above. Ready for enhancement or generation."""
+Ready for AI enhancement or video generation."""
         else:
             result_message = f"""✅ Enhanced movement analysis complete!
 
-Movement: "{movement_desc}"
-Auto-calculated sensitivity: {auto_sensitivity} ({sensitivity_reason})
+📊 **Analysis Result:**
+"{movement_desc}"
 
-📊 Camera appears to be static. If you have Camera Shakify enabled, check the Keyframes → Motion → Shakify tab settings.
+📊 **Analysis Details:**
+- Sensitivity: {sensitivity} ({sensitivity_reason})
+- Detection method: Frame-by-frame analysis with enhanced thresholds
+{camera_shakify_status}
+
+📷 Camera appears to be static based on current movement schedules. To add movement:
+1. Go to Keyframes → Motion tab and configure movement schedules
+2. Or enable Camera Shakify in the Keyframes → Motion → Shakify tab
+3. Then run movement analysis again
 
 ✅ Analysis complete for {len(updated_prompts)} prompts."""
         
-        print(f"✅ Updated {len(updated_prompts)} Wan prompts with movement descriptions")
+        print(f"✅ Updated {len(updated_prompts)} Wan prompts with enhanced movement descriptions")
         print(f"📊 Use this motion intensity schedule in Wan: {motion_intensity_schedule}")
         print(f"💡 Copy this schedule to Wan's Motion Intensity field for synchronized movement effects!")
         
@@ -2400,12 +2480,13 @@ Auto-calculated sensitivity: {auto_sensitivity} ({sensitivity_reason})
         print(f"❌ Error in enhanced movement analysis: {str(e)}")
         import traceback
         traceback.print_exc()
-        error_msg = f"""❌ Error in movement analysis: {str(e)}
+        error_msg = f"""❌ Error in enhanced movement analysis: {str(e)}
 
 🔧 **Try this:**
 1. Check that Deforum movement schedules are valid (Keyframes → Motion tab)
 2. Verify Camera Shakify settings if using shake effects
 3. Ensure prompts are in valid JSON format
+4. Try disabling Camera Shakify checkbox if issues persist
 
 Contact support if this persists."""
         return current_prompts, error_msg

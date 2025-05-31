@@ -201,21 +201,137 @@ def apply_shakify_to_schedule(base_schedule: str, shake_values: List[float], max
 
 
 class MovementAnalyzer:
-    """Analyzes Deforum movement schedules and translates them to English descriptions"""
+    """
+    Enhanced Movement Analyzer with fine-grained, frame-by-frame analysis
+    Detects subtle movements and provides specific descriptions for affected frame ranges
+    """
     
     def __init__(self, sensitivity: float = 1.0):
-        """
-        Initialize movement analyzer
-        
-        Args:
-            sensitivity: Sensitivity for movement detection (0.1-2.0)
-                        Higher values detect smaller movements
-        """
-        self.sensitivity = max(0.1, min(2.0, sensitivity))
+        self.sensitivity = sensitivity
+        self.min_translation_threshold = 0.1 * sensitivity  # Much lower threshold for subtle movement
+        self.min_rotation_threshold = 0.05 * sensitivity   # Much lower threshold for subtle rotation
+        self.min_zoom_threshold = 0.001 * sensitivity      # Much lower threshold for subtle zoom
     
-    def analyze_translation(self, x_schedule: str, y_schedule: str, z_schedule: str, max_frames: int) -> Tuple[str, float]:
-        """Analyze translation schedules and return description + strength"""
+    def analyze_frame_ranges(self, values: List[float], movement_type: str) -> List[Dict]:
+        """
+        Analyze movement values frame by frame and identify specific movement ranges
+        Returns list of movement segments with frame ranges and descriptions
+        """
+        if not values or len(values) < 2:
+            return []
         
+        # Calculate frame-by-frame changes
+        changes = []
+        for i in range(1, len(values)):
+            change = values[i] - values[i-1]
+            changes.append(change)
+        
+        # Find movement segments
+        segments = []
+        current_segment = None
+        
+        for frame, change in enumerate(changes):
+            abs_change = abs(change)
+            
+            # Determine movement threshold based on type
+            if movement_type == "zoom":
+                threshold = self.min_zoom_threshold
+            elif movement_type in ["rotation_x", "rotation_y", "rotation_z"]:
+                threshold = self.min_rotation_threshold
+            else:  # translation
+                threshold = self.min_translation_threshold
+            
+            # Check if this frame has significant movement
+            if abs_change > threshold:
+                direction = "increasing" if change > 0 else "decreasing"
+                
+                # Start new segment or continue existing one
+                if current_segment is None or current_segment['direction'] != direction:
+                    # End previous segment
+                    if current_segment is not None:
+                        current_segment['end_frame'] = frame
+                        segments.append(current_segment)
+                    
+                    # Start new segment
+                    current_segment = {
+                        'start_frame': frame,
+                        'end_frame': frame,
+                        'direction': direction,
+                        'movement_type': movement_type,
+                        'max_change': abs_change,
+                        'total_range': abs(values[frame+1] - values[frame])
+                    }
+                else:
+                    # Continue current segment
+                    current_segment['end_frame'] = frame
+                    current_segment['max_change'] = max(current_segment['max_change'], abs_change)
+                    current_segment['total_range'] = abs(values[frame+1] - values[current_segment['start_frame']])
+            
+            elif current_segment is not None:
+                # End current segment if movement stopped
+                current_segment['end_frame'] = frame
+                segments.append(current_segment)
+                current_segment = None
+        
+        # Close final segment if needed
+        if current_segment is not None:
+            current_segment['end_frame'] = len(changes)
+            segments.append(current_segment)
+        
+        return segments
+    
+    def generate_segment_description(self, segment: Dict, total_frames: int) -> str:
+        """
+        Generate specific description for a movement segment
+        """
+        start = segment['start_frame']
+        end = segment['end_frame']
+        movement_type = segment['movement_type']
+        direction = segment['direction']
+        total_range = segment['total_range']
+        
+        # Frame range description
+        if end - start < 10:
+            frame_desc = f"frames {start}-{end}"
+        elif end - start < total_frames * 0.3:
+            frame_desc = f"frames {start}-{end} (brief)"
+        elif end - start < total_frames * 0.7:
+            frame_desc = f"frames {start}-{end} (moderate)"
+        else:
+            frame_desc = f"frames {start}-{end} (extended)"
+        
+        # Movement intensity
+        if total_range < 1.0:
+            intensity = "subtle"
+        elif total_range < 5.0:
+            intensity = "gentle"
+        elif total_range < 20.0:
+            intensity = "moderate"
+        else:
+            intensity = "strong"
+        
+        # Movement type specific descriptions
+        if movement_type == "translation_x":
+            motion = "panning right" if direction == "increasing" else "panning left"
+        elif movement_type == "translation_y":
+            motion = "moving up" if direction == "increasing" else "moving down"
+        elif movement_type == "translation_z":
+            motion = "dolly forward" if direction == "increasing" else "dolly backward"
+        elif movement_type == "rotation_x":
+            motion = "tilting up" if direction == "increasing" else "tilting down"
+        elif movement_type == "rotation_y":
+            motion = "rotating right" if direction == "increasing" else "rotating left"
+        elif movement_type == "rotation_z":
+            motion = "rolling clockwise" if direction == "increasing" else "rolling counter-clockwise"
+        elif movement_type == "zoom":
+            motion = "zooming in" if direction == "increasing" else "zooming out"
+        else:
+            motion = f"{movement_type} {direction}"
+        
+        return f"{intensity} {motion} ({frame_desc})"
+
+    def analyze_translation(self, x_schedule: str, y_schedule: str, z_schedule: str, max_frames: int) -> Tuple[str, float]:
+        """Enhanced translation analysis with frame-by-frame detection"""
         # Parse schedules
         x_keyframes = parse_schedule_string(x_schedule, max_frames)
         y_keyframes = parse_schedule_string(y_schedule, max_frames)
@@ -226,110 +342,56 @@ class MovementAnalyzer:
         y_values = interpolate_schedule(y_keyframes, max_frames)
         z_values = interpolate_schedule(z_keyframes, max_frames)
         
-        # Calculate movement magnitudes and velocities
-        x_range = max(x_values) - min(x_values)
-        y_range = max(y_values) - min(y_values)
-        z_range = max(z_values) - min(z_values)
+        # Analyze each axis for movement segments
+        x_segments = self.analyze_frame_ranges(x_values, "translation_x")
+        y_segments = self.analyze_frame_ranges(y_values, "translation_y")
+        z_segments = self.analyze_frame_ranges(z_values, "translation_z")
         
-        # Calculate net displacement (start to end)
-        x_delta = x_values[-1] - x_values[0] if len(x_values) > 1 else 0
-        y_delta = y_values[-1] - y_values[0] if len(y_values) > 1 else 0
-        z_delta = z_values[-1] - z_values[0] if len(z_values) > 1 else 0
+        all_segments = x_segments + y_segments + z_segments
         
-        # Apply sensitivity (more sensitive thresholds)
-        x_range *= self.sensitivity
-        y_range *= self.sensitivity
-        z_range *= self.sensitivity
-        
-        # Determine primary movements with more sensitive thresholds
-        movements = []
-        total_movement = 0
-        
-        # X-axis (horizontal pan) - lower threshold for sensitivity
-        if x_range > 3:  # More sensitive threshold
-            if abs(x_delta) > 1:  # Significant net movement
-                if x_delta > 0:
-                    if x_range > 40:
-                        movements.append("dramatic right panning")
-                    elif x_range > 20:
-                        movements.append("smooth right panning")
-                    else:
-                        movements.append("gentle right panning")
-                else:
-                    if x_range > 40:
-                        movements.append("dramatic left panning")
-                    elif x_range > 20:
-                        movements.append("smooth left panning")
-                    else:
-                        movements.append("gentle left panning")
-            else:
-                # Complex movement (back and forth)
-                movements.append("dynamic horizontal panning")
-            total_movement += x_range
-        
-        # Y-axis (vertical pan) - lower threshold for sensitivity
-        if y_range > 3:  # More sensitive threshold
-            if abs(y_delta) > 1:  # Significant net movement
-                if y_delta > 0:
-                    if y_range > 40:
-                        movements.append("dramatic upward movement")
-                    elif y_range > 20:
-                        movements.append("smooth upward movement")
-                    else:
-                        movements.append("gentle upward movement")
-                else:
-                    if y_range > 40:
-                        movements.append("dramatic downward movement")
-                    elif y_range > 20:
-                        movements.append("smooth downward movement")
-                    else:
-                        movements.append("gentle downward movement")
-            else:
-                # Complex movement (up and down)
-                movements.append("dynamic vertical movement")
-            total_movement += y_range
-        
-        # Z-axis (dolly) - lower threshold for sensitivity
-        if z_range > 3:  # More sensitive threshold
-            if abs(z_delta) > 1:  # Significant net movement
-                if z_delta > 0:
-                    if z_range > 40:
-                        movements.append("dramatic forward dolly")
-                    elif z_range > 20:
-                        movements.append("smooth forward dolly")
-                    else:
-                        movements.append("gentle forward dolly")
-                else:
-                    if z_range > 40:
-                        movements.append("dramatic backward dolly")
-                    elif z_range > 20:
-                        movements.append("smooth backward dolly")
-                    else:
-                        movements.append("gentle backward dolly")
-            else:
-                # Complex movement (forward and backward)
-                movements.append("dynamic dolly movement")
-            total_movement += z_range
-        
-        # Generate description - NO "camera movement with" prefix here
-        if not movements:
+        if not all_segments:
             return "static camera position", 0.0
         
-        # Combine movements naturally without redundant prefix
-        if len(movements) == 1:
-            description = movements[0]
-        elif len(movements) == 2:
-            description = f"{movements[0]} and {movements[1]}"
+        # Sort segments by frame order
+        all_segments.sort(key=lambda s: s['start_frame'])
+        
+        # Generate combined description
+        descriptions = []
+        total_strength = 0.0
+        
+        for segment in all_segments:
+            desc = self.generate_segment_description(segment, max_frames)
+            descriptions.append(desc)
+            # Calculate strength based on range and duration
+            duration = segment['end_frame'] - segment['start_frame']
+            strength = (segment['total_range'] * duration) / (max_frames * 10.0)
+            total_strength += strength
+        
+        # Combine descriptions intelligently
+        if len(descriptions) == 1:
+            final_desc = f"camera movement with {descriptions[0]}"
+        elif len(descriptions) <= 3:
+            final_desc = f"camera movement with {', '.join(descriptions[:-1])} and {descriptions[-1]}"
         else:
-            description = f"{', '.join(movements[:-1])}, and {movements[-1]}"
+            # Too many segments - summarize
+            main_movements = set()
+            for segment in all_segments:
+                if "panning" in self.generate_segment_description(segment, max_frames):
+                    main_movements.add("panning movement")
+                elif "dolly" in self.generate_segment_description(segment, max_frames):
+                    main_movements.add("dolly movement")
+                elif "moving" in self.generate_segment_description(segment, max_frames):
+                    main_movements.add("vertical movement")
+            
+            if main_movements:
+                final_desc = f"complex camera movement with {', '.join(main_movements)}"
+            else:
+                final_desc = "dynamic camera movement with multiple motion phases"
         
-        strength = min(1.0, total_movement / 100.0)  # Normalize to 0-1
-        
-        return description, strength
+        return final_desc, min(total_strength, 2.0)  # Cap at 2.0
     
     def analyze_rotation(self, x_rot: str, y_rot: str, z_rot: str, max_frames: int) -> Tuple[str, float]:
-        """Analyze rotation schedules and return description + strength"""
-        
+        """Enhanced rotation analysis with frame-by-frame detection"""
         # Parse schedules
         x_keyframes = parse_schedule_string(x_rot, max_frames)
         y_keyframes = parse_schedule_string(y_rot, max_frames)
@@ -340,165 +402,101 @@ class MovementAnalyzer:
         y_values = interpolate_schedule(y_keyframes, max_frames)
         z_values = interpolate_schedule(z_keyframes, max_frames)
         
-        # Calculate rotation ranges
-        x_range = max(x_values) - min(x_values)
-        y_range = max(y_values) - min(y_values)
-        z_range = max(z_values) - min(z_values)
+        # Analyze each axis for movement segments
+        x_segments = self.analyze_frame_ranges(x_values, "rotation_x")
+        y_segments = self.analyze_frame_ranges(y_values, "rotation_y")
+        z_segments = self.analyze_frame_ranges(z_values, "rotation_z")
         
-        # Calculate net displacement (start to end)
-        x_delta = x_values[-1] - x_values[0] if len(x_values) > 1 else 0
-        y_delta = y_values[-1] - y_values[0] if len(y_values) > 1 else 0
-        z_delta = z_values[-1] - z_values[0] if len(z_values) > 1 else 0
+        all_segments = x_segments + y_segments + z_segments
         
-        # Apply sensitivity (more sensitive thresholds)
-        x_range *= self.sensitivity
-        y_range *= self.sensitivity
-        z_range *= self.sensitivity
-        
-        # Determine rotations with more sensitive thresholds and better descriptions
-        rotations = []
-        total_rotation = 0
-        
-        # X-axis rotation (pitch) - more sensitive threshold
-        if x_range > 2:  # More sensitive threshold
-            if abs(x_delta) > 1:  # Significant net rotation
-                if x_delta > 0:
-                    if x_range > 30:
-                        rotations.append("dramatic upward pitch")
-                    elif x_range > 15:
-                        rotations.append("sweeping upward pitch")
-                    else:
-                        rotations.append("gentle upward pitch")
-                else:
-                    if x_range > 30:
-                        rotations.append("dramatic downward pitch")
-                    elif x_range > 15:
-                        rotations.append("sweeping downward pitch")
-                    else:
-                        rotations.append("gentle downward pitch")
-            else:
-                # Complex pitch movement
-                rotations.append("dynamic pitch movement")
-            total_rotation += x_range
-        
-        # Y-axis rotation (yaw) - more sensitive threshold
-        if y_range > 2:  # More sensitive threshold
-            if abs(y_delta) > 1:  # Significant net rotation
-                if y_delta > 0:
-                    if y_range > 30:
-                        rotations.append("dramatic right yaw")
-                    elif y_range > 15:
-                        rotations.append("sweeping right yaw")
-                    else:
-                        rotations.append("gentle right yaw")
-                else:
-                    if y_range > 30:
-                        rotations.append("dramatic left yaw")
-                    elif y_range > 15:
-                        rotations.append("sweeping left yaw")
-                    else:
-                        rotations.append("gentle left yaw")
-            else:
-                # Complex yaw movement
-                rotations.append("dynamic yaw movement")
-            total_rotation += y_range
-        
-        # Z-axis rotation (roll) - more sensitive threshold
-        if z_range > 2:  # More sensitive threshold
-            if abs(z_delta) > 1:  # Significant net rotation
-                if z_delta > 0:
-                    if z_range > 30:
-                        rotations.append("dramatic clockwise roll")
-                    elif z_range > 15:
-                        rotations.append("sweeping clockwise roll")
-                    else:
-                        rotations.append("gentle clockwise roll")
-                else:
-                    if z_range > 30:
-                        rotations.append("dramatic counter-clockwise roll")
-                    elif z_range > 15:
-                        rotations.append("sweeping counter-clockwise roll")
-                    else:
-                        rotations.append("gentle counter-clockwise roll")
-            else:
-                # Complex roll movement
-                rotations.append("dynamic roll movement")
-            total_rotation += z_range
-        
-        # Generate description
-        if not rotations:
+        if not all_segments:
             return "", 0.0
         
-        # Combine rotations naturally
-        if len(rotations) == 1:
-            description = f"{rotations[0]}"
-        elif len(rotations) == 2:
-            description = f"{rotations[0]} and {rotations[1]}"
+        # Sort segments by frame order
+        all_segments.sort(key=lambda s: s['start_frame'])
+        
+        # Generate combined description
+        descriptions = []
+        total_strength = 0.0
+        
+        for segment in all_segments:
+            desc = self.generate_segment_description(segment, max_frames)
+            descriptions.append(desc)
+            # Calculate strength based on range and duration
+            duration = segment['end_frame'] - segment['start_frame']
+            # Rotation strength calculation (degrees are smaller numbers)
+            strength = (segment['total_range'] * duration) / (max_frames * 2.0)  # More sensitive for rotation
+            total_strength += strength
+        
+        # Combine descriptions intelligently
+        if len(descriptions) == 1:
+            final_desc = descriptions[0]
+        elif len(descriptions) <= 3:
+            final_desc = f"{', '.join(descriptions[:-1])} and {descriptions[-1]}"
         else:
-            description = f"complex rotation with {', '.join(rotations[:-1])}, and {rotations[-1]}"
+            # Too many segments - summarize
+            main_movements = set()
+            for segment in all_segments:
+                if "tilting" in self.generate_segment_description(segment, max_frames):
+                    main_movements.add("tilting movement")
+                elif "rotating" in self.generate_segment_description(segment, max_frames):
+                    main_movements.add("rotation movement")
+                elif "rolling" in self.generate_segment_description(segment, max_frames):
+                    main_movements.add("roll movement")
+            
+            if main_movements:
+                final_desc = f"complex {', '.join(main_movements)}"
+            else:
+                final_desc = "dynamic rotation with multiple phases"
         
-        strength = min(1.0, total_rotation / 60.0)  # Normalize to 0-1
-        
-        return description, strength
+        return final_desc, min(total_strength, 2.0)  # Cap at 2.0
     
     def analyze_zoom(self, zoom_schedule: str, max_frames: int) -> Tuple[str, float]:
-        """Analyze zoom schedule and return description + strength"""
-        
-        # Parse schedule
+        """Enhanced zoom analysis with frame-by-frame detection and proper static detection"""
+        # Parse zoom schedule
         zoom_keyframes = parse_schedule_string(zoom_schedule, max_frames)
         zoom_values = interpolate_schedule(zoom_keyframes, max_frames)
         
-        if not zoom_values or len(zoom_values) < 2:
+        # Analyze for movement segments
+        zoom_segments = self.analyze_frame_ranges(zoom_values, "zoom")
+        
+        if not zoom_segments:
             return "", 0.0
         
-        # Calculate zoom change
-        zoom_start = zoom_values[0]
-        zoom_end = zoom_values[-1]
-        zoom_delta = zoom_end - zoom_start
-        zoom_range = max(zoom_values) - min(zoom_values)
+        # Sort segments by frame order
+        zoom_segments.sort(key=lambda s: s['start_frame'])
         
-        # Apply sensitivity (more sensitive threshold)
-        zoom_range *= self.sensitivity
+        # Generate combined description
+        descriptions = []
+        total_strength = 0.0
         
-        # Check for significant zoom movement (lowered threshold for better detection)
-        if abs(zoom_delta) < 0.02 and zoom_range < 0.02:  # Very small or no movement
-            return "", 0.0
+        for segment in zoom_segments:
+            desc = self.generate_segment_description(segment, max_frames)
+            descriptions.append(desc)
+            # Calculate strength based on range and duration
+            duration = segment['end_frame'] - segment['start_frame']
+            # Zoom strength calculation (zoom values are often small decimals)
+            strength = (segment['total_range'] * duration) / (max_frames * 0.1)  # Very sensitive for zoom
+            total_strength += strength
         
-        # Determine zoom direction and intensity
-        if abs(zoom_delta) >= 0.02:  # Significant net zoom
-            if zoom_delta > 0:
-                # Zoom in
-                if zoom_delta > 1.0:
-                    direction = "dramatic zoom in"
-                elif zoom_delta > 0.5:
-                    direction = "smooth zoom in"
-                elif zoom_delta > 0.2:
-                    direction = "gentle zoom in"
-                else:
-                    direction = "subtle zoom in"
-            else:
-                # Zoom out
-                if abs(zoom_delta) > 1.0:
-                    direction = "dramatic zoom out"
-                elif abs(zoom_delta) > 0.5:
-                    direction = "smooth zoom out"
-                elif abs(zoom_delta) > 0.2:
-                    direction = "gentle zoom out"
-                else:
-                    direction = "subtle zoom out"
+        # Combine descriptions intelligently
+        if len(descriptions) == 1:
+            final_desc = descriptions[0]
+        elif len(descriptions) <= 3:
+            final_desc = f"{', '.join(descriptions[:-1])} and {descriptions[-1]}"
         else:
-            # Complex zoom movement (in and out) or small range movement
-            if zoom_range > 0.5:
-                direction = "dynamic zoom movement"
-            elif zoom_range > 0.02:
-                direction = "subtle zoom fluctuation"
+            # Too many segments - summarize
+            zoom_ins = sum(1 for seg in zoom_segments if seg['direction'] == "increasing")
+            zoom_outs = sum(1 for seg in zoom_segments if seg['direction'] == "decreasing")
+            
+            if zoom_ins > zoom_outs:
+                final_desc = "complex zoom movement with predominantly zooming in"
+            elif zoom_outs > zoom_ins:
+                final_desc = "complex zoom movement with predominantly zooming out"
             else:
-                return "", 0.0  # Too small to detect
+                final_desc = "complex zoom movement with multiple in/out phases"
         
-        description = f"{direction}"
-        strength = min(1.0, max(abs(zoom_delta), zoom_range) / 1.0)  # Use max of delta and range
-        
-        return description, strength
+        return final_desc, min(total_strength, 2.0)  # Cap at 2.0
     
     def analyze_rotation_pattern(self, x_schedule: str, y_schedule: str, z_schedule: str, max_frames: int) -> Tuple[str, float, str]:
         """Analyze rotation schedules for complex patterns like circular motion and roll"""
