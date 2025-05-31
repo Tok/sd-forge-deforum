@@ -166,19 +166,27 @@ The extension includes **Wan 2.1** (Alibaba's state-of-the-art video generation 
 
 #### 📹 **Movement Analysis Examples**
 
-The system translates complex Deforum schedules into human-readable descriptions:
+The system translates complex Deforum schedules into human-readable descriptions with frame-specific analysis:
 
 | Deforum Schedule | AI Translation |
 |-----------------|----------------|
-| `translation_x: "0:(0), 30:(100)"` | "fast right pan" |
-| `translation_z: "0:(0), 60:(-50)"` | "medium backward dolly" |
-| `rotation_3d_y: "0:(0), 45:(20)"` | "slow right yaw" |
-| `zoom: "0:(1.0), 30:(1.5)"` | "medium zoom in" |
+| `translation_x: "0:(0), 30:(100)"` | "camera movement with moderate panning right (extended)" |
+| `translation_z: "0:(0), 60:(-50)"` | "camera movement with gentle dolly backward (sustained)" |
+| `rotation_3d_y: "0:(0), 45:(20)"` | "camera movement with subtle rotating right (extended)" |
+| `zoom: "0:(1.0), 30:(1.5)"` | "camera movement with moderate zooming in (brief)" |
+
+**Frame-Specific Analysis**: Each prompt gets unique movement descriptions based on its position in the video timeline:
+- **Frame 0**: "camera movement with subtle panning left (sustained) and gentle tilting down (extended)"
+- **Frame 43**: "camera movement with moderate panning right (brief) and subtle rotating left (sustained)"  
+- **Frame 106**: "camera movement with gentle dolly forward (extended) and subtle rolling clockwise (brief)"
+
+**Camera Shakify Integration**: When enabled, the system analyzes the actual Camera Shakify pattern at each frame position to provide varied, specific directional descriptions instead of generic "investigative handheld camera movement" text.
 
 **Combined Example**:
 ```
 Input: translation_x: "0:(0), 30:(100)", rotation_3d_x: "0:(0), 60:(15)", zoom: "0:(1.0), 40:(0.7)"
-Output: "camera movement with fast right pan, slow upward pitch, medium zoom out"
+Camera Shakify: INVESTIGATION pattern enabled
+Output: "camera movement with moderate panning right (extended), subtle tilting up (sustained), and gentle zooming out (brief)"
 ```
 
 #### 💾 **Smart Memory Management**

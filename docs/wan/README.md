@@ -174,6 +174,18 @@ Control I2V chaining continuity:
 
 ## Advanced Features
 
+### Frame-Specific Movement Analysis ✨ NEW
+- **Varied Descriptions**: Each prompt gets unique movement analysis based on its frame position
+- **Directional Specificity**: Specific descriptions like "panning left", "tilting down", "dolly forward"
+- **Camera Shakify Integration**: Analyzes actual shake patterns at each frame offset
+- **Intensity & Duration**: Describes movement as "subtle/gentle/moderate" and "brief/extended/sustained"
+- **No More Generic Text**: Eliminates identical "investigative handheld camera movement" across all prompts
+
+**Example Results**:
+- Frame 0: "camera movement with subtle panning left (sustained) and gentle moving down (extended)"
+- Frame 43: "camera movement with moderate panning right (brief) and subtle rotating left (sustained)"
+- Frame 106: "camera movement with gentle dolly forward (extended) and subtle rolling clockwise (brief)"
+
 ### I2V Chaining
 - Uses last frame of previous clip as input for next clip
 - Ensures seamless transitions between prompt changes

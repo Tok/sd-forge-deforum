@@ -1110,7 +1110,7 @@ def get_tab_wan(dw: SimpleNamespace):
             )
         
         # DEFORUM INTEGRATION - ESSENTIAL (moved up)
-        with gr.Accordion("🔗 Deforum Integration (ESSENTIAL)", open=False):
+        with gr.Accordion("🔗 Deforum Integration", open=False):
             gr.Markdown("""
             **✅ Wan seamlessly integrates with your Deforum settings:**
             
@@ -1396,105 +1396,135 @@ def get_tab_wan(dw: SimpleNamespace):
                 
                 with gr.Accordion("🎬 Movement Translation: From Deforum Schedules to Prompt Descriptions", open=False):
                     gr.Markdown("""
-                    ### How Movement Schedules Become Camera Descriptions
+                    ### ✨ NEW: Frame-Specific Movement Analysis
                     
-                    Wan automatically analyzes your Deforum movement schedules and converts them into natural language descriptions that enhance your prompts. This ensures your video generation understands the intended camera movement.
+                    Wan now provides **unique movement descriptions for each prompt** based on its exact position in the video timeline, eliminating generic repetitive text.
                     
-                    **🔄 Translation Process:**
+                    **🎯 Key Improvements:**
+                    - **Frame-Specific Analysis**: Each prompt analyzes movement at its specific frame range
+                    - **Directional Specificity**: "panning left", "tilting down", "dolly forward" instead of generic text
+                    - **Camera Shakify Integration**: Analyzes actual shake patterns at each frame offset
+                    - **Varied Descriptions**: No more identical "investigative handheld" text across all prompts
                     
-                    #### 1. Schedule Analysis
-                    The system reads your movement schedules from **Keyframes → Motion tab**:
+                    ### 🔄 How Frame-Specific Analysis Works
+                    
+                    **Traditional Approach (OLD):**
+                    ```json
+                    All prompts: "camera movement with investigative handheld camera movement"
                     ```
-                    Translation X: 0:(0), 60:(20), 120:(0)     → Side-to-side pan movement
-                    Translation Z: 0:(0), 120:(40)             → Forward dolly movement  
-                    Rotation 3D Y: 0:(0), 120:(8)             → Gentle yaw rotation
-                    Zoom: 0:(1.0), 40:(1.4), 120:(1.8)        → Progressive zoom in
+                    
+                    **Frame-Specific Approach (NEW):**
+                    ```json
+                    {
+                      "0": "...with subtle panning left (sustained) and gentle moving down (extended)",
+                      "43": "...with moderate panning right (brief) and subtle rotating left (sustained)",
+                      "106": "...with gentle dolly forward (extended) and subtle rolling clockwise (brief)",
+                      "210": "...with subtle tilting down (extended) and moderate panning left (brief)",
+                      "324": "...with gentle rotating right (sustained) and subtle dolly backward (extended)"
+                    }
                     ```
                     
-                    #### 2. Movement Detection & Classification
+                    ### 📊 Movement Detection & Classification
+                    
                     **Translation Movements:**
-                    - **Translation X**: Left/right panning → "smooth panning left/right movement"
-                    - **Translation Y**: Up/down movement → "vertical camera movement up/down" 
-                    - **Translation Z**: Forward/backward → "dolly forward/backward movement"
+                    - **Translation X**: 
+                      - Increasing → "panning right"
+                      - Decreasing → "panning left"
+                    - **Translation Y**: 
+                      - Increasing → "moving up"
+                      - Decreasing → "moving down"
+                    - **Translation Z**: 
+                      - Increasing → "dolly forward"
+                      - Decreasing → "dolly backward"
                     
                     **Rotation Movements:**
-                    - **Rotation 3D X**: Pitch up/down → "tilting camera movement up/down"
-                    - **Rotation 3D Y**: Yaw left/right → "rotating camera movement left/right"
-                    - **Rotation 3D Z**: Roll rotation → "rolling camera movement"
+                    - **Rotation 3D X**: 
+                      - Increasing → "tilting up"
+                      - Decreasing → "tilting down"
+                    - **Rotation 3D Y**: 
+                      - Increasing → "rotating right"
+                      - Decreasing → "rotating left"
+                    - **Rotation 3D Z**: 
+                      - Increasing → "rolling clockwise"
+                      - Decreasing → "rolling counter-clockwise"
                     
                     **Zoom & Effects:**
-                    - **Zoom**: Scale changes → "zoom in/out movement"
-                    - **Angle**: 2D rotation → "rotating view movement"
+                    - **Zoom**: 
+                      - Increasing → "zooming in"
+                      - Decreasing → "zooming out"
                     
-                    #### 3. Smart Motion Analysis
-                    **Complexity Detection:**
-                    - **Static**: All schedules at default → "static camera shot"
-                    - **Simple**: Single movement type → "smooth panning movement"
-                    - **Complex**: Multiple movements → "dynamic camera movement with panning and zoom"
+                    ### 🎨 Intensity & Duration Modifiers
+                    
+                    **Movement Intensity:**
+                    - **Subtle**: Very small movements (< 1.0 units)
+                    - **Gentle**: Small movements (1.0 - 10.0 units)
+                    - **Moderate**: Medium movements (10.0 - 50.0 units)
+                    - **Strong**: Large movements (> 50.0 units)
+                    
+                    **Duration Descriptions:**
+                    - **Brief**: Short duration (< 20% of total frames)
+                    - **Extended**: Medium duration (20% - 50% of total frames)
+                    - **Sustained**: Long duration (> 50% of total frames)
+                    
+                    ### 🎬 Camera Shakify Integration
+                    
+                    When Camera Shakify is enabled, the system:
+                    1. **Generates frame-specific shake data** based on the prompt's frame position
+                    2. **Overlays shake on Deforum schedules** (like experimental render core)
+                    3. **Analyzes combined movement** for each prompt's timeframe
+                    4. **Provides varied descriptions** that reflect actual camera behavior
+                    
+                    **Example with Camera Shakify INVESTIGATION:**
+                    ```
+                    Frame 0 prompt → Analyzes shake pattern frames 0-17
+                    Frame 43 prompt → Analyzes shake pattern frames 43-60
+                    Frame 106 prompt → Analyzes shake pattern frames 106-123
+                    ```
+                    
+                    ### 🔧 Smart Motion Analysis
                     
                     **Sensitivity Auto-Calculation:**
-                    - **High movement** (total range > 300) → Lower sensitivity (0.5)
-                    - **Normal movement** (range 30-100) → Standard sensitivity (1.0)
-                    - **Subtle movement** (range < 10) → Higher sensitivity (2.0)
+                    The system automatically calculates optimal sensitivity based on movement magnitude:
+                    - **Very subtle** (< 5 units): High sensitivity (3.0)
+                    - **Subtle** (5-15 units): High sensitivity (2.0)
+                    - **Normal** (15-50 units): Standard sensitivity (1.0)
+                    - **Large** (50-200 units): Reduced sensitivity (0.7)
+                    - **Very large** (> 200 units): Low sensitivity (0.5)
                     
-                    #### 4. Prompt Enhancement Examples
+                    **Segment Grouping:**
+                    - Groups similar movements that occur close together
+                    - Reduces redundancy while preserving directional specificity
+                    - Creates readable, varied descriptions
                     
-                    **Original Prompt:**
+                    ### 📈 Results Comparison
+                    
+                    **Before Frame-Specific Analysis:**
                     ```json
-                    {"0": "a serene beach at sunset"}
+                    {
+                      "0": "...complex camera movement with complex panning movement with 5 phases",
+                      "43": "...complex camera movement with complex panning movement with 5 phases",
+                      "106": "...complex camera movement with complex panning movement with 5 phases"
+                    }
                     ```
                     
-                    **After Movement Analysis:**
+                    **After Frame-Specific Analysis:**
                     ```json
-                    {"0": "a serene beach at sunset. smooth panning movement with gentle zoom in"}
+                    {
+                      "0": "...camera movement with subtle panning left (sustained) and gentle moving down (extended)",
+                      "43": "...camera movement with moderate panning right (brief) and subtle rotating left (sustained)",
+                      "106": "...camera movement with gentle dolly forward (extended) and subtle rolling clockwise (brief)"
+                    }
                     ```
                     
-                    **Complex Movement Example:**
-                    ```
-                    Movement Input:
-                    - Translation X: 0:(0), 60:(30)  [Pan right]
-                    - Translation Z: 0:(0), 120:(50) [Dolly forward]  
-                    - Zoom: 0:(1.0), 120:(1.5)      [Zoom in]
+                    ### 🚀 Practical Usage
                     
-                    Generated Description:
-                    "dynamic camera movement with smooth panning right and forward dolly movement, progressive zoom in"
-                    ```
+                    1. **Set up movement** in Keyframes → Motion tab or enable Camera Shakify
+                    2. **Configure prompts** in Prompts tab with frame numbers
+                    3. **Click "Enhance Prompts with Movement Analysis"**
+                    4. **Review frame-specific descriptions** - each prompt gets unique analysis
+                    5. **Generate video** with varied, specific movement context for better results
                     
-                    #### 5. Integration with Parseq
-                    **Parseq Schedule Support:**
-                    - Reads Parseq-generated movement schedules automatically
-                    - Supports complex mathematical expressions from Parseq
-                    - Maintains frame-accurate timing for movement descriptions
-                    
-                    **Parseq Expression Example:**
-                    ```
-                    Translation X Parseq: wave(f, 60, 20)  → "rhythmic panning movement"
-                    Zoom Parseq: 1 + 0.5 * (f/120)       → "gradual zoom in movement"
-                    ```
-                    
-                    #### 6. Motion Intensity Scheduling
-                    Beyond text descriptions, Wan also generates **frame-by-frame motion intensity values**:
-                    - Calculates motion strength for each frame (0.0 to 2.0)
-                    - Higher motion = more dynamic movement in generation
-                    - Synchronized with actual Deforum movement timing
-                    - Used internally by Wan for motion-aware generation
-                    
-                    **Example Motion Schedule:**
-                    ```
-                    Frame 0-30:   Motion 0.2 (gentle start)
-                    Frame 31-90:  Motion 1.2 (active movement)  
-                    Frame 91-120: Motion 0.4 (settling movement)
-                    ```
-                    
-                    ### 🎯 Practical Usage
-                    
-                    1. **Set up your movement** in Keyframes → Motion tab (or import from Parseq)
-                    2. **Click "Add Movement Descriptions"** in Wan tab
-                    3. **Review the generated descriptions** in the movement results
-                    4. **Enhanced prompts** automatically include movement context
-                    5. **Generate video** with motion-aware prompts for better results
-                    
-                    This system ensures your Wan videos understand and reflect the exact camera movements you've planned in Deforum!
+                    This frame-specific system ensures each video clip gets movement descriptions that accurately reflect what's happening during its specific timeframe!
                     """)
                 
             with gr.Accordion("🛠️ Setup Guide", open=False):
