@@ -124,14 +124,22 @@ def interpolate_schedule(keyframes: List[Tuple[int, float]], max_frames: int) ->
     return values
 
 
-def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: float, target_fps: int = 30, max_frames: int = 120) -> Optional[Dict]:
+def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: float, target_fps: int = 30, max_frames: int = 120, frame_start: int = 0) -> Optional[Dict]:
     """
     Create Camera Shakify data using simplified hardcoded patterns
+    
+    Args:
+        shake_name: Name of the shake pattern
+        shake_intensity: Intensity multiplier
+        shake_speed: Speed multiplier  
+        target_fps: Target frames per second
+        max_frames: Number of frames to generate
+        frame_start: Starting frame offset for frame-specific analysis
     """
     if not shake_name or shake_name.lower() in ['none', 'off', ''] or shake_intensity <= 0:
         return None
     
-    print(f"🎬 Creating Camera Shakify data: {shake_name} (intensity: {shake_intensity}, speed: {shake_speed})")
+    print(f"🎬 Creating Camera Shakify data: {shake_name} (intensity: {shake_intensity}, speed: {shake_speed}, frame_start: {frame_start})")
     
     # For now, only support INVESTIGATION pattern as demonstration
     if shake_name.upper() != "INVESTIGATION":
@@ -152,8 +160,8 @@ def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: fl
                 # Get base pattern data
                 base_values = base_data[transform_type][axis]
                 
-                # Calculate which frame to sample from (with speed scaling)
-                source_frame_idx = int((frame * shake_speed) % len(base_values))
+                # Calculate which frame to sample from (with speed scaling and frame offset)
+                source_frame_idx = int(((frame + frame_start) * shake_speed) % len(base_values))
                 base_value = base_values[source_frame_idx]
                 
                 # Apply intensity scaling
@@ -161,7 +169,7 @@ def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: fl
                 
                 result[transform_type][axis].append(scaled_value)
     
-    print(f"✅ Generated simplified Camera Shakify data for {max_frames} frames")
+    print(f"✅ Generated frame-specific Camera Shakify data for frames {frame_start}-{frame_start + max_frames - 1}")
     return result
 
 
@@ -772,10 +780,16 @@ class MovementAnalyzer:
         return description, strength
 
 
-def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: int = 120) -> Tuple[str, float]:
+def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: int = 120, frame_start: int = 0) -> Tuple[str, float]:
     """
     Enhanced movement analysis with full Camera Shakify integration and frame-by-frame directional analysis
     Creates combined movement schedules like the experimental render core does, then analyzes the actual resulting movement
+    
+    Args:
+        anim_args: Object with Deforum animation arguments
+        sensitivity: Movement detection sensitivity
+        max_frames: Number of frames to analyze
+        frame_start: Starting frame offset for frame-specific analysis
     """
     analyzer = MovementAnalyzer(sensitivity)
     
@@ -784,10 +798,10 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
     shake_intensity = getattr(anim_args, 'shake_intensity', 0.0)
     shake_speed = getattr(anim_args, 'shake_speed', 1.0)
     
-    # Generate Camera Shakify data if enabled
+    # Generate Camera Shakify data if enabled with frame offset
     shakify_data = None
     if shake_name and shake_name != 'None' and SHAKIFY_AVAILABLE:
-        shakify_data = create_shakify_data(shake_name, shake_intensity, shake_speed, target_fps=30, max_frames=max_frames)
+        shakify_data = create_shakify_data(shake_name, shake_intensity, shake_speed, target_fps=30, max_frames=max_frames, frame_start=frame_start)
         print(f"🎬 Camera Shakify '{shake_name}' integration: {'✅ Success' if shakify_data else '❌ Failed'}")
     
     # 2. Create combined movement schedules (base + shake)
@@ -809,7 +823,7 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
         combined_rotation_z = apply_shakify_to_schedule(
             anim_args.rotation_3d_z, shakify_data['rotation_3d']['z'], max_frames)
         
-        print(f"🔧 Applied Camera Shakify to movement schedules")
+        print(f"🔧 Applied frame-offset Camera Shakify to movement schedules (starting frame {frame_start})")
         print(f"   📐 Combined Translation X: {combined_translation_x[:50]}...")
         print(f"   📐 Combined Rotation Y: {combined_rotation_y[:50]}...")
         
@@ -861,9 +875,15 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
     rz_values = interpolate_schedule(rz_keyframes, max_frames)
     zoom_values = interpolate_schedule(zoom_keyframes, max_frames)
     
+    # Debug output with bounds checking
     print(f"📊 Frame 0 values: TX={tx_values[0]:.4f}, TY={ty_values[0]:.4f}, TZ={tz_values[0]:.4f}, Zoom={zoom_values[0]:.4f}")
-    print(f"📊 Frame 10 values: TX={tx_values[10]:.4f}, TY={ty_values[10]:.4f}, TZ={tz_values[10]:.4f}, Zoom={zoom_values[10]:.4f}")
-    print(f"📊 Frame 20 values: TX={tx_values[20]:.4f}, TY={ty_values[20]:.4f}, TZ={tz_values[20]:.4f}, Zoom={zoom_values[20]:.4f}")
+    if len(tx_values) > 10:
+        print(f"📊 Frame 10 values: TX={tx_values[10]:.4f}, TY={ty_values[10]:.4f}, TZ={tz_values[10]:.4f}, Zoom={zoom_values[10]:.4f}")
+    if len(tx_values) > 20:
+        print(f"📊 Frame 20 values: TX={tx_values[20]:.4f}, TY={ty_values[20]:.4f}, TZ={tz_values[20]:.4f}, Zoom={zoom_values[20]:.4f}")
+    if len(tx_values) > 1:
+        last_frame = len(tx_values) - 1
+        print(f"📊 Frame {last_frame} values: TX={tx_values[last_frame]:.4f}, TY={ty_values[last_frame]:.4f}, TZ={tz_values[last_frame]:.4f}, Zoom={zoom_values[last_frame]:.4f}")
     
     # 4. Analyze frame-by-frame movement segments with detailed descriptions
     descriptions = []
