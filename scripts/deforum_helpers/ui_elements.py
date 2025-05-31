@@ -988,8 +988,8 @@ The auto-discovery will find your models automatically!
 
 
 def get_tab_wan(dw: SimpleNamespace):
-    """Wan 2.1 Video Generation Tab - Integrated with Deforum Schedules"""
-    with gr.TabItem(f"{emoji_utils.wan_video()} Wan Video"):
+    """🤖 WAN AI TAB - Advanced AI Video Generation"""
+    with gr.TabItem(f"🤖 Wan AI"):
         
         # ESSENTIAL PROMPTS SECTION - TOP PRIORITY
         with gr.Accordion("📝 Wan Video Prompts (REQUIRED)", open=True):
@@ -3543,3 +3543,229 @@ def get_tab_ffmpeg():
         )
     
     return locals()
+
+
+# ******** NEW WORKFLOW-ORIENTED TAB STRUCTURE ********
+
+def get_tab_setup(d, da):
+    """🎯 SETUP TAB - Essential generation settings (replaces Run tab)"""
+    with gr.TabItem(f"🎯 Setup"):
+        with gr.Accordion("📝 Generation Essentials", open=True):
+            # Core generation settings
+            with FormRow():
+                animation_mode = create_gr_elem(da.animation_mode)  # Moved from keyframes - CRITICAL setting
+                max_frames = create_gr_elem(da.max_frames)  # Moved from keyframes - CRITICAL setting
+            
+            sampler, scheduler, steps = create_row(d, 'sampler', 'scheduler', 'steps')
+            W, H = create_row(d, 'W', 'H')
+            seed, batch_name = create_row(d, 'seed', 'batch_name')
+            
+            with FormRow():
+                seed_behavior = create_gr_elem(d.seed_behavior)  # Moved from keyframes
+                seed_iter_N = create_gr_elem(d.seed_iter_N)  # Moved from keyframes
+            
+            with FormRow():
+                restore_faces = create_gr_elem(d.restore_faces)
+                tiling = create_gr_elem(d.tiling)
+                motion_preview_mode = create_gr_elem(d.motion_preview_mode)
+        
+        # Batch Mode and Resume - less prominent but still accessible
+        with gr.Accordion('🔄 Batch Mode & Resume', open=False):
+            with gr.Tab('Batch Mode'):
+                with gr.Row():
+                    override_settings_with_file = gr.Checkbox(
+                        label="Enable batch mode", value=False, interactive=True,
+                        elem_id='override_settings',
+                        info="run from a list of setting .txt files. Upload them to the box on the right"
+                    )
+                    custom_settings_file = gr.File(
+                        label="Setting files", interactive=True, file_count="multiple",
+                        file_types=[".txt"], elem_id="custom_setting_file", visible=False
+                    )
+            
+            with gr.Tab('Resume Animation'):
+                resume_from_timestring, resume_timestring = create_row(
+                    da, 'resume_from_timestring', 'resume_timestring')
+        
+        # Advanced sampling settings
+        with gr.Accordion('⚙️ Advanced Sampling', open=False):
+            with FormRow():
+                enable_ddim_eta_scheduling = create_gr_elem(da.enable_ddim_eta_scheduling)
+                enable_ancestral_eta_scheduling = create_gr_elem(da.enable_ancestral_eta_scheduling)
+            with gr.Row(variant='compact') as eta_sch_row:
+                ddim_eta_schedule = create_gr_elem(da.ddim_eta_schedule)
+                ancestral_eta_schedule = create_gr_elem(da.ancestral_eta_schedule)
+    
+    return {k: v for k, v in {**locals(), **vars()}.items()}
+
+
+def get_tab_animation(da, dloopArgs):
+    """🎬 ANIMATION TAB - Movement, timing, and motion settings"""
+    with gr.TabItem(f"🎬 Animation"):
+        # Core Animation Controls
+        with gr.Accordion("🎯 Core Animation", open=True):
+            diffusion_cadence = create_row(da.diffusion_cadence)
+            border = create_row(da.border)
+            keyframe_distribution = create_row(da.keyframe_distribution)
+        
+        # Movement and Camera Controls
+        with gr.Accordion("📷 Camera Movement", open=True):
+            with gr.Tabs():
+                # 2D Movement Tab
+                with gr.TabItem("2D Movement"):
+                    angle = create_row(da.angle)
+                    zoom = create_row(da.zoom)
+                    translation_x, translation_y = create_row(da, 'translation_x', 'translation_y')
+                    transform_center_x, transform_center_y = create_row(da, 'transform_center_x', 'transform_center_y')
+                
+                # 3D Movement Tab  
+                with gr.TabItem("3D Movement"):
+                    translation_z = create_row(da.translation_z)
+                    rotation_3d_x, rotation_3d_y, rotation_3d_z = create_row(da, 'rotation_3d_x', 'rotation_3d_y', 'rotation_3d_z')
+                    fov_schedule = create_row(da.fov_schedule)
+                    near_schedule, far_schedule = create_row(da, 'near_schedule', 'far_schedule')
+                
+                # Camera Shake Tab (Shakify integration)
+                with gr.TabItem("Camera Shake"):
+                    with FormColumn(min_width=220):
+                        create_row(gr.Markdown("""
+                            **Shakify Integration**: Add realistic camera shake effects using EatTheFuture's
+                            Camera Shakify data. Enhances realism and engagement.
+                        """))
+                        shake_name = create_row(da.shake_name)
+                        shake_intensity, shake_speed = create_row(da, 'shake_intensity', 'shake_speed')
+                
+                # Perspective Flip Tab
+                with gr.TabItem("Perspective"):
+                    enable_perspective_flip = create_row(da.enable_perspective_flip)
+                    with FormRow():
+                        perspective_flip_theta = create_gr_elem(da.perspective_flip_theta)
+                        perspective_flip_phi = create_gr_elem(da.perspective_flip_phi)
+                    with FormRow():
+                        perspective_flip_gamma = create_gr_elem(da.perspective_flip_gamma)
+                        perspective_flip_fv = create_gr_elem(da.perspective_flip_fv)
+        
+        # Depth and 3D Settings
+        with gr.Accordion("🔍 3D Depth Processing", open=False):
+            use_depth_warping = create_row(da.use_depth_warping)
+            depth_algorithm = create_row(da.depth_algorithm)
+            midas_weight = create_row(da.midas_weight)
+            with FormRow():
+                padding_mode = create_gr_elem(da.padding_mode)
+                sampling_mode = create_gr_elem(da.sampling_mode)
+            save_depth_maps = create_row(da.save_depth_maps)
+            aspect_ratio_schedule = create_row(da.aspect_ratio_schedule)
+            aspect_ratio_use_old_formula = create_row(da.aspect_ratio_use_old_formula)
+        
+        # Guided Images (moved from keyframes)
+        with gr.Accordion('🎨 Guided Images', open=False):
+            with gr.Accordion('*Important: Read before using*', open=False):
+                gr.HTML(value=get_gradio_html('guided_imgs'))
+            
+            use_looper = create_row(dloopArgs.use_looper)
+            init_images = create_row(dloopArgs.init_images)
+            
+            with gr.Accordion('Guided Images Schedules', open=False):
+                image_strength_schedule = create_row(dloopArgs.image_strength_schedule)
+                image_keyframe_strength_schedule = create_row(dloopArgs.image_keyframe_strength_schedule)
+                blendFactorMax, blendFactorSlope = create_row(dloopArgs, 'blendFactorMax', 'blendFactorSlope')
+                tweening_frames_schedule = create_row(dloopArgs.tweening_frames_schedule)
+                color_correction_factor = create_row(dloopArgs.color_correction_factor)
+    
+    return {k: v for k, v in {**locals(), **vars()}.items()}
+
+
+def get_tab_advanced(d, da):
+    """⚙️ ADVANCED TAB - Fine-tuning, schedules, noise, and coherence"""
+    with gr.TabItem(f"⚙️ Advanced"):
+        
+        # Strength and CFG Schedules
+        with gr.Accordion("💪 Strength & CFG Schedules", open=True):
+            strength_schedule = create_row(da.strength_schedule)
+            keyframe_strength_schedule = create_row(da.keyframe_strength_schedule)
+            cfg_scale_schedule = create_row(da.cfg_scale_schedule)
+            distilled_cfg_scale_schedule = create_row(da.distilled_cfg_scale_schedule)
+        
+        # Advanced Scheduling
+        with gr.Accordion("📅 Advanced Scheduling", open=False):
+            with gr.Tabs():
+                # Seed Scheduling
+                with gr.TabItem("Seed"):
+                    with FormRow(visible=False) as seed_schedule_row:
+                        seed_schedule = create_gr_elem(da.seed_schedule)
+                    enable_subseed_scheduling = create_row(da.enable_subseed_scheduling)
+                    subseed_schedule, subseed_strength_schedule = create_row(da, 'subseed_schedule', 'subseed_strength_schedule')
+                    seed_resize_from_w, seed_resize_from_h = create_row(d, 'seed_resize_from_w', 'seed_resize_from_h')
+                
+                # Steps & Sampler Scheduling
+                with gr.TabItem("Steps & Sampling"):
+                    enable_steps_scheduling = create_row(da.enable_steps_scheduling)
+                    steps_schedule = create_row(da.steps_schedule)
+                    enable_sampler_scheduling = create_row(da.enable_sampler_scheduling)
+                    sampler_schedule = create_row(da.sampler_schedule)
+                    enable_scheduler_scheduling = create_row(da.enable_scheduler_scheduling)
+                    scheduler_schedule = create_row(da.scheduler_schedule)
+                
+                # Checkpoint & CLIP Scheduling  
+                with gr.TabItem("Model & CLIP"):
+                    enable_checkpoint_scheduling = create_row(da.enable_checkpoint_scheduling)
+                    checkpoint_schedule = create_row(da.checkpoint_schedule)
+                    enable_clipskip_scheduling = create_row(da.enable_clipskip_scheduling)
+                    clipskip_schedule = create_row(da.clipskip_schedule)
+        
+        # Noise Settings
+        with gr.Accordion("🌊 Noise & Randomization", open=False):
+            noise_type = create_row(da.noise_type)
+            noise_schedule = create_row(da.noise_schedule)
+            with FormRow():
+                perlin_octaves = create_gr_elem(da.perlin_octaves)
+                perlin_persistence = create_gr_elem(da.perlin_persistence)
+                perlin_w = create_gr_elem(da.perlin_w)  # Hidden
+                perlin_h = create_gr_elem(da.perlin_h)  # Hidden
+            enable_noise_multiplier_scheduling = create_row(da.enable_noise_multiplier_scheduling)
+            noise_multiplier_schedule = create_row(da.noise_multiplier_schedule)
+        
+        # Color Coherence & Optical Flow
+        with gr.Accordion("🎨 Color Coherence & Flow", open=False):
+            color_coherence, color_force_grayscale = create_row(da, 'color_coherence', 'color_force_grayscale')
+            legacy_colormatch = create_row(da.legacy_colormatch)
+            
+            with FormRow(visible=False) as color_coherence_image_path_row:
+                color_coherence_image_path = create_gr_elem(da.color_coherence_image_path)
+            with FormRow(visible=False) as color_coherence_video_every_N_frames_row:
+                color_coherence_video_every_N_frames = create_gr_elem(da.color_coherence_video_every_N_frames)
+            
+            # Optical Flow Settings
+            with FormRow():
+                optical_flow_cadence = create_gr_elem(da.optical_flow_cadence)
+                cadence_flow_factor_schedule = create_gr_elem(da.cadence_flow_factor_schedule)
+            with FormRow():
+                optical_flow_redo_generation = create_gr_elem(da.optical_flow_redo_generation)
+                redo_flow_factor_schedule = create_gr_elem(da.redo_flow_factor_schedule)
+            
+            contrast_schedule = gr.Textbox(
+                label="Contrast schedule", lines=1, value=da.contrast_schedule, interactive=True,
+                info="adjusts the overall contrast per frame [neutral at 1.0]"
+            )
+            diffusion_redo = gr.Slider(
+                label="Redo generation", minimum=0, maximum=50, step=1, value=da.diffusion_redo,
+                interactive=True, info="renders N times before final render. Lower steps if increasing this."
+            )
+        
+        # Anti-Blur and Quality
+        with gr.Accordion("✨ Anti-Blur & Quality", open=False):
+            amount_schedule = create_row(da.amount_schedule)
+            kernel_schedule = create_row(da.kernel_schedule)
+            sigma_schedule = create_row(da.sigma_schedule)
+            threshold_schedule = create_row(da.threshold_schedule)
+            
+            reroll_blank_frames, reroll_patience = create_row(d, 'reroll_blank_frames', 'reroll_patience')
+        
+        # Composable Masks
+        with gr.Accordion("🎭 Composable Masks", open=False):
+            gr.HTML(value=get_gradio_html('composable_masks'))
+            mask_schedule = create_row(da.mask_schedule)
+            use_noise_mask = create_row(da.use_noise_mask)
+            noise_mask_schedule = create_row(da.noise_mask_schedule)
+    
+    return {k: v for k, v in {**locals(), **vars()}.items()}

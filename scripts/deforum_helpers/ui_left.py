@@ -20,8 +20,8 @@ from .defaults import get_gradio_html
 from .gradio_funcs import change_css, handle_change_functions
 from .args import DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, RootArgs, LoopArgs, WanArgs
 from .deforum_controlnet import setup_controlnet_ui
-from .ui_elements import (get_tab_run, get_tab_keyframes, get_tab_prompts, get_tab_init,
-                          get_tab_output, get_tab_ffmpeg)
+from .ui_elements import (get_tab_prompts, get_tab_init, get_tab_output, get_tab_ffmpeg, 
+                          get_tab_setup, get_tab_animation, get_tab_advanced)
 
 def set_arg_lists():
     # convert dicts to NameSpaces for easy working (args.param instead of args['param']
@@ -113,25 +113,43 @@ def setup_deforum_left_side_ui():
     # show button to hide/ show gradio's info texts for each element in the UI
     with gr.Row(variant='compact'):
         show_info_on_ui = gr.Checkbox(label="Show more info", value=d.show_info_on_ui, interactive=True)
+    
     with gr.Blocks():
         with gr.Tabs():
-            # Get main tab contents:
-            tab_run_params = get_tab_run(d, da)  # Run tab
-            tab_keyframes_params = get_tab_keyframes(d, da, dloopArgs)  # Keyframes tab
-            tab_prompts_params = get_tab_prompts(da)  # Prompts tab
-            tab_init_params = get_tab_init(d, da, dp)  # Init tab
-            # ControlNet tab - hidden by default (add setting to show it)
+            # 🎯 WORKFLOW-ORIENTED TAB STRUCTURE (Left → Right)
+            
+            # ========== 1. SETUP TAB - Core generation settings ==========
+            tab_setup_params = get_tab_setup(d, da)  # Essential settings first
+            
+            # ========== 2. ANIMATION TAB - Movement and timing ==========  
+            tab_animation_params = get_tab_animation(da, dloopArgs)  # Animation & motion
+            
+            # ========== 3. PROMPTS TAB - Content creation ==========
+            tab_prompts_params = get_tab_prompts(da)  # Prompts (unchanged, good position)
+            
+            # ========== 4. WAN AI TAB - Advanced AI generation ==========
+            from .ui_elements import get_tab_wan
+            tab_wan_params = get_tab_wan(dw)  # Wan AI moved up in priority
+            
+            # ========== 5. INIT TAB - Input sources ==========
+            tab_init_params = get_tab_init(d, da, dp)  # Image/Video/Mask init
+            
+            # ========== 6. ADVANCED TAB - Fine-tuning ==========
+            tab_advanced_params = get_tab_advanced(d, da)  # Schedules, noise, coherence
+            
+            # ========== 7. OUTPUT TAB - Rendering settings ==========
+            tab_output_params = get_tab_output(da, dv)  # Video output (streamlined)
+            
+            # ========== 8. POST-PROCESS TAB - Enhancement ==========
+            tab_ffmpeg_params = get_tab_ffmpeg()  # FFmpeg post-processing (moved to end)
+            
+            # ControlNet tab - hidden by default (experimental)
             controlnet_dict = {}
             if d.show_controlnet_tab:  # Only show if explicitly enabled
                 controlnet_dict = setup_controlnet_ui()  # ControlNet tab
-            # Wan tab
-            from .ui_elements import get_tab_wan
-            tab_wan_params = get_tab_wan(dw)  # Wan tab
-            tab_output_params = get_tab_output(da, dv)  # Output tab
-            # FFmpeg tab
-            tab_ffmpeg_params = get_tab_ffmpeg()  # FFmpeg tab
+            
             # add returned gradio elements from main tabs to locals()
-            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_prompts_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params, **tab_ffmpeg_params}.items():
+            for key, value in {**tab_setup_params, **tab_animation_params, **tab_prompts_params, **tab_wan_params, **tab_init_params, **tab_advanced_params, **tab_output_params, **tab_ffmpeg_params, **controlnet_dict}.items():
                 locals()[key] = value
 
     # Gradio's Change functions - hiding and renaming elements based on other elements
