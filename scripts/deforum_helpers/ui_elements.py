@@ -1165,33 +1165,6 @@ def get_tab_wan(dw: SimpleNamespace):
                     elem_id="wan_enhance_prompts_btn"
                 )
                 
-            # Quick Start Templates - Moved to accordion
-            with gr.Accordion("📝 Quick Start Templates", open=False):
-                gr.Markdown("""
-                **Two Prompt Template Options**
-                
-                - **📝 Load Wan Prompts**: Default Wan prompts optimized for visual generation (no text signs)
-                - **🏢 Load Deforum Prompts**: Landscape evolution with text signs  
-                
-                **💡 Choose Based On:**
-                - **Wan Generation**: Use Wan Prompts (visual focus, no text)
-                - **Flux Generation**: Use Deforum Prompts (text rendering capable)
-                """)
-                
-                with FormRow():
-                    load_wan_prompts_btn = gr.Button(
-                        "📝 Load Wan Template Prompts",
-                        variant="secondary",
-                        size="sm",
-                        elem_id="load_wan_prompts_btn"
-                    )
-                    load_deforum_prompts_btn = gr.Button(
-                        "🏢 Load Deforum Template Prompts", 
-                        variant="secondary",
-                        size="sm",
-                        elem_id="load_deforum_prompts_btn"
-                    )
-
         # Qwen Model Management - Moved to separate accordion
         with gr.Accordion("🧠 Qwen Model Management", open=False):
             gr.Markdown("""
@@ -2020,8 +1993,8 @@ def enhance_prompts_handler(qwen_model, language, auto_download, movement_sensit
 1. 📝 Load prompts using "Load Wan Prompts from Deforum Prompts" or "Load Default Wan Prompt"
 2. 📋 Make sure your prompts are in proper JSON format like:
    {
-     "0": "a peaceful landscape scene",
-     "60": "a synthwave aesthetic with neon colors",
+     "0": "prompt text",
+     "60": "another prompt",
      "120": "a cyberpunk environment with glowing elements"
    }
 3. 🎨 Click **Enhance Prompts** again after setting up prompts
@@ -2481,7 +2454,7 @@ def cleanup_qwen_cache_handler():
 
 
 def load_wan_prompts_handler():
-    """Load Wan-optimized prompts from default settings"""
+    """Load Wan prompts from default settings"""
     try:
         import json
         import os
@@ -2608,8 +2581,8 @@ def load_wan_defaults_handler():
         if not os.path.exists(settings_path):
             # Fallback to simple defaults
             return json.dumps({
-                "0": "A peaceful landscape scene, photorealistic",
-                "60": "A serene natural environment, beautiful lighting"
+                "0": "prompt text",
+                "60": "another prompt"
             }, ensure_ascii=False, indent=2)
         
         try:
@@ -2626,16 +2599,16 @@ def load_wan_defaults_handler():
             else:
                 # Use fallback
                 return json.dumps({
-                    "0": "A peaceful landscape scene, photorealistic",
-                    "60": "A serene natural environment, beautiful lighting"
+                    "0": "prompt text",
+                    "60": "another prompt"
                 }, ensure_ascii=False, indent=2)
                 
         except Exception as e:
             print(f"⚠️ Error loading default settings: {e}")
             # Return simple fallback
             return json.dumps({
-                "0": "A peaceful landscape scene, photorealistic",
-                "60": "A serene natural environment, beautiful lighting"
+                "0": "prompt text",
+                "60": "another prompt"
             }, ensure_ascii=False, indent=2)
             
     except Exception as e:
