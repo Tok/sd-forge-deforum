@@ -1056,8 +1056,102 @@ def get_tab_wan(dw: SimpleNamespace):
                 )
                 # wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)  # Moved to override section
         
-        # Advanced Settings - Open by default and moved up
-        with gr.Accordion("Advanced Settings", open=True):
+        # Prompt Enhancement Section - MOVED UP for better logical flow
+        with gr.Accordion("🎨 AI Prompt Enhancement (QwenPromptExpander)", open=True):
+            gr.Markdown("""
+            **Intelligent Prompt Enhancement with QwenPromptExpander**
+            
+            Automatically enhance your prompts using advanced AI models for better video quality:
+            - **🧠 AI Enhancement**: Refines and expands prompts for better clarity and detail
+            - **🎬 Movement Integration**: Analyzes Deforum schedules and adds camera movement descriptions
+            - **✏️ Manual Editing**: Enhanced prompts are editable before generation
+            - **🌍 Multi-Language**: Support for English and Chinese enhancement
+            
+            **💡 How it works:**
+            1. Your original prompts are analyzed by Qwen AI models
+            2. Movement schedules (rotation, translation, zoom) are translated to English
+            3. Enhanced prompts with movement descriptions are generated
+            4. You can manually edit the results before video generation
+            """)
+            
+            with FormRow():
+                wan_enable_prompt_enhancement = create_gr_elem(dw.wan_enable_prompt_enhancement)
+                wan_qwen_auto_download = create_gr_elem(dw.wan_qwen_auto_download)
+                
+            with FormRow():
+                wan_qwen_model = create_gr_elem(dw.wan_qwen_model)
+                wan_qwen_language = create_gr_elem(dw.wan_qwen_language)
+                
+            # Movement Analysis Section
+            with gr.Accordion("📐 Movement Analysis Settings", open=False):
+                gr.Markdown("""
+                **Deforum Schedule → English Translation**
+                
+                Automatically translate your Deforum movement schedules into natural language descriptions:
+                - **Translation**: X/Y/Z position changes → "left pan", "forward dolly", etc.
+                - **Rotation**: 3D rotations → "upward pitch", "clockwise roll", "right yaw"
+                - **Zoom**: Zoom changes → "slow zoom in", "fast zoom out"
+                - **Speed Detection**: Automatically classifies movement speed (slow/medium/fast)
+                - **Dynamic Motion Strength**: Calculates optimal motion strength from schedules
+                """)
+                
+                with FormRow():
+                    wan_enable_movement_analysis = create_gr_elem(dw.wan_enable_movement_analysis)
+                    wan_movement_sensitivity = create_gr_elem(dw.wan_movement_sensitivity)
+                    
+                wan_movement_description = create_gr_elem(dw.wan_movement_description)
+                
+            # Enhancement Controls
+            with FormRow():
+                enhance_prompts_btn = gr.Button(
+                    "🎨 Enhance Prompts with AI",
+                    variant="primary",
+                    size="lg",
+                    elem_id="wan_enhance_prompts_btn"
+                )
+                analyze_movement_btn = gr.Button(
+                    "📐 Analyze Movement Schedules",
+                    variant="secondary",
+                    size="lg",
+                    elem_id="wan_analyze_movement_btn"
+                )
+                
+            # Enhanced Prompts Display
+            wan_enhanced_prompts = create_gr_elem(dw.wan_enhanced_prompts)
+            
+            # Qwen Model Status
+            with gr.Accordion("🧠 Qwen Model Status & Management", open=False):
+                gr.Markdown("""
+                **Model Information & Auto-Download Status**
+                
+                Monitor Qwen model availability and manage downloads:
+                """)
+                
+                qwen_model_status = gr.HTML(
+                    label="Qwen Model Status",
+                    value="⏳ Checking model availability...",
+                    elem_id="wan_qwen_model_status"
+                )
+                
+                with FormRow():
+                    check_qwen_models_btn = gr.Button(
+                        "🔍 Check Model Status",
+                        variant="secondary",
+                        elem_id="wan_check_qwen_models_btn"
+                    )
+                    download_qwen_model_btn = gr.Button(
+                        "📥 Download Selected Model",
+                        variant="primary",
+                        elem_id="wan_download_qwen_model_btn"
+                    )
+                    cleanup_qwen_cache_btn = gr.Button(
+                        "🧹 Cleanup Model Cache",
+                        variant="secondary",
+                        elem_id="wan_cleanup_qwen_cache_btn"
+                    )
+
+        # Advanced Settings - Moved down but still accessible
+        with gr.Accordion("Advanced Settings", open=False):
             with FormRow():
                 wan_frame_overlap = create_gr_elem(dw.wan_frame_overlap)
                 # Remove wan_motion_strength from here - moved to overrides
@@ -1138,100 +1232,6 @@ def get_tab_wan(dw: SimpleNamespace):
                 with FormRow():
                     wan_motion_strength_override = create_gr_elem(dw.wan_motion_strength_override)
                     wan_motion_strength = create_gr_elem(dw.wan_motion_strength)
-        
-        # Prompt Enhancement Section - NEW
-        with gr.Accordion("🎨 AI Prompt Enhancement (QwenPromptExpander)", open=False):
-            gr.Markdown("""
-            **Intelligent Prompt Enhancement with QwenPromptExpander**
-            
-            Automatically enhance your prompts using advanced AI models for better video quality:
-            - **🧠 AI Enhancement**: Refines and expands prompts for better clarity and detail
-            - **🎬 Movement Integration**: Analyzes Deforum schedules and adds camera movement descriptions
-            - **✏️ Manual Editing**: Enhanced prompts are editable before generation
-            - **🌍 Multi-Language**: Support for English and Chinese enhancement
-            
-            **💡 How it works:**
-            1. Your original prompts are analyzed by Qwen AI models
-            2. Movement schedules (rotation, translation, zoom) are translated to English
-            3. Enhanced prompts with movement descriptions are generated
-            4. You can manually edit the results before video generation
-            """)
-            
-            with FormRow():
-                wan_enable_prompt_enhancement = create_gr_elem(dw.wan_enable_prompt_enhancement)
-                wan_qwen_auto_download = create_gr_elem(dw.wan_qwen_auto_download)
-                
-            with FormRow():
-                wan_qwen_model = create_gr_elem(dw.wan_qwen_model)
-                wan_qwen_language = create_gr_elem(dw.wan_qwen_language)
-                
-            # Movement Analysis Section
-            with gr.Accordion("📐 Movement Analysis Settings", open=False):
-                gr.Markdown("""
-                **Deforum Schedule → English Translation**
-                
-                Automatically translate your Deforum movement schedules into natural language descriptions:
-                - **Translation**: X/Y/Z position changes → "left pan", "forward dolly", etc.
-                - **Rotation**: 3D rotations → "upward pitch", "clockwise roll", "right yaw"
-                - **Zoom**: Zoom changes → "slow zoom in", "fast zoom out"
-                - **Speed Detection**: Automatically classifies movement speed (slow/medium/fast)
-                - **Dynamic Motion Strength**: Calculates optimal motion strength from schedules
-                """)
-                
-                with FormRow():
-                    wan_enable_movement_analysis = create_gr_elem(dw.wan_enable_movement_analysis)
-                    wan_movement_sensitivity = create_gr_elem(dw.wan_movement_sensitivity)
-                    
-                wan_movement_description = create_gr_elem(dw.wan_movement_description)
-                
-            # Enhancement Controls
-            with FormRow():
-                enhance_prompts_btn = gr.Button(
-                    "🎨 Enhance Prompts with AI",
-                    variant="secondary",
-                    size="lg",
-                    elem_id="wan_enhance_prompts_btn"
-                )
-                analyze_movement_btn = gr.Button(
-                    "📐 Analyze Movement Schedules",
-                    variant="secondary",
-                    size="lg",
-                    elem_id="wan_analyze_movement_btn"
-                )
-                
-            # Enhanced Prompts Display
-            wan_enhanced_prompts = create_gr_elem(dw.wan_enhanced_prompts)
-            
-            # Qwen Model Status
-            with gr.Accordion("🧠 Qwen Model Status & Management", open=False):
-                gr.Markdown("""
-                **Model Information & Auto-Download Status**
-                
-                Monitor Qwen model availability and manage downloads:
-                """)
-                
-                qwen_model_status = gr.HTML(
-                    label="Qwen Model Status",
-                    value="⏳ Checking model availability...",
-                    elem_id="wan_qwen_model_status"
-                )
-                
-                with FormRow():
-                    check_qwen_models_btn = gr.Button(
-                        "🔍 Check Model Status",
-                        variant="secondary",
-                        elem_id="wan_check_qwen_models_btn"
-                    )
-                    download_qwen_model_btn = gr.Button(
-                        "📥 Download Selected Model",
-                        variant="primary",
-                        elem_id="wan_download_qwen_model_btn"
-                    )
-                    cleanup_qwen_cache_btn = gr.Button(
-                        "🧹 Cleanup Model Cache",
-                        variant="secondary",
-                        elem_id="wan_cleanup_qwen_cache_btn"
-                    )
         
         # Auto-Discovery Info - Collapsed by default
         with gr.Accordion("🔍 Auto-Discovery & Setup", open=False):
@@ -1529,21 +1529,61 @@ def get_tab_wan(dw: SimpleNamespace):
                 if animation_prompts_index < len(component_args):
                     animation_prompts_json = component_args[animation_prompts_index]
                     
+                    print(f"🔍 Debug: Found animation_prompts at index {animation_prompts_index}")
+                    print(f"🔍 Debug: Raw animation_prompts: {str(animation_prompts_json)[:100]}...")
+                    
                     # Parse animation prompts
                     import json
                     if isinstance(animation_prompts_json, str):
+                        # Handle empty or default prompts
+                        if not animation_prompts_json.strip() or animation_prompts_json.strip() == '{"0": "a beautiful landscape"}':
+                            return """❌ No custom prompts found. Please configure prompts in the **Prompts tab**.
+
+🔧 **How to Setup:**
+1. Go to the **Prompts tab**
+2. Replace the default prompt with your custom prompts in JSON format
+3. Example:
+```json
+{
+  "0": "a serene beach at sunset",
+  "60": "a misty forest in the morning", 
+  "120": "a bustling city street at night"
+}
+```
+
+💡 Each prompt will be enhanced with AI for better video generation!"""
+                        
                         animation_prompts = json.loads(animation_prompts_json)
                     else:
                         animation_prompts = animation_prompts_json
                         
                 else:
-                    return "❌ Animation prompts not found. Please configure prompts in the Prompts tab."
-            except (ValueError, IndexError, json.JSONDecodeError):
-                return "❌ Could not parse animation prompts. Please check the Prompts tab."
+                    return "❌ Animation prompts not found. Please configure prompts in the **Prompts tab**."
+            except (ValueError, IndexError, json.JSONDecodeError) as e:
+                print(f"🔍 Debug: Error parsing prompts: {e}")
+                return f"❌ Could not parse animation prompts: {str(e)}. Please check the **Prompts tab** for valid JSON format."
             
-            if not animation_prompts:
-                return "❌ No animation prompts found. Please configure prompts in the Prompts tab."
+            if not animation_prompts or len(animation_prompts) == 0:
+                return "❌ No animation prompts found. Please configure prompts in the **Prompts tab**."
                 
+            # Check if only default prompt exists
+            if len(animation_prompts) == 1 and "0" in animation_prompts and animation_prompts["0"] == "a beautiful landscape":
+                return """❌ Only default prompt found. Please configure custom prompts in the **Prompts tab**.
+
+🔧 **How to Setup:**
+1. Go to the **Prompts tab** 
+2. Replace the default `{"0": "a beautiful landscape"}` with your custom prompts
+3. Example for multi-clip video:
+```json
+{
+  "0": "a serene beach at sunset",
+  "60": "a misty forest in the morning",
+  "120": "a bustling city street at night"
+}
+```
+
+💡 Multiple prompts create seamless video clips with I2V chaining!"""
+            
             # Clean prompts (remove negative prompt parts)
             clean_prompts = {}
             for frame, prompt in animation_prompts.items():
@@ -1660,11 +1700,11 @@ def get_tab_wan(dw: SimpleNamespace):
                 status_html = f"""
                 <div style="padding: 15px; border-radius: 8px; background-color: #e8f5e8; border: 1px solid #4caf50;">
                 <h4 style="color: #2e7d32; margin-top: 0;">🧠 Auto-Selected Model: {selected}</h4>
-                <p style="color: #333;"><strong>Description:</strong> {selected_info.get('description', 'N/A')}</p>
-                <p style="color: #333;"><strong>VRAM Required:</strong> {selected_info.get('vram_gb', 0)}GB</p>
-                <p style="color: #333;"><strong>Available VRAM:</strong> {available_vram:.1f}GB</p>
-                <p style="color: #333;"><strong>Vision-Language:</strong> {'Yes' if selected_info.get('is_vl', False) else 'No'}</p>
-                <p style="color: #333;"><strong>Status:</strong> {'✅ Downloaded' if qwen_manager.is_model_downloaded(selected) else '❌ Not Downloaded'}</p>
+                <p style="color: #333;"><strong style="color: #333;">Description:</strong> {selected_info.get('description', 'N/A')}</p>
+                <p style="color: #333;"><strong style="color: #333;">VRAM Required:</strong> {selected_info.get('vram_gb', 0)}GB</p>
+                <p style="color: #333;"><strong style="color: #333;">Available VRAM:</strong> {available_vram:.1f}GB</p>
+                <p style="color: #333;"><strong style="color: #333;">Vision-Language:</strong> {'Yes' if selected_info.get('is_vl', False) else 'No'}</p>
+                <p style="color: #333;"><strong style="color: #333;">Status:</strong> {'✅ Downloaded' if qwen_manager.is_model_downloaded(selected) else '❌ Not Downloaded'}</p>
                 </div>
                 """
             else:
@@ -1684,11 +1724,11 @@ def get_tab_wan(dw: SimpleNamespace):
                 status_html = f"""
                 <div style="padding: 15px; border-radius: 8px; background-color: {status_color}; border: 1px solid {border_color};">
                 <h4 style="color: {title_color}; margin-top: 0;">🧠 Model: {qwen_model}</h4>
-                <p style="color: #333;"><strong>Description:</strong> {model_info.get('description', 'N/A')}</p>
-                <p style="color: #333;"><strong>VRAM Required:</strong> {model_info.get('vram_gb', 0)}GB</p>
-                <p style="color: #333;"><strong>Available VRAM:</strong> {available_vram:.1f}GB</p>
-                <p style="color: #333;"><strong>Vision-Language:</strong> {'Yes' if model_info.get('is_vl', False) else 'No'}</p>
-                <p style="color: #333;"><strong>Status:</strong> {status_icon} {status_text}</p>
+                <p style="color: #333;"><strong style="color: #333;">Description:</strong> {model_info.get('description', 'N/A')}</p>
+                <p style="color: #333;"><strong style="color: #333;">VRAM Required:</strong> {model_info.get('vram_gb', 0)}GB</p>
+                <p style="color: #333;"><strong style="color: #333;">Available VRAM:</strong> {available_vram:.1f}GB</p>
+                <p style="color: #333;"><strong style="color: #333;">Vision-Language:</strong> {'Yes' if model_info.get('is_vl', False) else 'No'}</p>
+                <p style="color: #333;"><strong style="color: #333;">Status:</strong> {status_icon} {status_text}</p>
                 </div>
                 """
                 
@@ -1746,13 +1786,24 @@ def get_tab_wan(dw: SimpleNamespace):
     from .args import get_component_names
     component_names = get_component_names()
     
-    # Create component list for input
+    # Create component list for input - use a more robust approach
     all_components = []
+    
+    # Get all local and global variables that are Gradio components
+    all_vars = {**locals(), **globals()}
+    
     for name in component_names:
-        if name in locals():
-            all_components.append(locals()[name])
-        elif name in vars():
-            all_components.append(vars()[name])
+        component = None
+        
+        # Try to find the component in various scopes
+        if name in all_vars and hasattr(all_vars[name], 'value'):
+            component = all_vars[name]
+        else:
+            # Create a placeholder component for missing ones
+            component = gr.Textbox(value="", visible=False, interactive=False)
+            print(f"⚠️ Warning: Component '{name}' not found, using placeholder")
+        
+        all_components.append(component)
     
     # Connect event handlers for prompt enhancement
     enhance_prompts_btn.click(

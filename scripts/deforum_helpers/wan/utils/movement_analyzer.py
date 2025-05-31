@@ -300,15 +300,26 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
     
     analyzer = MovementAnalyzer(sensitivity)
     
-    # Get schedule strings from anim_args
-    translation_x = getattr(anim_args, 'translation_x', "0: (0)")
-    translation_y = getattr(anim_args, 'translation_y', "0: (0)")
-    translation_z = getattr(anim_args, 'translation_z', "0: (0)")
-    rotation_3d_x = getattr(anim_args, 'rotation_3d_x', "0: (0)")
-    rotation_3d_y = getattr(anim_args, 'rotation_3d_y', "0: (0)")
-    rotation_3d_z = getattr(anim_args, 'rotation_3d_z', "0: (0)")
-    zoom = getattr(anim_args, 'zoom', "0: (1.0)")
-    angle = getattr(anim_args, 'angle', "0: (0)")
+    # Get schedule strings from anim_args and ensure they are strings
+    translation_x = str(getattr(anim_args, 'translation_x', "0: (0)"))
+    translation_y = str(getattr(anim_args, 'translation_y', "0: (0)"))
+    translation_z = str(getattr(anim_args, 'translation_z', "0: (0)"))
+    rotation_3d_x = str(getattr(anim_args, 'rotation_3d_x', "0: (0)"))
+    rotation_3d_y = str(getattr(anim_args, 'rotation_3d_y', "0: (0)"))
+    rotation_3d_z = str(getattr(anim_args, 'rotation_3d_z', "0: (0)"))
+    zoom = str(getattr(anim_args, 'zoom', "0: (1.0)"))
+    angle = str(getattr(anim_args, 'angle', "0: (0)"))
+    
+    # Debug output to help troubleshoot
+    print(f"🔍 Movement Analysis Debug:")
+    print(f"   translation_x: {translation_x}")
+    print(f"   translation_y: {translation_y}")
+    print(f"   translation_z: {translation_z}")
+    print(f"   rotation_3d_x: {rotation_3d_x}")
+    print(f"   rotation_3d_y: {rotation_3d_y}")
+    print(f"   rotation_3d_z: {rotation_3d_z}")
+    print(f"   zoom: {zoom}")
+    print(f"   angle: {angle}")
     
     # Analyze each type of movement
     translation_desc, translation_strength = analyzer.analyze_translation(
@@ -323,7 +334,7 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
     
     # Handle 2D angle rotation if present
     angle_desc, angle_strength = "", 0.0
-    if angle != "0: (0)":
+    if angle != "0: (0)" and angle != "0:(0)":
         angle_desc, angle_strength = analyzer.analyze_zoom(angle, max_frames)  # Reuse zoom logic
         if angle_desc:
             angle_desc = angle_desc.replace("zoom", "rotation")
