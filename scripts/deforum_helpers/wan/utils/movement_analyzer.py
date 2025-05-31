@@ -1,11 +1,14 @@
 """
-Movement Analysis Utility for Deforum Schedule Translation
-Translates xyz rotation/translation schedules into English descriptions for prompt enhancement
+Enhanced Movement Analyzer for Deforum
+Analyzes camera movement schedules and converts them to text descriptions for Wan
+Supports basic movements (pan, dolly, zoom, tilt) and complex patterns (circle, roll, shake)
 """
 
 import re
 import math
 from typing import Dict, List, Tuple, Optional
+import numpy as np
+from types import SimpleNamespace
 
 # Try to import DeformAnimKeys, but fall back to standalone parsing if not available
 try:
@@ -141,21 +144,21 @@ class MovementAnalyzer:
             if abs(x_delta) > 1:  # Significant net movement
                 if x_delta > 0:
                     if x_range > 40:
-                        movements.append("dramatic right pan")
+                        movements.append("dramatic right panning")
                     elif x_range > 20:
-                        movements.append("sweeping right pan")
+                        movements.append("smooth right panning")
                     else:
-                        movements.append("gentle right pan")
+                        movements.append("gentle right panning")
                 else:
                     if x_range > 40:
-                        movements.append("dramatic left pan")
+                        movements.append("dramatic left panning")
                     elif x_range > 20:
-                        movements.append("sweeping left pan")
+                        movements.append("smooth left panning")
                     else:
-                        movements.append("gentle left pan")
+                        movements.append("gentle left panning")
             else:
                 # Complex movement (back and forth)
-                movements.append("dynamic horizontal camera movement")
+                movements.append("dynamic horizontal panning")
             total_movement += x_range
         
         # Y-axis (vertical pan) - lower threshold for sensitivity
@@ -163,21 +166,21 @@ class MovementAnalyzer:
             if abs(y_delta) > 1:  # Significant net movement
                 if y_delta > 0:
                     if y_range > 40:
-                        movements.append("dramatic upward tilt")
+                        movements.append("dramatic upward movement")
                     elif y_range > 20:
-                        movements.append("sweeping upward tilt")
+                        movements.append("smooth upward movement")
                     else:
-                        movements.append("gentle upward tilt")
+                        movements.append("gentle upward movement")
                 else:
                     if y_range > 40:
-                        movements.append("dramatic downward tilt")
+                        movements.append("dramatic downward movement")
                     elif y_range > 20:
-                        movements.append("sweeping downward tilt")
+                        movements.append("smooth downward movement")
                     else:
-                        movements.append("gentle downward tilt")
+                        movements.append("gentle downward movement")
             else:
                 # Complex movement (up and down)
-                movements.append("dynamic vertical camera movement")
+                movements.append("dynamic vertical movement")
             total_movement += y_range
         
         # Z-axis (dolly) - lower threshold for sensitivity
@@ -189,30 +192,30 @@ class MovementAnalyzer:
                     elif z_range > 20:
                         movements.append("smooth forward dolly")
                     else:
-                        movements.append("subtle forward push")
+                        movements.append("gentle forward dolly")
                 else:
                     if z_range > 40:
                         movements.append("dramatic backward dolly")
                     elif z_range > 20:
                         movements.append("smooth backward dolly")
                     else:
-                        movements.append("subtle backward pull")
+                        movements.append("gentle backward dolly")
             else:
                 # Complex movement (forward and backward)
-                movements.append("dynamic depth camera movement")
+                movements.append("dynamic dolly movement")
             total_movement += z_range
         
-        # Generate description
+        # Generate description - NO "camera movement with" prefix here
         if not movements:
             return "static camera position", 0.0
         
-        # Combine movements naturally
+        # Combine movements naturally without redundant prefix
         if len(movements) == 1:
-            description = f"camera movement with {movements[0]}"
+            description = movements[0]
         elif len(movements) == 2:
-            description = f"camera movement with {movements[0]} and {movements[1]}"
+            description = f"{movements[0]} and {movements[1]}"
         else:
-            description = f"complex camera movement with {', '.join(movements[:-1])}, and {movements[-1]}"
+            description = f"{', '.join(movements[:-1])}, and {movements[-1]}"
         
         strength = min(1.0, total_movement / 100.0)  # Normalize to 0-1
         
@@ -351,11 +354,12 @@ class MovementAnalyzer:
         # Apply sensitivity (more sensitive threshold)
         zoom_range *= self.sensitivity
         
-        if abs(zoom_delta) < 0.05:  # More sensitive threshold
+        # Check for significant zoom movement (lowered threshold for better detection)
+        if abs(zoom_delta) < 0.02 and zoom_range < 0.02:  # Very small or no movement
             return "", 0.0
         
         # Determine zoom direction and intensity
-        if abs(zoom_delta) > 0.05:  # Significant net zoom
+        if abs(zoom_delta) >= 0.02:  # Significant net zoom
             if zoom_delta > 0:
                 # Zoom in
                 if zoom_delta > 1.0:
@@ -377,97 +381,225 @@ class MovementAnalyzer:
                 else:
                     direction = "subtle zoom out"
         else:
-            # Complex zoom movement (in and out)
+            # Complex zoom movement (in and out) or small range movement
             if zoom_range > 0.5:
                 direction = "dynamic zoom movement"
-            else:
+            elif zoom_range > 0.02:
                 direction = "subtle zoom fluctuation"
+            else:
+                return "", 0.0  # Too small to detect
         
         description = f"{direction}"
-        strength = min(1.0, zoom_range / 1.0)  # Normalize to 0-1
+        strength = min(1.0, max(abs(zoom_delta), zoom_range) / 1.0)  # Use max of delta and range
+        
+        return description, strength
+    
+    def analyze_rotation_pattern(self, x_schedule: str, y_schedule: str, z_schedule: str, max_frames: int) -> Tuple[str, float, str]:
+        """Analyze rotation schedules for complex patterns like circular motion and roll"""
+        
+        # Parse schedules
+        x_keyframes = parse_schedule_string(x_schedule, max_frames)
+        y_keyframes = parse_schedule_string(y_schedule, max_frames)
+        z_keyframes = parse_schedule_string(z_schedule, max_frames)
+        
+        # Interpolate values
+        x_values = interpolate_schedule(x_keyframes, max_frames)
+        y_values = interpolate_schedule(y_keyframes, max_frames)
+        z_values = interpolate_schedule(z_keyframes, max_frames)
+        
+        descriptions = []
+        strengths = []
+        
+        # Check for circular motion (combined X and Y rotation)
+        if len(x_values) > 1 and len(y_values) > 1:
+            x_range = max(x_values) - min(x_values)
+            y_range = max(y_values) - min(y_values)
+            
+            # Apply sensitivity
+            x_range *= self.sensitivity
+            y_range *= self.sensitivity
+            
+            # Check if both have significant motion
+            if x_range > 2.0 and y_range > 2.0:
+                # Check if it's circular motion by looking at phase relationship
+                if self._is_circular_motion(x_values, y_values):
+                    circle_strength = (x_range + y_range) / 2
+                    descriptions.append("circular camera movement")
+                    strengths.append(circle_strength)
+                    return " and ".join(descriptions), max(strengths) if strengths else 0.0, "circular"
+        
+        # Check for camera roll (Z rotation)
+        if len(z_values) > 1:
+            z_range = max(z_values) - min(z_values)
+            z_range *= self.sensitivity
+            
+            if z_range > 1.0:  # Threshold for detecting roll
+                z_start = z_values[0]
+                z_end = z_values[-1]
+                z_delta = z_end - z_start
+                
+                if abs(z_delta) > 0.5:
+                    if z_delta > 0:
+                        descriptions.append("camera roll clockwise")
+                    else:
+                        descriptions.append("camera roll counter-clockwise")
+                    strengths.append(abs(z_delta))
+                    return " and ".join(descriptions), max(strengths) if strengths else 0.0, "roll"
+        
+        # Fall back to individual rotation analysis
+        individual_desc, individual_strength = self.analyze_rotation(x_schedule, y_schedule, z_schedule, max_frames)
+        
+        # Determine motion type for classification
+        motion_type = "rotation"
+        if "tilt" in individual_desc:
+            motion_type = "tilt"
+        elif "yaw" in individual_desc or "pan" in individual_desc:
+            motion_type = "yaw"
+            
+        return individual_desc, individual_strength, motion_type
+    
+    def _is_circular_motion(self, x_values: List[float], y_values: List[float]) -> bool:
+        """Detect if X and Y rotation values form a circular pattern"""
+        if len(x_values) < 4 or len(y_values) < 4:
+            return False
+            
+        try:
+            # Calculate phase difference between X and Y
+            # For circular motion, there should be a ~90 degree phase difference
+            x_array = np.array(x_values)
+            y_array = np.array(y_values)
+            
+            # Normalize to remove DC offset
+            x_norm = x_array - np.mean(x_array)
+            y_norm = y_array - np.mean(y_array)
+            
+            # Calculate correlation with 90-degree phase shift
+            quarter_period = len(x_values) // 4
+            if quarter_period > 0:
+                x_shifted = np.roll(x_norm, quarter_period)
+                correlation = np.corrcoef(y_norm, x_shifted)[0, 1]
+                
+                # High correlation indicates circular motion
+                return abs(correlation) > 0.7
+                
+        except (ValueError, IndexError):
+            pass
+            
+        return False
+    
+    def analyze_camera_shake(self, shake_name: str, shake_intensity: float, shake_speed: float) -> Tuple[str, float]:
+        """Analyze Camera Shakify shake patterns"""
+        
+        if not shake_name or shake_name.lower() in ['none', 'off', '']:
+            return "", 0.0
+            
+        # Map shake names to descriptive terms
+        shake_descriptions = {
+            'INVESTIGATION': 'investigative handheld camera movement',
+            'THE_CLOSEUP': 'intimate close-up camera shake',
+            'THE_WEDDING': 'gentle documentary-style camera movement',
+            'WALK_TO_THE_STORE': 'walking pace camera movement',
+            'HANDYCAM_RUN': 'dynamic running camera shake',
+            'OUT_CAR_WINDOW': 'vehicle motion camera movement',
+            'BIKE_ON_GRAVEL_2D': 'bumpy terrain camera shake',
+            'SPACESHIP_SHAKE_2D': 'vibrating spacecraft camera movement',
+            'THE_ZEEK_2D': 'rhythmic camera shake pattern'
+        }
+        
+        # Get base description
+        base_desc = shake_descriptions.get(shake_name.upper(), f'{shake_name.lower()} camera shake')
+        
+        # Modify description based on intensity and speed
+        intensity_modifiers = {
+            (0.0, 0.3): 'subtle',
+            (0.3, 0.7): 'gentle',
+            (0.7, 1.5): 'moderate',
+            (1.5, 2.5): 'intense',
+            (2.5, float('inf')): 'extreme'
+        }
+        
+        speed_modifiers = {
+            (0.0, 0.5): 'slow',
+            (0.5, 0.8): 'steady',
+            (0.8, 1.2): 'normal',
+            (1.2, 2.0): 'fast',
+            (2.0, float('inf')): 'rapid'
+        }
+        
+        # Find appropriate modifiers
+        intensity_mod = next((mod for (min_val, max_val), mod in intensity_modifiers.items() 
+                             if min_val <= shake_intensity < max_val), 'moderate')
+        
+        speed_mod = next((mod for (min_val, max_val), mod in speed_modifiers.items() 
+                         if min_val <= shake_speed < max_val), 'normal')
+        
+        # Combine description
+        if intensity_mod != 'moderate' or speed_mod != 'normal':
+            description = f"{intensity_mod} {speed_mod} {base_desc}"
+        else:
+            description = base_desc
+            
+        # Calculate combined strength
+        strength = shake_intensity * shake_speed * 0.5  # Scale down as it's additive
         
         return description, strength
 
 
-def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: int = 100) -> Tuple[str, float]:
+def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: int = 120) -> Tuple[str, float]:
     """
-    Analyze Deforum movement schedules and return English description + motion strength
-    
-    Args:
-        anim_args: Object with Deforum animation arguments
-        sensitivity: Movement detection sensitivity (0.1-2.0)
-        max_frames: Maximum frames to analyze
-    
-    Returns:
-        Tuple of (description_string, motion_strength_float)
+    Enhanced movement analysis with support for complex patterns and Camera Shakify
     """
-    
     analyzer = MovementAnalyzer(sensitivity)
     
-    # Get schedule strings from anim_args and ensure they are strings
-    translation_x = str(getattr(anim_args, 'translation_x', "0: (0)"))
-    translation_y = str(getattr(anim_args, 'translation_y', "0: (0)"))
-    translation_z = str(getattr(anim_args, 'translation_z', "0: (0)"))
-    rotation_3d_x = str(getattr(anim_args, 'rotation_3d_x', "0: (0)"))
-    rotation_3d_y = str(getattr(anim_args, 'rotation_3d_y', "0: (0)"))
-    rotation_3d_z = str(getattr(anim_args, 'rotation_3d_z', "0: (0)"))
-    zoom = str(getattr(anim_args, 'zoom', "0: (1.0)"))
-    angle = str(getattr(anim_args, 'angle', "0: (0)"))
-    
-    # Debug output to help troubleshoot
-    print(f"🔍 Movement Analysis Debug:")
-    print(f"   translation_x: {translation_x}")
-    print(f"   translation_y: {translation_y}")
-    print(f"   translation_z: {translation_z}")
-    print(f"   rotation_3d_x: {rotation_3d_x}")
-    print(f"   rotation_3d_y: {rotation_3d_y}")
-    print(f"   rotation_3d_z: {rotation_3d_z}")
-    print(f"   zoom: {zoom}")
-    print(f"   angle: {angle}")
-    
-    # Analyze each type of movement
-    translation_desc, translation_strength = analyzer.analyze_translation(
-        translation_x, translation_y, translation_z, max_frames
-    )
-    
-    rotation_desc, rotation_strength = analyzer.analyze_rotation(
-        rotation_3d_x, rotation_3d_y, rotation_3d_z, max_frames
-    )
-    
-    zoom_desc, zoom_strength = analyzer.analyze_zoom(zoom, max_frames)
-    
-    # Handle 2D angle rotation if present
-    angle_desc, angle_strength = "", 0.0
-    if angle != "0: (0)" and angle != "0:(0)":
-        angle_desc, angle_strength = analyzer.analyze_zoom(angle, max_frames)  # Reuse zoom logic
-        if angle_desc:
-            angle_desc = angle_desc.replace("zoom", "rotation")
-    
-    # Combine descriptions
     descriptions = []
     strengths = []
     
-    if translation_desc and translation_desc != "static camera position":
-        descriptions.append(translation_desc)
-        strengths.append(translation_strength)
+    # 1. Analyze Camera Shakify first (highest priority for complex movements)
+    shake_name = getattr(anim_args, 'shake_name', 'None')
+    shake_intensity = getattr(anim_args, 'shake_intensity', 0.0)
+    shake_speed = getattr(anim_args, 'shake_speed', 1.0)
+    
+    if shake_name and shake_name != 'None':
+        shake_desc, shake_strength = analyzer.analyze_camera_shake(shake_name, shake_intensity, shake_speed)
+        if shake_desc:
+            descriptions.append(shake_desc)
+            strengths.append(shake_strength)
+    
+    # 2. Analyze rotation patterns for complex movements (circular, roll)
+    rotation_desc, rotation_strength, motion_type = analyzer.analyze_rotation_pattern(
+        anim_args.rotation_3d_x, anim_args.rotation_3d_y, anim_args.rotation_3d_z, max_frames)
     
     if rotation_desc:
         descriptions.append(rotation_desc)
         strengths.append(rotation_strength)
     
-    if zoom_desc:
-        descriptions.append(zoom_desc)
-        strengths.append(zoom_strength)
+    # 3. Analyze translation movements
+    translation_desc, translation_strength = analyzer.analyze_translation(
+        anim_args.translation_x, anim_args.translation_y, anim_args.translation_z, max_frames)
     
-    if angle_desc:
-        descriptions.append(angle_desc)
-        strengths.append(angle_strength)
+    if translation_desc:
+        descriptions.append(translation_desc)
+        strengths.append(translation_strength)
     
-    # Generate final description
+    # 4. Analyze zoom (if not already covered by complex patterns)
+    if motion_type not in ['circular', 'roll']:  # Don't add zoom if we have complex rotation
+        zoom_desc, zoom_strength = analyzer.analyze_zoom(anim_args.zoom, max_frames)
+        if zoom_desc:
+            descriptions.append(zoom_desc)
+            strengths.append(zoom_strength)
+    
+    # 5. Generate final description
     if not descriptions:
         return "static camera position", 0.0
     
-    combined_description = "camera movement with " + ", ".join(descriptions)
+    # Prioritize complex movements
+    if len(descriptions) == 1:
+        combined_description = f"camera movement with {descriptions[0]}"
+    elif len(descriptions) == 2:
+        combined_description = f"camera movement with {descriptions[0]} and {descriptions[1]}"
+    else:
+        combined_description = f"dynamic camera movement with {', '.join(descriptions[:-1])}, and {descriptions[-1]}"
+    
     combined_strength = max(strengths) if strengths else 0.0
     
     return combined_description, combined_strength

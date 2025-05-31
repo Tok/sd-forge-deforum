@@ -1083,7 +1083,7 @@ def get_tab_wan(dw: SimpleNamespace):
             )
         
         # DEFORUM INTEGRATION - ESSENTIAL (moved up)
-        with gr.Accordion("🔗 Deforum Integration (ESSENTIAL)", open=True):
+        with gr.Accordion("🔗 Deforum Integration (ESSENTIAL)", open=False):
             gr.Markdown("""
             **✅ Wan seamlessly integrates with your Deforum settings:**
             
@@ -1115,7 +1115,7 @@ def get_tab_wan(dw: SimpleNamespace):
             wan_generation_status = gr.Textbox(
                 label="Generation Status",
                 interactive=False,
-                lines=3,
+                lines=5,
                 placeholder="⚠️ Prompts required! Load prompts above first, then click Generate.",
                 info="Status updates will appear here during generation."
             )
@@ -1367,6 +1367,109 @@ def get_tab_wan(dw: SimpleNamespace):
                 - **Display Info**: Console shows exactly which frames will be discarded before generation
                 """)
                 
+                with gr.Accordion("🎬 Movement Translation: From Deforum Schedules to Prompt Descriptions", open=False):
+                    gr.Markdown("""
+                    ### How Movement Schedules Become Camera Descriptions
+                    
+                    Wan automatically analyzes your Deforum movement schedules and converts them into natural language descriptions that enhance your prompts. This ensures your video generation understands the intended camera movement.
+                    
+                    **🔄 Translation Process:**
+                    
+                    #### 1. Schedule Analysis
+                    The system reads your movement schedules from **Keyframes → Motion tab**:
+                    ```
+                    Translation X: 0:(0), 60:(20), 120:(0)     → Side-to-side pan movement
+                    Translation Z: 0:(0), 120:(40)             → Forward dolly movement  
+                    Rotation 3D Y: 0:(0), 120:(8)             → Gentle yaw rotation
+                    Zoom: 0:(1.0), 40:(1.4), 120:(1.8)        → Progressive zoom in
+                    ```
+                    
+                    #### 2. Movement Detection & Classification
+                    **Translation Movements:**
+                    - **Translation X**: Left/right panning → "smooth panning left/right movement"
+                    - **Translation Y**: Up/down movement → "vertical camera movement up/down" 
+                    - **Translation Z**: Forward/backward → "dolly forward/backward movement"
+                    
+                    **Rotation Movements:**
+                    - **Rotation 3D X**: Pitch up/down → "tilting camera movement up/down"
+                    - **Rotation 3D Y**: Yaw left/right → "rotating camera movement left/right"
+                    - **Rotation 3D Z**: Roll rotation → "rolling camera movement"
+                    
+                    **Zoom & Effects:**
+                    - **Zoom**: Scale changes → "zoom in/out movement"
+                    - **Angle**: 2D rotation → "rotating view movement"
+                    
+                    #### 3. Smart Motion Analysis
+                    **Complexity Detection:**
+                    - **Static**: All schedules at default → "static camera shot"
+                    - **Simple**: Single movement type → "smooth panning movement"
+                    - **Complex**: Multiple movements → "dynamic camera movement with panning and zoom"
+                    
+                    **Sensitivity Auto-Calculation:**
+                    - **High movement** (total range > 300) → Lower sensitivity (0.5)
+                    - **Normal movement** (range 30-100) → Standard sensitivity (1.0)
+                    - **Subtle movement** (range < 10) → Higher sensitivity (2.0)
+                    
+                    #### 4. Prompt Enhancement Examples
+                    
+                    **Original Prompt:**
+                    ```json
+                    {"0": "a serene beach at sunset"}
+                    ```
+                    
+                    **After Movement Analysis:**
+                    ```json
+                    {"0": "a serene beach at sunset. smooth panning movement with gentle zoom in"}
+                    ```
+                    
+                    **Complex Movement Example:**
+                    ```
+                    Movement Input:
+                    - Translation X: 0:(0), 60:(30)  [Pan right]
+                    - Translation Z: 0:(0), 120:(50) [Dolly forward]  
+                    - Zoom: 0:(1.0), 120:(1.5)      [Zoom in]
+                    
+                    Generated Description:
+                    "dynamic camera movement with smooth panning right and forward dolly movement, progressive zoom in"
+                    ```
+                    
+                    #### 5. Integration with Parseq
+                    **Parseq Schedule Support:**
+                    - Reads Parseq-generated movement schedules automatically
+                    - Supports complex mathematical expressions from Parseq
+                    - Maintains frame-accurate timing for movement descriptions
+                    
+                    **Parseq Expression Example:**
+                    ```
+                    Translation X Parseq: wave(f, 60, 20)  → "rhythmic panning movement"
+                    Zoom Parseq: 1 + 0.5 * (f/120)       → "gradual zoom in movement"
+                    ```
+                    
+                    #### 6. Motion Intensity Scheduling
+                    Beyond text descriptions, Wan also generates **frame-by-frame motion intensity values**:
+                    - Calculates motion strength for each frame (0.0 to 2.0)
+                    - Higher motion = more dynamic movement in generation
+                    - Synchronized with actual Deforum movement timing
+                    - Used internally by Wan for motion-aware generation
+                    
+                    **Example Motion Schedule:**
+                    ```
+                    Frame 0-30:   Motion 0.2 (gentle start)
+                    Frame 31-90:  Motion 1.2 (active movement)  
+                    Frame 91-120: Motion 0.4 (settling movement)
+                    ```
+                    
+                    ### 🎯 Practical Usage
+                    
+                    1. **Set up your movement** in Keyframes → Motion tab (or import from Parseq)
+                    2. **Click "Add Movement Descriptions"** in Wan tab
+                    3. **Review the generated descriptions** in the movement results
+                    4. **Enhanced prompts** automatically include movement context
+                    5. **Generate video** with motion-aware prompts for better results
+                    
+                    This system ensures your Wan videos understand and reflect the exact camera movements you've planned in Deforum!
+                    """)
+                
             with gr.Accordion("🛠️ Setup Guide", open=False):
                 gr.Markdown("""
                 #### Step 1: Configure Prompts
@@ -1412,7 +1515,7 @@ def get_tab_wan(dw: SimpleNamespace):
                 5. **Verify schedules**: Make sure you have prompts in the Prompts tab
                 6. **Check seed behavior**: Set seed behavior to 'schedule' if you want custom seed scheduling
                 """)
-        
+
         # Connect movement sensitivity override toggle
         def toggle_movement_sensitivity_override(override_enabled):
             return gr.update(interactive=override_enabled)
