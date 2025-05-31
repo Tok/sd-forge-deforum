@@ -10,6 +10,9 @@ import torch
 import os
 import numpy as np
 import time
+import sys
+import json
+from decimal import Decimal
 
 # Import our new styled progress utilities
 from .utils.wan_progress_utils import (
@@ -17,6 +20,11 @@ from .utils.wan_progress_utils import (
     print_wan_info, print_wan_success, print_wan_warning, print_wan_error, print_wan_progress,
     create_wan_clip_progress, create_wan_frame_progress, create_wan_inference_progress
 )
+
+# Import Deforum utilities for settings and audio handling
+from ..video_audio_utilities import download_audio
+from ..subtitle_handler import init_srt_file, write_frame_subtitle, calculate_frame_duration
+from ..settings import save_settings_from_animation_run
 
 class WanSimpleIntegration:
     """Simplified Wan integration with auto-discovery and proper progress styling"""
@@ -148,7 +156,6 @@ class WanSimpleIntegration:
             
             # Try to load and validate config
             try:
-                import json
                 with open(config_file, 'r') as f:
                     config = json.load(f)
                 
@@ -304,7 +311,6 @@ class WanSimpleIntegration:
                 print(f"✅ Found Wan repository at: {wan_repo_path}")
                 
                 # Add to Python path
-                import sys
                 if str(wan_repo_path) not in sys.path:
                     sys.path.insert(0, str(wan_repo_path))
                 
@@ -562,7 +568,6 @@ class WanSimpleIntegration:
             if wan_repo_path.exists() and (wan_repo_path / "wan").exists():
                 print(f"🔧 Trying official Wan implementation from: {wan_repo_path}")
                 
-                import sys
                 if str(wan_repo_path) not in sys.path:
                     sys.path.insert(0, str(wan_repo_path))
                 
@@ -733,6 +738,28 @@ Diffusers error: {diffusers_e}
             raise RuntimeError("Pipeline not loaded")
         
         try:
+            # Create output directory
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Generate timestring for consistent file naming
+            timestring = kwargs.get('timestring', str(int(time.time())))
+            
+            # Handle audio download early if provided
+            audio_url = kwargs.get('soundtrack_path') or kwargs.get('audio_url')
+            cached_audio_path = None
+            if audio_url:
+                cached_audio_path = self.download_and_cache_audio(audio_url, output_dir, timestring)
+                kwargs['cached_audio_path'] = cached_audio_path
+            
+            # Save settings file before generation
+            settings_file = self.save_wan_settings_and_metadata(
+                output_dir, timestring, clips, model_info, wan_args, **kwargs
+            )
+            
+            # Create SRT subtitle file
+            fps = kwargs.get('fps', 8.0)
+            srt_file = self.create_wan_srt_file(output_dir, timestring, clips, fps)
+            
             with WanGenerationContext(len(clips)) as gen_context:
                 all_frame_paths = []
                 last_frame_path = None
@@ -745,6 +772,13 @@ Diffusers error: {diffusers_e}
                 width = kwargs.get('width', self.optimal_width)
                 
                 print_wan_info(f"Model: {model_info['name']} ({model_info['type']}, {model_info['size']})")
+                print_wan_info(f"Output: {output_dir}")
+                if settings_file:
+                    print_wan_info(f"Settings: {os.path.basename(settings_file)}")
+                if srt_file:
+                    print_wan_info(f"Subtitles: {os.path.basename(srt_file)}")
+                if cached_audio_path:
+                    print_wan_info(f"Audio: {os.path.basename(cached_audio_path)}")
                 
                 # Align dimensions if needed
                 if model_info['type'] == 'VACE':
@@ -757,8 +791,6 @@ Diffusers error: {diffusers_e}
                     if (width, height) != (aligned_width, aligned_height):
                         print_wan_info(f"Resolution aligned: {width}x{height} → {aligned_width}x{aligned_height}")
                         width, height = aligned_width, aligned_height
-                
-                timestring = kwargs.get('timestring', str(int(time.time())))
                 
                 # Generate each clip with progress tracking
                 for clip_idx, clip in enumerate(clips):
@@ -838,7 +870,18 @@ Diffusers error: {diffusers_e}
                 
                 print_wan_success(f"All clips generated! Total frames: {len(all_frame_paths)}")
                 print_wan_info(f"Frames saved to: {output_dir}")
-                return output_dir
+                
+                # Return comprehensive results
+                return {
+                    'output_dir': output_dir,
+                    'frame_paths': all_frame_paths,
+                    'settings_file': settings_file,
+                    'srt_file': srt_file,
+                    'audio_file': cached_audio_path,
+                    'timestring': timestring,
+                    'total_frames': len(all_frame_paths),
+                    'total_clips': len(clips)
+                }
                 
         except Exception as e:
             print_wan_error(f"I2V chained video generation failed: {e}")
@@ -987,6 +1030,149 @@ Diffusers error: {diffusers_e}
                 print_wan_success("Model unloaded, memory freed")
             except Exception as e:
                 print_wan_warning(f"Error unloading model: {e}")
+    
+    def save_wan_settings_and_metadata(self, output_dir: str, timestring: str, clips: List[Dict], 
+                                       model_info: Dict, wan_args=None, **kwargs) -> str:
+        """Save Wan generation settings to match normal Deforum format"""
+        try:
+            settings_filename = os.path.join(output_dir, f"{timestring}_settings.txt")
+            
+            # Create comprehensive settings dictionary
+            settings = {
+                # Wan-specific settings
+                "wan_model_name": model_info['name'],
+                "wan_model_type": model_info['type'],
+                "wan_model_size": model_info['size'],
+                "wan_model_path": model_info['path'],
+                "wan_flash_attention_mode": self.flash_attention_mode,
+                
+                # Generation parameters
+                "width": kwargs.get('width', self.optimal_width),
+                "height": kwargs.get('height', self.optimal_height),
+                "num_inference_steps": kwargs.get('num_inference_steps', 50),
+                "guidance_scale": kwargs.get('guidance_scale', 7.5),
+                "fps": kwargs.get('fps', 8),
+                
+                # Clip information
+                "total_clips": len(clips),
+                "total_frames": sum(clip['num_frames'] for clip in clips),
+                "clips": clips,
+                
+                # Metadata
+                "generation_mode": "wan_i2v_chaining",
+                "timestring": timestring,
+                "output_directory": output_dir,
+                "generation_timestamp": time.time(),
+                "device": str(self.device),
+                
+                # Version info
+                "wan_integration_version": "1.0.0",
+                "deforum_git_commit_id": self._get_deforum_version(),
+            }
+            
+            # Add wan_args if provided
+            if wan_args:
+                settings.update({f"wan_{k}": v for k, v in vars(wan_args).items()})
+            
+            # Save settings file
+            with open(settings_filename, "w", encoding="utf-8") as f:
+                json.dump(settings, f, ensure_ascii=False, indent=4)
+            
+            print_wan_success(f"Settings saved: {os.path.basename(settings_filename)}")
+            return settings_filename
+            
+        except Exception as e:
+            print_wan_error(f"Failed to save settings: {e}")
+            return None
+    
+    def create_wan_srt_file(self, output_dir: str, timestring: str, clips: List[Dict], 
+                           fps: float = 8.0) -> str:
+        """Create SRT subtitle file for Wan generation"""
+        try:
+            srt_filename = os.path.join(output_dir, f"{timestring}.srt")
+            
+            # Initialize SRT file
+            frame_duration = init_srt_file(srt_filename, fps)
+            
+            # Write subtitle entries for each clip
+            current_frame = 0
+            for clip_idx, clip in enumerate(clips):
+                clip_frames = clip['num_frames']
+                
+                # Create subtitle text for this clip
+                subtitle_text = f"Clip {clip_idx + 1}/{len(clips)}: {clip['prompt'][:80]}"
+                if len(clip['prompt']) > 80:
+                    subtitle_text += "..."
+                
+                # Calculate timing
+                start_time = Decimal(current_frame) * frame_duration
+                end_time = Decimal(current_frame + clip_frames) * frame_duration
+                
+                # Write subtitle entry
+                with open(srt_filename, "a", encoding="utf-8") as f:
+                    f.write(f"{clip_idx + 1}\n")
+                    f.write(f"{self._time_to_srt_format(start_time)} --> {self._time_to_srt_format(end_time)}\n")
+                    f.write(f"{subtitle_text}\n\n")
+                
+                current_frame += clip_frames
+            
+            print_wan_success(f"SRT file created: {os.path.basename(srt_filename)}")
+            return srt_filename
+            
+        except Exception as e:
+            print_wan_error(f"Failed to create SRT file: {e}")
+            return None
+    
+    def download_and_cache_audio(self, audio_url: str, output_dir: str, timestring: str) -> str:
+        """Download and cache audio file in output directory"""
+        try:
+            if not audio_url or not audio_url.startswith(('http://', 'https://')):
+                return audio_url  # Return as-is if not a URL
+            
+            print_wan_progress(f"Downloading audio: {audio_url}")
+            
+            # Download audio using Deforum's utility
+            temp_audio_path = download_audio(audio_url)
+            
+            # Determine file extension
+            _, ext = os.path.splitext(audio_url)
+            if not ext:
+                ext = '.mp3'  # Default to MP3
+            
+            # Create cached audio path in output directory
+            cached_audio_path = os.path.join(output_dir, f"{timestring}_soundtrack{ext}")
+            
+            # Copy to output directory
+            import shutil
+            shutil.copy2(temp_audio_path, cached_audio_path)
+            
+            # Clean up temp file
+            try:
+                os.unlink(temp_audio_path)
+            except:
+                pass
+            
+            print_wan_success(f"Audio cached: {os.path.basename(cached_audio_path)}")
+            return cached_audio_path
+            
+        except Exception as e:
+            print_wan_error(f"Failed to download/cache audio: {e}")
+            return audio_url  # Return original URL as fallback
+    
+    def _time_to_srt_format(self, seconds: Decimal) -> str:
+        """Convert seconds to SRT time format (HH:MM:SS,mmm)"""
+        hours, remainder = divmod(float(seconds), 3600)
+        minutes, remainder = divmod(remainder, 60)
+        seconds_int, milliseconds = divmod(remainder, 1)
+        return f"{int(hours):02}:{int(minutes):02}:{int(seconds_int):02},{int(milliseconds * 1000):03}"
+    
+    def _get_deforum_version(self) -> str:
+        """Get Deforum version/commit ID"""
+        try:
+            from ..settings import get_deforum_version
+            return get_deforum_version()
+        except:
+            return "unknown"
 
 # Global instance for easy access
 wan_integration = WanSimpleIntegration()
