@@ -68,6 +68,41 @@ in `default_settings.txt` and may need to be set manually the first time:
 
 Recommendation: **Use ForgeUIs "Settings" - "Defaults" to save your settings.**
 
+## ⚠️ Important: Missing Features in Zirteqs Fork
+
+**This fork focuses on core Deforum functionality with Flux, Wan 2.1, and AI enhancements. Several advanced features have been removed for simplification and better maintainability.**
+
+### 🚫 **Removed Features**
+The following features are **NOT available** in Zirteqs Fork:
+- **❌ ControlNet Integration** - No ControlNet support (tab hidden by default)
+- **❌ FreeU** - Tab and functionality completely removed
+- **❌ Hybrid Video** - Tab and functionality completely removed  
+- **❌ Kohya HR Fix** - Tab and functionality completely removed
+- **❌ Legacy Depth Algorithms** - Only Depth-Anything-V2 and Midas-3-Hybrid remain
+  - Removed: AdaBins, ZoeDepth, LeReS, and legacy combinations
+
+### 🔄 **Need These Features?**
+
+**For ControlNet, FreeU, Hybrid Video, or Kohya HR Fix support, please use the original [Deforum extension](https://github.com/deforum-art/sd-forge-deforum) instead.**
+
+Zirteqs Fork is designed for users who:
+- ✅ Want Flux.1 compatibility  
+- ✅ Need Wan 2.1 AI video generation
+- ✅ Want AI-powered prompt enhancement
+- ✅ Prefer simplified, streamlined functionality
+- ✅ Don't need ControlNet or advanced preprocessing
+
+### 💡 **What Zirteqs Fork Offers Instead**
+- **Modern Depth Processing**: Simplified to best-performing algorithms (Depth-Anything-V2, Midas-3-Hybrid)
+- **Wan 2.1 Integration**: State-of-the-art AI video generation not available in original extension
+- **AI Prompt Enhancement**: Qwen-powered prompt expansion and movement analysis
+- **Camera Shakify**: Advanced camera shake effects with real motion data
+- **Optimized Codebase**: Cleaner, more maintainable code with removed legacy features
+
+**Choose the right extension for your needs:**
+- **Zirteqs Fork**: Flux + Wan 2.1 + AI enhancements + simplified workflow
+- **Original Deforum**: Full feature set with ControlNet, FreeU, Hybrid Video support
+
 ## Wan 2.1 AI Video Generation ✨
 
 ### **Precision Text-to-Video with Deforum Integration**
