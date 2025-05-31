@@ -185,7 +185,7 @@ def anim_frame_warp(prev_img_cv2, args, anim_args, keys, frame_idx, depth_model=
 
     if anim_args.animation_mode == '2D':
         if shaker is not None:
-            log_utils.warn("Camera shake data can not be used in 2D animation mode. Ignoring setup.")
+            log_utils.debug("Camera shake data can not be used in 2D animation mode. Ignoring setup.")
         prev_img = anim_frame_warp_2d(prev_img_cv2, args, anim_args, keys, frame_idx)
     else:  # '3D'
         prev_img = anim_frame_warp_3d(device, prev_img_cv2, depth, anim_args, keys, frame_idx, shaker)

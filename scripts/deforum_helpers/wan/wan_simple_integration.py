@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Wan Simple Integration for Deforum
-Provides simple integration with Wan video generation models for Deforum animation
+Wan Simple Integration with Styled Progress
+Updated to use experimental render core styling for progress indicators
 """
 
 from pathlib import Path
@@ -9,44 +9,57 @@ from typing import List, Dict, Optional
 import torch
 import os
 import numpy as np
+import time
+
+# Import our new styled progress utilities
+from .utils.wan_progress_utils import (
+    WanModelLoadingContext, WanGenerationContext,
+    print_wan_info, print_wan_success, print_wan_warning, print_wan_error, print_wan_progress,
+    create_wan_clip_progress, create_wan_frame_progress, create_wan_inference_progress
+)
 
 class WanSimpleIntegration:
-    """Simple integration class for Wan video generation in Deforum"""
+    """Simplified Wan integration with auto-discovery and proper progress styling"""
     
     def __init__(self, device='cuda'):
         self.device = device if torch.cuda.is_available() else 'cpu'
         self.models = []
         self.pipeline = None
-        print(f"🎬 Wan Simple Integration initialized on {self.device}")
+        self.model_size = None
+        self.optimal_width = 720
+        self.optimal_height = 480
+        self.flash_attention_mode = "auto"  # auto, enabled, disabled
+        print_wan_info(f"Simple Integration initialized on {self.device}")
     
     def discover_models(self) -> List[Dict]:
-        """Discover available Wan models"""
+        """Discover available Wan models with styled progress"""
         models = []
-        
-        # Common Wan model directories
         search_paths = [
-            Path.cwd() / "models" / "wan",
-            Path.cwd() / "Wan2.1",
-            Path.home() / ".cache" / "huggingface" / "hub",
+            Path("models/wan"),
+            Path("models/Wan"),
+            Path("models"),
+            Path("../models/wan"),
+            Path("../models/Wan"),
         ]
+        
+        print_wan_progress("Discovering Wan models...")
         
         for search_path in search_paths:
             if search_path.exists():
-                print(f"🔍 Searching for Wan models in: {search_path}")
+                print_wan_info(f"🔍 Searching: {search_path}")
                 
                 for model_dir in search_path.iterdir():
-                    if model_dir.is_dir():
+                    if model_dir.is_dir() and model_dir.name.startswith(('Wan2.1', 'wan')):
                         model_info = self._analyze_model_directory(model_dir)
                         if model_info:
                             models.append(model_info)
-                            print(f"✅ Found Wan model: {model_info['name']} ({model_info['type']}, {model_info['size']})")
+                            print_wan_success(f"Found: {model_info['name']} ({model_info['type']}, {model_info['size']})")
         
         if not models:
-            print("❌ No Wan models found")
-            print("💡 To download models, use:")
-            print("   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan/Wan2.1-T2V-1.3B")
-        
-        self.models = models
+            print_wan_warning("No Wan models found in search paths")
+        else:
+            print_wan_success(f"Discovery complete - found {len(models)} model(s)")
+            
         return models
     
     def _analyze_model_directory(self, model_dir: Path) -> Optional[Dict]:
@@ -247,32 +260,36 @@ class WanSimpleIntegration:
         return best_model
     
     def load_simple_wan_pipeline(self, model_info: Dict, wan_args=None) -> bool:
-        """Load a simple Wan pipeline with Flash Attention fixes"""
-        try:
-            print(f"🔧 Loading Wan model: {model_info['name']}")
-            
-            # Store flash attention mode for later use
-            self.flash_attention_mode = "Auto (Recommended)"
-            if wan_args and hasattr(wan_args, 'wan_flash_attention_mode'):
-                self.flash_attention_mode = wan_args.wan_flash_attention_mode
-                print(f"🔧 Setting Flash Attention mode to: {self.flash_attention_mode}")
-            
-            # Import torch
-            import torch
-            
-            # Check if this is a VACE model
-            if model_info['type'] == 'VACE':
-                print("🎯 VACE model detected - using specialized VACE handling")
-                return self._load_vace_model(model_info)
-            
-            # For T2V/I2V models, try multiple loading strategies
-            return self._load_standard_wan_model(model_info)
-            
-        except Exception as e:
-            print(f"❌ Model loading failed: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
+        """Load Wan pipeline with styled progress indicators"""
+        model_name = model_info['name']
+        
+        with WanModelLoadingContext(model_name) as progress:
+            try:
+                progress.update(10, "Initializing...")
+                
+                if model_info['type'] == 'VACE':
+                    progress.update(30, "Loading VACE model...")
+                    success = self._load_vace_model(model_info)
+                else:
+                    progress.update(30, "Loading standard model...")
+                    success = self._load_standard_wan_model(model_info)
+                
+                if success:
+                    progress.update(80, "Configuring...")
+                    # Configure Flash Attention if requested
+                    if wan_args and hasattr(wan_args, 'wan_flash_attention'):
+                        self.flash_attention_mode = wan_args.wan_flash_attention
+                        print_wan_info(f"Flash Attention mode: {self.flash_attention_mode}")
+                    
+                    progress.update(100, "Complete!")
+                    return True
+                else:
+                    print_wan_error(f"Failed to load pipeline for {model_name}")
+                    return False
+                    
+            except Exception as e:
+                print_wan_error(f"Model loading failed: {e}")
+                return False
     
     def _load_vace_model(self, model_info: Dict) -> bool:
         """Load VACE model with proper handling"""
@@ -711,113 +728,120 @@ Diffusers error: {diffusers_e}
             return False
     
     def generate_video_with_i2v_chaining(self, clips, model_info, output_dir, wan_args=None, **kwargs):
-        """Generate video using I2V chaining for better continuity between clips"""
+        """Generate video with I2V chaining using styled progress indicators"""
+        if not self.pipeline:
+            raise RuntimeError("Pipeline not loaded")
+        
         try:
-            import shutil
-            from datetime import datetime
-            
-            print(f"🎬 Starting I2V chained generation with {len(clips)} clips...")
-            print(f"📁 Model: {model_info['name']} ({model_info['type']}, {model_info['size']})")
-            
-            # Load the model if not loaded
-            if not self.pipeline:
-                print("🔧 Loading Wan pipeline for I2V chaining...")
-                if not self.load_simple_wan_pipeline(model_info, wan_args):
-                    raise RuntimeError("Failed to load Wan pipeline")
-            
-            # Extract parameters
-            width = kwargs.get('width', 1280)
-            height = kwargs.get('height', 720)
-            steps = kwargs.get('steps', 20)
-            guidance_scale = kwargs.get('guidance_scale', 7.5)
-            
-            # Ensure dimensions are properly aligned for VACE/Wan
-            original_width, original_height = width, height
-            aligned_width = ((width + 15) // 16) * 16
-            aligned_height = ((height + 15) // 16) * 16
-            
-            if aligned_width != original_width or aligned_height != original_height:
-                print(f"🔧 Dimension alignment applied: {original_width}x{original_height} -> {aligned_width}x{aligned_height}")
-                width, height = aligned_width, aligned_height
-            
-            # Create output directory
-            os.makedirs(output_dir, exist_ok=True)
-            
-            # Get timestring for frame naming
-            timestring = datetime.now().strftime("%Y%m%d%H%M%S")
-            
-            all_frame_paths = []
-            total_frame_idx = 0
-            last_frame_path = None
-            
-            for clip_idx, clip in enumerate(clips):
-                print(f"\n🎬 Generating clip {clip_idx + 1}/{len(clips)}")
-                print(f"   📝 Prompt: {clip['prompt'][:50]}...")
-                print(f"   🎞️ Frames: {clip['num_frames']}")
+            with WanGenerationContext(len(clips)) as gen_context:
+                all_frame_paths = []
+                last_frame_path = None
+                total_frame_idx = 0
                 
-                try:
-                    if clip_idx == 0 or last_frame_path is None:
-                        # First clip: use T2V
-                        print("🚀 Using T2V for first clip")
-                        
-                        result = self.pipeline(
-                            prompt=clip['prompt'],
-                            height=height,
-                            width=width,
-                            num_frames=clip['num_frames'],
-                            num_inference_steps=steps,
-                            guidance_scale=guidance_scale,
-                        )
-                    else:
-                        # Subsequent clips: use I2V if available
-                        print(f"🔗 Using I2V chaining from: {os.path.basename(last_frame_path)}")
-                        
-                        if hasattr(self.pipeline, 'generate_image2video'):
-                            from PIL import Image
-                            init_image = Image.open(last_frame_path)
+                # Get generation parameters
+                steps = kwargs.get('num_inference_steps', 50)
+                guidance_scale = kwargs.get('guidance_scale', 7.5)
+                height = kwargs.get('height', self.optimal_height)
+                width = kwargs.get('width', self.optimal_width)
+                
+                print_wan_info(f"Model: {model_info['name']} ({model_info['type']}, {model_info['size']})")
+                
+                # Align dimensions if needed
+                if model_info['type'] == 'VACE':
+                    # VACE models prefer specific resolutions
+                    if self.model_size == "1.3B":
+                        aligned_width, aligned_height = 720, 480
+                    else:  # 14B
+                        aligned_width, aligned_height = min(width, 960), min(height, 640)
+                    
+                    if (width, height) != (aligned_width, aligned_height):
+                        print_wan_info(f"Resolution aligned: {width}x{height} → {aligned_width}x{aligned_height}")
+                        width, height = aligned_width, aligned_height
+                
+                timestring = kwargs.get('timestring', str(int(time.time())))
+                
+                # Generate each clip with progress tracking
+                for clip_idx, clip in enumerate(clips):
+                    try:
+                        # Create frame progress bar for this clip
+                        with create_wan_frame_progress(clip['num_frames'], clip_idx) as frame_progress:
+                            gen_context.update_clip(clip_idx, clip['prompt'][:30])
                             
-                            result = self.pipeline.generate_image2video(
-                                image=init_image,
-                                prompt=clip['prompt'],
-                                height=height,
-                                width=width,
-                                num_frames=clip['num_frames'],
-                                num_inference_steps=steps,
-                                guidance_scale=guidance_scale,
+                            print_wan_progress(f"Generating clip {clip_idx + 1}/{len(clips)}")
+                            print_wan_info(f"Prompt: {clip['prompt'][:50]}...")
+                            print_wan_info(f"Frames: {clip['num_frames']}")
+                            
+                            # Create inference progress bar
+                            with create_wan_inference_progress(steps) as inference_progress:
+                                # Generate based on chaining mode
+                                if clip_idx == 0 or last_frame_path is None:
+                                    # First clip: T2V generation
+                                    print_wan_info("Using T2V generation for first clip")
+                                    result = self.pipeline(
+                                        prompt=clip['prompt'],
+                                        height=height,
+                                        width=width,
+                                        num_frames=clip['num_frames'],
+                                        num_inference_steps=steps,
+                                        guidance_scale=guidance_scale,
+                                    )
+                                    inference_progress.update(steps)
+                                else:
+                                    # Subsequent clips: I2V chaining
+                                    print_wan_info(f"I2V chaining from: {os.path.basename(last_frame_path)}")
+                                    
+                                    if hasattr(self.pipeline, 'generate_image2video'):
+                                        # VACE or custom I2V pipeline
+                                        from PIL import Image
+                                        last_frame_image = Image.open(last_frame_path)
+                                        
+                                        result = self.pipeline.generate_image2video(
+                                            image=last_frame_image,
+                                            prompt=clip['prompt'],
+                                            height=height,
+                                            width=width,
+                                            num_frames=clip['num_frames'],
+                                            num_inference_steps=steps,
+                                            guidance_scale=guidance_scale,
+                                        )
+                                        inference_progress.update(steps)
+                                    else:
+                                        # Fallback to T2V with enhanced prompt
+                                        enhanced_prompt = f"Continuing seamlessly, {clip['prompt']}. Maintain visual continuity."
+                                        result = self.pipeline(
+                                            prompt=enhanced_prompt,
+                                            height=height,
+                                            width=width,
+                                            num_frames=clip['num_frames'],
+                                            num_inference_steps=steps,
+                                            guidance_scale=guidance_scale,
+                                        )
+                                        inference_progress.update(steps)
+                            
+                            # Process and save frames with progress
+                            clip_frames = self._process_and_save_frames(
+                                result, clip_idx, output_dir, timestring, 
+                                total_frame_idx, frame_progress
                             )
-                        else:
-                            # Fallback to T2V with enhanced prompt
-                            enhanced_prompt = f"Continuing seamlessly, {clip['prompt']}. Maintain visual continuity."
-                            result = self.pipeline(
-                                prompt=enhanced_prompt,
-                                height=height,
-                                width=width,
-                                num_frames=clip['num_frames'],
-                                num_inference_steps=steps,
-                                guidance_scale=guidance_scale,
-                            )
+                            
+                            if clip_frames:
+                                all_frame_paths.extend(clip_frames)
+                                total_frame_idx += len(clip_frames)
+                                last_frame_path = clip_frames[-1]  # Update for next clip
+                                print_wan_success(f"Generated {len(clip_frames)} frames for clip {clip_idx + 1}")
+                            else:
+                                raise RuntimeError(f"No frames generated for clip {clip_idx + 1}")
                     
-                    # Process and save frames
-                    clip_frames = self._process_and_save_frames(result, clip_idx, output_dir, timestring, total_frame_idx)
-                    
-                    if clip_frames:
-                        all_frame_paths.extend(clip_frames)
-                        total_frame_idx += len(clip_frames)
-                        last_frame_path = clip_frames[-1]  # Update for next clip
-                        print(f"✅ Generated {len(clip_frames)} frames for clip {clip_idx + 1}")
-                    else:
-                        raise RuntimeError(f"No frames generated for clip {clip_idx + 1}")
+                    except Exception as e:
+                        print_wan_error(f"Clip {clip_idx + 1} generation failed: {e}")
+                        raise
                 
-                except Exception as e:
-                    print(f"❌ Clip {clip_idx + 1} generation failed: {e}")
-                    raise
-            
-            print(f"\n✅ All clips generated! Total frames: {len(all_frame_paths)}")
-            print(f"📁 Frames saved to: {output_dir}")
-            return output_dir
-            
+                print_wan_success(f"All clips generated! Total frames: {len(all_frame_paths)}")
+                print_wan_info(f"Frames saved to: {output_dir}")
+                return output_dir
+                
         except Exception as e:
-            print(f"❌ I2V chained video generation failed: {e}")
+            print_wan_error(f"I2V chained video generation failed: {e}")
             import traceback
             traceback.print_exc()
             raise RuntimeError(f"I2V chained video generation failed: {e}")
@@ -825,8 +849,8 @@ Diffusers error: {diffusers_e}
             # Clean up if needed
             pass
     
-    def _process_and_save_frames(self, result, clip_idx, output_dir, timestring, start_frame_idx):
-        """Process generation result and save frames"""
+    def _process_and_save_frames(self, result, clip_idx, output_dir, timestring, start_frame_idx, frame_progress=None):
+        """Process generation result and save frames with progress tracking"""
         try:
             from PIL import Image
             import numpy as np
@@ -844,8 +868,7 @@ Diffusers error: {diffusers_e}
             # Convert to individual frames
             if hasattr(frames_data, 'cpu'):  # Tensor
                 frames_tensor = frames_data.cpu()
-                print(f"🔧 Processing tensor frames: {frames_tensor.shape}")
-                print(f"🔧 Tensor value range: min={frames_tensor.min():.3f}, max={frames_tensor.max():.3f}")
+                print_wan_info(f"Processing tensor: {frames_tensor.shape}")
                 
                 # Handle different tensor formats
                 if len(frames_tensor.shape) == 5:  # (B, C, F, H, W)
@@ -868,8 +891,12 @@ Diffusers error: {diffusers_e}
                             frame_np = np.clip(frame_np, 0, 255).astype(np.uint8)
                         
                         frames.append(frame_np)
+                        
+                        # Update progress if available
+                        if frame_progress:
+                            frame_progress.update(1)
                 else:
-                    print(f"⚠️ Unexpected tensor shape: {frames_tensor.shape}")
+                    print_wan_warning(f"Unexpected tensor shape: {frames_tensor.shape}")
                     # Try to treat as single frame
                     if len(frames_tensor.shape) == 3:  # (C, H, W)
                         frame_np = frames_tensor.permute(1, 2, 0).numpy()
@@ -885,6 +912,8 @@ Diffusers error: {diffusers_e}
                             frame_np = np.clip(frame_np, 0, 255).astype(np.uint8)
                             
                         frames.append(frame_np)
+                        if frame_progress:
+                            frame_progress.update(1)
             
             elif isinstance(frames_data, list):  # List of PIL Images or arrays
                 for frame in frames_data:
@@ -892,6 +921,9 @@ Diffusers error: {diffusers_e}
                         frames.append(np.array(frame))
                     else:
                         frames.append(frame)
+                    
+                    if frame_progress:
+                        frame_progress.update(1)
             
             # Save frames as PNG files
             saved_paths = []
@@ -904,40 +936,40 @@ Diffusers error: {diffusers_e}
                     pil_image.save(frame_path)
                     saved_paths.append(frame_path)
                 except Exception as save_e:
-                    print(f"⚠️ Failed to save frame {i}: {save_e}")
+                    print_wan_warning(f"Failed to save frame {i}: {save_e}")
                     continue
             
-            print(f"✅ Saved {len(saved_paths)} frames for clip {clip_idx + 1}")
+            print_wan_success(f"Saved {len(saved_paths)} frames for clip {clip_idx + 1}")
             return saved_paths
             
         except Exception as e:
-            print(f"❌ Frame processing failed: {e}")
+            print_wan_error(f"Frame processing failed: {e}")
             import traceback
             traceback.print_exc()
             return []
     
     def test_wan_setup(self) -> bool:
-        """Test if Wan setup is working"""
+        """Test if Wan setup is working with styled output"""
         try:
-            print("🔍 Testing Wan setup...")
+            print_wan_progress("Testing Wan setup...")
             
             # Test model discovery
             models = self.discover_models()
             if not models:
-                print("❌ No models found")
+                print_wan_error("No models found")
                 return False
             
             # Test best model selection
             best_model = self.get_best_model()
             if not best_model:
-                print("❌ No suitable model found")
+                print_wan_error("No suitable model found")
                 return False
             
-            print(f"✅ Wan setup test passed - found {len(models)} models")
+            print_wan_success(f"Setup test passed - found {len(models)} models")
             return True
             
         except Exception as e:
-            print(f"❌ Wan setup test failed: {e}")
+            print_wan_error(f"Setup test failed: {e}")
             return False
     
     def unload_model(self):
@@ -952,17 +984,17 @@ Diffusers error: {diffusers_e}
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                     
-                print("🧹 Wan model unloaded, memory freed")
+                print_wan_success("Model unloaded, memory freed")
             except Exception as e:
-                print(f"⚠️ Error unloading model: {e}")
+                print_wan_warning(f"Error unloading model: {e}")
 
 # Global instance for easy access
 wan_integration = WanSimpleIntegration()
 
 def wan_generate_video_main(*args, **kwargs):
-    """Main entry point for Wan video generation"""
+    """Main entry point for Wan video generation with styled output"""
     try:
-        print("🎬 Wan generate video main called")
+        print_wan_progress("Generate video main called")
         
         # Test setup first
         if not wan_integration.test_wan_setup():
@@ -977,7 +1009,7 @@ def wan_generate_video_main(*args, **kwargs):
         return f"✅ Wan setup verified - ready to generate with {model_info['name']}"
         
     except Exception as e:
-        print(f"❌ Wan generation failed: {e}")
+        print_wan_error(f"Generation failed: {e}")
         import traceback
         traceback.print_exc()
         return f"❌ Wan generation error: {e}"
