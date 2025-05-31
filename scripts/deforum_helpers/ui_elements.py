@@ -880,8 +880,12 @@ The auto-discovery will find your models automatically!
         else:
             print(f"📊 Using default motion strength: {motion_strength}")
         
-        # Parse resolution
-        width, height = map(int, wan_args.wan_resolution.split('x'))
+        # Parse resolution - handle both old format (864x480) and new format (864x480 (Landscape))
+        resolution_str = wan_args.wan_resolution
+        if '(' in resolution_str:
+            # New format: "864x480 (Landscape)" 
+            resolution_str = resolution_str.split(' (')[0]
+        width, height = map(int, resolution_str.split('x'))
         
         # Model/Resolution validation
         model_size = selected_model['size']
@@ -1886,11 +1890,14 @@ def create_accordion_md_row(name, markdown, is_open=False):
 
 
 # QwenPromptExpander and Movement Analysis Event Handlers - moved outside for proper import
-def enhance_prompts_handler(qwen_model, language, auto_download, movement_sensitivity):
+def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download):
     """Handle prompt enhancement with QwenPromptExpander"""
     try:
         from .wan.utils.qwen_manager import qwen_manager
         import json
+        
+        print(f"🎨 AI Prompt Enhancement requested for {qwen_model}")
+        print(f"📝 Received prompts: {str(current_prompts)[:100]}...")
         
         # Check if auto-download is enabled for model availability
         if not auto_download:
@@ -1900,7 +1907,7 @@ def enhance_prompts_handler(qwen_model, language, auto_download, movement_sensit
 
 🔧 **Model Download Required:**
 1. ✅ Enable "Auto-Download Qwen Models" checkbox
-2. 🎨 Click "Enhance Prompts" again to auto-download
+2. 🎨 Click "AI Prompt Enhancement" again to auto-download
 3. ⏳ Wait for download to complete
 
 📥 **Manual Download Alternative:**
@@ -1927,73 +1934,59 @@ def enhance_prompts_handler(qwen_model, language, auto_download, movement_sensit
             else:
                 print(f"📥 Loading Qwen model: {qwen_model}")
         
-        # Try to get wan prompts from the stored wan_enhanced_prompts component
+        # Get wan prompts from the current_prompts parameter (passed directly)
         animation_prompts = None
         
-        # Use a global reference approach - store the wan_enhanced_prompts component
-        # This will be set when the UI is created
-        if hasattr(enhance_prompts_handler, '_wan_enhanced_prompts_component'):
+        if current_prompts and current_prompts.strip():
             try:
-                wan_prompts_value = enhance_prompts_handler._wan_enhanced_prompts_component.value
-                print(f"📝 Got wan prompts from stored component reference")
-                print(f"🔍 Raw wan prompts value: {str(wan_prompts_value)[:200]}...")
-                
-                # Parse the wan prompts - could be JSON or readable format
-                if wan_prompts_value and wan_prompts_value.strip():
-                    try:
-                        # Try to parse as JSON first
-                        animation_prompts = json.loads(wan_prompts_value)
-                        print(f"✅ Successfully parsed {len(animation_prompts)} wan prompts as JSON")
-                    except json.JSONDecodeError:
-                        # Try to parse as readable format (Frame X: prompt)
-                        try:
-                            animation_prompts = {}
-                            for line in wan_prompts_value.strip().split('\n'):
-                                if ':' in line:
-                                    # Handle both "Frame X:" and "X:" formats
-                                    parts = line.split(':', 1)
-                                    frame_part = parts[0].strip()
-                                    prompt_part = parts[1].strip()
-                                    
-                                    # Extract frame number
-                                    if frame_part.lower().startswith('frame '):
-                                        frame_num = frame_part[6:].strip()
-                                    else:
-                                        frame_num = frame_part
-                                    
-                                    animation_prompts[frame_num] = prompt_part
+                # Try to parse as JSON first
+                animation_prompts = json.loads(current_prompts)
+                print(f"✅ Successfully parsed {len(animation_prompts)} Wan prompts as JSON")
+            except json.JSONDecodeError:
+                # Try to parse as readable format (Frame X: prompt)
+                try:
+                    animation_prompts = {}
+                    for line in current_prompts.strip().split('\n'):
+                        if ':' in line:
+                            # Handle both "Frame X:" and "X:" formats
+                            parts = line.split(':', 1)
+                            frame_part = parts[0].strip()
+                            prompt_part = parts[1].strip()
                             
-                            if animation_prompts:
-                                print(f"✅ Successfully parsed {len(animation_prompts)} wan prompts as readable format")
+                            # Extract frame number
+                            if frame_part.lower().startswith('frame '):
+                                frame_num = frame_part[6:].strip()
                             else:
-                                raise ValueError("No valid prompts found")
-                        except Exception as e:
-                            print(f"❌ Could not parse wan prompts: {e}")
-                            return f"❌ Invalid format in wan prompts. Expected JSON format like:\n{{\n  \"0\": \"prompt text\",\n  \"60\": \"another prompt\"\n}}\n\nOr readable format like:\nFrame 0: prompt text\nFrame 60: another prompt"
-                else:
-                    print("⚠️ Empty wan prompts")
+                                frame_num = frame_part
+                            
+                            animation_prompts[frame_num] = prompt_part
                     
-            except Exception as e:
-                print(f"❌ Error accessing stored wan prompts component: {e}")
+                    if animation_prompts:
+                        print(f"✅ Successfully parsed {len(animation_prompts)} Wan prompts as readable format")
+                    else:
+                        raise ValueError("No valid prompts found")
+                except Exception as e:
+                    print(f"❌ Could not parse Wan prompts: {e}")
+                    return f"❌ Invalid format in Wan prompts. Expected JSON format like:\n{{\n  \"0\": \"prompt text\",\n  \"60\": \"another prompt\"\n}}\n\nOr readable format like:\nFrame 0: prompt text\nFrame 60: another prompt"
         else:
-            print("⚠️ No stored wan_enhanced_prompts component reference found")
+            print("⚠️ Empty Wan prompts")
             
         # Check if we got valid prompts
         if not animation_prompts:
-            return """❌ No wan prompts found!
+            return """❌ No Wan prompts found!
 
 🔧 **Setup Required:**
-1. 📝 Load prompts using "Load Wan Prompts from Deforum Prompts" or "Load Default Wan Prompt"
+1. 📝 Load prompts using "Load from Deforum Prompts" or "Load Default Wan Prompts"
 2. 📋 Make sure your prompts are in proper JSON format like:
    {
      "0": "prompt text",
      "60": "another prompt",
      "120": "a cyberpunk environment with glowing elements"
    }
-3. 🎨 Click **Enhance Prompts** again after setting up prompts
+3. 🎨 Click **AI Prompt Enhancement** again after setting up prompts
 
 💡 **Quick Start:**
-Click "Load Default Wan Prompt" to start with example prompts!"""
+Click "Load Default Wan Prompts" to start with example prompts!"""
         
         # Validate prompts content
         if len(animation_prompts) == 1 and "0" in animation_prompts and "beautiful landscape" in animation_prompts["0"]:
@@ -2001,8 +1994,8 @@ Click "Load Default Wan Prompt" to start with example prompts!"""
 
 🔧 **Please configure your actual animation prompts:**
 1. 📝 Load your real prompts using the load buttons above
-2. ✏️ Or manually edit the wan prompts field
-3. 🎨 Click **Enhance Prompts** again
+2. ✏️ Or manually edit the Wan prompts field
+3. 🎨 Click **AI Prompt Enhancement** again
 
 💡 **For your animation sequence:**
 Set up prompts like:
@@ -2012,7 +2005,7 @@ Set up prompts like:
   "36": "A cyberpunk scene with LED patterns, digital environment"
 }"""
         
-        print(f"🎨 Enhancing {len(animation_prompts)} wan prompts with {qwen_model}")
+        print(f"🎨 Enhancing {len(animation_prompts)} Wan prompts with {qwen_model}")
         
         # Create the Qwen prompt expander with better error handling
         try:
@@ -2025,7 +2018,7 @@ Set up prompts like:
 🔄 **Download in Progress:**
 Model download started automatically. This may take a few minutes.
 
-📥 **Please wait** and try clicking "Enhance Prompts" again in 30-60 seconds.
+📥 **Please wait** and try clicking "AI Prompt Enhancement" again in 30-60 seconds.
 
 💡 **Status**: Check console for download progress."""
                 else:
@@ -2092,7 +2085,7 @@ Model download started automatically. This may take a few minutes.
 🔧 **Troubleshooting:**
 1. 🔄 Restart WebUI and try again
 2. ✅ Check that Qwen models are properly installed
-3. 📝 Verify your wan prompts are in valid JSON format
+3. 📝 Verify your Wan prompts are in valid JSON format
 
 💡 **Need Help?** Check the console for detailed error messages."""
 
@@ -2161,38 +2154,38 @@ Movement descriptions will be added to your existing prompts."""
                 
                 if not has_movement:
                     print("📊 No movement detected in schedules, using demo values for illustration")
-                    # Provide demo values to show how it works
-                    anim_args.translation_x = "0:(0), 100:(50)"  # Right pan demo
-                    anim_args.translation_z = "0:(0), 100:(30)"  # Forward dolly demo
-                    anim_args.rotation_3d_y = "0:(0), 100:(15)" # Right yaw demo
-                    anim_args.zoom = "0:(1.0), 100:(1.3)"       # Zoom in demo
+                    # Provide demo values to show how it works - realistic cinematic zoom-in with gentle movement
+                    anim_args.translation_x = "0:(0), 60:(20), 120:(0)"   # Gentle S-curve pan
+                    anim_args.translation_z = "0:(0), 120:(40)"          # Smooth forward dolly
+                    anim_args.rotation_3d_y = "0:(0), 120:(8)"           # Subtle right yaw
+                    anim_args.zoom = "0:(1.0), 40:(1.4), 120:(1.8)"     # Progressive zoom in
                 
             except Exception as e:
                 print(f"⚠️ Could not access movement schedules: {e}")
                 print("📊 Using demo movement data to show functionality")
-                # Fallback to demo data
-                anim_args.translation_x = "0:(0), 100:(50)"  # Right pan
+                # Fallback to demo data - realistic cinematic zoom-in with gentle movement
+                anim_args.translation_x = "0:(0), 60:(20), 120:(0)"   # Gentle S-curve pan
                 anim_args.translation_y = "0:(0)"
-                anim_args.translation_z = "0:(0), 100:(30)"  # Forward dolly
+                anim_args.translation_z = "0:(0), 120:(40)"          # Smooth forward dolly
                 anim_args.rotation_3d_x = "0:(0)"
-                anim_args.rotation_3d_y = "0:(0), 100:(15)"  # Right yaw
+                anim_args.rotation_3d_y = "0:(0), 120:(8)"           # Subtle right yaw
                 anim_args.rotation_3d_z = "0:(0)"
-                anim_args.zoom = "0:(1.0), 100:(1.3)"  # Zoom in
+                anim_args.zoom = "0:(1.0), 40:(1.4), 120:(1.8)"     # Progressive zoom in
                 anim_args.angle = "0:(0)"
-                anim_args.max_frames = 100
+                anim_args.max_frames = 120
         else:
             print("⚠️ No stored movement schedule references found")
             print("📊 Using demo movement data to show functionality")
-            # Use demo data to show how it works
-            anim_args.translation_x = "0:(0), 100:(50)"  # Right pan
+            # Use demo data to show how it works - realistic cinematic zoom-in with gentle movement
+            anim_args.translation_x = "0:(0), 60:(20), 120:(0)"   # Gentle S-curve pan
             anim_args.translation_y = "0:(0)"
-            anim_args.translation_z = "0:(0), 100:(30)"  # Forward dolly
+            anim_args.translation_z = "0:(0), 120:(40)"          # Smooth forward dolly
             anim_args.rotation_3d_x = "0:(0)"
-            anim_args.rotation_3d_y = "0:(0), 100:(15)"  # Right yaw
+            anim_args.rotation_3d_y = "0:(0), 120:(8)"           # Subtle right yaw
             anim_args.rotation_3d_z = "0:(0)"
-            anim_args.zoom = "0:(1.0), 100:(1.3)"  # Zoom in
+            anim_args.zoom = "0:(1.0), 40:(1.4), 120:(1.8)"     # Progressive zoom in
             anim_args.angle = "0:(0)"
-            anim_args.max_frames = 100
+            anim_args.max_frames = 120
         
         # Generate movement description for appending to prompts
         movement_desc, average_motion_strength = analyze_deforum_movement(
@@ -2303,11 +2296,11 @@ def check_qwen_models_handler(qwen_model):
         if not is_downloaded:
             status_parts.append("<br><strong style='color: #333;'>Quick Setup:</strong>")
             status_parts.append("1. ✅ Enable 'Auto-Download Qwen Models' above")
-            status_parts.append("2. 🎨 Click 'Enhance Prompts' for auto-download")
+            status_parts.append("2. 🎨 Click 'AI Prompt Enhancement' for auto-download")
             status_parts.append("3. ⏳ Wait for download to complete")
         elif not is_loaded:
             status_parts.append("<br><strong style='color: #333;'>Ready to Use:</strong>")
-            status_parts.append("🎨 Click 'Enhance Prompts' to load and use this model")
+            status_parts.append("🎨 Click 'AI Prompt Enhancement' to load and use this model")
         else:
             status_parts.append("<br><strong style='color: #333;'>Status:</strong> Ready for prompt enhancement!")
         
@@ -2347,7 +2340,7 @@ Use HuggingFace CLI or git to download the model"""
             return f"""✅ <span style='color: #4CAF50;'>Model already available: {selected_model}</span>
 
 <strong style='color: #333;'>Status:</strong> Model is downloaded and ready to use<br>
-🎨 Click 'Enhance Prompts' to start using this model"""
+🎨 Click 'AI Prompt Enhancement' to start using this model"""
         
         # Start download
         download_status = []
@@ -2364,7 +2357,7 @@ Use HuggingFace CLI or git to download the model"""
         
         if success:
             download_status.append("<br>✅ <span style='color: #4CAF50;'>Download completed successfully!</span>")
-            download_status.append("🎨 Ready to use - click 'Enhance Prompts' to start")
+            download_status.append("🎨 Ready to use - click 'AI Prompt Enhancement' to start")
         else:
             download_status.append("<br>❌ <span style='color: #f44336;'>Download failed</span>")
             download_status.append("<strong style='color: #333;'>Troubleshooting:</strong>")

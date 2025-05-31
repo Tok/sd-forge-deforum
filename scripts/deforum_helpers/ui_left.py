@@ -204,24 +204,22 @@ def setup_deforum_left_side_ui():
         try:
             print("🔗 Connecting Wan prompt enhancement button...")
             
-            # Store reference to wan_enhanced_prompts component for the handler
             from .ui_elements import enhance_prompts_handler
-            enhance_prompts_handler._wan_enhanced_prompts_component = locals()['wan_enhanced_prompts']
             
-            # Connect the enhance button with simplified inputs (no enable flags)
+            # Connect the enhance button with current prompts as first parameter
             locals()['enhance_prompts_btn'].click(
                 fn=enhance_prompts_handler,
                 inputs=[
+                    locals()['wan_enhanced_prompts'],  # current_prompts - first parameter
                     locals()['wan_qwen_model'], 
                     locals()['wan_qwen_language'],
-                    locals()['wan_qwen_auto_download'], 
-                    locals()['wan_movement_sensitivity']
+                    locals()['wan_qwen_auto_download']
                 ],
                 outputs=[locals()['wan_enhanced_prompts']]
             )
             print("✅ Wan prompt enhancement button connected successfully")
         except Exception as e:
-            print("⚠️ Warning: Failed to connect Wan prompt enhancement button: {e}")
+            print(f"⚠️ Warning: Failed to connect Wan prompt enhancement button: {e}")
             import traceback
             traceback.print_exc()
 

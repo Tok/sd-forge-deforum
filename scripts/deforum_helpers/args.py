@@ -1179,8 +1179,8 @@ def WanArgs():
         "wan_resolution": {
             "label": "Wan Resolution",
             "type": "dropdown",
-            "choices": ["864x480", "480x864", "1280x720", "720x1280"],
-            "value": "864x480",  # Wide landscape default instead of portrait
+            "choices": ["864x480 (Landscape)", "480x864 (Portrait)", "1280x720 (Landscape)", "720x1280 (Portrait)"],
+            "value": "864x480 (Landscape)",  # Wide landscape default instead of portrait
             "info": "Resolution for Wan video generation. 480p for VACE 1.3B, 720p for VACE 14B. Will warn if mismatched."
         },
         "wan_seed": {
