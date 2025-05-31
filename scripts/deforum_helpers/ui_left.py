@@ -199,6 +199,34 @@ def setup_deforum_left_side_ui():
                 outputs=[locals()['wan_generation_status']]
             )
 
+    # Set up Wan Prompt Enhancement button with proper animation_prompts access
+    if 'enhance_prompts_btn' in locals() and 'animation_prompts' in locals():
+        try:
+            print("🔗 Connecting Wan prompt enhancement button...")
+            
+            # Store reference to animation_prompts component for the handler
+            from .ui_elements import enhance_prompts_handler
+            enhance_prompts_handler._animation_prompts_component = locals()['animation_prompts']
+            
+            # Connect the enhance button with all required inputs
+            locals()['enhance_prompts_btn'].click(
+                fn=enhance_prompts_handler,
+                inputs=[
+                    locals()['wan_enable_prompt_enhancement'], 
+                    locals()['wan_qwen_model'], 
+                    locals()['wan_qwen_language'],
+                    locals()['wan_qwen_auto_download'], 
+                    locals()['wan_enable_movement_analysis'], 
+                    locals()['wan_movement_sensitivity']
+                ],
+                outputs=[locals()['wan_enhanced_prompts']]
+            )
+            print("✅ Wan prompt enhancement button connected successfully")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to connect Wan prompt enhancement button: {e}")
+            import traceback
+            traceback.print_exc()
+
     # Set up Wan Model Validation buttons
     try:
         from .wan.wan_model_validator import WanModelValidator
