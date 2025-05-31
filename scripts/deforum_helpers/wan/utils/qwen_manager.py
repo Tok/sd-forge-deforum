@@ -57,7 +57,7 @@ class QwenModelManager:
             models_dir: Directory to store Qwen models. If None, uses WebUI models directory
         """
         if models_dir is None:
-            # Use WebUI models directory structure
+            # Use WebUI models directory structure - store in models/wan
             try:
                 import modules.paths as paths
                 base_models_dir = Path(paths.models_path)
@@ -65,7 +65,7 @@ class QwenModelManager:
                 # Fallback to relative path if WebUI not available
                 base_models_dir = Path("models")
             
-            models_dir = base_models_dir / "qwen"
+            models_dir = base_models_dir / "wan"
         
         self.models_dir = Path(models_dir)
         self.models_dir.mkdir(parents=True, exist_ok=True)
@@ -86,6 +86,7 @@ class QwenModelManager:
     def auto_select_model(self, prefer_vl: bool = False) -> str:
         """
         Automatically select the best Qwen model based on available VRAM
+        Prefers 3B models for better compatibility and speed
         
         Args:
             prefer_vl: Whether to prefer vision-language models
@@ -97,7 +98,17 @@ class QwenModelManager:
         
         print(f"🧠 Available VRAM: {available_vram:.1f}GB")
         
-        # Sort models by VRAM requirement (ascending)
+        # Prefer 3B models for better compatibility and speed
+        preferred_models = ["Qwen2.5_3B", "QwenVL2.5_3B"] if prefer_vl else ["Qwen2.5_3B"]
+        
+        # Check if preferred 3B models fit in VRAM
+        for model_name in preferred_models:
+            specs = self.MODEL_SPECS.get(model_name)
+            if specs and specs['vram_gb'] <= available_vram:
+                print(f"✅ Auto-selected: {model_name} ({specs['description']})")
+                return model_name
+        
+        # Fallback: Sort models by VRAM requirement (ascending) and find best fit
         sorted_models = sorted(
             self.MODEL_SPECS.items(),
             key=lambda x: x[1]['vram_gb']
@@ -114,9 +125,9 @@ class QwenModelManager:
                 elif best_model is None:  # Fallback to any compatible model
                     best_model = model_name
                     
-        # If no model fits, use the smallest one
+        # If no model fits, use the smallest one (3B)
         if best_model is None:
-            best_model = sorted_models[0][0]
+            best_model = "Qwen2.5_3B"
             print(f"⚠️ No model fits in {available_vram:.1f}GB VRAM, using smallest: {best_model}")
         else:
             specs = self.MODEL_SPECS[best_model]

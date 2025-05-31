@@ -221,9 +221,52 @@ def setup_deforum_left_side_ui():
             )
             print("✅ Wan prompt enhancement button connected successfully")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Wan prompt enhancement button: {e}")
+            print("⚠️ Warning: Failed to connect Wan prompt enhancement button: {e}")
             import traceback
             traceback.print_exc()
+
+    # Set up movement component references for analyze_movement_handler
+    try:
+        from .ui_elements import analyze_movement_handler
+        
+        # Store references to movement schedule components
+        movement_components = {}
+        movement_component_names = [
+            'translation_x', 'translation_y', 'translation_z',
+            'rotation_3d_x', 'rotation_3d_y', 'rotation_3d_z',
+            'zoom', 'angle', 'max_frames'
+        ]
+        
+        # Try to get movement components from locals()
+        for comp_name in movement_component_names:
+            if comp_name in locals():
+                # For max_frames, we need to store the actual value, not the component
+                if comp_name == 'max_frames':
+                    movement_components[comp_name] = getattr(locals()[comp_name], 'value', 100)
+                else:
+                    movement_components[comp_name] = getattr(locals()[comp_name], 'value', f"0:(0)")
+            else:
+                # Fallback defaults
+                if comp_name == 'max_frames':
+                    movement_components[comp_name] = 100
+                elif comp_name == 'zoom':
+                    movement_components[comp_name] = "0:(1.0)"
+                else:
+                    movement_components[comp_name] = "0:(0)"
+        
+        # Store the movement components dictionary
+        analyze_movement_handler._movement_components = movement_components
+        
+        # Store reference to wan_movement_description component
+        if 'wan_movement_description' in locals():
+            analyze_movement_handler._wan_movement_description_component = locals()['wan_movement_description']
+        
+        print(f"✅ Movement component references set up for {len(movement_components)} components")
+        
+    except Exception as e:
+        print(f"⚠️ Warning: Failed to set up movement component references: {e}")
+        import traceback
+        traceback.print_exc()
 
     # Set up Wan Model Validation buttons
     try:

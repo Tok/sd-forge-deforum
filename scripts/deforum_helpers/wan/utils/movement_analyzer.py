@@ -366,4 +366,102 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
     combined_description = "camera movement with " + ", ".join(descriptions)
     combined_strength = max(strengths) if strengths else 0.0
     
-    return combined_description, combined_strength 
+    return combined_description, combined_strength
+
+
+def generate_wan_motion_intensity_schedule(anim_args, max_frames: int = 100, sensitivity: float = 1.0) -> str:
+    """
+    Generate a Wan motion intensity schedule from Deforum movement schedules
+    
+    Args:
+        anim_args: Object with Deforum animation arguments
+        max_frames: Maximum frames to analyze
+        sensitivity: Movement detection sensitivity
+        
+    Returns:
+        Motion intensity schedule string (e.g., "0:(0.5), 50:(1.2), 100:(0.8)")
+    """
+    
+    analyzer = MovementAnalyzer(sensitivity)
+    
+    # Get schedule strings from anim_args
+    translation_x = str(getattr(anim_args, 'translation_x', "0: (0)"))
+    translation_y = str(getattr(anim_args, 'translation_y', "0: (0)"))
+    translation_z = str(getattr(anim_args, 'translation_z', "0: (0)"))
+    rotation_3d_x = str(getattr(anim_args, 'rotation_3d_x', "0: (0)"))
+    rotation_3d_y = str(getattr(anim_args, 'rotation_3d_y', "0: (0)"))
+    rotation_3d_z = str(getattr(anim_args, 'rotation_3d_z', "0: (0)"))
+    zoom = str(getattr(anim_args, 'zoom', "0: (1.0)"))
+    angle = str(getattr(anim_args, 'angle', "0: (0)"))
+    
+    # Parse all movement schedules
+    tx_keyframes = parse_schedule_string(translation_x, max_frames)
+    ty_keyframes = parse_schedule_string(translation_y, max_frames)
+    tz_keyframes = parse_schedule_string(translation_z, max_frames)
+    rx_keyframes = parse_schedule_string(rotation_3d_x, max_frames)
+    ry_keyframes = parse_schedule_string(rotation_3d_y, max_frames)
+    rz_keyframes = parse_schedule_string(rotation_3d_z, max_frames)
+    zoom_keyframes = parse_schedule_string(zoom, max_frames)
+    angle_keyframes = parse_schedule_string(angle, max_frames)
+    
+    # Interpolate all movement values across frames
+    tx_values = interpolate_schedule(tx_keyframes, max_frames)
+    ty_values = interpolate_schedule(ty_keyframes, max_frames)
+    tz_values = interpolate_schedule(tz_keyframes, max_frames)
+    rx_values = interpolate_schedule(rx_keyframes, max_frames)
+    ry_values = interpolate_schedule(ry_keyframes, max_frames)
+    rz_values = interpolate_schedule(rz_keyframes, max_frames)
+    zoom_values = interpolate_schedule(zoom_keyframes, max_frames)
+    angle_values = interpolate_schedule(angle_keyframes, max_frames)
+    
+    # Calculate motion intensity for each frame
+    motion_intensities = []
+    
+    for frame in range(max_frames):
+        # Calculate movement deltas for this frame (compared to previous frame)
+        if frame == 0:
+            frame_intensity = 0.0
+        else:
+            # Translation deltas
+            tx_delta = abs(tx_values[frame] - tx_values[frame-1]) * sensitivity
+            ty_delta = abs(ty_values[frame] - ty_values[frame-1]) * sensitivity
+            tz_delta = abs(tz_values[frame] - tz_values[frame-1]) * sensitivity
+            
+            # Rotation deltas
+            rx_delta = abs(rx_values[frame] - rx_values[frame-1]) * sensitivity * 10  # Scale rotation
+            ry_delta = abs(ry_values[frame] - ry_values[frame-1]) * sensitivity * 10
+            rz_delta = abs(rz_values[frame] - rz_values[frame-1]) * sensitivity * 10
+            
+            # Zoom delta
+            zoom_delta = abs(zoom_values[frame] - zoom_values[frame-1]) * sensitivity * 20  # Scale zoom
+            
+            # Angle delta
+            angle_delta = abs(angle_values[frame] - angle_values[frame-1]) * sensitivity * 10
+            
+            # Combine all deltas into motion intensity
+            total_delta = tx_delta + ty_delta + tz_delta + rx_delta + ry_delta + rz_delta + zoom_delta + angle_delta
+            
+            # Normalize to 0.0-2.0 range for Wan motion strength
+            frame_intensity = min(2.0, total_delta / 20.0)  # Adjust divisor to tune sensitivity
+        
+        motion_intensities.append(frame_intensity)
+    
+    # Create keyframes for the motion intensity schedule
+    # Sample at regular intervals to avoid huge schedules
+    sample_interval = max(1, max_frames // 20)  # Max 20 keyframes
+    keyframes = []
+    
+    for frame in range(0, max_frames, sample_interval):
+        intensity = motion_intensities[frame]
+        keyframes.append(f"{frame}:({intensity:.3f})")
+    
+    # Always include the last frame
+    if (max_frames - 1) % sample_interval != 0:
+        last_intensity = motion_intensities[-1]
+        keyframes.append(f"{max_frames-1}:({last_intensity:.3f})")
+    
+    schedule_string = ", ".join(keyframes)
+    
+    print(f"📐 Generated Wan motion intensity schedule: {schedule_string}")
+    
+    return schedule_string 
