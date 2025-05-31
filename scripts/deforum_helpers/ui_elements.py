@@ -1072,95 +1072,86 @@ def get_tab_wan(dw: SimpleNamespace):
                 )
                 # wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)  # Moved to override section
         
-        # Prompt Enhancement Section - MOVED UP for better logical flow
-        with gr.Accordion("🎨 AI Prompt Enhancement (QwenPromptExpander)", open=True):
+        # Prompt Enhancement Section - MOVED UP and REORGANIZED for better workflow
+        with gr.Accordion("🎨 Wan Prompt Management & AI Enhancement", open=True):
             gr.Markdown("""
-            **Intelligent Prompt Enhancement with QwenPromptExpander**
+            **Wan Video Prompt Workflow:**
             
-            Automatically enhance your prompts using advanced AI models for better video quality:
-            - **🧠 AI Enhancement**: Refines and expands prompts for better clarity and detail
-            - **🎬 Movement Integration**: Analyzes Deforum schedules and adds camera movement descriptions
-            - **✏️ Manual Editing**: Enhanced prompts are editable before generation
-            - **🌍 Multi-Language**: Support for English and Chinese enhancement
-            
-            **💡 How it works:**
-            1. Your original prompts are analyzed by Qwen AI models
-            2. Movement schedules (rotation, translation, zoom) are translated to English
-            3. Enhanced prompts with movement descriptions are generated
-            4. You can manually edit the results before video generation
+            1. **📋 Load Initial Prompts** from Deforum or defaults
+            2. **📐 Analyze Movement** (optional) - adds camera movement descriptions  
+            3. **🎨 Enhance with AI** (optional) - improves prompt quality with Qwen models
+            4. **✏️ Manual Edit** (optional) - fine-tune the final prompts
+            5. **🎬 Generate Video** - create your Wan video with enhanced prompts
             """)
             
-            # Quick Start Templates
-            with gr.Accordion("📝 Quick Start Templates", open=False):
-                gr.Markdown("""
-                **Two Prompt Template Options**
+            # Step 1: Load Initial Prompts
+            gr.Markdown("### **Step 1: Load Initial Prompts**")
+            with FormRow():
+                load_deforum_to_wan_btn = gr.Button(
+                    "📋 Load Wan Prompts from Deforum Prompts",
+                    variant="primary",
+                    size="lg",
+                    elem_id="load_deforum_to_wan_btn"
+                )
+                load_wan_defaults_btn = gr.Button(
+                    "🐰 Load Default Bunny Prompts",
+                    variant="secondary", 
+                    size="lg",
+                    elem_id="load_wan_defaults_btn"
+                )
+            
+            # Wan Prompts Display - ALWAYS VISIBLE
+            wan_enhanced_prompts = gr.Textbox(
+                label="Wan Video Prompts (Editable)",
+                lines=12,
+                interactive=True,
+                placeholder="Click 'Load Wan Prompts from Deforum Prompts' to copy your current prompts, or 'Load Default Bunny Prompts' to start with defaults.",
+                info="These are the prompts that will be used for Wan video generation. You can manually edit these or enhance them with AI.",
+                elem_id="wan_enhanced_prompts_textbox"
+            )
+            
+            # Step 2: Movement Analysis (Optional)
+            gr.Markdown("### **Step 2: Analyze Movement (Optional)**")
+            gr.Markdown("""
+            **Analyze Deforum movement schedules** and add camera descriptions to prompts:
+            - **Translation**: X/Y/Z position → "left pan", "forward dolly"  
+            - **Rotation**: 3D rotations → "upward pitch", "clockwise roll"
+            - **Zoom**: Zoom changes → "slow zoom in", "fast zoom out"
+            """)
+            
+            with FormRow():
+                wan_movement_sensitivity = create_gr_elem(dw.wan_movement_sensitivity)
+                analyze_movement_btn = gr.Button(
+                    "📐 Analyze Movement & Add Descriptions",
+                    variant="primary",
+                    size="lg",
+                    elem_id="wan_analyze_movement_btn"
+                )
                 
-                Choose the right template for your generation type:
-                
-                - **📝 Load Wan Prompts**: Bunny evolution optimized for Wan (no text signs)
-                  - Pure visual transformation: cute bunny → cosmic drip bunny
-                  - No text rendering (Wan doesn't excel at text generation)
-                  - Smooth visual progression with perfect audio sync timing
-                
-                - **🏢 Load Deforum Prompts**: Landscape evolution with text signs  
-                  - Diverse scene progression: landscape → cyberpunk → digital realm
-                  - Includes "Deforum & Forge" text signs (great for Flux models)
-                  - Good for traditional Deforum generation with text elements
-                
-                **💡 Choose Based On:**
-                - **Wan Generation**: Use Wan Prompts (visual focus, no text)
-                - **Flux Generation**: Use Deforum Prompts (text rendering capable)
-                - **Testing**: Either works, but content will be different
-                """)
-                
-                with FormRow():
-                    load_wan_prompts_btn = gr.Button(
-                        "📝 Load Wan Prompts",
-                        variant="secondary",
-                        size="sm",
-                        elem_id="load_wan_prompts_btn"
-                    )
-                    load_deforum_prompts_btn = gr.Button(
-                        "🏢 Load Deforum Prompts",
-                        variant="secondary",
-                        size="sm",
-                        elem_id="load_deforum_prompts_btn"
-                    )
+            # Movement Analysis Results - ALWAYS VISIBLE
+            wan_movement_description = gr.Textbox(
+                label="Movement Analysis Results",
+                lines=8,
+                interactive=False,
+                placeholder="Click 'Analyze Movement' to see detailed movement analysis from your Deforum schedules...",
+                info="Movement analysis results will appear here. Movement descriptions are automatically added to enhanced prompts.",
+                elem_id="wan_movement_description_textbox"
+            )
+            
+            # Step 3: AI Enhancement (Optional)  
+            gr.Markdown("### **Step 3: AI Enhancement (Optional)**")
+            gr.Markdown("""
+            **Enhance prompts using Qwen AI models** for better video quality:
+            - **🧠 AI Enhancement**: Refines and expands prompts
+            - **🎬 Movement Integration**: Adds movement descriptions automatically
+            - **🌍 Multi-Language**: English and Chinese support
+            """)
             
             with FormRow():
                 wan_qwen_model = create_gr_elem(dw.wan_qwen_model)
                 wan_qwen_language = create_gr_elem(dw.wan_qwen_language)
                 wan_qwen_auto_download = create_gr_elem(dw.wan_qwen_auto_download)
                 
-            # Movement Analysis Section
-            with gr.Accordion("📐 Movement Analysis Settings", open=False):
-                gr.Markdown("""
-                **Deforum Schedule → English Translation**
-                
-                Automatically translate your Deforum movement schedules into natural language descriptions:
-                - **Translation**: X/Y/Z position changes → "left pan", "forward dolly", etc.
-                - **Rotation**: 3D rotations → "upward pitch", "clockwise roll", "right yaw"
-                - **Zoom**: Zoom changes → "slow zoom in", "fast zoom out"
-                - **Speed Detection**: Automatically classifies movement speed (slow/medium/fast)
-                - **Dynamic Motion Strength**: Calculates optimal motion strength from schedules
-                """)
-                
-                with FormRow():
-                    wan_movement_sensitivity = create_gr_elem(dw.wan_movement_sensitivity)
-                    
-                wan_movement_description = create_gr_elem(dw.wan_movement_description)
-                
-            # Enhancement Controls - Simplified without enable checkboxes
-            gr.Markdown("""
-            **🎯 One-Click Enhancement**
-            
-            Choose your enhancement type:
-            - **🎨 Enhance Prompts**: Add cinematic details and visual descriptions
-            - **📐 Add Movement**: Analyze and add camera movement descriptions
-            
-            💡 **Language Support**: Use Language dropdown to choose English or Chinese enhancement
-            """)
-            
             with FormRow():
                 enhance_prompts_btn = gr.Button(
                     "🎨 Enhance Prompts with AI",
@@ -1168,46 +1159,64 @@ def get_tab_wan(dw: SimpleNamespace):
                     size="lg",
                     elem_id="wan_enhance_prompts_btn"
                 )
-                analyze_movement_btn = gr.Button(
-                    "📐 Add Movement Descriptions",
-                    variant="primary",
-                    size="lg",
-                    elem_id="wan_analyze_movement_btn"
-                )
                 
-            # Enhanced Prompts Display
-            wan_enhanced_prompts = create_gr_elem(dw.wan_enhanced_prompts)
-            
-            # Qwen Model Status
-            with gr.Accordion("🧠 Qwen Model Status & Management", open=False):
+            # Quick Start Templates - Moved to accordion
+            with gr.Accordion("📝 Quick Start Templates", open=False):
                 gr.Markdown("""
-                **Model Information & Auto-Download Status**
+                **Two Prompt Template Options**
                 
-                Monitor Qwen model availability and manage downloads:
+                - **📝 Load Wan Prompts**: Bunny evolution optimized for Wan (no text signs)
+                - **🏢 Load Deforum Prompts**: Landscape evolution with text signs  
+                
+                **💡 Choose Based On:**
+                - **Wan Generation**: Use Wan Prompts (visual focus, no text)
+                - **Flux Generation**: Use Deforum Prompts (text rendering capable)
                 """)
                 
-                qwen_model_status = gr.HTML(
-                    label="Qwen Model Status",
-                    value="⏳ Checking model availability...",
-                    elem_id="wan_qwen_model_status"
-                )
-                
                 with FormRow():
-                    check_qwen_models_btn = gr.Button(
-                        "🔍 Check Model Status",
+                    load_wan_prompts_btn = gr.Button(
+                        "📝 Load Wan Template Prompts",
                         variant="secondary",
-                        elem_id="wan_check_qwen_models_btn"
+                        size="sm",
+                        elem_id="load_wan_prompts_btn"
                     )
-                    download_qwen_model_btn = gr.Button(
-                        "📥 Download Selected Model",
-                        variant="primary",
-                        elem_id="wan_download_qwen_model_btn"
-                    )
-                    cleanup_qwen_cache_btn = gr.Button(
-                        "🧹 Cleanup Model Cache",
+                    load_deforum_prompts_btn = gr.Button(
+                        "🏢 Load Deforum Template Prompts", 
                         variant="secondary",
-                        elem_id="wan_cleanup_qwen_cache_btn"
+                        size="sm",
+                        elem_id="load_deforum_prompts_btn"
                     )
+
+        # Qwen Model Management - Moved to separate accordion
+        with gr.Accordion("🧠 Qwen Model Management", open=False):
+            gr.Markdown("""
+            **Model Information & Auto-Download Status**
+            
+            Monitor Qwen model availability and manage downloads:
+            """)
+            
+            qwen_model_status = gr.HTML(
+                label="Qwen Model Status",
+                value="⏳ Checking model availability...",
+                elem_id="wan_qwen_model_status"
+            )
+            
+            with FormRow():
+                check_qwen_models_btn = gr.Button(
+                    "🔍 Check Model Status",
+                    variant="secondary",
+                    elem_id="wan_check_qwen_models_btn"
+                )
+                download_qwen_model_btn = gr.Button(
+                    "📥 Download Selected Model",
+                    variant="primary",
+                    elem_id="wan_download_qwen_model_btn"
+                )
+                cleanup_qwen_cache_btn = gr.Button(
+                    "🧹 Cleanup Model Cache",
+                    variant="secondary",
+                    elem_id="wan_cleanup_qwen_cache_btn"
+                )
 
         # Advanced Settings - Moved down but still accessible
         with gr.Accordion("Advanced Settings", open=False):
@@ -1567,6 +1576,19 @@ def get_tab_wan(dw: SimpleNamespace):
         fn=analyze_movement_handler,
         inputs=[wan_movement_sensitivity],
         outputs=[wan_movement_description]
+    )
+    
+    # Connect new Wan prompt loading buttons
+    load_deforum_to_wan_btn.click(
+        fn=load_deforum_to_wan_prompts_handler,
+        inputs=[],
+        outputs=[wan_enhanced_prompts]
+    )
+    
+    load_wan_defaults_btn.click(
+        fn=load_wan_defaults_handler,
+        inputs=[],
+        outputs=[wan_enhanced_prompts]
     )
     
     # Connect event handlers for Qwen model management
@@ -2143,83 +2165,77 @@ def analyze_movement_handler(movement_sensitivity):
             sensitivity=movement_sensitivity
         )
         
-        # Update the wan_movement_description field if we have a reference to it
-        if hasattr(analyze_movement_handler, '_wan_movement_description_component'):
-            try:
-                # Store both the description and the motion intensity schedule
-                combined_info = f"Movement: {movement_desc}\nMotion Schedule: {motion_intensity_schedule}"
-                analyze_movement_handler._wan_movement_description_component.value = combined_info
-                print(f"✅ Updated wan_movement_description with: {movement_desc}")
-                print(f"✅ Generated motion intensity schedule: {motion_intensity_schedule}")
-            except Exception as e:
-                print(f"⚠️ Could not update wan_movement_description component: {e}")
-        
         # Store movement description for enhance_prompts_handler to use
         enhance_prompts_handler._movement_description = movement_desc
         print(f"💾 Stored movement description for prompt enhancement: {movement_desc}")
         
-        result = f"""🎯 **Movement Analysis Complete**
-
-**Movement Description Generated:**
-{movement_desc}
-
-**Average Motion Strength:** {average_motion_strength:.2f}
-
-**Wan Motion Intensity Schedule:**
-{motion_intensity_schedule}
-
-✅ **How This Works:**
-
-1. **Deforum Schedules (Unchanged)**: Your rotation/translation schedules control actual camera movement
-2. **Text Description**: "{movement_desc}" will be appended to enhanced prompts automatically
-3. **Motion Intensity Schedule**: Controls Wan's internal motion strength frame-by-frame
-
-📊 **Current Deforum Movement Analysis:**
-• **Translation X**: {anim_args.translation_x}
-• **Translation Y**: {anim_args.translation_y}  
-• **Translation Z**: {anim_args.translation_z}
-• **Rotation Y**: {anim_args.rotation_3d_y}
-• **Zoom**: {anim_args.zoom}
-
-🎬 **Next Step - Enhance Prompts:**
-
-Click "🎨 Enhance Prompts with AI" to:
-• **Enhance your prompts** with AI
-• **Automatically append** "{movement_desc}" to each enhanced prompt
-• **Generate final prompts** ready for Wan generation
-
-**Example Final Prompt:**
-*"A sterile hallway illuminated by bright fluorescent lights, clinical environment with metallic surfaces. {movement_desc}"*
-
-🎬 **During Wan Generation:**
-
-**Motion Control:**
-- Frame 0: Motion intensity {motion_intensity_schedule.split(',')[0].split('(')[1].split(')')[0]}
-- Dynamic motion values adapt to movement complexity
-- Wan's internal motion syncs with your Deforum camera movement
-
-💡 **Benefits:**
-• **Automatic Integration**: Movement descriptions append to enhanced prompts
-• **Motion Synchronization**: Wan's motion matches your Deforum schedules  
-• **Better Continuity**: Motion intensity adapts to movement complexity
-
-🚀 **Ready for Enhancement:**
-Your movement analysis is complete! Now click "🎨 Enhance Prompts" to create the final prompts with integrated movement descriptions.
-
-💡 **Tip**: Adjust Movement Sensitivity (current: {movement_sensitivity:.1f}) to fine-tune:
-• **Lower values** (0.5): Only detect significant movements
-• **Higher values** (1.5): Detect subtle movements too"""
+        # Build detailed result text for UI display
+        result_lines = [
+            "🎯 **MOVEMENT ANALYSIS COMPLETE**",
+            "",
+            f"**Movement Description:** {movement_desc}",
+            f"**Average Motion Strength:** {average_motion_strength:.2f}",
+            "",
+            "**Wan Motion Intensity Schedule:**",
+            f"{motion_intensity_schedule}",
+            "",
+            "✅ **HOW THIS WORKS:**",
+            "",
+            "1. **Deforum Schedules (Unchanged)**: Your rotation/translation schedules control actual camera movement",
+            f"2. **Text Description**: \"{movement_desc}\" will be appended to enhanced prompts automatically",
+            "3. **Motion Intensity Schedule**: Controls Wan's internal motion strength frame-by-frame",
+            "",
+            "📊 **CURRENT DEFORUM MOVEMENT ANALYSIS:**",
+            f"• **Translation X**: {anim_args.translation_x}",
+            f"• **Translation Y**: {anim_args.translation_y}",
+            f"• **Translation Z**: {anim_args.translation_z}",
+            f"• **Rotation Y**: {anim_args.rotation_3d_y}",
+            f"• **Zoom**: {anim_args.zoom}",
+            "",
+            "🎬 **NEXT STEP - ENHANCE PROMPTS:**",
+            "",
+            "Click \"🎨 Enhance Prompts with AI\" to:",
+            "• **Enhance your prompts** with AI",
+            f"• **Automatically append** \"{movement_desc}\" to each enhanced prompt",
+            "• **Generate final prompts** ready for Wan generation",
+            "",
+            "**Example Final Prompt:**",
+            f"*\"A sterile hallway illuminated by bright fluorescent lights, clinical environment with metallic surfaces. {movement_desc}\"*",
+            "",
+            "🎬 **DURING WAN GENERATION:**",
+            "",
+            "**Motion Control:**",
+            f"- Frame 0: Motion intensity {motion_intensity_schedule.split(',')[0].split('(')[1].split(')')[0] if '(' in motion_intensity_schedule else '0.0'}",
+            "- Dynamic motion values adapt to movement complexity",
+            "- Wan's internal motion syncs with your Deforum camera movement",
+            "",
+            "💡 **BENEFITS:**",
+            "• **Automatic Integration**: Movement descriptions append to enhanced prompts",
+            "• **Motion Synchronization**: Wan's motion matches your Deforum schedules",
+            "• **Better Continuity**: Motion intensity adapts to movement complexity",
+            "",
+            "🚀 **READY FOR ENHANCEMENT:**",
+            "Your movement analysis is complete! Now click \"🎨 Enhance Prompts\" to create the final prompts with integrated movement descriptions.",
+            "",
+            f"💡 **TIP**: Adjust Movement Sensitivity (current: {movement_sensitivity:.1f}) to fine-tune:",
+            "• **Lower values** (0.5): Only detect significant movements",
+            "• **Higher values** (1.5): Detect subtle movements too"
+        ]
+        
+        result = "\n".join(result_lines)
         
         print(f"✅ Movement analysis completed - description: {movement_desc}")
         print(f"📐 Motion intensity schedule: {motion_intensity_schedule}")
+        print(f"🖥️ Returning UI result text ({len(result)} characters)")
         
         return result
         
     except Exception as e:
-        print(f"❌ Error in movement analysis: {e}")
+        error_msg = f"❌ Error in movement analysis: {str(e)}"
+        print(error_msg)
         import traceback
         traceback.print_exc()
-        return f"❌ Error in movement analysis: {str(e)}"
+        return error_msg
 
 def check_qwen_models_handler(qwen_model):
     """Check Qwen model status and availability"""
@@ -2486,3 +2502,127 @@ def load_deforum_prompts_handler():
     except Exception as e:
         print(f"❌ Error loading Deforum prompts: {e}")
         return f"0: Error loading prompts: {str(e)}"
+
+
+def load_deforum_to_wan_prompts_handler():
+    """Load current Deforum prompts into Wan prompts field"""
+    try:
+        # Try to get animation prompts from the stored component reference
+        animation_prompts_json = ""
+        
+        if hasattr(enhance_prompts_handler, '_animation_prompts_component'):
+            try:
+                animation_prompts_json = enhance_prompts_handler._animation_prompts_component.value
+                print(f"📋 Loading Deforum prompts to Wan prompts field")
+            except Exception as e:
+                print(f"⚠️ Could not access animation_prompts component: {e}")
+        
+        if not animation_prompts_json or animation_prompts_json.strip() == "":
+            return """📋 No Deforum prompts found!
+
+🔧 **Setup Required:**
+1. 📝 Go to the **Prompts tab** and configure your animation prompts
+2. 📋 Make sure your prompts are in proper JSON format
+3. 🔄 Come back and click this button again
+
+💡 **Example Prompts Format:**
+{
+  "0": "a peaceful landscape scene",
+  "60": "a synthwave aesthetic with neon colors", 
+  "120": "a cyberpunk environment with glowing elements"
+}"""
+        
+        # Parse the JSON and convert to readable format for Wan
+        try:
+            import json
+            prompts_dict = json.loads(animation_prompts_json)
+            
+            # Convert to Wan format (just the prompts, one per line)
+            wan_prompts_lines = []
+            for frame, prompt in sorted(prompts_dict.items(), key=lambda x: int(x[0])):
+                # Clean up the prompt (remove negative prompts)
+                clean_prompt = prompt.split('--neg')[0].strip()
+                wan_prompts_lines.append(f"Frame {frame}: {clean_prompt}")
+            
+            result = "\n".join(wan_prompts_lines)
+            print(f"✅ Converted {len(prompts_dict)} Deforum prompts to Wan format")
+            return result
+            
+        except json.JSONDecodeError as e:
+            return f"""❌ Invalid JSON in Deforum prompts: {str(e)}
+
+🔧 **Fix Your Prompts:**
+1. 📝 Go to the **Prompts tab**
+2. ✏️ Fix the JSON format (check for missing quotes, commas, etc.)
+3. 🔄 Try loading again
+
+💡 **JSON Format Required:**
+{
+  "0": "prompt text here",
+  "60": "another prompt here"
+}"""
+            
+    except Exception as e:
+        return f"❌ Error loading Deforum prompts: {str(e)}"
+
+
+def load_wan_defaults_handler():
+    """Load default bunny prompts into Wan prompts field"""
+    try:
+        import json
+        import os
+        
+        # Load default bunny prompts from settings
+        settings_path = os.path.join(os.path.dirname(__file__), '..', 'default_settings.txt')
+        
+        if not os.path.exists(settings_path):
+            # Fallback to hardcoded defaults
+            return """Frame 0: A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic
+Frame 12: A white bunny with slightly glowing fur, sitting in a meadow with subtle magical sparkles
+Frame 43: A bunny with soft neon highlights on its fur, sitting in a meadow with digital aurora effects
+Frame 74: A bunny with cyberpunk fur patterns, glowing blue and purple, in an urban meadow setting
+Frame 85: A bunny with LED-trimmed ears and glowing whiskers, cyberpunk aesthetic, neon city background
+Frame 106: A tech bunny with holographic fur patterns, sitting in a futuristic garden environment
+Frame 119: A bunny wearing sleek chrome accessories, reflective metallic fur highlights, sci-fi setting
+Frame 126: A drip bunny with golden chains and designer accessories, confident pose, luxury environment
+Frame 147: A swag bunny with diamond earrings and platinum fur trim, posing with attitude
+Frame 158: A boss bunny with bling accessories and designer sunglasses, standing confidently
+Frame 178: A supreme drip bunny with ice-cold chains, golden grillz, and designer everything
+Frame 210: A legendary bunny deity with cosmic bling, floating in space with stellar accessories
+Frame 241: An ascended bunny with celestial drip, surrounded by floating diamonds and gold
+Frame 262: A transcendent bunny overlord with reality-bending bling, fractal jewelry patterns
+Frame 272: A hyperdimensional drip bunny with impossible geometry accessories, glowing with power
+Frame 293: An omnipotent bunny god with universal bling, commanding cosmic forces
+Frame 314: A supreme bunny entity with reality-warping drip, existing beyond time and space
+Frame 324: The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"""
+        
+        try:
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+            
+            wan_prompts = settings.get('wan_prompts', {})
+            
+            if wan_prompts:
+                # Convert to readable format
+                wan_prompts_lines = []
+                for frame, prompt in sorted(wan_prompts.items(), key=lambda x: int(x[0])):
+                    wan_prompts_lines.append(f"Frame {frame}: {prompt}")
+                
+                result = "\n".join(wan_prompts_lines)
+                print(f"✅ Loaded {len(wan_prompts)} default bunny prompts")
+                return result
+            else:
+                # Use fallback
+                return """Frame 0: A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic
+Frame 12: A white bunny with slightly glowing fur, sitting in a meadow with subtle magical sparkles  
+Frame 43: A bunny with soft neon highlights on its fur, sitting in a meadow with digital aurora effects
+Frame 324: The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"""
+                
+        except Exception as e:
+            print(f"⚠️ Error loading default settings: {e}")
+            # Return simple fallback
+            return """Frame 0: A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic
+Frame 324: The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"""
+            
+    except Exception as e:
+        return f"❌ Error loading default prompts: {str(e)}"
