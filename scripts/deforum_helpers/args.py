@@ -1117,6 +1117,13 @@ def WanArgs():
             "value": True,
             "info": "Automatically download missing Qwen models when needed"
         },
+        "wan_preferred_size": {
+            "label": "Preferred Model Size",
+            "type": "dropdown",
+            "choices": ["1.3B VACE (Recommended)", "14B VACE (High Quality)", "Auto-Select"],
+            "value": "1.3B VACE (Recommended)",
+            "info": "Preferred model size for generation"
+        },
         "wan_enable_movement_analysis": {
             "label": "Enable Movement Analysis",
             "type": "checkbox",
@@ -1156,6 +1163,117 @@ def WanArgs():
             "step": 0.05,
             "value": 0.8,
             "info": "Override I2V strength for better continuity (leave at 0.8 for automatic)"
+        },
+        # Additional Wan Arguments
+        "wan_t2v_model": {
+            "label": "T2V Model",
+            "type": "dropdown",
+            "choices": ["1.3B VACE", "14B VACE", "Auto-Select"],
+            "value": "1.3B VACE",
+            "info": "Text-to-video model selection"
+        },
+        "wan_i2v_model": {
+            "label": "I2V Model",
+            "type": "dropdown",
+            "choices": ["Use Primary Model", "1.3B VACE", "14B VACE"],
+            "value": "Use Primary Model",
+            "info": "Image-to-video model selection"
+        },
+        "wan_resolution": {
+            "label": "Resolution",
+            "type": "dropdown",
+            "choices": ["864x480 (Landscape)", "480x864 (Portrait)", "1280x720 (Landscape)", "720x1280 (Portrait)"],
+            "value": "864x480 (Landscape)",
+            "info": "Video resolution for generation"
+        },
+        "wan_seed": {
+            "label": "Seed",
+            "type": "number",
+            "value": -1,
+            "precision": 0,
+            "info": "Random seed for generation (-1 for random)"
+        },
+        "wan_guidance_scale": {
+            "label": "Guidance Scale",
+            "type": "slider",
+            "minimum": 1.0,
+            "maximum": 20.0,
+            "step": 0.5,
+            "value": 7.5,
+            "info": "How closely to follow the prompt"
+        },
+        "wan_strength_override": {
+            "label": "Strength Override",
+            "type": "checkbox",
+            "value": True,
+            "info": "Override automatic strength calculation"
+        },
+        "wan_fixed_strength": {
+            "label": "Fixed Strength",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "step": 0.05,
+            "value": 1.0,
+            "info": "Fixed strength value when override is enabled"
+        },
+        "wan_guidance_override": {
+            "label": "Guidance Override",
+            "type": "checkbox",
+            "value": True,
+            "info": "Override automatic guidance scale calculation"
+        },
+        "wan_motion_strength_override": {
+            "label": "Motion Strength Override",
+            "type": "checkbox",
+            "value": False,
+            "info": "Override automatic motion strength calculation"
+        },
+        "wan_motion_strength": {
+            "label": "Motion Strength",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 2.0,
+            "step": 0.1,
+            "value": 1.0,
+            "info": "Strength of motion effects"
+        },
+        "wan_frame_overlap": {
+            "label": "Frame Overlap",
+            "type": "slider",
+            "minimum": 0,
+            "maximum": 10,
+            "step": 1,
+            "value": 2,
+            "info": "Number of overlapping frames for I2V chaining"
+        },
+        "wan_enable_interpolation": {
+            "label": "Enable Interpolation",
+            "type": "checkbox",
+            "value": True,
+            "info": "Enable frame interpolation for smoother transitions"
+        },
+        "wan_interpolation_strength": {
+            "label": "Interpolation Strength",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "step": 0.1,
+            "value": 0.5,
+            "info": "Strength of frame interpolation"
+        },
+        "wan_flash_attention_mode": {
+            "label": "Flash Attention Mode",
+            "type": "dropdown",
+            "choices": ["Auto (Recommended)", "Force Flash Attention", "Force PyTorch Fallback"],
+            "value": "Auto (Recommended)",
+            "info": "Flash attention performance mode"
+        },
+        "wan_qwen_auto_download": {
+            "label": "Auto-Download Qwen Models",
+            "type": "checkbox",
+            "value": True,
+            "info": "Automatically download missing Qwen models"
         }
     }
 
