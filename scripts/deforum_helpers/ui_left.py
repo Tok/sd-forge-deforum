@@ -18,10 +18,10 @@ from types import SimpleNamespace
 import gradio as gr
 from .defaults import get_gradio_html
 from .gradio_funcs import change_css, handle_change_functions
-from .args import DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, RootArgs, LoopArgs, FreeUArgs, KohyaHRFixArgs, WanArgs
+from .args import DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, RootArgs, LoopArgs, WanArgs
 from .deforum_controlnet import setup_controlnet_ui
 from .ui_elements import (get_tab_run, get_tab_keyframes, get_tab_prompts, get_tab_init,
-                          get_tab_hybrid, get_tab_output, get_tab_freeu, get_tab_kohya_hrfix)
+                          get_tab_output)
 
 def set_arg_lists():
     # convert dicts to NameSpaces for easy working (args.param instead of args['param']
@@ -30,11 +30,9 @@ def set_arg_lists():
     dp = SimpleNamespace(**ParseqArgs())  # default parseq ars
     dv = SimpleNamespace(**DeforumOutputArgs())  # default video args
     dr = SimpleNamespace(**RootArgs())  # ROOT args
-    dfu = SimpleNamespace(**FreeUArgs()) 
-    dku = SimpleNamespace(**KohyaHRFixArgs()) 
     dw = SimpleNamespace(**WanArgs())  # Wan args
     dloopArgs = SimpleNamespace(**LoopArgs())  # Guided imgs args
-    return d, da, dp, dv, dr, dfu, dku, dw, dloopArgs
+    return d, da, dp, dv, dr, dw, dloopArgs
 
 def wan_generate_video():
     """
@@ -108,7 +106,7 @@ Error: {str(e)}
         return f"❌ Error: {str(e)}"
 
 def setup_deforum_left_side_ui():
-    d, da, dp, dv, dr, dfu, dku, dw, dloopArgs = set_arg_lists()
+    d, da, dp, dv, dr, dw, dloopArgs = set_arg_lists()
     # set up main info accordion on top of the UI
     with gr.Accordion("Info, Links and Help", open=False, elem_id='main_top_info_accord'):
         gr.HTML(value=get_gradio_html('main'))
@@ -122,16 +120,16 @@ def setup_deforum_left_side_ui():
             tab_keyframes_params = get_tab_keyframes(d, da, dloopArgs)  # Keyframes tab
             tab_prompts_params = get_tab_prompts(da)  # Prompts tab
             tab_init_params = get_tab_init(d, da, dp)  # Init tab
-            controlnet_dict = setup_controlnet_ui()  # ControlNet tab
-            tab_freeu_params = get_tab_freeu(dfu)  # FreeU tab
-            tab_kohya_hrfix_params = get_tab_kohya_hrfix(dku)  # Kohya tab
-            # Re-enable Wan tab (UI only, imports still isolated)
+            # ControlNet tab - hidden by default (add setting to show it)
+            controlnet_dict = {}
+            if d.show_controlnet_tab:  # Only show if explicitly enabled
+                controlnet_dict = setup_controlnet_ui()  # ControlNet tab
+            # Wan tab
             from .ui_elements import get_tab_wan
-            tab_wan_params = get_tab_wan(dw)  # Re-enable Wan tab
-            tab_hybrid_params = get_tab_hybrid(da)  # Hybrid tab
+            tab_wan_params = get_tab_wan(dw)  # Wan tab
             tab_output_params = get_tab_output(da, dv)  # Output tab
             # add returned gradio elements from main tabs to locals()
-            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_prompts_params, **tab_init_params, **controlnet_dict, **tab_freeu_params, **tab_kohya_hrfix_params, **tab_wan_params, **tab_hybrid_params, **tab_output_params}.items():
+            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_prompts_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params}.items():
                 locals()[key] = value
 
     # Gradio's Change functions - hiding and renaming elements based on other elements

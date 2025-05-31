@@ -22,7 +22,7 @@ import modules.shared as sh
 from modules.sd_models import FakeInitialModel
 
 from .args import DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, get_settings_component_names, \
-    pack_args, FreeUArgs, KohyaHRFixArgs, WanArgs
+    pack_args, WanArgs
 from .defaults import mask_fill_choices, get_camera_shake_list
 from .deforum_controlnet import controlnet_component_names
 from .deprecation_utils import handle_deprecated_settings
@@ -44,7 +44,7 @@ def get_keys_to_exclude():
     # image_path and outdir are in use, not to be deleted
     # init_image_box is PIL object not string, so ignore.
 
-def load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, custom_settings_file, root, run_id):
+def load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, video_args, custom_settings_file, root, run_id):
     custom_settings_file = custom_settings_file[run_id]
     print(f"reading custom settings from {custom_settings_file.name}")
     if not os.path.isfile(custom_settings_file.name):
@@ -62,7 +62,7 @@ def load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlne
         if "animation_prompts_negative" in jdata:
             args_dict_main['animation_prompts_negative'] = jdata["animation_prompts_negative"]
         keys_to_exclude = get_keys_to_exclude()
-        for args_namespace in [args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args]:
+        for args_namespace in [args, anim_args, parseq_args, loop_args, controlnet_args, video_args]:
             for k, v in vars(args_namespace).items():
                 if k not in keys_to_exclude:
                     if k in jdata:
@@ -73,7 +73,7 @@ def load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlne
         return True
 
 # save settings function that get calls when run_deforum is being called
-def save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root, full_out_file_path = None, wan_args = None):
+def save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, video_args, root, full_out_file_path = None, wan_args = None):
     if full_out_file_path:
         args.__dict__["seed"] = root.raw_seed
         args.__dict__["batch_name"] = root.raw_batch_name
@@ -85,7 +85,7 @@ def save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, co
     with open(settings_filename, "w+", encoding="utf-8") as f:
         s = {}
         # Include all argument dictionaries, including wan_args if provided
-        dicts_to_merge = [args.__dict__, anim_args.__dict__, parseq_args.__dict__, loop_args.__dict__, controlnet_args.__dict__, freeu_args.__dict__, kohya_hrfix_args.__dict__, video_args.__dict__]
+        dicts_to_merge = [args.__dict__, anim_args.__dict__, parseq_args.__dict__, loop_args.__dict__, controlnet_args.__dict__, video_args.__dict__]
         if wan_args is not None:
             dicts_to_merge.append(wan_args.__dict__)
         
@@ -140,11 +140,9 @@ def save_settings(*args, **kwargs):
     args_dict["animation_prompts_negative"] = data['animation_prompts_negative']
     loop_dict = pack_args(data, LoopArgs)
     controlnet_dict = pack_args(data, controlnet_component_names)
-    freeu_args_dict = pack_args(data, FreeUArgs)
-    kohya_hrfix_args_dict = pack_args(data, KohyaHRFixArgs)
     wan_args_dict = pack_args(data, WanArgs)
     video_args_dict = pack_args(data, DeforumOutputArgs)
-    combined = {**args_dict, **anim_args_dict, **parseq_dict, **loop_dict, **controlnet_dict, **freeu_args_dict, **kohya_hrfix_args_dict, **wan_args_dict, **video_args_dict}
+    combined = {**args_dict, **anim_args_dict, **parseq_dict, **loop_dict, **controlnet_dict, **wan_args_dict, **video_args_dict}
     exclude_keys = get_keys_to_exclude()
     filtered_combined = {k: v for k, v in combined.items() if k not in exclude_keys}
     

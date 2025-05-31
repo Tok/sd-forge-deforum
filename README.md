@@ -1,4 +1,4 @@
-# Zirteq Fluxabled Fork
+# Zirteqs Deforum Fork
 
 Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum)
 for [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge), 

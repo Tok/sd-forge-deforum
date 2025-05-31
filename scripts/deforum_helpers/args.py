@@ -560,9 +560,9 @@ def DeforumAnimArgs():
         "depth_algorithm": {
             "label": "Depth Algorithm",
             "type": "dropdown",
-            "choices": ['Depth-Anything-V2-Small', 'Midas-3-Hybrid', 'Midas+AdaBins (old)', 'Zoe+AdaBins (old)', 'AdaBins', 'Zoe', 'Leres'],
+            "choices": ['Depth-Anything-V2-Small', 'Midas-3-Hybrid'],
             "value": "Depth-Anything-V2-Small",
-            "info": "choose an algorithm/ method for keeping color coherence across the animation"
+            "info": "Depth estimation algorithm: Depth-Anything-V2 (recommended) or MiDaS (fallback)"
         },
         "midas_weight": {
             "label": "MiDaS/Zoe weight",
@@ -764,20 +764,32 @@ def DeforumArgs():
         "W": {
             "label": "Width",
             "type": "slider",
-            "minimum": 64,
+            "value": 1024,
+            "minimum": 128,
             "maximum": 2048,
-            "step": 4,
-            "value": 1280,
+            "step": 64,
+            "info": "width in pixels. Use bigger sizes for Flux. Recommended = 1024"
         },
         "H": {
-            "label": "Height",
+            "label": "Height", 
             "type": "slider",
-            "minimum": 64,
+            "value": 1024,
+            "minimum": 128,
             "maximum": 2048,
-            "step": 4,
-            "value": 720,
+            "step": 64,
+            "info": "height in pixels. Use bigger sizes for Flux. Recommended = 1024"
         },
-        "show_info_on_ui": True,
+        "show_info_on_ui": {
+            "type": "checkbox",
+            "value": False,
+            "label": "Show more info",
+            "info": "adds additional explanatory text to various parameters"},
+        "show_controlnet_tab": {
+            "type": "checkbox",
+            "value": False,
+            "label": "Show ControlNet tab",
+            "info": "Shows the ControlNet tab (experimental - not fully working yet)"
+        },
         "tiling": {
             "label": "Tiling",
             "type": "checkbox",
@@ -1054,282 +1066,83 @@ def ParseqArgs():
     }
 
 
-def FreeUArgs():
-    return {
-        "freeu_enabled": {
-            "label": "Enabled",
-            "type": "checkbox",
-            "value": False,
-            "info": "Enable FreeU"
-        },
-        "freeu_b1": {
-            "label": "Backbone stage 1",
-            "type": "textbox",
-            "value": "0:(1.3)",
-            "info": "backbone factor of the first stage block of decoder",
-        },
-        "freeu_b2": {
-            "label": "Backbone stage 2",
-            "type": "textbox",
-            "value": "0:(1.4)",
-            "info": "backbone factor of the second stage block of decoder",
-        },
-        "freeu_s1": {
-            "label": "Skip stage 1",
-            "type": "textbox",
-            "value": "0:(0.9)",
-            "info": "skip factor of the first stage block of decoder",
-        },
-        "freeu_s2": {
-            "label": "Skip stage 2",
-            "type": "textbox",
-            "value": "0:(0.2)",
-            "info": "skip factor of the second stage block of decoder",
-        },
-    }
-
-
-def KohyaHRFixArgs():
-    return {
-        "kohya_hrfix_enabled": {
-            "label": "Enabled",
-            "type": "checkbox",
-            "value": False,
-            "info": "Enable Kohya HRFix"
-        },
-        "kohya_hrfix_block_number": {
-            "label": "Block Number (1-32)",
-            "type": "textbox",
-            "value": "0:(1)",
-        },
-        "kohya_hrfix_downscale_factor": {
-            "label": "Downscale Factor (0.1-9.0)",
-            "type": "textbox",
-            "value": "0:(2.0)",
-        },
-        "kohya_hrfix_start_percent": {
-            "label": "Start Percent (0.0-1.0)",
-            "type": "textbox",
-            "value": "0:(0.0)",
-        },
-        "kohya_hrfix_end_percent": {
-            "label": "End Percent (0.0-1.0)",
-            "type": "textbox",
-            "value": "0:(0.35)",
-        },
-        "kohya_hrfix_downscale_after_skip": {
-            "label": "Downscale After Skip",
-            "type": "checkbox",
-            "value": True,
-            "info": ""
-        },
-        "kohya_hrfix_downscale_method": {
-            "label": "Downscale Method",
-            "type": "radio",
-            "choices": ["bicubic", "nearest-exact", "bilinear", "area", "bislerp"],
-            "value": "bicubic",
-            "info": ""
-        },
-        "kohya_hrfix_upscale_method": {
-            "label": "Upscale Method",
-            "type": "radio",
-            "choices": ["bicubic", "nearest-exact", "bilinear", "area", "bislerp"],
-            "value": "bicubic",
-            "info": ""
-        }
-    }
-
-
 def WanArgs():
-    """Wan 2.1 video generation arguments - Updated to integrate with Deforum schedules"""
+    """Wan 2.1 Video Generation Arguments"""
     return {
-        "wan_t2v_model": {
-            "label": "Primary Model",
-            "type": "dropdown",
-            "choices": ["Auto-Detect", "1.3B VACE", "14B VACE", "1.3B T2V (Legacy)", "14B T2V (Legacy)", "Custom Path"],
-            "value": "1.3B VACE",
-            "info": "Primary Wan model. VACE 1.3B: 480p, 8GB VRAM. VACE 14B: 480p+720p, 16GB+ VRAM. VACE models handle both T2V and I2V."
-        },
-        "wan_i2v_model": {
-            "label": "I2V Model (Legacy)", 
-            "type": "dropdown",
-            "choices": ["Auto-Detect", "Use Primary Model", "Use T2V Model (No Continuity)", "14B I2V 720P (Legacy)", "14B I2V 480P (Legacy)", "Custom Path"],
-            "value": "Use Primary Model",
-            "info": "I2V chaining mode. 'Use Primary Model' uses VACE for seamless transitions (recommended). 'Use T2V Model' = independent clips."
-        },
-        "wan_auto_download": {
-            "label": "Auto-Download Models",
-            "type": "checkbox",
-            "value": True,
-            "info": "Automatically download missing models from HuggingFace (recommended for first-time setup)"
-        },
-        "wan_preferred_size": {
-            "label": "Preferred Model Size",
-            "type": "dropdown",
-            "choices": ["1.3B VACE (Recommended)", "14B VACE (High Quality)", "Legacy Models"],
-            "value": "1.3B VACE (Recommended)",
-            "info": "VACE 1.3B: 480p, 8GB VRAM, fast. VACE 14B: 480p+720p, 16GB+ VRAM, better quality."
+        # Core Settings
+        "wan_mode": {
+            "label": "Wan Mode",
+            "type": "radio",
+            "choices": ["Disabled", "T2V Only", "I2V Chaining"],
+            "value": "Disabled",
+            "info": "Choose generation mode: T2V Only for independent clips, I2V Chaining for seamless transitions"
         },
         "wan_model_path": {
-            "label": "Custom Model Path",
-            "type": "textbox", 
+            "label": "Model Path",
+            "type": "textbox",
+            "lines": 1,
             "value": "models/wan",
-            "info": "Custom path to Wan model (used when 'Custom Path' is selected)"
+            "info": "Directory containing Wan models (auto-discovered)"
         },
-        "wan_resolution": {
-            "label": "Wan Resolution",
+        "wan_model_name": {
+            "label": "Model Selection",
             "type": "dropdown",
-            "choices": ["864x480 (Landscape)", "480x864 (Portrait)", "1280x720 (Landscape)", "720x1280 (Portrait)"],
-            "value": "864x480 (Landscape)",  # Explicit default with label
-            "info": "Resolution for Wan video generation. 480p for VACE 1.3B, 720p for VACE 14B. Will warn if mismatched."
+            "choices": ["Auto-Select"],
+            "value": "Auto-Select",
+            "info": "Wan model to use (auto-populated from model directory)"
         },
-        "wan_seed": {
-            "label": "Wan Seed",
-            "type": "number",
-            "precision": 0,
-            "value": -1,
-            "info": "Seed for Wan generation. -1 for random, 0+ for fixed seed"
-        },
-        "wan_inference_steps": {
-            "label": "Inference Steps",
-            "type": "slider",
-            "minimum": 5,
-            "maximum": 100,
-            "step": 1,
-            "value": 20,
-            "info": "Number of inference steps for Wan generation. Lower values (5-15) for quick testing, higher values (30-50) for quality"
-        },
-        "wan_strength_override": {
-            "label": "Strength Override",
+        "wan_enable_prompt_enhancement": {
+            "label": "Enable Prompt Enhancement",
             "type": "checkbox",
-            "value": True,
-            "info": "Override Deforum strength schedule with fixed value for maximum continuity (recommended for I2V chaining)"
+            "value": False,
+            "info": "Use QwenPromptExpander to automatically enhance prompts for better video quality"
         },
-        "wan_fixed_strength": {
-            "label": "Fixed Strength",
-            "type": "slider",
-            "minimum": 0.0,
-            "maximum": 1.0,
-            "step": 0.05,
-            "value": 1.0,
-            "info": "Fixed strength value for I2V chaining (1.0 = maximum continuity, 0.0 = maximum creativity)"
-        },
-        "wan_guidance_override": {
-            "label": "Guidance Scale Override",
-            "type": "checkbox",
-            "value": True,
-            "info": "Override Deforum CFG scale schedule with fixed value (recommended for consistent Wan generation)"
-        },
-        "wan_guidance_scale": {
-            "label": "Fixed Guidance Scale",
-            "type": "slider",
-            "minimum": 1.0,
-            "maximum": 20.0,
-            "step": 0.5,
-            "value": 7.5,
-            "info": "Fixed guidance scale for prompt adherence (only used when Guidance Scale Override is enabled)"
-        },
-        "wan_frame_overlap": {
-            "label": "Frame Overlap",
-            "type": "slider",
-            "minimum": 0,
-            "maximum": 10,
-            "step": 1,
-            "value": 2,
-            "info": "Number of overlapping frames between clips for smoother transitions"
-        },
-        "wan_motion_strength": {
-            "label": "Motion Strength",
-            "type": "slider",
-            "minimum": 0.0,
-            "maximum": 2.0,
-            "step": 0.1,
-            "value": 1.0,
-            "info": "Strength of motion in generated videos"
-        },
-        "wan_enable_interpolation": {
-            "label": "Enable Interpolation",
-            "type": "checkbox",
-            "value": True,
-            "info": "Enable frame interpolation between clips"
-        },
-        "wan_interpolation_strength": {
-            "label": "Interpolation Strength",
-            "type": "slider",
-            "minimum": 0.0,
-            "maximum": 1.0,
-            "step": 0.1,
-            "value": 0.5,
-            "info": "Strength of interpolation between consecutive clips"
-        },
-        "wan_flash_attention_mode": {
-            "label": "Flash Attention Mode",
-            "type": "dropdown",
-            "choices": ["Auto (Recommended)", "Force Flash Attention", "Force PyTorch Fallback"],
-            "value": "Auto (Recommended)",
-            "info": "Flash Attention mode: Auto tries Flash Attention then falls back to PyTorch. Force options override detection."
-        },
-        
-        # Prompt Enhancement with QwenPromptExpander
         "wan_qwen_model": {
             "label": "Qwen Model",
             "type": "dropdown",
-            "choices": ["QwenVL2.5_7B", "QwenVL2.5_3B", "Qwen2.5_14B", "Qwen2.5_7B", "Qwen2.5_3B", "Auto-Select"],
+            "choices": ["Auto-Select", "QwenVL2.5_3B", "QwenVL2.5_7B", "Qwen2.5_3B", "Qwen2.5_7B", "Qwen2.5_14B"],
             "value": "Auto-Select",
-            "info": "Qwen model for prompt enhancement. VL models support image+text, text-only models are faster. Auto-Select chooses based on available VRAM."
+            "info": "Qwen model for prompt enhancement (auto-selected based on VRAM)"
         },
-        "wan_qwen_auto_download": {
-            "label": "Auto-Download Qwen Models",
+        "wan_enable_movement_analysis": {
+            "label": "Enable Movement Analysis",
             "type": "checkbox",
             "value": True,
-            "info": "Automatically download Qwen models if not found locally (recommended for first-time setup)"
-        },
-        "wan_qwen_language": {
-            "label": "Enhanced Prompt Language",
-            "type": "dropdown",
-            "choices": ["English", "Chinese"],
-            "value": "English",
-            "info": "Language for enhanced prompts. English works best with most models, Chinese for specialized use cases."
-        },
-        "wan_enhanced_prompts": {
-            "label": "Enhanced Prompts (Editable)",
-            "type": "textbox",
-            "value": "",
-            "lines": 10,
-            "info": "Enhanced prompts generated by QwenPromptExpander. You can manually edit these before generation."
-        },
-        "wan_movement_description": {
-            "label": "Movement Description (Auto-Generated)",
-            "type": "textbox",
-            "value": "",
-            "lines": 3,
-            "info": "Auto-generated movement description from Deforum schedules (translation, rotation, zoom). Appended to enhanced prompts."
+            "info": "Analyze Deforum movement schedules and add to prompts"
         },
         "wan_movement_sensitivity": {
             "label": "Movement Sensitivity",
             "type": "slider",
             "minimum": 0.1,
-            "maximum": 2.0,
+            "maximum": 5.0,
             "step": 0.1,
             "value": 1.0,
-            "info": "Sensitivity for movement detection. Higher values detect smaller movements, lower values only detect significant motion."
+            "info": "Sensitivity for detecting camera movements"
         },
-        
-        # Advanced Override Settings (moved wan_motion_strength here)
-        "wan_motion_strength_override": {
-            "label": "Motion Strength Override",
-            "type": "checkbox",
-            "value": False,
-            "info": "Override dynamic motion strength calculation with fixed value"
+        "wan_style_prompt": {
+            "label": "Global Style Prompt",
+            "type": "textbox",
+            "lines": 2,
+            "value": "",
+            "info": "Style elements to add to all prompts (e.g., 'cinematic, high quality')"
         },
-        "wan_motion_strength": {
-            "label": "Fixed Motion Strength",
+        "wan_style_strength": {
+            "label": "Style Strength",
             "type": "slider",
             "minimum": 0.0,
-            "maximum": 2.0,
+            "maximum": 1.0,
             "step": 0.1,
-            "value": 1.0,
-            "info": "Fixed motion strength value (only used when Motion Strength Override is enabled). Dynamic calculation from schedules is recommended."
+            "value": 0.5,
+            "info": "How strongly to apply style enhancements"
+        },
+        "wan_i2v_strength": {
+            "label": "I2V Strength Override",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "step": 0.05,
+            "value": 0.8,
+            "info": "Override I2V strength for better continuity (leave at 0.8 for automatic)"
         }
     }
 
@@ -1465,11 +1278,10 @@ def DeforumOutputArgs():
 
 
 def get_component_names():
-    # Re-enable Wan components (UI level, imports still isolated)
     return ['override_settings_with_file', 'custom_settings_file', *DeforumAnimArgs().keys(), 'animation_prompts',
             'animation_prompts_positive', 'animation_prompts_negative',
             *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(), *LoopArgs().keys(),
-            *controlnet_component_names(), *FreeUArgs().keys(), *KohyaHRFixArgs().keys(), *WanArgs().keys()]
+            *controlnet_component_names(), *WanArgs().keys()]
 
 
 def get_settings_component_names():
@@ -1492,17 +1304,13 @@ def process_args(args_dict_main, run_id):
     video_args = SimpleNamespace(**{name: args_dict_main[name] for name in DeforumOutputArgs()})
     parseq_args = SimpleNamespace(**{name: args_dict_main[name] for name in ParseqArgs()})
     loop_args = SimpleNamespace(**{name: args_dict_main[name] for name in LoopArgs()})
-    freeu_args = SimpleNamespace(**{name: args_dict_main[name] for name in FreeUArgs()})
-    kohya_hrfix_args = SimpleNamespace(**{name: args_dict_main[name] for name in KohyaHRFixArgs()})
-    wan_args = SimpleNamespace(**{name: args_dict_main[name] for name in WanArgs()})
     controlnet_args = SimpleNamespace(**{name: args_dict_main[name] for name in controlnet_component_names()})
 
     root.animation_prompts = json.loads(args_dict_main['animation_prompts'])
 
     args_loaded_ok = True
     if override_settings_with_file:
-        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args,
-                                   kohya_hrfix_args, video_args, custom_settings_file, root, run_id)
+        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, custom_settings_file, root, run_id)
 
     positive_prompts = args_dict_main['animation_prompts_positive']
     negative_prompts = args_dict_main['animation_prompts_negative']
@@ -1545,4 +1353,4 @@ def process_args(args_dict_main, run_id):
     default_img = default_img.resize((args.W, args.H))
     root.default_img = default_img
 
-    return args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, wan_args
+    return args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args

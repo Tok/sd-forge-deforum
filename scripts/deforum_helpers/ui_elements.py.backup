@@ -1,5 +1,4 @@
 # Copyright (C) 2023 Deforum LLC
-# Modified by Zirteq for Zirteqs Deforum Fork
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -382,6 +381,29 @@ def get_tab_init(d, da, dp):
             parseq_manifest = create_row(dp.parseq_manifest)
             parseq_non_schedule_overrides = create_row(dp.parseq_non_schedule_overrides)
             parseq_use_deltas = create_row(dp.parseq_use_deltas)
+    return {k: v for k, v in {**locals(), **vars()}.items()}
+
+
+def get_tab_freeu(dfu: SimpleNamespace):
+    with gr.TabItem('FreeU'):
+        freeu_enabled = create_row(dfu.freeu_enabled)
+        freeu_b1 = create_row(dfu.freeu_b1)
+        freeu_b2 = create_row(dfu.freeu_b2)
+        freeu_s1 = create_row(dfu.freeu_s1)
+        freeu_s2 = create_row(dfu.freeu_s2)
+    return {k: v for k, v in {**locals(), **vars()}.items()}
+
+
+def get_tab_kohya_hrfix(dku: SimpleNamespace):
+    with gr.TabItem('Kohya HR Fix'):
+        kohya_hrfix_enabled = create_row(dku.kohya_hrfix_enabled)
+        kohya_hrfix_block_number = create_row(dku.kohya_hrfix_block_number)
+        kohya_hrfix_downscale_factor = create_row(dku.kohya_hrfix_downscale_factor)
+        kohya_hrfix_start_percent = create_row(dku.kohya_hrfix_start_percent)
+        kohya_hrfix_end_percent = create_row(dku.kohya_hrfix_end_percent)
+        kohya_hrfix_downscale_after_skip = create_row(dku.kohya_hrfix_downscale_after_skip)
+        kohya_hrfix_downscale_method = create_row(dku.kohya_hrfix_downscale_method)
+        kohya_hrfix_upscale_method = create_row(dku.kohya_hrfix_upscale_method)
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
@@ -1689,6 +1711,71 @@ def get_tab_wan(dw: SimpleNamespace):
     if 'load_deforum_prompts_btn' in locals():
         locals()['load_deforum_prompts_btn']._handler = load_deforum_prompts_handler
     
+    return {k: v for k, v in {**locals(), **vars()}.items()}
+
+
+def get_tab_hybrid(da):
+    with gr.TabItem('Hybrid Video'):
+        # this html only shows when not in 2d/3d mode
+        hybrid_msg_html = gr.HTML(value='Change animation mode to 2D or 3D to enable Hybrid Mode', visible=False,
+                                  elem_id='hybrid_msg_html')
+        # HYBRID INFO ACCORD
+        with gr.Accordion("Info & Help", open=False):
+            gr.HTML(value=get_gradio_html('hybrid_video'))
+        # HYBRID SETTINGS ACCORD
+        with gr.Accordion("Hybrid Settings", open=True) as hybrid_settings_accord:
+            hybrid_composite = create_row(gr.Radio(['None', 'Normal', 'Before Motion', 'After Generation'],
+                                                   label="Hybrid composite", value=da.hybrid_composite,
+                                                   elem_id="hybrid_composite"))
+            with FormRow():
+                with FormColumn(min_width=340):
+                    with FormRow():
+                        hybrid_generate_inputframes = create_gr_elem(da.hybrid_generate_inputframes)
+                        hybrid_use_first_frame_as_init_image = create_gr_elem(da.hybrid_use_first_frame_as_init_image)
+                        hybrid_use_init_image = create_gr_elem(da.hybrid_use_init_image)
+            with FormRow():
+                with FormColumn():
+                    hybrid_motion = create_row(da.hybrid_motion)
+                with FormColumn():
+                    with FormRow():
+                        with FormColumn(scale=1):
+                            hybrid_flow_method = create_gr_elem(da.hybrid_flow_method)
+                    with FormRow():
+                        with FormColumn():
+                            hybrid_flow_consistency = create_gr_elem(da.hybrid_flow_consistency)
+                            hybrid_consistency_blur = create_gr_elem(da.hybrid_consistency_blur)
+                        with FormColumn():
+                            hybrid_motion_use_prev_img = create_gr_elem(da.hybrid_motion_use_prev_img)
+            hybrid_comp_mask_type = create_row(da.hybrid_comp_mask_type)
+            with gr.Row(visible=False, variant='compact') as hybrid_comp_mask_row:
+                hybrid_comp_mask_equalize = create_gr_elem(da.hybrid_comp_mask_equalize)
+                with FormColumn():
+                    hybrid_comp_mask_auto_contrast = gr.Checkbox(
+                        label="Comp mask auto contrast", value=False, interactive=True)
+                    hybrid_comp_mask_inverse = gr.Checkbox(
+                        label="Comp mask inverse", value=da.hybrid_comp_mask_inverse, interactive=True)
+            hybrid_comp_save_extra_frames = create_row(gr.Checkbox(
+                label="Comp save extra frames", value=False, interactive=True))
+        # HYBRID SCHEDULES ACCORD
+        with gr.Accordion("Hybrid Schedules", open=False, visible=False) as hybrid_sch_accord:
+            with FormRow() as hybrid_comp_alpha_schedule_row:
+                hybrid_comp_alpha_schedule = create_gr_elem(da.hybrid_comp_alpha_schedule)
+            with FormRow() as hybrid_flow_factor_schedule_row:
+                hybrid_flow_factor_schedule = create_gr_elem(da.hybrid_flow_factor_schedule)
+            with FormRow(visible=False) as hybrid_comp_mask_blend_alpha_schedule_row:
+                hybrid_comp_mask_blend_alpha_schedule = create_gr_elem(da.hybrid_comp_mask_blend_alpha_schedule)
+            with FormRow(visible=False) as hybrid_comp_mask_contrast_schedule_row:
+                hybrid_comp_mask_contrast_schedule = create_gr_elem(da.hybrid_comp_mask_contrast_schedule)
+            with FormRow(visible=False) as hybrid_comp_mask_auto_contrast_cutoff_high_schedule_row:
+                hybrid_comp_mask_auto_contrast_cutoff_high_schedule = create_gr_elem(
+                    da.hybrid_comp_mask_auto_contrast_cutoff_high_schedule)
+            with FormRow(visible=False) as hybrid_comp_mask_auto_contrast_cutoff_low_schedule_row:
+                hybrid_comp_mask_auto_contrast_cutoff_low_schedule = create_gr_elem(
+                    da.hybrid_comp_mask_auto_contrast_cutoff_low_schedule)
+        # HUMANS MASKING ACCORD
+        with gr.Accordion("Humans Masking", open=False, visible=False) as humans_masking_accord:
+            hybrid_generate_human_masks = create_row(da.hybrid_generate_human_masks)
+
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
