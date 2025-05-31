@@ -407,7 +407,7 @@ class WanSimpleIntegration:
                                     sampling_steps=num_inference_steps,
                                     guide_scale=guidance_scale,
                                     shift=16,  # VACE uses higher shift than T2V
-                                    seed=42,  # Fixed seed for debugging
+                                    seed=-1,
                                     **kwargs
                                 )
                                 

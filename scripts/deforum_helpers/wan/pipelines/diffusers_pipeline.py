@@ -538,7 +538,7 @@ if __name__ == "__main__":
         num_frames=81,
         num_inference_steps=20,
         guidance_scale=7.5,
-        seed=42
+        seed=-1
     )
     
     if success:
