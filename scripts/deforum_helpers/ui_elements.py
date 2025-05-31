@@ -1070,6 +1070,35 @@ def get_tab_wan(dw: SimpleNamespace):
                 elem_id="wan_movement_description_textbox",
                 visible=True  # Always visible for immediate feedback
             )
+            
+            # Enhancement Progress - Shows during AI enhancement
+            enhancement_progress = gr.Textbox(
+                label="AI Enhancement Progress",
+                lines=3,
+                interactive=False,
+                placeholder="AI enhancement progress will show here...",
+                info="Shows real-time progress during prompt enhancement.",
+                elem_id="wan_enhancement_progress_textbox",
+                visible=True
+            )
+        
+        # DEFORUM INTEGRATION - ESSENTIAL (moved up)
+        with gr.Accordion("🔗 Deforum Integration (ESSENTIAL)", open=True):
+            gr.Markdown("""
+            **✅ Wan seamlessly integrates with your Deforum settings:**
+            
+            - **📝 Prompts:** Uses prompts from Deforum Prompts tab
+            - **🎬 Movement:** Uses same movement schedules as normal Deforum renders
+            - **🎲 Seed & CFG:** Uses Deforum's seed and CFG schedules
+            - **💪 Strength:** Uses Deforum's strength schedule for I2V continuity
+            - **🎬 FPS:** Uses Output tab FPS setting
+            
+            **Movement Integration:**
+            - ✅ Translation X/Y/Z, Rotation 3D X/Y/Z, Zoom schedules
+            - ✅ **Parseq schedules fully supported**
+            - ✅ Movement descriptions automatically calculated and added
+            - ✅ Motion intensity dynamically adapts to movement complexity
+            """)
         
         # GENERATION SECTION
         with gr.Accordion("🎬 Generate Wan Video", open=True):
@@ -1108,7 +1137,6 @@ def get_tab_wan(dw: SimpleNamespace):
                     elem_id="wan_inference_steps_fixed_min_5",
                     info="Steps for generation quality (5-15: fast, 20-50: quality)"
                 )
-                wan_movement_sensitivity = create_gr_elem(dw.wan_movement_sensitivity)
         
         # AI ENHANCEMENT SETTINGS - Collapsed by default
         with gr.Accordion("🧠 AI Prompt Enhancement (Optional)", open=False):
@@ -1132,28 +1160,72 @@ def get_tab_wan(dw: SimpleNamespace):
             with FormRow():
                 wan_model_path = create_gr_elem(dw.wan_model_path)
         
-        # MOVEMENT ANALYSIS - Detailed Information
-        with gr.Accordion("📐 Movement Analysis Details", open=False):
+        # OVERRIDES SECTION - Movement sensitivity moved here
+        with gr.Accordion("🔧 Override Settings (Advanced)", open=False):
             gr.Markdown("""
-            **🎬 Uses the Same Movement System as Normal Deforum Renders:**
+            **Override automatic calculations with fixed values:**
             
-            Analyzes your **exact same movement schedules** from **Keyframes → Motion tab**:
-            - **Translation X/Y/Z**: Camera position → "left pan", "forward dolly", "upward crane"  
-            - **Rotation 3D X/Y/Z**: Camera rotation → "upward pitch", "right yaw", "clockwise roll"
-            - **Zoom**: Zoom changes → "slow zoom in", "fast zoom out"
-            - **Parseq Compatible**: Also works with Parseq movement schedules
-            
-            **Movement descriptions are added to prompts** to help Wan understand camera motion.
-            
-            **How to Use:**
-            1. Configure your movement in **Keyframes → Motion tab** (same as normal Deforum)
-            2. Click **"Add Movement Descriptions"** button above
-            3. Movement descriptions will be automatically added to your prompts
+            By default, Wan calculates these values from your Deforum schedules. Enable overrides only if you need manual control.
             """)
             
-            # Advanced movement settings
             with FormRow():
+                wan_strength_override = create_gr_elem(dw.wan_strength_override)
+                wan_fixed_strength = create_gr_elem(dw.wan_fixed_strength)
+                
+            with FormRow():
+                wan_guidance_override = create_gr_elem(dw.wan_guidance_override) 
+                wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
+                
+            with FormRow():
+                wan_motion_strength_override = create_gr_elem(dw.wan_motion_strength_override)
+                wan_motion_strength = create_gr_elem(dw.wan_motion_strength)
+                
+            # Movement sensitivity - now in overrides since it should be auto-calculated
+            with FormRow():
+                movement_sensitivity_override = gr.Checkbox(
+                    label="Movement Sensitivity Override",
+                    value=False,
+                    info="Override auto-calculated movement sensitivity from Deforum schedules"
+                )
                 wan_movement_sensitivity = create_gr_elem(dw.wan_movement_sensitivity)
+                wan_movement_sensitivity.interactive = False  # Start disabled
+        
+        # Advanced Settings - Other advanced features
+        with gr.Accordion("⚡ Advanced Settings", open=False):
+            with FormRow():
+                wan_frame_overlap = create_gr_elem(dw.wan_frame_overlap)
+                
+            with FormRow():
+                wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
+                wan_interpolation_strength = create_gr_elem(dw.wan_interpolation_strength)
+                
+            # Flash Attention Settings Section
+            with gr.Accordion("⚡ Flash Attention Settings", open=False):
+                gr.Markdown("""
+                **Flash Attention Performance Control**
+                
+                Flash Attention provides faster and more memory-efficient attention computation.
+                
+                **Modes:**
+                - **Auto (Recommended)**: Try Flash Attention, fall back to PyTorch if unavailable
+                - **Force Flash Attention**: Force Flash Attention (fails if not available)
+                - **Force PyTorch Fallback**: Always use PyTorch attention (slower but compatible)
+                """)
+                
+                wan_flash_attention_mode = create_gr_elem(dw.wan_flash_attention_mode)
+                
+                # Flash Attention Status
+                wan_flash_attention_status = gr.HTML(
+                    label="Flash Attention Status",
+                    value="⚠️ <span style='color: #FF9800;'>Status check unavailable</span>",
+                    elem_id="wan_flash_attention_status"
+                )
+                
+                check_flash_attention_btn = gr.Button(
+                    "🔍 Check Flash Attention Status",
+                    variant="secondary",
+                    elem_id="wan_check_flash_attention_btn"
+                )
         
         # QWEN MODEL MANAGEMENT - Collapsed by default
         with gr.Accordion("🧠 Qwen Model Management", open=False):
@@ -1186,168 +1258,24 @@ def get_tab_wan(dw: SimpleNamespace):
                     elem_id="wan_cleanup_qwen_cache_btn"
                 )
 
-        # Advanced Settings - Moved down but still accessible
-        with gr.Accordion("Advanced Settings", open=False):
-            with FormRow():
-                wan_frame_overlap = create_gr_elem(dw.wan_frame_overlap)
-                # Remove wan_motion_strength from here - moved to overrides
-                
-            with FormRow():
-                wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
-                wan_interpolation_strength = create_gr_elem(dw.wan_interpolation_strength)
-                
-            # Flash Attention Settings Section
-            with gr.Accordion("⚡ Flash Attention Settings", open=False):
-                gr.Markdown("""
-                **Flash Attention Performance Control**
-                
-                Flash Attention provides faster and more memory-efficient attention computation.
-                
-                **Modes:**
-                - **Auto (Recommended)**: Try Flash Attention, fall back to PyTorch if unavailable
-                - **Force Flash Attention**: Force Flash Attention (fails if not available)
-                - **Force PyTorch Fallback**: Always use PyTorch attention (slower but compatible)
-                """)
-                
-                with FormRow():
-                    wan_flash_attention_mode = create_gr_elem(dw.wan_flash_attention_mode)
-                    
-                with FormRow():
-                    wan_flash_attention_status = gr.HTML(
-                        label="Flash Attention Status",
-                        value="⏳ Checking availability...",
-                        elem_id="wan_flash_attention_status"
-                    )
-                    check_flash_attention_btn = gr.Button(
-                        "🔍 Check Flash Attention",
-                        variant="secondary",
-                        size="sm",
-                        elem_id="wan_check_flash_attention_btn"
-                    )
-                
-            # Strength Override Section
-            with gr.Accordion("🔗 Schedule Override Controls", open=True):
-                gr.Markdown("""
-                **Deforum Schedule Integration (Recommended)**
-                
-                By default, Wan respects Deforum's scheduling system:
-                - **📈 Strength Schedule**: From Keyframes → Strength tab (controls I2V continuity)
-                - **📊 CFG Scale Schedule**: From Keyframes → CFG tab (controls prompt adherence)
-                
-                **Override Options (Advanced)**
-                
-                Enable overrides below to use fixed values instead of Deforum schedules:
-                
-                **Strength Override**: 
-                - Controls how much the previous frame influences the next clip
-                - High (0.8-0.9): Strong continuity, smooth transitions
-                - Low (0.3-0.5): More creative freedom, less continuity
-                
-                **Guidance Scale Override**:
-                - Controls how closely generation follows the prompt
-                - Higher values (7.5-12): Strong prompt adherence
-                - Lower values (3-6): More creative interpretation
-                
-                **💡 When to Use Overrides:**
-                - For consistent I2V chaining (strength override)
-                - For stable prompt adherence across clips (guidance override)
-                - When you want fixed values instead of scheduled changes
-                """)
-                
-                gr.Markdown("**🔧 Strength Control (I2V Continuity)**")
-                with FormRow():
-                    wan_strength_override = create_gr_elem(dw.wan_strength_override)
-                    wan_fixed_strength = create_gr_elem(dw.wan_fixed_strength)
-                
-                gr.Markdown("**🎯 Guidance Scale Control (Prompt Adherence)**")
-                with FormRow():
-                    wan_guidance_override = create_gr_elem(dw.wan_guidance_override)
-                    wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
-                    
-                gr.Markdown("**🎬 Motion Control (Advanced)**")
-                with FormRow():
-                    wan_motion_strength_override = create_gr_elem(dw.wan_motion_strength_override)
-                    wan_motion_strength = create_gr_elem(dw.wan_motion_strength)
-        
-        # Auto-Discovery Info - Collapsed by default
-        with gr.Accordion("🔍 Auto-Discovery & Setup", open=False):
+        # Auto-Discovery and Setup Information
+        with gr.Accordion("📥 Model Auto-Discovery & Setup", open=False):
             gr.Markdown("""
-            **Smart Model Discovery & Auto-Download**
+            **✅ Auto-Discovery System**
             
-            Wan models are automatically discovered from common locations:
-            - `models/wan/` (recommended location)
-            - HuggingFace cache
+            Wan automatically finds models in these locations:
+            - `models/wan/` (recommended)
+            - `models/video/wan/`
+            - Custom paths you specify
             
-            **🔥 VACE Models (Recommended for I2V Chaining):**
-            - **1.3B VACE (Default)**: ~17GB download, 8GB VRAM, 480P, consumer-friendly
-            - **14B VACE**: ~75GB download, 480P+720P, slower, higher quality
+            **✨ VACE Models (Recommended)**
             
-            **💡 Why VACE Models?**
-            - All-in-one: Handle both T2V and I2V in single model
-            - Perfect for I2V chaining with seamless transitions
-            - No need for separate I2V models
-            """)
+            VACE models handle both T2V and I2V in one model:
+            - **1.3B VACE**: 480p, 8GB VRAM, fast generation
+            - **14B VACE**: 480p+720p, 16GB+ VRAM, highest quality
             
-            # Model Validation Section
-            with gr.Accordion("🔍 Model Validation & Integrity Check", open=False):
-                gr.Markdown("""
-                **Advanced Model Validation with Checksum Verification**
-                
-                Verify your downloaded Wan models are complete and not corrupted:
-                - ✅ **File size validation**: Detect suspiciously small files
-                - ✅ **JSON config validation**: Verify configuration files
-                - ✅ **Safetensors integrity**: Check model weights are readable
-                - ✅ **Git LFS detection**: Find incomplete downloads (pointer files)
-                - ✅ **Checksum verification**: Calculate and verify file hashes
-                - ✅ **Structure validation**: Ensure all required files are present
-                """)
-                
-                with FormRow():
-                    validate_models_btn = gr.Button(
-                        "🔍 Validate All Models",
-                        variant="secondary",
-                        elem_id="wan_validate_models_btn"
-                    )
-                    cleanup_invalid_btn = gr.Button(
-                        "🗑️ Clean Up Invalid Models",
-                        variant="secondary",
-                        elem_id="wan_cleanup_invalid_btn"
-                    )
-                    
-                with FormRow():
-                    compute_checksums_btn = gr.Button(
-                        "🔐 Compute Model Checksums",
-                        variant="secondary",
-                        elem_id="wan_compute_checksums_btn"
-                    )
-                    verify_integrity_btn = gr.Button(
-                        "✅ Full Integrity Check",
-                        variant="primary",
-                        elem_id="wan_verify_integrity_btn"
-                    )
-                
-                # Validation output
-                validation_output = gr.Textbox(
-                    label="Validation Results",
-                    interactive=False,
-                    lines=10,
-                    placeholder="Click a validation button to check your Wan models...",
-                    elem_id="wan_validation_output"
-                )
-                
-                # Model details output
-                model_details_output = gr.JSON(
-                    label="Model Details & Checksums",
-                    visible=False,
-                    elem_id="wan_model_details"
-                )
-            
-            gr.Markdown("""
-            **Quick Download Commands:**
+            **📥 Easy Download Commands:**
             ```bash
-            # Install HuggingFace CLI (if not already installed)
-            pip install huggingface_hub
-            
             # Download 1.3B VACE (recommended default)
             huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan/Wan2.1-VACE-1.3B
             
@@ -1370,39 +1298,6 @@ def get_tab_wan(dw: SimpleNamespace):
             value=dw.wan_seed["value"],
             visible=False
         )
-        
-        # Integration Status - Collapsed by default
-        with gr.Accordion("🔗 Deforum Integration", open=False):
-            gr.Markdown("""
-            **Wan uses these settings from other Deforum tabs:**
-            
-            - **📝 Prompts:** From Prompts tab
-            - **🎬 FPS:** From Output tab (no separate Wan FPS needed)
-            - **🎲 Seed:** From Keyframes → Seed & SubSeed tab
-            - **💪 Strength:** From Keyframes → Strength tab (for I2V chaining)
-            - **📊 CFG Scale:** From Keyframes → CFG tab (for prompt adherence)
-            - **🎬 Movement:** From Keyframes → Motion tab (same schedules as normal Deforum renders)
-            - **⏱️ Duration:** Auto-calculated from prompt timing
-            
-            **Movement Integration:**
-            - ✅ Uses **exact same movement schedules** as normal Deforum renders
-            - ✅ Translation X/Y/Z, Rotation 3D X/Y/Z, Zoom, Angle schedules
-            - ✅ **Parseq schedules fully supported** for advanced movement
-            - ✅ Movement descriptions automatically added to prompts
-            - ✅ Motion intensity dynamically adapts to movement complexity
-            
-            **Features:**
-            - ✅ Uses Deforum's prompt scheduling system
-            - ✅ Uses Deforum's FPS and seed settings  
-            - ✅ Uses Deforum's movement scheduling system
-            - ✅ Auto-discovery finds your models automatically
-            - ✅ Smart model selection based on your preference
-            - ✅ Calls the full Deforum generation pipeline
-            - ✅ I2V chaining for seamless transitions between clips
-            - ✅ PNG frame output with 4n+1 calculation
-            - ✅ Strength scheduling for continuity control
-            - ✅ CFG scale scheduling for prompt adherence control
-            """)
         
         # Detailed Documentation - Collapsed by default
         with gr.Accordion("📚 Detailed Documentation", open=False):
@@ -1495,6 +1390,16 @@ def get_tab_wan(dw: SimpleNamespace):
                 5. **Verify schedules**: Make sure you have prompts in the Prompts tab
                 6. **Check seed behavior**: Set seed behavior to 'schedule' if you want custom seed scheduling
                 """)
+        
+        # Connect movement sensitivity override toggle
+        def toggle_movement_sensitivity_override(override_enabled):
+            return gr.update(interactive=override_enabled)
+        
+        movement_sensitivity_override.change(
+            fn=toggle_movement_sensitivity_override,
+            inputs=[movement_sensitivity_override],
+            outputs=[wan_movement_sensitivity]
+        )
             
     # Ensure wan_inference_steps is properly captured
     locals()['wan_inference_steps'] = wan_inference_steps
@@ -1548,10 +1453,10 @@ def get_tab_wan(dw: SimpleNamespace):
     
     # NOTE: enhance_prompts_btn connection is now handled in ui_left.py for proper component access
     
-    # Connect event handlers for movement analysis - updated with current prompts input
+    # Connect event handlers for movement analysis - updated to use auto-calculated sensitivity
     analyze_movement_btn.click(
         fn=analyze_movement_handler,
-        inputs=[wan_movement_sensitivity, wan_enhanced_prompts],
+        inputs=[wan_enhanced_prompts],  # Only current_prompts - sensitivity is auto-calculated
         outputs=[wan_enhanced_prompts, wan_movement_description]
     )
     
@@ -1891,13 +1796,16 @@ def create_accordion_md_row(name, markdown, is_open=False):
 
 # QwenPromptExpander and Movement Analysis Event Handlers - moved outside for proper import
 def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download):
-    """Handle prompt enhancement with QwenPromptExpander"""
+    """Handle prompt enhancement with QwenPromptExpander with progress feedback"""
     try:
         from .wan.utils.qwen_manager import qwen_manager
         import json
         
         print(f"🎨 AI Prompt Enhancement requested for {qwen_model}")
         print(f"📝 Received prompts: {str(current_prompts)[:100]}...")
+        
+        # Progress: Start
+        progress_update = "🎨 Starting AI Prompt Enhancement...\n"
         
         # Check if auto-download is enabled for model availability
         if not auto_download:
@@ -1914,7 +1822,10 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
 1. Use HuggingFace CLI: `huggingface-cli download {qwen_manager.get_model_info(qwen_model).get('huggingface_id', 'model-id')}`
 2. ✅ Enable auto-download for easier setup
 
-💡 **Auto-download is recommended** for seamless model management."""
+💡 **Auto-download is recommended** for seamless model management.""", progress_update + "❌ Model not available - enable auto-download!"
+        
+        # Progress: Model check
+        progress_update += "🔍 Checking model availability...\n"
         
         # Check if a model is already loaded
         if qwen_manager.is_model_loaded():
@@ -1924,15 +1835,18 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
             # If different model requested, cleanup first
             if qwen_model != "Auto-Select" and current_model != qwen_model:
                 print(f"🔄 Switching from {current_model} to {qwen_model}")
+                progress_update += f"🔄 Switching from {current_model} to {qwen_model}...\n"
                 qwen_manager.cleanup_cache()
         
-        # Provide loading feedback
+        # Progress: Model loading
         if not qwen_manager.is_model_loaded():
             if qwen_model == "Auto-Select":
                 selected_model = qwen_manager.auto_select_model()
                 print(f"🤖 Auto-selected model: {selected_model}")
+                progress_update += f"🤖 Auto-selected model: {selected_model}\n"
             else:
                 print(f"📥 Loading Qwen model: {qwen_model}")
+                progress_update += f"📥 Loading Qwen model: {qwen_model}...\n"
         
         # Get wan prompts from the current_prompts parameter (passed directly)
         animation_prompts = None
@@ -1942,6 +1856,7 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
                 # Try to parse as JSON first
                 animation_prompts = json.loads(current_prompts)
                 print(f"✅ Successfully parsed {len(animation_prompts)} Wan prompts as JSON")
+                progress_update += f"✅ Parsed {len(animation_prompts)} prompts successfully\n"
             except json.JSONDecodeError:
                 # Try to parse as readable format (Frame X: prompt)
                 try:
@@ -1963,17 +1878,19 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
                     
                     if animation_prompts:
                         print(f"✅ Successfully parsed {len(animation_prompts)} Wan prompts as readable format")
+                        progress_update += f"✅ Parsed {len(animation_prompts)} prompts from readable format\n"
                     else:
                         raise ValueError("No valid prompts found")
                 except Exception as e:
                     print(f"❌ Could not parse Wan prompts: {e}")
-                    return f"❌ Invalid format in Wan prompts. Expected JSON format like:\n{{\n  \"0\": \"prompt text\",\n  \"60\": \"another prompt\"\n}}\n\nOr readable format like:\nFrame 0: prompt text\nFrame 60: another prompt"
+                    error_msg = f"❌ Invalid format in Wan prompts. Expected JSON format like:\n{{\n  \"0\": \"prompt text\",\n  \"60\": \"another prompt\"\n}}\n\nOr readable format like:\nFrame 0: prompt text\nFrame 60: another prompt"
+                    return error_msg, progress_update + "❌ Failed to parse prompts!"
         else:
             print("⚠️ Empty Wan prompts")
             
         # Check if we got valid prompts
         if not animation_prompts:
-            return """❌ No Wan prompts found!
+            error_msg = """❌ No Wan prompts found!
 
 🔧 **Setup Required:**
 1. 📝 Load prompts using "Load from Deforum Prompts" or "Load Default Wan Prompts"
@@ -1987,10 +1904,11 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
 
 💡 **Quick Start:**
 Click "Load Default Wan Prompts" to start with example prompts!"""
+            return error_msg, progress_update + "❌ No prompts to enhance!"
         
         # Validate prompts content
         if len(animation_prompts) == 1 and "0" in animation_prompts and "beautiful landscape" in animation_prompts["0"]:
-            return """❌ Default prompts detected!
+            error_msg = """❌ Default prompts detected!
 
 🔧 **Please configure your actual animation prompts:**
 1. 📝 Load your real prompts using the load buttons above
@@ -2004,16 +1922,19 @@ Set up prompts like:
   "18": "A scene with glowing effects, neon colors, synthwave aesthetic",
   "36": "A cyberpunk scene with LED patterns, digital environment"
 }"""
+            return error_msg, progress_update + "❌ Default prompts detected!"
         
         print(f"🎨 Enhancing {len(animation_prompts)} Wan prompts with {qwen_model}")
+        progress_update += f"🎨 Starting enhancement of {len(animation_prompts)} prompts...\n"
         
         # Create the Qwen prompt expander with better error handling
         try:
+            progress_update += "📥 Creating AI model instance...\n"
             prompt_expander = qwen_manager.create_prompt_expander(qwen_model, auto_download)
             
             if not prompt_expander:
                 if auto_download:
-                    return f"""⏳ Downloading {qwen_model} model...
+                    error_msg = f"""⏳ Downloading {qwen_model} model...
 
 🔄 **Download in Progress:**
 Model download started automatically. This may take a few minutes.
@@ -2021,8 +1942,9 @@ Model download started automatically. This may take a few minutes.
 📥 **Please wait** and try clicking "AI Prompt Enhancement" again in 30-60 seconds.
 
 💡 **Status**: Check console for download progress."""
+                    return error_msg, progress_update + f"⏳ Downloading {qwen_model}..."
                 else:
-                    return f"""❌ Failed to create Qwen prompt expander: {qwen_model}
+                    error_msg = f"""❌ Failed to create Qwen prompt expander: {qwen_model}
 
 🔧 **Solutions:**
 1. ✅ Enable "Auto-Download Qwen Models" and try again
@@ -2030,8 +1952,9 @@ Model download started automatically. This may take a few minutes.
 3. 🔄 Restart WebUI after downloading
 
 📊 **Model Info**: {qwen_manager.get_model_info(qwen_model).get('description', 'N/A')}"""
+                    return error_msg, progress_update + "❌ Failed to create AI model!"
         except Exception as e:
-            return f"""❌ Error creating Qwen prompt expander: {str(e)}
+            error_msg = f"""❌ Error creating Qwen prompt expander: {str(e)}
 
 🔧 **Troubleshooting:**
 1. ✅ Enable auto-download and try again
@@ -2039,9 +1962,11 @@ Model download started automatically. This may take a few minutes.
 3. 💾 Check available disk space ({qwen_manager.get_model_info(qwen_model).get('vram_gb', 'Unknown')}GB VRAM required)
 
 💡 **Tip**: Try selecting "Auto-Select" for automatic model choice."""
+            return error_msg, progress_update + f"❌ Error: {str(e)}"
         
         # Use the QwenModelManager's enhance_prompts method directly
         try:
+            progress_update += "✨ Enhancing prompts with AI...\n"
             enhanced_prompts_dict = qwen_manager.enhance_prompts(
                 prompts=animation_prompts,
                 model_name=qwen_model,
@@ -2054,6 +1979,7 @@ Model download started automatically. This may take a few minutes.
             if hasattr(enhance_prompts_handler, '_movement_description'):
                 movement_description = enhance_prompts_handler._movement_description
                 print(f"📐 Found movement description to append: {movement_description}")
+                progress_update += "📐 Adding movement descriptions...\n"
             
             # Append movement descriptions to enhanced prompts if available
             if movement_description and movement_description.strip():
@@ -2061,38 +1987,36 @@ Model download started automatically. This may take a few minutes.
                     original_prompt = enhanced_prompts_dict[frame_key]
                     enhanced_prompts_dict[frame_key] = f"{original_prompt}. {movement_description}"
                 print(f"✅ Appended movement description to {len(enhanced_prompts_dict)} enhanced prompts")
+                progress_update += f"✅ Added movement to {len(enhanced_prompts_dict)} prompts\n"
             
             # Format the enhanced prompts as JSON
             enhanced_json = json.dumps(enhanced_prompts_dict, ensure_ascii=False, indent=2)
             
             print(f"✅ Successfully enhanced {len(enhanced_prompts_dict)} prompts")
+            progress_update += f"✅ Enhancement complete! {len(enhanced_prompts_dict)} prompts ready\n"
             
-            # Return the enhanced prompts
-            return enhanced_json
+            # Return the enhanced prompts and success progress
+            return enhanced_json, progress_update + "🎉 Ready for generation!"
             
         except Exception as e:
             print(f"❌ Error enhancing prompts: {e}")
             import traceback
             traceback.print_exc()
-            return f"❌ Error enhancing prompts: {str(e)}"
+            error_msg = f"❌ Error enhancing prompts: {str(e)}"
+            return error_msg, progress_update + f"❌ Enhancement failed: {str(e)}"
     
     except Exception as e:
-        print(f"❌ Error in enhance_prompts_handler: {e}")
+        print(f"❌ Fatal error in enhance_prompts_handler: {e}")
         import traceback
         traceback.print_exc()
-        return f"""❌ Error in prompt enhancement: {str(e)}
+        error_msg = f"❌ Fatal error: {str(e)}"
+        return error_msg, f"❌ Fatal error: {str(e)}"
 
-🔧 **Troubleshooting:**
-1. 🔄 Restart WebUI and try again
-2. ✅ Check that Qwen models are properly installed
-3. 📝 Verify your Wan prompts are in valid JSON format
 
-💡 **Need Help?** Check the console for detailed error messages."""
-
-def analyze_movement_handler(movement_sensitivity, current_prompts):
-    """Handle movement analysis from Deforum schedules and add movement descriptions to current prompts"""
+def analyze_movement_handler(current_prompts):
+    """Handle movement analysis from Deforum schedules with auto-calculated sensitivity"""
     try:
-        from .wan.utils.movement_analyzer import analyze_deforum_movement, generate_wan_motion_intensity_schedule
+        from .wan.utils.movement_analyzer import analyze_deforum_movement, MovementAnalyzer
         from types import SimpleNamespace
         import json
         
@@ -2187,10 +2111,71 @@ Movement descriptions will be added to your existing prompts."""
             anim_args.angle = "0:(0)"
             anim_args.max_frames = 120
         
-        # Generate movement description for appending to prompts
+        # Auto-calculate movement sensitivity from the schedules
+        print("🧮 Auto-calculating movement sensitivity from Deforum schedules...")
+        
+        # Create a MovementAnalyzer to calculate optimal sensitivity
+        analyzer = MovementAnalyzer(sensitivity=1.0)  # Start with baseline
+        
+        # Calculate movement ranges to determine optimal sensitivity
+        from .wan.utils.movement_analyzer import parse_schedule_string, interpolate_schedule
+        
+        try:
+            # Parse all movement schedules
+            x_keyframes = parse_schedule_string(anim_args.translation_x, anim_args.max_frames)
+            y_keyframes = parse_schedule_string(anim_args.translation_y, anim_args.max_frames)
+            z_keyframes = parse_schedule_string(anim_args.translation_z, anim_args.max_frames)
+            zoom_keyframes = parse_schedule_string(anim_args.zoom, anim_args.max_frames)
+            
+            # Interpolate to get value ranges
+            x_values = interpolate_schedule(x_keyframes, anim_args.max_frames)
+            y_values = interpolate_schedule(y_keyframes, anim_args.max_frames)
+            z_values = interpolate_schedule(z_keyframes, anim_args.max_frames)
+            zoom_values = interpolate_schedule(zoom_keyframes, anim_args.max_frames)
+            
+            # Calculate movement ranges
+            x_range = max(x_values) - min(x_values) if x_values else 0
+            y_range = max(y_values) - min(y_values) if y_values else 0
+            z_range = max(z_values) - min(z_values) if z_values else 0
+            zoom_range = max(zoom_values) - min(zoom_values) if zoom_values else 0
+            
+            # Calculate total movement magnitude
+            total_movement = x_range + y_range + z_range + (zoom_range * 50)  # Zoom weighted higher
+            
+            # Auto-calculate optimal sensitivity based on movement magnitude
+            if total_movement < 10:
+                # Very small movement - high sensitivity to detect subtle motion
+                auto_sensitivity = 2.0
+                sensitivity_reason = "high sensitivity for subtle movement"
+            elif total_movement < 30:
+                # Small movement - moderate sensitivity
+                auto_sensitivity = 1.5
+                sensitivity_reason = "moderate sensitivity for small movement"
+            elif total_movement < 100:
+                # Normal movement - standard sensitivity
+                auto_sensitivity = 1.0
+                sensitivity_reason = "standard sensitivity for normal movement"
+            elif total_movement < 300:
+                # Large movement - reduced sensitivity to avoid over-detection
+                auto_sensitivity = 0.7
+                sensitivity_reason = "reduced sensitivity for large movement"
+            else:
+                # Very large movement - low sensitivity
+                auto_sensitivity = 0.5
+                sensitivity_reason = "low sensitivity for very large movement"
+            
+            print(f"📊 Total movement magnitude: {total_movement:.1f}")
+            print(f"🎯 Auto-calculated sensitivity: {auto_sensitivity} ({sensitivity_reason})")
+            
+        except Exception as e:
+            print(f"⚠️ Could not auto-calculate sensitivity: {e}, using default 1.0")
+            auto_sensitivity = 1.0
+            sensitivity_reason = "default (calculation failed)"
+        
+        # Generate movement description using auto-calculated sensitivity
         movement_desc, average_motion_strength = analyze_deforum_movement(
             anim_args=anim_args,
-            sensitivity=movement_sensitivity,
+            sensitivity=auto_sensitivity,
             max_frames=anim_args.max_frames
         )
         
@@ -2205,16 +2190,20 @@ Movement descriptions will be added to your existing prompts."""
         # Convert back to JSON
         updated_json = json.dumps(updated_prompts, ensure_ascii=False, indent=2)
         
-        # Result message
+        # Result message with auto-calculated sensitivity info
         result_message = f"""✅ Movement analysis complete!
 
 Movement: "{movement_desc}"
 Motion strength: {average_motion_strength:.2f}
+Auto-calculated sensitivity: {auto_sensitivity} ({sensitivity_reason})
 
 ✅ Movement descriptions added to {len(updated_prompts)} prompts.
 Prompts updated above. Ready for enhancement or generation."""
         
         print(f"✅ Updated {len(updated_prompts)} Wan prompts with movement descriptions")
+        
+        # Store movement description for enhance_prompts_handler
+        analyze_movement_handler._movement_description = movement_desc
         
         # Return updated prompts and status message
         return updated_json, result_message

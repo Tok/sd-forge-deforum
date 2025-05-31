@@ -206,18 +206,42 @@ def setup_deforum_left_side_ui():
             
             from .ui_elements import enhance_prompts_handler
             
+            # Check if enhancement_progress component exists for progress feedback
+            enhancement_progress_available = 'enhancement_progress' in locals()
+            
             # Connect the enhance button with current prompts as first parameter
-            locals()['enhance_prompts_btn'].click(
-                fn=enhance_prompts_handler,
-                inputs=[
-                    locals()['wan_enhanced_prompts'],  # current_prompts - first parameter
-                    locals()['wan_qwen_model'], 
-                    locals()['wan_qwen_language'],
-                    locals()['wan_qwen_auto_download']
-                ],
-                outputs=[locals()['wan_enhanced_prompts']]
-            )
-            print("✅ Wan prompt enhancement button connected successfully")
+            if enhancement_progress_available:
+                # Connect with progress feedback
+                locals()['enhance_prompts_btn'].click(
+                    fn=enhance_prompts_handler,
+                    inputs=[
+                        locals()['wan_enhanced_prompts'],  # current_prompts - first parameter
+                        locals()['wan_qwen_model'], 
+                        locals()['wan_qwen_language'],
+                        locals()['wan_qwen_auto_download']
+                    ],
+                    outputs=[locals()['wan_enhanced_prompts'], locals()['enhancement_progress']]
+                )
+                print("✅ Wan prompt enhancement button connected successfully with progress feedback")
+            else:
+                # Fallback connection without progress feedback
+                def enhance_wrapper(*args):
+                    result = enhance_prompts_handler(*args)
+                    if isinstance(result, tuple):
+                        return result[0]  # Return only the enhanced prompts
+                    return result
+                
+                locals()['enhance_prompts_btn'].click(
+                    fn=enhance_wrapper,
+                    inputs=[
+                        locals()['wan_enhanced_prompts'],  # current_prompts - first parameter
+                        locals()['wan_qwen_model'], 
+                        locals()['wan_qwen_language'],
+                        locals()['wan_qwen_auto_download']
+                    ],
+                    outputs=[locals()['wan_enhanced_prompts']]
+                )
+                print("✅ Wan prompt enhancement button connected successfully (without progress feedback)")
         except Exception as e:
             print(f"⚠️ Warning: Failed to connect Wan prompt enhancement button: {e}")
             import traceback
