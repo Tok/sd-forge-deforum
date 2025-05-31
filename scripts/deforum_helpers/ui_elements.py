@@ -703,6 +703,15 @@ def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo
     print("🎬 Wan video generation started with AUTO-DISCOVERY (Internal Call)")
     print("🔍 Using smart model discovery instead of manual paths")
     
+    # Ensure Qwen models are unloaded before video generation to free VRAM
+    try:
+        from .wan.utils.qwen_manager import qwen_manager
+        if qwen_manager.is_model_loaded():
+            print("🔄 Unloading Qwen models before video generation...")
+            qwen_manager.ensure_model_unloaded()
+    except Exception as e:
+        print(f"⚠️ Warning: Could not cleanup Qwen models: {e}")
+    
     start_time = time.time()
     
     try:
@@ -722,7 +731,6 @@ def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo
    huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir "models/wan"
 
 2. 📂 Or place your model in one of these locations:
-   • models/wan/
    • models/wan/
    • models/Wan/
    
@@ -1496,6 +1504,24 @@ def get_tab_wan(dw: SimpleNamespace):
             from .wan.utils.qwen_manager import qwen_manager
             from .args import get_component_names
             
+            # Check if a model is already loaded
+            if qwen_manager.is_model_loaded():
+                loaded_info = qwen_manager.get_loaded_model_info()
+                current_model = loaded_info['name'] if loaded_info else "Unknown"
+                
+                # If different model requested, cleanup first
+                if qwen_model != "Auto-Select" and current_model != qwen_model:
+                    print(f"🔄 Switching from {current_model} to {qwen_model}")
+                    qwen_manager.cleanup_cache()
+            
+            # Provide loading feedback
+            if not qwen_manager.is_model_loaded():
+                if qwen_model == "Auto-Select":
+                    selected_model = qwen_manager.auto_select_model()
+                    print(f"🤖 Auto-selected model: {selected_model}")
+                else:
+                    print(f"📥 Loading Qwen model: {qwen_model}")
+            
             # Get animation prompts from component args
             component_names = get_component_names()
             try:
@@ -1526,7 +1552,7 @@ def get_tab_wan(dw: SimpleNamespace):
                 
             print(f"🎨 Enhancing {len(clean_prompts)} prompts...")
             
-            # Enhance prompts with QwenPromptExpander
+            # Enhance prompts with QwenPromptExpander (this is where model gets loaded)
             enhanced_prompts = qwen_manager.enhance_prompts(
                 prompts=clean_prompts,
                 model_name=qwen_model,
@@ -1543,6 +1569,8 @@ def get_tab_wan(dw: SimpleNamespace):
             result = "{\n  " + ",\n  ".join(formatted_prompts) + "\n}"
             
             print(f"✅ Enhanced {len(enhanced_prompts)} prompts successfully")
+            print("💡 Qwen model will be automatically unloaded before video generation")
+            
             return result
             
         except Exception as e:
@@ -1678,8 +1706,23 @@ def get_tab_wan(dw: SimpleNamespace):
         """Cleanup Qwen model cache to free VRAM"""
         try:
             from .wan.utils.qwen_manager import qwen_manager
-            qwen_manager.cleanup_cache()
-            return "🧹 Qwen model cache cleaned up successfully"
+            
+            if qwen_manager.is_model_loaded():
+                loaded_info = qwen_manager.get_loaded_model_info()
+                model_name = loaded_info['name'] if loaded_info else "Unknown"
+                vram_usage = loaded_info.get('vram_usage', 0) if loaded_info else 0
+                
+                print(f"🧹 Cleaning up loaded Qwen model: {model_name} (~{vram_usage}GB VRAM)")
+                qwen_manager.force_cleanup_all()
+                
+                return f"🧹 Successfully cleaned up Qwen model cache\n" \
+                       f"📦 Model: {model_name}\n" \
+                       f"💾 Freed: ~{vram_usage}GB VRAM\n" \
+                       f"✅ Ready for video generation"
+            else:
+                return "ℹ️ No Qwen models currently loaded\n" \
+                       "💾 VRAM is already available for video generation"
+                       
         except Exception as e:
             return f"❌ Error cleaning up cache: {str(e)}"
     

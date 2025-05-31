@@ -49,16 +49,28 @@ class QwenModelManager:
         }
     }
     
-    def __init__(self, models_dir: str = "models/qwen"):
+    def __init__(self, models_dir: str = None):
         """
         Initialize Qwen model manager
         
         Args:
-            models_dir: Directory to store Qwen models
+            models_dir: Directory to store Qwen models. If None, uses WebUI models directory
         """
+        if models_dir is None:
+            # Use WebUI models directory structure
+            try:
+                import modules.paths as paths
+                base_models_dir = Path(paths.models_path)
+            except:
+                # Fallback to relative path if WebUI not available
+                base_models_dir = Path("models")
+            
+            models_dir = base_models_dir / "qwen"
+        
         self.models_dir = Path(models_dir)
         self.models_dir.mkdir(parents=True, exist_ok=True)
-        self._cached_expandable = None
+        self._cached_expander = None
+        self._current_model = None
         
     def get_available_vram(self) -> float:
         """Get available VRAM in GB"""
@@ -272,14 +284,14 @@ class QwenModelManager:
             return {}
             
         # Create or reuse prompt expander
-        if self._cached_expandable is None or self._cached_expandable[0] != model_name:
+        if self._cached_expander is None or self._cached_expander[0] != model_name:
             expander = self.create_prompt_expander(model_name, auto_download)
             if expander is None:
                 print("❌ Failed to create prompt expander, returning original prompts")
                 return prompts
-            self._cached_expandable = (model_name, expander)
+            self._cached_expander = (model_name, expander)
         else:
-            expander = self._cached_expandable[1]
+            expander = self._cached_expander[1]
             
         enhanced_prompts = {}
         
@@ -319,18 +331,88 @@ class QwenModelManager:
             return self.MODEL_SPECS.get(model_name, {})
             
     def cleanup_cache(self):
-        """Clean up cached prompt expander"""
-        if self._cached_expandable is not None:
+        """Clean up cached prompt expander and free VRAM"""
+        if self._cached_expander is not None:
             try:
-                expander = self._cached_expandable[1]
-                if hasattr(expander, 'model'):
+                model_name, expander = self._cached_expander
+                print(f"🧹 Cleaning up Qwen model: {model_name}")
+                
+                # Properly cleanup the model
+                if hasattr(expander, 'model') and expander.model is not None:
                     # Move model to CPU to free VRAM
                     expander.model = expander.model.to("cpu")
+                    del expander.model
+                    
+                if hasattr(expander, 'processor') and expander.processor is not None:
+                    del expander.processor
+                    
+                # Clear the expander
+                del expander
+                
+                # Force garbage collection
+                import gc
+                gc.collect()
+                
+                # Clear CUDA cache
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+                    
+            except Exception as e:
+                print(f"⚠️ Error during cleanup: {e}")
+                
+            self._cached_expander = None
+            self._current_model = None
+            print("✅ Qwen model cache cleaned up successfully")
+            
+    def ensure_model_unloaded(self):
+        """Ensure Qwen model is unloaded before other operations"""
+        if self._cached_expander is not None:
+            print("🔄 Unloading Qwen model before rendering...")
+            self.cleanup_cache()
+            
+    def is_model_loaded(self) -> bool:
+        """Check if a Qwen model is currently loaded"""
+        return self._cached_expander is not None
+        
+    def get_loaded_model_info(self) -> Optional[Dict]:
+        """Get information about currently loaded model"""
+        if self._cached_expander is not None:
+            model_name = self._cached_expander[0]
+            return {
+                "name": model_name,
+                "info": self.get_model_info(model_name),
+                "vram_usage": self._estimate_vram_usage(model_name)
+            }
+        return None
+        
+    def _estimate_vram_usage(self, model_name: str) -> float:
+        """Estimate VRAM usage for a model"""
+        model_spec = self.MODEL_SPECS.get(model_name, {})
+        return model_spec.get('vram_gb', 0.0)
+        
+    def force_cleanup_all(self):
+        """Force cleanup of all cached models and clear VRAM"""
+        print("🧹 Force cleanup: Clearing all Qwen models from VRAM...")
+        
+        # Cleanup cached expander
+        self.cleanup_cache()
+        
+        # Additional cleanup steps
+        try:
+            import gc
+            gc.collect()
+            
+            if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            except:
-                pass
-            self._cached_expandable = None
-            print("🧹 Cleaned up Qwen model cache")
+                torch.cuda.synchronize()
+                # Try to reclaim more VRAM
+                torch.cuda.reset_peak_memory_stats()
+                
+        except Exception as e:
+            print(f"⚠️ Error during force cleanup: {e}")
+            
+        print("✅ Force cleanup completed")
 
 
 # Global instance for easy access

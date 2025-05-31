@@ -81,6 +81,13 @@ The extension includes **Wan 2.1** (Alibaba's state-of-the-art video generation 
 - **Strength Scheduling**: I2V chaining with continuity control from Keyframes → Strength tab
 - **Auto-Discovery**: Automatically finds Wan models without manual configuration
 
+#### 🤖 **AI-Powered Enhancement Features** ⚡ NEW
+- **🎨 QwenPromptExpander**: Automatically enhance and expand prompts for better video quality
+- **📹 Movement Analysis**: Translate Deforum movement schedules to English descriptions
+- **🧠 Auto-Model Selection**: Intelligent model choice based on available VRAM
+- **💾 Smart Memory Management**: Lazy loading and automatic cleanup for optimal VRAM usage
+- **✏️ Manual Override**: All AI enhancements are fully editable before generation
+
 #### 🚀 **Quick Setup**
 
 1. **Download Wan Models** (choose one):
@@ -99,10 +106,87 @@ The extension includes **Wan 2.1** (Alibaba's state-of-the-art video generation 
    huggingface-cli download Wan-AI/Wan2.1-I2V-14B --local-dir models/wan
    ```
 
-2. **Configure in Deforum**:
+2. **Optional: Download Qwen Models for AI Enhancement**:
+   Models are auto-downloaded to `models/qwen/` when first used:
+   ```bash
+   # Models are automatically downloaded when "Enhance Prompts" is clicked
+   # Storage location: webui-forge/webui/models/qwen/
+   # Auto-selected based on your VRAM: 3B (4GB), 7B (8GB), 14B (16GB+)
+   ```
+
+3. **Configure in Deforum**:
    - Set prompts in **Prompts tab** with frame numbers
    - Set FPS in **Output tab**
-   - Go to **Wan Video tab** and click **"Generate Wan Video"**
+   - Go to **Wan Video tab** for AI enhancement and generation options
+
+#### 🎨 **AI Prompt Enhancement Workflow**
+
+1. **Configure Base Prompts**:
+   ```json
+   {
+     "0": "mountain landscape",
+     "30": "misty valley", 
+     "60": "golden sunlight",
+     "90": "illuminated peaks"
+   }
+   ```
+
+2. **Enable AI Enhancement** in Wan Video tab:
+   - ✅ Enable Prompt Enhancement
+   - 🤖 Select Qwen Model (Auto-Select recommended)
+   - 📹 Enable Movement Analysis
+   - 🎯 Click "Enhance Prompts"
+
+3. **AI Enhanced Result**:
+   ```json
+   {
+     "0": "A breathtaking mountain landscape at dawn, with towering snow-capped peaks rising majestically against a pristine azure sky, with camera movement with slow right pan, forward dolly",
+     "30": "Morning mist gracefully rising from the valleys below, creating ethereal wisps that dance between ancient pine trees, with camera movement with medium left pan, upward tilt",
+     "60": "Golden sunlight breaking through dramatic cloud formations, casting warm amber rays across the rugged terrain and illuminating every crevice, with camera movement with fast zoom in, clockwise roll",
+     "90": "Full daylight illuminating the magnificent peaks in all their glory, revealing intricate details of rock formations and alpine meadows, with camera movement with slow backward dolly, downward pitch"
+   }
+   ```
+
+4. **Edit and Generate**: Enhanced prompts are fully editable before clicking "Generate Wan Video"
+
+#### 🔧 **Qwen Model Specifications**
+
+| Model | VRAM | Type | Description | Best For |
+|-------|------|------|-------------|----------|
+| **QwenVL2.5_3B** | 8GB | Vision+Text | Fast, supports images | Quick enhancement |
+| **QwenVL2.5_7B** | 16GB | Vision+Text | Balanced quality | Most users ⭐ |
+| **Qwen2.5_3B** | 6GB | Text-only | Memory efficient | Low-VRAM systems |
+| **Qwen2.5_7B** | 14GB | Text-only | High quality | Text enhancement |
+| **Qwen2.5_14B** | 28GB | Text-only | Maximum quality | High-end systems |
+
+**Auto-Selection Logic**: The system automatically chooses the best model for your VRAM:
+- 4-6GB → Qwen2.5_3B
+- 8-12GB → Qwen2.5_7B  
+- 16GB+ → QwenVL2.5_7B or Qwen2.5_14B
+
+#### 📹 **Movement Analysis Examples**
+
+The system translates complex Deforum schedules into human-readable descriptions:
+
+| Deforum Schedule | AI Translation |
+|-----------------|----------------|
+| `translation_x: "0:(0), 30:(100)"` | "fast right pan" |
+| `translation_z: "0:(0), 60:(-50)"` | "medium backward dolly" |
+| `rotation_3d_y: "0:(0), 45:(20)"` | "slow right yaw" |
+| `zoom: "0:(1.0), 30:(1.5)"` | "medium zoom in" |
+
+**Combined Example**:
+```
+Input: translation_x: "0:(0), 30:(100)", rotation_3d_x: "0:(0), 60:(15)", zoom: "0:(1.0), 40:(0.7)"
+Output: "camera movement with fast right pan, slow upward pitch, medium zoom out"
+```
+
+#### 💾 **Smart Memory Management**
+
+- **Lazy Loading**: Qwen models are only loaded when "Enhance Prompts" is clicked
+- **Auto-Cleanup**: Models are automatically unloaded before video generation to free VRAM
+- **Manual Control**: "Cleanup Qwen Cache" button for immediate VRAM release
+- **Status Monitoring**: Real-time display of loaded models and VRAM usage
 
 #### 🎬 **VACE Models - Recommended for Seamless Video Generation**
 
@@ -182,6 +266,15 @@ https://github.com/Tok/sd-forge-deforum/blob/main/scripts/default_settings.txt
 * **Audio Synchronization**: Frame-perfect timing for music videos
 * **Multiple Resolutions**: Support for various output sizes
 
+#### AI-Powered Enhancements ⚡ NEW
+* **QwenPromptExpander**: Automatic prompt enhancement with 5 model options (3B-14B)
+* **Movement Analysis**: Translation of Deforum schedules to English descriptions
+* **Auto-Model Selection**: Intelligent choice based on available VRAM (4GB-28GB)
+* **Lazy Loading**: Models only load when needed, auto-unload before generation
+* **Manual Editing**: All AI enhancements are fully editable before generation
+* **Multi-Language**: English and Chinese prompt enhancement support
+* **Dynamic Motion Strength**: Automatic calculation from movement patterns
+
 #### Keyframe Distribution
 Causes the rendering to run on an experimental core that can rearrange keyframes,
 which makes it possible to set up fast generations with less jitter at high or no cadence.
@@ -241,6 +334,18 @@ The shake data is available under Creative Commons CC0 1.0 Universal license and
 * **Generation fails**: Try the 1.3B model if using 14B, check VRAM usage
 * **Flash attention errors**: Compatibility layer should handle this automatically
 * **Audio sync problems**: Verify frame numbers in prompt schedule match your timing needs
+
+### AI Enhancement Issues (QwenPromptExpander)
+* **Model download fails**: Check internet connection, models auto-download to `webui/models/qwen/`
+* **Out of VRAM**: Use "Cleanup Qwen Cache" button or select smaller model (3B instead of 7B/14B)
+* **Enhancement fails**: Try "Auto-Select" model option, ensure prompts are properly formatted
+* **Slow enhancement**: Larger models (14B) take more time, consider using 7B or 3B for speed
+* **Enhancement button not working**: Check console for errors, restart WebUI if needed
+
+### Movement Analysis Issues
+* **No movement detected**: Increase movement sensitivity or check schedule format ("frame:(value)")
+* **Incorrect analysis**: Verify Deforum schedules use proper syntax, try different sensitivity settings
+* **Motion strength wrong**: Enable manual override in Overrides section for custom values
 
 ### Settings file
 During active development, content and structure of the `deforum_settings.txt` file 
