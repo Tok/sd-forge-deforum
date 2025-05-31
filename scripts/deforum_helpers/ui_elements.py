@@ -27,6 +27,7 @@ from .defaults import get_gradio_html, DeforumAnimPrompts
 from .gradio_funcs import (upload_vid_to_interpolate, upload_pics_to_interpolate,
                            ncnn_upload_vid_to_upscale, upload_vid_to_depth)
 from .video_audio_utilities import direct_stitch_vid_from_frames
+from .ffmpeg_utils import FFmpegProcessor
 
 
 def create_gr_elem(d):
@@ -2868,3 +2869,677 @@ def wan_generate_with_validation(*component_args):
             
     except Exception as e:
         return f"❌ Generation error: {str(e)}"
+
+
+def get_tab_ffmpeg():
+    """FFmpeg post-processing tab with upscaling, interpolation, and audio replacement"""
+    from .ffmpeg_utils import FFmpegProcessor
+    
+    with gr.TabItem(f"{emoji_utils.gear()} FFmpeg Post-Processing", elem_id='ffmpeg_tab'):
+        
+        # Global FFmpeg processor
+        ffmpeg_processor = FFmpegProcessor()
+        
+        gr.HTML("""
+        <h3>🎬 FFmpeg Video Post-Processing</h3>
+        <p>Professional video post-processing using FFmpeg: upscaling, frame interpolation, and audio replacement.</p>
+        <p><strong>Requirements:</strong> FFmpeg must be installed and available in your system PATH.</p>
+        """)
+        
+        # Video file upload
+        with gr.Accordion('📁 Video Input', open=True):
+            video_input_file = gr.File(
+                label="Select Video File", 
+                file_types=["video"], 
+                file_count="single",
+                elem_id="ffmpeg_video_input"
+            )
+            
+        # Video Information Display
+        with gr.Accordion('📊 Video Information', open=True):
+            with gr.Row():
+                with gr.Column(scale=2):
+                    video_info_display = gr.HTML(value="<p>No video loaded</p>")
+                with gr.Column(scale=1):
+                    analyze_video_btn = gr.Button("🔍 Analyze Video", size="sm")
+                    
+        # Processing Options
+        with gr.Accordion('⚙️ Processing Options', open=True):
+            
+            # Upscaling Section
+            with gr.Tab("🔍 Upscaling"):
+                gr.HTML("<h4>Video Upscaling</h4><p>Increase video resolution using high-quality algorithms.</p>")
+                
+                with gr.Row():
+                    upscale_resolution = gr.Dropdown(
+                        label="Target Resolution",
+                        choices=["720p", "1080p", "1440p", "4K", "8K", "Custom"],
+                        value="1080p"
+                    )
+                    upscale_custom_res = gr.Textbox(
+                        label="Custom Resolution (WxH)",
+                        placeholder="1920x1080",
+                        visible=False
+                    )
+                    
+                with gr.Row():
+                    upscale_quality = gr.Dropdown(
+                        label="Quality Preset",
+                        choices=["fast", "medium", "slow", "veryslow"],
+                        value="medium",
+                        info="Higher quality = slower processing"
+                    )
+                    upscale_output_suffix = gr.Textbox(
+                        label="Output Suffix",
+                        value="_upscaled",
+                        info="Added to filename"
+                    )
+                    
+                upscale_btn = gr.Button("🚀 Start Upscaling", variant="primary", size="lg")
+                
+            # Frame Interpolation Section  
+            with gr.Tab("🎞️ Frame Interpolation"):
+                gr.HTML("<h4>Frame Interpolation</h4><p>Increase frame rate for smoother motion.</p>")
+                
+                with gr.Row():
+                    interp_target_fps = gr.Dropdown(
+                        label="Target FPS",
+                        choices=["24", "30", "60", "120", "Custom"],
+                        value="60"
+                    )
+                    interp_custom_fps = gr.Number(
+                        label="Custom FPS",
+                        value=60,
+                        visible=False
+                    )
+                    
+                with gr.Row():
+                    interp_method = gr.Dropdown(
+                        label="Interpolation Method",
+                        choices=["minterpolate", "fps"],
+                        value="minterpolate",
+                        info="minterpolate = higher quality, fps = faster"
+                    )
+                    interp_output_suffix = gr.Textbox(
+                        label="Output Suffix", 
+                        value="_interpolated",
+                        info="Added to filename"
+                    )
+                    
+                interpolate_btn = gr.Button("🎬 Start Interpolation", variant="primary", size="lg")
+                
+            # Audio Replacement Section
+            with gr.Tab("🎵 Audio Replacement"):
+                gr.HTML("<h4>Audio Replacement</h4><p>Replace or add audio track to video.</p>")
+                
+                audio_input_file = gr.File(
+                    label="Audio File",
+                    file_types=["audio"],
+                    file_count="single"
+                )
+                
+                with gr.Row():
+                    audio_start_time = gr.Number(
+                        label="Audio Start Time (seconds)",
+                        value=0,
+                        info="Offset audio start time"
+                    )
+                    audio_output_suffix = gr.Textbox(
+                        label="Output Suffix",
+                        value="_audio_replaced",
+                        info="Added to filename"
+                    )
+                    
+                replace_audio_btn = gr.Button("🎵 Replace Audio", variant="primary", size="lg")
+                
+        # Progress and Output
+        with gr.Accordion('📈 Progress & Output', open=True):
+            progress_text = gr.Textbox(
+                label="Processing Status",
+                value="Ready to process",
+                interactive=False,
+                lines=3
+            )
+            
+            output_file_info = gr.HTML(value="<p>No output files yet</p>")
+            
+        # Event Handlers
+        def analyze_video_handler(video_file):
+            """Analyze uploaded video and display information"""
+            if not video_file:
+                return "<p>No video file selected</p>"
+                
+            try:
+                video_info = ffmpeg_processor.get_video_info(video_file.name)
+                
+                if "error" in video_info:
+                    return f"<p style='color: red;'>Error: {video_info['error']}</p>"
+                
+                # Create formatted HTML display
+                info_html = f"""
+                <div style='background: #f5f5f5; padding: 15px; border-radius: 8px; font-family: monospace;'>
+                    <h4>📹 {video_info['filename']}</h4>
+                    <table style='width: 100%; border-collapse: collapse;'>
+                        <tr><td><strong>Resolution:</strong></td><td>{video_info['resolution']} ({video_info['orientation']})</td></tr>
+                        <tr><td><strong>Duration:</strong></td><td>{video_info['duration_seconds']}s</td></tr>
+                        <tr><td><strong>Frame Rate:</strong></td><td>{video_info['fps']} FPS</td></tr>
+                        <tr><td><strong>Frame Count:</strong></td><td>{video_info['frame_count']:,} frames</td></tr>
+                        <tr><td><strong>File Size:</strong></td><td>{video_info['file_size_mb']} MB</td></tr>
+                        <tr><td><strong>Video Codec:</strong></td><td>{video_info['video_codec']}</td></tr>
+                        <tr><td><strong>Audio:</strong></td><td>{video_info['audio_streams']} stream(s) - {video_info['audio_codec']}</td></tr>
+                        <tr><td><strong>Format:</strong></td><td>{video_info['format']}</td></tr>
+                        <tr><td><strong>Pixel Format:</strong></td><td>{video_info['pixel_format']}</td></tr>
+                    </table>
+                </div>
+                """
+                
+                # Get processing recommendations
+                recommendations = ffmpeg_processor.get_optimal_settings(video_info)
+                
+                if recommendations['upscale_options'] or recommendations['interpolation_options']:
+                    info_html += "<div style='margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 5px;'>"
+                    info_html += "<strong>💡 Recommendations:</strong><br>"
+                    
+                    if recommendations['upscale_options']:
+                        info_html += f"• Upscale to: {', '.join(recommendations['upscale_options'])}<br>"
+                    
+                    if recommendations['interpolation_options']:
+                        info_html += f"• Interpolate to: {', '.join(map(str, recommendations['interpolation_options']))} FPS<br>"
+                    
+                    info_html += f"• Quality setting: {recommendations['quality_recommendation']}"
+                    info_html += "</div>"
+                
+                return info_html
+                
+            except Exception as e:
+                return f"<p style='color: red;'>Analysis failed: {str(e)}</p>"
+        
+        def upscale_video_handler(video_file, resolution, custom_res, quality, suffix, progress=gr.Progress()):
+            """Handle video upscaling"""
+            if not video_file:
+                return "❌ No video file selected", "<p>No output</p>"
+            
+            try:
+                # Determine output path
+                input_path = video_file.name
+                base_name = os.path.splitext(os.path.basename(input_path))[0]
+                output_path = os.path.join(os.path.dirname(input_path), f"{base_name}{suffix}.mp4")
+                
+                # Use custom resolution if specified
+                target_res = custom_res if resolution == "Custom" and custom_res else resolution
+                
+                def progress_callback(status):
+                    progress(0.5, desc=status)
+                    return status
+                
+                # Start upscaling
+                progress(0.1, desc="Starting upscaling...")
+                success = ffmpeg_processor.upscale_video(
+                    input_path, output_path, target_res, quality, progress_callback
+                )
+                
+                if success:
+                    file_size = os.path.getsize(output_path) / (1024*1024)
+                    result_text = f"✅ Upscaling completed!\nOutput: {os.path.basename(output_path)}"
+                    result_html = f"<p style='color: green;'>✅ <strong>Upscaling completed!</strong><br>Output: {os.path.basename(output_path)} ({file_size:.1f} MB)</p>"
+                    progress(1.0, desc="Upscaling completed!")
+                    return result_text, result_html
+                else:
+                    return "❌ Upscaling failed - check console for details", "<p style='color: red;'>❌ Upscaling failed</p>"
+                    
+            except Exception as e:
+                error_msg = f"❌ Upscaling error: {str(e)}"
+                return error_msg, f"<p style='color: red;'>{error_msg}</p>"
+        
+        def interpolate_video_handler(video_file, target_fps, custom_fps, method, suffix, progress=gr.Progress()):
+            """Handle frame interpolation"""
+            if not video_file:
+                return "❌ No video file selected", "<p>No output</p>"
+            
+            try:
+                input_path = video_file.name
+                base_name = os.path.splitext(os.path.basename(input_path))[0]
+                output_path = os.path.join(os.path.dirname(input_path), f"{base_name}{suffix}.mp4")
+                
+                # Use custom FPS if specified
+                fps = int(custom_fps) if target_fps == "Custom" else int(target_fps)
+                
+                def progress_callback(status):
+                    progress(0.5, desc=status)
+                    return status
+                
+                progress(0.1, desc="Starting frame interpolation...")
+                success = ffmpeg_processor.interpolate_frames(
+                    input_path, output_path, fps, method, progress_callback
+                )
+                
+                if success:
+                    file_size = os.path.getsize(output_path) / (1024*1024)
+                    result_text = f"✅ Interpolation completed!\nOutput: {os.path.basename(output_path)}"
+                    result_html = f"<p style='color: green;'>✅ <strong>Interpolation completed!</strong><br>Output: {os.path.basename(output_path)} ({file_size:.1f} MB)</p>"
+                    progress(1.0, desc="Interpolation completed!")
+                    return result_text, result_html
+                else:
+                    return "❌ Interpolation failed - check console for details", "<p style='color: red;'>❌ Interpolation failed</p>"
+                    
+            except Exception as e:
+                error_msg = f"❌ Interpolation error: {str(e)}"
+                return error_msg, f"<p style='color: red;'>{error_msg}</p>"
+        
+        def replace_audio_handler(video_file, audio_file, start_time, suffix, progress=gr.Progress()):
+            """Handle audio replacement"""
+            if not video_file:
+                return "❌ No video file selected", "<p>No output</p>"
+            if not audio_file:
+                return "❌ No audio file selected", "<p>No output</p>"
+            
+            try:
+                video_path = video_file.name
+                audio_path = audio_file.name
+                base_name = os.path.splitext(os.path.basename(video_path))[0]
+                output_path = os.path.join(os.path.dirname(video_path), f"{base_name}{suffix}.mp4")
+                
+                def progress_callback(status):
+                    progress(0.5, desc=status)
+                    return status
+                
+                progress(0.1, desc="Starting audio replacement...")
+                success = ffmpeg_processor.replace_audio(
+                    video_path, audio_path, output_path, start_time, progress_callback
+                )
+                
+                if success:
+                    file_size = os.path.getsize(output_path) / (1024*1024)
+                    result_text = f"✅ Audio replacement completed!\nOutput: {os.path.basename(output_path)}"
+                    result_html = f"<p style='color: green;'>✅ <strong>Audio replacement completed!</strong><br>Output: {os.path.basename(output_path)} ({file_size:.1f} MB)</p>"
+                    progress(1.0, desc="Audio replacement completed!")
+                    return result_text, result_html
+                else:
+                    return "❌ Audio replacement failed - check console for details", "<p style='color: red;'>❌ Audio replacement failed</p>"
+                    
+            except Exception as e:
+                error_msg = f"❌ Audio replacement error: {str(e)}"
+                return error_msg, f"<p style='color: red;'>{error_msg}</p>"
+        
+        # UI Event Bindings
+        def toggle_custom_resolution(resolution):
+            return gr.update(visible=(resolution == "Custom"))
+        
+        def toggle_custom_fps(target_fps):
+            return gr.update(visible=(target_fps == "Custom"))
+        
+        # Connect event handlers
+        analyze_video_btn.click(
+            fn=analyze_video_handler,
+            inputs=[video_input_file],
+            outputs=[video_info_display]
+        )
+        
+        upscale_resolution.change(
+            fn=toggle_custom_resolution,
+            inputs=[upscale_resolution],
+            outputs=[upscale_custom_res]
+        )
+        
+        interp_target_fps.change(
+            fn=toggle_custom_fps,
+            inputs=[interp_target_fps],
+            outputs=[interp_custom_fps]
+        )
+        
+        upscale_btn.click(
+            fn=upscale_video_handler,
+            inputs=[video_input_file, upscale_resolution, upscale_custom_res, upscale_quality, upscale_output_suffix],
+            outputs=[progress_text, output_file_info]
+        )
+        
+        interpolate_btn.click(
+            fn=interpolate_video_handler,
+            inputs=[video_input_file, interp_target_fps, interp_custom_fps, interp_method, interp_output_suffix],
+            outputs=[progress_text, output_file_info]
+        )
+        
+        replace_audio_btn.click(
+            fn=replace_audio_handler,
+            inputs=[video_input_file, audio_input_file, audio_start_time, audio_output_suffix],
+            outputs=[progress_text, output_file_info]
+        )
+    
+    return locals()
+
+
+def get_tab_ffmpeg():
+    """FFmpeg post-processing tab with upscaling, interpolation, and audio replacement"""
+    from .ffmpeg_utils import FFmpegProcessor
+    
+    with gr.TabItem(f"{emoji_utils.control()} FFmpeg Post-Processing", elem_id='ffmpeg_tab'):
+        
+        # Global FFmpeg processor
+        ffmpeg_processor = FFmpegProcessor()
+        
+        gr.HTML("""
+        <h3>🎬 FFmpeg Video Post-Processing</h3>
+        <p>Professional video post-processing using FFmpeg: upscaling, frame interpolation, and audio replacement.</p>
+        <p><strong>Requirements:</strong> FFmpeg must be installed and available in your system PATH.</p>
+        """)
+        
+        # Video file upload
+        with gr.Accordion('📁 Video Input', open=True):
+            video_input_file = gr.File(
+                label="Select Video File", 
+                file_types=["video"], 
+                file_count="single",
+                elem_id="ffmpeg_video_input"
+            )
+            
+        # Video Information Display
+        with gr.Accordion('📊 Video Information', open=True):
+            with gr.Row():
+                with gr.Column(scale=2):
+                    video_info_display = gr.HTML(value="<p>No video loaded</p>")
+                with gr.Column(scale=1):
+                    analyze_video_btn = gr.Button("🔍 Analyze Video", size="sm")
+                    
+        # Processing Options
+        with gr.Accordion('⚙️ Processing Options', open=True):
+            
+            # Upscaling Section
+            with gr.Tab("🔍 Upscaling"):
+                gr.HTML("<h4>Video Upscaling</h4><p>Increase video resolution using high-quality algorithms.</p>")
+                
+                with gr.Row():
+                    upscale_resolution = gr.Dropdown(
+                        label="Target Resolution",
+                        choices=["720p", "1080p", "1440p", "4K", "8K", "Custom"],
+                        value="1080p"
+                    )
+                    upscale_custom_res = gr.Textbox(
+                        label="Custom Resolution (WxH)",
+                        placeholder="1920x1080",
+                        visible=False
+                    )
+                    
+                with gr.Row():
+                    upscale_quality = gr.Dropdown(
+                        label="Quality Preset",
+                        choices=["fast", "medium", "slow", "veryslow"],
+                        value="medium",
+                        info="Higher quality = slower processing"
+                    )
+                    upscale_output_suffix = gr.Textbox(
+                        label="Output Suffix",
+                        value="_upscaled",
+                        info="Added to filename"
+                    )
+                    
+                upscale_btn = gr.Button("🚀 Start Upscaling", variant="primary", size="lg")
+                
+            # Frame Interpolation Section  
+            with gr.Tab("🎞️ Frame Interpolation"):
+                gr.HTML("<h4>Frame Interpolation</h4><p>Increase frame rate for smoother motion.</p>")
+                
+                with gr.Row():
+                    interp_target_fps = gr.Dropdown(
+                        label="Target FPS",
+                        choices=["24", "30", "60", "120", "Custom"],
+                        value="60"
+                    )
+                    interp_custom_fps = gr.Number(
+                        label="Custom FPS",
+                        value=60,
+                        visible=False
+                    )
+                    
+                with gr.Row():
+                    interp_method = gr.Dropdown(
+                        label="Interpolation Method",
+                        choices=["minterpolate", "fps"],
+                        value="minterpolate",
+                        info="minterpolate = higher quality, fps = faster"
+                    )
+                    interp_output_suffix = gr.Textbox(
+                        label="Output Suffix", 
+                        value="_interpolated",
+                        info="Added to filename"
+                    )
+                    
+                interpolate_btn = gr.Button("🎬 Start Interpolation", variant="primary", size="lg")
+                
+            # Audio Replacement Section
+            with gr.Tab("🎵 Audio Replacement"):
+                gr.HTML("<h4>Audio Replacement</h4><p>Replace or add audio track to video.</p>")
+                
+                audio_input_file = gr.File(
+                    label="Audio File",
+                    file_types=["audio"],
+                    file_count="single"
+                )
+                
+                with gr.Row():
+                    audio_start_time = gr.Number(
+                        label="Audio Start Time (seconds)",
+                        value=0,
+                        info="Offset audio start time"
+                    )
+                    audio_output_suffix = gr.Textbox(
+                        label="Output Suffix",
+                        value="_audio_replaced",
+                        info="Added to filename"
+                    )
+                    
+                replace_audio_btn = gr.Button("🎵 Replace Audio", variant="primary", size="lg")
+                
+        # Progress and Output
+        with gr.Accordion('📈 Progress & Output', open=True):
+            progress_text = gr.Textbox(
+                label="Processing Status",
+                value="Ready to process",
+                interactive=False,
+                lines=3
+            )
+            
+            output_file_info = gr.HTML(value="<p>No output files yet</p>")
+            
+        # Event Handlers
+        def analyze_video_handler(video_file):
+            """Analyze uploaded video and display information"""
+            if not video_file:
+                return "<p>No video file selected</p>"
+                
+            try:
+                video_info = ffmpeg_processor.get_video_info(video_file.name)
+                
+                if "error" in video_info:
+                    return f"<p style='color: red;'>Error: {video_info['error']}</p>"
+                
+                # Create formatted HTML display
+                info_html = f"""
+                <div style='background: #f5f5f5; padding: 15px; border-radius: 8px; font-family: monospace;'>
+                    <h4>📹 {video_info['filename']}</h4>
+                    <table style='width: 100%; border-collapse: collapse;'>
+                        <tr><td><strong>Resolution:</strong></td><td>{video_info['resolution']} ({video_info['orientation']})</td></tr>
+                        <tr><td><strong>Duration:</strong></td><td>{video_info['duration_seconds']}s</td></tr>
+                        <tr><td><strong>Frame Rate:</strong></td><td>{video_info['fps']} FPS</td></tr>
+                        <tr><td><strong>Frame Count:</strong></td><td>{video_info['frame_count']:,} frames</td></tr>
+                        <tr><td><strong>File Size:</strong></td><td>{video_info['file_size_mb']} MB</td></tr>
+                        <tr><td><strong>Video Codec:</strong></td><td>{video_info['video_codec']}</td></tr>
+                        <tr><td><strong>Audio:</strong></td><td>{video_info['audio_streams']} stream(s) - {video_info['audio_codec']}</td></tr>
+                        <tr><td><strong>Format:</strong></td><td>{video_info['format']}</td></tr>
+                        <tr><td><strong>Pixel Format:</strong></td><td>{video_info['pixel_format']}</td></tr>
+                    </table>
+                </div>
+                """
+                
+                # Get processing recommendations
+                recommendations = ffmpeg_processor.get_optimal_settings(video_info)
+                
+                if recommendations['upscale_options'] or recommendations['interpolation_options']:
+                    info_html += "<div style='margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 5px;'>"
+                    info_html += "<strong>💡 Recommendations:</strong><br>"
+                    
+                    if recommendations['upscale_options']:
+                        info_html += f"• Upscale to: {', '.join(recommendations['upscale_options'])}<br>"
+                    
+                    if recommendations['interpolation_options']:
+                        info_html += f"• Interpolate to: {', '.join(map(str, recommendations['interpolation_options']))} FPS<br>"
+                    
+                    info_html += f"• Quality setting: {recommendations['quality_recommendation']}"
+                    info_html += "</div>"
+                
+                return info_html
+                
+            except Exception as e:
+                return f"<p style='color: red;'>Analysis failed: {str(e)}</p>"
+        
+        def upscale_video_handler(video_file, resolution, custom_res, quality, suffix, progress=gr.Progress()):
+            """Handle video upscaling"""
+            if not video_file:
+                return "❌ No video file selected", "<p>No output</p>"
+            
+            try:
+                # Determine output path
+                input_path = video_file.name
+                base_name = os.path.splitext(os.path.basename(input_path))[0]
+                output_path = os.path.join(os.path.dirname(input_path), f"{base_name}{suffix}.mp4")
+                
+                # Use custom resolution if specified
+                target_res = custom_res if resolution == "Custom" and custom_res else resolution
+                
+                def progress_callback(status):
+                    progress(0.5, desc=status)
+                    return status
+                
+                # Start upscaling
+                progress(0.1, desc="Starting upscaling...")
+                success = ffmpeg_processor.upscale_video(
+                    input_path, output_path, target_res, quality, progress_callback
+                )
+                
+                if success:
+                    file_size = os.path.getsize(output_path) / (1024*1024)
+                    result_text = f"✅ Upscaling completed!\nOutput: {os.path.basename(output_path)}"
+                    result_html = f"<p style='color: green;'>✅ <strong>Upscaling completed!</strong><br>Output: {os.path.basename(output_path)} ({file_size:.1f} MB)</p>"
+                    progress(1.0, desc="Upscaling completed!")
+                    return result_text, result_html
+                else:
+                    return "❌ Upscaling failed - check console for details", "<p style='color: red;'>❌ Upscaling failed</p>"
+                    
+            except Exception as e:
+                error_msg = f"❌ Upscaling error: {str(e)}"
+                return error_msg, f"<p style='color: red;'>{error_msg}</p>"
+        
+        def interpolate_video_handler(video_file, target_fps, custom_fps, method, suffix, progress=gr.Progress()):
+            """Handle frame interpolation"""
+            if not video_file:
+                return "❌ No video file selected", "<p>No output</p>"
+            
+            try:
+                input_path = video_file.name
+                base_name = os.path.splitext(os.path.basename(input_path))[0]
+                output_path = os.path.join(os.path.dirname(input_path), f"{base_name}{suffix}.mp4")
+                
+                # Use custom FPS if specified
+                fps = int(custom_fps) if target_fps == "Custom" else int(target_fps)
+                
+                def progress_callback(status):
+                    progress(0.5, desc=status)
+                    return status
+                
+                progress(0.1, desc="Starting frame interpolation...")
+                success = ffmpeg_processor.interpolate_frames(
+                    input_path, output_path, fps, method, progress_callback
+                )
+                
+                if success:
+                    file_size = os.path.getsize(output_path) / (1024*1024)
+                    result_text = f"✅ Interpolation completed!\nOutput: {os.path.basename(output_path)}"
+                    result_html = f"<p style='color: green;'>✅ <strong>Interpolation completed!</strong><br>Output: {os.path.basename(output_path)} ({file_size:.1f} MB)</p>"
+                    progress(1.0, desc="Interpolation completed!")
+                    return result_text, result_html
+                else:
+                    return "❌ Interpolation failed - check console for details", "<p style='color: red;'>❌ Interpolation failed</p>"
+                    
+            except Exception as e:
+                error_msg = f"❌ Interpolation error: {str(e)}"
+                return error_msg, f"<p style='color: red;'>{error_msg}</p>"
+        
+        def replace_audio_handler(video_file, audio_file, start_time, suffix, progress=gr.Progress()):
+            """Handle audio replacement"""
+            if not video_file:
+                return "❌ No video file selected", "<p>No output</p>"
+            if not audio_file:
+                return "❌ No audio file selected", "<p>No output</p>"
+            
+            try:
+                video_path = video_file.name
+                audio_path = audio_file.name
+                base_name = os.path.splitext(os.path.basename(video_path))[0]
+                output_path = os.path.join(os.path.dirname(video_path), f"{base_name}{suffix}.mp4")
+                
+                def progress_callback(status):
+                    progress(0.5, desc=status)
+                    return status
+                
+                progress(0.1, desc="Starting audio replacement...")
+                success = ffmpeg_processor.replace_audio(
+                    video_path, audio_path, output_path, start_time, progress_callback
+                )
+                
+                if success:
+                    file_size = os.path.getsize(output_path) / (1024*1024)
+                    result_text = f"✅ Audio replacement completed!\nOutput: {os.path.basename(output_path)}"
+                    result_html = f"<p style='color: green;'>✅ <strong>Audio replacement completed!</strong><br>Output: {os.path.basename(output_path)} ({file_size:.1f} MB)</p>"
+                    progress(1.0, desc="Audio replacement completed!")
+                    return result_text, result_html
+                else:
+                    return "❌ Audio replacement failed - check console for details", "<p style='color: red;'>❌ Audio replacement failed</p>"
+                    
+            except Exception as e:
+                error_msg = f"❌ Audio replacement error: {str(e)}"
+                return error_msg, f"<p style='color: red;'>{error_msg}</p>"
+        
+        # UI Event Bindings
+        def toggle_custom_resolution(resolution):
+            return gr.update(visible=(resolution == "Custom"))
+        
+        def toggle_custom_fps(target_fps):
+            return gr.update(visible=(target_fps == "Custom"))
+        
+        # Connect event handlers
+        analyze_video_btn.click(
+            fn=analyze_video_handler,
+            inputs=[video_input_file],
+            outputs=[video_info_display]
+        )
+        
+        upscale_resolution.change(
+            fn=toggle_custom_resolution,
+            inputs=[upscale_resolution],
+            outputs=[upscale_custom_res]
+        )
+        
+        interp_target_fps.change(
+            fn=toggle_custom_fps,
+            inputs=[interp_target_fps],
+            outputs=[interp_custom_fps]
+        )
+        
+        upscale_btn.click(
+            fn=upscale_video_handler,
+            inputs=[video_input_file, upscale_resolution, upscale_custom_res, upscale_quality, upscale_output_suffix],
+            outputs=[progress_text, output_file_info]
+        )
+        
+        interpolate_btn.click(
+            fn=interpolate_video_handler,
+            inputs=[video_input_file, interp_target_fps, interp_custom_fps, interp_method, interp_output_suffix],
+            outputs=[progress_text, output_file_info]
+        )
+        
+        replace_audio_btn.click(
+            fn=replace_audio_handler,
+            inputs=[video_input_file, audio_input_file, audio_start_time, audio_output_suffix],
+            outputs=[progress_text, output_file_info]
+        )
+    
+    return locals()
