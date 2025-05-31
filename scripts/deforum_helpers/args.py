@@ -1104,6 +1104,19 @@ def WanArgs():
             "value": "Auto-Select",
             "info": "Qwen model for prompt enhancement (auto-selected based on VRAM)"
         },
+        "wan_qwen_language": {
+            "label": "Enhancement Language",
+            "type": "dropdown",
+            "choices": ["English", "Chinese"],
+            "value": "English",
+            "info": "Language for prompt enhancement"
+        },
+        "wan_auto_download": {
+            "label": "Auto-Download Models",
+            "type": "checkbox",
+            "value": True,
+            "info": "Automatically download missing Qwen models when needed"
+        },
         "wan_enable_movement_analysis": {
             "label": "Enable Movement Analysis",
             "type": "checkbox",
