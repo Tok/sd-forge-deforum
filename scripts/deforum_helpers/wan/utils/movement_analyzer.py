@@ -31,23 +31,6 @@ try:
 except ImportError:
     DEFORUM_AVAILABLE = False
 
-# Simplified Camera Shakify integration - hardcoded data for testing
-SHAKIFY_AVAILABLE = True
-
-# Simplified shake data for INVESTIGATION pattern (extracted from the actual data)
-INVESTIGATION_SHAKE_DATA = {
-    'translation': {
-        'x': [0.021819, 0.012368, 0.003192, -0.006550, -0.016339, -0.026018, -0.034887, -0.042019, -0.049939, -0.056172, -0.061366, -0.066012, -0.070278, -0.075834, -0.080062, -0.085495, -0.090940, -0.095961, -0.101095, -0.106177],
-        'y': [0.004563, 0.000000, -0.004563, -0.008587, -0.012519, -0.017078, -0.021599, -0.026818, -0.031728, -0.036636, -0.041351, -0.045605, -0.049422, -0.052272, -0.054630, -0.055820, -0.056572, -0.057333, -0.057542, -0.057255],
-        'z': [-0.003604, -0.003431, -0.003387, -0.002934, -0.002923, -0.004425, -0.006044, -0.007711, -0.009409, -0.011712, -0.013893, -0.015884, -0.018140, -0.020823, -0.022288, -0.024929, -0.028371, -0.031594, -0.035160, -0.039225]
-    },
-    'rotation_3d': {
-        'x': [0.001086, 0.000000, -0.001075, -0.002893, -0.005007, -0.007058, -0.009427, -0.012662, -0.015891, -0.018930, -0.021792, -0.024398, -0.026323, -0.027796, -0.029139, -0.029992, -0.030573, -0.031318, -0.032108, -0.032828],
-        'y': [0.003974, 0.000000, -0.003977, -0.007220, -0.008964, -0.009045, -0.008403, -0.007829, -0.008275, -0.008627, -0.009438, -0.011140, -0.013551, -0.016658, -0.019090, -0.020987, -0.022070, -0.022678, -0.023137, -0.023632],
-        'z': [0.002614, 0.000000, -0.002610, -0.005844, -0.009775, -0.014285, -0.018739, -0.022587, -0.025950, -0.028716, -0.030574, -0.031568, -0.031884, -0.031717, -0.031828, -0.032260, -0.032908, -0.033682, -0.034255, -0.034364]
-    }
-}
-
 def parse_schedule_string(schedule_str: str, max_frames: int = 100) -> List[Tuple[int, float]]:
     """
     Parse Deforum schedule string into frame-value pairs
@@ -126,7 +109,7 @@ def interpolate_schedule(keyframes: List[Tuple[int, float]], max_frames: int) ->
 
 def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: float, target_fps: int = 30, max_frames: int = 120, frame_start: int = 0) -> Optional[Dict]:
     """
-    Create Camera Shakify data using simplified hardcoded patterns
+    Create Camera Shakify data using the actual SHAKE_LIST from shakify integration
     
     Args:
         shake_name: Name of the shake pattern
@@ -141,35 +124,62 @@ def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: fl
     
     print(f"🎬 Creating Camera Shakify data: {shake_name} (intensity: {shake_intensity}, speed: {shake_speed}, frame_start: {frame_start})")
     
-    # For now, only support INVESTIGATION pattern as demonstration
-    if shake_name.upper() != "INVESTIGATION":
-        print(f"⚠️ Shake pattern '{shake_name}' not yet supported, using static data")
+    # Check if shakify is available and shake pattern exists
+    if not SHAKIFY_AVAILABLE or not SHAKE_LIST:
+        print(f"⚠️ Camera Shakify not available, skipping shake generation")
         return None
     
-    # Use the hardcoded data and apply intensity/speed scaling
-    base_data = INVESTIGATION_SHAKE_DATA
+    # Look for the shake pattern in SHAKE_LIST
+    shake_pattern = None
+    shake_key = shake_name.upper()
+    
+    if shake_key in SHAKE_LIST:
+        shake_pattern = SHAKE_LIST[shake_key]
+        print(f"✅ Found shake pattern: {shake_pattern[0]} at {shake_pattern[1]} fps")
+    else:
+        print(f"⚠️ Shake pattern '{shake_name}' not found in available patterns: {list(SHAKE_LIST.keys())}")
+        return None
+    
+    # Extract shake data from the pattern
+    pattern_name, pattern_fps, pattern_data = shake_pattern
+    
+    # Create result structure
     result = {
         'translation': {'x': [], 'y': [], 'z': []},
         'rotation_3d': {'x': [], 'y': [], 'z': []}
     }
     
-    # Generate values for the requested number of frames
+    # Map shakify data structure to our format
     for frame in range(max_frames):
         for transform_type in ['translation', 'rotation_3d']:
-            for axis in ['x', 'y', 'z']:
-                # Get base pattern data
-                base_values = base_data[transform_type][axis]
+            for axis_idx, axis in enumerate(['x', 'y', 'z']):
+                # Map to shakify keys
+                if transform_type == 'translation':
+                    shakify_key = ('location', axis_idx)
+                else:  # rotation_3d
+                    shakify_key = ('rotation_euler', axis_idx)
                 
-                # Calculate which frame to sample from (with speed scaling and frame offset)
-                source_frame_idx = int(((frame + frame_start) * shake_speed) % len(base_values))
-                base_value = base_values[source_frame_idx]
-                
-                # Apply intensity scaling
-                scaled_value = base_value * shake_intensity
-                
-                result[transform_type][axis].append(scaled_value)
+                if shakify_key in pattern_data:
+                    # Get the pattern data
+                    keyframe_data = pattern_data[shakify_key]
+                    
+                    # Calculate source frame with speed scaling and frame offset
+                    source_frame = int(((frame + frame_start) * shake_speed * pattern_fps / target_fps) % len(keyframe_data))
+                    
+                    # Get base value from pattern
+                    if source_frame < len(keyframe_data):
+                        base_value = keyframe_data[source_frame][1]  # (frame, value) tuple
+                    else:
+                        base_value = 0.0
+                    
+                    # Apply intensity scaling
+                    scaled_value = base_value * shake_intensity
+                    result[transform_type][axis].append(scaled_value)
+                else:
+                    # No data for this axis, use zero
+                    result[transform_type][axis].append(0.0)
     
-    print(f"✅ Generated frame-specific Camera Shakify data for frames {frame_start}-{frame_start + max_frames - 1}")
+    print(f"✅ Generated frame-specific Camera Shakify data for frames {frame_start}-{frame_start + max_frames - 1} using pattern '{pattern_name}'")
     return result
 
 
