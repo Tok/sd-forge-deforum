@@ -471,7 +471,7 @@ def DeforumAnimArgs():
             "label": "Keyframe distribution.",
             "type": "dropdown",
             "choices": get_keyframe_distribution_list().values(),
-            "value": "Keyframes Only",
+            "value": "Redistributed",
             "info": "Allows for fast generations at high cadence or no cadence."
         },
         "diffusion_cadence": {

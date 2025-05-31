@@ -988,7 +988,7 @@ The auto-discovery will find your models automatically!
 
 
 def get_tab_wan(dw: SimpleNamespace):
-    """🤖 WAN AI TAB - Advanced AI Video Generation"""
+    """🤖 Wan AI TAB - Advanced AI Video Generation"""
     with gr.TabItem(f"🤖 Wan AI"):
         
         # ESSENTIAL PROMPTS SECTION - TOP PRIORITY
@@ -3569,6 +3569,44 @@ def get_tab_setup(d, da):
                 tiling = create_gr_elem(d.tiling)
                 motion_preview_mode = create_gr_elem(d.motion_preview_mode)
         
+        # EXPERIMENTAL RENDER CORE - PROMINENTLY FEATURED
+        with gr.Accordion("🚀 Experimental Render Core (Zirteq Fork Exclusive)", open=True):
+            gr.Markdown("""
+            **🎯 This fork uses an exclusive experimental render core with variable cadence**
+            
+            **Key Benefits:**
+            - **Variable Cadence**: Intelligent frame distribution for better quality
+            - **Keyframe Redistribution**: Ensures important frames get diffused
+            - **Higher Efficiency**: Generate smooth videos with higher cadence settings
+            - **Better Synchronization**: Prompts align precisely with visual changes
+            
+            **⚠️ Important**: This is the default render core for this fork and should remain enabled for optimal results.
+            """)
+            
+            # Keyframe distribution is THE setting that controls experimental core
+            keyframe_distribution = create_row(da.keyframe_distribution)
+            
+            # Cadence setting (works differently with experimental core)
+            diffusion_cadence = create_row(da.diffusion_cadence)
+            
+            # Info about how this differs from traditional Deforum
+            with gr.Accordion("📚 How This Differs from Traditional Deforum", open=False):
+                gr.Markdown("""
+                **Traditional Deforum**: Fixed cadence, processes every Nth frame uniformly
+                
+                **Zirteq Fork Experimental Core**: 
+                - **Variable Cadence**: Adapts frame processing based on content importance
+                - **Keyframe Redistribution**: Moves diffusion frames closer to prompt keyframes
+                - **Better Prompt Synchronization**: Visual changes happen precisely when prompts change
+                - **Smarter Resource Usage**: Focuses processing power where it matters most
+                
+                **Recommended Settings for Best Results:**
+                - **Keyframe Distribution**: "Keyframes Only" or "Redistributed" (default)
+                - **High FPS**: 60 FPS for smooth output  
+                - **Higher Cadence**: 10-15 for efficiency without quality loss
+                - **Keyframe Strength**: Lower than regular strength for better blending
+                """)
+        
         # Batch Mode and Resume - less prominent but still accessible
         with gr.Accordion('🔄 Batch Mode & Resume', open=False):
             with gr.Tab('Batch Mode'):
@@ -3604,9 +3642,25 @@ def get_tab_animation(da, dloopArgs):
     with gr.TabItem(f"🎬 Animation"):
         # Core Animation Controls
         with gr.Accordion("🎯 Core Animation", open=True):
-            diffusion_cadence = create_row(da.diffusion_cadence)
             border = create_row(da.border)
-            keyframe_distribution = create_row(da.keyframe_distribution)
+            
+            # Note: Keyframe Distribution moved to Setup tab as part of Experimental Render Core
+            gr.Markdown("""
+            **📝 Note**: **Keyframe Distribution** (experimental render core control) is now in the **Setup tab** 
+            for better visibility since it's fundamental to how this fork works.
+            """)
+            
+            # The cadence setting here is managed by the experimental render core
+            with gr.Accordion("📚 About Variable Cadence in This Fork", open=False):
+                gr.Markdown("""
+                **This fork uses Variable Cadence** (controlled by Keyframe Distribution in Setup tab):
+                
+                - **Traditional Cadence**: Fixed interval, processes every Nth frame
+                - **Variable Cadence**: Intelligent distribution based on content importance
+                - **Better Results**: Focuses processing on frames that matter most
+                
+                The experimental render core automatically manages cadence based on your settings.
+                """)
         
         # Movement and Camera Controls
         with gr.Accordion("📷 Camera Movement", open=True):

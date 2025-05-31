@@ -47,6 +47,12 @@ Benefits:
 - **Seed Behavior & Iter** ← *Moved from Keyframes*
 - **Restore Faces, Tiling, Motion Preview**
 
+#### **🚀 Experimental Render Core** (Open by default - NEW!)
+- **Zirteq Fork Exclusive**: Variable cadence system
+- **Keyframe Distribution**: Controls the experimental render core
+- **Diffusion Cadence**: Works with variable cadence for efficiency  
+- **Better Synchronization**: Prompts align precisely with visual changes
+
 #### **🔄 Batch Mode & Resume** (Collapsed)
 - **Batch Mode**: Multiple settings files
 - **Resume Animation**: Continue from timestring
