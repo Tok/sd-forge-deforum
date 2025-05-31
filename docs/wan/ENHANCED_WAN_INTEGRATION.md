@@ -229,7 +229,7 @@ huggingface-cli download Qwen/Qwen2.5-7B-Instruct --local-dir models/qwen/Qwen2.
 ## 📚 References
 
 - [Qwen2.5 Models](https://huggingface.co/Qwen)
-- [Deforum Animation](https://github.com/deforum-art/deforum-for-automatic1111-webui)
+- [Zirteqs Deforum Fork](https://github.com/Tok/sd-forge-deforum)
 - [Wan Video Generation](https://github.com/wanaifinance/Wan-Video-Generation)
 
 ---

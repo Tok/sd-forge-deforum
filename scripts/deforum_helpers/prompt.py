@@ -95,7 +95,7 @@ def interpolate_prompts(animation_prompts, max_frames):
 
         # Apply weighted prompt interpolation for each frame between current and next keyframe
         # using the syntax:  prompt1 :weight1 AND prompt1 :weight2 --neg nprompt1 :weight1 AND nprompt1 :weight2
-        # (See: https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#composable-diffusion )
+        # (See: https://github.com/lllyasviel/stable-diffusion-webui-forge/wiki/Features#composable-diffusion )
         for f in range(current_frame, next_frame):
             next_weight = weight_step * (f - current_frame)
             current_weight = 1 - next_weight

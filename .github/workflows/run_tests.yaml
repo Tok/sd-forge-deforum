@@ -10,17 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     steps:
-      - name: Checkout a1111
+      - name: Checkout WebUI Forge
         uses: actions/checkout@v3
         with:
-          repository: AUTOMATIC1111/stable-diffusion-webui
-          ref: v1.6.0 
+          repository: lllyasviel/stable-diffusion-webui-forge
+          ref: main 
       - name: Checkout Controlnet extension
         uses: actions/checkout@v3
         with:
           repository: Mikubill/sd-webui-controlnet
           path: extensions/sd-webui-controlnet          
-      - name: Checkout Deforum
+      - name: Checkout Zirteqs Deforum Fork
         uses: actions/checkout@v3
         with:
           path: extensions/deforum

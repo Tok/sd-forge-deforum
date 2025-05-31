@@ -43,12 +43,12 @@ def start_server(request):
 
         # Kick off server subprocess
         script_directory = os.path.dirname(__file__)
-        a1111_directory = Path(script_directory).parent.parent.parent  # sd-webui/extensions/deforum/tests/ -> sd-webui
-        print(f"Starting server in {a1111_directory}...")
+        forge_directory = Path(script_directory).parent.parent.parent  # webui-forge/extensions/deforum/tests/ -> webui-forge
+        print(f"Starting server in {forge_directory}...")
         proc = Popen(["python", "-m", "coverage", "run", "--data-file=.coverage.server", "launch.py",
                       "--skip-prepare-environment", "--skip-torch-cuda-test", "--test-server", "--no-half",
                       "--disable-opt-split-attention", "--use-cpu", "all", "--add-stop-route", "--api", "--deforum-api", "--listen"],
-            cwd=a1111_directory,
+            cwd=forge_directory,
             stdout=PIPE,
             stderr=STDOUT,
             universal_newlines=True)

@@ -35,7 +35,7 @@ from lib_controlnet.global_state import update_controlnet_filenames, get_all_pre
 from lib_controlnet.external_code import ControlNetUnit
 
 cnet = None
-# number of CN model tabs to show in the deforum gui. If the user has set it in the A1111 UI to a value less than 5
+# number of CN model tabs to show in the deforum gui. If the user has set it in the WebUI Forge UI to a value less than 5
 # then we set it to 5. Else, we respect the value they specified
 max_models = shared.opts.data.get("control_net_unit_count", shared.opts.data.get("control_net_max_models_num", 5))
 num_of_models = 5 if max_models <= 5 else max_models

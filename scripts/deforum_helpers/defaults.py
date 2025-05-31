@@ -112,7 +112,7 @@ def get_hybrid_info_html():
             <li>Mask contrast schedule is from 0-255. Normal is 1. Affects all masks.</li>
             <li>Autocontrast low/high cutoff schedules 0-100. Low 0 High 100 is full range. <br>(<i><b>hybrid_comp_mask_auto_contrast</b> must be enabled</i>)</li>
         </ul>
-        <a style='color:SteelBlue;' target='_blank' href='https://github.com/deforum-art/deforum-for-automatic1111-webui/wiki/Animation-Settings#hybrid-video-mode-for-2d3d-animations'>Click Here</a> for more info/ a Guide.
+        <a style='color:SteelBlue;' target='_blank' href='https://github.com/Tok/sd-forge-deforum/wiki/Animation-Settings#hybrid-video-mode-for-2d3d-animations'>Click Here</a> for more info/ a Guide.
         """
 
 def get_wan_video_info_html():
@@ -232,12 +232,12 @@ def get_guided_imgs_info_html():
         
 def get_main_info_html():
     return """
-        <p><strong>Made by <a href="https://deforum.github.io">deforum.github.io</a>, port for AUTOMATIC1111's webui maintained by <a href="https://github.com/deforum-art">Deforum LLC.</a></strong></p>
-        <p><a  style="color:SteelBlue" href="https://github.com/deforum-art/deforum-for-automatic1111-webui/wiki/FAQ-&-Troubleshooting">FOR HELP CLICK HERE</a></p>
+        <p><strong>Made by <a href="https://deforum.github.io">deforum.github.io</a>, fork for WebUI Forge maintained by <a href="https://github.com/Tok/sd-forge-deforum">Zirteq</a>.</strong></p>
+        <p><a  style="color:SteelBlue" href="https://github.com/Tok/sd-forge-deforum/wiki/FAQ-&-Troubleshooting">FOR HELP CLICK HERE</a></p>
         <ul style="list-style-type:circle; margin-left:1em">
-        <li>The code for this extension: <a  style="color:SteelBlue" href="https://github.com/deforum-art/deforum-for-automatic1111-webui">here</a>.</li>
+        <li>The code for this fork: <a  style="color:SteelBlue" href="https://github.com/Tok/sd-forge-deforum">here</a>.</li>
         <li>Join the <a style="color:SteelBlue" href="https://discord.gg/deforum">official Deforum Discord</a> to share your creations and suggestions.</li>
-        <li>Official Deforum Wiki: <a style="color:SteelBlue" href="https://github.com/deforum-art/deforum-for-automatic1111-webui/wiki">here</a>.</li>
+        <li>Original Deforum Wiki: <a style="color:SteelBlue" href="https://github.com/deforum-art/deforum-for-automatic1111-webui/wiki">here</a>.</li>
         <li>Anime-inclined great guide (by FizzleDorf) with lots of examples: <a style="color:SteelBlue" href="https://rentry.org/AnimAnon-Deforum">here</a>.</li>
         <li>For advanced keyframing with Math functions, see <a style="color:SteelBlue" href="https://github.com/deforum-art/deforum-for-automatic1111-webui/wiki/Maths-in-Deforum">here</a>.</li>
         <li>Alternatively, use <a style="color:SteelBlue" href="https://sd-parseq.web.app/deforum">sd-parseq</a> as a UI to define your animation schedules (see the Parseq section in the Init tab).</li>
@@ -245,7 +245,7 @@ def get_main_info_html():
         <li>The other site allows for making keyframes using <a style="color:SteelBlue" href="https://www.chigozie.co.uk/keyframe-string-generator/">interactive splines and Bezier curves</a> (select Disco output format).</li>
         <li>If you want to use Width/Height which are not multiples of 64, please change noise_type to 'Uniform', in Keyframes --> Noise.</li>
         </ul>
-        <italic>If you liked this extension, please <a style="color:SteelBlue" href="https://github.com/deforum-art/deforum-for-automatic1111-webui">give it a star on GitHub</a>!</italic> 😊
+        <italic>If you liked this fork, please <a style="color:SteelBlue" href="https://github.com/Tok/sd-forge-deforum">give it a star on GitHub</a>!</italic> 😊
         """
 def get_frame_interpolation_info_html():
     return """

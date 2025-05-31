@@ -4,7 +4,7 @@ from modules.shared import opts
 
 log = logging.getLogger(__name__)
 
-class A1111OptionsOverrider(object):
+class ForgeOptionsOverrider(object):
     def __init__(self, opts_overrides: Dict[str, Any]):
         self.opts_overrides = opts_overrides
 
@@ -27,3 +27,6 @@ class A1111OptionsOverrider(object):
             log.info(f"Restoring options: {self.original_opts}")
             for k, v in self.original_opts.items():
                 setattr(opts, k, v)
+
+# Backward compatibility alias
+A1111OptionsOverrider = ForgeOptionsOverrider
