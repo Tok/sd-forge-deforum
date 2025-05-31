@@ -1,5 +1,4 @@
 # Copyright (C) 2023 Deforum LLC
-# Modified by Zirteq for Zirteqs Deforum Fork
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -15,19 +14,18 @@
 
 # Contact the authors: https://deforum.github.io/
 
-from types import SimpleNamespace
+import json
+import os
+import re
 from pathlib import Path
+from types import SimpleNamespace
 
-# noinspection PyUnresolvedReferences
 import gradio as gr
-# noinspection PyUnresolvedReferences
 from modules.ui_components import FormRow, FormColumn, ToolButton
-from .rendering.util import emoji_utils
-from .defaults import get_gradio_html, DeforumAnimPrompts
-from .gradio_funcs import (upload_vid_to_interpolate, upload_pics_to_interpolate,
-                           ncnn_upload_vid_to_upscale, upload_vid_to_depth)
-from .video_audio_utilities import direct_stitch_vid_from_frames
+from .general_utils import get_gradio_html
+from .deprecation_utils import handle_deprecated_settings
 from .ffmpeg_utils import FFmpegProcessor
+from .rendering.util import emoji_utils
 
 
 def create_gr_elem(d):
@@ -2610,9 +2608,6 @@ def cleanup_qwen_cache_handler():
 def load_wan_prompts_handler():
     """Load Wan prompts from default settings"""
     try:
-        import json
-        import os
-        
         # Load prompts from default_settings.txt
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'default_settings.txt')
         
@@ -2647,9 +2642,6 @@ def load_wan_prompts_handler():
 def load_deforum_prompts_handler():
     """Load original Deforum prompts from default settings"""
     try:
-        import json
-        import os
-        
         # Load prompts from default_settings.txt
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'default_settings.txt')
         
@@ -2726,9 +2718,6 @@ def load_deforum_to_wan_prompts_handler():
 def load_wan_defaults_handler():
     """Load default Wan prompts from settings file"""
     try:
-        import json
-        import os
-        
         # Load default prompts from settings
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'default_settings.txt')
         
