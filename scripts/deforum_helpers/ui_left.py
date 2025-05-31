@@ -256,17 +256,27 @@ def setup_deforum_left_side_ui():
         movement_component_names = [
             'translation_x', 'translation_y', 'translation_z',
             'rotation_3d_x', 'rotation_3d_y', 'rotation_3d_z',
-            'zoom', 'angle', 'max_frames'
+            'zoom', 'angle', 'max_frames',
+            # Add Camera Shakify components
+            'shake_name', 'shake_intensity', 'shake_speed'
         ]
         
         # Get actual schedule values from the UI components (these are the schedule strings)
         for comp_name in movement_component_names:
             if comp_name in locals():
                 component = locals()[comp_name]
-                # Get the actual schedule value (string like "0:(0), 100:(50)")
+                # Get the actual value from the component
                 if comp_name == 'max_frames':
                     # max_frames is a number, not a schedule
                     movement_components[comp_name] = getattr(component, 'value', 100)
+                elif comp_name in ['shake_name', 'shake_intensity', 'shake_speed']:
+                    # Camera Shakify settings
+                    if comp_name == 'shake_name':
+                        movement_components[comp_name] = getattr(component, 'value', "None")
+                    elif comp_name == 'shake_intensity':
+                        movement_components[comp_name] = getattr(component, 'value', 1.0)
+                    elif comp_name == 'shake_speed':
+                        movement_components[comp_name] = getattr(component, 'value', 1.0)
                 else:
                     # These are schedule strings used by Deforum's animation system
                     movement_components[comp_name] = getattr(component, 'value', f"0:(0)")
@@ -276,6 +286,12 @@ def setup_deforum_left_side_ui():
                     movement_components[comp_name] = 100
                 elif comp_name == 'zoom':
                     movement_components[comp_name] = "0:(1.0)"  # Default zoom schedule
+                elif comp_name == 'shake_name':
+                    movement_components[comp_name] = "None"     # Default shake disabled
+                elif comp_name == 'shake_intensity':
+                    movement_components[comp_name] = 1.0       # Default shake intensity
+                elif comp_name == 'shake_speed':
+                    movement_components[comp_name] = 1.0       # Default shake speed
                 else:
                     movement_components[comp_name] = "0:(0)"    # Default movement schedule
         

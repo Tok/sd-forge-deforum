@@ -2146,13 +2146,13 @@ Model download started automatically. This may take a few minutes.
 
 
 def analyze_movement_handler(current_prompts):
-    """Handle movement analysis from Deforum schedules with auto-calculated sensitivity"""
+    """Handle movement analysis from Deforum schedules with Camera Shakify integration and motion intensity scheduling"""
     try:
-        from .wan.utils.movement_analyzer import analyze_deforum_movement, MovementAnalyzer
+        from .wan.utils.movement_analyzer import analyze_deforum_movement, generate_wan_motion_intensity_schedule, MovementAnalyzer
         from types import SimpleNamespace
         import json
         
-        print("📐 Movement analysis requested - analyzing Deforum movement schedules...")
+        print("🎬 Starting enhanced movement analysis with Camera Shakify support...")
         
         # Validate current prompts
         if not current_prompts or current_prompts.strip() == "":
@@ -2196,52 +2196,66 @@ Movement descriptions will be added to your existing prompts."""
                 print(f"📊 Rotation Y: {anim_args.rotation_3d_y}")
                 print(f"📊 Zoom: {anim_args.zoom}")
                 
-                # Check if we have any actual movement (not all default values)
-                has_movement = (
-                    anim_args.translation_x != "0:(0)" or
-                    anim_args.translation_y != "0:(0)" or
-                    anim_args.translation_z != "0:(0)" or
-                    anim_args.rotation_3d_x != "0:(0)" or
-                    anim_args.rotation_3d_y != "0:(0)" or
-                    anim_args.rotation_3d_z != "0:(0)" or
-                    anim_args.zoom != "0:(1.0)" or
-                    anim_args.angle != "0:(0)"
-                )
-                
-                if not has_movement:
-                    print("📊 No movement detected in schedules, using demo values for illustration")
-                    # Provide demo values to show how it works - realistic cinematic zoom-in with gentle movement
-                    anim_args.translation_x = "0:(0), 60:(20), 120:(0)"   # Gentle S-curve pan
-                    anim_args.translation_z = "0:(0), 120:(40)"          # Smooth forward dolly
-                    anim_args.rotation_3d_y = "0:(0), 120:(8)"           # Subtle right yaw
-                    anim_args.zoom = "0:(1.0), 40:(1.4), 120:(1.8)"     # Progressive zoom in
-                
             except Exception as e:
                 print(f"⚠️ Could not access movement schedules: {e}")
-                print("📊 Using demo movement data to show functionality")
-                # Fallback to demo data - realistic cinematic zoom-in with gentle movement
-                anim_args.translation_x = "0:(0), 60:(20), 120:(0)"   # Gentle S-curve pan
+                # Use static defaults for Camera Shakify testing
+                anim_args.translation_x = "0:(0)"
                 anim_args.translation_y = "0:(0)"
-                anim_args.translation_z = "0:(0), 120:(40)"          # Smooth forward dolly
+                anim_args.translation_z = "0:(0)"
                 anim_args.rotation_3d_x = "0:(0)"
-                anim_args.rotation_3d_y = "0:(0), 120:(8)"           # Subtle right yaw
+                anim_args.rotation_3d_y = "0:(0)"
                 anim_args.rotation_3d_z = "0:(0)"
-                anim_args.zoom = "0:(1.0), 40:(1.4), 120:(1.8)"     # Progressive zoom in
+                anim_args.zoom = "0:(1.0)"
                 anim_args.angle = "0:(0)"
                 anim_args.max_frames = 120
         else:
             print("⚠️ No stored movement schedule references found")
-            print("📊 Using demo movement data to show functionality")
-            # Use demo data to show how it works - realistic cinematic zoom-in with gentle movement
-            anim_args.translation_x = "0:(0), 60:(20), 120:(0)"   # Gentle S-curve pan
+            # Use static defaults for Camera Shakify testing
+            anim_args.translation_x = "0:(0)"
             anim_args.translation_y = "0:(0)"
-            anim_args.translation_z = "0:(0), 120:(40)"          # Smooth forward dolly
+            anim_args.translation_z = "0:(0)"
             anim_args.rotation_3d_x = "0:(0)"
-            anim_args.rotation_3d_y = "0:(0), 120:(8)"           # Subtle right yaw
+            anim_args.rotation_3d_y = "0:(0)"
             anim_args.rotation_3d_z = "0:(0)"
-            anim_args.zoom = "0:(1.0), 40:(1.4), 120:(1.8)"     # Progressive zoom in
+            anim_args.zoom = "0:(1.0)"
             anim_args.angle = "0:(0)"
             anim_args.max_frames = 120
+        
+        # Get Camera Shakify settings from stored UI component references
+        try:
+            # Try to get Camera Shakify settings from stored component references first
+            if hasattr(analyze_movement_handler, '_movement_components'):
+                components = analyze_movement_handler._movement_components
+                anim_args.shake_name = components.get('shake_name', "None")
+                anim_args.shake_intensity = float(components.get('shake_intensity', 1.0))
+                anim_args.shake_speed = float(components.get('shake_speed', 1.0))
+                print(f"✅ Using Camera Shakify settings from UI components")
+            else:
+                # Fallback to reading from DeforumArgs if component references not available
+                from .args import DeforumArgs
+                current_args = DeforumArgs()
+                anim_args.shake_name = getattr(current_args, 'shake_name', "None")
+                anim_args.shake_intensity = getattr(current_args, 'shake_intensity', 1.0)
+                anim_args.shake_speed = getattr(current_args, 'shake_speed', 1.0)
+                print(f"✅ Using Camera Shakify settings from DeforumArgs fallback")
+            
+            # Camera Shakify is enabled when shake_name is not "None"
+            camera_shake_enabled = anim_args.shake_name and anim_args.shake_name != "None"
+            
+            if camera_shake_enabled:
+                print(f"🎬 Camera Shakify ENABLED:")
+                print(f"   Shake Name: {anim_args.shake_name}")
+                print(f"   Intensity: {anim_args.shake_intensity}")
+                print(f"   Speed: {anim_args.shake_speed}")
+            else:
+                print(f"📷 Camera Shakify disabled")
+        except Exception as e:
+            print(f"⚠️ Could not read Camera Shakify settings: {e}")
+            # TEST: Enable Shakify with INVESTIGATION pattern for testing
+            anim_args.shake_name = "INVESTIGATION"
+            anim_args.shake_intensity = 1.5
+            anim_args.shake_speed = 1.0
+            print(f"🧪 TEST MODE: Using Camera Shakify '{anim_args.shake_name}' with intensity {anim_args.shake_intensity}")
         
         # Auto-calculate movement sensitivity from the schedules
         print("🧮 Auto-calculating movement sensitivity from Deforum schedules...")
@@ -2304,48 +2318,97 @@ Movement descriptions will be added to your existing prompts."""
             auto_sensitivity = 1.0
             sensitivity_reason = "default (calculation failed)"
         
-        # Generate movement description using auto-calculated sensitivity
+        # Generate movement description using enhanced analysis with Camera Shakify
         movement_desc, average_motion_strength = analyze_deforum_movement(
             anim_args=anim_args,
             sensitivity=auto_sensitivity,
             max_frames=anim_args.max_frames
         )
         
-        # Add movement description to each prompt
+        # Generate Wan motion intensity schedule
+        motion_intensity_schedule = generate_wan_motion_intensity_schedule(
+            anim_args,
+            max_frames=anim_args.max_frames,
+            sensitivity=auto_sensitivity
+        )
+        
+        print(f"🎯 Movement analysis result:")
+        print(f"   Description: {movement_desc}")
+        print(f"   Strength: {average_motion_strength:.3f}")
+        print(f"   Motion Intensity Schedule: {motion_intensity_schedule}")
+        
+        # Update prompts with movement descriptions (cleaner approach)
         updated_prompts = {}
         for frame, prompt in prompts_dict.items():
-            # Remove existing movement description if present
-            clean_prompt = prompt.split('. camera movement:')[0].split('. Camera movement:')[0].strip()
+            # Clean up existing movement descriptions
+            clean_prompt = prompt.replace(", static camera position", "")
+            clean_prompt = clean_prompt.replace("static camera position", "")
+            clean_prompt = clean_prompt.replace(", camera movement with", ", ")
+            if clean_prompt.startswith("camera movement with "):
+                clean_prompt = clean_prompt[21:]  # Remove "camera movement with " prefix
+            
+            # Remove existing movement descriptions more thoroughly
+            clean_prompt = clean_prompt.split('. camera movement:')[0].split('. Camera movement:')[0].strip()
+            
             # Add new movement description
-            updated_prompts[frame] = f"{clean_prompt}. {movement_desc}"
+            if movement_desc and average_motion_strength > 0:
+                if not clean_prompt.endswith('.'):
+                    updated_prompts[frame] = f"{clean_prompt}, {movement_desc}"
+                else:
+                    updated_prompts[frame] = f"{clean_prompt.rstrip('.')} {movement_desc}."
+            else:
+                updated_prompts[frame] = clean_prompt
         
         # Convert back to JSON
         updated_json = json.dumps(updated_prompts, ensure_ascii=False, indent=2)
         
-        # Result message with auto-calculated sensitivity info
-        result_message = f"""✅ Movement analysis complete!
+        # Enhanced result message with Camera Shakify and motion intensity info
+        if average_motion_strength > 0:
+            result_message = f"""✅ Enhanced movement analysis complete!
 
 Movement: "{movement_desc}"
 Motion strength: {average_motion_strength:.2f}
 Auto-calculated sensitivity: {auto_sensitivity} ({sensitivity_reason})
 
-✅ Movement descriptions added to {len(updated_prompts)} prompts.
+📊 **Motion Intensity Schedule for Wan:**
+{motion_intensity_schedule}
+
+💡 **Copy the schedule above to Wan's Motion Intensity field for synchronized movement effects!**
+
+✅ Movement descriptions applied to {len(updated_prompts)} prompts.
 Prompts updated above. Ready for enhancement or generation."""
+        else:
+            result_message = f"""✅ Enhanced movement analysis complete!
+
+Movement: "{movement_desc}"
+Auto-calculated sensitivity: {auto_sensitivity} ({sensitivity_reason})
+
+📊 Camera appears to be static. If you have Camera Shakify enabled, check the Keyframes → Motion → Shakify tab settings.
+
+✅ Analysis complete for {len(updated_prompts)} prompts."""
         
         print(f"✅ Updated {len(updated_prompts)} Wan prompts with movement descriptions")
+        print(f"📊 Use this motion intensity schedule in Wan: {motion_intensity_schedule}")
+        print(f"💡 Copy this schedule to Wan's Motion Intensity field for synchronized movement effects!")
         
         # Store movement description for enhance_prompts_handler
         analyze_movement_handler._movement_description = movement_desc
         
-        # Return updated prompts and status message
         return updated_json, result_message
         
     except Exception as e:
-        error_msg = f"❌ Error in movement analysis: {str(e)}"
-        print(error_msg)
+        print(f"❌ Error in enhanced movement analysis: {str(e)}")
         import traceback
         traceback.print_exc()
-        return "", error_msg
+        error_msg = f"""❌ Error in movement analysis: {str(e)}
+
+🔧 **Try this:**
+1. Check that Deforum movement schedules are valid (Keyframes → Motion tab)
+2. Verify Camera Shakify settings if using shake effects
+3. Ensure prompts are in valid JSON format
+
+Contact support if this persists."""
+        return current_prompts, error_msg
 
 def check_qwen_models_handler(qwen_model):
     """Check Qwen model status and availability"""

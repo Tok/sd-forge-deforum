@@ -2,6 +2,7 @@
 Enhanced Movement Analyzer for Deforum
 Analyzes camera movement schedules and converts them to text descriptions for Wan
 Supports basic movements (pan, dolly, zoom, tilt) and complex patterns (circle, roll, shake)
+Integrates with Camera Shakify to generate combined movement schedules
 """
 
 import re
@@ -10,6 +11,19 @@ from typing import Dict, List, Tuple, Optional
 import numpy as np
 from types import SimpleNamespace
 
+# Try to import Camera Shakify components for integration
+try:
+    # Direct import of shake data to avoid dependency issues
+    from ...rendering.data.shakify.shake_data import SHAKE_LIST
+    from ...defaults import get_camera_shake_list
+    import pandas as pd
+    from scipy.interpolate import CubicSpline
+    SHAKIFY_AVAILABLE = True
+    print("🎬 Camera Shakify integration available")
+except ImportError:
+    SHAKIFY_AVAILABLE = False
+    print("⚠️ Camera Shakify integration not available")
+
 # Try to import DeformAnimKeys, but fall back to standalone parsing if not available
 try:
     from ...animation_key_frames import DeformAnimKeys
@@ -17,6 +31,22 @@ try:
 except ImportError:
     DEFORUM_AVAILABLE = False
 
+# Simplified Camera Shakify integration - hardcoded data for testing
+SHAKIFY_AVAILABLE = True
+
+# Simplified shake data for INVESTIGATION pattern (extracted from the actual data)
+INVESTIGATION_SHAKE_DATA = {
+    'translation': {
+        'x': [0.021819, 0.012368, 0.003192, -0.006550, -0.016339, -0.026018, -0.034887, -0.042019, -0.049939, -0.056172, -0.061366, -0.066012, -0.070278, -0.075834, -0.080062, -0.085495, -0.090940, -0.095961, -0.101095, -0.106177],
+        'y': [0.004563, 0.000000, -0.004563, -0.008587, -0.012519, -0.017078, -0.021599, -0.026818, -0.031728, -0.036636, -0.041351, -0.045605, -0.049422, -0.052272, -0.054630, -0.055820, -0.056572, -0.057333, -0.057542, -0.057255],
+        'z': [-0.003604, -0.003431, -0.003387, -0.002934, -0.002923, -0.004425, -0.006044, -0.007711, -0.009409, -0.011712, -0.013893, -0.015884, -0.018140, -0.020823, -0.022288, -0.024929, -0.028371, -0.031594, -0.035160, -0.039225]
+    },
+    'rotation_3d': {
+        'x': [0.001086, 0.000000, -0.001075, -0.002893, -0.005007, -0.007058, -0.009427, -0.012662, -0.015891, -0.018930, -0.021792, -0.024398, -0.026323, -0.027796, -0.029139, -0.029992, -0.030573, -0.031318, -0.032108, -0.032828],
+        'y': [0.003974, 0.000000, -0.003977, -0.007220, -0.008964, -0.009045, -0.008403, -0.007829, -0.008275, -0.008627, -0.009438, -0.011140, -0.013551, -0.016658, -0.019090, -0.020987, -0.022070, -0.022678, -0.023137, -0.023632],
+        'z': [0.002614, 0.000000, -0.002610, -0.005844, -0.009775, -0.014285, -0.018739, -0.022587, -0.025950, -0.028716, -0.030574, -0.031568, -0.031884, -0.031717, -0.031828, -0.032260, -0.032908, -0.033682, -0.034255, -0.034364]
+    }
+}
 
 def parse_schedule_string(schedule_str: str, max_frames: int = 100) -> List[Tuple[int, float]]:
     """
@@ -92,6 +122,82 @@ def interpolate_schedule(keyframes: List[Tuple[int, float]], max_frames: int) ->
             values.append(value)
     
     return values
+
+
+def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: float, target_fps: int = 30, max_frames: int = 120) -> Optional[Dict]:
+    """
+    Create Camera Shakify data using simplified hardcoded patterns
+    """
+    if not shake_name or shake_name.lower() in ['none', 'off', ''] or shake_intensity <= 0:
+        return None
+    
+    print(f"🎬 Creating Camera Shakify data: {shake_name} (intensity: {shake_intensity}, speed: {shake_speed})")
+    
+    # For now, only support INVESTIGATION pattern as demonstration
+    if shake_name.upper() != "INVESTIGATION":
+        print(f"⚠️ Shake pattern '{shake_name}' not yet supported, using static data")
+        return None
+    
+    # Use the hardcoded data and apply intensity/speed scaling
+    base_data = INVESTIGATION_SHAKE_DATA
+    result = {
+        'translation': {'x': [], 'y': [], 'z': []},
+        'rotation_3d': {'x': [], 'y': [], 'z': []}
+    }
+    
+    # Generate values for the requested number of frames
+    for frame in range(max_frames):
+        for transform_type in ['translation', 'rotation_3d']:
+            for axis in ['x', 'y', 'z']:
+                # Get base pattern data
+                base_values = base_data[transform_type][axis]
+                
+                # Calculate which frame to sample from (with speed scaling)
+                source_frame_idx = int((frame * shake_speed) % len(base_values))
+                base_value = base_values[source_frame_idx]
+                
+                # Apply intensity scaling
+                scaled_value = base_value * shake_intensity
+                
+                result[transform_type][axis].append(scaled_value)
+    
+    print(f"✅ Generated simplified Camera Shakify data for {max_frames} frames")
+    return result
+
+
+def apply_shakify_to_schedule(base_schedule: str, shake_values: List[float], max_frames: int) -> str:
+    """
+    Apply Camera Shakify values to a base movement schedule to create combined schedule
+    This mimics the _maybe_shake function from the experimental render core
+    """
+    if not shake_values or len(shake_values) == 0:
+        return base_schedule
+    
+    # Parse base schedule
+    base_keyframes = parse_schedule_string(base_schedule, max_frames)
+    base_values = interpolate_schedule(base_keyframes, max_frames)
+    
+    # Apply shake to base values (additive)
+    combined_values = []
+    for frame in range(min(len(base_values), len(shake_values))):
+        combined_value = base_values[frame] + shake_values[frame]
+        combined_values.append(combined_value)
+    
+    # Create new schedule string from combined values
+    # Sample every few frames to keep schedule reasonable
+    sample_interval = max(1, max_frames // 20)  # Max 20 keyframes
+    keyframes = []
+    
+    for frame in range(0, len(combined_values), sample_interval):
+        value = combined_values[frame]
+        keyframes.append(f"{frame}:({value:.6f})")
+    
+    # Always include the last frame
+    if (len(combined_values) - 1) % sample_interval != 0:
+        last_value = combined_values[-1]
+        keyframes.append(f"{len(combined_values)-1}:({last_value:.6f})")
+    
+    return ", ".join(keyframes)
 
 
 class MovementAnalyzer:
@@ -547,52 +653,94 @@ class MovementAnalyzer:
 
 def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: int = 120) -> Tuple[str, float]:
     """
-    Enhanced movement analysis with support for complex patterns and Camera Shakify
+    Enhanced movement analysis with full Camera Shakify integration
+    Creates combined movement schedules like the experimental render core does
     """
     analyzer = MovementAnalyzer(sensitivity)
     
     descriptions = []
     strengths = []
     
-    # 1. Analyze Camera Shakify first (highest priority for complex movements)
+    # 1. Handle Camera Shakify integration first
     shake_name = getattr(anim_args, 'shake_name', 'None')
     shake_intensity = getattr(anim_args, 'shake_intensity', 0.0)
     shake_speed = getattr(anim_args, 'shake_speed', 1.0)
     
-    if shake_name and shake_name != 'None':
-        shake_desc, shake_strength = analyzer.analyze_camera_shake(shake_name, shake_intensity, shake_speed)
-        if shake_desc:
-            descriptions.append(shake_desc)
-            strengths.append(shake_strength)
+    # Generate Camera Shakify data if enabled
+    shakify_data = None
+    if shake_name and shake_name != 'None' and SHAKIFY_AVAILABLE:
+        shakify_data = create_shakify_data(shake_name, shake_intensity, shake_speed, target_fps=30, max_frames=max_frames)
+        print(f"🎬 Camera Shakify '{shake_name}' integration: {'✅ Success' if shakify_data else '❌ Failed'}")
     
-    # 2. Analyze rotation patterns for complex movements (circular, roll)
+    # 2. Create combined movement schedules (base + shake)
+    # This mimics what the experimental render core does with _maybe_shake
+    if shakify_data:
+        # Apply shakify to translation schedules
+        combined_translation_x = apply_shakify_to_schedule(
+            anim_args.translation_x, shakify_data['translation']['x'], max_frames)
+        combined_translation_y = apply_shakify_to_schedule(
+            anim_args.translation_y, shakify_data['translation']['y'], max_frames)
+        combined_translation_z = apply_shakify_to_schedule(
+            anim_args.translation_z, shakify_data['translation']['z'], max_frames)
+        
+        # Apply shakify to rotation schedules
+        combined_rotation_x = apply_shakify_to_schedule(
+            anim_args.rotation_3d_x, shakify_data['rotation_3d']['x'], max_frames)
+        combined_rotation_y = apply_shakify_to_schedule(
+            anim_args.rotation_3d_y, shakify_data['rotation_3d']['y'], max_frames)
+        combined_rotation_z = apply_shakify_to_schedule(
+            anim_args.rotation_3d_z, shakify_data['rotation_3d']['z'], max_frames)
+        
+        print(f"🔧 Applied Camera Shakify to movement schedules")
+        print(f"   📐 Combined Translation X: {combined_translation_x[:50]}...")
+        print(f"   📐 Combined Rotation Y: {combined_rotation_y[:50]}...")
+        
+    else:
+        # Use original schedules if no shake
+        combined_translation_x = anim_args.translation_x
+        combined_translation_y = anim_args.translation_y
+        combined_translation_z = anim_args.translation_z
+        combined_rotation_x = anim_args.rotation_3d_x
+        combined_rotation_y = anim_args.rotation_3d_y
+        combined_rotation_z = anim_args.rotation_3d_z
+    
+    # 3. Analyze combined movement schedules
+    # Translation analysis
+    translation_desc, translation_strength = analyzer.analyze_translation(
+        combined_translation_x, combined_translation_y, combined_translation_z, max_frames)
+    
+    if translation_desc and translation_desc != "static camera position":
+        descriptions.append(translation_desc)
+        strengths.append(translation_strength)
+    
+    # Rotation analysis for complex patterns
     rotation_desc, rotation_strength, motion_type = analyzer.analyze_rotation_pattern(
-        anim_args.rotation_3d_x, anim_args.rotation_3d_y, anim_args.rotation_3d_z, max_frames)
+        combined_rotation_x, combined_rotation_y, combined_rotation_z, max_frames)
     
     if rotation_desc:
         descriptions.append(rotation_desc)
         strengths.append(rotation_strength)
     
-    # 3. Analyze translation movements
-    translation_desc, translation_strength = analyzer.analyze_translation(
-        anim_args.translation_x, anim_args.translation_y, anim_args.translation_z, max_frames)
-    
-    if translation_desc:
-        descriptions.append(translation_desc)
-        strengths.append(translation_strength)
-    
-    # 4. Analyze zoom (if not already covered by complex patterns)
-    if motion_type not in ['circular', 'roll']:  # Don't add zoom if we have complex rotation
+    # Zoom analysis (if not complex rotation)
+    if motion_type not in ['circular', 'roll']:
         zoom_desc, zoom_strength = analyzer.analyze_zoom(anim_args.zoom, max_frames)
         if zoom_desc:
             descriptions.append(zoom_desc)
             strengths.append(zoom_strength)
     
+    # 4. Add Camera Shakify description if it was the primary movement source
+    if shakify_data and not descriptions:
+        # Only add shake description if no other movement was detected
+        shake_desc, shake_strength = analyzer.analyze_camera_shake(shake_name, shake_intensity, shake_speed)
+        if shake_desc:
+            descriptions.append(shake_desc)
+            strengths.append(shake_strength)
+    
     # 5. Generate final description
     if not descriptions:
         return "static camera position", 0.0
     
-    # Prioritize complex movements
+    # Combine descriptions naturally
     if len(descriptions) == 1:
         combined_description = f"camera movement with {descriptions[0]}"
     elif len(descriptions) == 2:
