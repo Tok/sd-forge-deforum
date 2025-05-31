@@ -1025,7 +1025,7 @@ def get_tab_wan(dw: SimpleNamespace):
                     elem_id="load_deforum_to_wan_btn"
                 )
                 load_wan_defaults_btn = gr.Button(
-                    "📝 Load Default Prompts",
+                    "📝 Load Default Wan Prompts",
                     variant="secondary", 
                     size="lg",
                     elem_id="load_wan_defaults_btn"
@@ -1036,7 +1036,7 @@ def get_tab_wan(dw: SimpleNamespace):
                 label="Wan Video Prompts (JSON Format)",
                 lines=10,
                 interactive=True,
-                placeholder='REQUIRED: Load prompts first! Click "Load from Deforum Prompts" or "Load Default Prompts" above.',
+                placeholder='REQUIRED: Load prompts first! Click "Load from Deforum Prompts" or "Load Default Wan Prompts" above.',
                 info="🎯 ESSENTIAL: These prompts will be used for Wan video generation. Edit manually or use buttons below to enhance.",
                 elem_id="wan_enhanced_prompts_textbox"
             )
@@ -1050,11 +1050,22 @@ def get_tab_wan(dw: SimpleNamespace):
                     elem_id="wan_analyze_movement_btn"
                 )
                 enhance_prompts_btn = gr.Button(
-                    "🎨 Enhance with AI",
+                    "🎨 AI Prompt Enhancement",
                     variant="secondary",
                     size="lg",
                     elem_id="wan_enhance_prompts_btn"
                 )
+                
+            # Movement Analysis Results - Always visible for feedback
+            wan_movement_description = gr.Textbox(
+                label="Movement Analysis Results",
+                lines=4,
+                interactive=False,
+                placeholder="Movement analysis results will appear here...",
+                info="Movement descriptions are automatically added to prompts above.",
+                elem_id="wan_movement_description_textbox",
+                visible=True  # Always visible for immediate feedback
+            )
         
         # GENERATION SECTION
         with gr.Accordion("🎬 Generate Wan Video", open=True):
@@ -1095,19 +1106,15 @@ def get_tab_wan(dw: SimpleNamespace):
                 )
                 wan_movement_sensitivity = create_gr_elem(dw.wan_movement_sensitivity)
         
-        # MOVEMENT ANALYSIS RESULTS - Compact
-        wan_movement_description = gr.Textbox(
-            label="Movement Analysis Results",
-            lines=4,
-            interactive=False,
-            placeholder="Movement analysis results will appear here...",
-            info="Movement descriptions are automatically added to prompts above.",
-            elem_id="wan_movement_description_textbox",
-            visible=False  # Hidden until used
-        )
-        
         # AI ENHANCEMENT SETTINGS - Collapsed by default
-        with gr.Accordion("🧠 AI Enhancement (Optional)", open=False):
+        with gr.Accordion("🧠 AI Prompt Enhancement (Optional)", open=False):
+            gr.Markdown("""
+            **Enhance prompts using Qwen AI models** for better video quality:
+            - **🧠 AI Enhancement**: Refines and expands prompts
+            - **🎬 Movement Integration**: Uses movement descriptions from analysis
+            - **🌍 Multi-Language**: English and Chinese support
+            """)
+            
             with FormRow():
                 wan_qwen_model = create_gr_elem(dw.wan_qwen_model)
                 wan_qwen_language = create_gr_elem(dw.wan_qwen_language)
@@ -1121,8 +1128,8 @@ def get_tab_wan(dw: SimpleNamespace):
             with FormRow():
                 wan_model_path = create_gr_elem(dw.wan_model_path)
         
-        # MOVEMENT ANALYSIS
-        with gr.Accordion("📐 Analyze Movement", open=False):
+        # MOVEMENT ANALYSIS - Detailed Information
+        with gr.Accordion("📐 Movement Analysis Details", open=False):
             gr.Markdown("""
             **🎬 Uses the Same Movement System as Normal Deforum Renders:**
             
@@ -1133,50 +1140,18 @@ def get_tab_wan(dw: SimpleNamespace):
             - **Parseq Compatible**: Also works with Parseq movement schedules
             
             **Movement descriptions are added to prompts** to help Wan understand camera motion.
+            
+            **How to Use:**
+            1. Configure your movement in **Keyframes → Motion tab** (same as normal Deforum)
+            2. Click **"Add Movement Descriptions"** button above
+            3. Movement descriptions will be automatically added to your prompts
             """)
             
+            # Advanced movement settings
             with FormRow():
                 wan_movement_sensitivity = create_gr_elem(dw.wan_movement_sensitivity)
-                analyze_movement_btn = gr.Button(
-                    "📐 Analyze Deforum Movement & Add Descriptions",
-                    variant="primary",
-                    size="lg",
-                    elem_id="wan_analyze_movement_btn"
-                )
-                
-            # Movement Analysis Results - ALWAYS VISIBLE
-            wan_movement_description = gr.Textbox(
-                label="Deforum Movement Analysis Results",
-                lines=8,
-                interactive=False,
-                placeholder="Click 'Analyze Deforum Movement' to see detailed movement analysis from your Keyframes → Motion schedules...",
-                info="Movement analysis results from your Deforum schedules. Movement descriptions are automatically added to wan prompts.",
-                elem_id="wan_movement_description_textbox"
-            )
-            
-            # Step 3: AI Enhancement (Optional)  
-            gr.Markdown("### **Step 3: AI Enhancement (Optional)**")
-            gr.Markdown("""
-            **Enhance prompts using Qwen AI models** for better video quality:
-            - **🧠 AI Enhancement**: Refines and expands prompts
-            - **🎬 Movement Integration**: Uses movement descriptions from Step 2
-            - **🌍 Multi-Language**: English and Chinese support
-            """)
-            
-            with FormRow():
-                wan_qwen_model = create_gr_elem(dw.wan_qwen_model)
-                wan_qwen_language = create_gr_elem(dw.wan_qwen_language)
-                wan_qwen_auto_download = create_gr_elem(dw.wan_qwen_auto_download)
-                
-            with FormRow():
-                enhance_prompts_btn = gr.Button(
-                    "🎨 Enhance Prompts with AI",
-                    variant="primary",
-                    size="lg",
-                    elem_id="wan_enhance_prompts_btn"
-                )
-                
-        # Qwen Model Management - Moved to separate accordion
+        
+        # QWEN MODEL MANAGEMENT - Collapsed by default
         with gr.Accordion("🧠 Qwen Model Management", open=False):
             gr.Markdown("""
             **Model Information & Auto-Download Status**
@@ -2135,7 +2110,7 @@ def analyze_movement_handler(movement_sensitivity, current_prompts):
             return "", """❌ No prompts to analyze!
 
 🔧 **Load prompts first:**
-1. 📋 Click "Load from Deforum Prompts" or "Load Default Prompts"
+1. 📋 Click "Load from Deforum Prompts" or "Load Default Wan Prompts"
 2. 📐 Then click "Add Movement Descriptions" again
 
 Movement descriptions will be added to your existing prompts."""
@@ -2246,7 +2221,7 @@ Motion strength: {average_motion_strength:.2f}
 ✅ Movement descriptions added to {len(updated_prompts)} prompts.
 Prompts updated above. Ready for enhancement or generation."""
         
-        print(f"✅ Updated {len(updated_prompts)} wan prompts with movement descriptions")
+        print(f"✅ Updated {len(updated_prompts)} Wan prompts with movement descriptions")
         
         # Return updated prompts and status message
         return updated_json, result_message
