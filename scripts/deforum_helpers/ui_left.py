@@ -229,7 +229,7 @@ def setup_deforum_left_side_ui():
     try:
         from .ui_elements import analyze_movement_handler, enhance_prompts_handler
         
-        # Store references to movement schedule components
+        # Store references to movement schedule components to get actual schedule strings
         movement_components = {}
         movement_component_names = [
             'translation_x', 'translation_y', 'translation_z',
@@ -237,24 +237,27 @@ def setup_deforum_left_side_ui():
             'zoom', 'angle', 'max_frames'
         ]
         
-        # Try to get movement components from locals()
+        # Get actual schedule values from the UI components (these are the schedule strings)
         for comp_name in movement_component_names:
             if comp_name in locals():
-                # For max_frames, we need to store the actual value, not the component
+                component = locals()[comp_name]
+                # Get the actual schedule value (string like "0:(0), 100:(50)")
                 if comp_name == 'max_frames':
-                    movement_components[comp_name] = getattr(locals()[comp_name], 'value', 100)
+                    # max_frames is a number, not a schedule
+                    movement_components[comp_name] = getattr(component, 'value', 100)
                 else:
-                    movement_components[comp_name] = getattr(locals()[comp_name], 'value', f"0:(0)")
+                    # These are schedule strings used by Deforum's animation system
+                    movement_components[comp_name] = getattr(component, 'value', f"0:(0)")
             else:
-                # Fallback defaults
+                # Fallback defaults (same as Deforum defaults)
                 if comp_name == 'max_frames':
                     movement_components[comp_name] = 100
                 elif comp_name == 'zoom':
-                    movement_components[comp_name] = "0:(1.0)"
+                    movement_components[comp_name] = "0:(1.0)"  # Default zoom schedule
                 else:
-                    movement_components[comp_name] = "0:(0)"
+                    movement_components[comp_name] = "0:(0)"    # Default movement schedule
         
-        # Store the movement components dictionary
+        # Store the movement components dictionary for the handler
         analyze_movement_handler._movement_components = movement_components
         
         # Store reference to wan_enhanced_prompts component for updating prompts with movement
@@ -265,10 +268,11 @@ def setup_deforum_left_side_ui():
         if 'wan_movement_description' in locals():
             analyze_movement_handler._wan_movement_description_component = locals()['wan_movement_description']
         
-        print(f"✅ Movement component references set up for {len(movement_components)} components")
+        print(f"✅ Movement schedule references set up for {len(movement_components)} Deforum schedules")
+        print(f"📊 Sample schedules: translation_x='{movement_components.get('translation_x', 'N/A')[:30]}...', zoom='{movement_components.get('zoom', 'N/A')}'")
         
     except Exception as e:
-        print(f"⚠️ Warning: Failed to set up movement component references: {e}")
+        print(f"⚠️ Warning: Failed to set up movement schedule references: {e}")
         import traceback
         traceback.print_exc()
 
