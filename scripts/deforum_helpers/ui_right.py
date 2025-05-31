@@ -32,7 +32,7 @@ def on_ui_tabs():
     style = '"text-align:center;font-weight:bold;margin-bottom:0em"'
     extension_url = "https://github.com/Tok/sd-forge-deforum"
     link = f"<a href='{extension_url}' target='_blank'>Zirteqs Fluxabled Fork</a>"
-    extension_name = f"{link} of the Deforum Extension for WebUI Forge"
+    extension_name = f"{link} of the Deforum Fork for WebUI Forge"
 
     commit_info = f"Git commit: {get_deforum_version()}"
     i1_store_backup = f"<p style={style}>{extension_name} - Version: {get_commit_date()} | {commit_info}</p>"

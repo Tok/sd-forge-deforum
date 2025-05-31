@@ -2,7 +2,7 @@
 
 ## 🎨 Overview
 
-This enhanced Wan integration adds powerful AI-driven prompt enhancement and intelligent movement analysis to the Deforum extension. It automatically refines your prompts using Qwen language models and translates complex Deforum movement schedules into natural language descriptions.
+This enhanced Wan integration adds powerful AI-driven prompt enhancement and intelligent movement analysis to the Deforum fork. It automatically refines your prompts using Qwen language models and translates complex Deforum movement schedules into natural language descriptions.
 
 ## 🌟 Key Features
 

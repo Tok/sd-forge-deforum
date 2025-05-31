@@ -72,7 +72,7 @@ def run_deforum(*args):
         job_id = f"{job_id_prefix}-{i}"
         JobStatusTracker().update_phase(job_id, DeforumJobPhase.PREPARING)
 
-        print(f"{UNDERLINE}{YELLOW}Zirteqs Fluxabled Fork of the Deforum Extension for WebUI Forge{RESET_COLOR}")
+        print(f"{UNDERLINE}{YELLOW}Zirteqs Fluxabled Fork of the Deforum Fork for WebUI Forge{RESET_COLOR}")
         print(f"Version: {get_commit_date()} | Git commit: {get_deforum_version()}")
         print(f"Starting job {job_id}...")
         args_dict['self'] = None
@@ -202,7 +202,7 @@ def run_deforum(*args):
                 mp4 = open(mp4_path, 'rb').read()
                 data_url = f"data:video/mp4;base64, {b64encode(mp4).decode()}"
                 global last_vid_data
-                last_vid_data = f'<p style=\"font-weight:bold;margin-bottom:0em\">Deforum extension for Forge </p><video controls loop><source src="{data_url}" type="video/mp4"></video>'
+                last_vid_data = f'<p style=\"font-weight:bold;margin-bottom:0em\">Deforum fork for Forge </p><video controls loop><source src="{data_url}" type="video/mp4"></video>'
             except Exception as e:
                 if need_to_frame_interpolate:
                     print(f"FFMPEG DID NOT STITCH ANY VIDEO. However, you requested to frame interpolate  - so we will continue to frame interpolation, but you'll be left only with the interpolated frames and not a video, since ffmpeg couldn't run. Original ffmpeg error: {e}")
