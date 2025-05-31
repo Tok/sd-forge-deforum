@@ -179,7 +179,7 @@ def on_ui_tabs():
             settings_file_path = webui_root_settings
             print(f"Loading existing settings from webui root: {settings_file_path}")
         else:
-            # Fall back to default settings provided by the extension
+            # Fall back to default settings provided by the fork
             settings_file_path = get_default_settings_path()
             print(f"No settings found in webui root, using default settings from: {settings_file_path}")
         
@@ -198,7 +198,7 @@ def on_ui_tabs():
             if key in settings_component_name_to_obj:
                 settings_component_name_to_obj[key].value = value['value']
     # Always load settings on startup - either from persistent settings path (if enabled),
-    # from webui root, or from the extension's default settings
+    # from webui root, or from the fork's default settings
     trigger_load_general_settings()
         
     return [(deforum_interface, "Deforum", "deforum_interface")]
