@@ -1620,10 +1620,17 @@ def get_tab_wan(dw: SimpleNamespace):
                         setattr(anim_args, field, "0: (0)")
             
             # Analyze movement
+            # Ensure max_frames is an integer
+            max_frames_val = getattr(anim_args, 'max_frames', 100)
+            try:
+                max_frames_val = int(max_frames_val)
+            except (ValueError, TypeError):
+                max_frames_val = 100
+                
             movement_desc, motion_strength = analyze_deforum_movement(
                 anim_args=anim_args,
                 sensitivity=movement_sensitivity,
-                max_frames=min(anim_args.max_frames, 100)
+                max_frames=min(max_frames_val, 100)
             )
             
             detailed_desc = f"{movement_desc}\n\nCalculated motion strength: {motion_strength:.2f}"
@@ -1651,28 +1658,37 @@ def get_tab_wan(dw: SimpleNamespace):
                 selected_info = qwen_manager.get_model_info(selected)
                 
                 status_html = f"""
-                <div style="padding: 10px; border-radius: 5px; background-color: #f0f8ff;">
-                <h4>🧠 Auto-Selected Model: {selected}</h4>
-                <p><strong>Description:</strong> {selected_info.get('description', 'N/A')}</p>
-                <p><strong>VRAM Required:</strong> {selected_info.get('vram_gb', 0)}GB</p>
-                <p><strong>Available VRAM:</strong> {available_vram:.1f}GB</p>
-                <p><strong>Vision-Language:</strong> {'Yes' if selected_info.get('is_vl', False) else 'No'}</p>
-                <p><strong>Status:</strong> {'✅ Downloaded' if qwen_manager.is_model_downloaded(selected) else '❌ Not Downloaded'}</p>
+                <div style="padding: 15px; border-radius: 8px; background-color: #e8f5e8; border: 1px solid #4caf50;">
+                <h4 style="color: #2e7d32; margin-top: 0;">🧠 Auto-Selected Model: {selected}</h4>
+                <p style="color: #333;"><strong>Description:</strong> {selected_info.get('description', 'N/A')}</p>
+                <p style="color: #333;"><strong>VRAM Required:</strong> {selected_info.get('vram_gb', 0)}GB</p>
+                <p style="color: #333;"><strong>Available VRAM:</strong> {available_vram:.1f}GB</p>
+                <p style="color: #333;"><strong>Vision-Language:</strong> {'Yes' if selected_info.get('is_vl', False) else 'No'}</p>
+                <p style="color: #333;"><strong>Status:</strong> {'✅ Downloaded' if qwen_manager.is_model_downloaded(selected) else '❌ Not Downloaded'}</p>
                 </div>
                 """
             else:
-                status_color = "#d4edda" if is_downloaded else "#f8d7da"
-                status_icon = "✅" if is_downloaded else "❌"
-                status_text = "Downloaded" if is_downloaded else "Not Downloaded"
+                if is_downloaded:
+                    status_color = "#e8f5e8"
+                    border_color = "#4caf50"
+                    title_color = "#2e7d32"
+                    status_icon = "✅"
+                    status_text = "Downloaded"
+                else:
+                    status_color = "#ffe8e8"
+                    border_color = "#f44336"
+                    title_color = "#c62828"
+                    status_icon = "❌"
+                    status_text = "Not Downloaded"
                 
                 status_html = f"""
-                <div style="padding: 10px; border-radius: 5px; background-color: {status_color};">
-                <h4>🧠 Model: {qwen_model}</h4>
-                <p><strong>Description:</strong> {model_info.get('description', 'N/A')}</p>
-                <p><strong>VRAM Required:</strong> {model_info.get('vram_gb', 0)}GB</p>
-                <p><strong>Available VRAM:</strong> {available_vram:.1f}GB</p>
-                <p><strong>Vision-Language:</strong> {'Yes' if model_info.get('is_vl', False) else 'No'}</p>
-                <p><strong>Status:</strong> {status_icon} {status_text}</p>
+                <div style="padding: 15px; border-radius: 8px; background-color: {status_color}; border: 1px solid {border_color};">
+                <h4 style="color: {title_color}; margin-top: 0;">🧠 Model: {qwen_model}</h4>
+                <p style="color: #333;"><strong>Description:</strong> {model_info.get('description', 'N/A')}</p>
+                <p style="color: #333;"><strong>VRAM Required:</strong> {model_info.get('vram_gb', 0)}GB</p>
+                <p style="color: #333;"><strong>Available VRAM:</strong> {available_vram:.1f}GB</p>
+                <p style="color: #333;"><strong>Vision-Language:</strong> {'Yes' if model_info.get('is_vl', False) else 'No'}</p>
+                <p style="color: #333;"><strong>Status:</strong> {status_icon} {status_text}</p>
                 </div>
                 """
                 
@@ -1680,9 +1696,9 @@ def get_tab_wan(dw: SimpleNamespace):
             
         except Exception as e:
             return f"""
-            <div style="padding: 10px; border-radius: 5px; background-color: #f8d7da;">
-            <h4>❌ Error Checking Model Status</h4>
-            <p>{str(e)}</p>
+            <div style="padding: 15px; border-radius: 8px; background-color: #ffe8e8; border: 1px solid #f44336;">
+            <h4 style="color: #c62828; margin-top: 0;">❌ Error Checking Model Status</h4>
+            <p style="color: #333;">{str(e)}</p>
             </div>
             """
     
