@@ -1094,7 +1094,7 @@ def get_tab_wan(dw: SimpleNamespace):
                     elem_id="load_deforum_to_wan_btn"
                 )
                 load_wan_defaults_btn = gr.Button(
-                    "🐰 Load Default Bunny Prompts",
+                    "📝 Load Default Wan Prompt",
                     variant="secondary", 
                     size="lg",
                     elem_id="load_wan_defaults_btn"
@@ -1102,11 +1102,11 @@ def get_tab_wan(dw: SimpleNamespace):
             
             # Wan Prompts Display - ALWAYS VISIBLE
             wan_enhanced_prompts = gr.Textbox(
-                label="Wan Video Prompts (Editable)",
+                label="Wan Video Prompts (Editable JSON)",
                 lines=12,
                 interactive=True,
-                placeholder="Click 'Load Wan Prompts from Deforum Prompts' to copy your current prompts, or 'Load Default Bunny Prompts' to start with defaults.",
-                info="These are the prompts that will be used for Wan video generation. You can manually edit these or enhance them with AI.",
+                placeholder='Click "Load Wan Prompts from Deforum Prompts" to copy your current prompts, or "Load Default Wan Prompt" to start with defaults.',
+                info="These are the prompts that will be used for Wan video generation in JSON format. You can manually edit these or enhance them with AI.",
                 elem_id="wan_enhanced_prompts_textbox"
             )
             
@@ -1947,39 +1947,63 @@ def enhance_prompts_handler(qwen_model, language, auto_download, movement_sensit
             else:
                 print(f"📥 Loading Qwen model: {qwen_model}")
         
-        # Try to get animation prompts from Gradio's stored reference
+        # Try to get wan prompts from the stored wan_enhanced_prompts component
         animation_prompts = None
         
-        # Use a global reference approach - store the animation_prompts component
+        # Use a global reference approach - store the wan_enhanced_prompts component
         # This will be set when the UI is created
-        if hasattr(enhance_prompts_handler, '_animation_prompts_component'):
+        if hasattr(enhance_prompts_handler, '_wan_enhanced_prompts_component'):
             try:
-                animation_prompts_json = enhance_prompts_handler._animation_prompts_component.value
-                print(f"📝 Got animation prompts from stored component reference")
-                print(f"🔍 Raw prompts value: {str(animation_prompts_json)[:200]}...")
+                wan_prompts_value = enhance_prompts_handler._wan_enhanced_prompts_component.value
+                print(f"📝 Got wan prompts from stored component reference")
+                print(f"🔍 Raw wan prompts value: {str(wan_prompts_value)[:200]}...")
                 
-                # Parse the JSON prompts
-                if animation_prompts_json and animation_prompts_json.strip():
+                # Parse the wan prompts - could be JSON or readable format
+                if wan_prompts_value and wan_prompts_value.strip():
                     try:
-                        animation_prompts = json.loads(animation_prompts_json)
-                        print(f"✅ Successfully parsed {len(animation_prompts)} animation prompts")
-                    except json.JSONDecodeError as e:
-                        print(f"❌ JSON decode error: {e}")
-                        return f"❌ Invalid JSON in animation prompts: {str(e)}"
+                        # Try to parse as JSON first
+                        animation_prompts = json.loads(wan_prompts_value)
+                        print(f"✅ Successfully parsed {len(animation_prompts)} wan prompts as JSON")
+                    except json.JSONDecodeError:
+                        # Try to parse as readable format (Frame X: prompt)
+                        try:
+                            animation_prompts = {}
+                            for line in wan_prompts_value.strip().split('\n'):
+                                if ':' in line:
+                                    # Handle both "Frame X:" and "X:" formats
+                                    parts = line.split(':', 1)
+                                    frame_part = parts[0].strip()
+                                    prompt_part = parts[1].strip()
+                                    
+                                    # Extract frame number
+                                    if frame_part.lower().startswith('frame '):
+                                        frame_num = frame_part[6:].strip()
+                                    else:
+                                        frame_num = frame_part
+                                    
+                                    animation_prompts[frame_num] = prompt_part
+                            
+                            if animation_prompts:
+                                print(f"✅ Successfully parsed {len(animation_prompts)} wan prompts as readable format")
+                            else:
+                                raise ValueError("No valid prompts found")
+                        except Exception as e:
+                            print(f"❌ Could not parse wan prompts: {e}")
+                            return f"❌ Invalid format in wan prompts. Expected JSON format like:\n{{\n  \"0\": \"prompt text\",\n  \"60\": \"another prompt\"\n}}\n\nOr readable format like:\nFrame 0: prompt text\nFrame 60: another prompt"
                 else:
-                    print("⚠️ Empty animation prompts")
+                    print("⚠️ Empty wan prompts")
                     
             except Exception as e:
-                print(f"❌ Error accessing stored component: {e}")
+                print(f"❌ Error accessing stored wan prompts component: {e}")
         else:
-            print("⚠️ No stored animation_prompts component reference found")
+            print("⚠️ No stored wan_enhanced_prompts component reference found")
             
         # Check if we got valid prompts
         if not animation_prompts:
-            return """❌ No animation prompts found!
+            return """❌ No wan prompts found!
 
 🔧 **Setup Required:**
-1. 📝 Go to the **Prompts tab** and configure your animation prompts
+1. 📝 Load prompts using "Load Wan Prompts from Deforum Prompts" or "Load Default Wan Prompt"
 2. 📋 Make sure your prompts are in proper JSON format like:
    {
      "0": "a peaceful landscape scene",
@@ -1988,19 +2012,16 @@ def enhance_prompts_handler(qwen_model, language, auto_download, movement_sensit
    }
 3. 🎨 Click **Enhance Prompts** again after setting up prompts
 
-💡 **Example Prompts:**
-Your animation needs prompts in the Prompts tab to enhance them!
-
-🔧 **Temporary Solution:**
-If you have prompts configured but this message appears, you can copy your prompts manually to the Enhanced Prompts text area below and edit them there."""
+💡 **Quick Start:**
+Click "Load Default Wan Prompt" to start with example prompts!"""
         
         # Validate prompts content
         if len(animation_prompts) == 1 and "0" in animation_prompts and "beautiful landscape" in animation_prompts["0"]:
             return """❌ Default prompts detected!
 
 🔧 **Please configure your actual animation prompts:**
-1. 📝 Go to the **Prompts tab**
-2. ✏️ Replace the default prompt with your actual animation sequence
+1. 📝 Load your real prompts using the load buttons above
+2. ✏️ Or manually edit the wan prompts field
 3. 🎨 Click **Enhance Prompts** again
 
 💡 **For your animation sequence:**
@@ -2011,7 +2032,7 @@ Set up prompts like:
   "36": "A cyberpunk scene with LED patterns, digital environment"
 }"""
         
-        print(f"🎨 Enhancing {len(animation_prompts)} animation prompts with {qwen_model}")
+        print(f"🎨 Enhancing {len(animation_prompts)} wan prompts with {qwen_model}")
         
         # Create the Qwen prompt expander with better error handling
         try:
@@ -2091,7 +2112,7 @@ Model download started automatically. This may take a few minutes.
 🔧 **Troubleshooting:**
 1. 🔄 Restart WebUI and try again
 2. ✅ Check that Qwen models are properly installed
-3. 📝 Verify your animation prompts are in valid JSON format
+3. 📝 Verify your wan prompts are in valid JSON format
 
 💡 **Need Help?** Check the console for detailed error messages."""
 
@@ -2169,6 +2190,50 @@ def analyze_movement_handler(movement_sensitivity):
         enhance_prompts_handler._movement_description = movement_desc
         print(f"💾 Stored movement description for prompt enhancement: {movement_desc}")
         
+        # Update wan_enhanced_prompts with movement descriptions if prompts exist
+        if hasattr(enhance_prompts_handler, '_wan_enhanced_prompts_component'):
+            try:
+                import json
+                current_prompts_value = enhance_prompts_handler._wan_enhanced_prompts_component.value
+                
+                if current_prompts_value and current_prompts_value.strip():
+                    # Parse current prompts
+                    try:
+                        # Try JSON first
+                        current_prompts = json.loads(current_prompts_value)
+                    except json.JSONDecodeError:
+                        # Try readable format
+                        current_prompts = {}
+                        for line in current_prompts_value.strip().split('\n'):
+                            if ':' in line:
+                                parts = line.split(':', 1)
+                                frame_part = parts[0].strip()
+                                prompt_part = parts[1].strip()
+                                
+                                if frame_part.lower().startswith('frame '):
+                                    frame_num = frame_part[6:].strip()
+                                else:
+                                    frame_num = frame_part
+                                
+                                current_prompts[frame_num] = prompt_part
+                    
+                    # Add movement description to each prompt
+                    updated_prompts = {}
+                    for frame, prompt in current_prompts.items():
+                        # Remove existing movement description if present
+                        clean_prompt = prompt.split('. camera movement:')[0].split('. Camera movement:')[0]
+                        # Add new movement description
+                        updated_prompts[frame] = f"{clean_prompt}. {movement_desc}"
+                    
+                    # Convert back to JSON and update component
+                    updated_json = json.dumps(updated_prompts, ensure_ascii=False, indent=2)
+                    enhance_prompts_handler._wan_enhanced_prompts_component.value = updated_json
+                    
+                    print(f"✅ Updated {len(updated_prompts)} wan prompts with movement descriptions")
+                    
+            except Exception as e:
+                print(f"⚠️ Could not update wan prompts: {e}")
+        
         # Build detailed result text for UI display
         result_lines = [
             "🎯 **MOVEMENT ANALYSIS COMPLETE**",
@@ -2176,13 +2241,15 @@ def analyze_movement_handler(movement_sensitivity):
             f"**Movement Description:** {movement_desc}",
             f"**Average Motion Strength:** {average_motion_strength:.2f}",
             "",
+            "✅ **Wan Prompts Updated:** Movement descriptions added to existing prompts",
+            "",
             "**Wan Motion Intensity Schedule:**",
             f"{motion_intensity_schedule}",
             "",
             "✅ **HOW THIS WORKS:**",
             "",
             "1. **Deforum Schedules (Unchanged)**: Your rotation/translation schedules control actual camera movement",
-            f"2. **Text Description**: \"{movement_desc}\" will be appended to enhanced prompts automatically",
+            f"2. **Text Description**: \"{movement_desc}\" has been added to your wan prompts",
             "3. **Motion Intensity Schedule**: Controls Wan's internal motion strength frame-by-frame",
             "",
             "📊 **CURRENT DEFORUM MOVEMENT ANALYSIS:**",
@@ -2192,14 +2259,13 @@ def analyze_movement_handler(movement_sensitivity):
             f"• **Rotation Y**: {anim_args.rotation_3d_y}",
             f"• **Zoom**: {anim_args.zoom}",
             "",
-            "🎬 **NEXT STEP - ENHANCE PROMPTS:**",
+            "🎬 **NEXT STEP - ENHANCE PROMPTS (OPTIONAL):**",
             "",
-            "Click \"🎨 Enhance Prompts with AI\" to:",
-            "• **Enhance your prompts** with AI",
-            f"• **Automatically append** \"{movement_desc}\" to each enhanced prompt",
-            "• **Generate final prompts** ready for Wan generation",
+            "Your prompts now include movement descriptions. You can:",
+            "• **🎬 Generate directly** - use current prompts with movement descriptions",
+            "• **🎨 Enhance with AI** - further improve prompts with Qwen models",
             "",
-            "**Example Final Prompt:**",
+            "**Example Updated Prompt:**",
             f"*\"A sterile hallway illuminated by bright fluorescent lights, clinical environment with metallic surfaces. {movement_desc}\"*",
             "",
             "🎬 **DURING WAN GENERATION:**",
@@ -2210,12 +2276,12 @@ def analyze_movement_handler(movement_sensitivity):
             "- Wan's internal motion syncs with your Deforum camera movement",
             "",
             "💡 **BENEFITS:**",
-            "• **Automatic Integration**: Movement descriptions append to enhanced prompts",
+            "• **Automatic Integration**: Movement descriptions added to your wan prompts",
             "• **Motion Synchronization**: Wan's motion matches your Deforum schedules",
             "• **Better Continuity**: Motion intensity adapts to movement complexity",
             "",
-            "🚀 **READY FOR ENHANCEMENT:**",
-            "Your movement analysis is complete! Now click \"🎨 Enhance Prompts\" to create the final prompts with integrated movement descriptions.",
+            "🚀 **READY FOR GENERATION:**",
+            "Your wan prompts now include movement descriptions! You can generate directly or enhance further with AI.",
             "",
             f"💡 **TIP**: Adjust Movement Sensitivity (current: {movement_sensitivity:.1f}) to fine-tune:",
             "• **Lower values** (0.5): Only detect significant movements",
@@ -2518,49 +2584,29 @@ def load_deforum_to_wan_prompts_handler():
                 print(f"⚠️ Could not access animation_prompts component: {e}")
         
         if not animation_prompts_json or animation_prompts_json.strip() == "":
-            return """📋 No Deforum prompts found!
-
-🔧 **Setup Required:**
-1. 📝 Go to the **Prompts tab** and configure your animation prompts
-2. 📋 Make sure your prompts are in proper JSON format
-3. 🔄 Come back and click this button again
-
-💡 **Example Prompts Format:**
-{
-  "0": "a peaceful landscape scene",
-  "60": "a synthwave aesthetic with neon colors", 
-  "120": "a cyberpunk environment with glowing elements"
-}"""
+            return """{"0": "No Deforum prompts found! Go to the Prompts tab and configure your animation prompts first."}"""
         
-        # Parse the JSON and convert to readable format for Wan
+        # Parse the JSON and convert to clean Wan format
         try:
             import json
             prompts_dict = json.loads(animation_prompts_json)
             
-            # Convert to Wan format (just the prompts, one per line)
-            wan_prompts_lines = []
-            for frame, prompt in sorted(prompts_dict.items(), key=lambda x: int(x[0])):
+            # Convert to Wan format (clean prompts without negative parts)
+            wan_prompts_dict = {}
+            for frame, prompt in prompts_dict.items():
                 # Clean up the prompt (remove negative prompts)
                 clean_prompt = prompt.split('--neg')[0].strip()
-                wan_prompts_lines.append(f"Frame {frame}: {clean_prompt}")
+                wan_prompts_dict[frame] = clean_prompt
             
-            result = "\n".join(wan_prompts_lines)
-            print(f"✅ Converted {len(prompts_dict)} Deforum prompts to Wan format")
+            # Return as JSON
+            result = json.dumps(wan_prompts_dict, ensure_ascii=False, indent=2)
+            print(f"✅ Converted {len(prompts_dict)} Deforum prompts to Wan JSON format")
             return result
             
         except json.JSONDecodeError as e:
-            return f"""❌ Invalid JSON in Deforum prompts: {str(e)}
-
-🔧 **Fix Your Prompts:**
-1. 📝 Go to the **Prompts tab**
-2. ✏️ Fix the JSON format (check for missing quotes, commas, etc.)
-3. 🔄 Try loading again
-
-💡 **JSON Format Required:**
-{
-  "0": "prompt text here",
-  "60": "another prompt here"
-}"""
+            return json.dumps({
+                "0": f"Invalid JSON in Deforum prompts: {str(e)}. Fix the JSON format in the Prompts tab first."
+            }, indent=2)
             
     except Exception as e:
         return f"❌ Error loading Deforum prompts: {str(e)}"
@@ -2577,24 +2623,26 @@ def load_wan_defaults_handler():
         
         if not os.path.exists(settings_path):
             # Fallback to hardcoded defaults
-            return """Frame 0: A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic
-Frame 12: A white bunny with slightly glowing fur, sitting in a meadow with subtle magical sparkles
-Frame 43: A bunny with soft neon highlights on its fur, sitting in a meadow with digital aurora effects
-Frame 74: A bunny with cyberpunk fur patterns, glowing blue and purple, in an urban meadow setting
-Frame 85: A bunny with LED-trimmed ears and glowing whiskers, cyberpunk aesthetic, neon city background
-Frame 106: A tech bunny with holographic fur patterns, sitting in a futuristic garden environment
-Frame 119: A bunny wearing sleek chrome accessories, reflective metallic fur highlights, sci-fi setting
-Frame 126: A drip bunny with golden chains and designer accessories, confident pose, luxury environment
-Frame 147: A swag bunny with diamond earrings and platinum fur trim, posing with attitude
-Frame 158: A boss bunny with bling accessories and designer sunglasses, standing confidently
-Frame 178: A supreme drip bunny with ice-cold chains, golden grillz, and designer everything
-Frame 210: A legendary bunny deity with cosmic bling, floating in space with stellar accessories
-Frame 241: An ascended bunny with celestial drip, surrounded by floating diamonds and gold
-Frame 262: A transcendent bunny overlord with reality-bending bling, fractal jewelry patterns
-Frame 272: A hyperdimensional drip bunny with impossible geometry accessories, glowing with power
-Frame 293: An omnipotent bunny god with universal bling, commanding cosmic forces
-Frame 314: A supreme bunny entity with reality-warping drip, existing beyond time and space
-Frame 324: The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"""
+            return json.dumps({
+                "0": "A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic",
+                "12": "A white bunny with slightly glowing fur, sitting in a meadow with subtle magical sparkles",
+                "43": "A bunny with soft neon highlights on its fur, sitting in a meadow with digital aurora effects",
+                "74": "A bunny with cyberpunk fur patterns, glowing blue and purple, in an urban meadow setting",
+                "85": "A bunny with LED-trimmed ears and glowing whiskers, cyberpunk aesthetic, neon city background",
+                "106": "A tech bunny with holographic fur patterns, sitting in a futuristic garden environment",
+                "119": "A bunny wearing sleek chrome accessories, reflective metallic fur highlights, sci-fi setting",
+                "126": "A drip bunny with golden chains and designer accessories, confident pose, luxury environment",
+                "147": "A swag bunny with diamond earrings and platinum fur trim, posing with attitude",
+                "158": "A boss bunny with bling accessories and designer sunglasses, standing confidently",
+                "178": "A supreme drip bunny with ice-cold chains, golden grillz, and designer everything",
+                "210": "A legendary bunny deity with cosmic bling, floating in space with stellar accessories",
+                "241": "An ascended bunny with celestial drip, surrounded by floating diamonds and gold",
+                "262": "A transcendent bunny overlord with reality-bending bling, fractal jewelry patterns",
+                "272": "A hyperdimensional drip bunny with impossible geometry accessories, glowing with power",
+                "293": "An omnipotent bunny god with universal bling, commanding cosmic forces",
+                "314": "A supreme bunny entity with reality-warping drip, existing beyond time and space",
+                "324": "The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"
+            }, ensure_ascii=False, indent=2)
         
         try:
             with open(settings_path, 'r', encoding='utf-8') as f:
@@ -2603,26 +2651,26 @@ Frame 324: The ultimate drip bunny, transcending all dimensions with infinite sw
             wan_prompts = settings.get('wan_prompts', {})
             
             if wan_prompts:
-                # Convert to readable format
-                wan_prompts_lines = []
-                for frame, prompt in sorted(wan_prompts.items(), key=lambda x: int(x[0])):
-                    wan_prompts_lines.append(f"Frame {frame}: {prompt}")
-                
-                result = "\n".join(wan_prompts_lines)
+                # Return as JSON
+                result = json.dumps(wan_prompts, ensure_ascii=False, indent=2)
                 print(f"✅ Loaded {len(wan_prompts)} default bunny prompts")
                 return result
             else:
                 # Use fallback
-                return """Frame 0: A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic
-Frame 12: A white bunny with slightly glowing fur, sitting in a meadow with subtle magical sparkles  
-Frame 43: A bunny with soft neon highlights on its fur, sitting in a meadow with digital aurora effects
-Frame 324: The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"""
+                return json.dumps({
+                    "0": "A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic",
+                    "324": "The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"
+                }, ensure_ascii=False, indent=2)
                 
         except Exception as e:
             print(f"⚠️ Error loading default settings: {e}")
             # Return simple fallback
-            return """Frame 0: A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic
-Frame 324: The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"""
+            return json.dumps({
+                "0": "A cute white bunny sitting in a peaceful meadow, soft natural lighting, photorealistic",
+                "324": "The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"
+            }, ensure_ascii=False, indent=2)
             
     except Exception as e:
-        return f"❌ Error loading default prompts: {str(e)}"
+        return json.dumps({
+            "0": f"Error loading default prompts: {str(e)}"
+        }, indent=2)

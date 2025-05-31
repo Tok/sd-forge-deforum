@@ -199,14 +199,14 @@ def setup_deforum_left_side_ui():
                 outputs=[locals()['wan_generation_status']]
             )
 
-    # Set up Wan Prompt Enhancement button with proper animation_prompts access
-    if 'enhance_prompts_btn' in locals() and 'animation_prompts' in locals():
+    # Set up Wan Prompt Enhancement button with proper wan_enhanced_prompts access
+    if 'enhance_prompts_btn' in locals() and 'wan_enhanced_prompts' in locals():
         try:
             print("🔗 Connecting Wan prompt enhancement button...")
             
-            # Store reference to animation_prompts component for the handler
+            # Store reference to wan_enhanced_prompts component for the handler
             from .ui_elements import enhance_prompts_handler
-            enhance_prompts_handler._animation_prompts_component = locals()['animation_prompts']
+            enhance_prompts_handler._wan_enhanced_prompts_component = locals()['wan_enhanced_prompts']
             
             # Connect the enhance button with simplified inputs (no enable flags)
             locals()['enhance_prompts_btn'].click(
@@ -227,7 +227,7 @@ def setup_deforum_left_side_ui():
 
     # Set up movement component references for analyze_movement_handler
     try:
-        from .ui_elements import analyze_movement_handler
+        from .ui_elements import analyze_movement_handler, enhance_prompts_handler
         
         # Store references to movement schedule components
         movement_components = {}
@@ -257,6 +257,10 @@ def setup_deforum_left_side_ui():
         # Store the movement components dictionary
         analyze_movement_handler._movement_components = movement_components
         
+        # Store reference to wan_enhanced_prompts component for updating prompts with movement
+        if 'wan_enhanced_prompts' in locals():
+            enhance_prompts_handler._wan_enhanced_prompts_component = locals()['wan_enhanced_prompts']
+        
         # Store reference to wan_movement_description component
         if 'wan_movement_description' in locals():
             analyze_movement_handler._wan_movement_description_component = locals()['wan_movement_description']
@@ -269,7 +273,7 @@ def setup_deforum_left_side_ui():
         traceback.print_exc()
 
     # Set up Wan prompt template loading buttons
-    if 'load_wan_prompts_btn' in locals() and 'animation_prompts' in locals():
+    if 'load_wan_prompts_btn' in locals() and 'wan_enhanced_prompts' in locals():
         try:
             print("🔗 Connecting Wan prompt loading button...")
             
@@ -278,13 +282,13 @@ def setup_deforum_left_side_ui():
             locals()['load_wan_prompts_btn'].click(
                 fn=load_wan_prompts_handler,
                 inputs=[],
-                outputs=[locals()['animation_prompts']]
+                outputs=[locals()['wan_enhanced_prompts']]
             )
             print("✅ Wan prompt loading button connected")
         except Exception as e:
             print(f"⚠️ Warning: Failed to connect Wan prompt button: {e}")
     
-    if 'load_deforum_prompts_btn' in locals() and 'animation_prompts' in locals():
+    if 'load_deforum_prompts_btn' in locals() and 'wan_enhanced_prompts' in locals():
         try:
             print("🔗 Connecting Deforum prompts loading button...")
             
@@ -293,11 +297,46 @@ def setup_deforum_left_side_ui():
             locals()['load_deforum_prompts_btn'].click(
                 fn=load_deforum_prompts_handler,
                 inputs=[],
-                outputs=[locals()['animation_prompts']]
+                outputs=[locals()['wan_enhanced_prompts']]
             )
             print("✅ Deforum prompts loading button connected")
         except Exception as e:
             print(f"⚠️ Warning: Failed to connect Deforum prompts button: {e}")
+    
+    # Set up load Deforum to Wan and load defaults buttons
+    if 'load_deforum_to_wan_btn' in locals() and 'wan_enhanced_prompts' in locals():
+        try:
+            print("🔗 Connecting Load Deforum to Wan button...")
+            
+            from .ui_elements import load_deforum_to_wan_prompts_handler, enhance_prompts_handler
+            
+            # Store animation_prompts reference for deforum-to-wan loading
+            if 'animation_prompts' in locals():
+                enhance_prompts_handler._animation_prompts_component = locals()['animation_prompts']
+            
+            locals()['load_deforum_to_wan_btn'].click(
+                fn=load_deforum_to_wan_prompts_handler,
+                inputs=[],
+                outputs=[locals()['wan_enhanced_prompts']]
+            )
+            print("✅ Load Deforum to Wan button connected")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to connect Load Deforum to Wan button: {e}")
+    
+    if 'load_wan_defaults_btn' in locals() and 'wan_enhanced_prompts' in locals():
+        try:
+            print("🔗 Connecting Load Wan Defaults button...")
+            
+            from .ui_elements import load_wan_defaults_handler
+            
+            locals()['load_wan_defaults_btn'].click(
+                fn=load_wan_defaults_handler,
+                inputs=[],
+                outputs=[locals()['wan_enhanced_prompts']]
+            )
+            print("✅ Load Wan Defaults button connected")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to connect Load Wan Defaults button: {e}")
 
     # Set up Wan Model Validation buttons
     try:
