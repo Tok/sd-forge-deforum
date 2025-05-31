@@ -1318,12 +1318,13 @@ def process_args(args_dict_main, run_id):
     parseq_args = SimpleNamespace(**{name: args_dict_main[name] for name in ParseqArgs()})
     loop_args = SimpleNamespace(**{name: args_dict_main[name] for name in LoopArgs()})
     controlnet_args = SimpleNamespace(**{name: args_dict_main[name] for name in controlnet_component_names()})
+    wan_args = SimpleNamespace(**{name: args_dict_main[name] for name in WanArgs()})
 
     root.animation_prompts = json.loads(args_dict_main['animation_prompts'])
 
     args_loaded_ok = True
     if override_settings_with_file:
-        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, custom_settings_file, root, run_id)
+        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, video_args, custom_settings_file, root, run_id)
 
     positive_prompts = args_dict_main['animation_prompts_positive']
     negative_prompts = args_dict_main['animation_prompts_negative']
@@ -1366,4 +1367,9 @@ def process_args(args_dict_main, run_id):
     default_img = default_img.resize((args.W, args.H))
     root.default_img = default_img
 
-    return args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args
+    # Return all expected arguments including wan_args, freeu_args, and kohya_hrfix_args
+    # Note: freeu_args and kohya_hrfix_args are placeholder empty namespaces since those features are removed
+    freeu_args = SimpleNamespace()
+    kohya_hrfix_args = SimpleNamespace()
+
+    return args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, wan_args

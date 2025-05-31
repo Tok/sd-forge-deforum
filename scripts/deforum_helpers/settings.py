@@ -17,6 +17,10 @@
 import json
 import os
 import sys
+import shutil
+import time
+from datetime import datetime
+from types import SimpleNamespace
 
 import modules.shared as sh
 from modules.sd_models import FakeInitialModel
@@ -37,40 +41,187 @@ def get_default_settings_path():
     """Return the path to the default settings file in the extension directory"""
     return os.path.join(get_extension_base_dir(), "scripts", "default_settings.txt")
 
-
 def get_keys_to_exclude():
-    return ["init_sample", "perlin_w", "perlin_h", "image_path", "outdir", "init_image_box"]
-    # perlin params are used just not shown in ui for now, so not to be deleted
-    # image_path and outdir are in use, not to be deleted
     # init_image_box is PIL object not string, so ignore.
+    return ['init_image_box']
+
+def validate_and_migrate_settings(settings_path, jdata):
+    """
+    Validate settings file and handle outdated configurations.
+    Returns (is_valid, migrated_data, warnings_list)
+    """
+    warnings = []
+    is_outdated = False
+    missing_fields = []
+    
+    # Get current expected fields from all argument functions
+    expected_fields = set()
+    for args_func in [DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, WanArgs]:
+        expected_fields.update(args_func().keys())
+    
+    # Add other expected fields
+    expected_fields.update(['prompts', 'animation_prompts_positive', 'animation_prompts_negative'])
+    
+    # Remove excluded fields
+    excluded_fields = set(get_keys_to_exclude())
+    expected_fields -= excluded_fields
+    
+    # Check for missing fields
+    current_fields = set(jdata.keys())
+    missing_fields = expected_fields - current_fields
+    
+    # Check for new WanArgs fields specifically (these were added recently)
+    wan_fields = set(WanArgs().keys())
+    missing_wan_fields = wan_fields - current_fields
+    
+    if missing_fields:
+        is_outdated = True
+        warnings.append(f"Settings file is missing {len(missing_fields)} fields")
+        
+        if missing_wan_fields:
+            warnings.append(f"Missing new Wan 2.1 fields: {', '.join(sorted(missing_wan_fields))}")
+    
+    # Check for very old files (pre-Zirteq fork indicators)
+    old_indicators = ['use_zoe_depth', 'histogram_matching', 'depth_adabins', 'depth_leres']
+    if any(field in jdata for field in old_indicators):
+        is_outdated = True
+        warnings.append("Settings file contains deprecated depth algorithms")
+    
+    # Check git commit to see if it's from original Deforum
+    git_commit = jdata.get('deforum_git_commit_id', '')
+    if not git_commit or 'forge' not in git_commit.lower():
+        is_outdated = True
+        warnings.append("Settings file appears to be from original A1111 Deforum")
+    
+    # Apply migrations and fill missing fields with defaults
+    migrated_data = jdata.copy()
+    
+    # Fill in missing fields with defaults
+    for args_func in [DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, WanArgs]:
+        defaults = args_func()
+        for field, config in defaults.items():
+            if field not in migrated_data and field not in excluded_fields:
+                # Get the default value from the config
+                if isinstance(config, dict) and 'value' in config:
+                    default_value = config['value']
+                else:
+                    default_value = config
+                migrated_data[field] = default_value
+                warnings.append(f"Added missing field '{field}' with default value")
+    
+    return not is_outdated, migrated_data, warnings
+
+def backup_settings_file(settings_path):
+    """Create a backup of the settings file with timestamp"""
+    try:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_path = f"{settings_path}.backup_{timestamp}"
+        shutil.copy2(settings_path, backup_path)
+        return backup_path
+    except Exception as e:
+        print(f"Error creating backup: {e}")
+        return None
+
+def handle_outdated_settings_file(settings_path):
+    """
+    Handle an outdated settings file by offering user options.
+    Returns True if settings should be loaded, False if should use defaults.
+    """
+    print(f"\n{'-'*60}")
+    print("🚨 OUTDATED SETTINGS FILE DETECTED 🚨")
+    print(f"File: {settings_path}")
+    print(f"{'-'*60}")
+    print("This settings file appears to be from an older version of Deforum")
+    print("and may be missing important new features or contain deprecated settings.")
+    print()
+    print("Recommended actions:")
+    print("1. Backup the old file and use updated defaults (RECOMMENDED)")
+    print("2. Try to automatically migrate the settings (MAY HAVE ISSUES)")
+    print("3. Use defaults and ignore the outdated file")
+    print()
+    
+    # For automated/headless operation, default to migration
+    if hasattr(sh, 'cmd_opts') and getattr(sh.cmd_opts, 'api_only', False):
+        print("Running in API mode - automatically migrating settings...")
+        return True
+    
+    # Create backup automatically
+    backup_path = backup_settings_file(settings_path)
+    if backup_path:
+        print(f"✅ Backup created: {backup_path}")
+    
+    print("Proceeding with automatic migration...")
+    print("(The original file will be kept as a backup)")
+    print(f"{'-'*60}\n")
+    
+    return True
 
 def load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, video_args, custom_settings_file, root, run_id):
     custom_settings_file = custom_settings_file[run_id]
     print(f"reading custom settings from {custom_settings_file.name}")
     if not os.path.isfile(custom_settings_file.name):
         print('Custom settings file does not exist. Using in-notebook settings.')
-        return
-    with open(custom_settings_file.name, "r") as f:
-        try:
-            jdata = json.loads(f.read())
-        except:
-            return False
-        handle_deprecated_settings(jdata)
-        root.animation_prompts = jdata.get("prompts", root.animation_prompts)
-        if "animation_prompts_positive" in jdata:
-            args_dict_main['animation_prompts_positive'] = jdata["animation_prompts_positive"]
-        if "animation_prompts_negative" in jdata:
-            args_dict_main['animation_prompts_negative'] = jdata["animation_prompts_negative"]
-        keys_to_exclude = get_keys_to_exclude()
-        for args_namespace in [args, anim_args, parseq_args, loop_args, controlnet_args, video_args]:
-            for k, v in vars(args_namespace).items():
-                if k not in keys_to_exclude:
-                    if k in jdata:
-                        setattr(args_namespace, k, jdata[k])
-                    else:
-                        print(f"Key {k} doesn't exist in the custom settings data! Using default value of {v}")
-        print(args, anim_args, parseq_args, loop_args)
         return True
+    
+    try:
+        with open(custom_settings_file.name, "r") as f:
+            jdata = json.loads(f.read())
+    except Exception as e:
+        print(f"❌ Error loading settings file: {e}")
+        return False
+    
+    # Validate and potentially migrate settings
+    is_valid, migrated_data, warnings = validate_and_migrate_settings(custom_settings_file.name, jdata)
+    
+    if warnings:
+        print(f"\n⚠️  Settings validation warnings:")
+        for warning in warnings[:10]:  # Limit to first 10 warnings
+            print(f"   • {warning}")
+        if len(warnings) > 10:
+            print(f"   ... and {len(warnings) - 10} more warnings")
+        print()
+    
+    if not is_valid:
+        should_migrate = handle_outdated_settings_file(custom_settings_file.name)
+        if not should_migrate:
+            print("Using default settings instead of outdated file.")
+            return True
+        
+        # Update the data with migrated version
+        jdata = migrated_data
+        
+        # Save the migrated settings back to the file
+        try:
+            with open(custom_settings_file.name, "w", encoding='utf-8') as f:
+                json.dump(jdata, f, ensure_ascii=False, indent=4)
+            print(f"✅ Settings file updated with missing fields")
+        except Exception as e:
+            print(f"⚠️  Could not update settings file: {e}")
+    
+    # Continue with normal loading process
+    handle_deprecated_settings(jdata)
+    root.animation_prompts = jdata.get("prompts", root.animation_prompts)
+    
+    if "animation_prompts_positive" in jdata:
+        args_dict_main['animation_prompts_positive'] = jdata["animation_prompts_positive"]
+    if "animation_prompts_negative" in jdata:
+        args_dict_main['animation_prompts_negative'] = jdata["animation_prompts_negative"]
+    
+    keys_to_exclude = get_keys_to_exclude()
+    
+    # Also create wan_args namespace from args_dict_main for loading
+    from .args import WanArgs
+    wan_args = SimpleNamespace(**{name: args_dict_main[name] for name in WanArgs() if name in args_dict_main})
+    
+    for args_namespace in [args, anim_args, parseq_args, loop_args, controlnet_args, video_args, wan_args]:
+        for k, v in vars(args_namespace).items():
+            if k not in keys_to_exclude:
+                if k in jdata:
+                    setattr(args_namespace, k, jdata[k])
+                else:
+                    print(f"Key {k} doesn't exist in the custom settings data! Using default value of {v}")
+    
+    return True
 
 # save settings function that get calls when run_deforum is being called
 def save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, video_args, root, full_out_file_path = None, wan_args = None):
@@ -214,11 +365,8 @@ def load_all_settings(*args, ui_launch=False, update_path=False, **kwargs):
     try:
         with open(settings_path, "r", encoding='utf-8') as f:
             jdata = json.load(f)
-            handle_deprecated_settings(jdata)
-            if 'animation_prompts' in jdata:
-                jdata['prompts'] = jdata['animation_prompts']
     except Exception as e:
-        print(f"Error loading settings file: {str(e)}")
+        print(f"❌ Error loading settings file: {str(e)}")
         # If there's an error loading the file, fall back to default settings
         default_path = get_default_settings_path()
         print(f"Falling back to default settings from {default_path}")
@@ -231,9 +379,33 @@ def load_all_settings(*args, ui_launch=False, update_path=False, **kwargs):
                 return [settings_path] + list(data.values()) + [""]
         with open(settings_path, "r", encoding='utf-8') as f:
             jdata = json.load(f)
-            handle_deprecated_settings(jdata)
-            if 'animation_prompts' in jdata:
-                jdata['prompts'] = jdata['animation_prompts']
+    
+    # Validate and potentially migrate settings
+    is_valid, migrated_data, warnings = validate_and_migrate_settings(settings_path, jdata)
+    
+    if warnings:
+        print(f"\n⚠️  Settings validation warnings:")
+        for warning in warnings[:5]:  # Limit warnings in UI loading
+            print(f"   • {warning}")
+        if len(warnings) > 5:
+            print(f"   ... and {len(warnings) - 5} more warnings")
+    
+    if not is_valid:
+        should_migrate = handle_outdated_settings_file(settings_path)
+        if should_migrate:
+            jdata = migrated_data
+            # Save the migrated settings back to the file
+            try:
+                with open(settings_path, "w", encoding='utf-8') as f:
+                    json.dump(jdata, f, ensure_ascii=False, indent=4)
+                print(f"✅ Settings file updated with missing fields")
+            except Exception as e:
+                print(f"⚠️  Could not update settings file: {e}")
+    
+    # Continue with normal processing
+    handle_deprecated_settings(jdata)
+    if 'animation_prompts' in jdata:
+        jdata['prompts'] = jdata['animation_prompts']
 
     result = {}
     for key, default_val in data.items():
