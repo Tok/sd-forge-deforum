@@ -1,7 +1,7 @@
 import cv2
-from ....media.image_loading import get_mask_from_file
-from ....noise import add_noise
-from ....media.video_audio_pipeline import get_next_frame
+from ...media.image_loading import get_mask_from_file
+from ...noise import add_noise
+from ...media.video_audio_pipeline import get_next_frame
 
 
 def call_add_noise(data, frame, image):

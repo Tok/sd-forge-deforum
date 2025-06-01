@@ -1,4 +1,4 @@
-from ....media.video_audio_pipeline import get_next_frame, render_preview
+from ...media.video_audio_pipeline import get_next_frame, render_preview
 
 
 def call_render_preview(data, i, last_preview_frame):

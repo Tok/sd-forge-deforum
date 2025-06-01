@@ -1,5 +1,5 @@
 from .. import log_utils, opt_utils
-from ....subtitle_handler import format_animation_params, write_subtitle_from_to
+from ...subtitle_handler import format_animation_params, write_subtitle_from_to
 
 
 def _call_format_animation_params(data, frame_i, params_to_print):
