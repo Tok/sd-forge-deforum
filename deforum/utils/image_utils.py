@@ -7,7 +7,8 @@ from PIL import Image
 from cv2.typing import MatLike
 
 from . import filename_utils
-from ..core.data.render_data import RenderData
+# Remove circular import - use string annotation instead
+# from ..core.data.render_data import RenderData
 
 
 def bgr_to_rgb(bgr_img):
@@ -22,14 +23,14 @@ def pil_to_numpy(pil_image: Image.Image) -> MatLike:
     return np.array(pil_image)
 
 
-def save_cadence_frame(data: RenderData, i: int, image: MatLike, is_overwrite: bool = True):
+def save_cadence_frame(data: 'RenderData', i: int, image: MatLike, is_overwrite: bool = True):
     filename = filename_utils.frame_filename(data, i)
     save_path: str = os.path.join(data.args.args.outdir, filename)
     if is_overwrite or not os.path.exists(save_path):
         cv2.imwrite(save_path, image)
 
 
-def save_cadence_frame_and_depth_map_if_active(data: RenderData, frame, image):
+def save_cadence_frame_and_depth_map_if_active(data: 'RenderData', frame, image):
     save_cadence_frame(data, frame.i, image)
     if data.args.anim_args.save_depth_maps:
         dm_save_path = os.path.join(data.output_directory, filename_utils.frame_filename(data, frame.i, True))
@@ -43,7 +44,7 @@ def load_image(image_path):
     return cv2.imread(str(image_path))
 
 
-def save_and_return_frame(data: RenderData, frame, image):
+def save_and_return_frame(data: 'RenderData', frame, image):
     save_cadence_frame_and_depth_map_if_active(data, frame, image)
     return image
 
