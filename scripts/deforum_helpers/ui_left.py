@@ -31,7 +31,60 @@ def set_arg_lists():
     dv = SimpleNamespace(**DeforumOutputArgs())  # default video args
     dr = SimpleNamespace(**RootArgs())  # ROOT args
     dw = SimpleNamespace(**WanArgs())  # Wan args
-    dloopArgs = SimpleNamespace()  # Placeholder for removed LoopArgs
+    
+    # Create placeholder for removed LoopArgs with proper UI element format
+    loop_args_dict = {
+        "use_looper": {
+            "label": "Use guided images mode",
+            "type": "checkbox",
+            "value": False,
+            "info": "Enable guided images (loop) mode for keyframe-based animation"
+        },
+        "init_images": {
+            "label": "Images to keyframe", 
+            "type": "textbox",
+            "value": "{}",
+            "info": "JSON format of images to use as keyframes"
+        },
+        "image_strength_schedule": {
+            "label": "Image strength schedule",
+            "type": "textbox", 
+            "value": "0: (0.0)",
+            "info": "Schedule for image strength over time"
+        },
+        "image_keyframe_strength_schedule": {
+            "label": "Image keyframe strength schedule",
+            "type": "textbox",
+            "value": "0: (0.0)", 
+            "info": "Schedule for keyframe strength over time"
+        },
+        "blendFactorMax": {
+            "label": "Blend factor max",
+            "type": "textbox",
+            "value": "0: (0.35)",
+            "info": "Maximum blend factor for guided images"
+        },
+        "blendFactorSlope": {
+            "label": "Blend factor slope", 
+            "type": "textbox",
+            "value": "0: (0.25)",
+            "info": "Slope for blend factor changes"
+        },
+        "tweening_frames_schedule": {
+            "label": "Tweening frames schedule",
+            "type": "textbox",
+            "value": "0: (20)",
+            "info": "Schedule for tweening frame counts"
+        },
+        "color_correction_factor": {
+            "label": "Color correction factor",
+            "type": "textbox", 
+            "value": "0: (0.075)",
+            "info": "Factor for color correction between frames"
+        }
+    }
+    dloopArgs = SimpleNamespace(**loop_args_dict)
+    
     return d, da, dp, dv, dr, dw, dloopArgs
 
 def wan_generate_video():
