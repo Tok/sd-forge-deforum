@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 from ..models.data_models import ProcessingResult
 
-from .deforum_scripts_overrides import add_forge_script_to_deforum_run, initialise_forge_scripts
+from ..utils.deforum_scripts_overrides import add_forge_script_to_deforum_run, initialise_forge_scripts
 
 from .general_utils import debug_print
 
