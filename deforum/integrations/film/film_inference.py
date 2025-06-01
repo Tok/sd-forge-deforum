@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 from .film_util import load_image
 import time
-from ...data_models import ExternalLibraryArgs
+from ...models.data_models import ExternalLibraryArgs
 from modules.shared import cmd_opts
 import warnings
 warnings.filterwarnings("ignore")
