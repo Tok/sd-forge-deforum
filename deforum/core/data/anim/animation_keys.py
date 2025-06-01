@@ -1,14 +1,16 @@
 from dataclasses import dataclass
-from ...keyframe_animation import DeformAnimKeys, LooperAnimKeys
 
 
 @dataclass(init=True, frozen=True, repr=False, eq=False)
 class AnimationKeys:
-    deform_keys: DeformAnimKeys
-    looper_keys: LooperAnimKeys
+    deform_keys: any  # Changed from DeformAnimKeys to avoid import at class level
+    looper_keys: any  # Changed from LooperAnimKeys to avoid import at class level
 
     @staticmethod
     def create(step_args, parseq_adapter, seed):
+        # Import here to avoid circular dependency
+        from ...keyframe_animation import DeformAnimKeys, LooperAnimKeys
+        
         is_use_parseq = parseq_adapter.use_parseq
 
         def _choose_keys(default_keys, parseq_keys):
