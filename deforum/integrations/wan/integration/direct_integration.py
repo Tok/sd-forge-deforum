@@ -19,7 +19,7 @@ class WanDirectIntegration:
     def __init__(self, device: str = "cuda"):
         self.device = device
         self.extension_root = Path(__file__).parent.parent.parent.parent  # Go up to extension root
-        self.wan_repo_path = self.extension_root / "Wan2.1"
+        self.wan_repo_path = self.extension_root / "deforum" / "integrations" / "external_repos" / "wan2.1"
         self.discovered_models = []
         
     def setup_wan_repository(self) -> bool:

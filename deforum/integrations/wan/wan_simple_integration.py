@@ -48,6 +48,7 @@ class WanSimpleIntegration:
             Path("models"),
             Path("../models/wan"),
             Path("../models/Wan"),
+            Path.cwd() / "deforum" / "integrations" / "external_repos" / "wan2.1",
         ]
         
         print_wan_progress("Discovering Wan models...")
@@ -196,7 +197,7 @@ class WanSimpleIntegration:
             # Check common model directories
             search_paths = [
                 Path.cwd() / "models" / "wan",
-                Path.cwd() / "Wan2.1",
+                Path.cwd() / "deforum" / "integrations" / "external_repos" / "wan2.1",
             ]
             
             for search_path in search_paths:
@@ -305,7 +306,7 @@ class WanSimpleIntegration:
             
             # Look for official Wan repository
             extension_root = Path(__file__).parent.parent.parent.parent
-            wan_repo_path = extension_root / "Wan2.1"
+            wan_repo_path = extension_root / "deforum" / "integrations" / "external_repos" / "wan2.1"
             
             if wan_repo_path.exists() and (wan_repo_path / "wan").exists():
                 print(f"✅ Found Wan repository at: {wan_repo_path}")
@@ -549,7 +550,7 @@ class WanSimpleIntegration:
             # VACE fallback - refuse diffusers
             print("❌ VACE model requires official Wan repository!")
             print("💡 Solutions:")
-            print("1. 📦 Install Wan repository: cd Wan2.1 && pip install -e .")
+            print("1. 📦 Install Wan repository: cd deforum/integrations/external_repos/wan2.1 && pip install -e .")
             print("2. 📁 Use T2V models instead: huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B")
             print("🚫 VACE models are not compatible with diffusers fallback")
             return False
@@ -563,7 +564,7 @@ class WanSimpleIntegration:
         try:
             # Strategy 1: Try official Wan implementation
             extension_root = Path(__file__).parent.parent.parent.parent
-            wan_repo_path = extension_root / "Wan2.1"
+            wan_repo_path = extension_root / "deforum" / "integrations" / "external_repos" / "wan2.1"
             
             if wan_repo_path.exists() and (wan_repo_path / "wan").exists():
                 print(f"🔧 Trying official Wan implementation from: {wan_repo_path}")
@@ -720,7 +721,7 @@ class WanSimpleIntegration:
 
 🔧 TROUBLESHOOTING:
 1. 📦 Install dependencies: pip install diffusers transformers
-2. 🔧 For official Wan support: cd Wan2.1 && pip install -e .
+2. 🔧 For official Wan support: cd deforum/integrations/external_repos/wan2.1 && pip install -e .
 3. 💾 Check model files are complete
 4. 🔄 Restart WebUI
 

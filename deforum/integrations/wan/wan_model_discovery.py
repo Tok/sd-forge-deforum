@@ -24,6 +24,14 @@ class WanModelDiscovery:
         # Current extension directory
         current_dir = Path(__file__).parent.parent.parent
         
+        # Default search paths
+        search_paths = [
+            current_dir / "models" / "wan",
+            current_dir / "models" / "Wan",
+            current_dir / "deforum" / "integrations" / "external_repos" / "wan2.1" / "models",
+            Path.home() / ".cache" / "huggingface" / "hub"
+        ]
+        
         # Common model locations
         potential_locations = [
             # Webui model directories
@@ -44,7 +52,7 @@ class WanModelDiscovery:
             Path("C:/") / "AI_Models" / "wan" if os.name == 'nt' else Path.home() / "AI_Models" / "wan",
             
             # Official Wan repo model locations
-            current_dir / "Wan2.1" / "models",
+            current_dir / "deforum" / "integrations" / "external_repos" / "wan2.1" / "models",
             
             # User's documents (common on Windows)
             Path.home() / "Documents" / "AI_Models" / "wan" if os.name == 'nt' else None,

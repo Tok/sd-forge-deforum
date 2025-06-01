@@ -43,8 +43,8 @@ class WanModelDiscovery:
             Path.home() / "Downloads",
             Path("C:/") / "AI_Models" / "WAN" if os.name == 'nt' else Path.home() / "AI_Models" / "WAN",
             
-            # Official WAN repo model locations
-            current_dir / "Wan2.1" / "models",
+            # Official Wan repo model locations
+            current_dir / "deforum" / "integrations" / "external_repos" / "wan2.1" / "models",
             
             # User's documents (common on Windows)
             Path.home() / "Documents" / "AI_Models" / "WAN" if os.name == 'nt' else None,
