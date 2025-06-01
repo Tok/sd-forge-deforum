@@ -7,7 +7,7 @@ from PIL import Image
 from cv2.typing import MatLike
 
 from . import filename_utils
-from ..data.render_data import RenderData
+from ..core.data.render_data import RenderData
 
 
 def bgr_to_rgb(bgr_img):
