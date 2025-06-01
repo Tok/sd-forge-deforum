@@ -13,7 +13,7 @@ from .render import render_animation
 from ..utils.color_constants import BOLD, BLUE, GREEN, PURPLE, RESET_COLOR
 from .seed import next_seed
 from ..media.video_audio_pipeline import vid2frames, render_preview
-from .prompt import interpolate_prompts
+from ..prompt import interpolate_prompts
 from .generate import generate
 from .keyframe_animation import DeformAnimKeys
 from .parseq_adapter import ParseqAdapter

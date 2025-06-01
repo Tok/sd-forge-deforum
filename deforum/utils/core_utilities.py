@@ -6,7 +6,15 @@ import os
 import shutil
 
 # noinspection PyUnresolvedReferences
-from modules.shared import opts
+try:
+    from modules.shared import opts
+except ImportError:
+    # Mock opts for testing outside WebUI environment
+    class MockOpts:
+        def __init__(self):
+            self.data = {}
+    opts = MockOpts()
+
 from torch.hub import download_url_to_file
 
 # Remove direct import to break circular dependency

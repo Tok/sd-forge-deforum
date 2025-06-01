@@ -1,6 +1,7 @@
 from cv2.typing import MatLike
 
 from .call.anim import call_anim_frame_warp
+from ..core.frame_processing import image_transform_optical_flow, rel_flow_to_abs_flow, get_flow_from_images
 # Note: hybrid video imports removed - functionality not available
 
 
@@ -68,8 +69,8 @@ def _advance_cadence_flow(data, tween_frame, image):
 
 
 def _advance_ransac_transform(data, matrix, image):
-    motion = data.args.anim_args.hybrid_motion
-    return image_transform_ransac(image, matrix, motion)  # TODO provide depth prediction
+    # Note: hybrid motion functionality removed
+    return image
 
 
 def _advance_hybrid_motion_ransac_transform(data, tween_i, reference_images, image):

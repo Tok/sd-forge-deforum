@@ -125,36 +125,14 @@ class RenderData:
     def dimensions(self) -> tuple[int, int]:
         return self.width(), self.height()
 
-    # hybrid stuff
-    def is_hybrid_composite(self) -> bool:
-        return self.args.anim_args.hybrid_composite != 'None'
-
-    def is_normal_hybrid_composite(self) -> bool:
-        return self.args.anim_args.hybrid_composite == 'Normal'
-
-    def has_hybrid_motion(self) -> bool:
-        return self.args.anim_args.hybrid_motion in ['Optical Flow', 'Affine', 'Perspective']
-
-    def is_hybrid_available(self) -> bool:
-        return self.is_hybrid_composite() or self.has_hybrid_motion()
-
-    def is_hybrid_composite_before_motion(self) -> bool:
-        return self.args.anim_args.hybrid_composite == 'Before Motion'
-
-    def is_hybrid_composite_after_generation(self) -> bool:
-        return self.args.anim_args.hybrid_composite == 'After Generation'
-
-    # end hybrid stuff
-
     def is_initialize_color_match(self, color_match_sample) -> bool:
         """Determines whether to initialize color matching based on the given conditions."""
-        has_video_input = self.args.anim_args.color_coherence == 'Video Input' and self.is_hybrid_available()
         has_image_color_coherence = self.args.anim_args.color_coherence == 'Image'
         has_coherent_non_legacy_color_match = (self.args.anim_args.color_coherence != 'None'
                                                and not self.args.anim_args.legacy_colormatch)
         has_any_color_sample = color_match_sample is not None
         has_sample_and_match = has_any_color_sample and has_coherent_non_legacy_color_match
-        return has_video_input or has_image_color_coherence or has_sample_and_match
+        return has_image_color_coherence or has_sample_and_match
 
     def has_color_coherence(self) -> bool:
         return self.args.anim_args.color_coherence != 'None'

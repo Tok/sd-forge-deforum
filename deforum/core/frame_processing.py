@@ -207,73 +207,7 @@ def apply_animation_warping(
         )
 
 
-def apply_hybrid_motion(
-    frame_state: FrameState,
-    context: RenderContext,
-    hybrid_params: Optional[Dict[str, Any]] = None
-) -> FrameResult:
-    """
-    Apply hybrid motion transformations to frame.
-    
-    Args:
-        frame_state: Current frame state
-        context: Rendering context
-        hybrid_params: Optional hybrid motion parameters
-        
-    Returns:
-        FrameResult with hybrid motion applied
-    """
-    start_time = time.time()
-    
-    try:
-        if frame_state.current_image is None:
-            return FrameResult(
-                frame_state=frame_state.with_stage(ProcessingStage.HYBRID_MOTION),
-                success=False,
-                error=RenderingError(
-                    "No current image for hybrid motion",
-                    ProcessingStage.HYBRID_MOTION,
-                    frame_state.metadata.frame_idx
-                )
-            )
-        
-        transformed_image = frame_state.current_image.copy()
-        
-        # Apply hybrid motion based on context
-        if context.hybrid_motion in ['Affine', 'Perspective']:
-            # Apply geometric transformation
-            # transformed_image = image_transform_ransac(...)
-            pass
-        elif context.hybrid_motion == 'Optical Flow':
-            # Apply optical flow transformation
-            if frame_state.flow_map is not None:
-                # transformed_image = image_transform_optical_flow(...)
-                pass
-        
-        new_frame_state = (frame_state
-                          .with_image(transformed_image)
-                          .with_stage(ProcessingStage.HYBRID_MOTION)
-                          .with_transformation("hybrid_motion"))
-        
-        processing_time = time.time() - start_time
-        
-        return FrameResult(
-            frame_state=new_frame_state,
-            success=True,
-            processing_time=processing_time
-        )
-        
-    except Exception as e:
-        return FrameResult(
-            frame_state=frame_state.with_stage(ProcessingStage.HYBRID_MOTION),
-            success=False,
-            error=RenderingError(
-                f"Hybrid motion failed: {str(e)}",
-                ProcessingStage.HYBRID_MOTION,
-                frame_state.metadata.frame_idx
-            ),
-            processing_time=time.time() - start_time
-        )
+# Note: apply_hybrid_motion function removed - hybrid video functionality not available
 
 
 def apply_noise(
@@ -475,7 +409,7 @@ def apply_mask_operations(
 def apply_frame_transformations(
     frame_state: FrameState,
     context: RenderContext,
-    transformations: Tuple[str, ...] = ("animation_warp", "hybrid_motion", "noise", "color_correction", "mask_application"),
+    transformations: Tuple[str, ...] = ("animation_warp", "noise", "color_correction", "mask_application"),
     **kwargs
 ) -> FrameResult:
     """
@@ -494,7 +428,6 @@ def apply_frame_transformations(
     
     transformation_functions = {
         'animation_warp': lambda fs: apply_animation_warping(fs, context, kwargs.get('depth_model')),
-        'hybrid_motion': lambda fs: apply_hybrid_motion(fs, context, kwargs.get('hybrid_params')),
         'noise': lambda fs: apply_noise(fs, kwargs.get('noise_params')),
         'color_correction': lambda fs: apply_color_correction(fs, kwargs.get('color_params')),
         'mask_application': lambda fs: apply_mask_operations(fs, kwargs.get('mask_params'))
@@ -552,9 +485,6 @@ def process_frame(
     
     if context.animation_mode in ['2D', '3D']:
         transformations.append('animation_warp')
-    
-    if context.hybrid_motion != 'None':
-        transformations.append('hybrid_motion')
     
     transformations.extend(['noise', 'color_correction', 'mask_application'])
     

@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import requests
 import os
-from ..core.keyframe_animation import DeformAnimKeys, ControlNetKeys, LooperAnimKeys
 from ..utils import log_utils
 from ..utils.rich import console
 from .general_utils import tickOrCross
@@ -29,6 +28,9 @@ class ParseqAdapter():
         self.use_parseq = parseq_args.parseq_manifest != None and parseq_args.parseq_manifest.strip()
         
         if self.use_parseq:
+            # Deferred import to avoid circular dependency
+            from ..core.keyframe_animation import DeformAnimKeys, ControlNetKeys, LooperAnimKeys
+            
             # Initialize parseq
             self.parseq_json = self.load_parseq_json()
             self.rendered_frames = self.parseq_json.get('rendered_frames', [])

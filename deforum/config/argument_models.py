@@ -294,29 +294,6 @@ class DeforumAnimationArgs:
     use_mask_video: bool = False
     video_mask_path: str = 'https://deforum.github.io/a1/VM1.mp4'
     
-    # Hybrid video settings
-    hybrid_comp_alpha_schedule: str = "0:(0.5)"
-    hybrid_comp_mask_blend_alpha_schedule: str = "0:(0.5)"
-    hybrid_comp_mask_contrast_schedule: str = "0:(1)"
-    hybrid_comp_mask_auto_contrast_cutoff_high_schedule: str = "0:(100)"
-    hybrid_comp_mask_auto_contrast_cutoff_low_schedule: str = "0:(0)"
-    hybrid_flow_factor_schedule: str = "0:(1)"
-    hybrid_generate_inputframes: bool = False
-    hybrid_generate_human_masks: str = "None"
-    hybrid_use_first_frame_as_init_image: bool = True
-    hybrid_motion: str = "None"
-    hybrid_motion_use_prev_img: bool = False
-    hybrid_flow_consistency: bool = False
-    hybrid_consistency_blur: int = 2
-    hybrid_flow_method: str = "RAFT"
-    hybrid_composite: str = "None"
-    hybrid_use_init_image: bool = False
-    hybrid_comp_mask_type: str = "None"
-    hybrid_comp_mask_inverse: bool = False
-    hybrid_comp_mask_equalize: str = "None"
-    hybrid_comp_mask_auto_contrast: bool = False
-    hybrid_comp_save_extra_frames: bool = False
-    
     def __post_init__(self):
         """Validate animation arguments"""
         validate_positive_int(self.max_frames, "max_frames")
@@ -329,7 +306,6 @@ class DeforumAnimationArgs:
         validate_range(self.midas_weight, -1.0, 1.0, "midas_weight")
         validate_positive_int(self.extract_nth_frame, "extract_nth_frame")
         validate_non_negative_number(self.extract_from_frame, "extract_from_frame")
-        validate_range(self.hybrid_consistency_blur, 0, 16, "hybrid_consistency_blur")
 
 
 @dataclass(frozen=True)

@@ -9,8 +9,12 @@ deprecation_map = {
         # ,("removed_value", None, True) # for removed values, if we'll need in the future
     ],
     "hybrid_composite": [
-        (False, "None", False),
-        (True, "Normal", False),
+        (False, "None", True),
+        (True, "None", True),
+        ("None", "None", False),
+        ("Normal", "None", True),
+        ("Before Motion", "None", True),
+        ("After Generation", "None", True),
     ],
     "optical_flow_redo_generation": [
         (False, "None", False),

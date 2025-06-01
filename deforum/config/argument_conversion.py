@@ -299,31 +299,11 @@ def create_animation_args_from_dict(data: Dict[str, Any]) -> DeforumAnimationArg
         extract_to_frame=data.get("extract_to_frame", -1),
         overwrite_extracted_frames=data.get("overwrite_extracted_frames", False),
         
+        # Video mask
         use_mask_video=data.get("use_mask_video", False),
         video_mask_path=data.get("video_mask_path", 'https://deforum.github.io/a1/VM1.mp4'),
         
-        # Hybrid settings
-        hybrid_comp_alpha_schedule=data.get("hybrid_comp_alpha_schedule", "0:(0.5)"),
-        hybrid_comp_mask_blend_alpha_schedule=data.get("hybrid_comp_mask_blend_alpha_schedule", "0:(0.5)"),
-        hybrid_comp_mask_contrast_schedule=data.get("hybrid_comp_mask_contrast_schedule", "0:(1)"),
-        hybrid_comp_mask_auto_contrast_cutoff_high_schedule=data.get("hybrid_comp_mask_auto_contrast_cutoff_high_schedule", "0:(100)"),
-        hybrid_comp_mask_auto_contrast_cutoff_low_schedule=data.get("hybrid_comp_mask_auto_contrast_cutoff_low_schedule", "0:(0)"),
-        hybrid_flow_factor_schedule=data.get("hybrid_flow_factor_schedule", "0:(1)"),
-        hybrid_generate_inputframes=data.get("hybrid_generate_inputframes", False),
-        hybrid_generate_human_masks=data.get("hybrid_generate_human_masks", "None"),
-        hybrid_use_first_frame_as_init_image=data.get("hybrid_use_first_frame_as_init_image", True),
-        hybrid_motion=data.get("hybrid_motion", "None"),
-        hybrid_motion_use_prev_img=data.get("hybrid_motion_use_prev_img", False),
-        hybrid_flow_consistency=data.get("hybrid_flow_consistency", False),
-        hybrid_consistency_blur=data.get("hybrid_consistency_blur", 2),
-        hybrid_flow_method=data.get("hybrid_flow_method", "RAFT"),
-        hybrid_composite=data.get("hybrid_composite", "None"),
-        hybrid_use_init_image=data.get("hybrid_use_init_image", False),
-        hybrid_comp_mask_type=data.get("hybrid_comp_mask_type", "None"),
-        hybrid_comp_mask_inverse=data.get("hybrid_comp_mask_inverse", False),
-        hybrid_comp_mask_equalize=data.get("hybrid_comp_mask_equalize", "None"),
-        hybrid_comp_mask_auto_contrast=data.get("hybrid_comp_mask_auto_contrast", False),
-        hybrid_comp_save_extra_frames=data.get("hybrid_comp_save_extra_frames", False),
+        # Note: hybrid video functionality removed - all hybrid arguments eliminated
     )
 
 

@@ -47,14 +47,23 @@ from .wan_simple_integration import WanSimpleIntegration
 from .wan_model_validator import WanModelValidator
 from .wan_model_downloader import WanModelDownloader
 from .wan_model_discovery import WanModelDiscovery
-from .wan_model_cleanup import WanModelCleanup
+from .wan_pipeline_manager import WanPipelineManager
+from .wan_utilities import WanUtilities
+from .wan_core_integration import WanCoreIntegration
+from .wan_config_handler import WanConfigHandler
+from .wan_model_cleanup import find_wan_models, validate_vace_model
 
 __all__ = [
     'WanSimpleIntegration',
     'WanModelValidator', 
     'WanModelDownloader',
     'WanModelDiscovery',
-    'WanModelCleanup',
+    'WanPipelineManager',
+    'WanUtilities',
+    'WanCoreIntegration',
+    'WanConfigHandler',
+    'find_wan_models',
+    'validate_vace_model',
 ]
 
 # Version info

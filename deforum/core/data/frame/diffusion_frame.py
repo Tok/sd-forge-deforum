@@ -19,9 +19,6 @@ from ... import img_2_img_tubes
 from ...util import depth_utils, filename_utils, log_utils, utils
 from ...util.call.anim import call_anim_frame_warp
 from ...util.call.gen import call_generate
-from ...util.call.hybrid import (
-    call_get_flow_for_hybrid_motion, call_get_flow_for_hybrid_motion_prev, call_get_matrix_for_hybrid_motion,
-    call_get_matrix_for_hybrid_motion_prev, call_hybrid_composite)
 from ...util.call.images import call_add_noise
 from ...util.call.mask import call_compose_mask_with_check, call_unsharp_mask
 from ...util.call.subtitle import call_write_subtitle_from_to
@@ -68,18 +65,6 @@ class DiffusionFrame:
         if is_not_last_frame:
             previous, self.depth = call_anim_frame_warp(data, self.i, image, None)
             return previous
-
-    def _do_hybrid_compositing_on_cond(self, data: RenderData, image, condition):
-        # Note: hybrid compositing functionality removed
-        return image
-
-    def do_hybrid_compositing_before_motion(self, data: RenderData, image):
-        # Note: hybrid compositing functionality removed
-        return image
-
-    def do_normal_hybrid_compositing_after_motion(self, data: RenderData, image):
-        # Note: hybrid compositing functionality removed
-        return image
 
     def apply_scaling(self, image):
         return (image * self.frame_data.contrast).round().astype(np.uint8)
