@@ -11,11 +11,11 @@ from ..utils.deforum_tqdm import DeforumTQDM
 from ..media.image_saving import dump_frames_cache, reset_frames_cache
 from ..media.frame_interpolation_pipeline import process_video_interpolation
 from .general_utils import get_deforum_version, get_commit_date
-from .upscaling import make_upscale_v2
+from ..media.image_upscaling import make_upscale_v2
 from ..media.video_audio_pipeline import ffmpeg_stitch_video, make_gifski_gif, handle_imgs_deletion, handle_input_frames_deletion, handle_cn_frames_deletion, get_ffmpeg_params, get_ffmpeg_paths
 from pathlib import Path
 from ..utils.color_constants import UNDERLINE, YELLOW, ORANGE, RED, RESET_COLOR
-from .settings import save_settings_from_animation_run
+from ..config.settings import save_settings_from_animation_run
 from ..integrations.controlnet.core_integration import num_of_models
 
 
