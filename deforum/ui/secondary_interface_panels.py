@@ -6,7 +6,7 @@ from deforum.core.run_deforum import run_deforum
 from deforum.config.settings import save_settings, load_all_settings, load_video_settings, get_default_settings_path, update_settings_path
 from deforum.utils.core_utilities import get_deforum_version, get_commit_date
 from .main_interface_panels import setup_deforum_left_side_ui
-from scripts.deforum_extend_paths import deforum_sys_extend
+from ...deforum_extend_paths import deforum_sys_extend
 import gradio as gr
 
 def on_ui_tabs():
