@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from ....utils import opt_utils
-from ...depth import DepthModel
+from ....depth import DepthModel
 from ....integrations.raft.raft_integration import RAFT
 # Note: hybrid video imports removed - functionality not available
 
