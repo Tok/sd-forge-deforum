@@ -1,890 +1,408 @@
-from types import SimpleNamespace
+"""
+Main Interface Panels
+Contains the primary user interface setup and tab organization
+"""
+
 import gradio as gr
+from modules.ui_components import FormRow, FormColumn
+
+# Import from our modular components instead of large elements.py
+from .input_components import get_tab_run, get_tab_init
+from .keyframe_components import get_tab_keyframes
+from .animation_components import get_tab_animation, get_tab_prompts
+from .wan_components import get_tab_wan
+from .output_components import get_tab_output, get_tab_ffmpeg
+from .settings_components import get_tab_setup, get_tab_advanced
+from .component_builders import create_gr_elem, create_row
+
+# Legacy imports for compatibility (to be phased out)
+from .args import set_arg_lists, get_component_names
 from .defaults import get_gradio_html
 from .gradio_funcs import change_css, handle_change_functions
-from .args import DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, RootArgs, WanArgs
-from .deforum_controlnet import setup_controlnet_ui
-from .ui_elements import (get_tab_prompts, get_tab_init, get_tab_output, get_tab_ffmpeg, 
-                          get_tab_setup, get_tab_animation, get_tab_advanced)
-from .data_models import UIDefaults
 
-def set_arg_lists():
-    # Create immutable UI defaults using functional args system
-    ui_defaults = UIDefaults.create_defaults()
+# ControlNet import (conditional)
+try:
+    from .controlnet import setup_controlnet_ui
+except ImportError:
+    def setup_controlnet_ui():
+        return {}
+
+# WAN integration imports
+try:
+    from .wan_event_handlers import (
+        analyze_movement_handler, enhance_prompts_handler,
+        load_deforum_to_wan_prompts_handler, load_wan_defaults_handler,
+        validate_wan_generation, check_qwen_models_handler,
+        download_qwen_model_handler, cleanup_qwen_cache_handler
+    )
+    WAN_AVAILABLE = True
+except ImportError:
+    WAN_AVAILABLE = False
     
-    # Convert to individual namespace objects for backward compatibility during transition
-    d = SimpleNamespace(**ui_defaults.deforum_args)
-    da = SimpleNamespace(**ui_defaults.animation_args) 
-    dp = SimpleNamespace(**ui_defaults.parseq_args)
-    dv = SimpleNamespace(**ui_defaults.video_args)
-    dr = SimpleNamespace(**ui_defaults.root_args)
-    dw = SimpleNamespace(**ui_defaults.wan_args)
-    
-    # Create placeholder for removed LoopArgs with proper UI element format
-    loop_args_dict = {
-        "use_looper": {
-            "label": "Use guided images mode",
-            "type": "checkbox",
-            "value": False,
-            "info": "Enable guided images (loop) mode for keyframe-based animation"
-        },
-        "init_images": {
-            "label": "Images to keyframe", 
-            "type": "textbox",
-            "value": "{}",
-            "info": "JSON format of images to use as keyframes"
-        },
-        "image_strength_schedule": {
-            "label": "Image strength schedule",
-            "type": "textbox", 
-            "value": "0: (0.0)",
-            "info": "Schedule for image strength over time"
-        },
-        "image_keyframe_strength_schedule": {
-            "label": "Image keyframe strength schedule",
-            "type": "textbox",
-            "value": "0: (0.0)", 
-            "info": "Schedule for keyframe strength over time"
-        },
-        "blendFactorMax": {
-            "label": "Blend factor max",
-            "type": "textbox",
-            "value": "0: (0.35)",
-            "info": "Maximum blend factor for guided images"
-        },
-        "blendFactorSlope": {
-            "label": "Blend factor slope", 
-            "type": "textbox",
-            "value": "0: (0.25)",
-            "info": "Slope for blend factor changes"
-        },
-        "tweening_frames_schedule": {
-            "label": "Tweening frames schedule",
-            "type": "textbox",
-            "value": "0: (20)",
-            "info": "Schedule for tweening frame counts"
-        },
-        "color_correction_factor": {
-            "label": "Color correction factor",
-            "type": "textbox", 
-            "value": "0: (0.075)",
-            "info": "Factor for color correction between frames"
-        }
-    }
-    dloopArgs = SimpleNamespace(**loop_args_dict)
-    
-    return d, da, dp, dv, dr, dw, dloopArgs
+try:
+    from .prompt_enhancement_handlers import (
+        random_style_handler, random_theme_handler, random_both_handler,
+        reset_to_photorealistic_handler, cycle_creative_themes_handler,
+        enhance_deforum_prompts_handler, enhance_wan_prompts_handler_with_style,
+        apply_style_only_handler
+    )
+    ENHANCEMENT_AVAILABLE = True
+except ImportError:
+    ENHANCEMENT_AVAILABLE = False
 
-def wan_generate_video():
-    """
-    Simple placeholder function for Wan video generation button
-    Returns a status message indicating the feature is integrated but needs models
-    """
-    try:
-        print("🎬 Wan video generation button clicked!")
-        
-        # Try to discover models to check if setup is complete
-        try:
-            from .wan.wan_simple_integration import WanSimpleIntegration
-            integration = WanSimpleIntegration()
-            models = integration.discover_models()
-            
-            if models:
-                return f"""✅ Wan integration is working!
-
-Found {len(models)} model(s):
-{chr(10).join([f"• {model['name']} ({model['size']})" for model in models[:3]])}
-
-🔧 TODO: Full generation requires connecting to Deforum's argument system.
-For now, you can test model discovery is working.
-
-💡 Next steps:
-1. Ensure your prompts are configured in the Prompts tab
-2. Set your desired FPS in the Output tab  
-3. Choose animation mode 'Wan Video' in the Keyframes tab
-4. Click the main Generate button in Deforum
-
-📁 Models found in: {models[0]['path']}"""
-            else:
-                return """❌ No Wan models found!
-
-💡 SETUP REQUIRED:
-1. Download a Wan model:
-   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
-
-2. Or place your Wan models in:
-   • models/wan/
-   • models/Wan/
-   • HuggingFace cache (automatic)
-
-3. Restart the WebUI after downloading
-
-The auto-discovery will find your models automatically!"""
-                
-        except ImportError as e:
-            return f"""⚠️ Wan integration partially loaded
-
-The Wan tab is integrated but some dependencies may be missing.
-
-Error: {str(e)}
-
-💡 To complete setup:
-1. Download Wan models as instructed above
-2. Ensure all Wan dependencies are installed
-3. Check the console for any import errors"""
-            
-        except Exception as e:
-            return f"""❌ Wan integration error: {str(e)}
-
-💡 Troubleshooting:
-1. Check that Wan models are downloaded and placed correctly
-2. Verify all dependencies are installed
-3. Check console output for detailed error messages
-4. Try restarting the WebUI"""
-            
-    except Exception as e:
-        print(f"❌ Wan button error: {e}")
-        return f"❌ Error: {str(e)}"
 
 def setup_deforum_left_side_ui():
+    """Set up the main left-side UI with all tabs using modular components."""
+    
+    # Initialize argument sets
     d, da, dp, dv, dr, dw, dloopArgs = set_arg_lists()
-    # set up main info accordion on top of the UI
+    
+    # Main info accordion
     with gr.Accordion("Info, Links and Help", open=False, elem_id='main_top_info_accord'):
         gr.HTML(value=get_gradio_html('main'))
-    # show button to hide/ show gradio's info texts for each element in the UI
+    
+    # Show info toggle
     with gr.Row(variant='compact'):
         show_info_on_ui = gr.Checkbox(label="Show more info", value=d.show_info_on_ui, interactive=True)
     
+    # Main tab interface
     with gr.Blocks():
         with gr.Tabs():
-            # 🎯 WORKFLOW-ORIENTED TAB STRUCTURE (Left → Right)
+            # ========== WORKFLOW-ORIENTED TAB STRUCTURE ==========
             
-            # ========== 1. SETUP TAB - Core generation settings ==========
-            tab_setup_params = get_tab_setup(d, da)  # Essential settings first
+            # 1. RUN TAB - Quick generation controls
+            tab_run_params = get_tab_run(d, da)
             
-            # ========== 2. ANIMATION TAB - Movement and timing ==========  
-            tab_animation_params = get_tab_animation(da, dloopArgs)  # Animation & motion
+            # 2. SETUP TAB - Basic configuration  
+            tab_setup_params = get_tab_setup(d, da)
             
-            # ========== 3. PROMPTS TAB - Content creation ==========
-            tab_prompts_params = get_tab_prompts(da)  # Prompts (unchanged, good position)
+            # 3. PROMPTS TAB - Content creation
+            tab_prompts_params = get_tab_prompts(da)
             
-            # ========== 4. WAN AI TAB - Advanced AI generation ==========
-            from .ui_elements import get_tab_wan
-            tab_wan_params = get_tab_wan(dw)  # Wan AI moved up in priority
+            # 4. KEYFRAMES TAB - Motion and scheduling
+            tab_keyframes_params = get_tab_keyframes(d, da, dloopArgs)
             
-            # ========== 5. INIT TAB - Input sources ==========
-            tab_init_params = get_tab_init(d, da, dp)  # Image/Video/Mask init
+            # 5. ANIMATION TAB - Animation settings
+            tab_animation_params = get_tab_animation(da, dloopArgs)
             
-            # ========== 6. ADVANCED TAB - Fine-tuning ==========
-            tab_advanced_params = get_tab_advanced(d, da)  # Schedules, noise, coherence
+            # 6. INIT TAB - Input sources
+            tab_init_params = get_tab_init(d, da, dp)
             
-            # ========== 7. OUTPUT TAB - Rendering settings ==========
-            tab_output_params = get_tab_output(da, dv)  # Video output (streamlined)
+            # 7. WAN AI TAB - Advanced AI generation
+            if WAN_AVAILABLE:
+                tab_wan_params = get_tab_wan(dw)
+            else:
+                tab_wan_params = {}
+                print("⚠️ WAN components not available")
             
-            # ========== 8. POST-PROCESS TAB - Enhancement ==========
-            tab_ffmpeg_params = get_tab_ffmpeg()  # FFmpeg post-processing (moved to end)
+            # 8. OUTPUT TAB - Video and output settings
+            tab_output_params = get_tab_output(da, dv)
             
-            # ControlNet tab - hidden by default (experimental)
+            # 9. FFMPEG TAB - Video processing
+            tab_ffmpeg_params = get_tab_ffmpeg()
+            
+            # 10. ADVANCED TAB - Expert controls
+            tab_advanced_params = get_tab_advanced(d, da)
+            
+            # ControlNet tab (conditional)
             controlnet_dict = {}
-            if d.show_controlnet_tab:  # Only show if explicitly enabled
-                controlnet_dict = setup_controlnet_ui()  # ControlNet tab
+            if d.show_controlnet_tab:
+                controlnet_dict = setup_controlnet_ui()
             
-            # add returned gradio elements from main tabs to locals()
-            for key, value in {**tab_setup_params, **tab_animation_params, **tab_prompts_params, **tab_wan_params, **tab_init_params, **tab_advanced_params, **tab_output_params, **tab_ffmpeg_params, **controlnet_dict}.items():
+            # Merge all component dictionaries
+            all_components = {
+                **tab_run_params,
+                **tab_setup_params, 
+                **tab_prompts_params,
+                **tab_keyframes_params,
+                **tab_animation_params,
+                **tab_init_params,
+                **tab_wan_params,
+                **tab_output_params,
+                **tab_ffmpeg_params,
+                **tab_advanced_params,
+                **controlnet_dict
+            }
+            
+            # Add components to locals for backward compatibility
+            for key, value in all_components.items():
                 locals()[key] = value
-
-    # Gradio's Change functions - hiding and renaming elements based on other elements
+    
+    # Set up UI interactions
     show_info_on_ui.change(fn=change_css, inputs=show_info_on_ui, outputs=[gr.HTML()])
     handle_change_functions(locals())
+    
+    # ========== WAN AI INTEGRATION ==========
+    if WAN_AVAILABLE:
+        _setup_wan_integration(locals())
+    
+    # ========== PROMPT ENHANCEMENT INTEGRATION ==========
+    if ENHANCEMENT_AVAILABLE:
+        _setup_prompt_enhancement(locals())
+    
+    # ========== MODEL VALIDATION ==========
+    _setup_model_validation(locals())
+    
+    return all_components
 
-    # Set up Wan Generate button if it exists - with better error handling
-    if 'wan_generate_button' in locals() and 'wan_generation_status' in locals():
+
+def _setup_wan_integration(components):
+    """Set up WAN AI integration with event handlers."""
+    print("🔗 Setting up WAN AI integration...")
+    
+    # Wan Generate button
+    if 'wan_generate_button' in components and 'wan_generation_status' in components:
         try:
-            print("🔗 Connecting Wan generate button...")
+            # Import the main generation function
+            from .elements import wan_generate_video as wan_generate_video_main
             
-            # Import the real Wan generation function from ui_elements
-            from .ui_elements import wan_generate_video as wan_generate_video_main
-            
-            # Get all component values to pass to the Wan generation function
-            from .args import get_component_names
             component_names = get_component_names()
-            
-            # Create list of all UI components in the correct order
             component_inputs = []
-            missing_components = []
-            # Filter out known missing components (hybrid and wan) to reduce warnings
-            hybrid_wan_prefixes = ['hybrid_', 'wan_']
+            
             for name in component_names:
-                if name in locals():
-                    component_inputs.append(locals()[name])
-                else:
-                    # Only warn about unexpected missing components (not hybrid/wan)
-                    is_expected_missing = any(name.startswith(prefix) for prefix in hybrid_wan_prefixes)
-                    if not is_expected_missing:
-                        print(f"⚠️ Warning: Component '{name}' not found in locals()")
-                    missing_components.append(name)
+                if name in components:
+                    component_inputs.append(components[name])
             
-            print(f"📊 Found {len(component_inputs)} UI components for Wan generation")
-            # Only show count of hybrid/wan missing components
-            hybrid_wan_missing = [name for name in missing_components if any(name.startswith(prefix) for prefix in hybrid_wan_prefixes)]
-            other_missing = [name for name in missing_components if not any(name.startswith(prefix) for prefix in hybrid_wan_prefixes)]
+            print(f"📊 Found {len(component_inputs)} UI components for WAN generation")
             
-            if hybrid_wan_missing:
-                print(f"ℹ️ Skipped {len(hybrid_wan_missing)} disabled hybrid/wan components")
-            if other_missing:
-                print(f"⚠️ Missing {len(other_missing)} unexpected components: {other_missing[:3]}{'...' if len(other_missing) > 3 else ''}")
-            
-            # Create a wrapper function with better error handling
-            def wan_generate_wrapper(*args):
-                try:
-                    print(f"🎬 Wan generate button clicked! Received {len(args)} arguments")
-                    print("🔄 Calling wan_generate_video_main...")
-                    result = wan_generate_video_main(*args)
-                    print(f"✅ Wan generation completed: {str(result)[:100]}...")
-                    return result
-                except Exception as e:
-                    error_msg = f"❌ Wan generation error: {str(e)}"
-                    print(error_msg)
-                    import traceback
-                    traceback.print_exc()
-                    return error_msg
-            
-            locals()['wan_generate_button'].click(
-                fn=wan_generate_wrapper,
-                inputs=component_inputs,  # Pass all UI component values
-                outputs=[locals()['wan_generation_status']]
+            components['wan_generate_button'].click(
+                fn=wan_generate_video_main,
+                inputs=component_inputs,
+                outputs=[components['wan_generation_status']]
             )
-            print("✅ Wan generate button connected successfully")
+            print("✅ WAN generate button connected")
+            
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Wan generate button: {e}")
-            import traceback
-            traceback.print_exc()
-            # Fallback to the simple placeholder function
-            def simple_wan_test():
-                return "🧪 Simple Wan test - button connection working but full integration failed"
-            
-            locals()['wan_generate_button'].click(
-                fn=simple_wan_test,
-                inputs=[],
-                outputs=[locals()['wan_generation_status']]
-            )
-
-    # Set up Wan Prompt Enhancement button with proper wan_enhanced_prompts access
-    if 'enhance_prompts_btn' in locals() and 'wan_enhanced_prompts' in locals():
-        try:
-            print("🔗 Connecting Wan prompt enhancement button...")
-            
-            from .ui_elements import enhance_prompts_handler
-            
-            # Check if enhancement_progress component exists for progress feedback
-            enhancement_progress_available = 'enhancement_progress' in locals()
-            
-            # Connect the enhance button with current prompts as first parameter
-            if enhancement_progress_available:
-                # Connect with progress feedback
-                locals()['enhance_prompts_btn'].click(
-                    fn=enhance_prompts_handler,
-                    inputs=[
-                        locals()['wan_enhanced_prompts'],  # current_prompts - first parameter
-                        locals()['wan_qwen_model'], 
-                        locals()['wan_qwen_language'],
-                        locals()['wan_qwen_auto_download']
-                    ],
-                    outputs=[locals()['wan_enhanced_prompts'], locals()['enhancement_progress']]
-                )
-                print("✅ Wan prompt enhancement button connected successfully with progress feedback")
-            else:
-                # Fallback connection without progress feedback
-                def enhance_wrapper(*args):
-                    result = enhance_prompts_handler(*args)
-                    if isinstance(result, tuple):
-                        return result[0]  # Return only the enhanced prompts
-                    return result
-                
-                locals()['enhance_prompts_btn'].click(
-                    fn=enhance_wrapper,
-                    inputs=[
-                        locals()['wan_enhanced_prompts'],  # current_prompts - first parameter
-                        locals()['wan_qwen_model'], 
-                        locals()['wan_qwen_language'],
-                        locals()['wan_qwen_auto_download']
-                    ],
-                    outputs=[locals()['wan_enhanced_prompts']]
-                )
-                print("✅ Wan prompt enhancement button connected successfully (without progress feedback)")
-        except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Wan prompt enhancement button: {e}")
-            import traceback
-            traceback.print_exc()
-
-    # Set up movement component references for analyze_movement_handler
-    try:
-        from .ui_elements import analyze_movement_handler, enhance_prompts_handler
-        
-        # Store references to movement schedule components to get actual schedule strings
-        movement_components = {}
-        movement_component_names = [
-            'translation_x', 'translation_y', 'translation_z',
-            'rotation_3d_x', 'rotation_3d_y', 'rotation_3d_z',
-            'zoom', 'angle', 'max_frames',
-            # Add Camera Shakify components
-            'shake_name', 'shake_intensity', 'shake_speed'
-        ]
-        
-        # Get actual schedule values from the UI components (these are the schedule strings)
-        for comp_name in movement_component_names:
-            if comp_name in locals():
-                component = locals()[comp_name]
-                # Get the actual value from the component
-                if comp_name == 'max_frames':
-                    # max_frames is a number, not a schedule
-                    movement_components[comp_name] = getattr(component, 'value', 100)
-                elif comp_name in ['shake_name', 'shake_intensity', 'shake_speed']:
-                    # Camera Shakify settings
-                    if comp_name == 'shake_name':
-                        movement_components[comp_name] = getattr(component, 'value', "None")
-                    elif comp_name == 'shake_intensity':
-                        movement_components[comp_name] = getattr(component, 'value', 1.0)
-                    elif comp_name == 'shake_speed':
-                        movement_components[comp_name] = getattr(component, 'value', 1.0)
-                else:
-                    # These are schedule strings used by Deforum's animation system
-                    movement_components[comp_name] = getattr(component, 'value', f"0:(0)")
-            else:
-                # Fallback defaults (same as Deforum defaults)
-                if comp_name == 'max_frames':
-                    movement_components[comp_name] = 100
-                elif comp_name == 'zoom':
-                    movement_components[comp_name] = "0:(1.0)"  # Default zoom schedule
-                elif comp_name == 'shake_name':
-                    movement_components[comp_name] = "None"     # Default shake disabled
-                elif comp_name == 'shake_intensity':
-                    movement_components[comp_name] = 1.0       # Default shake intensity
-                elif comp_name == 'shake_speed':
-                    movement_components[comp_name] = 1.0       # Default shake speed
-                else:
-                    movement_components[comp_name] = "0:(0)"    # Default movement schedule
-        
-        # Store the movement components dictionary for the handler
-        analyze_movement_handler._movement_components = movement_components
-        
-        # Store reference to wan_enhanced_prompts component for updating prompts with movement
-        if 'wan_enhanced_prompts' in locals():
-            enhance_prompts_handler._wan_enhanced_prompts_component = locals()['wan_enhanced_prompts']
-        
-        # Store reference to wan_movement_description component
-        if 'wan_movement_description' in locals():
-            analyze_movement_handler._wan_movement_description_component = locals()['wan_movement_description']
-        
-        print(f"✅ Movement schedule references set up for {len(movement_components)} Deforum schedules")
-        print(f"📊 Sample schedules: translation_x='{movement_components.get('translation_x', 'N/A')[:30]}...', zoom='{movement_components.get('zoom', 'N/A')}'")
-        
-    except Exception as e:
-        print(f"⚠️ Warning: Failed to set up movement schedule references: {e}")
-        import traceback
-        traceback.print_exc()
-
-    # Set up Wan prompt template loading buttons
-    if 'load_wan_prompts_btn' in locals() and 'wan_enhanced_prompts' in locals():
-        try:
-            print("🔗 Connecting Wan prompt loading button...")
-            
-            from .ui_elements import load_wan_prompts_handler
-            
-            locals()['load_wan_prompts_btn'].click(
-                fn=load_wan_prompts_handler,
-                inputs=[],
-                outputs=[locals()['wan_enhanced_prompts']]
-            )
-            print("✅ Wan prompt loading button connected")
-        except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Wan prompt button: {e}")
+            print(f"⚠️ Failed to connect WAN generate button: {e}")
     
-    if 'load_deforum_prompts_btn' in locals() and 'wan_enhanced_prompts' in locals():
+    # Movement Analysis
+    if 'analyze_movement_btn' in components:
         try:
-            print("🔗 Connecting Deforum prompts loading button...")
-            
-            from .ui_elements import load_deforum_prompts_handler
-            
-            locals()['load_deforum_prompts_btn'].click(
-                fn=load_deforum_prompts_handler,
-                inputs=[],
-                outputs=[locals()['wan_enhanced_prompts']]
+            components['analyze_movement_btn'].click(
+                fn=analyze_movement_handler,
+                inputs=[
+                    components.get('wan_enhanced_prompts', gr.Textbox()),
+                    components.get('wan_enable_shakify', gr.Checkbox(value=True)),
+                    components.get('wan_movement_sensitivity_override', gr.Checkbox()),
+                    components.get('wan_manual_sensitivity', gr.Slider(value=1.0))
+                ],
+                outputs=[
+                    components.get('wan_enhanced_prompts', gr.Textbox()),
+                    components.get('wan_movement_description', gr.Textbox())
+                ]
             )
-            print("✅ Deforum prompts loading button connected")
+            print("✅ Movement analysis connected")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Deforum prompts button: {e}")
+            print(f"⚠️ Failed to connect movement analysis: {e}")
     
-    # Set up load Deforum to Wan and load defaults buttons
-    if 'load_deforum_to_wan_btn' in locals() and 'wan_enhanced_prompts' in locals():
+    # Prompt Enhancement  
+    if 'enhance_prompts_btn' in components:
         try:
-            print("🔗 Connecting Load Deforum to Wan button...")
+            components['enhance_prompts_btn'].click(
+                fn=enhance_prompts_handler,
+                inputs=[
+                    components.get('wan_enhanced_prompts', gr.Textbox()),
+                    components.get('wan_qwen_model', gr.Dropdown()),
+                    components.get('wan_qwen_language', gr.Dropdown()),
+                    components.get('wan_qwen_auto_download', gr.Checkbox())
+                ],
+                outputs=[
+                    components.get('wan_enhanced_prompts', gr.Textbox()),
+                    components.get('enhancement_progress', gr.Textbox())
+                ]
+            )
+            print("✅ Prompt enhancement connected")
+        except Exception as e:
+            print(f"⚠️ Failed to connect prompt enhancement: {e}")
+    
+    # Prompt Loading Buttons
+    _setup_prompt_loading_buttons(components)
+
+
+def _setup_prompt_loading_buttons(components):
+    """Set up prompt loading buttons for WAN integration."""
+    
+    # Load Deforum to WAN prompts
+    if 'load_deforum_to_wan_btn' in components:
+        try:
+            if 'animation_prompts' in components:
+                enhance_prompts_handler._animation_prompts_component = components['animation_prompts']
             
-            from .ui_elements import load_deforum_to_wan_prompts_handler, enhance_prompts_handler
-            
-            # Store animation_prompts reference for deforum-to-wan loading
-            if 'animation_prompts' in locals():
-                enhance_prompts_handler._animation_prompts_component = locals()['animation_prompts']
-            
-            locals()['load_deforum_to_wan_btn'].click(
+            components['load_deforum_to_wan_btn'].click(
                 fn=load_deforum_to_wan_prompts_handler,
                 inputs=[],
-                outputs=[locals()['wan_enhanced_prompts']]
+                outputs=[components.get('wan_enhanced_prompts', gr.Textbox())]
             )
-            print("✅ Load Deforum to Wan button connected")
+            print("✅ Load Deforum to WAN connected")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Load Deforum to Wan button: {e}")
+            print(f"⚠️ Failed to connect Deforum to WAN: {e}")
     
-    if 'load_wan_defaults_btn' in locals() and 'wan_enhanced_prompts' in locals():
+    # Load WAN defaults
+    if 'load_wan_defaults_btn' in components:
         try:
-            print("🔗 Connecting Load Wan Defaults button...")
-            
-            from .ui_elements import load_wan_defaults_handler
-            
-            locals()['load_wan_defaults_btn'].click(
+            components['load_wan_defaults_btn'].click(
                 fn=load_wan_defaults_handler,
                 inputs=[],
-                outputs=[locals()['wan_enhanced_prompts']]
+                outputs=[components.get('wan_enhanced_prompts', gr.Textbox())]
             )
-            print("✅ Load Wan Defaults button connected")
+            print("✅ Load WAN defaults connected")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Load Wan Defaults button: {e}")
+            print(f"⚠️ Failed to connect WAN defaults: {e}")
+    
+    # Model management buttons
+    _setup_model_management_buttons(components)
 
-    # Set up Wan Model Validation buttons
+
+def _setup_model_management_buttons(components):
+    """Set up model management buttons for WAN."""
+    
+    if 'check_qwen_models_btn' in components:
+        try:
+            components['check_qwen_models_btn'].click(
+                fn=check_qwen_models_handler,
+                inputs=[components.get('wan_qwen_model', gr.Dropdown())],
+                outputs=[components.get('qwen_model_status', gr.HTML())]
+            )
+            print("✅ Check Qwen models connected")
+        except Exception as e:
+            print(f"⚠️ Failed to connect Qwen model check: {e}")
+    
+    if 'download_qwen_model_btn' in components:
+        try:
+            components['download_qwen_model_btn'].click(
+                fn=download_qwen_model_handler,
+                inputs=[
+                    components.get('wan_qwen_model', gr.Dropdown()),
+                    components.get('wan_qwen_auto_download', gr.Checkbox())
+                ],
+                outputs=[components.get('qwen_model_status', gr.HTML())]
+            )
+            print("✅ Download Qwen model connected")
+        except Exception as e:
+            print(f"⚠️ Failed to connect Qwen model download: {e}")
+    
+    if 'cleanup_qwen_cache_btn' in components:
+        try:
+            components['cleanup_qwen_cache_btn'].click(
+                fn=cleanup_qwen_cache_handler,
+                inputs=[],
+                outputs=[components.get('qwen_model_status', gr.HTML())]
+            )
+            print("✅ Cleanup Qwen cache connected")
+        except Exception as e:
+            print(f"⚠️ Failed to connect Qwen cache cleanup: {e}")
+
+
+def _setup_prompt_enhancement(components):
+    """Set up prompt enhancement system."""
+    print("🔗 Setting up prompt enhancement...")
+    
+    try:
+        # Random style/theme buttons
+        if 'random_style_btn' in components:
+            components['random_style_btn'].click(
+                fn=random_style_handler,
+                inputs=[],
+                outputs=[components.get('style_dropdown', gr.Dropdown())]
+            )
+        
+        if 'random_theme_btn' in components:
+            components['random_theme_btn'].click(
+                fn=random_theme_handler,
+                inputs=[],
+                outputs=[components.get('theme_dropdown', gr.Dropdown())]
+            )
+        
+        if 'random_both_btn' in components:
+            components['random_both_btn'].click(
+                fn=random_both_handler,
+                inputs=[],
+                outputs=[
+                    components.get('style_dropdown', gr.Dropdown()),
+                    components.get('theme_dropdown', gr.Dropdown())
+                ]
+            )
+        
+        # Enhancement buttons
+        if 'enhance_deforum_btn' in components:
+            components['enhance_deforum_btn'].click(
+                fn=enhance_deforum_prompts_handler,
+                inputs=[
+                    components.get('animation_prompts', gr.Textbox()),
+                    components.get('style_dropdown', gr.Dropdown()),
+                    components.get('theme_dropdown', gr.Dropdown()),
+                    components.get('custom_style', gr.Textbox()),
+                    components.get('custom_theme', gr.Textbox()),
+                    components.get('qwen_model_dropdown', gr.Dropdown()),
+                    components.get('qwen_language', gr.Dropdown()),
+                    components.get('qwen_auto_download', gr.Checkbox())
+                ],
+                outputs=[
+                    components.get('animation_prompts', gr.Textbox()),
+                    components.get('enhancement_status', gr.Textbox()),
+                    components.get('enhancement_progress', gr.Textbox())
+                ]
+            )
+        
+        print("✅ Prompt enhancement connected")
+        
+    except Exception as e:
+        print(f"⚠️ Failed to setup prompt enhancement: {e}")
+
+
+def _setup_model_validation(components):
+    """Set up model validation system."""
+    print("🔗 Setting up model validation...")
+    
     try:
         from .wan.wan_model_validator import WanModelValidator
         
-        # Validation functions
         def wan_validate_models():
-            """Validate Wan models with HuggingFace checksums when possible"""
+            """Validate WAN models with checksums."""
             try:
                 validator = WanModelValidator()
                 models = validator.discover_models()
                 
                 if not models:
-                    return "❌ No Wan models found for validation."
+                    return "❌ No WAN models found for validation."
                 
                 results = []
-                results.append("🔐 WAN MODEL VALIDATION WITH OFFICIAL CHECKSUMS")
-                results.append("=" * 55)
+                results.append("🔐 WAN MODEL VALIDATION")
+                results.append("=" * 40)
                 
                 valid_models = 0
-                total_models = len(models)
-                
                 for model in models:
-                    results.append(f"\n📁 {model['name']} ({model['size_formatted']}):")
-                    
-                    from pathlib import Path
                     model_path = Path(model['path'])
-                    
-                    # Try HuggingFace checksum validation first
                     hf_validation = validator.validate_against_huggingface_checksums(model_path)
                     
-                    if hf_validation['checked_files']:
-                        # HuggingFace validation was possible
-                        if hf_validation['valid']:
-                            valid_count = len([f for f in hf_validation['checked_files'].values() if f['status'] == 'valid'])
-                            total_count = len(hf_validation['checked_files'])
-                            results.append(f"   ✅ VALID - {valid_count}/{total_count} files verified with official checksums")
-                            valid_models += 1
-                        else:
-                            results.append(f"   ❌ INVALID - Checksum verification failed")
-                            for error in hf_validation['errors']:
-                                results.append(f"      🚨 {error}")
+                    if hf_validation['valid']:
+                        results.append(f"✅ {model['name']} - VALID")
+                        valid_models += 1
                     else:
-                        # Fall back to basic validation if HuggingFace validation not possible
-                        results.append(f"   ⚠️ Official checksums not available, using basic validation...")
-                        validation_result = validator.validate_model_integrity(model_path)
-                        
-                        if validation_result['valid']:
-                            results.append(f"   ✅ VALID (basic structure check)")
-                            valid_models += 1
-                        else:
-                            results.append(f"   ❌ INVALID")
-                            for error in validation_result['errors']:
-                                results.append(f"      🚨 {error}")
-                    
-                    if hf_validation['warnings']:
-                        for warning in hf_validation['warnings']:
-                            results.append(f"   ⚠️ {warning}")
+                        results.append(f"❌ {model['name']} - INVALID")
                 
-                summary = f"📊 SUMMARY: {valid_models}/{total_models} models valid"
-                if valid_models == total_models:
-                    summary = f"✅ {summary} - All models verified!"
-                else:
-                    summary = f"⚠️ {summary} - Some models have issues"
-                
-                results.append(f"\n{summary}")
-                results.append(f"💡 Using official HuggingFace checksums for maximum reliability")
-                
+                results.append(f"\n📊 {valid_models}/{len(models)} models valid")
                 return "\n".join(results)
                 
             except Exception as e:
                 return f"❌ Validation error: {str(e)}"
         
-        def cleanup_invalid_models():
-            """Clean up invalid models with confirmation"""
-            try:
-                validator = WanModelValidator()
-                models = validator.discover_models()
-                
-                if not models:
-                    return "❌ No models found to validate."
-                
-                # Find invalid models
-                invalid_models = []
-                results = []
-                results.append("🔍 Checking all models for corruption...")
-                results.append("=" * 50)
-                
-                for model in models:
-                    from pathlib import Path
-                    model_path = Path(model['path'])
-                    
-                    # Use HuggingFace validation if possible, otherwise basic validation
-                    hf_validation = validator.validate_against_huggingface_checksums(model_path)
-                    
-                    if hf_validation['checked_files']:
-                        # Use HuggingFace validation result
-                        is_valid = hf_validation['valid']
-                        errors = hf_validation['errors']
-                    else:
-                        # Fall back to basic validation
-                        validation_result = validator.validate_model_integrity(model_path)
-                        is_valid = validation_result['valid']
-                        errors = validation_result['errors']
-                    
-                    if not is_valid:
-                        invalid_models.append({
-                            'name': model['name'],
-                            'path': model['path'],
-                            'size': model['size_formatted'],
-                            'errors': errors
-                        })
-                
-                if not invalid_models:
-                    return "✅ All models passed validation! No cleanup needed."
-                
-                results.append(f"\n⚠️ Found {len(invalid_models)} invalid model(s):")
-                for i, invalid in enumerate(invalid_models, 1):
-                    results.append(f"\n{i}. {invalid['name']} ({invalid['size']})")
-                    results.append(f"   Issues: {', '.join(invalid['errors'])}")
-                
-                results.append(f"\n🗑️ Use the 'Clean Up Invalid Models' button to remove these automatically.")
-                results.append("⚠️ This action will permanently delete the invalid model directories!")
-                
-                return "\n".join(results)
-                
-            except Exception as e:
-                return f"❌ Cleanup scan error: {str(e)}"
-        
-        def compute_model_checksums():
-            """Compute checksums for all model files"""
-            try:
-                validator = WanModelValidator()
-                models = validator.discover_models()
-                
-                if not models:
-                    return "❌ No models found to checksum.", {}
-                
-                results = []
-                results.append("🔐 Computing checksums for all models...")
-                results.append("=" * 60)
-                
-                checksums = {}
-                
-                for model in models:
-                    results.append(f"\n📁 {model['name']}:")
-                    model_checksums = {}
-                    
-                    from pathlib import Path
-                    model_path = Path(model['path'])
-                    
-                    # Compute checksums for important files
-                    important_files = [
-                        "diffusion_pytorch_model.safetensors",
-                        "diffusion_pytorch_model-00001-of-00007.safetensors",
-                        "models_t5_umt5-xxl-enc-bf16.pth",
-                        "Wan2.1_VAE.pth",
-                        "config.json"
-                    ]
-                    
-                    for file_name in important_files:
-                        file_path = model_path / file_name
-                        if file_path.exists():
-                            file_hash = validator.compute_file_hash(file_path)
-                            if file_hash:
-                                model_checksums[file_name] = file_hash
-                                results.append(f"   ✅ {file_name}: {file_hash[:16]}...")
-                            else:
-                                results.append(f"   ❌ {file_name}: Failed to compute hash")
-                    
-                    checksums[model['name']] = model_checksums
-                
-                results.append(f"\n✅ Checksum computation complete!")
-                results.append("💾 Full checksums available in the Model Details output below.")
-                
-                return "\n".join(results), checksums
-                
-            except Exception as e:
-                return f"❌ Checksum error: {str(e)}", {}
-        
-        def full_integrity_check():
-            """Comprehensive integrity check with HuggingFace checksum validation"""
-            try:
-                validator = WanModelValidator()
-                models = validator.discover_models()
-                
-                if not models:
-                    return "❌ No models found for integrity check.", {}
-                
-                results = []
-                results.append("🔍 COMPREHENSIVE INTEGRITY CHECK WITH OFFICIAL CHECKSUMS")
-                results.append("=" * 70)
-                
-                all_details = {}
-                overall_status = "✅ ALL GOOD"
-                
-                for model in models:
-                    results.append(f"\n📁 {model['name']} ({model['size_formatted']}):")
-                    results.append("-" * 50)
-                    
-                    from pathlib import Path
-                    model_path = Path(model['path'])
-                    
-                    # Run HuggingFace checksum validation first
-                    hf_validation = validator.validate_against_huggingface_checksums(model_path)
-                    
-                    model_details = {
-                        'path': model['path'],
-                        'size': model['size_formatted'],
-                        'type': model['type'],
-                        'hf_checksum_validation': hf_validation,
-                        'basic_validation': None
-                    }
-                    
-                    # Report HuggingFace validation results
-                    if hf_validation['valid']:
-                        checked_count = len(hf_validation['checked_files'])
-                        valid_count = sum(1 for f in hf_validation['checked_files'].values() if f['status'] == 'valid')
-                        results.append(f"   ✅ HuggingFace Checksum Validation: {valid_count}/{checked_count} files verified")
-                        
-                        for file_name, file_info in hf_validation['checked_files'].items():
-                            if file_info['status'] == 'valid':
-                                results.append(f"      ✅ {file_name}: Official checksum verified")
-                            else:
-                                results.append(f"      ❌ {file_name}: Checksum mismatch")
-                                overall_status = "⚠️ CHECKSUM ISSUES FOUND"
-                    else:
-                        results.append(f"   ❌ HuggingFace Checksum Validation: FAILED")
-                        overall_status = "⚠️ CHECKSUM ISSUES FOUND"
-                        for error in hf_validation['errors']:
-                            results.append(f"      🚨 {error}")
-                    
-                    if hf_validation['warnings']:
-                        for warning in hf_validation['warnings']:
-                            results.append(f"      ⚠️ {warning}")
-                    
-                    # Only run basic validation if HuggingFace validation had issues
-                    if not hf_validation['valid'] or hf_validation['warnings']:
-                        basic_validation = validator.validate_model_integrity(model_path)
-                        model_details['basic_validation'] = basic_validation
-                        
-                        if basic_validation['valid']:
-                            results.append(f"   ✅ Basic Structure Validation: PASS")
-                        else:
-                            results.append(f"   ❌ Basic Structure Validation: FAIL")
-                            for error in basic_validation['errors']:
-                                results.append(f"      🚨 {error}")
-                    
-                    all_details[model['name']] = model_details
-                
-                results.insert(1, f"🎯 OVERALL STATUS: {overall_status}")
-                results.append(f"\n💡 **Using Official HuggingFace Checksums for Maximum Reliability**")
-                results.append(f"💾 Detailed results saved to Model Details output.")
-                
-                return "\n".join(results), all_details
-                
-            except Exception as e:
-                return f"❌ Integrity check error: {str(e)}", {}
-        
         # Connect validation buttons if they exist
         validation_buttons = [
-            ('validate_models_btn', wan_validate_models),
-            ('cleanup_invalid_btn', cleanup_invalid_models),
-            ('compute_checksums_btn', compute_model_checksums),
-            ('verify_integrity_btn', full_integrity_check)
+            ('wan_validate_models_btn', wan_validate_models),
         ]
         
-        for button_name, callback_fn in validation_buttons:
-            if button_name in locals():
-                # Determine output based on function return signature
-                if button_name in ['compute_checksums_btn', 'verify_integrity_btn']:
-                    # These functions return tuple (text, dict)
-                    locals()[button_name].click(
-                        fn=callback_fn,
-                        inputs=[],
-                        outputs=[locals()['validation_output'], locals()['model_details_output']]
-                    )
-                else:
-                    # These functions return just text
-                    locals()[button_name].click(
-                        fn=callback_fn,
-                        inputs=[],
-                        outputs=[locals()['validation_output']]
-                    )
-                print(f"✅ Connected {button_name}")
-            
-        print("✅ All Wan model validation buttons connected")
+        for button_name, callback in validation_buttons:
+            if button_name in components:
+                components[button_name].click(
+                    fn=callback,
+                    inputs=[],
+                    outputs=[components.get('validation_output', gr.Textbox())]
+                )
+        
+        print("✅ Model validation connected")
         
     except ImportError:
-        print("⚠️ WanModelValidator not available - validation buttons will not work")
+        print("⚠️ WAN model validator not available")
     except Exception as e:
-        print(f"⚠️ Failed to set up validation buttons: {e}")
-
-    # ========== NEW: Connect AI Enhancement Buttons ==========
-    try:
-        print("🔗 Connecting AI Enhancement buttons...")
-        
-        # Import the new handlers
-        from .prompt_enhancement_handlers import (
-            random_style_handler, random_theme_handler, random_both_handler,
-            reset_to_photorealistic_handler, cycle_creative_themes_handler,
-            enhance_deforum_prompts_handler, enhance_wan_prompts_handler_with_style,
-            apply_style_only_handler
-        )
-        
-        # Connect random style/theme buttons
-        if 'random_style_btn' in locals():
-            locals()['random_style_btn'].click(
-                fn=random_style_handler,
-                inputs=[],
-                outputs=[locals()['style_dropdown']]
-            )
-            print("✅ Connected random style button")
-        
-        if 'random_theme_btn' in locals():
-            locals()['random_theme_btn'].click(
-                fn=random_theme_handler,
-                inputs=[],
-                outputs=[locals()['theme_dropdown']]
-            )
-            print("✅ Connected random theme button")
-        
-        if 'random_both_btn' in locals():
-            locals()['random_both_btn'].click(
-                fn=random_both_handler,
-                inputs=[],
-                outputs=[locals()['style_dropdown'], locals()['theme_dropdown']]
-            )
-            print("✅ Connected random both button")
-        
-        if 'reset_to_photo_btn' in locals():
-            locals()['reset_to_photo_btn'].click(
-                fn=reset_to_photorealistic_handler,
-                inputs=[],
-                outputs=[locals()['style_dropdown'], locals()['theme_dropdown'], 
-                        locals()['custom_style'], locals()['custom_theme']]
-            )
-            print("✅ Connected reset to photorealistic button")
-        
-        if 'cycle_creative_btn' in locals():
-            locals()['cycle_creative_btn'].click(
-                fn=cycle_creative_themes_handler,
-                inputs=[],
-                outputs=[locals()['theme_dropdown']]
-            )
-            print("✅ Connected cycle creative themes button")
-        
-        # Connect enhancement buttons
-        if 'enhance_deforum_btn' in locals():
-            locals()['enhance_deforum_btn'].click(
-                fn=enhance_deforum_prompts_handler,
-                inputs=[
-                    locals()['animation_prompts'],  # Current Deforum prompts
-                    locals()['style_dropdown'],
-                    locals()['theme_dropdown'],
-                    locals()['custom_style'],
-                    locals()['custom_theme'],
-                    locals()['qwen_model_dropdown'],
-                    locals()['qwen_language'],
-                    locals()['qwen_auto_download']
-                ],
-                outputs=[
-                    locals()['animation_prompts'],  # Update the main prompts field
-                    locals()['enhancement_status'],
-                    locals()['enhancement_progress']
-                ]
-            )
-            print("✅ Connected enhance Deforum prompts button")
-        
-        if 'enhance_wan_btn' in locals() and 'wan_enhanced_prompts' in locals():
-            locals()['enhance_wan_btn'].click(
-                fn=enhance_wan_prompts_handler_with_style,
-                inputs=[
-                    locals()['wan_enhanced_prompts'],  # Current Wan prompts
-                    locals()['style_dropdown'],
-                    locals()['theme_dropdown'],
-                    locals()['custom_style'],
-                    locals()['custom_theme'],
-                    locals()['qwen_model_dropdown'],
-                    locals()['qwen_language'],
-                    locals()['qwen_auto_download']
-                ],
-                outputs=[
-                    locals()['wan_enhanced_prompts'],  # Update the Wan prompts field
-                    locals()['enhancement_status'],
-                    locals()['enhancement_progress']
-                ]
-            )
-            print("✅ Connected enhance Wan prompts button")
-        
-        # Connect style-only application buttons
-        if 'apply_style_deforum_btn' in locals():
-            def apply_style_deforum_wrapper(animation_prompts, style_dropdown, theme_dropdown, custom_style, custom_theme):
-                return apply_style_only_handler(animation_prompts, style_dropdown, theme_dropdown, custom_style, custom_theme, "Deforum")
-            
-            locals()['apply_style_deforum_btn'].click(
-                fn=apply_style_deforum_wrapper,
-                inputs=[
-                    locals()['animation_prompts'],
-                    locals()['style_dropdown'],
-                    locals()['theme_dropdown'],
-                    locals()['custom_style'],
-                    locals()['custom_theme']
-                ],
-                outputs=[
-                    locals()['animation_prompts'],
-                    locals()['enhancement_status']
-                ]
-            )
-            print("✅ Connected apply style to Deforum button")
-        
-        if 'apply_style_wan_btn' in locals() and 'wan_enhanced_prompts' in locals():
-            def apply_style_wan_wrapper(wan_prompts, style_dropdown, theme_dropdown, custom_style, custom_theme):
-                return apply_style_only_handler(wan_prompts, style_dropdown, theme_dropdown, custom_style, custom_theme, "Wan")
-            
-            locals()['apply_style_wan_btn'].click(
-                fn=apply_style_wan_wrapper,
-                inputs=[
-                    locals()['wan_enhanced_prompts'],
-                    locals()['style_dropdown'],
-                    locals()['theme_dropdown'],
-                    locals()['custom_style'],
-                    locals()['custom_theme']
-                ],
-                outputs=[
-                    locals()['wan_enhanced_prompts'],
-                    locals()['enhancement_status']
-                ]
-            )
-            print("✅ Connected apply style to Wan button")
-        
-        print("✅ All AI Enhancement buttons connected successfully!")
-        
-    except Exception as e:
-        print(f"⚠️ Failed to connect AI Enhancement buttons: {e}")
-        import traceback
-        traceback.print_exc()
-
-    return locals()
+        print(f"⚠️ Failed to setup model validation: {e}")
