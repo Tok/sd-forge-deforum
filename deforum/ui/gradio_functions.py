@@ -1,7 +1,7 @@
 import gradio as gr
 import modules.paths as ph
 from .general_utils import get_os
-from .upscaling import process_ncnn_upscale_vid_upload_logic
+from ..media.image_upscaling import process_ncnn_upscale_vid_upload_logic
 from ..media.video_audio_pipeline import extract_number, get_quick_vid_info, get_ffmpeg_params
 from ..media.frame_interpolation_pipeline import process_interp_vid_upload_logic, process_interp_pics_upload_logic, gradio_f_interp_get_fps_and_fcount
 from .vid2depth import process_depth_vid_upload_logic
