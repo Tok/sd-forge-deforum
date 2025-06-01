@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from ..render_data import RenderData
+
 
 @dataclass
 class DiffusionFrameData:
