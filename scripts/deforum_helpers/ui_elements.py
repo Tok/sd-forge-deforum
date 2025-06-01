@@ -138,7 +138,7 @@ def get_tab_keyframes(d, da, dloopArgs):
             with gr.TabItem(f"{emoji_utils.seed()} Seed & SubSeed") as subseed_sch_tab:
                 seed_behavior = create_row(d.seed_behavior)
                 with FormRow() as seed_iter_N_row:
-                    seed_iter_N = create_row(d.seed_iter_N)
+                    seed_iter_N = create_gr_elem(d.seed_iter_N)
                 with FormRow(visible=False) as seed_schedule_row:
                     seed_schedule = create_gr_elem(da.seed_schedule)
                 enable_subseed_scheduling, subseed_schedule, subseed_strength_schedule = create_row(
@@ -3264,6 +3264,8 @@ def get_tab_setup(d, da):
             
             with FormRow():
                 seed_behavior = create_gr_elem(d.seed_behavior)  # Moved from keyframes
+                
+            with FormRow() as seed_iter_N_row:
                 seed_iter_N = create_gr_elem(d.seed_iter_N)  # Moved from keyframes
             
             with FormRow():
@@ -3369,17 +3371,20 @@ def get_tab_animation(da, dloopArgs):
             with gr.Tabs():
                 # 2D Movement Tab
                 with gr.TabItem("2D Movement"):
-                    angle = create_row(da.angle)
-                    zoom = create_row(da.zoom)
-                    translation_x, translation_y = create_row(da, 'translation_x', 'translation_y')
-                    transform_center_x, transform_center_y = create_row(da, 'transform_center_x', 'transform_center_y')
+                    with FormColumn() as only_2d_motion_column:
+                        angle = create_row(da.angle)
+                        zoom = create_row(da.zoom)
+                        with FormColumn() as both_anim_mode_motion_params_column:
+                            translation_x, translation_y = create_row(da, 'translation_x', 'translation_y')
+                        transform_center_x, transform_center_y = create_row(da, 'transform_center_x', 'transform_center_y')
                 
                 # 3D Movement Tab  
                 with gr.TabItem("3D Movement"):
-                    translation_z = create_row(da.translation_z)
-                    rotation_3d_x, rotation_3d_y, rotation_3d_z = create_row(da, 'rotation_3d_x', 'rotation_3d_y', 'rotation_3d_z')
-                    fov_schedule = create_row(da.fov_schedule)
-                    near_schedule, far_schedule = create_row(da, 'near_schedule', 'far_schedule')
+                    with FormColumn() as only_3d_motion_column:
+                        translation_z = create_row(da.translation_z)
+                        rotation_3d_x, rotation_3d_y, rotation_3d_z = create_row(da, 'rotation_3d_x', 'rotation_3d_y', 'rotation_3d_z')
+                        fov_schedule = create_row(da.fov_schedule)
+                        near_schedule, far_schedule = create_row(da, 'near_schedule', 'far_schedule')
                 
                 # Camera Shake Tab (Shakify integration)
                 with gr.TabItem("Camera Shake"):
@@ -3393,28 +3398,41 @@ def get_tab_animation(da, dloopArgs):
                 
                 # Perspective Flip Tab
                 with gr.TabItem("Perspective"):
-                    enable_perspective_flip = create_row(da.enable_perspective_flip)
-                    with FormRow():
+                    with FormRow() as enable_per_f_row:
+                        enable_perspective_flip = create_gr_elem(da.enable_perspective_flip)
+                    with FormRow(visible=False) as per_f_th_row:
                         perspective_flip_theta = create_gr_elem(da.perspective_flip_theta)
+                    with FormRow(visible=False) as per_f_ph_row:
                         perspective_flip_phi = create_gr_elem(da.perspective_flip_phi)
-                    with FormRow():
+                    with FormRow(visible=False) as per_f_ga_row:
                         perspective_flip_gamma = create_gr_elem(da.perspective_flip_gamma)
+                    with FormRow(visible=False) as per_f_f_row:
                         perspective_flip_fv = create_gr_elem(da.perspective_flip_fv)
         
         # Depth and 3D Settings
         with gr.Accordion(f"{emoji_utils.depth()} 3D Depth Processing", open=False):
-            use_depth_warping = create_row(da.use_depth_warping)
-            depth_algorithm = create_row(da.depth_algorithm)
-            midas_weight = create_row(da.midas_weight)
-            with FormRow():
+            with FormRow() as depth_warp_row_1:
+                use_depth_warping = create_gr_elem(da.use_depth_warping)
+                depth_algorithm = create_gr_elem(da.depth_algorithm)
+                midas_weight = create_gr_elem(da.midas_weight)
+            with FormRow() as depth_warp_row_2:
                 padding_mode = create_gr_elem(da.padding_mode)
                 sampling_mode = create_gr_elem(da.sampling_mode)
-            save_depth_maps = create_row(da.save_depth_maps)
-            aspect_ratio_schedule = create_row(da.aspect_ratio_schedule)
-            aspect_ratio_use_old_formula = create_row(da.aspect_ratio_use_old_formula)
-        
-        # Guided Images (moved from keyframes)
-        with gr.Accordion(f"{emoji_utils.coherence()} Guided Images", open=False):
+            with FormRow() as depth_warp_row_3:
+                save_depth_maps = create_gr_elem(da.save_depth_maps)
+            with FormRow() as depth_warp_row_4:
+                aspect_ratio_schedule = create_gr_elem(da.aspect_ratio_schedule)
+            with FormRow() as depth_warp_row_5:
+                aspect_ratio_use_old_formula = create_gr_elem(da.aspect_ratio_use_old_formula)
+            with FormRow() as depth_warp_row_6:
+                # Empty row for compatibility
+                pass
+            with FormRow() as depth_warp_row_7:
+                # Empty row for compatibility
+                pass
+
+        # Guided Images (moved from keyframes) - ADD PROPER VARIABLE ASSIGNMENT
+        with gr.Accordion(f"{emoji_utils.coherence()} Guided Images", open=False) as guided_images_accord:
             with gr.Accordion('*Important: Read before using*', open=False):
                 gr.HTML(value=get_gradio_html('guided_imgs'))
             
@@ -3471,15 +3489,16 @@ def get_tab_advanced(d, da):
         
         # Noise Settings
         with gr.Accordion(f"{emoji_utils.noise()} Noise & Randomization", open=False):
-            noise_type = create_row(da.noise_type)
-            noise_schedule = create_row(da.noise_schedule)
-            with FormRow():
-                perlin_octaves = create_gr_elem(da.perlin_octaves)
-                perlin_persistence = create_gr_elem(da.perlin_persistence)
-                perlin_w = create_gr_elem(da.perlin_w)  # Hidden
-                perlin_h = create_gr_elem(da.perlin_h)  # Hidden
-            enable_noise_multiplier_scheduling = create_row(da.enable_noise_multiplier_scheduling)
-            noise_multiplier_schedule = create_row(da.noise_multiplier_schedule)
+            with FormColumn() as noise_tab_column:
+                noise_type = create_row(da.noise_type)
+                noise_schedule = create_row(da.noise_schedule)
+                with FormRow() as perlin_row:
+                    perlin_octaves = create_gr_elem(da.perlin_octaves)
+                    perlin_persistence = create_gr_elem(da.perlin_persistence)
+                    perlin_w = create_gr_elem(da.perlin_w)  # Hidden
+                    perlin_h = create_gr_elem(da.perlin_h)  # Hidden
+                enable_noise_multiplier_scheduling = create_row(da.enable_noise_multiplier_scheduling)
+                noise_multiplier_schedule = create_row(da.noise_multiplier_schedule)
         
         # Color Coherence & Optical Flow
         with gr.Accordion(f"{emoji_utils.coherence()} Color Coherence & Flow", open=False):
@@ -3491,13 +3510,17 @@ def get_tab_advanced(d, da):
             with FormRow(visible=False) as color_coherence_video_every_N_frames_row:
                 color_coherence_video_every_N_frames = create_gr_elem(da.color_coherence_video_every_N_frames)
             
-            # Optical Flow Settings
+            # Optical Flow Settings - ADD PROPER ROW WRAPPERS
+            with FormRow() as optical_flow_cadence_row:
+                with FormColumn(min_width=220) as optical_flow_cadence_column:
+                    optical_flow_cadence = create_gr_elem(da.optical_flow_cadence)
+                with FormColumn(min_width=220, visible=False) as cadence_flow_factor_schedule_column:
+                    cadence_flow_factor_schedule = create_gr_elem(da.cadence_flow_factor_schedule)
             with FormRow():
-                optical_flow_cadence = create_gr_elem(da.optical_flow_cadence)
-                cadence_flow_factor_schedule = create_gr_elem(da.cadence_flow_factor_schedule)
-            with FormRow():
-                optical_flow_redo_generation = create_gr_elem(da.optical_flow_redo_generation)
-                redo_flow_factor_schedule = create_gr_elem(da.redo_flow_factor_schedule)
+                with FormColumn(min_width=220):
+                    optical_flow_redo_generation = create_gr_elem(da.optical_flow_redo_generation)
+                with FormColumn(min_width=220, visible=False) as redo_flow_factor_schedule_column:
+                    redo_flow_factor_schedule = create_gr_elem(da.redo_flow_factor_schedule)
             
             contrast_schedule = gr.Textbox(
                 label="Contrast schedule", lines=1, value=da.contrast_schedule, interactive=True,
