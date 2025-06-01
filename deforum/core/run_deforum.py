@@ -16,7 +16,7 @@ from ..media.video_audio_pipeline import ffmpeg_stitch_video, make_gifski_gif, h
 from pathlib import Path
 from ..utils.color_constants import UNDERLINE, YELLOW, ORANGE, RED, RESET_COLOR
 from .settings import save_settings_from_animation_run
-from .deforum_controlnet import num_of_models
+from ..integrations.controlnet.core_integration import num_of_models
 
 
 # this global param will contain the latest generated video HTML-data-URL info (for preview inside the UI when needed)

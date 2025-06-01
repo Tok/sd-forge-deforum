@@ -40,7 +40,7 @@ except ImportError:
     ARG_MODULES_AVAILABLE = False
 
 try:
-    from .deforum_controlnet import controlnet_component_names
+    from ..integrations.controlnet.core_integration import controlnet_component_names
     CONTROLNET_AVAILABLE = True
 except ImportError:
     CONTROLNET_AVAILABLE = False

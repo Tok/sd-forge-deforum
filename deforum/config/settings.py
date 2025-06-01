@@ -12,7 +12,7 @@ from modules.sd_models import FakeInitialModel
 from .args import DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, get_settings_component_names, \
     pack_args, WanArgs
 from .defaults import mask_fill_choices, get_camera_shake_list
-from .deforum_controlnet import controlnet_component_names
+from ..integrations.controlnet.core_integration import controlnet_component_names
 from .deprecation_utils import handle_deprecated_settings
 from .general_utils import get_deforum_version, clean_gradio_path_strings
 from .data_models import SettingsState
