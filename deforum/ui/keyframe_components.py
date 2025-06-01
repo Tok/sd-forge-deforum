@@ -6,7 +6,7 @@ Contains keyframe and scheduling UI components
 import gradio as gr
 from modules.ui_components import FormRow, FormColumn, ToolButton
 from .component_builders import create_gr_elem, create_row
-from .rendering.util import emoji_utils
+from ..utils import emoji_utils
 from .defaults import get_gradio_html
 
 

@@ -1,6 +1,6 @@
 import re
 import numexpr
-from .rendering.util.log_utils import RED, GREEN, PURPLE, RESET_COLOR
+from ..utils.color_constants import RED, GREEN, PURPLE, RESET_COLOR
 
 def check_is_number(value):
     float_pattern = r'^(?=.)([+-]?([0-9]*)(\.([0-9]+))?)$'

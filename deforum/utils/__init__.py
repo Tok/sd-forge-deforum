@@ -20,6 +20,20 @@ from .deprecation_utils import *
 from .deforum_tqdm import *
 from .http_client import *
 
+# Import all utilities moved from core/util
+from .log_utils import *
+from .depth_utils import *
+from .turbo_utils import *
+from .filename_utils import *
+from .web_ui_utils import *
+from .emoji_utils import *
+from .subtitle_utils import *
+from .image_utils import *
+from .opt_utils import *
+from .memory_utils import *
+from .fun_utils import *
+from .utils import *
+
 __all__ = [
     # Core utilities
     'ensure_even_dimensions',
@@ -56,4 +70,42 @@ __all__ = [
     
     # HTTP operations
     'make_http_request',
+    
+    # Logging utilities
+    'debug', 'info', 'warning', 'error', 'critical',
+    'log_utils',
+    
+    # Depth utilities
+    'depth_utils',
+    
+    # Turbo utilities
+    'turbo_utils',
+    
+    # Filename utilities
+    'filename_utils',
+    
+    # WebUI utilities
+    'web_ui_utils',
+    
+    # Emoji utilities
+    'emoji_utils',
+    'on', 'off', 'select', 'video', 'image', 'keyframes',
+    
+    # Subtitle utilities  
+    'subtitle_utils',
+    
+    # Image utilities
+    'image_utils',
+    
+    # Options utilities
+    'opt_utils',
+    
+    # Memory utilities
+    'memory_utils',
+    
+    # Fun utilities
+    'fun_utils',
+    
+    # General utilities
+    'utils',
 ] 

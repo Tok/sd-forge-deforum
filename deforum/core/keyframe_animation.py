@@ -8,7 +8,7 @@ Note: FreeU and Kohya HR Fix functionality has been removed.
 import pandas as pd
 import numexpr
 import re
-from .prompt import check_is_number
+from ..prompt.core_prompt_processing import check_is_number
 from modules import scripts, shared
 
 class DeformAnimKeys():

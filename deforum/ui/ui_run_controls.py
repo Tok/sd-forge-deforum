@@ -13,7 +13,7 @@ Functions:
 import gradio as gr
 from modules.ui_components import FormRow, ToolButton
 from .ui_core_components import create_row, create_gr_elem
-from .rendering.util import emoji_utils
+from ..utils import emoji_utils
 
 
 def get_tab_run(d, da):

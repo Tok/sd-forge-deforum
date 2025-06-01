@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
-from ....animation_key_frames import DeformAnimKeys
+from ...keyframe_animation import DeformAnimKeys
 
 
 @dataclass

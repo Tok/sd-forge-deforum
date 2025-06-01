@@ -13,13 +13,10 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Any, Union
 import pandas as pd
 import numpy as np
+from ..core.keyframe_animation import FrameInterpolater
 
 # Backward compatibility alias for tests
-try:
-    from .animation_key_frames import FrameInterpolater
-except ImportError:
-    # Fallback if module not available
-    FrameInterpolater = None
+# FrameInterpolater is now imported from the correct location above
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-
-from ....animation_key_frames import DeformAnimKeys, LooperAnimKeys
+from ...keyframe_animation import DeformAnimKeys, LooperAnimKeys
 
 
 @dataclass(init=True, frozen=True, repr=False, eq=False)

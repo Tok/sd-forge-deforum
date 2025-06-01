@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 import requests
 import os
-from .animation_key_frames import DeformAnimKeys, ControlNetKeys, LooperAnimKeys
-from .rendering.util import log_utils
-from .rich import console
+from ..core.keyframe_animation import DeformAnimKeys, ControlNetKeys, LooperAnimKeys
+from ..utils import log_utils
+from ..utils.rich import console
 from .general_utils import tickOrCross
 
 

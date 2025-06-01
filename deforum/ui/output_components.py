@@ -6,7 +6,7 @@ Contains display elements, outputs, and video processing UI
 import gradio as gr
 from modules.ui_components import FormRow, FormColumn, ToolButton
 from .component_builders import create_gr_elem, create_row
-from .rendering.util import emoji_utils
+from ..utils import emoji_utils
 from .ffmpeg_utils import FFmpegProcessor
 from .gradio_funcs import upload_pics_to_interpolate, upload_vid_to_depth, ncnn_upload_vid_to_upscale
 from ..media.video_audio_pipeline import ffmpeg_stitch_video, direct_stitch_vid_from_frames

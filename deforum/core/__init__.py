@@ -2,38 +2,43 @@
 Core generation and rendering functionality.
 """
 
-from .main_generation_pipeline import *
-from .rendering_engine import *
-from .animation_controller import *
-from .keyframe_animation import *
-from .rendering_modes import *
-from .run_deforum import *
+# Import only modules that don't depend on WebUI for basic functionality
+from .keyframe_animation import DeformAnimKeys, ControlNetKeys, LooperAnimKeys, FrameInterpolater
+
+# Lazy imports for WebUI-dependent modules
+def _lazy_import_generation():
+    """Lazy import of generation modules that depend on WebUI"""
+    try:
+        from . import main_generation_pipeline
+        return main_generation_pipeline
+    except ImportError:
+        return None
+
+def _lazy_import_rendering():
+    """Lazy import of rendering modules that depend on WebUI"""
+    try:
+        from . import rendering_engine, rendering_modes
+        return rendering_engine, rendering_modes
+    except ImportError:
+        return None, None
+
+def _lazy_import_all():
+    """Lazy import of all core modules"""
+    try:
+        from . import animation_controller, run_deforum
+        return animation_controller, run_deforum
+    except ImportError:
+        return None, None
 
 __all__ = [
-    # Main generation
-    'generate_deforum_animation',
-    'process_generation_request',
-    'validate_generation_config',
+    # Always available (no WebUI dependency)
+    'DeformAnimKeys',
+    'ControlNetKeys', 
+    'LooperAnimKeys',
+    'FrameInterpolater',
     
-    # Rendering engine
-    'render_frame',
-    'render_animation_sequence',
-    'apply_post_processing',
-    
-    # Animation control
-    'calculate_animation_params',
-    'interpolate_keyframes',
-    'apply_camera_transforms',
-    'generate_motion_sequence',
-    
-    # Keyframe animation
-    'process_keyframes',
-    'build_animation_sequence',
-    
-    # Rendering modes
-    'get_render_mode',
-    'configure_render_pipeline',
-    
-    # Main execution
-    'run_deforum_animation',
+    # Lazy loading functions
+    '_lazy_import_generation',
+    '_lazy_import_rendering',
+    '_lazy_import_all',
 ] 

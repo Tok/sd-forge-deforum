@@ -14,7 +14,7 @@ Functions:
 import gradio as gr
 from modules.ui_components import FormRow, FormColumn, ToolButton
 from .ui_core_components import create_row, create_gr_elem
-from .rendering.util import emoji_utils
+from ..utils import emoji_utils
 from .defaults import get_gradio_html
 
 

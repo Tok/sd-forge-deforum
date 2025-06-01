@@ -9,7 +9,7 @@ from einops import rearrange
 from modules.shared import state, opts
 from .prompt import check_is_number
 from .general_utils import debug_print
-from .rendering.util import log_utils
+from ..utils import log_utils
 
 
 def sample_from_cv2(sample: np.ndarray) -> torch.Tensor:

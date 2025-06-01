@@ -7,7 +7,7 @@ from tqdm import tqdm
 from typing import Optional, Any
 
 # Import the same color constants as experimental render core
-from ...rendering.util.log_utils import (
+from ....utils.color_constants import (
     HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED, HEX_PURPLE, HEX_YELLOW,
     BLUE, GREEN, ORANGE, RED, PURPLE, YELLOW, RESET_COLOR, BOLD
 )

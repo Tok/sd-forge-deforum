@@ -9,13 +9,20 @@ import shutil
 from modules.shared import opts
 from torch.hub import download_url_to_file
 
-from ..core.util import log_utils
+# Remove direct import to break circular dependency
+# from ..core.util import log_utils
 
 
 def debug_print(message):
     is_debug_mode = opts.data.get("deforum_debug_mode_enabled", False)
     if is_debug_mode:
-        log_utils.debug(message)
+        # Import only when needed to avoid circular dependency
+        try:
+            from . import log_utils
+            log_utils.debug(message)
+        except ImportError:
+            # Fallback to simple print if import fails
+            print(f"DEBUG: {message}")
 
 
 def checksum(filename, hash_factory=hashlib.blake2b, chunk_num_blocks=128):
@@ -90,7 +97,13 @@ def _get_extension_info():
                 return ext
         return None
     except Exception as e:
-        log_utils.error(f"Cannot read extension info: {e}.")
+        # Import only when needed to avoid circular dependency
+        try:
+            from . import log_utils
+            log_utils.error(f"Cannot read extension info: {e}.")
+        except ImportError:
+            # Fallback to simple print if import fails
+            print(f"ERROR: Cannot read extension info: {e}.")
         return None
 
 

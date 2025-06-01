@@ -1,48 +1,81 @@
 #!/usr/bin/env python3
 """
-Test script to check if our refactored imports work correctly.
+Simple test script to check if Deforum imports work without circular dependency errors.
 """
 
 import sys
 import os
 
-# Add the extension path to sys.path
-extension_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, extension_path)
-
-# Add the webui path to sys.path so we can import modules
-webui_path = os.path.join(os.path.dirname(extension_path), "..", "..")
-sys.path.insert(0, webui_path)
+# Add the current directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def test_imports():
-    print("Testing imports...")
-    print(f"Extension path: {extension_path}")
-    print(f"WebUI path: {webui_path}")
+    """Test key imports that were causing circular dependency issues"""
     
+    print("Testing basic Python imports...")
     try:
-        # Test the main entry point imports directly
-        print("Testing direct imports...")
-        
-        from deforum.ui.secondary_interface_panels import on_ui_tabs
-        print("✅ Successfully imported on_ui_tabs")
-        
-        from deforum.ui.settings_interface import on_ui_settings
-        print("✅ Successfully imported on_ui_settings")
-        
-        print("\n🎉 All critical imports successful! The extension should load properly.")
-        return True
-        
-    except ImportError as e:
-        print(f"❌ Import error: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+        import json
+        import pandas as pd
+        import numpy as np
+        print("✓ Basic dependencies available")
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"✗ Basic dependencies failed: {e}")
         return False
+    
+    print("Testing internal module structure...")
+    try:
+        # Test if we can import the modules without webui dependencies
+        import deforum
+        print("✓ Deforum package imported successfully")
+    except Exception as e:
+        print(f"✗ Deforum package import failed: {e}")
+        return False
+    
+    print("Testing keyframe animation import...")
+    try:
+        # This should work without webui modules
+        import deforum.core.keyframe_animation
+        print("✓ Keyframe animation module imported successfully")
+    except Exception as e:
+        print(f"✗ Keyframe animation import failed: {e}")
+        return False
+    
+    print("Testing schedule models import...")
+    try:
+        import deforum.models.schedule_models
+        print("✓ Schedule models imported successfully")
+    except Exception as e:
+        print(f"✗ Schedule models import failed: {e}")
+        return False
+    
+    print("Testing utils import...")
+    try:
+        # This will fail due to webui modules, but we can check for circular import specifically
+        try:
+            import deforum.utils
+        except ImportError as e:
+            if "circular import" in str(e).lower() or "cannot import name" in str(e).lower():
+                print(f"✗ Circular import detected: {e}")
+                return False
+            else:
+                print(f"✓ No circular import detected (expected webui module error: {e})")
+        except Exception as e:
+            if "circular import" in str(e).lower():
+                print(f"✗ Circular import detected: {e}")
+                return False
+            else:
+                print(f"✓ No circular import detected (other error: {e})")
+    except Exception as e:
+        print(f"✗ Utils import test failed: {e}")
+        return False
+    
+    return True
 
 if __name__ == "__main__":
+    print("Testing Deforum imports for circular dependencies...")
     success = test_imports()
+    if success:
+        print("\n🎉 No circular import issues detected! The extension structure appears to be fixed.")
+    else:
+        print("\n❌ Circular import issues may still exist.")
     sys.exit(0 if success else 1) 

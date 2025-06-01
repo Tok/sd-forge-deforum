@@ -25,7 +25,7 @@ except ImportError:
 
 # Try to import DeformAnimKeys, but fall back to standalone parsing if not available
 try:
-    from ....animation_key_frames import DeformAnimKeys
+    from ....core.keyframe_animation import DeformAnimKeys
     DEFORUM_AVAILABLE = True
 except ImportError:
     DEFORUM_AVAILABLE = False

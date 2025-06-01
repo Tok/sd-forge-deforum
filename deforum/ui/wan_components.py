@@ -7,7 +7,7 @@ import gradio as gr
 from types import SimpleNamespace
 from modules.ui_components import FormRow, FormColumn
 from .component_builders import create_gr_elem, create_row
-from .rendering.util import emoji_utils
+from ..utils import emoji_utils
 
 
 def get_tab_wan(dw: SimpleNamespace):

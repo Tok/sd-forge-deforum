@@ -11,7 +11,7 @@ from PIL import Image, ImageOps
 from .generate import generate, isJson
 from .noise import add_noise
 from .animation import anim_frame_warp
-from .animation_key_frames import DeformAnimKeys, LooperAnimKeys
+from .keyframe_animation import DeformAnimKeys, LooperAnimKeys
 from ..media.video_audio_pipeline import get_frame_name, get_next_frame, render_preview
 from .depth import DepthModel
 from .colors import maintain_colors
@@ -30,7 +30,7 @@ from .prompt import prepare_prompt
 from modules.shared import opts, cmd_opts, state, sd_model
 from modules import lowvram, devices, sd_hijack
 from .rendering import experimental_core
-from .rendering.util import log_utils
+from ..utils import log_utils
 from .RAFT import RAFT
 from ..media.video_audio_pipeline import download_audio
 

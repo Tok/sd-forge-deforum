@@ -2,6 +2,7 @@ import os
 from math import ceil
 import tqdm
 from modules.shared import progress_print_out, opts, cmd_opts
+from ..core.keyframe_animation import DeformAnimKeys
 
 class DeforumTQDM:
     def __init__(self, args, anim_args, parseq_args, video_args):
@@ -12,7 +13,6 @@ class DeforumTQDM:
         self._video_args = video_args
 
     def reset(self):
-        from .animation_key_frames import DeformAnimKeys
         from .parseq_adapter import ParseqAdapter
         deforum_total = 0
         # FIXME: get only amount of steps

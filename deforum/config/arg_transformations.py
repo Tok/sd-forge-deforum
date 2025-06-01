@@ -9,7 +9,8 @@ import time
 from types import SimpleNamespace
 import pathlib
 from .general_utils import substitute_placeholders, get_deforum_version, clean_gradio_path_strings
-from ..core.util import log_utils
+from ..utils import log_utils
+from ..utils.color_constants import BOLD, CYAN, RESET_COLOR
 
 # Conditional imports
 try:

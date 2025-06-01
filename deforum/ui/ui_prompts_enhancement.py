@@ -12,7 +12,7 @@ Functions:
 
 import gradio as gr
 from .ui_core_components import create_row
-from .rendering.util import emoji_utils
+from ..utils import emoji_utils
 from .defaults import DeforumAnimPrompts, get_gradio_html
 
 

@@ -6,7 +6,7 @@ from PIL import Image
 from ..util import put_all
 from ..util.utils import create_img, call_or_use_on_cond
 from ...load_images import get_mask, load_img
-from ...rendering.util.call.images import call_get_mask_from_file
+from ...utils.call.images import call_get_mask_from_file
 
 
 @dataclass(init=True, frozen=True, repr=False, eq=False)

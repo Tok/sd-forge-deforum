@@ -20,7 +20,7 @@ from pkg_resources import resource_filename
 
 from .general_utils import checksum, clean_gradio_path_strings, debug_print
 from .http_client import get_http_client
-from .rich import console
+from ..utils.rich import console
 
 SUPPORTED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "bmp", "webp"]
 SUPPORTED_VIDEO_EXTENSIONS = ["mov", "mpeg", "mp4", "m4v", "avi", "mpg", "webm"]

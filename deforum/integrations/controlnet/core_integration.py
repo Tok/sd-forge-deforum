@@ -5,10 +5,10 @@ import numpy as np
 from modules import scripts, shared
 from .gradio_interface import hide_ui_by_cn_status, hide_file_textboxes, ToolButton
 from ...utils.core_utilities import count_files_in_folder, clean_gradio_path_strings, debug_print
-from .rendering.util import emoji_utils
+from ...utils import emoji_utils
 from ...media.video_audio_pipeline import SUPPORTED_IMAGE_EXTENSIONS, SUPPORTED_VIDEO_EXTENSIONS, get_extension_if_valid, \
     get_quick_vid_info, vid2frames, convert_image
-from .animation_key_frames import ControlNetKeys
+from ...core.keyframe_animation import ControlNetKeys
 from .load_images import load_image
 
 from lib_controlnet.global_state import update_controlnet_filenames, get_all_preprocessor_names, \
