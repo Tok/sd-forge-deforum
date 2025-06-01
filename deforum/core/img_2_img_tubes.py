@@ -6,8 +6,8 @@ from PIL import ImageOps, Image
 from cv2.typing import MatLike
 
 from .data.render_data import RenderData
-from .util import image_utils, turbo_utils
-from .util.fun_utils import tube
+from ..utils import image_utils, turbo_utils
+from ..utils.fun_utils import tube
 from ..colors import maintain_colors
 from ..masks import do_overlay_mask
 
