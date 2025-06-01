@@ -3,12 +3,41 @@ import cv2
 import torch
 import numpy as np
 from .general_utils import download_file_with_checksum
-from midas.dpt_depth import DPTDepthModel
-from midas.transforms import Resize, NormalizeImage, PrepareForNet
+
+# Conditional imports for optional MiDaS depth estimation dependencies
+try:
+    from midas.dpt_depth import DPTDepthModel
+    from midas.transforms import Resize, NormalizeImage, PrepareForNet
+    MIDAS_AVAILABLE = True
+except ImportError:
+    MIDAS_AVAILABLE = False
+    # Create dummy classes for when MiDaS is not available
+    class DPTDepthModel:
+        def __init__(self, *args, **kwargs):
+            raise ImportError("MiDaS is not installed. Please install MiDaS for depth estimation functionality.")
+    
+    class Resize:
+        def __init__(self, *args, **kwargs):
+            raise ImportError("MiDaS is not installed. Please install MiDaS for depth estimation functionality.")
+    
+    class NormalizeImage:
+        def __init__(self, *args, **kwargs):
+            raise ImportError("MiDaS is not installed. Please install MiDaS for depth estimation functionality.")
+    
+    class PrepareForNet:
+        def __init__(self, *args, **kwargs):
+            raise ImportError("MiDaS is not installed. Please install MiDaS for depth estimation functionality.")
+
 import torchvision.transforms as T
 
 class MidasDepth:
     def __init__(self, models_path, device, half_precision=True, midas_model_type='Midas-3-Hybrid'):
+        # Check if MiDaS is available
+        if not MIDAS_AVAILABLE:
+            print(f"❌ MiDaS depth estimation requested but MiDaS is not installed.")
+            print("Please install MiDaS for depth estimation functionality.")
+            raise ImportError("MiDaS is not installed. Please install MiDaS for depth estimation functionality.")
+            
         if midas_model_type.lower() == 'midas-3.1-beitlarge':
             self.midas_model_filename = 'dpt_beit_large_512.pt'
             self.midas_model_checksum='66cbb00ea7bccd6e43d3fd277bd21002d8d8c2c5c487e5fcd1e1d70c691688a19122418b3ddfa94e62ab9f086957aa67bbec39afe2b41c742aaaf0699ee50b33'
