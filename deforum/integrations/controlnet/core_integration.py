@@ -8,7 +8,6 @@ from ...utils.core_utilities import count_files_in_folder, clean_gradio_path_str
 from ...utils import emoji_utils
 from ...media.video_audio_pipeline import SUPPORTED_IMAGE_EXTENSIONS, SUPPORTED_VIDEO_EXTENSIONS, get_extension_if_valid, \
     get_quick_vid_info, vid2frames, convert_image
-from ...core.keyframe_animation import ControlNetKeys
 from ...media.image_loading import load_image
 
 from lib_controlnet.global_state import update_controlnet_filenames, get_all_preprocessor_names, \
@@ -193,6 +192,9 @@ def controlnet_component_names():
     ]]
 
 def get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=0):
+    # Import ControlNetKeys here to avoid circular import
+    from ...core.keyframe_animation import ControlNetKeys
+    
     CnSchKeys = ControlNetKeys(anim_args, controlnet_args) if not parseq_adapter.use_parseq else parseq_adapter.cn_keys
 
     def read_cn_data(cn_idx):
