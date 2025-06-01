@@ -117,19 +117,15 @@ def on_ui_tabs():
                     load_settings_btn = gr.Button('Load All Settings', elem_id='deforum_load_settings_btn')
                     load_video_settings_btn = gr.Button('Load Video Settings', elem_id='deforum_load_video_settings_btn')
 
-        # Handle missing components by creating dummy values for them
-        # This prevents KeyErrors while maintaining backward compatibility
-        missing_components = {}
-        for name in get_component_names():
-            if name not in components:
-                print(f"⚠️ Creating dummy component for missing: {name}")
-                # Create a dummy component - use a hidden textbox as a safe default
-                missing_components[name] = gr.Textbox(value="", visible=False, elem_id=f"dummy_{name}")
+        # Filter out missing components without creating dummy Gradio components
+        # This prevents KeyErrors while not interfering with extension loading
+        available_component_names = [name for name in get_component_names() if name in components]
+        missing_component_names = [name for name in get_component_names() if name not in components]
         
-        # Merge dummy components with actual components
-        all_components = {**components, **missing_components}
+        if missing_component_names:
+            print(f"⚠️ Skipping {len(missing_component_names)} missing components: {missing_component_names[:5]}{'...' if len(missing_component_names) > 5 else ''}")
         
-        component_list = [all_components[name] for name in get_component_names()]
+        component_list = [components[name] for name in available_component_names]
 
         submit.click(
                     fn=wrap_gradio_gpu_call(run_deforum),
@@ -143,18 +139,17 @@ def on_ui_tabs():
                     ],
                 )
         
-        settings_component_names = get_settings_component_names()
-        settings_missing_components = {}
-        for name in settings_component_names:
-            if name not in all_components:
-                print(f"⚠️ Creating dummy settings component for missing: {name}")
-                settings_missing_components[name] = gr.Textbox(value="", visible=False, elem_id=f"dummy_settings_{name}")
+        # Apply same filtering approach to settings components
+        available_settings_names = [name for name in get_settings_component_names() if name in components]
+        missing_settings_names = [name for name in get_settings_component_names() if name not in components]
         
-        # Merge settings dummy components
-        all_settings_components = {**all_components, **settings_missing_components}
+        if missing_settings_names:
+            print(f"⚠️ Skipping {len(missing_settings_names)} missing settings components")
+            
+        settings_component_list = [components[name] for name in available_settings_names]
         
-        settings_component_list = [all_settings_components[name] for name in settings_component_names]
-        video_settings_component_list = [all_settings_components[name] for name in list(DeforumOutputArgs().keys())]
+        available_video_names = [name for name in list(DeforumOutputArgs().keys()) if name in components]
+        video_settings_component_list = [components[name] for name in available_video_names]
 
         save_settings_btn.click(
             fn=wrap_gradio_call(save_settings),
@@ -214,10 +209,11 @@ def on_ui_tabs():
         outputs = settings_component_list
         updated_values = wrapped_fn(*inputs, *outputs)[0]
         
-        # Update all the component values
-        settings_component_name_to_obj = {name: component for name, component in zip(get_settings_component_names(), settings_component_list)}
+        # Update all the component values - only for components that actually exist
+        available_settings_names_set = set(available_settings_names)
+        settings_component_name_to_obj = {name: component for name, component in zip(available_settings_names, settings_component_list)}
         for key, value in updated_values.items():
-            if key in settings_component_name_to_obj:
+            if key in available_settings_names_set and key in settings_component_name_to_obj:
                 settings_component_name_to_obj[key].value = value['value']
     # Always load settings on startup - either from persistent settings path (if enabled),
     # from webui root, or from the fork's default settings
