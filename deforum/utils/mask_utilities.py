@@ -4,7 +4,7 @@ import gc
 import numpy as np
 from PIL import Image, ImageOps
 from ..media.video_audio_pipeline import get_frame_name
-from .load_images import load_image
+from ..media.image_loading import load_image
 
 def do_overlay_mask(args, anim_args, img, frame_idx, is_bgr_array=False):
     if is_bgr_array:
