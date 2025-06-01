@@ -1,7 +1,7 @@
 import os
 
 from . import filename_utils, memory_utils
-from ...depth import DepthModel
+from ..depth import DepthModel
 
 
 def is_depth_required_for_hybrid_composite_mask(anim_args):
