@@ -1882,9 +1882,8 @@ def create_keyframe_distribution_info_tab():
 
 
 def create_accordion_md_row(name, markdown, is_open=False):
-    with FormRow():
-        with gr.Accordion(name, open=is_open):
-            gr.Markdown(markdown)
+    with gr.Accordion(name, open=is_open):
+        gr.Markdown(markdown)
 
 
 # QwenPromptExpander and Movement Analysis Event Handlers - moved outside for proper import

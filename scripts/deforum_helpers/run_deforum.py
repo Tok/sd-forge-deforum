@@ -34,9 +34,6 @@ from .rendering.util.log_utils import UNDERLINE, YELLOW, ORANGE, RED, RESET_COLO
 from .settings import save_settings_from_animation_run
 from .deforum_controlnet import num_of_models
 
-from scripts.deforum_api import JobStatusTracker
-from scripts.deforum_api_models import DeforumJobPhase
-
 
 # this global param will contain the latest generated video HTML-data-URL info (for preview inside the UI when needed)
 last_vid_data = None
@@ -70,8 +67,6 @@ def run_deforum(*args):
     job_id_prefix = f"{args[0]}"
     for i in range(times_to_run): # run for as many times as we need
         job_id = f"{job_id_prefix}-{i}"
-        JobStatusTracker().update_phase(job_id, DeforumJobPhase.PREPARING)
-
         print(f"{UNDERLINE}{YELLOW}Zirteqs Fluxabled Fork of the Deforum Fork for WebUI Forge{RESET_COLOR}")
         print(f"Version: {get_commit_date()} | Git commit: {get_deforum_version()}")
         print(f"Starting job {job_id}...")
@@ -80,7 +75,6 @@ def run_deforum(*args):
         try:
             args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, wan_args = process_args(args_dict, i)
         except Exception as e:
-            JobStatusTracker().fail_job(job_id, error_type="TERMINAL", message="Invalid arguments.")
             print("\n*START OF TRACEBACK*")
             traceback.print_exc()
             print("*END OF TRACEBACK*\nUser friendly error message:")
@@ -91,7 +85,6 @@ def run_deforum(*args):
                 print(f"{ORANGE}WARNING:{RESET_COLOR} skipped running from the following setting file, as it contains an invalid JSON: {os.path.basename(args_dict['custom_settings_file'][i].name)}")
                 continue
             else:
-                JobStatusTracker().fail_job(job_id, error_type="TERMINAL", message="Invalid settings file.")
                 print(f"{RED}ERROR!{RESET_COLOR} Couldn't load data from '{os.path.basename(args_dict['custom_settings_file'][i].name)}'. Make sure it's a valid JSON using a JSON validator")
                 return None, None, None, f"Couldn't load data from '{os.path.basename(args_dict['custom_settings_file'][i].name)}'. Make sure it's a valid JSON using a JSON validator"
 
@@ -117,8 +110,7 @@ def run_deforum(*args):
             shared.total_tqdm = DeforumTQDM(args, anim_args, parseq_args, video_args)
 
         try:  # dispatch to appropriate renderer
-            JobStatusTracker().update_phase(job_id, DeforumJobPhase.GENERATING)
-            JobStatusTracker().update_output_info(job_id, outdir=args.outdir, timestring=root.timestring)
+            print(f"{YELLOW}Starting job {job_id}...{RESET_COLOR}")
             if anim_args.animation_mode == '2D' or anim_args.animation_mode == '3D':
                 if anim_args.use_mask_video: 
                     render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)  # allow mask video without an input video
@@ -158,7 +150,6 @@ def run_deforum(*args):
             else:
                 print('Other modes are not available yet!')
         except Exception as e:
-            JobStatusTracker().fail_job(job_id, error_type="RETRYABLE", message="Generation error.")
             print("\n*START OF TRACEBACK*")
             traceback.print_exc()
             print("*END OF TRACEBACK*\n")
@@ -174,8 +165,7 @@ def run_deforum(*args):
             shared.opts.data["eta_ddim"] = root.initial_ddim_eta
             shared.opts.data["eta_ancestral"] = root.initial_ancestral_eta
         
-        JobStatusTracker().update_phase(job_id, DeforumJobPhase.POST_PROCESSING)
-
+        print(f"{YELLOW}Starting job {job_id}...{RESET_COLOR}")
         if video_args.store_frames_in_ram:
             dump_frames_cache(root)
         
@@ -267,6 +257,6 @@ def run_deforum(*args):
             ...
 
         if (not shared.state.interrupted):
-            JobStatusTracker().complete_job(root.job_id)
+            print(f"{YELLOW}Completed job {job_id}{RESET_COLOR}")
 
     return processed.images, root.timestring, generation_info_js, processed.info

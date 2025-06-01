@@ -400,3 +400,11 @@ https://github.com/Tok/sd-forge-deforum/blob/main/scripts/default_settings.txt
 * **Import errors**: Restart WebUI after installation
 * **Missing dependencies**: Run `pip install -r requirements.txt`
 * **Performance issues**: Check VRAM usage and reduce settings
+
+## Additional Removed Features
+
+### HTTP API Removed
+- **❌ HTTP REST API** - External API access completely removed for simplification
+  - Removed: `deforum_api.py`, `deforum_api_models.py`, and all related test files
+  - **Note**: The Gradio web interface remains fully functional - only external HTTP API access has been removed
+  - **For API access**: Use the original [Deforum extension](https://github.com/deforum-art/sd-forge-deforum) instead

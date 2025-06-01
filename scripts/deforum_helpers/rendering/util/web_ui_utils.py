@@ -1,8 +1,6 @@
 import time
 
 # noinspection PyUnresolvedReferences
-from deforum_api import JobStatusTracker
-# noinspection PyUnresolvedReferences
 from modules.shared import state
 
 WEB_UI_SLEEP_DELAY = 0.1
@@ -27,7 +25,7 @@ def update_job(data, i):
 
 def update_status_tracker(data, i):
     progress = i / data.args.anim_args.max_frames
-    JobStatusTracker().update_phase(data.args.root.job_id, phase="GENERATING", progress=progress)
+    # JobStatusTracker().update_phase(data.args.root.job_id, phase="GENERATING", progress=progress)
 
 
 def update_progress_during_cadence(data, i):

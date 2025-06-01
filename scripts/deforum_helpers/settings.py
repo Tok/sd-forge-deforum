@@ -25,7 +25,7 @@ from types import SimpleNamespace
 import modules.shared as sh
 from modules.sd_models import FakeInitialModel
 
-from .args import DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, get_settings_component_names, \
+from .args import DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, get_settings_component_names, \
     pack_args, WanArgs
 from .defaults import mask_fill_choices, get_camera_shake_list
 from .deforum_controlnet import controlnet_component_names
@@ -56,7 +56,7 @@ def validate_and_migrate_settings(settings_path, jdata):
     
     # Get current expected fields from all argument functions
     expected_fields = set()
-    for args_func in [DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, WanArgs]:
+    for args_func in [DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, WanArgs]:
         expected_fields.update(args_func().keys())
     
     # Add other expected fields
@@ -97,7 +97,7 @@ def validate_and_migrate_settings(settings_path, jdata):
     migrated_data = jdata.copy()
     
     # Fill in missing fields with defaults
-    for args_func in [DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, LoopArgs, WanArgs]:
+    for args_func in [DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, WanArgs]:
         defaults = args_func()
         for field, config in defaults.items():
             if field not in migrated_data and field not in excluded_fields:
@@ -377,8 +377,6 @@ def load_all_settings(*args, ui_launch=False, update_path=False, **kwargs):
                 return ({key: gr.update(value=value) for key, value in data.items()},)
             else:
                 return [settings_path] + list(data.values()) + [""]
-        with open(settings_path, "r", encoding='utf-8') as f:
-            jdata = json.load(f)
     
     # Validate and potentially migrate settings
     is_valid, migrated_data, warnings = validate_and_migrate_settings(settings_path, jdata)
