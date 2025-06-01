@@ -15,7 +15,7 @@ from ..config.defaults import get_samplers_list, get_schedulers_list
 from ..utils.opts_overrider import A1111OptionsOverrider
 import cv2
 import numpy as np
-from .data_models import ProcessingResult
+from ..models.data_models import ProcessingResult
 
 from .deforum_scripts_overrides import add_forge_script_to_deforum_run, initialise_forge_scripts
 
