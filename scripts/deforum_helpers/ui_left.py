@@ -18,7 +18,7 @@ from types import SimpleNamespace
 import gradio as gr
 from .defaults import get_gradio_html
 from .gradio_funcs import change_css, handle_change_functions
-from .args import DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, RootArgs, LoopArgs, WanArgs
+from .args import DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, RootArgs, WanArgs
 from .deforum_controlnet import setup_controlnet_ui
 from .ui_elements import (get_tab_prompts, get_tab_init, get_tab_output, get_tab_ffmpeg, 
                           get_tab_setup, get_tab_animation, get_tab_advanced)
@@ -31,7 +31,7 @@ def set_arg_lists():
     dv = SimpleNamespace(**DeforumOutputArgs())  # default video args
     dr = SimpleNamespace(**RootArgs())  # ROOT args
     dw = SimpleNamespace(**WanArgs())  # Wan args
-    dloopArgs = SimpleNamespace(**LoopArgs())  # Guided imgs args
+    dloopArgs = SimpleNamespace()  # Placeholder for removed LoopArgs
     return d, da, dp, dv, dr, dw, dloopArgs
 
 def wan_generate_video():

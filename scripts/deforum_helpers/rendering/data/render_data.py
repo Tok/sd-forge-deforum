@@ -17,7 +17,7 @@ from ..util import depth_utils, log_utils, memory_utils, opt_utils
 from ..util.call.images import call_get_mask_from_file_with_frame
 from ..util.call.mask import call_compose_mask_with_check
 from ..util.call.video_and_audio import call_get_next_frame
-from ...args import DeforumArgs, DeforumAnimArgs, LoopArgs, ParseqArgs, RootArgs, FreeUArgs, KohyaHRFixArgs
+from ...args import DeforumArgs, DeforumAnimArgs, ParseqArgs, RootArgs, FreeUArgs, KohyaHRFixArgs
 from ...deforum_controlnet import unpack_controlnet_vids, is_controlnet_enabled
 from ...generate import (isJson)
 from ...parseq_adapter import ParseqAdapter
@@ -31,7 +31,7 @@ class RenderInitArgs:
     parseq_args: ParseqArgs = None
     anim_args: DeforumAnimArgs = None
     video_args: Any = None
-    loop_args: LoopArgs = None
+    loop_args: Any = None
     controlnet_args: Any = None
     freeu_args: FreeUArgs = None
     kohya_hrfix_args: KohyaHRFixArgs = None
