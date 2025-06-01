@@ -312,29 +312,208 @@ def get_tab_keyframes(d, da, dloopArgs):
 
 def get_tab_prompts(da):
     with gr.TabItem(f"{emoji_utils.prompts()} Prompts"):
-        # PROMPTS INFO ACCORD
-        with gr.Accordion(label='*Important* notes on Prompts', elem_id='prompts_info_accord',
-                          open=False) as prompts_info_accord:
-            gr.HTML(value=get_gradio_html('prompts'))
-        animation_prompts = create_row(
-            gr.Textbox(label="Prompts", lines=8, interactive=True, value=DeforumAnimPrompts(),
-                       info="""Full prompts list in a JSON format. The value on left side is the frame number and
-                            its presence also defines the frame as a keyframe if a 'keyframe distribution' mode
-                            is active. Duplicating the same prompt multiple times to define keyframes
-                            is therefore expected and fine."""))
-        animation_prompts_positive = create_row(
-            gr.Textbox(label="Prompts positive", lines=1, interactive=True,
-                       placeholder="words in here will be added to the start of all positive prompts"))
-        animation_prompts_negative = create_row(
-            gr.Textbox(label="Prompts negative", value="nsfw, nude", lines=1, interactive=True,
-                       placeholder="words here will be added to the end of all negative prompts.  ignored with Flux."))
-        # COMPOSABLE MASK SCHEDULING ACCORD
-        with gr.Accordion('Composable Mask scheduling', open=False):
-            gr.HTML(value=get_gradio_html('composable_masks'))
-            mask_schedule = create_row(da.mask_schedule)
-            use_noise_mask = create_row(da.use_noise_mask)
-            noise_mask_schedule = create_row(da.noise_mask_schedule)
-
+        # Main prompts in tabs for better organization
+        with gr.Tabs():
+            # ========== MAIN PROMPTS TAB ==========
+            with gr.TabItem("📝 Main Prompts"):
+                # PROMPTS INFO ACCORD
+                with gr.Accordion(label='*Important* notes on Prompts', elem_id='prompts_info_accord',
+                                  open=False) as prompts_info_accord:
+                    gr.HTML(value=get_gradio_html('prompts'))
+                animation_prompts = create_row(
+                    gr.Textbox(label="Prompts", lines=8, interactive=True, value=DeforumAnimPrompts(),
+                               info="""Full prompts list in a JSON format. The value on left side is the frame number and
+                                    its presence also defines the frame as a keyframe if a 'keyframe distribution' mode
+                                    is active. Duplicating the same prompt multiple times to define keyframes
+                                    is therefore expected and fine."""))
+                animation_prompts_positive = create_row(
+                    gr.Textbox(label="Prompts positive", lines=1, interactive=True,
+                               placeholder="words in here will be added to the start of all positive prompts"))
+                animation_prompts_negative = create_row(
+                    gr.Textbox(label="Prompts negative", value="nsfw, nude", lines=1, interactive=True,
+                               placeholder="words here will be added to the end of all negative prompts.  ignored with Flux."))
+                # COMPOSABLE MASK SCHEDULING ACCORD
+                with gr.Accordion('Composable Mask scheduling', open=False):
+                    gr.HTML(value=get_gradio_html('composable_masks'))
+                    mask_schedule = create_row(da.mask_schedule)
+                    use_noise_mask = create_row(da.use_noise_mask)
+                    noise_mask_schedule = create_row(da.noise_mask_schedule)
+            
+            # ========== AI ENHANCEMENT TAB ==========
+            with gr.TabItem("🎨 AI Enhancement"):
+                with gr.Accordion("ℹ️ AI Enhancement Guide", open=False):
+                    gr.HTML("""
+                    <div style="padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px; margin: 10px 0;">
+                        <h3>🎨 AI Prompt Enhancement</h3>
+                        <p><strong>What it does:</strong> Uses AI to enhance your prompts with better descriptions, artistic details, and consistent styling.</p>
+                        
+                        <h4>🎯 Style & Theme System:</h4>
+                        <ul>
+                            <li><strong>Style:</strong> Controls the overall artistic approach (photorealistic, anime, oil painting, etc.)</li>
+                            <li><strong>Theme:</strong> Adds mood/atmosphere (cyberpunk, nature, minimal, etc.)</li>
+                            <li><strong>Consistency:</strong> Applied to ALL prompts for coherent video sequences</li>
+                        </ul>
+                        
+                        <h4>⚡ For I2V Chaining with Wan:</h4>
+                        <p>Styles and themes ensure smooth transitions between video clips. Each clip maintains the same visual style.</p>
+                        
+                        <h4>🎬 For Pure Deforum + Flux:</h4>
+                        <p>Creates cinematic consistency across animation frames with enhanced artistic descriptions.</p>
+                    </div>
+                    """)
+                
+                # Style and Theme Selection
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        style_dropdown = gr.Dropdown(
+                            label="🎨 Visual Style",
+                            choices=[
+                                "Photorealistic",
+                                "Cinematic",
+                                "Anime/Manga", 
+                                "Oil Painting",
+                                "Watercolor",
+                                "Digital Art",
+                                "3D Render",
+                                "Sketch/Drawing",
+                                "Vintage Film",
+                                "Studio Photography",
+                                "Street Photography",
+                                "Fine Art",
+                                "Impressionist",
+                                "Pop Art",
+                                "Minimalist"
+                            ],
+                            value="Photorealistic",
+                            info="Main artistic style - affects overall visual approach"
+                        )
+                        
+                        custom_style = gr.Textbox(
+                            label="🎭 Custom Style",
+                            placeholder="e.g., 'neon-lit cyberpunk with holographic elements'",
+                            info="Override style dropdown with custom text"
+                        )
+                    
+                    with gr.Column(scale=1):
+                        theme_dropdown = gr.Dropdown(
+                            label="🌍 Theme/Atmosphere",
+                            choices=[
+                                "None",
+                                "Cyberpunk",
+                                "Synthwave/Vaporwave", 
+                                "Frutiger Aero",
+                                "Steampunk",
+                                "Post-Apocalyptic",
+                                "Nature/Organic",
+                                "Urban/Metropolitan",
+                                "Retro-Futuristic",
+                                "Noir/Moody",
+                                "Ethereal/Dreamy",
+                                "Industrial/Brutalist",
+                                "Art Deco",
+                                "Bauhaus/Minimal",
+                                "Cosmic/Space",
+                                "Medieval Fantasy",
+                                "Tropical Paradise",
+                                "Winter Wonderland",
+                                "Desert Mystique",
+                                "Underwater World"
+                            ],
+                            value="None",
+                            info="Thematic atmosphere - adds mood and environment details"
+                        )
+                        
+                        custom_theme = gr.Textbox(
+                            label="🏛️ Custom Theme",
+                            placeholder="e.g., 'ancient temples with golden light'",
+                            info="Override theme dropdown with custom text"
+                        )
+                
+                # Random and Reset Controls
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        random_style_btn = gr.Button("🎲 Random Style", variant="secondary")
+                        random_theme_btn = gr.Button("🎲 Random Theme", variant="secondary")
+                        random_both_btn = gr.Button("🎲 Random Both", variant="primary")
+                    
+                    with gr.Column(scale=1):
+                        reset_to_photo_btn = gr.Button("📷 Reset to Photorealistic", variant="secondary")
+                        cycle_creative_btn = gr.Button("🌈 Cycle Creative Themes", variant="secondary")
+                
+                # AI Model Selection
+                with gr.Row():
+                    with gr.Column(scale=2):
+                        qwen_model_dropdown = gr.Dropdown(
+                            label="🤖 AI Enhancement Model",
+                            choices=[
+                                "Auto-Select",
+                                "Qwen2.5-0.5B-Instruct",
+                                "Qwen2.5-1.5B-Instruct", 
+                                "Qwen2.5-3B-Instruct",
+                                "Qwen2.5-7B-Instruct",
+                                "Qwen2.5-14B-Instruct"
+                            ],
+                            value="Auto-Select",
+                            info="AI model for prompt enhancement - Auto-Select chooses based on available VRAM"
+                        )
+                    
+                    with gr.Column(scale=1):
+                        qwen_language = gr.Dropdown(
+                            label="🌐 Language",
+                            choices=["English", "Chinese", "Japanese", "Korean", "French", "German", "Spanish"],
+                            value="English",
+                            info="Enhancement language"
+                        )
+                        
+                        qwen_auto_download = gr.Checkbox(
+                            label="📥 Auto-Download Models",
+                            value=True,
+                            info="Automatically download AI models when needed"
+                        )
+                
+                # Enhancement Buttons
+                with gr.Row():
+                    with gr.Column():
+                        enhance_deforum_btn = gr.Button(
+                            "✨ Enhance Deforum Prompts",
+                            variant="primary",
+                            size="lg"
+                        )
+                        
+                        enhance_wan_btn = gr.Button(
+                            "🎬 Enhance Wan Prompts", 
+                            variant="primary",
+                            size="lg"
+                        )
+                    
+                    with gr.Column():
+                        apply_style_deforum_btn = gr.Button(
+                            "🎨 Apply Style to Deforum Only",
+                            variant="secondary"
+                        )
+                        
+                        apply_style_wan_btn = gr.Button(
+                            "🎭 Apply Style to Wan Only",
+                            variant="secondary"
+                        )
+                
+                # Status and Progress
+                enhancement_status = gr.Textbox(
+                    label="📊 Enhancement Status",
+                    lines=8,
+                    interactive=False,
+                    value="Ready for AI enhancement! Select your style and theme above, then click enhance buttons.",
+                    info="Progress and results will appear here"
+                )
+                
+                enhancement_progress = gr.Textbox(
+                    label="⏳ Progress",
+                    lines=3,
+                    interactive=False,
+                    value="Waiting...",
+                    info="Real-time progress updates"
+                )
+    
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 

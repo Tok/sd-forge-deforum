@@ -754,4 +754,149 @@ def setup_deforum_left_side_ui():
     except Exception as e:
         print(f"⚠️ Failed to set up validation buttons: {e}")
 
+    # ========== NEW: Connect AI Enhancement Buttons ==========
+    try:
+        print("🔗 Connecting AI Enhancement buttons...")
+        
+        # Import the new handlers
+        from .prompt_enhancement_handlers import (
+            random_style_handler, random_theme_handler, random_both_handler,
+            reset_to_photorealistic_handler, cycle_creative_themes_handler,
+            enhance_deforum_prompts_handler, enhance_wan_prompts_handler_with_style,
+            apply_style_only_handler
+        )
+        
+        # Connect random style/theme buttons
+        if 'random_style_btn' in locals():
+            locals()['random_style_btn'].click(
+                fn=random_style_handler,
+                inputs=[],
+                outputs=[locals()['style_dropdown']]
+            )
+            print("✅ Connected random style button")
+        
+        if 'random_theme_btn' in locals():
+            locals()['random_theme_btn'].click(
+                fn=random_theme_handler,
+                inputs=[],
+                outputs=[locals()['theme_dropdown']]
+            )
+            print("✅ Connected random theme button")
+        
+        if 'random_both_btn' in locals():
+            locals()['random_both_btn'].click(
+                fn=random_both_handler,
+                inputs=[],
+                outputs=[locals()['style_dropdown'], locals()['theme_dropdown']]
+            )
+            print("✅ Connected random both button")
+        
+        if 'reset_to_photo_btn' in locals():
+            locals()['reset_to_photo_btn'].click(
+                fn=reset_to_photorealistic_handler,
+                inputs=[],
+                outputs=[locals()['style_dropdown'], locals()['theme_dropdown'], 
+                        locals()['custom_style'], locals()['custom_theme']]
+            )
+            print("✅ Connected reset to photorealistic button")
+        
+        if 'cycle_creative_btn' in locals():
+            locals()['cycle_creative_btn'].click(
+                fn=cycle_creative_themes_handler,
+                inputs=[],
+                outputs=[locals()['theme_dropdown']]
+            )
+            print("✅ Connected cycle creative themes button")
+        
+        # Connect enhancement buttons
+        if 'enhance_deforum_btn' in locals():
+            locals()['enhance_deforum_btn'].click(
+                fn=enhance_deforum_prompts_handler,
+                inputs=[
+                    locals()['animation_prompts'],  # Current Deforum prompts
+                    locals()['style_dropdown'],
+                    locals()['theme_dropdown'],
+                    locals()['custom_style'],
+                    locals()['custom_theme'],
+                    locals()['qwen_model_dropdown'],
+                    locals()['qwen_language'],
+                    locals()['qwen_auto_download']
+                ],
+                outputs=[
+                    locals()['animation_prompts'],  # Update the main prompts field
+                    locals()['enhancement_status'],
+                    locals()['enhancement_progress']
+                ]
+            )
+            print("✅ Connected enhance Deforum prompts button")
+        
+        if 'enhance_wan_btn' in locals() and 'wan_enhanced_prompts' in locals():
+            locals()['enhance_wan_btn'].click(
+                fn=enhance_wan_prompts_handler_with_style,
+                inputs=[
+                    locals()['wan_enhanced_prompts'],  # Current Wan prompts
+                    locals()['style_dropdown'],
+                    locals()['theme_dropdown'],
+                    locals()['custom_style'],
+                    locals()['custom_theme'],
+                    locals()['qwen_model_dropdown'],
+                    locals()['qwen_language'],
+                    locals()['qwen_auto_download']
+                ],
+                outputs=[
+                    locals()['wan_enhanced_prompts'],  # Update the Wan prompts field
+                    locals()['enhancement_status'],
+                    locals()['enhancement_progress']
+                ]
+            )
+            print("✅ Connected enhance Wan prompts button")
+        
+        # Connect style-only application buttons
+        if 'apply_style_deforum_btn' in locals():
+            def apply_style_deforum_wrapper(animation_prompts, style_dropdown, theme_dropdown, custom_style, custom_theme):
+                return apply_style_only_handler(animation_prompts, style_dropdown, theme_dropdown, custom_style, custom_theme, "Deforum")
+            
+            locals()['apply_style_deforum_btn'].click(
+                fn=apply_style_deforum_wrapper,
+                inputs=[
+                    locals()['animation_prompts'],
+                    locals()['style_dropdown'],
+                    locals()['theme_dropdown'],
+                    locals()['custom_style'],
+                    locals()['custom_theme']
+                ],
+                outputs=[
+                    locals()['animation_prompts'],
+                    locals()['enhancement_status']
+                ]
+            )
+            print("✅ Connected apply style to Deforum button")
+        
+        if 'apply_style_wan_btn' in locals() and 'wan_enhanced_prompts' in locals():
+            def apply_style_wan_wrapper(wan_prompts, style_dropdown, theme_dropdown, custom_style, custom_theme):
+                return apply_style_only_handler(wan_prompts, style_dropdown, theme_dropdown, custom_style, custom_theme, "Wan")
+            
+            locals()['apply_style_wan_btn'].click(
+                fn=apply_style_wan_wrapper,
+                inputs=[
+                    locals()['wan_enhanced_prompts'],
+                    locals()['style_dropdown'],
+                    locals()['theme_dropdown'],
+                    locals()['custom_style'],
+                    locals()['custom_theme']
+                ],
+                outputs=[
+                    locals()['wan_enhanced_prompts'],
+                    locals()['enhancement_status']
+                ]
+            )
+            print("✅ Connected apply style to Wan button")
+        
+        print("✅ All AI Enhancement buttons connected successfully!")
+        
+    except Exception as e:
+        print(f"⚠️ Failed to connect AI Enhancement buttons: {e}")
+        import traceback
+        traceback.print_exc()
+
     return locals()
