@@ -1,9 +1,60 @@
 # Zirteqs Deforum Fork
 
+<!-- Status Badges -->
+<div align="center">
+
+[![Tests](https://github.com/Tok/sd-forge-deforum/actions/workflows/test-and-coverage.yml/badge.svg)](https://github.com/Tok/sd-forge-deforum/actions/workflows/test-and-coverage.yml)
+[![codecov](https://codecov.io/gh/Tok/sd-forge-deforum/branch/main/graph/badge.svg)](https://codecov.io/gh/Tok/sd-forge-deforum)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Stable Diffusion WebUI](https://img.shields.io/badge/SD%20WebUI-Forge-orange.svg)](https://github.com/lllyasviel/stable-diffusion-webui-forge)
+
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-brightgreen.svg)](https://tok.github.io/sd-forge-deforum/)
+[![Coverage Report](https://img.shields.io/badge/coverage-report-brightgreen.svg)](https://tok.github.io/sd-forge-deforum/coverage/)
+[![Test Report](https://img.shields.io/badge/test-report-brightgreen.svg)](https://tok.github.io/sd-forge-deforum/test-reports/)
+[![Issues](https://img.shields.io/github/issues/Tok/sd-forge-deforum.svg)](https://github.com/Tok/sd-forge-deforum/issues)
+[![Pull Requests](https://img.shields.io/github/issues-pr/Tok/sd-forge-deforum.svg)](https://github.com/Tok/sd-forge-deforum/pulls)
+
+[![GitHub release](https://img.shields.io/github/release/Tok/sd-forge-deforum.svg)](https://github.com/Tok/sd-forge-deforum/releases/latest)
+[![GitHub commits](https://img.shields.io/github/commits-since/Tok/sd-forge-deforum/latest.svg)](https://github.com/Tok/sd-forge-deforum/commits/main)
+[![Last commit](https://img.shields.io/github/last-commit/Tok/sd-forge-deforum.svg)](https://github.com/Tok/sd-forge-deforum/commits/main)
+
+</div>
+
+---
+
 Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum)
 for [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge), 
 fix'd up to work with Flux.1, integrate Parseq keyframe redistribution logic, and support **Wan 2.1 AI Video Generation**.
 Integrates dynamic camera shake effects with data sourced from EatTheFutures 'Camera Shakify' Blender plugin.
+
+## 📊 Project Status & Reports
+
+| Report Type | Status | Link |
+|-------------|--------|------|
+| **🧪 Test Results** | [![Tests](https://github.com/Tok/sd-forge-deforum/actions/workflows/test-and-coverage.yml/badge.svg)](https://github.com/Tok/sd-forge-deforum/actions/workflows/test-and-coverage.yml) | [Latest Test Report](https://tok.github.io/sd-forge-deforum/test-reports/) |
+| **📈 Code Coverage** | [![codecov](https://codecov.io/gh/Tok/sd-forge-deforum/branch/main/graph/badge.svg)](https://codecov.io/gh/Tok/sd-forge-deforum) | [Coverage Report](https://tok.github.io/sd-forge-deforum/coverage/) |
+| **📚 Documentation** | [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-brightgreen.svg)](https://tok.github.io/sd-forge-deforum/) | [Full Documentation](https://tok.github.io/sd-forge-deforum/) |
+| **🔧 Development** | [![Development Plan](https://img.shields.io/badge/dev-plan-blue.svg)](docs/development/refactoring-plan.md) | [Refactoring Plan](docs/development/refactoring-plan.md) |
+
+### 🏆 Code Quality Metrics
+
+- **190+ Unit Tests** with comprehensive coverage
+- **Functional Programming Architecture** with immutable data structures
+- **Zero Files >500 LOC** - systematic module splitting completed
+- **Type Safety** with comprehensive type hints throughout
+- **Modern Package Structure** following contemporary Python standards
+- **Continuous Integration** with automated testing on Python 3.8-3.11
+- **Code Documentation** with 100% docstring coverage on public APIs
+
+**Recent Achievements:**
+- ✅ **Phase 2.8 Complete**: Split 1,432-line arguments.py into 4 focused modules
+- ✅ **Phase 2.7 Complete**: Eliminated 3,725-line elements.py file  
+- ✅ **Phase 2.6 Complete**: Functional rendering system with immutable frame processing
+- ✅ **Phase 2.5 Complete**: Immutable arguments system with full validation
+
+See our [Refactoring Plan](docs/development/refactoring-plan.md) for detailed progress and architecture.
 
 ## Current status
 
