@@ -58,7 +58,7 @@ pip install -r requirements.txt
 ### Update Deforum Settings
 
 Get the latest default-settings.txt and place it directly into your 'webui' directory, then click "Load All Settings":
-https://raw.githubusercontent.com/Tok/sd-forge-deforum/main/scripts/default_settings.txt
+https://raw.githubusercontent.com/Tok/sd-forge-deforum/main/default_settings.txt
 Rename it to `deforum_settings.txt` (or whatever matches the name of your settings file in the UI) and put it directly into your 'webui' directory.
 
 &#x26A0;&#xFE0F; Some Settings are currently not properly loaded or are not persisted 
@@ -296,7 +296,7 @@ https://github.com/user-attachments/assets/5f637a04-104f-4d87-8439-15a386685a5e
 If you used other versions of the Deforum plugin before, it may also be necessary
 to update or adjust your Deforum settings. The latest example settings with for the default bunny can also be downloaded here:
 
-https://github.com/Tok/sd-forge-deforum/blob/main/scripts/default_settings.txt
+https://github.com/Tok/sd-forge-deforum/blob/main/default_settings.txt
 
 ## What should work, what doesn't and what's untested
 
@@ -394,7 +394,7 @@ The shake data is available under Creative Commons CC0 1.0 Universal license and
 During active development, content and structure of the `deforum_settings.txt` file 
 can change quickly been updated. Settings from older versions may not behave as expected.
 If necessary, the latest deforum-settings.txt are available for download here:
-https://github.com/Tok/sd-forge-deforum/blob/main/scripts/default_settings.txt
+https://github.com/Tok/sd-forge-deforum/blob/main/default_settings.txt
 
 ### General Issues
 * **Import errors**: Restart WebUI after installation

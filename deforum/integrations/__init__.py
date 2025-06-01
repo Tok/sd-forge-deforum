@@ -11,6 +11,9 @@ from .wan import *
 from .parseq_adapter import *
 from .webui_pipeline import *
 
+# External libraries are available in external_libs/ subdirectory
+# These include: py3d_tools, clipseg, film_interpolation, etc.
+
 __all__ = [
     # ControlNet integration
     'setup_controlnet',

@@ -1,7 +1,3 @@
-# Copied from https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_dpmsolver_multistep.py
-# Convert dpm solver for flow matching
-# Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
-
 import inspect
 import math
 from typing import List, Optional, Tuple, Union

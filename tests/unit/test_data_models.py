@@ -1,20 +1,44 @@
+#!/usr/bin/env python3
+
 """
 Unit tests for immutable data models.
-
-Tests data validation, immutability, enum conversions, and helper functions
-for the new dataclass-based argument structures.
+Tests the immutability, validation, and functional programming principles
+of the data structures used throughout the Deforum system.
 """
 
 import pytest
+import unittest
 from dataclasses import FrozenInstanceError
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
+from pathlib import Path
+import tempfile
+import json
 
-from scripts.deforum_helpers.data_models import (
-    AnimationArgs, DeforumArgs, VideoArgs, ParseqArgs, WanArgs, RootArgs,
+# Import the data models from the new location
+from deforum.models.data_models import (
+    DeforumArgs,
+    AnimationArgs,
+    ProcessedArguments,
+    FrameMetadata,
+    FrameState,
+    RenderContext,
+    FrameResult,
+    RenderingError,
+    ProcessingResult,
+    UIDefaults,
+    SettingsState,
+    ExternalLibraryArgs,
+    TestFixtureArgs,
+    AnimationSchedules,
+    ControlNetSchedules,
+    ParseqScheduleData
+)
+
+from deforum.config.arguments import (
+    VideoArgs, ParseqArgs, WanArgs, RootArgs,
     AnimationMode, ColorCoherence, BorderMode, PaddingMode, SamplingMode, DepthAlgorithm,
     validate_schedule_string, validate_positive_int, validate_non_negative_number, validate_range,
-    create_animation_args_from_dict, create_deforum_args_from_dict, create_video_args_from_dict,
-    create_parseq_args_from_dict, create_wan_args_from_dict, create_root_args_from_dict
+    create_deforum_args, create_animation_args, create_video_args, create_parseq_args, create_wan_args, create_root_args
 )
 
 

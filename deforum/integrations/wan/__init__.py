@@ -1,94 +1,62 @@
+#!/usr/bin/env python3
+
 """
-🎬 WAN Video Generation Module
-Organized WAN (Wan-Video/Wan2.1) video generation implementation for Deforum
+Wan 2.1 Integration Wrapper for Deforum
 
-Directory Structure:
-├── pipelines/          # Different pipeline implementations
-│   ├── diffusers_pipeline.py    # Diffusers-based pipeline
-│   ├── vace_pipeline.py         # VACE (Video and Content Editing) pipeline
-│   └── procedural_pipeline.py   # Fallback procedural generation
-├── models/             # Model components
-│   ├── t5_encoder.py           # T5 text encoder
-│   ├── vae.py                  # VAE encoder/decoder
-│   └── dit.py                  # Diffusion Transformer
-├── configs/            # Model configurations
-│   ├── t2v_1_3b.py            # T2V 1.3B configuration
-│   ├── t2v_14b.py             # T2V 14B configuration
-│   └── shared_config.py        # Shared configurations
-├── utils/              # Utility functions
-│   ├── flow_matching.py        # Flow matching schedulers
-│   ├── video_utils.py          # Video processing utilities
-│   └── model_discovery.py      # Model discovery and validation
-└── integration/        # Integration with Deforum
-    ├── simple_integration.py   # Simple integration wrapper
-    └── unified_integration.py  # Unified integration interface
+This module provides a clean integration layer between Deforum and the original Wan 2.1 repository.
+
+## Architecture:
+- **External Repository**: Located at `deforum/integrations/external_repos/wan2.1/`
+  - Contains the ORIGINAL, UNMODIFIED Wan 2.1 codebase
+  - Should NOT be refactored or changed
+  - Maintained 1:1 with upstream repository
+  
+- **Integration Wrapper**: This module (`deforum/integrations/wan/`)  
+  - Contains Deforum-specific integration code
+  - Handles argument conversion, UI integration, etc.
+  - Can be refactored as part of Deforum modernization
+
+## Usage:
+```python
+from deforum.integrations.wan import WanIntegration
+
+wan = WanIntegration(model_path="path/to/wan/models")
+result = wan.generate_video(prompt="A beautiful scene", frames=60)
+```
+
+## Key Components:
+- `wan_simple_integration.py`: Main integration interface
+- `wan_model_*`: Model management utilities  
+- `integration/`: Advanced integration patterns
+- `utils/`: Deforum-specific utilities
 """
 
-# Main public interface - import core components
-from .utils.model_discovery import WanModelDiscovery
-from .pipelines.procedural_pipeline import WanProceduralPipeline
+import sys
+import os
+from pathlib import Path
 
-# Import sub-modules
-from . import utils
-from . import pipelines
-from . import configs
-from . import models
-from . import integration
+# Add the external Wan 2.1 repository to Python path for imports
+_current_dir = Path(__file__).parent
+_external_wan_path = _current_dir / "external_repos" / "wan2.1"
 
-# Try to import unified integration, fallback if dependencies missing
-try:
-    from .integration.unified_integration import WanUnifiedIntegration
-    UNIFIED_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ Unified integration not available: {e}")
-    WanUnifiedIntegration = None
-    UNIFIED_AVAILABLE = False
+if _external_wan_path.exists():
+    sys.path.insert(0, str(_external_wan_path))
 
-# Version information
-__version__ = "1.0.0"
-__author__ = "Deforum WAN Team"
+# Public API exports
+from .wan_simple_integration import WanSimpleIntegration
+from .wan_model_validator import WanModelValidator
+from .wan_model_downloader import WanModelDownloader
+from .wan_model_discovery import WanModelDiscovery
+from .wan_model_cleanup import WanModelCleanup
 
-# Public API
 __all__ = [
-    "WanUnifiedIntegration",
-    "WanModelDiscovery", 
-    "WanProceduralPipeline",
-    'run_wan_generation',
-    'enhance_with_wan',
-    'wan_video_processing',
+    'WanSimpleIntegration',
+    'WanModelValidator', 
+    'WanModelDownloader',
+    'WanModelDiscovery',
+    'WanModelCleanup',
 ]
 
-def create_wan_pipeline(model_path: str = None, pipeline_type: str = "auto"):
-    """
-    Factory function to create appropriate WAN pipeline
-    
-    Args:
-        model_path: Path to WAN model directory (optional)
-        pipeline_type: Type of pipeline ("auto", "diffusers", "vace", "procedural")
-        
-    Returns:
-        WAN pipeline instance
-    """
-    if UNIFIED_AVAILABLE and WanUnifiedIntegration:
-        integration = WanUnifiedIntegration()
-        
-        if model_path:
-            integration.load_pipeline(model_path, pipeline_type)
-        
-        return integration
-    else:
-        # Fallback to procedural pipeline if unified not available
-        print("🔄 Using procedural pipeline fallback")
-        pipeline = WanProceduralPipeline()
-        pipeline.load_components()
-        return pipeline
-
-def discover_wan_models():
-    """
-    Discover available WAN models
-    
-    Returns:
-        List of discovered model dictionaries
-    """
-    discovery = WanModelDiscovery()
-    return discovery.discover_models() 
+# Version info
+__version__ = "1.0.0"
+__wan_version__ = "2.1"  # Version of integrated Wan repository 

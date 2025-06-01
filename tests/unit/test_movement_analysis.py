@@ -1,13 +1,24 @@
-"""
-Unit tests for the functional movement analysis system.
+#!/usr/bin/env python3
 
-Tests all pure functions, immutable data structures, and functional composition
-for movement analysis and pattern detection.
+"""
+Unit tests for movement analysis functionality.
+Tests the WAN movement analyzer and related components.
 """
 
 import pytest
+import unittest
 import math
-from typing import Tuple, Dict
+from typing import Dict, Any, List, Tuple
+from pathlib import Path
+
+# Import from the new location
+from deforum.integrations.wan.utils.movement_analyzer import (
+    MovementAnalyzer,
+    analyze_movement_patterns,
+    calculate_movement_strength,
+    detect_zoom_changes,
+    enhance_movement_description
+)
 
 from scripts.deforum_helpers.movement_analysis import (
     # Data structures
@@ -874,4 +885,48 @@ class TestFunctionalProgrammingPrinciples:
         
         # Should filter correctly and return only significant segments
         assert all(isinstance(seg, MovementSegment) for seg in segments)
-        assert all(seg.total_range > 0 for seg in segments) 
+        assert all(seg.total_range > 0 for seg in segments)
+
+# Test data and fixtures
+class TestMovementAnalysis:
+    """Test movement analysis functionality"""
+    
+    def test_movement_analyzer_creation(self):
+        """Test MovementAnalyzer can be created"""
+        analyzer = MovementAnalyzer()
+        assert analyzer is not None
+    
+    def test_analyze_movement_patterns(self):
+        """Test movement pattern analysis"""
+        # Mock frame data
+        frame_data = {
+            "translation_x": 5.0,
+            "translation_y": -2.0,
+            "rotation": 1.5,
+            "zoom": 1.1
+        }
+        
+        patterns = analyze_movement_patterns(frame_data)
+        assert isinstance(patterns, dict)
+        assert "movement_strength" in patterns
+        assert "primary_direction" in patterns
+    
+    def test_calculate_movement_strength(self):
+        """Test movement strength calculation"""
+        strength = calculate_movement_strength(5.0, -2.0, 1.5)
+        assert isinstance(strength, float)
+        assert strength >= 0
+    
+    def test_detect_zoom_changes(self):
+        """Test zoom change detection"""
+        zoom_changes = detect_zoom_changes([1.0, 1.1, 1.2, 1.0, 0.9])
+        assert isinstance(zoom_changes, list)
+    
+    def test_enhance_movement_description(self):
+        """Test movement description enhancement"""
+        base_description = "A simple scene"
+        movement_data = {"movement_strength": 0.5, "primary_direction": "right"}
+        
+        enhanced = enhance_movement_description(base_description, movement_data)
+        assert isinstance(enhanced, str)
+        assert len(enhanced) >= len(base_description) 

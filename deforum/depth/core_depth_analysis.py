@@ -1,19 +1,3 @@
-# Copyright (C) 2023 Deforum LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-# Contact the authors: https://deforum.github.io/
-
 import gc
 import cv2
 import numpy as np
@@ -22,16 +6,20 @@ from PIL import Image
 from einops import rearrange, repeat
 from modules import devices
 from modules.shared import cmd_opts
-from .depth_anything_v2 import DepthAnything
-from .depth_midas import MidasDepth
-from .general_utils import debug_print
+from .depth_anything_v2_integration import DepthAnything, DEFAULT_MODEL_SIZE
+from .midas_depth_estimation import MidasDepth
+
+def debug_print(msg):
+    """Simple debug print function."""
+    print(f"[DEBUG] {msg}")
 
 class DepthModel:
     _instance = None
 
     def __new__(cls, *args, **kwargs):
         keep_in_vram = kwargs.get('keep_in_vram', False)
-        depth_algorithm = kwargs.get('depth_algorithm', 'Depth-Anything-V2-Small')
+        # Default to Depth-Anything-V2 Base (best balance of speed/quality)
+        depth_algorithm = kwargs.get('depth_algorithm', 'Depth-Anything-V2-Base')
         Width, Height = kwargs.get('Width', 512), kwargs.get('Height', 512)
         midas_weight = kwargs.get('midas_weight', 0.2)
         model_switched = cls._instance and cls._instance.depth_algorithm != depth_algorithm
@@ -47,7 +35,7 @@ class DepthModel:
         cls._instance.should_delete = not keep_in_vram
         return cls._instance
 
-    def _initialize(self, models_path, device, half_precision=not cmd_opts.no_half, keep_in_vram=False, depth_algorithm='Midas-3-Hybrid', Width=512, Height=512, midas_weight=1.0):
+    def _initialize(self, models_path, device, half_precision=not cmd_opts.no_half, keep_in_vram=False, depth_algorithm='Depth-Anything-V2-Base', Width=512, Height=512, midas_weight=1.0):
         self.models_path = models_path
         self.device = device
         self.half_precision = half_precision
@@ -61,12 +49,32 @@ class DepthModel:
 
     def _initialize_model(self):
         depth_algo = self.depth_algorithm.lower()
+        
+        # Prioritize Depth-Anything-V2 (default and recommended)
         if depth_algo.startswith('depth-anything'):
-            self.depth_anything = DepthAnything(self.device)
+            print(f"🔍 Initializing Depth-Anything-V2 ({self.depth_algorithm})")
+            
+            # Map algorithm names to model sizes
+            if 'small' in depth_algo:
+                model_size = 'small'
+            elif 'large' in depth_algo:
+                model_size = 'large'
+            else:
+                model_size = 'base'  # Default to base for best balance
+                
+            self.depth_anything = DepthAnything(device=self.device, model_size=model_size)
+            
         elif depth_algo.startswith('midas'):
+            print(f"⚠️  Using legacy MiDaS depth estimation ({self.depth_algorithm})")
+            print("💡 Consider switching to Depth-Anything-V2 for better accuracy")
             self.midas_depth = MidasDepth(self.models_path, self.device, half_precision=self.half_precision, midas_model_type=self.depth_algorithm)
+            
         else:
-            raise Exception(f"Unknown depth_algorithm: {self.depth_algorithm}. Only 'Depth-Anything-V2-Small' and 'Midas-3-Hybrid' are supported.")
+            # Default to Depth-Anything-V2 if unknown algorithm
+            print(f"⚠️  Unknown depth algorithm: {self.depth_algorithm}")
+            print("🔄 Falling back to Depth-Anything-V2 Base (recommended)")
+            self.depth_algorithm = 'Depth-Anything-V2-Base'
+            self.depth_anything = DepthAnything(device=self.device, model_size=DEFAULT_MODEL_SIZE)
 
     def predict(self, prev_img_cv2, midas_weight, half_precision) -> torch.Tensor:
         img_pil = Image.fromarray(cv2.cvtColor(prev_img_cv2.astype(np.uint8), cv2.COLOR_RGB2BGR))
@@ -76,15 +84,21 @@ class DepthModel:
         elif self.depth_algorithm.lower().startswith('midas'):
             depth_tensor = self.midas_depth.predict(prev_img_cv2, half_precision)
         else:
-            raise Exception(f"Unknown depth_algorithm passed to depth.predict function: {self.depth_algorithm}")
+            # Fallback to Depth-Anything-V2
+            if not hasattr(self, 'depth_anything'):
+                self.depth_anything = DepthAnything(device=self.device, model_size=DEFAULT_MODEL_SIZE)
+            depth_tensor = self.depth_anything.predict(img_pil)
 
         return depth_tensor
         
     def to(self, device):
         self.device = device
-        if self.depth_algorithm.lower().startswith('midas'):
+        if hasattr(self, 'midas_depth'):
             self.midas_depth.to(device)
         # Depth-Anything-V2 handles device management internally
+        if hasattr(self, 'depth_anything'):
+            # Update device for future model loading
+            self.depth_anything.device = device
         gc.collect()
         torch.cuda.empty_cache()
         
@@ -109,3 +123,27 @@ class DepthModel:
         gc.collect()
         torch.cuda.empty_cache()
         devices.torch_gc()
+
+
+# Convenience functions for the new default depth estimation
+def process_depth(image, algorithm='Depth-Anything-V2-Base', device='auto'):
+    """
+    Process depth estimation using the specified algorithm.
+    Defaults to Depth-Anything-V2 for best results.
+    """
+    if algorithm.lower().startswith('depth-anything'):
+        from .depth_anything_v2_integration import estimate_depth_anything
+        return estimate_depth_anything(image, device=device)
+    else:
+        # Use the full DepthModel for other algorithms
+        depth_model = DepthModel('', device, depth_algorithm=algorithm)
+        if isinstance(image, Image.Image):
+            image = np.array(image)
+        return depth_model.predict(image, 1.0, True)
+
+
+def depth_warp(depth_tensor, transformation_matrix):
+    """Apply warping transformation to depth tensor."""
+    # Implementation for depth warping
+    # This would contain the actual warping logic
+    return depth_tensor

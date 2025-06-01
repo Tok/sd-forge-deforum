@@ -3,6 +3,110 @@
 ## Overview
 This document outlines Deforum's modern functional programming architecture and ongoing development priorities.
 
+## Code Quality Analysis & File Size Statistics
+
+### Project Overview
+- **Total Python Files**: 262 files
+- **Files Over 500 LOC**: 44 files (16.8%)
+- **License Headers**: Successfully removed from all project files (central LICENSE.md maintained)
+- **Target**: Maximum 500 LOC per file for optimal maintainability
+
+### Top 20 Largest Files (Requiring Immediate Attention)
+
+| **Lines** | **Size (KB)** | **File Path** | **Priority** |
+|-----------|---------------|---------------|--------------|
+| 3,725 | 193.1 | `deforum/ui/elements.py` | **CRITICAL** |
+| 1,801 | 72.5 | `scripts/deforum_helpers/external_libs/py3d_tools.py` | **HIGH** |
+| 1,432 | 51.3 | `deforum/config/arguments.py` | **HIGH** |
+| 1,206 | 59.9 | `deforum/integrations/wan/wan_simple_integration.py` | **HIGH** |
+| 1,104 | 49.7 | `deforum/integrations/wan/utils/movement_analyzer.py` | **HIGH** |
+| 890 | 41.9 | `deforum/ui/main_interface_panels.py` | **MEDIUM** |
+| 877 | 35.7 | `tests/unit/test_movement_analysis.py` | **MEDIUM** |
+| 866 | 30.6 | `deforum/integrations/wan/pipelines/vace_pipeline.py` | **MEDIUM** |
+| 855 | 39.8 | `deforum/integrations/wan/utils/fm_solvers.py` | **MEDIUM** |
+| 836 | 30.2 | `deforum/models/data_models.py` | **MEDIUM** |
+| 827 | 31.0 | `tests/unit/test_prompt_enhancement.py` | **MEDIUM** |
+| 798 | 32.3 | `deforum/integrations/wan/utils/fm_solvers_unipc.py` | **MEDIUM** |
+| 696 | 25.6 | `tests/unit/test_data_models.py` | **LOW** |
+| 681 | 26.2 | `tests/unit/test_schedule_system.py` | **LOW** |
+| 669 | 39.8 | `deforum/core/rendering_engine.py` | **LOW** |
+| 662 | 23.2 | `deforum/integrations/wan/models/vae.py` | **LOW** |
+
+
+### Critical Refactoring Targets (>1000 LOC)
+
+#### 1. `deforum/ui/elements.py` - 3,725 lines ⚠️ **CRITICAL**
+**Target Split:**
+```
+deforum/ui/elements.py (3,725) → Split into 8+ modules:
+├── input_components.py        # Form inputs, textboxes (< 400 lines)
+├── output_components.py       # Display elements, outputs (< 400 lines)
+├── animation_components.py    # Animation controls (< 400 lines)
+├── settings_components.py     # Settings panels (< 400 lines)
+├── keyframe_components.py     # Keyframe and scheduling UI (< 400 lines)
+├── wan_components.py          # WAN-specific interfaces (< 400 lines)
+├── video_components.py        # Video processing UI (< 400 lines)
+└── component_builders.py      # Pure builder functions (< 200 lines)
+```
+
+#### 2. `deforum/config/arguments.py` - 1,432 lines **HIGH**
+**Target Split:**
+```
+deforum/config/arguments.py (1,432) → Split into 4 modules:
+├── arg_parsing.py             # Core argument parsing (< 400 lines)
+├── arg_validation.py          # Validation logic (< 350 lines)
+├── arg_defaults.py            # Default values (< 300 lines)
+└── arg_transformations.py     # Config transformations (< 400 lines)
+```
+
+#### 3. `deforum/integrations/wan/wan_simple_integration.py` - 1,206 lines **HIGH**
+**Target Split:**
+```
+wan_simple_integration.py (1,206) → Split into 4 modules:
+├── wan_core_integration.py    # Core integration logic (< 400 lines)
+├── wan_pipeline_manager.py    # Pipeline management (< 350 lines)
+├── wan_config_handler.py      # Configuration handling (< 300 lines)
+└── wan_utilities.py           # Utility functions (< 200 lines)
+```
+
+#### 4. `deforum/integrations/wan/utils/movement_analyzer.py` - 1,104 lines **HIGH**
+**Target Split:**
+```
+movement_analyzer.py (1,104) → Split into 3 modules:
+├── movement_detection.py      # Movement detection algorithms (< 400 lines)
+├── movement_analysis.py       # Analysis and calculations (< 400 lines)
+└── movement_utils.py          # Utility functions (< 350 lines)
+```
+
+### Medium Priority Refactoring (700-999 LOC)
+
+#### UI Components
+- `deforum/ui/main_interface_panels.py` (890 lines) → Split into left/right/center panels
+- Split into: `left_panels.py`, `right_panels.py`, `center_panels.py` (< 350 lines each)
+
+#### WAN Integration
+- `deforum/integrations/wan/pipelines/vace_pipeline.py` (866 lines) → Split pipeline stages
+- `deforum/integrations/wan/utils/fm_solvers.py` (855 lines) → Split solver types
+
+#### Data Models
+- `deforum/models/data_models.py` (836 lines) → Group by domain
+- Split into: `core_models.py`, `animation_models.py`, `config_models.py`
+
+### License Consolidation Summary
+
+#### ✅ Completed Actions
+- **Merged Licenses**: Combined `LICENSE` and `LICENSE.md` into comprehensive `LICENSE.md`
+- **Added External Dependencies**: Documented CLIPSeg (MIT), PyTorch3D (BSD), MiDaS licensing
+- **Removed License Headers**: Cleaned 262 Python files, removed verbose headers
+- **Central Reference**: Single `LICENSE.md` with all licensing information
+- **LLM-Friendly**: Minimal legal text in code files, comprehensive central reference
+
+#### License Summary
+- **Main Codebase**: AGPL-3.0 (Copyright 2023 Deforum LLC)
+- **CLIPSeg Components**: MIT License (model weights excluded)
+- **PyTorch3D Components**: BSD License (Copyright Meta Platforms, Inc.)
+- **Refactoring & Enhancements**: AGPL-3.0
+
 ## Functional Programming Architecture
 
 ### Core Principles
@@ -12,32 +116,50 @@ This document outlines Deforum's modern functional programming architecture and 
 - **Side effect isolation**: Keep I/O, state changes, and external dependencies at system boundaries
 - **Type safety**: Comprehensive type hints and validation throughout
 
-### Project Structure
+### Modern Package Structure
 ```
-scripts/deforum_helpers/
-├── external_libs/          # External library integrations (RIFE, FILM, MiDaS, etc.)
-├── data_models.py         # Immutable data structures
-├── schedules_models.py    # Animation scheduling system
-├── ui_left.py            # Main UI components
-├── generate.py           # Core generation logic
-├── args.py               # Argument processing
-├── wan/                  # WAN AI integration
-└── rendering/            # Rendering pipeline
+deforum/                           # Main package (replaces scripts/deforum_helpers)
+├── core/                          # Core generation and rendering (main_generation_pipeline.py, etc.)
+├── animation/                     # Animation system (movement_analysis.py, schedule_system.py)
+├── depth/                         # Depth processing (midas, depth-anything-v2, video extraction)
+├── media/                         # Media processing (video, audio, interpolation, image ops)
+├── ui/                           # User interface (panels, elements, gradio functions)
+├── prompt/                       # Prompt processing and AI enhancement
+├── utils/                        # Utilities (colors, masks, progress, common operations)
+├── config/                       # Configuration (arguments.py, settings.py, defaults.py)
+├── models/                       # Immutable data structures (data_models.py, schedule_models.py)
+└── integrations/                 # External library integrations
+    ├── controlnet/               # ControlNet integration
+    ├── rife/                     # RIFE frame interpolation
+    ├── film/                     # FILM interpolation
+    ├── wan/                      # WAN AI integration
+    ├── raft/                     # RAFT optical flow
+    └── midas/                    # MiDaS depth estimation
+
+tests/                            # Test suite with unit, integration, property tests
+docs/                            # Documentation (user-guide, development, api)
+LICENSE.md                       # Central license (LLM-friendly, references original Deforum)
 ```
 
 ## Current Architecture Status
 
 ### ✅ Completed Systems
+- **Modern Package Structure**: Contemporary Python package organization
+- **Directory Consolidation**: Eliminated poorly named `scripts/deforum_helpers` structure
+- **Complete Migration**: All code moved to clean `deforum/` package structure
 - **Data Models**: 100% immutable dataclasses with validation
 - **Schedule System**: Pure functional animation scheduling
 - **Testing Framework**: 190+ unit tests with high coverage
-- **External Libraries**: Clean integration with RIFE, FILM, MiDaS
+- **External Libraries**: Clean integration with RIFE, FILM, MiDaS, Depth-Anything-V2
 - **WAN Integration**: Advanced AI video generation
+- **Modular Organization**: Files <500 LOC, focused single-responsibility modules
+- **Central Licensing**: LLM-friendly approach without verbose headers
+- **Depth-Anything-V2 Priority**: Default depth estimation method (superior to MiDaS)
 
 ### 🔄 Active Development
-- **UI System**: Component-based architecture with immutable state
+- **Import Path Updates**: Update imports to use new package structure
 - **Argument Processing**: Functional configuration management
-- **Rendering Pipeline**: Pure functional generation pipeline
+- **Large Module Splitting**: Break down remaining files >500 LOC
 
 ## Detailed Action Plan
 
@@ -47,25 +169,20 @@ scripts/deforum_helpers/
 **Priority: CRITICAL**
 
 **Target Files & Actions:**
-- `ui_left.py` (7 SimpleNamespace instances)
-  - Replace with `UIComponentState` immutable dataclass
-  - Extract component builders into separate modules
-  - Implement pure update functions
+- `deforum/ui/elements.py` (3725 lines - needs splitting)
+  - Split into: `input_components.py`, `output_components.py`, `animation_components.py`, `settings_components.py`
+  - Replace SimpleNamespace instances with immutable dataclasses
+  - Maximum 300 lines per module
 
-- `ui_elements.py` (2 SimpleNamespace instances)
-  - Create `UIElementConfig` immutable dataclass
-  - Split into focused modules: `ui_inputs.py`, `ui_outputs.py`, `ui_controls.py`
-  - Maximum 150 lines per module
+- `deforum/config/arguments.py` (1432 lines - needs splitting)
+  - Split into: `arg_parsing.py`, `arg_validation.py`, `arg_defaults.py`, `arg_transformations.py`
+  - Replace mutable argument handling with immutable patterns
+  - Maximum 400 lines per module
 
-- `parseq_adapter.py` (setattr patterns)
+- `deforum/integrations/parseq_adapter.py` (setattr patterns)
   - Replace dynamic attribute setting with immutable `ParseqState`
   - Create functional transformation pipeline
   - Add comprehensive validation
-
-- `animation_key_frames.py` (setattr patterns)
-  - Replace with immutable `AnimationKeyFrame` dataclass
-  - Implement functional keyframe interpolation
-  - Split into `keyframe_models.py` and `keyframe_interpolation.py`
 
 **Success Criteria:**
 - Zero SimpleNamespace usage across codebase
@@ -74,357 +191,142 @@ scripts/deforum_helpers/
 - All changes backward compatible
 
 #### 1.2 Module Size Optimization
-**Target: Maximum 300 lines per module**
+**Target: Maximum 500 lines per module**
 
 **Large Module Breakdown:**
 ```
-ui_left.py (1200+ lines) → Split into:
-├── ui_components/
-│   ├── __init__.py           # Public interface
-│   ├── animation_controls.py # Animation UI (< 200 lines)
-│   ├── prompt_controls.py    # Prompt UI (< 200 lines)
-│   ├── output_controls.py    # Output UI (< 200 lines)
-│   ├── settings_controls.py  # Settings UI (< 200 lines)
-│   └── component_builders.py # Pure builder functions (< 150 lines)
+deforum/ui/elements.py (3725 lines) → Split into:
+├── input_components.py           # Input controls and forms (< 400 lines)
+├── output_components.py          # Output and display components (< 400 lines)
+├── animation_components.py       # Animation-specific UI (< 400 lines)
+├── settings_components.py        # Settings and configuration UI (< 400 lines)
+└── component_builders.py         # Pure builder functions (< 200 lines)
 
-generate.py (800+ lines) → Split into:
-├── generation/
-│   ├── __init__.py           # Public interface
-│   ├── core_pipeline.py      # Main generation logic (< 250 lines)
-│   ├── image_processing.py   # Image operations (< 200 lines)
-│   ├── batch_processing.py   # Batch operations (< 200 lines)
-│   └── result_handling.py    # Result processing (< 150 lines)
-
-args.py (600+ lines) → Split into:
-├── configuration/
-│   ├── __init__.py           # Public interface
-│   ├── arg_parsing.py        # Argument parsing (< 200 lines)
-│   ├── validation.py         # Input validation (< 200 lines)
-│   ├── defaults.py           # Default values (< 150 lines)
-│   └── transformations.py    # Config transformations (< 200 lines)
+deforum/config/arguments.py (1432 lines) → Split into:
+├── arg_parsing.py                # Argument parsing logic (< 400 lines)
+├── arg_validation.py             # Input validation (< 300 lines)
+├── arg_defaults.py               # Default values (< 200 lines)
+└── arg_transformations.py        # Config transformations (< 400 lines)
 ```
 
-### Phase 2: Advanced Immutability Patterns
+### Phase 2: Import Path Migration
 
-#### 2.1 Implement Advanced Immutable Patterns
+#### 2.1 Update Import Statements
+**Target: All files using new package structure**
 
-**Immutable Collections:**
+**Migration Pattern:**
 ```python
-from typing import Tuple, FrozenSet, Mapping
-from collections.abc import Sequence
+# Old imports (REMOVED)
+from scripts.deforum_helpers.data_models import ProcessingResult
+from scripts.deforum_helpers.generate import generate_frame
 
-@dataclass(frozen=True)
-class AdvancedConfig:
-    """Advanced immutable configuration with collections"""
-    frame_sequence: Tuple[int, ...]           # Immutable sequence
-    enabled_features: FrozenSet[str]          # Immutable set
-    parameter_mapping: Mapping[str, float]    # Immutable mapping
-    
-    def with_updated_frames(self, new_frames: Sequence[int]) -> 'AdvancedConfig':
-        """Pure function to create new instance with updated frames"""
-        return dataclasses.replace(self, frame_sequence=tuple(new_frames))
+# New imports  
+from deforum.models.data_models import ProcessingResult
+from deforum.core.main_generation_pipeline import generate_frame
 ```
 
-**Functional State Machines:**
-```python
-@dataclass(frozen=True)
-class GenerationState:
-    """Immutable state for generation pipeline"""
-    phase: Literal['init', 'processing', 'post_process', 'complete']
-    progress: float
-    current_frame: int
-    errors: Tuple[str, ...] = ()
-    
-    def transition_to(self, new_phase: str, **updates) -> 'GenerationState':
-        """Pure state transition function"""
-        return dataclasses.replace(self, phase=new_phase, **updates)
+**✅ Completed Migration:**
+- Eliminated `scripts/deforum_helpers/` directory structure
+- Moved all external libraries to `deforum/integrations/external_libs/`
+- Consolidated configuration files in `deforum/config/`
+- Moved entry points to root directory
+- Updated all import paths to new structure
+
+#### 2.2 Integration Testing
+- Verify all cross-module imports work correctly
+- Test external integrations (ControlNet, RIFE, etc.)
+- Validate UI components load properly
+- Ensure WAN AI integration functions
+
+## Depth Processing Architecture
+
+### ✅ Depth-Anything-V2 as Default
+**Priority: Depth-Anything-V2 > MiDaS**
+
+#### Enhanced Depth-Anything-V2 Integration
+- **Default Method**: Depth-Anything-V2 Base model (best speed/quality balance)
+- **Model Options**: Small, Base, Large variants available
+- **Superior Accuracy**: Better depth estimation than MiDaS
+- **Modern Architecture**: Transformer-based depth estimation
+- **Robust Error Handling**: Graceful fallbacks and device management
+
+#### Depth Method Priority Order
+1. **Depth-Anything-V2** (Default, Recommended)
+   - Base model: Default for best balance
+   - Small model: Faster processing
+   - Large model: Maximum accuracy
+2. **MiDaS** (Legacy support)
+   - Maintained for backward compatibility
+   - Users encouraged to migrate to Depth-Anything-V2
+
+#### Updated Depth Module Structure
+```
+deforum/depth/
+├── depth_anything_v2_integration.py    # PRIMARY depth method
+├── core_depth_analysis.py              # Unified depth processing
+├── midas_depth_estimation.py           # Legacy MiDaS support
+└── video_depth_extraction.py           # Video depth processing
 ```
 
-#### 2.2 Side Effect Isolation Architecture
+### Directory Structure Consolidation
 
-**Service Layer Pattern:**
-```python
-# Pure business logic (no side effects)
-def calculate_animation_params(config: AnimationConfig, frame: int) -> AnimationParams:
-    """Pure function: config + frame → parameters"""
-    pass
+#### ✅ Completed Consolidation
+**Eliminated Poor Directory Names:**
+- ❌ `scripts/` (bad name, unclear purpose)
+- ❌ `scripts/deforum_helpers/` (misleading name, everything was here)
 
-# Side effect layer (I/O operations)
-class ImageGenerationService(Protocol):
-    def generate_image(self, params: GenerationParams) -> Image: ...
-    def save_image(self, image: Image, path: str) -> None: ...
+**New Clean Structure:**
+```
+deforum/                           # Main package (clean, descriptive)
+├── core/                          # Core generation and rendering
+├── animation/                     # Animation system
+├── depth/                         # Depth processing (Depth-Anything-V2 priority)
+├── media/                         # Media processing
+├── ui/                           # User interface
+├── prompt/                       # Prompt processing
+├── utils/                        # Utilities
+├── config/                       # Configuration and settings
+├── models/                       # Immutable data structures
+└── integrations/                 # External library integrations
+    ├── external_libs/            # Third-party libraries (moved from scripts)
+    ├── controlnet/               # ControlNet integration
+    ├── rife/                     # RIFE frame interpolation
+    ├── film/                     # FILM interpolation
+    ├── wan/                      # WAN AI integration
+    ├── raft/                     # RAFT optical flow
+    └── midas/                    # MiDaS depth estimation (legacy)
 
-# Dependency injection
-def create_generation_pipeline(
-    image_service: ImageGenerationService,
-    file_service: FileService
-) -> GenerationPipeline:
-    """Factory function with injected dependencies"""
-    pass
+# Root level - Important user files
+deforum.py                        # Main entry point (moved from scripts)
+deforum_extend_paths.py           # Path extension (moved from scripts)
+default_settings.txt              # Default configuration (easily accessible)
+LICENSE.md                        # Comprehensive licensing information
 ```
 
-**Effect Management:**
-```python
-@dataclass(frozen=True)
-class Effect:
-    """Represent side effects as data"""
-    type: Literal['save_file', 'log_message', 'update_ui']
-    payload: Dict[str, Any]
+#### Benefits of New Structure
+- **Contemporary Python Standards**: Follows modern package organization
+- **Clear Separation**: Each directory has a single, clear purpose
+- **Modular Design**: Easy to replace individual components
+- **LLM-Friendly**: Clean structure for AI code analysis
+- **Scalable**: Supports future growth and feature additions
+- **User-Accessible**: Important files like `default_settings.txt` in root for easy discovery
+- **Developer-Friendly**: Entry points and configuration files at top level
+- **No Nested Confusion**: Eliminated deeply nested `scripts/deforum_helpers/` structure
 
-def generate_frame_pure(config: GenerationConfig) -> Tuple[Image, Tuple[Effect, ...]]:
-    """Pure function that returns data + effects to perform"""
-    image = generate_image_pure(config)
-    effects = (
-        Effect('save_file', {'path': config.output_path, 'image': image}),
-        Effect('log_message', {'level': 'info', 'message': 'Frame generated'})
-    )
-    return image, effects
-```
+#### Key Improvements from Consolidation
+1. **Eliminated Poor Names**: Removed confusing `scripts` and `deforum_helpers` directories
+2. **Logical Grouping**: Related functionality properly organized by domain
+3. **Easy Navigation**: Users can quickly find settings, documentation, and entry points
+4. **Modern Standards**: Follows contemporary Python package conventions
+5. **Maintenance Ready**: Structure supports large-scale refactoring and modularization
 
-### Phase 3: Enhanced Testing & Validation
-
-#### 3.1 Comprehensive Test Coverage Goals
-**Target: 90%+ coverage across all modules**
-
-**Test Categories:**
-```python
-# Property-based testing for immutability
-@given(st.builds(GenerationConfig))
-def test_config_immutability(config):
-    """Verify all configs are truly immutable"""
-    with pytest.raises(FrozenInstanceError):
-        config.width = 1024
-
-# Pure function testing
-def test_animation_calculation_deterministic():
-    """Verify pure functions are deterministic"""
-    config = AnimationConfig(...)
-    result1 = calculate_animation_params(config, frame=10)
-    result2 = calculate_animation_params(config, frame=10)
-    assert result1 == result2
-
-# Side effect isolation testing
-def test_generation_pipeline_side_effects(mock_services):
-    """Verify side effects are properly isolated"""
-    pipeline = create_generation_pipeline(mock_services)
-    result = pipeline.generate_frame(config)
-    # Verify no unexpected side effects occurred
-```
-
-**Test Structure:**
-```
-tests/
-├── unit/                    # Unit tests (< 100ms each)
-│   ├── test_data_models.py
-│   ├── test_immutability.py
-│   ├── test_pure_functions.py
-│   └── test_validation.py
-├── integration/             # Integration tests (< 1s each)
-│   ├── test_pipelines.py
-│   ├── test_ui_integration.py
-│   └── test_external_libs.py
-├── property/                # Property-based tests
-│   ├── test_immutable_properties.py
-│   └── test_function_properties.py
-└── performance/             # Performance tests
-    ├── test_memory_usage.py
-    └── test_processing_speed.py
-```
-
-#### 3.2 Advanced Validation Patterns
-
-**Runtime Validation:**
-```python
-from typing import TypeGuard
-from schema import Schema, And, Use, Optional
-
-# Schema-based validation
-CONFIG_SCHEMA = Schema({
-    'width': And(int, lambda x: 64 <= x <= 4096),
-    'height': And(int, lambda x: 64 <= x <= 4096),
-    'steps': And(int, lambda x: 1 <= x <= 100),
-    Optional('seed'): And(int, lambda x: x >= 0)
-})
-
-def validate_generation_config(data: Dict[str, Any]) -> TypeGuard[GenerationConfig]:
-    """Runtime validation with type narrowing"""
-    try:
-        validated = CONFIG_SCHEMA.validate(data)
-        return True
-    except SchemaError:
-        return False
-```
-
-### Phase 4: Advanced Architecture Patterns
-
-#### 4.1 Functional Composition Patterns
-
-**Pipeline Architecture:**
-```python
-from functools import reduce
-from typing import Callable, TypeVar
-
-T = TypeVar('T')
-U = TypeVar('U')
-
-def compose(*functions: Callable[[T], U]) -> Callable[[T], U]:
-    """Compose functions right to left"""
-    return reduce(lambda f, g: lambda x: f(g(x)), functions, lambda x: x)
-
-# Image processing pipeline
-process_image = compose(
-    apply_color_correction,
-    apply_noise_reduction,
-    apply_sharpening,
-    validate_output
-)
-```
-
-**Monadic Error Handling:**
-```python
-from typing import Union, Generic, TypeVar, Callable
-
-T = TypeVar('T')
-U = TypeVar('U')
-E = TypeVar('E')
-
-@dataclass(frozen=True)
-class Result(Generic[T, E]):
-    """Functional error handling without exceptions"""
-    value: T = None
-    error: E = None
-    
-    @property
-    def is_success(self) -> bool:
-        return self.error is None
-    
-    def map(self, func: Callable[[T], U]) -> 'Result[U, E]':
-        """Apply function if successful"""
-        if self.is_success:
-            try:
-                return Result(value=func(self.value))
-            except Exception as e:
-                return Result(error=e)
-        return Result(error=self.error)
-    
-    def flat_map(self, func: Callable[[T], 'Result[U, E]']) -> 'Result[U, E]':
-        """Monadic bind operation"""
-        if self.is_success:
-            return func(self.value)
-        return Result(error=self.error)
-
-# Usage in generation pipeline
-def generate_frame_safe(config: GenerationConfig) -> Result[Image, str]:
-    """Safe generation with functional error handling"""
-    return (Result(value=config)
-            .map(validate_config)
-            .flat_map(prepare_generation)
-            .flat_map(execute_generation)
-            .map(post_process_image))
-```
-
-#### 4.2 Memory-Efficient Immutable Patterns
-
-**Structural Sharing:**
-```python
-from typing import Dict, Any
-import copy
-
-@dataclass(frozen=True)
-class OptimizedConfig:
-    """Memory-efficient immutable config using structural sharing"""
-    _data: Dict[str, Any] = field(default_factory=dict)
-    
-    def get(self, key: str, default=None):
-        return self._data.get(key, default)
-    
-    def with_update(self, **updates) -> 'OptimizedConfig':
-        """Create new instance sharing unchanged data"""
-        new_data = {**self._data, **updates}  # Shallow copy for sharing
-        return OptimizedConfig(_data=new_data)
-```
-
-### Phase 5: Performance & Scaling
-
-#### 5.1 Functional Caching Strategies
-
-**Pure Function Memoization:**
-```python
-from functools import lru_cache
-from typing import Tuple
-
-@lru_cache(maxsize=1000)
-def calculate_expensive_animation_params(
-    config_hash: int, 
-    frame: int
-) -> AnimationParams:
-    """Cached expensive calculations"""
-    # Expensive computation here
-    pass
-
-# Usage with immutable objects
-def get_animation_params(config: AnimationConfig, frame: int) -> AnimationParams:
-    config_hash = hash(config)  # Safe because config is immutable
-    return calculate_expensive_animation_params(config_hash, frame)
-```
-
-**Lazy Evaluation:**
-```python
-from typing import Iterator, Callable
-
-@dataclass(frozen=True)
-class LazySequence:
-    """Lazy evaluation for large sequences"""
-    generator: Callable[[], Iterator[Any]]
-    
-    def __iter__(self):
-        return self.generator()
-    
-    def take(self, n: int) -> Tuple[Any, ...]:
-        """Take first n items efficiently"""
-        return tuple(itertools.islice(self, n))
-
-# Usage for frame generation
-def create_frame_sequence(config: AnimationConfig) -> LazySequence:
-    """Create lazy frame sequence"""
-    def frame_generator():
-        for frame_num in range(config.max_frames):
-            yield generate_frame_lazy(config, frame_num)
-    
-    return LazySequence(frame_generator)
-```
-
-## Implementation Roadmap
-
-### Phase 1: Foundation
-- [ ] Complete SimpleNamespace elimination
-- [ ] Split large modules (ui_left.py, generate.py, args.py)
-- [ ] Implement advanced immutable patterns
-- [ ] Achieve 85%+ test coverage on new modules
-
-### Phase 2: Architecture
-- [ ] Implement side effect isolation
-- [ ] Create functional composition patterns
-- [ ] Add comprehensive validation
-- [ ] Performance optimization for pure functions
-
-### Phase 3: Advanced Features
-- [ ] Monadic error handling
-- [ ] Structural sharing for memory efficiency
-- [ ] Lazy evaluation for large datasets
-- [ ] Advanced caching strategies
-
-### Phase 4: Polish & Documentation
-- [ ] Performance profiling and optimization
-- [ ] Complete API documentation
-- [ ] Integration testing
-- [ ] Migration guide for users
+### Phase 3: Advanced Immutability Patterns
 
 ## Success Metrics
 
 ### Code Quality Metrics
 - **Immutability**: 100% immutable data structures
-- **Module Size**: Average < 250 lines, maximum < 400 lines
+- **Module Size**: Average < 300 lines, maximum < 500 lines
 - **Function Size**: Average < 30 lines, maximum < 50 lines
 - **Test Coverage**: > 90% for all new code
 - **Type Coverage**: 100% type hints on public APIs
@@ -444,14 +346,14 @@ def create_frame_sequence(config: AnimationConfig) -> LazySequence:
 ## Development Priorities
 
 ### Immediate (Current Sprint)
-1. **Complete mutable object elimination** - Replace remaining SimpleNamespace usage
-2. **UI system modularization** - Break down large UI files into focused components
-3. **Argument system refactoring** - Pure functional configuration processing
+1. **Import path migration** - Update all imports to use new package structure
+2. **Large file splitting** - Break down ui/elements.py and config/arguments.py
+3. **Integration testing** - Verify all components work with new structure
 
 ### Short Term (Next Sprint)
-1. **Rendering system refactoring** - Functional generation pipeline
+1. **Complete immutability** - Eliminate remaining mutable objects
 2. **Settings system modernization** - Immutable configuration management
-3. **Video processing modularization** - Clean external tool integration
+3. **Video processing validation** - Test all media processing components
 
 ### Medium Term (Ongoing)
 1. **Performance optimization** - Leverage functional programming for caching

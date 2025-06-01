@@ -1,20 +1,3 @@
-# Copyright (C) 2023 Deforum LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-# Contact the authors: https://deforum.github.io/
-
-# noinspection PyUnresolvedReferences
 from modules import sd_schedulers
 from modules import sd_samplers
 
@@ -170,8 +153,8 @@ def get_composable_masks_info_html():
     return """
         <ul style="list-style-type:circle; margin-left:0.75em; margin-bottom:0.2em">
         <li>To enable, check use_mask in the Init tab</li>
-        <li>Supports boolean operations: (! - negation, & - and, | - or, ^ - xor, \ - difference, () - nested operations)</li>
-        <li>default variables: in \{\}, like \{init_mask\}, \{video_mask\}, \{everywhere\}</li>
+        <li>Supports boolean operations: (! - negation, & - and, | - or, ^ - xor, \\\\ - difference, () - nested operations)</li>
+        <li>default variables: in \\{\\}, like \\{init_mask\\}, \\{video_mask\\}, \\{everywhere\\}</li>
         <li>masks from files: in [], like [mask1.png]</li>
         <li>description-based: <i>word masks</i> in &lt;&gt;, like &lt;apple&gt;, &lt;hair&gt</li>
         </ul>

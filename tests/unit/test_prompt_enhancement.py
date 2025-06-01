@@ -1,9 +1,23 @@
-"""
-Unit tests for the functional prompt enhancement system.
+#!/usr/bin/env python3
 
-Tests all pure functions, immutable data structures, and functional composition
-for prompt enhancement and AI model integration.
 """
+Unit tests for prompt enhancement functionality.
+Tests the WAN prompt enhancement and AI-driven description generation.
+"""
+
+import pytest
+import unittest
+from typing import Dict, Any, List
+from pathlib import Path
+import json
+
+# Import from the new location
+from deforum.prompt.enhancement import (
+    PromptEnhancer,
+    enhance_prompt_with_movement,
+    generate_ai_description,
+    validate_prompt_format
+)
 
 import pytest
 import json

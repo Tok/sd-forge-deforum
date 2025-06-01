@@ -1,19 +1,3 @@
-# Copyright (C) 2023 Deforum LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-# Contact the authors: https://deforum.github.io/
-
 import json
 import os
 import sys
@@ -40,7 +24,7 @@ def get_extension_base_dir():
 
 def get_default_settings_path():
     """Return the path to the default settings file in the extension directory"""
-    return os.path.join(get_extension_base_dir(), "scripts", "default_settings.txt")
+    return os.path.join(get_extension_base_dir(), "default_settings.txt")
 
 def get_keys_to_exclude():
     # init_image_box is PIL object not string, so ignore.

@@ -1,33 +1,3 @@
-# Copyright (C) 2023 Deforum LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-# Contact the authors: https://deforum.github.io/
-
-# At the moment there are three types of masks: mask from variable, file mask and word mask
-# Variable masks include video_mask (which can be set to auto-generated human masks) and everywhere
-# They are put in {}-brackets
-# Word masks are framed with <>-bracets, like: <cat>, <anime girl>
-# File masks are put in []-brackes
-# Empty strings are counted as the whole frame
-# We want to put them all into a sequence of boolean operations
-
-# Example:
-# \ <armor>
-# (({human_mask} & [mask1.png]) ^ <apple>)
-
-# Writing the parser for the boolean sequence
-# using regex and PIL operations
 import re
 from .load_images import get_mask_from_file, check_mask_for_errors, blank_if_none
 from .word_masking import get_word_mask

@@ -1,11 +1,23 @@
-"""
-Unit tests for the functional schedule system.
+#!/usr/bin/env python3
 
-Tests all pure functions, immutable data structures, and functional composition
-for schedule parsing and interpolation.
+"""
+Unit tests for schedule system functionality.
+Tests the functional schedule parsing and evaluation system.
 """
 
 import pytest
+import unittest
+from typing import Dict, Any, List
+import math
+
+# Import from the new location
+from deforum.animation.schedules import (
+    ScheduleSystem,
+    parse_schedule_string,
+    evaluate_schedule_at_frame,
+    validate_schedule_syntax
+)
+
 import numpy as np
 from typing import Tuple, Dict
 

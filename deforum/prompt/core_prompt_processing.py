@@ -1,19 +1,3 @@
-# Copyright (C) 2023 Deforum LLC
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-# Contact the authors: https://deforum.github.io/
-
 import re
 import numexpr
 from .rendering.util.log_utils import RED, GREEN, PURPLE, RESET_COLOR
@@ -40,7 +24,7 @@ def split_weighted_subprompts(text, frame=0, max_frames=0):
     """
     splits the prompt based on deforum webui implementation, moved from generate.py 
     """
-    math_parser = re.compile("(?P<weight>(`[\S\s]*?`))", re.VERBOSE)
+    math_parser = re.compile(r"(?P<weight>(`[\S\s]*?`))", re.VERBOSE)
 
     parsed_prompt = re.sub(math_parser, lambda m: str(parse_weight(m, frame)), text)
 
