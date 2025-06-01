@@ -1,7 +1,8 @@
+import os
 from enum import Enum
 from pathlib import Path
 
-from ...video_audio_utilities import get_frame_name
+from ...media.video_audio_pipeline import get_frame_name
 
 
 class FileFormat(Enum):

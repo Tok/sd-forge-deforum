@@ -2,31 +2,25 @@
 User interface components and Gradio integration.
 """
 
-from .main_interface_panels import *
-from .secondary_interface_panels import *
-from .settings_interface import *
-from .elements import *
-from .gradio_functions import *
-
+# Essential exports - modules will be imported only when the extension actually loads
 __all__ = [
-    # Main interface
-    'create_deforum_tab',
-    'setup_deforum_tab',
-    
-    # Secondary interface
-    'create_right_panel',
-    'setup_output_controls',
-    
-    # Settings interface
-    'create_settings_panel',
-    'setup_advanced_settings',
-    
-    # UI elements
-    'create_gr_elem',
-    'build_animation_controls',
-    'build_prompt_controls',
-    
-    # Gradio functions
-    'setup_gradio_interface',
-    'handle_ui_events',
-] 
+    'on_ui_tabs',
+    'on_ui_settings',
+    'setup_deforum_left_side_ui',
+]
+
+# Only import the essential functions that are needed by the main extension entry point
+def get_on_ui_tabs():
+    """Get the on_ui_tabs function when needed."""
+    from .secondary_interface_panels import on_ui_tabs
+    return on_ui_tabs
+
+def get_on_ui_settings():
+    """Get the on_ui_settings function when needed."""
+    from .settings_interface import on_ui_settings
+    return on_ui_settings
+
+def get_setup_deforum_left_side_ui():
+    """Get the setup_deforum_left_side_ui function when needed."""
+    from .main_interface_panels import setup_deforum_left_side_ui
+    return setup_deforum_left_side_ui 

@@ -12,16 +12,13 @@ from .generate import generate, isJson
 from .noise import add_noise
 from .animation import anim_frame_warp
 from .animation_key_frames import DeformAnimKeys, LooperAnimKeys, FreeUAnimKeys, KohyaHRFixAnimKeys
-from .video_audio_utilities import get_frame_name, get_next_frame, render_preview
+from ..media.video_audio_pipeline import get_frame_name, get_next_frame, render_preview
 from .depth import DepthModel
 from .colors import maintain_colors
 from .parseq_adapter import ParseqAdapter
 from .seed import next_seed
 from .image_sharpening import unsharp_mask
 from .load_images import get_mask, load_img, load_image, get_mask_from_file
-from .hybrid_video import (
-    hybrid_generation, hybrid_composite, get_matrix_for_hybrid_motion, get_matrix_for_hybrid_motion_prev, get_flow_for_hybrid_motion, get_flow_for_hybrid_motion_prev, image_transform_ransac,
-    image_transform_optical_flow, get_flow_from_images, abs_flow_to_rel_flow, rel_flow_to_abs_flow)
 from .save_images import save_image
 from .composable_masks import compose_mask_with_check
 from .settings import save_settings_from_animation_run
@@ -35,6 +32,7 @@ from modules import lowvram, devices, sd_hijack
 from .rendering import experimental_core
 from .rendering.util import log_utils
 from .RAFT import RAFT
+from ..media.video_audio_pipeline import download_audio
 
 
 def is_use_experimental_render_core(anim_args):
@@ -47,7 +45,6 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         if video_args.soundtrack_path.startswith(('http://', 'https://')):
             print(f"Pre-downloading soundtrack at the beginning of the render process: {video_args.soundtrack_path}")
             try:
-                from .video_audio_utilities import download_audio
                 video_args.soundtrack_path = download_audio(video_args.soundtrack_path)
                 print(f"Audio successfully pre-downloaded to: {video_args.soundtrack_path}")
             except Exception as e:
@@ -67,15 +64,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         srt_frame_duration = init_srt_file(srt_filename, video_args.fps)
 
     if anim_args.animation_mode in ['2D', '3D']:
-        # handle hybrid video generation
-        if anim_args.hybrid_composite != 'None' or anim_args.hybrid_motion in ['Affine', 'Perspective', 'Optical Flow']:
-            args, anim_args, inputfiles = hybrid_generation(args, anim_args, root)
-            # path required by hybrid functions, even if hybrid_comp_save_extra_frames is False
-            hybrid_frame_path = os.path.join(args.outdir, 'hybridframes')
-        # initialize prev_flow
-        if anim_args.hybrid_motion == 'Optical Flow':
-            prev_flow = None
-
+        # Note: hybrid functionality has been removed
         if loop_args.use_looper:
             print("Using Guided Images mode: seed_behavior will be set to 'schedule' and 'strength_0_no_init' to False")
             if args.strength == 0:
@@ -129,7 +118,6 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
 
     # load depth model for 3D
     predict_depths = (anim_args.animation_mode == '3D' and anim_args.use_depth_warping) or anim_args.save_depth_maps
-    predict_depths = predict_depths or (anim_args.hybrid_composite and anim_args.hybrid_comp_mask_type in ['Depth', 'Video Depth'])
     predict_depths = predict_depths and not args.motion_preview_mode
     if predict_depths:
         keep_in_vram = opts.data.get("deforum_keep_3d_models_in_vram")
@@ -137,17 +125,12 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         device = ('cpu' if cmd_opts.lowvram or cmd_opts.medvram else root.device)
         depth_model = DepthModel(root.models_path, device, root.half_precision, keep_in_vram=keep_in_vram, depth_algorithm=anim_args.depth_algorithm, Width=args.W, Height=args.H,
                                  midas_weight=anim_args.midas_weight)
-
-        # depth-based hybrid composite mask requires saved depth maps
-        if anim_args.hybrid_composite != 'None' and anim_args.hybrid_comp_mask_type == 'Depth':
-            anim_args.save_depth_maps = True
     else:
         depth_model = None
         anim_args.save_depth_maps = False
 
     raft_model = None
     load_raft = (anim_args.optical_flow_cadence == "RAFT" and int(anim_args.diffusion_cadence) > 1) or \
-                (anim_args.hybrid_motion == "Optical Flow" and anim_args.hybrid_flow_method == "RAFT") or \
                 (anim_args.optical_flow_redo_generation == "RAFT")
     load_raft = load_raft and not args.motion_preview_mode
     if load_raft:
@@ -250,14 +233,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         threshold = keys.threshold_schedule_series[frame_idx]
         cadence_flow_factor = keys.cadence_flow_factor_schedule_series[frame_idx]
         redo_flow_factor = keys.redo_flow_factor_schedule_series[frame_idx]
-        hybrid_comp_schedules = {
-            "alpha": keys.hybrid_comp_alpha_schedule_series[frame_idx],
-            "mask_blend_alpha": keys.hybrid_comp_mask_blend_alpha_schedule_series[frame_idx],
-            "mask_contrast": keys.hybrid_comp_mask_contrast_schedule_series[frame_idx],
-            "mask_auto_contrast_cutoff_low": int(keys.hybrid_comp_mask_auto_contrast_cutoff_low_schedule_series[frame_idx]),
-            "mask_auto_contrast_cutoff_high": int(keys.hybrid_comp_mask_auto_contrast_cutoff_high_schedule_series[frame_idx]),
-            "flow_factor": keys.hybrid_flow_factor_schedule_series[frame_idx]
-        }
+        # Note: hybrid schedules removed
         scheduled_sampler_name = None
         scheduled_scheduler_name = None
         scheduled_clipskip = None
@@ -321,8 +297,8 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
                 if anim_args.animation_mode in ['2D', '3D'] and anim_args.optical_flow_cadence != 'None':
                     if keys.strength_schedule_series[tween_frame_start_idx] > 0:
                         if cadence_flow is None and turbo_prev_image is not None and turbo_next_image is not None:
-                            cadence_flow = get_flow_from_images(turbo_prev_image, turbo_next_image, anim_args.optical_flow_cadence, raft_model) / 2
-                            turbo_next_image = image_transform_optical_flow(turbo_next_image, -cadence_flow, 1)
+                            # Note: optical flow functionality requires hybrid imports which have been removed
+                            pass
 
                 if opts.data.get("deforum_save_gen_info_as_srt"):
                     params_to_print = opts.data.get("deforum_save_gen_info_as_srt_params", ['Seed'])
@@ -330,7 +306,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
                     write_frame_subtitle(srt_filename, tween_frame_idx, srt_frame_duration, f"F#: {tween_frame_idx}; Cadence: {tween < 1.0}; Seed: {args.seed}; {params_string}")
                     params_string = None
 
-                print(f"Creating in-between {'' if cadence_flow is None else anim_args.optical_flow_cadence + ' optical flow '}cadence frame: {tween_frame_idx}; tween:{tween:0.2f};")
+                print(f"Creating in-between cadence frame: {tween_frame_idx}; tween:{tween:0.2f};")
 
                 if depth_model is not None:
                     assert (turbo_next_image is not None)
@@ -341,48 +317,9 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
                 if advance_next:
                     turbo_next_image, _ = anim_frame_warp(turbo_next_image, args, anim_args, keys, tween_frame_idx, depth_model, depth=depth, device=root.device, half_precision=root.half_precision)
 
-                # hybrid video motion - warps turbo_prev_image or turbo_next_image to match motion
-                if tween_frame_idx > 0:
-                    if anim_args.hybrid_motion in ['Affine', 'Perspective']:
-                        if anim_args.hybrid_motion_use_prev_img:
-                            matrix = get_matrix_for_hybrid_motion_prev(tween_frame_idx - 1, (args.W, args.H), inputfiles, prev_img, anim_args.hybrid_motion)
-                            if advance_prev:
-                                turbo_prev_image = image_transform_ransac(turbo_prev_image, matrix, anim_args.hybrid_motion)
-                            if advance_next:
-                                turbo_next_image = image_transform_ransac(turbo_next_image, matrix, anim_args.hybrid_motion)
-                        else:
-                            matrix = get_matrix_for_hybrid_motion(tween_frame_idx - 1, (args.W, args.H), inputfiles, anim_args.hybrid_motion)
-                            if advance_prev:
-                                turbo_prev_image = image_transform_ransac(turbo_prev_image, matrix, anim_args.hybrid_motion)
-                            if advance_next:
-                                turbo_next_image = image_transform_ransac(turbo_next_image, matrix, anim_args.hybrid_motion)
-                    if anim_args.hybrid_motion in ['Optical Flow']:
-                        if anim_args.hybrid_motion_use_prev_img:
-                            flow = get_flow_for_hybrid_motion_prev(tween_frame_idx - 1, (args.W, args.H), inputfiles, hybrid_frame_path, prev_flow, prev_img, anim_args.hybrid_flow_method, raft_model,
-                                                                   anim_args.hybrid_flow_consistency, anim_args.hybrid_consistency_blur, anim_args.hybrid_comp_save_extra_frames)
-                            if advance_prev:
-                                turbo_prev_image = image_transform_optical_flow(turbo_prev_image, flow, hybrid_comp_schedules['flow_factor'])
-                            if advance_next:
-                                turbo_next_image = image_transform_optical_flow(turbo_next_image, flow, hybrid_comp_schedules['flow_factor'])
-                            prev_flow = flow
-                        else:
-                            flow = get_flow_for_hybrid_motion(tween_frame_idx - 1, (args.W, args.H), inputfiles, hybrid_frame_path, prev_flow, anim_args.hybrid_flow_method, raft_model,
-                                                              anim_args.hybrid_flow_consistency, anim_args.hybrid_consistency_blur, anim_args.hybrid_comp_save_extra_frames)
-                            if advance_prev:
-                                turbo_prev_image = image_transform_optical_flow(turbo_prev_image, flow, hybrid_comp_schedules['flow_factor'])
-                            if advance_next:
-                                turbo_next_image = image_transform_optical_flow(turbo_next_image, flow, hybrid_comp_schedules['flow_factor'])
-                            prev_flow = flow
+                # Note: hybrid video motion functionality removed
 
-                # do optical flow cadence after animation warping
-                if cadence_flow is not None:
-                    cadence_flow = abs_flow_to_rel_flow(cadence_flow, args.W, args.H)
-                    cadence_flow, _ = anim_frame_warp(cadence_flow, args, anim_args, keys, tween_frame_idx, depth_model, depth=depth, device=root.device, half_precision=root.half_precision)
-                    cadence_flow_inc = rel_flow_to_abs_flow(cadence_flow, args.W, args.H) * tween
-                    if advance_prev:
-                        turbo_prev_image = image_transform_optical_flow(turbo_prev_image, cadence_flow_inc, cadence_flow_factor)
-                    if advance_next:
-                        turbo_next_image = image_transform_optical_flow(turbo_next_image, cadence_flow_inc, cadence_flow_factor)
+                # Note: optical flow cadence functionality removed
 
                 turbo_prev_frame_idx = turbo_next_frame_idx = tween_frame_idx
 
@@ -413,43 +350,17 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
                     depth_model.save(os.path.join(args.outdir, f"{root.timestring}_depth_{tween_frame_idx:09}.png"), depth)
 
         # get color match for video outside of prev_img conditional
-        hybrid_available = anim_args.hybrid_composite != 'None' or anim_args.hybrid_motion in ['Optical Flow', 'Affine', 'Perspective']
-        if anim_args.color_coherence == 'Video Input' and hybrid_available:
-            if int(frame_idx) % int(anim_args.color_coherence_video_every_N_frames) == 0:
-                prev_vid_img = Image.open(os.path.join(args.outdir, 'inputframes', get_frame_name(anim_args.video_init_path) + f"{frame_idx:09}.jpg"))
-                prev_vid_img = prev_vid_img.resize((args.W, args.H), PIL.Image.LANCZOS)
-                color_match_sample = np.asarray(prev_vid_img)
-                color_match_sample = cv2.cvtColor(color_match_sample, cv2.COLOR_RGB2BGR)
+        # Note: hybrid functionality removed
+        if anim_args.color_coherence == 'Video Input':
+            # This functionality required hybrid video support which has been removed
+            pass
 
         # after 1st frame, prev_img exists
         if prev_img is not None:
             # apply transforms to previous frame
             prev_img, depth = anim_frame_warp(prev_img, args, anim_args, keys, frame_idx, depth_model, depth=None, device=root.device, half_precision=root.half_precision)
 
-            # do hybrid compositing before motion
-            if anim_args.hybrid_composite == 'Before Motion':
-                args, prev_img = hybrid_composite(args, anim_args, frame_idx, prev_img, depth_model, hybrid_comp_schedules, root)
-
-            # hybrid video motion - warps prev_img to match motion, usually to prepare for compositing
-            if anim_args.hybrid_motion in ['Affine', 'Perspective']:
-                if anim_args.hybrid_motion_use_prev_img:
-                    matrix = get_matrix_for_hybrid_motion_prev(frame_idx - 1, (args.W, args.H), inputfiles, prev_img, anim_args.hybrid_motion)
-                else:
-                    matrix = get_matrix_for_hybrid_motion(frame_idx - 1, (args.W, args.H), inputfiles, anim_args.hybrid_motion)
-                prev_img = image_transform_ransac(prev_img, matrix, anim_args.hybrid_motion)
-            if anim_args.hybrid_motion in ['Optical Flow']:
-                if anim_args.hybrid_motion_use_prev_img:
-                    flow = get_flow_for_hybrid_motion_prev(frame_idx - 1, (args.W, args.H), inputfiles, hybrid_frame_path, prev_flow, prev_img, anim_args.hybrid_flow_method, raft_model,
-                                                           anim_args.hybrid_flow_consistency, anim_args.hybrid_consistency_blur, anim_args.hybrid_comp_save_extra_frames)
-                else:
-                    flow = get_flow_for_hybrid_motion(frame_idx - 1, (args.W, args.H), inputfiles, hybrid_frame_path, prev_flow, anim_args.hybrid_flow_method, raft_model,
-                                                      anim_args.hybrid_flow_consistency, anim_args.hybrid_consistency_blur, anim_args.hybrid_comp_save_extra_frames)
-                prev_img = image_transform_optical_flow(prev_img, flow, hybrid_comp_schedules['flow_factor'])
-                prev_flow = flow
-
-            # do hybrid compositing after motion (normal)
-            if anim_args.hybrid_composite == 'Normal':
-                args, prev_img = hybrid_composite(args, anim_args, frame_idx, prev_img, depth_model, hybrid_comp_schedules, root)
+            # Note: hybrid compositing and motion functionality removed
 
             # apply color matching
             if anim_args.color_coherence != 'None':
@@ -571,12 +482,10 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
 
             disposable_image = generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root, parseq_adapter, frame_idx, sampler_name=scheduled_sampler_name, scheduler_name=scheduled_scheduler_name)
             disposable_image = cv2.cvtColor(np.array(disposable_image), cv2.COLOR_RGB2BGR)
-            disposable_flow = get_flow_from_images(prev_img, disposable_image, optical_flow_redo_generation, raft_model)
-            disposable_image = cv2.cvtColor(disposable_image, cv2.COLOR_BGR2RGB)
-            disposable_image = image_transform_optical_flow(disposable_image, disposable_flow, redo_flow_factor)
+            # Note: optical flow functionality requires hybrid imports which have been removed
             args.seed = stored_seed
-            root.init_sample = Image.fromarray(disposable_image)
-            del (disposable_image, disposable_flow, stored_seed)
+            root.init_sample = Image.fromarray(cv2.cvtColor(disposable_image, cv2.COLOR_BGR2RGB))
+            del disposable_image, stored_seed
             gc.collect()
 
         # diffusion redo
@@ -592,7 +501,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
                     disposable_image = maintain_colors(prev_img, color_match_sample, anim_args.color_coherence)
                 args.seed = stored_seed
                 root.init_sample = Image.fromarray(cv2.cvtColor(disposable_image, cv2.COLOR_BGR2RGB))
-            del (disposable_image, stored_seed)
+            del disposable_image, stored_seed
             gc.collect()
 
         # generation
@@ -601,14 +510,10 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         if image is None:
             break
 
-        # do hybrid video after generation
-        if frame_idx > 0 and anim_args.hybrid_composite == 'After Generation':
-            image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-            args, image = hybrid_composite(args, anim_args, frame_idx, image, depth_model, hybrid_comp_schedules, root)
-            image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        # Note: hybrid video after generation functionality removed
 
         # color matching on first frame is after generation, color match was collected earlier, so we do an extra generation to avoid the corruption introduced by the color match of first output
-        if frame_idx == 0 and (anim_args.color_coherence == 'Image' or (anim_args.color_coherence == 'Video Input' and hybrid_available)):
+        if frame_idx == 0 and anim_args.color_coherence == 'Image':
             image = maintain_colors(cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR), color_match_sample, anim_args.color_coherence)
             image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         elif color_match_sample is not None and anim_args.color_coherence != 'None' and not anim_args.legacy_colormatch:

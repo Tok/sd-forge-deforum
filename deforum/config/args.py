@@ -8,7 +8,7 @@ from .arguments import (
     DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, 
     ParseqArgs, WanArgs, RootArgs
 )
-from .data_models import UIDefaults
+from ..models.data_models import UIDefaults
 
 
 def set_arg_lists():
@@ -101,4 +101,13 @@ def get_component_names():
         *DeforumOutputArgs().keys(), 
         *ParseqArgs().keys(),
         # Note: controlnet and WAN components handled separately in their modules
-    ] 
+    ]
+
+
+def get_settings_component_names():
+    """Get settings component names.
+    
+    Returns:
+        List of settings component names for UI setup
+    """
+    return get_component_names() 

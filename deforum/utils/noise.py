@@ -3,7 +3,7 @@ from torch.nn.functional import interpolate
 import numpy as np
 from PIL import ImageOps
 import math
-from .animation import sample_to_cv2
+from ..core.animation_controller import sample_to_cv2
 import cv2
 from modules.shared import opts
 

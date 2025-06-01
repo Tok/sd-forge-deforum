@@ -1,12 +1,7 @@
 from cv2.typing import MatLike
 
 from .call.anim import call_anim_frame_warp
-from .call.hybrid import (call_get_flow_for_hybrid_motion_prev,
-                          call_get_flow_for_hybrid_motion,
-                          call_get_matrix_for_hybrid_motion,
-                          call_get_matrix_for_hybrid_motion_prev)
-from ...hybrid_video import (get_flow_from_images, image_transform_ransac,
-                             image_transform_optical_flow, rel_flow_to_abs_flow)
+# Note: hybrid video imports removed - functionality not available
 
 
 def advance_optical_flow_cadence_before_animation_warping(data, last_frame, tween_frame, prev_image, image) -> MatLike:
@@ -30,18 +25,8 @@ def advance(data, i, image, depth):
 
 
 def do_hybrid_video_motion(data, last_frame, tween_i, reference_images, image):
-    """Warps the previous and/or the next to match the motion of the provided reference images."""
-    motion = data.args.anim_args.hybrid_motion
-
-    def _is_do_motion(motions):
-        return tween_i > 0 and motion in motions
-
-    ri = reference_images
-    transformed = (_advance_hybrid_motion_ransac_transform(data, tween_i, ri, image)
-                   if _is_do_motion(['Affine', 'Perspective']) else image)
-    flown = (_advance_hybrid_motion_optical_tween_flow(data, tween_i, ri, last_frame, transformed)
-             if _is_do_motion(['Optical Flow']) else transformed)
-    return flown
+    # Note: hybrid video motion functionality removed
+    return image
 
 
 def do_optical_flow_cadence_after_animation_warping(data, tween_frame, prev_image, image):
@@ -70,12 +55,8 @@ def _advance_optical_tween_flow(last_frame, flow, image):
 
 
 def _advance_hybrid_motion_optical_tween_flow(data, tween_i, reference_images, last_frame, image):
-    last_i = tween_i - 1
-    flow = (call_get_flow_for_hybrid_motion(data, last_i)
-            if not data.args.anim_args.hybrid_motion_use_prev_img
-            else call_get_flow_for_hybrid_motion_prev(data, last_i, reference_images.previous))
-    data.animation_mode.prev_flow = flow
-    return _advance_optical_tween_flow(last_frame, flow, image)
+    # Note: hybrid motion optical flow functionality removed
+    return image
 
 
 def _advance_cadence_flow(data, tween_frame, image):
@@ -92,11 +73,8 @@ def _advance_ransac_transform(data, matrix, image):
 
 
 def _advance_hybrid_motion_ransac_transform(data, tween_i, reference_images, image):
-    last_i = tween_i - 1
-    matrix = (call_get_matrix_for_hybrid_motion(data, last_i)
-              if not data.args.anim_args.hybrid_motion_use_prev_img
-              else call_get_matrix_for_hybrid_motion_prev(data, last_i, reference_images.previous))
-    return _advance_ransac_transform(data, matrix, image)
+    # Note: hybrid motion ransac functionality removed
+    return image
 
 
 def _is_do_flow(data, tween_frame, start_i, prev_image, image):

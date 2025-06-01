@@ -4,6 +4,11 @@ from . import filename_utils, memory_utils
 from ...depth import DepthModel
 
 
+def is_depth_required_for_hybrid_composite_mask(anim_args):
+    # Note: hybrid composite functionality removed
+    return False
+
+
 def generate_and_save_depth_map_if_active(data, opencv_image, i):
     if data.args.anim_args.save_depth_maps:
         memory_utils.handle_vram_before_depth_map_generation(data)
@@ -13,15 +18,11 @@ def generate_and_save_depth_map_if_active(data, opencv_image, i):
         data.depth_model.save(os.path.join(data.output_directory, depth_filename), depth)
         memory_utils.handle_vram_after_depth_map_generation(data)
         return depth
-
-
-def is_composite_with_depth_mask(anim_args):
-    return anim_args.hybrid_composite != 'None' and anim_args.hybrid_comp_mask_type == 'Depth'
+    return None
 
 
 def create_depth_model_and_enable_depth_map_saving_if_active(anim_mode, root, anim_args, args):
-    # depth-based hybrid composite mask requires saved depth maps
-    anim_args.save_depth_maps = anim_mode.is_predicting_depths and is_composite_with_depth_mask(anim_args)
+    # Note: hybrid composite functionality removed
     return (DepthModel(root.models_path,
                        memory_utils.select_depth_device(root),
                        root.half_precision,

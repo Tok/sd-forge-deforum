@@ -1,11 +1,11 @@
-from .args import DeforumOutputArgs, get_component_names, get_settings_component_names
+from deforum.config.args import DeforumOutputArgs, get_component_names, get_settings_component_names
 from modules.shared import opts, state
 from modules.ui import create_output_panel, wrap_gradio_call
 from modules.call_queue import wrap_gradio_gpu_call
-from .run_deforum import run_deforum
-from .settings import save_settings, load_all_settings, load_video_settings, get_default_settings_path, update_settings_path
-from .general_utils import get_deforum_version, get_commit_date
-from .ui_left import setup_deforum_left_side_ui
+from deforum.core.run_deforum import run_deforum
+from deforum.config.settings import save_settings, load_all_settings, load_video_settings, get_default_settings_path, update_settings_path
+from deforum.utils.core_utilities import get_deforum_version, get_commit_date
+from .main_interface_panels import setup_deforum_left_side_ui
 from scripts.deforum_extend_paths import deforum_sys_extend
 import gradio as gr
 
@@ -38,7 +38,7 @@ def on_ui_tabs():
                     i1 = gr.HTML(i1_store, elem_id='deforum_header')
                     components['i1'] = i1
                     def show_vid(): # Show video button related func
-                        from .run_deforum import last_vid_data # get latest vid preview data (this import needs to stay inside the function!)
+                        from deforum.core.run_deforum import last_vid_data # get latest vid preview data (this import needs to stay inside the function!)
                         return {
                             i1: gr.update(value=last_vid_data, visible=True),
                             close_btn: gr.update(visible=True),

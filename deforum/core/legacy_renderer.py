@@ -73,8 +73,8 @@ def convert_legacy_args_to_context(
     animation_mode = getattr(anim_args, 'animation_mode', '2D')
     use_depth_warping = getattr(anim_args, 'use_depth_warping', False)
     save_depth_maps = getattr(anim_args, 'save_depth_maps', False)
-    hybrid_composite = getattr(anim_args, 'hybrid_composite', 'None')
-    hybrid_motion = getattr(anim_args, 'hybrid_motion', 'None')
+    hybrid_composite = 'None'
+    hybrid_motion = 'None'
     
     # Model configuration
     depth_algorithm = getattr(anim_args, 'depth_algorithm', 'midas')
@@ -329,40 +329,19 @@ def validate_legacy_compatibility(args: Any, anim_args: Any) -> Tuple[bool, str]
         return False, f"Validation error: {str(e)}"
 
 
-# Utility functions for gradual migration
 def create_hybrid_renderer(use_functional_for_frames: Optional[set] = None):
     """
     Create a hybrid renderer that uses functional rendering for specific frames
-    and legacy rendering for others. Useful for gradual migration.
+    and legacy rendering for others.
     
-    Args:
-        use_functional_for_frames: Set of frame indices to render functionally
-        
-    Returns:
-        Hybrid rendering function
+    Note: Hybrid rendering functionality removed
     """
     def hybrid_render(args, anim_args, video_args, parseq_args, loop_args,
                      controlnet_args, freeu_args, kohya_hrfix_args, root):
-        
-        if use_functional_for_frames is None:
-            # Use functional rendering for all frames
-            return functional_render_animation(
-                args, anim_args, video_args, parseq_args, loop_args,
-                controlnet_args, freeu_args, kohya_hrfix_args, root
-            )
-        
-        # Hybrid approach - would need more complex implementation
-        # For now, just use functional if enabled
-        if _FUNCTIONAL_RENDERING_ENABLED:
-            return functional_render_animation(
-                args, anim_args, video_args, parseq_args, loop_args,
-                controlnet_args, freeu_args, kohya_hrfix_args, root
-            )
-        else:
-            from ..render import render_animation as legacy_render_animation
-            return legacy_render_animation(
-                args, anim_args, video_args, parseq_args, loop_args,
-                controlnet_args, freeu_args, kohya_hrfix_args, root
-            )
+        # Note: Hybrid rendering functionality removed
+        # Fall back to legacy rendering
+        return render_animation_legacy(args, anim_args, video_args, parseq_args, 
+                                     loop_args, controlnet_args, freeu_args, 
+                                     kohya_hrfix_args, root)
     
     return hybrid_render 

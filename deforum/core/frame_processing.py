@@ -24,10 +24,7 @@ try:
     from ..noise import add_noise
     from ..colors import maintain_colors
     from ..image_sharpening import unsharp_mask
-    from ..hybrid_video import (
-        image_transform_optical_flow, image_transform_ransac,
-        get_flow_from_images, abs_flow_to_rel_flow, rel_flow_to_abs_flow
-    )
+    # Note: hybrid video imports removed - functionality not available
     from ..masks import do_overlay_mask
     from ..composable_masks import compose_mask_with_check
 except ImportError:
@@ -44,26 +41,27 @@ except ImportError:
     def unsharp_mask(image, *args, **kwargs):
         return image
     
-    def image_transform_optical_flow(image, *args, **kwargs):
-        return image
-    
-    def image_transform_ransac(image, *args, **kwargs):
-        return image
-    
-    def get_flow_from_images(*args, **kwargs):
-        return np.zeros((64, 64, 2))
-    
-    def abs_flow_to_rel_flow(flow, *args, **kwargs):
-        return flow
-    
-    def rel_flow_to_abs_flow(flow, *args, **kwargs):
-        return flow
-    
     def do_overlay_mask(*args, **kwargs):
         return args[2] if len(args) > 2 else None
     
     def compose_mask_with_check(*args, **kwargs):
         return None
+
+# Fallback implementations for removed hybrid video functions
+def image_transform_optical_flow(image, *args, **kwargs):
+    return image
+
+def image_transform_ransac(image, *args, **kwargs):
+    return image
+
+def get_flow_from_images(*args, **kwargs):
+    return np.zeros((64, 64, 2))
+
+def abs_flow_to_rel_flow(flow, *args, **kwargs):
+    return flow
+
+def rel_flow_to_abs_flow(flow, *args, **kwargs):
+    return flow
 
 
 def create_frame_state(

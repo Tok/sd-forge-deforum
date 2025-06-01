@@ -194,15 +194,15 @@ class AnimationArgs:
     
     # Optical flow settings
     optical_flow_cadence: str = "None"
+    cadence_flow_factor_schedule: str = "0:(1)"
     optical_flow_redo_generation: str = "None"
-    optical_flow_redo_generation_image: str = ""
+    redo_flow_factor_schedule: str = "0:(1)"
+    
+    # Looper settings
+    use_looper: bool = False
     
     # Depth settings
-    depth_algorithm: DepthAlgorithm = DepthAlgorithm.DEPTH_ANYTHING_V2_SMALL
-    midas_weight: float = 0.2
-    padding_mode: PaddingMode = PaddingMode.BORDER
-    sampling_mode: SamplingMode = SamplingMode.BICUBIC
-    save_depth_maps: bool = False
+    use_depth_warping: bool = True
     
     # Video init settings
     video_init_path: str = 'https://deforum.github.io/a1/V1.mp4'
@@ -215,26 +215,7 @@ class AnimationArgs:
     use_mask_video: bool = False
     video_mask_path: str = 'https://deforum.github.io/a1/VM1.mp4'
     
-    # Hybrid settings
-    hybrid_comp_alpha_schedule: str = "0:(0.5)"
-    hybrid_comp_mask_blend_alpha_schedule: str = "0:(0.5)"
-    hybrid_comp_mask_contrast_schedule: str = "0:(1)"
-    hybrid_comp_mask_auto_contrast_cutoff_high_schedule: str = "0:(100)"
-    hybrid_comp_mask_auto_contrast_cutoff_low_schedule: str = "0:(0)"
-    hybrid_flow_method: str = "RAFT"
-    hybrid_composite: str = "None"
-    hybrid_use_init_image: bool = False
-    hybrid_comp_mask_type: str = "None"
-    hybrid_comp_mask_inverse: bool = False
-    hybrid_comp_mask_equalize: str = "None"
-    hybrid_comp_mask_auto_contrast: bool = False
-    hybrid_comp_save_extra_frames: bool = False
-    
     # Additional schedules
-    diffusion_cadence: str = "1"
-    optical_flow_cadence_schedule: str = "0: (1)"
-    cadence_flow_factor_schedule: str = "0: (1)"
-    redo_flow_factor_schedule: str = "0: (1)"
     mask_schedule: str = "0: (\"\")"
     noise_mask_schedule: str = "0: (\"\")"
     amount_schedule: str = "0: (0.1)"
@@ -260,9 +241,6 @@ class AnimationArgs:
             'noise_schedule', 'strength_schedule', 'contrast_schedule', 'cfg_scale_schedule',
             'fov_schedule', 'aspect_ratio_schedule', 'near_schedule', 'far_schedule',
             'subseed_schedule', 'steps_schedule', 'clipskip_schedule',
-            'hybrid_comp_alpha_schedule', 'hybrid_comp_mask_blend_alpha_schedule',
-            'hybrid_comp_mask_contrast_schedule', 'hybrid_comp_mask_auto_contrast_cutoff_high_schedule',
-            'hybrid_comp_mask_auto_contrast_cutoff_low_schedule',
             'optical_flow_cadence_schedule', 'cadence_flow_factor_schedule', 'redo_flow_factor_schedule',
             'amount_schedule', 'kernel_schedule', 'sigma_schedule', 'threshold_schedule', 'ancestral_eta_schedule'
         ]

@@ -11,6 +11,7 @@ from .data.frame import KeyFrameDistribution, DiffusionFrame
 from .data.render_data import RenderData
 from .data.taqaddumat import Taqaddumat
 from .util import filename_utils, image_utils, log_utils, memory_utils, subtitle_utils, web_ui_utils
+from ..media.video_audio_pipeline import download_audio
 
 IS_USE_PROFILER = False
 
@@ -28,7 +29,6 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         if video_args.soundtrack_path.startswith(('http://', 'https://')):
             print(f"Pre-downloading soundtrack at the beginning of the render process: {video_args.soundtrack_path}")
             try:
-                from ..video_audio_utilities import download_audio
                 video_args.soundtrack_path = download_audio(video_args.soundtrack_path)
                 print(f"Audio successfully pre-downloaded to: {video_args.soundtrack_path}")
             except Exception as e:
@@ -118,8 +118,7 @@ def check_render_conditions(data: RenderData):
             log_utils.warn(msg.format(method="optical flow cadence", results=dark_or_dist))
         if data.has_optical_flow_redo():
             log_utils.warn(msg.format(method="optical flow generation", results=dark_or_dist))
-        if data.is_hybrid_available():
-            log_utils.warn(msg.format(method="hybrid video", results="Render process may not run stable."))
+        # Note: hybrid functionality removed
 
 
 def update_pseudo_cadence(data: RenderData, value: int):

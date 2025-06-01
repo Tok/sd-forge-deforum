@@ -51,12 +51,6 @@ class DeformAnimKeys():
         self.cadence_flow_factor_schedule_series = self.fi.parse_inbetweens(anim_args.cadence_flow_factor_schedule, 'cadence_flow_factor_schedule')
         self.redo_flow_factor_schedule_series = self.fi.parse_inbetweens(anim_args.redo_flow_factor_schedule, 'redo_flow_factor_schedule')
         self.far_series = self.fi.parse_inbetweens(anim_args.far_schedule, 'far_schedule')
-        self.hybrid_comp_alpha_schedule_series = self.fi.parse_inbetweens(anim_args.hybrid_comp_alpha_schedule, 'hybrid_comp_alpha_schedule')
-        self.hybrid_comp_mask_blend_alpha_schedule_series = self.fi.parse_inbetweens(anim_args.hybrid_comp_mask_blend_alpha_schedule, 'hybrid_comp_mask_blend_alpha_schedule')
-        self.hybrid_comp_mask_contrast_schedule_series = self.fi.parse_inbetweens(anim_args.hybrid_comp_mask_contrast_schedule, 'hybrid_comp_mask_contrast_schedule')
-        self.hybrid_comp_mask_auto_contrast_cutoff_high_schedule_series = self.fi.parse_inbetweens(anim_args.hybrid_comp_mask_auto_contrast_cutoff_high_schedule, 'hybrid_comp_mask_auto_contrast_cutoff_high_schedule')
-        self.hybrid_comp_mask_auto_contrast_cutoff_low_schedule_series = self.fi.parse_inbetweens(anim_args.hybrid_comp_mask_auto_contrast_cutoff_low_schedule, 'hybrid_comp_mask_auto_contrast_cutoff_low_schedule')
-        self.hybrid_flow_factor_schedule_series = self.fi.parse_inbetweens(anim_args.hybrid_flow_factor_schedule, 'hybrid_flow_factor_schedule')
 
 class ControlNetKeys():
     def __init__(self, anim_args, controlnet_args):

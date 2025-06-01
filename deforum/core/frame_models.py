@@ -19,7 +19,6 @@ class ProcessingStage(Enum):
     INITIALIZATION = "initialization"
     PRE_PROCESSING = "pre_processing"
     ANIMATION_WARPING = "animation_warping"
-    HYBRID_MOTION = "hybrid_motion"
     NOISE_APPLICATION = "noise_application"
     GENERATION = "generation"
     POST_PROCESSING = "post_processing"
@@ -91,10 +90,6 @@ class FrameState:
     rotation_y: float = 0.0
     rotation_z: float = 0.0
     
-    # Hybrid motion parameters
-    hybrid_alpha: float = 1.0
-    hybrid_flow_factor: float = 1.0
-    
     def with_image(self, image: np.ndarray) -> 'FrameState':
         """Return new FrameState with updated current image."""
         return replace(self, current_image=image)
@@ -129,8 +124,6 @@ class RenderContext:
     animation_mode: str
     use_depth_warping: bool
     save_depth_maps: bool
-    hybrid_composite: str
-    hybrid_motion: str
     
     # Model configuration
     depth_algorithm: str
@@ -256,4 +249,26 @@ MaskArray = np.ndarray
 
 # Result types for functional error handling
 ProcessingResult = Union[FrameResult, RenderingError]
-ValidationResult = Union[bool, str]  # True for valid, string for error message 
+ValidationResult = Union[bool, str]  # True for valid, string for error message
+
+class FrameConstants:
+    """Constants for frame processing"""
+    ANGLE = "angle"
+    ZOOM = "zoom"
+    TRANSLATION_X = "translation_x"
+    TRANSLATION_Y = "translation_y"
+    TRANSLATION_Z = "translation_z"
+    ROTATION_3D_X = "rotation_3d_x"
+    ROTATION_3D_Y = "rotation_3d_y"
+    ROTATION_3D_Z = "rotation_3d_z"
+    PERSPECTIVE_FLIP_THETA = "perspective_flip_theta"
+    PERSPECTIVE_FLIP_PHI = "perspective_flip_phi"
+    PERSPECTIVE_FLIP_GAMMA = "perspective_flip_gamma"
+    PERSPECTIVE_FLIP_FV = "perspective_flip_fv"
+    TRANSFORM_CENTER_X = "transform_center_x"
+    TRANSFORM_CENTER_Y = "transform_center_y"
+    NOISE = "noise"
+    STRENGTH = "strength"
+    CONTRAST = "contrast"
+    CFG_SCALE = "cfg_scale"
+    # Note: hybrid motion constants removed 

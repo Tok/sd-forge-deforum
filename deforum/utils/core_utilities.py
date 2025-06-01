@@ -9,7 +9,7 @@ import shutil
 from modules.shared import opts
 from torch.hub import download_url_to_file
 
-from .rendering.util import log_utils
+from ..core.util import log_utils
 
 
 def debug_print(message):

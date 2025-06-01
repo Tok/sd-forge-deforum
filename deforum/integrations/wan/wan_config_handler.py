@@ -10,6 +10,7 @@ import os
 import json
 from decimal import Decimal
 import time
+from ...media.video_audio_pipeline import download_audio
 
 
 class WanConfigHandler:
@@ -353,7 +354,6 @@ class WanConfigHandler:
             
             # Import video audio utilities
             try:
-                from ..video_audio_utilities import download_audio
                 audio_path = download_audio(audio_url, output_dir, timestring)
                 
                 if audio_path:

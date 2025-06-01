@@ -3,11 +3,11 @@ import gradio as gr
 from PIL import Image
 import numpy as np
 from modules import scripts, shared
-from .deforum_controlnet_gradio import hide_ui_by_cn_status, hide_file_textboxes, ToolButton
-from .general_utils import count_files_in_folder, clean_gradio_path_strings, debug_print
+from .gradio_interface import hide_ui_by_cn_status, hide_file_textboxes, ToolButton
+from ...utils.core_utilities import count_files_in_folder, clean_gradio_path_strings, debug_print
 from .rendering.util import emoji_utils
-from .video_audio_utilities import SUPPORTED_IMAGE_EXTENSIONS, SUPPORTED_VIDEO_EXTENSIONS, get_extension_if_valid, \
-    vid2frames, convert_image
+from ...media.video_audio_pipeline import SUPPORTED_IMAGE_EXTENSIONS, SUPPORTED_VIDEO_EXTENSIONS, get_extension_if_valid, \
+    get_quick_vid_info, vid2frames, convert_image
 from .animation_key_frames import ControlNetKeys
 from .load_images import load_image
 

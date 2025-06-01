@@ -9,7 +9,7 @@ from .component_builders import create_gr_elem, create_row
 from .rendering.util import emoji_utils
 from .ffmpeg_utils import FFmpegProcessor
 from .gradio_funcs import upload_pics_to_interpolate, upload_vid_to_depth, ncnn_upload_vid_to_upscale
-from .video_audio_utilities import ffmpeg_stitch_video, direct_stitch_vid_from_frames
+from ..media.video_audio_pipeline import ffmpeg_stitch_video, direct_stitch_vid_from_frames
 
 
 def get_tab_output(da, dv):

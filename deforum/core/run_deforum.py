@@ -12,7 +12,7 @@ from .save_images import dump_frames_cache, reset_frames_cache
 from .frame_interpolation import process_video_interpolation
 from .general_utils import get_deforum_version, get_commit_date
 from .upscaling import make_upscale_v2
-from .video_audio_utilities import ffmpeg_stitch_video, make_gifski_gif, handle_imgs_deletion, handle_input_frames_deletion, handle_cn_frames_deletion, get_ffmpeg_params, get_ffmpeg_paths
+from ..media.video_audio_pipeline import ffmpeg_stitch_video, make_gifski_gif, handle_imgs_deletion, handle_input_frames_deletion, handle_cn_frames_deletion, get_ffmpeg_params, get_ffmpeg_paths
 from pathlib import Path
 from .rendering.util.log_utils import UNDERLINE, YELLOW, ORANGE, RED, RESET_COLOR
 from .settings import save_settings_from_animation_run

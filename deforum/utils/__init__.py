@@ -6,7 +6,8 @@ from .core_utilities import *
 from .colors import *
 from .rich import *
 from .seed import *
-from .noise import *
+# Remove noise import to prevent circular dependency with core modules
+# from .noise import *
 from .mask_utilities import *
 from .human_mask_detection import *
 from .composable_mask_system import *
@@ -30,7 +31,7 @@ __all__ = [
     
     # Random and noise
     'set_seed',
-    'generate_noise',
+    # 'generate_noise',  # Commented out due to circular dependency
     
     # Masking
     'create_mask',

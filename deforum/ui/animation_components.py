@@ -68,38 +68,6 @@ def get_tab_animation(da, dloopArgs):
                 max_frames = create_gr_elem(da.max_frames)
                 diffusion_cadence = create_gr_elem(da.diffusion_cadence)
                 
-        # HYBRID VIDEO SETTINGS
-        with gr.Accordion("🎬 Hybrid Video Settings", open=False):
-            with FormRow():
-                hybrid_generate_inputframes = create_gr_elem(da.hybrid_generate_inputframes)
-                hybrid_generate_human_masks = create_gr_elem(da.hybrid_generate_human_masks)
-                
-            with FormRow():
-                hybrid_use_first_frame_as_init_image = create_gr_elem(da.hybrid_use_first_frame_as_init_image)
-                hybrid_motion = create_gr_elem(da.hybrid_motion)
-                
-            with FormRow():
-                hybrid_motion_use_prev_img = create_gr_elem(da.hybrid_motion_use_prev_img)
-                hybrid_flow_method = create_gr_elem(da.hybrid_flow_method)
-                
-            with FormRow():
-                hybrid_composite = create_gr_elem(da.hybrid_composite)
-                hybrid_comp_mask_type = create_gr_elem(da.hybrid_comp_mask_type)
-                
-            with FormRow():
-                hybrid_comp_mask_inverse = create_gr_elem(da.hybrid_comp_mask_inverse)
-                hybrid_comp_mask_equalize = create_gr_elem(da.hybrid_comp_mask_equalize)
-                
-            with FormRow():
-                hybrid_comp_mask_auto_contrast = create_gr_elem(da.hybrid_comp_mask_auto_contrast)
-                hybrid_comp_save_extra_frames = create_gr_elem(da.hybrid_comp_save_extra_frames)
-        
-        # HUMANS MASKING
-        with gr.Accordion("👤 Human Masking", open=False):
-            with FormRow():
-                hybrid_generate_human_masks = create_gr_elem(da.hybrid_generate_human_masks)
-                hybrid_human_masks_path = create_gr_elem(da.hybrid_human_masks_path)
-                
         # VIDEO INPUT SETTINGS
         with gr.Accordion("📹 Video Input", open=False):
             with FormRow():

@@ -89,17 +89,9 @@ class AnimationSchedules:
     near_series: Tuple[float, ...] = field(default_factory=tuple)
     far_series: Tuple[float, ...] = field(default_factory=tuple)
     
-    # Flow schedules
+    # Optical flow schedules
     cadence_flow_factor_schedule_series: Tuple[float, ...] = field(default_factory=tuple)
     redo_flow_factor_schedule_series: Tuple[float, ...] = field(default_factory=tuple)
-    
-    # Hybrid schedules
-    hybrid_comp_alpha_schedule_series: Tuple[float, ...] = field(default_factory=tuple)
-    hybrid_comp_mask_blend_alpha_schedule_series: Tuple[float, ...] = field(default_factory=tuple)
-    hybrid_comp_mask_contrast_schedule_series: Tuple[float, ...] = field(default_factory=tuple)
-    hybrid_comp_mask_auto_contrast_cutoff_high_schedule_series: Tuple[float, ...] = field(default_factory=tuple)
-    hybrid_comp_mask_auto_contrast_cutoff_low_schedule_series: Tuple[float, ...] = field(default_factory=tuple)
-    hybrid_flow_factor_schedule_series: Tuple[float, ...] = field(default_factory=tuple)
     
     @classmethod
     def from_anim_args(cls, anim_args: Any, max_frames: int = 100, seed: int = -1) -> 'AnimationSchedules':
@@ -153,13 +145,7 @@ class AnimationSchedules:
             near_series=tuple(fi.parse_inbetweens(anim_args.near_schedule, 'near_schedule')),
             far_series=tuple(fi.parse_inbetweens(anim_args.far_schedule, 'far_schedule')),
             cadence_flow_factor_schedule_series=tuple(fi.parse_inbetweens(anim_args.cadence_flow_factor_schedule, 'cadence_flow_factor_schedule')),
-            redo_flow_factor_schedule_series=tuple(fi.parse_inbetweens(anim_args.redo_flow_factor_schedule, 'redo_flow_factor_schedule')),
-            hybrid_comp_alpha_schedule_series=tuple(fi.parse_inbetweens(anim_args.hybrid_comp_alpha_schedule, 'hybrid_comp_alpha_schedule')),
-            hybrid_comp_mask_blend_alpha_schedule_series=tuple(fi.parse_inbetweens(anim_args.hybrid_comp_mask_blend_alpha_schedule, 'hybrid_comp_mask_blend_alpha_schedule')),
-            hybrid_comp_mask_contrast_schedule_series=tuple(fi.parse_inbetweens(anim_args.hybrid_comp_mask_contrast_schedule, 'hybrid_comp_mask_contrast_schedule')),
-            hybrid_comp_mask_auto_contrast_cutoff_high_schedule_series=tuple(fi.parse_inbetweens(anim_args.hybrid_comp_mask_auto_contrast_cutoff_high_schedule, 'hybrid_comp_mask_auto_contrast_cutoff_high_schedule')),
-            hybrid_comp_mask_auto_contrast_cutoff_low_schedule_series=tuple(fi.parse_inbetweens(anim_args.hybrid_comp_mask_auto_contrast_cutoff_low_schedule, 'hybrid_comp_mask_auto_contrast_cutoff_low_schedule')),
-            hybrid_flow_factor_schedule_series=tuple(fi.parse_inbetweens(anim_args.hybrid_flow_factor_schedule, 'hybrid_flow_factor_schedule'))
+            redo_flow_factor_schedule_series=tuple(fi.parse_inbetweens(anim_args.redo_flow_factor_schedule, 'redo_flow_factor_schedule'))
         )
 
 

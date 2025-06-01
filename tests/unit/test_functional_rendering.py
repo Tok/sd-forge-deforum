@@ -162,6 +162,8 @@ class TestFrameModels(unittest.TestCase):
             hybrid_motion="None",
             depth_algorithm="midas",
             optical_flow_cadence="None",
+            optical_flow_redo_generation="None",
+            use_looper=False,
             diffusion_cadence=1
         )
         self.assertEqual(context.width, 512)
@@ -182,6 +184,8 @@ class TestFrameModels(unittest.TestCase):
                 hybrid_motion="None",
                 depth_algorithm="midas",
                 optical_flow_cadence="None",
+                optical_flow_redo_generation="None",
+                use_looper=False,
                 diffusion_cadence=1
             )
 
@@ -206,6 +210,8 @@ class TestFrameProcessing(unittest.TestCase):
             hybrid_motion="None",
             depth_algorithm="midas",
             optical_flow_cadence="None",
+            optical_flow_redo_generation="None",
+            use_looper=False,
             diffusion_cadence=1
         )
     
@@ -321,6 +327,8 @@ class TestRenderingPipeline(unittest.TestCase):
             hybrid_motion="None",
             depth_algorithm="midas",
             optical_flow_cadence="None",
+            optical_flow_redo_generation="None",
+            use_looper=False,
             diffusion_cadence=1
         )
     
@@ -589,6 +597,8 @@ class TestFunctionalProgrammingPrinciples(unittest.TestCase):
             hybrid_motion="None",
             depth_algorithm="midas",
             optical_flow_cadence="None",
+            optical_flow_redo_generation="None",
+            use_looper=False,
             diffusion_cadence=1
         )
         
@@ -623,6 +633,8 @@ class TestFunctionalProgrammingPrinciples(unittest.TestCase):
             hybrid_motion="None",
             depth_algorithm="midas",
             optical_flow_cadence="None",
+            optical_flow_redo_generation="None",
+            use_looper=False,
             diffusion_cadence=1
         )
         

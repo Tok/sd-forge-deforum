@@ -113,14 +113,10 @@ def mock_anim_args():
     mock_args.fov_schedule = "0: (70)"
     mock_args.near_schedule = "0: (200)"
     mock_args.far_schedule = "0: (10000)"
-    mock_args.cadence_flow_factor_schedule = "0: (1)"
-    mock_args.redo_flow_factor_schedule = "0: (1)"
-    mock_args.hybrid_comp_alpha_schedule = "0:(0.5)"
-    mock_args.hybrid_comp_mask_blend_alpha_schedule = "0:(0.5)"
-    mock_args.hybrid_comp_mask_contrast_schedule = "0:(1)"
-    mock_args.hybrid_comp_mask_auto_contrast_cutoff_high_schedule = "0:(100)"
-    mock_args.hybrid_comp_mask_auto_contrast_cutoff_low_schedule = "0:(0)"
-    mock_args.hybrid_flow_factor_schedule = "0:(1)"
+    mock_args.cadence_flow_factor_schedule = "0:(1)"
+    mock_args.redo_flow_factor_schedule = "0:(1)"
+    
+    # Create ScheduleKeys instance
     return mock_args
 
 
