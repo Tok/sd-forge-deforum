@@ -1,7 +1,13 @@
-import re
-import numpy as np
-import numexpr
+"""
+Animation Key Frame Processing
+
+Contains classes for handling animation key frames and scheduling.
+Note: FreeU and Kohya HR Fix functionality has been removed.
+"""
+
 import pandas as pd
+import numexpr
+import re
 from .prompt import check_is_number
 from modules import scripts, shared
 
@@ -9,8 +15,6 @@ class DeformAnimKeys():
     def __init__(self, anim_args, seed=-1):
         self.fi = FrameInterpolater(anim_args.max_frames, seed)
         self.angle_series = self.fi.parse_inbetweens(anim_args.angle, 'angle')
-        self.transform_center_x_series = self.fi.parse_inbetweens(anim_args.transform_center_x, 'transform_center_x')
-        self.transform_center_y_series = self.fi.parse_inbetweens(anim_args.transform_center_y, 'transform_center_y')
         self.zoom_series = self.fi.parse_inbetweens(anim_args.zoom, 'zoom')
         self.translation_x_series = self.fi.parse_inbetweens(anim_args.translation_x, 'translation_x')
         self.translation_y_series = self.fi.parse_inbetweens(anim_args.translation_y, 'translation_y')
@@ -22,74 +26,83 @@ class DeformAnimKeys():
         self.perspective_flip_phi_series = self.fi.parse_inbetweens(anim_args.perspective_flip_phi, 'perspective_flip_phi')
         self.perspective_flip_gamma_series = self.fi.parse_inbetweens(anim_args.perspective_flip_gamma, 'perspective_flip_gamma')
         self.perspective_flip_fv_series = self.fi.parse_inbetweens(anim_args.perspective_flip_fv, 'perspective_flip_fv')
+        self.transform_center_x_series = self.fi.parse_inbetweens(anim_args.transform_center_x, 'transform_center_x')
+        self.transform_center_y_series = self.fi.parse_inbetweens(anim_args.transform_center_y, 'transform_center_y')
         self.noise_schedule_series = self.fi.parse_inbetweens(anim_args.noise_schedule, 'noise_schedule')
         self.strength_schedule_series = self.fi.parse_inbetweens(anim_args.strength_schedule, 'strength_schedule')
         self.keyframe_strength_schedule_series = self.fi.parse_inbetweens(anim_args.keyframe_strength_schedule, 'keyframe_strength_schedule')
         self.contrast_schedule_series = self.fi.parse_inbetweens(anim_args.contrast_schedule, 'contrast_schedule')
         self.cfg_scale_schedule_series = self.fi.parse_inbetweens(anim_args.cfg_scale_schedule, 'cfg_scale_schedule')
         self.distilled_cfg_scale_schedule_series = self.fi.parse_inbetweens(anim_args.distilled_cfg_scale_schedule, 'distilled_cfg_scale_schedule')
-        self.ddim_eta_schedule_series = self.fi.parse_inbetweens(anim_args.ddim_eta_schedule, 'ddim_eta_schedule')
-        self.ancestral_eta_schedule_series = self.fi.parse_inbetweens(anim_args.ancestral_eta_schedule, 'ancestral_eta_schedule')
-        self.subseed_schedule_series = self.fi.parse_inbetweens(anim_args.subseed_schedule, 'subseed_schedule')
-        self.subseed_strength_schedule_series = self.fi.parse_inbetweens(anim_args.subseed_strength_schedule, 'subseed_strength_schedule')
-        self.checkpoint_schedule_series = self.fi.parse_inbetweens(anim_args.checkpoint_schedule, 'checkpoint_schedule', is_single_string = True)
-        self.steps_schedule_series = self.fi.parse_inbetweens(anim_args.steps_schedule, 'steps_schedule')
+        self.fov_series = self.fi.parse_inbetweens(anim_args.fov_schedule, 'fov_schedule')
+        self.aspect_ratio_series = self.fi.parse_inbetweens(anim_args.aspect_ratio_schedule, 'aspect_ratio_schedule')
+        self.near_series = self.fi.parse_inbetweens(anim_args.near_schedule, 'near_schedule')
+        self.far_series = self.fi.parse_inbetweens(anim_args.far_schedule, 'far_schedule')
         self.seed_schedule_series = self.fi.parse_inbetweens(anim_args.seed_schedule, 'seed_schedule')
-        self.sampler_schedule_series = self.fi.parse_inbetweens(anim_args.sampler_schedule, 'sampler_schedule', is_single_string = True)
-        self.scheduler_schedule_series = self.fi.parse_inbetweens(anim_args.scheduler_schedule, 'scheduler_schedule', is_single_string = True)
-        self.clipskip_schedule_series = self.fi.parse_inbetweens(anim_args.clipskip_schedule, 'clipskip_schedule')
-        self.noise_multiplier_schedule_series = self.fi.parse_inbetweens(anim_args.noise_multiplier_schedule, 'noise_multiplier_schedule')
-        self.mask_schedule_series = self.fi.parse_inbetweens(anim_args.mask_schedule, 'mask_schedule', is_single_string = True)
-        self.noise_mask_schedule_series = self.fi.parse_inbetweens(anim_args.noise_mask_schedule, 'noise_mask_schedule', is_single_string = True)
+        self.mask_schedule_series = self.fi.parse_inbetweens(anim_args.mask_schedule, 'mask_schedule', is_single_string=True)
+        self.noise_mask_schedule_series = self.fi.parse_inbetweens(anim_args.noise_mask_schedule, 'noise_mask_schedule', is_single_string=True)
         self.kernel_schedule_series = self.fi.parse_inbetweens(anim_args.kernel_schedule, 'kernel_schedule')
         self.sigma_schedule_series = self.fi.parse_inbetweens(anim_args.sigma_schedule, 'sigma_schedule')
         self.amount_schedule_series = self.fi.parse_inbetweens(anim_args.amount_schedule, 'amount_schedule')
         self.threshold_schedule_series = self.fi.parse_inbetweens(anim_args.threshold_schedule, 'threshold_schedule')
-        self.aspect_ratio_series = self.fi.parse_inbetweens(anim_args.aspect_ratio_schedule, 'aspect_ratio_schedule')
-        self.fov_series = self.fi.parse_inbetweens(anim_args.fov_schedule, 'fov_schedule')
-        self.near_series = self.fi.parse_inbetweens(anim_args.near_schedule, 'near_schedule')
         self.cadence_flow_factor_schedule_series = self.fi.parse_inbetweens(anim_args.cadence_flow_factor_schedule, 'cadence_flow_factor_schedule')
         self.redo_flow_factor_schedule_series = self.fi.parse_inbetweens(anim_args.redo_flow_factor_schedule, 'redo_flow_factor_schedule')
-        self.far_series = self.fi.parse_inbetweens(anim_args.far_schedule, 'far_schedule')
+        
+        # Only enable scheduling features that don't depend on obsolete extensions
+        if anim_args.enable_steps_scheduling:
+            self.steps_schedule_series = self.fi.parse_inbetweens(anim_args.steps_schedule, 'steps_schedule')
+        else:
+            self.steps_schedule_series = None
+        if anim_args.enable_sampler_scheduling:
+            self.sampler_schedule_series = self.fi.parse_inbetweens(anim_args.sampler_schedule, 'sampler_schedule', is_single_string=True)
+        else:
+            self.sampler_schedule_series = None
+        if anim_args.enable_scheduler_scheduling:
+            self.scheduler_schedule_series = self.fi.parse_inbetweens(anim_args.scheduler_schedule, 'scheduler_schedule', is_single_string=True)
+        else:
+            self.scheduler_schedule_series = None
+        if anim_args.enable_checkpoint_scheduling:
+            self.checkpoint_schedule_series = self.fi.parse_inbetweens(anim_args.checkpoint_schedule, 'checkpoint_schedule', is_single_string=True)
+        else:
+            self.checkpoint_schedule_series = None
+        if anim_args.enable_clipskip_scheduling:
+            self.clipskip_schedule_series = self.fi.parse_inbetweens(anim_args.clipskip_schedule, 'clipskip_schedule')
+        else:
+            self.clipskip_schedule_series = None
+        if anim_args.enable_noise_multiplier_scheduling:
+            self.noise_multiplier_schedule_series = self.fi.parse_inbetweens(anim_args.noise_multiplier_schedule, 'noise_multiplier_schedule')
+        else:
+            self.noise_multiplier_schedule_series = None
+        if anim_args.enable_ddim_eta_scheduling:
+            self.ddim_eta_schedule_series = self.fi.parse_inbetweens(anim_args.ddim_eta_schedule, 'ddim_eta_schedule')
+        else:
+            self.ddim_eta_schedule_series = None
+        if anim_args.enable_ancestral_eta_scheduling:
+            self.ancestral_eta_schedule_series = self.fi.parse_inbetweens(anim_args.ancestral_eta_schedule, 'ancestral_eta_schedule')
+        else:
+            self.ancestral_eta_schedule_series = None
+        if anim_args.enable_subseed_scheduling:
+            self.subseed_schedule_series = self.fi.parse_inbetweens(anim_args.subseed_schedule, 'subseed_schedule')
+            self.subseed_strength_schedule_series = self.fi.parse_inbetweens(anim_args.subseed_strength_schedule, 'subseed_strength_schedule')
+        else:
+            self.subseed_schedule_series = None
+            self.subseed_strength_schedule_series = None
 
 class ControlNetKeys():
     def __init__(self, anim_args, controlnet_args):
-        self.fi = FrameInterpolater(max_frames=anim_args.max_frames)
-        self.schedules = {}
-        max_models = shared.opts.data.get("control_net_unit_count", shared.opts.data.get("control_net_max_models_num", 5))
-        num_of_models = 5
-        num_of_models = num_of_models if max_models <= 5 else max_models
-        for i in range(1, num_of_models + 1):
+        self.fi = FrameInterpolater(anim_args.max_frames)
+        cn_max_models_num = 5
+        for cn_model_index in range(1, cn_max_models_num+1):
             for suffix in ['weight', 'guidance_start', 'guidance_end']:
-                prefix = f"cn_{i}"
+                prefix = f"cn_{cn_model_index}"
                 input_key = f"{prefix}_{suffix}"
                 output_key = f"{input_key}_schedule_series"
-                self.schedules[output_key] = self.fi.parse_inbetweens(getattr(controlnet_args, input_key), input_key)
-                setattr(self, output_key, self.schedules[output_key])
-
-class FreeUAnimKeys():
-    def __init__(self, anim_args, freeu_args):
-        self.fi = FrameInterpolater(max_frames=anim_args.max_frames)
-        from .args import FreeUArgs
-        defaults  = FreeUArgs()
-        self.freeu_enabled = freeu_args.freeu_enabled or defaults.get('freeu_enabled').get('value')
-        self.freeu_b1_series = self.fi.parse_inbetweens(freeu_args.freeu_b1 or defaults.get('freeu_b1').get('value'), 'freeu_args.b1')
-        self.freeu_b2_series = self.fi.parse_inbetweens(freeu_args.freeu_b2 or defaults.get('freeu_b2').get('value'), 'freeu_args.b2')
-        self.freeu_s1_series = self.fi.parse_inbetweens(freeu_args.freeu_s1 or defaults.get('freeu_s1').get('value'), 'freeu_args.s1')
-        self.freeu_s2_series = self.fi.parse_inbetweens(freeu_args.freeu_s2 or defaults.get('freeu_s2').get('value'), 'freeu_args.s2')
-                    
-
-class KohyaHRFixAnimKeys():
-    def __init__(self, anim_args, kohya_hrfix_args):
-        self.fi = FrameInterpolater(max_frames=anim_args.max_frames)
-        from .args import KohyaHRFixArgs
-        defaults  = KohyaHRFixArgs()
-        self.kohya_hrfix_enabled = kohya_hrfix_args.kohya_hrfix_enabled or defaults.get('kohya_hrfix_enabled').get('value')
-        self.block_number_series = self.fi.parse_inbetweens(kohya_hrfix_args.kohya_hrfix_block_number or defaults.get('kohya_hrfix_block_number').get('value'), 'kohya_hrfix.block_number')
-        self.downscale_factor_series = self.fi.parse_inbetweens(kohya_hrfix_args.kohya_hrfix_downscale_factor or defaults.get('kohya_hrfix_downscale_factor').get('value'), 'kohya_hrfix.downscale_factor')
-        self.start_percent_series = self.fi.parse_inbetweens(kohya_hrfix_args.kohya_hrfix_start_percent or defaults.get('kohya_hrfix_start_percent').get('value'), 'kohya_hrfix.start_percent')
-        self.end_percent_series = self.fi.parse_inbetweens(kohya_hrfix_args.kohya_hrfix_end_percent or defaults.get('kohya_hrfix_end_percent').get('value'), 'kohya_hrfix.end_percent')
-                    
+                try:
+                    input_value = getattr(controlnet_args, input_key)
+                    schedule_data = self.fi.parse_inbetweens(input_value, input_key)
+                    setattr(self, output_key, schedule_data)
+                except Exception:
+                    setattr(self, output_key, [1.0] * anim_args.max_frames)
 
 class LooperAnimKeys():
     def __init__(self, loop_args, anim_args, seed):
@@ -109,45 +122,37 @@ class FrameInterpolater():
         self.seed = seed
 
     def parse_inbetweens(self, value, filename = 'unknown', is_single_string = False):
-        return self.get_inbetweens(self.parse_key_frames(value, filename = filename), filename = filename, is_single_string = is_single_string)
+        return self.get_inbetweens(self.parse_key_frames(value, filename), is_single_string=is_single_string, filename=filename)
 
     def sanitize_value(self, value):
-        return value.replace("'","").replace('"',"").replace('(',"").replace(')',"")
+        return value.replace("'", "").replace('"', "").replace('(', "").replace(')', "")
 
     def get_inbetweens(self, key_frames, integer=False, interp_method='Linear', is_single_string = False, filename = 'unknown'):
         key_frame_series = pd.Series([np.nan for a in range(self.max_frames)])
-        # get our ui variables set for numexpr.evaluate
-        max_f = self.max_frames -1
-        s = self.seed
-        for i in range(0, self.max_frames):
-            if i in key_frames:
-                value = key_frames[i]
-                sanitized_value = self.sanitize_value(value)
-                value_is_number = check_is_number(sanitized_value)
-                if value_is_number: # if it's only a number, leave the rest for the default interpolation
-                    key_frame_series[i] = sanitized_value
-            if not value_is_number:
-                t = i
-                # workaround for values formatted like 0:("I am test") //used for sampler schedules
-                try:
-                    key_frame_series[i] = numexpr.evaluate(value) if not is_single_string else sanitized_value
-                except SyntaxError as e:
-                    e.filename = f"{filename}@frame#{i}"
-                    raise e
-            elif is_single_string:# take previous string value and replicate it
-                key_frame_series[i] = key_frame_series[i-1]
-        key_frame_series = key_frame_series.astype(float) if not is_single_string else key_frame_series # as string
 
-        if interp_method == 'Cubic' and len(key_frames.items()) <= 3:
-            interp_method = 'Quadratic'
-        if interp_method == 'Quadratic' and len(key_frames.items()) <= 2:
-            interp_method = 'Linear'
+        # get our keys
+        for i, key in key_frames.items():
+            sanitized_key = self.sanitize_value(key) if is_single_string else key
+            key_frame_series[i] = sanitized_key
 
-        key_frame_series[0] = key_frame_series[key_frame_series.first_valid_index()]
-        key_frame_series[self.max_frames-1] = key_frame_series[key_frame_series.last_valid_index()]
-        key_frame_series = key_frame_series.interpolate(method=interp_method.lower(), limit_direction='both')
-        if integer:
-            return key_frame_series.astype(int)
+        if is_single_string:
+            key_frame_series = key_frame_series.ffill().bfill()
+        else:
+            key_frame_series = key_frame_series.astype(float)
+            
+            if interp_method == 'Cubic' and len(key_frames.items()) <= 3:
+                interp_method = 'Linear'
+                
+            if interp_method == 'Linear':
+                key_frame_series = key_frame_series.interpolate(method=interp_method.lower(),limit_direction='both')
+            elif interp_method == 'Cubic':
+                key_frame_series = key_frame_series.interpolate(method='cubic',limit_direction='both') 
+            else:
+                key_frame_series = key_frame_series.interpolate(method=interp_method.lower(),limit_direction='both')
+
+            if integer:
+                return key_frame_series.astype(int)
+
         return key_frame_series
 
     def parse_key_frames(self, string, filename='unknown'):
@@ -155,17 +160,23 @@ class FrameInterpolater():
         # it extracts the value in form of some stuff
         # which has previously been enclosed with brackets and
         # with a comma or end of line existing after the closing one
+        import re
+        pattern = r'((?P<frame>[0-9]+):[\s]*\((?P<param>[\S\s]*?)\))'
         frames = dict()
-        for match_object in string.split(","):
-            frameParam = match_object.split(":")
-            max_f = self.max_frames -1
-            s = self.seed
-            try:
-                frame = int(self.sanitize_value(frameParam[0])) if check_is_number(self.sanitize_value(frameParam[0].strip())) else int(numexpr.evaluate(frameParam[0].strip().replace("'","",1).replace('"',"",1)[::-1].replace("'","",1).replace('"',"",1)[::-1]))
-                frames[frame] = frameParam[1].strip()
-            except SyntaxError as e:
-                e.filename = filename
-                raise e
+        for match_object in re.finditer(pattern, string):
+            frame = int(match_object.groupdict()['frame'])
+            param = match_object.groupdict()['param']
+            if frame in frames:
+                try:
+                    frames[frame] = float(param)
+                except:
+                    frames[frame] = param
+            else:
+                try:
+                    frames[frame] = float(param)
+                except:
+                    frames[frame] = param
+
         if frames == {} and len(string) != 0:
             raise RuntimeError('Key Frame string not correctly formatted')
         return frames

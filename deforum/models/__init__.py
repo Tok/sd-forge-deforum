@@ -1,34 +1,38 @@
 """
-Deforum Models Package
+Immutable data models and schedules for Deforum.
 
-Immutable data structures and models for Deforum:
-- Core data models (ProcessingResult, UIDefaults, etc.)
-- Schedule models (AnimationSchedules, ControlNetSchedules, etc.)
-- Type definitions and validation
-
-All models are frozen dataclasses following functional programming principles.
+This package provides immutable, type-safe data structures to replace
+the mutable SimpleNamespace and dictionary patterns used throughout Deforum.
 """
 
-from .data_models import *
-from .schedule_models import *
+from .data_models import (
+    AnimationArgs, DeforumArgs, VideoArgs, ParseqArgs, WanArgs, RootArgs,
+    ProcessingResult, UIDefaults, SettingsState, ExternalLibraryArgs, TestFixtureArgs,
+    create_animation_args_from_dict, create_deforum_args_from_dict, create_video_args_from_dict,
+    create_parseq_args_from_dict, create_wan_args_from_dict, create_root_args_from_dict,
+    validate_processing_result, validate_ui_defaults,
+    ImageTuple, StringTuple, FloatTuple
+)
+
+from .schedule_models import (
+    AnimationSchedules, ControlNetSchedules, LooperSchedules, ParseqScheduleData
+)
 
 __all__ = [
-    # Core data models
-    'ProcessingResult',
-    'UIDefaults', 
-    'SettingsState',
-    'ExternalLibraryArgs',
-    'TestFixtureArgs',
+    # Data models
+    'AnimationArgs', 'DeforumArgs', 'VideoArgs', 'ParseqArgs', 'WanArgs', 'RootArgs',
+    'ProcessingResult', 'UIDefaults', 'SettingsState', 'ExternalLibraryArgs', 'TestFixtureArgs',
     
     # Schedule models
-    'AnimationSchedules',
-    'ControlNetSchedules',
-    'FreeUSchedules',
-    'KohyaSchedules',
-    'LooperSchedules',
-    'ParseqScheduleData',
+    'AnimationSchedules', 'ControlNetSchedules', 'LooperSchedules', 'ParseqScheduleData',
     
-    # Validation and utilities
-    'validate_data_model',
-    'create_schedule_from_args',
+    # Factory functions
+    'create_animation_args_from_dict', 'create_deforum_args_from_dict', 'create_video_args_from_dict',
+    'create_parseq_args_from_dict', 'create_wan_args_from_dict', 'create_root_args_from_dict',
+    
+    # Validation functions
+    'validate_processing_result', 'validate_ui_defaults',
+    
+    # Type aliases
+    'ImageTuple', 'StringTuple', 'FloatTuple'
 ] 
