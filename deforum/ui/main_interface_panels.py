@@ -16,9 +16,9 @@ from .settings_components import get_tab_setup, get_tab_advanced
 from .component_builders import create_gr_elem, create_row
 
 # Legacy imports for compatibility (to be phased out)
-from .args import set_arg_lists, get_component_names
-from .defaults import get_gradio_html
-from .gradio_funcs import change_css, handle_change_functions
+from ..config.args import set_arg_lists, get_component_names
+from ..config.defaults import get_gradio_html
+from .gradio_functions import change_css, handle_change_functions
 
 # ControlNet import (conditional)
 try:
