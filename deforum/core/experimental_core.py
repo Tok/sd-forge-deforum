@@ -15,11 +15,11 @@ from . import img_2_img_tubes
 from .data.frame import KeyFrameDistribution, DiffusionFrame
 from .data.render_data import RenderData
 from .data.taqaddumat import Taqaddumat
-from .util import filename_utils, image_utils, log_utils, memory_utils, subtitle_utils, web_ui_utils
+from ..utils import filename_utils, image_utils, log_utils, memory_utils, subtitle_utils, web_ui_utils
 from ..media.video_audio_pipeline import download_audio
-from .util.call.gen import generate_frame
-from .util.call.save import save_frame
-from .util.call.video import create_video
+from ..utils.call.gen import generate_frame
+from ..utils.call.save import save_frame
+from ..utils.call.video import create_video
 
 IS_USE_PROFILER = False
 
