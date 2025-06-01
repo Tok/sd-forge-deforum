@@ -21,7 +21,7 @@ from enum import Enum
 from .schedule_system import (
     parse_and_interpolate_schedule, InterpolatedSchedule
 )
-from .data_models import AnimationArgs
+from ..models.data_models import AnimationArgs
 
 
 class MovementType(Enum):
