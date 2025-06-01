@@ -1,12 +1,19 @@
 from typing import List
 
 from . import log_utils, opt_utils
-from ..core.data import RenderData
-from ..core.data.frame import DiffusionFrame
+# Move these imports inside functions to avoid circular dependency
+# from ..core.data import RenderData
+# from ..core.data.frame import DiffusionFrame
 from .subtitle_handler import calculate_frame_duration, frame_time, time_to_srt_format
 
 
-def create_all_subtitles_if_active(data: RenderData, diffusion_frames: List[DiffusionFrame]):
+def create_all_subtitles_if_active(data, diffusion_frames: List):
+    """
+    Create subtitles if enabled. Uses local imports to avoid circular dependency.
+    Args:
+        data: RenderData object
+        diffusion_frames: List[DiffusionFrame] objects
+    """
     # Doesn't check if the .srt file already exists, because all frames are recalculated again when resuming a run.
     # Since subtitle generation is not relevant for overall performance, we can just overwrite it and have it reflect
     # any changes that may have been made on the subtitle config parameters before the restart.
