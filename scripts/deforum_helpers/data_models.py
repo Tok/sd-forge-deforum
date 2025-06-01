@@ -11,6 +11,8 @@ from typing import Dict, List, Optional, Union, Tuple, Any
 import re
 import json
 from enum import Enum
+import numpy as np
+from PIL import Image
 
 
 class AnimationMode(Enum):
@@ -537,4 +539,256 @@ def create_root_args_from_dict(data: Dict[str, Any]) -> RootArgs:
     if 'prompt_keyframes' in filtered_data and not isinstance(filtered_data['prompt_keyframes'], list):
         filtered_data['prompt_keyframes'] = list(filtered_data['prompt_keyframes'])
     
-    return RootArgs(**filtered_data) 
+    return RootArgs(**filtered_data)
+
+
+@dataclass(frozen=True)
+class ProcessingResult:
+    """
+    Immutable processing result to replace SimpleNamespace objects in generate.py.
+    
+    Replaces patterns like:
+    processed = SimpleNamespace(images = [root.default_img], info = "Generating motion preview...")
+    """
+    images: Tuple[Image.Image, ...] = field(default_factory=tuple)
+    info: str = ""
+    success: bool = True
+    processing_time: float = 0.0
+    warnings: Tuple[str, ...] = field(default_factory=tuple)
+    seeds: Tuple[int, ...] = field(default_factory=tuple)
+    prompts: Tuple[str, ...] = field(default_factory=tuple)
+    
+    @classmethod
+    def create_motion_preview(cls, image: Image.Image) -> 'ProcessingResult':
+        """Factory method for motion preview results"""
+        return cls(
+            images=(image,),
+            info="Generating motion preview...",
+            success=True
+        )
+    
+    @classmethod
+    def create_generation_result(cls, images: List[Image.Image], info: str) -> 'ProcessingResult':
+        """Factory method for actual generation results"""
+        return cls(
+            images=tuple(images),
+            info=info,
+            success=True
+        )
+    
+    def with_warning(self, warning: str) -> 'ProcessingResult':
+        """Return new ProcessingResult with added warning"""
+        new_warnings = self.warnings + (warning,)
+        return ProcessingResult(
+            images=self.images,
+            info=self.info,
+            success=self.success,
+            processing_time=self.processing_time,
+            warnings=new_warnings,
+            seeds=self.seeds,
+            prompts=self.prompts
+        )
+
+
+@dataclass(frozen=True)
+class UIDefaults:
+    """
+    Immutable UI defaults to replace mutable SimpleNamespace objects in ui_left.py.
+    
+    Replaces patterns like:
+    d = SimpleNamespace(**DeforumArgs())  # default args
+    da = SimpleNamespace(**DeforumAnimArgs())  # default anim args
+    """
+    deforum_args: Dict[str, Any] = field(default_factory=dict)
+    animation_args: Dict[str, Any] = field(default_factory=dict)
+    video_args: Dict[str, Any] = field(default_factory=dict)
+    parseq_args: Dict[str, Any] = field(default_factory=dict)
+    wan_args: Dict[str, Any] = field(default_factory=dict)
+    root_args: Dict[str, Any] = field(default_factory=dict)
+    
+    @classmethod
+    def create_defaults(cls) -> 'UIDefaults':
+        """Factory method to create UI defaults using functional args"""
+        try:
+            from .args import DeforumArgs, DeforumAnimArgs, DeforumOutputArgs, ParseqArgs, WanArgs, RootArgs
+            return cls(
+                deforum_args=DeforumArgs(),
+                animation_args=DeforumAnimArgs(),
+                video_args=DeforumOutputArgs(),
+                parseq_args=ParseqArgs(),
+                wan_args=WanArgs(),
+                root_args=RootArgs()
+            )
+        except ImportError:
+            # Fallback for testing or when args not available
+            return cls()
+
+
+@dataclass(frozen=True)
+class SettingsState:
+    """
+    Immutable settings state to replace mutable objects in settings.py.
+    
+    Replaces patterns like:
+    wan_args = SimpleNamespace(**{name: args_dict_main[name] for name in WanArgs() if name in args_dict_main})
+    """
+    loaded_settings: Dict[str, Any] = field(default_factory=dict)
+    validation_errors: Tuple[str, ...] = field(default_factory=tuple)
+    last_modified: float = 0.0
+    file_path: Optional[str] = None
+    wan_args: Dict[str, Any] = field(default_factory=dict)
+    
+    @classmethod
+    def from_dict(cls, settings_dict: Dict[str, Any], file_path: Optional[str] = None) -> 'SettingsState':
+        """Factory method to create settings state from dictionary"""
+        # Extract WAN args if present
+        wan_keys = []
+        try:
+            from .args import WanArgs
+            wan_keys = list(WanArgs().keys())
+        except ImportError:
+            pass
+        
+        wan_args = {name: settings_dict[name] for name in wan_keys if name in settings_dict}
+        
+        return cls(
+            loaded_settings=settings_dict.copy(),
+            file_path=file_path,
+            wan_args=wan_args
+        )
+    
+    def with_validation_error(self, error: str) -> 'SettingsState':
+        """Return new SettingsState with added validation error"""
+        new_errors = self.validation_errors + (error,)
+        return SettingsState(
+            loaded_settings=self.loaded_settings,
+            validation_errors=new_errors,
+            last_modified=self.last_modified,
+            file_path=self.file_path,
+            wan_args=self.wan_args
+        )
+
+
+@dataclass(frozen=True)
+class ExternalLibraryArgs:
+    """
+    Immutable args for external libraries to replace SimpleNamespace objects.
+    
+    Replaces patterns like:
+    args = SimpleNamespace() in RIFE and FILM libraries
+    """
+    multi: float = 1.0
+    video: str = ""
+    output: str = ""
+    img: str = ""
+    exp: int = 1
+    ratio: float = 0.0
+    rthreshold: float = 0.02
+    rmaxcycles: int = 8
+    UHD: bool = False
+    scale: float = 1.0
+    fps: Optional[float] = None
+    png: bool = False
+    ext: str = "mp4"
+    
+    @classmethod
+    def create_rife_args(cls) -> 'ExternalLibraryArgs':
+        """Factory method for RIFE-specific args"""
+        return cls(
+            multi=1.0,
+            video="",
+            output="",
+            img="",
+            exp=1,
+            ratio=0.0,
+            rthreshold=0.02,
+            rmaxcycles=8,
+            UHD=False,
+            scale=1.0,
+            fps=None,
+            png=False,
+            ext="mp4"
+        )
+    
+    @classmethod  
+    def create_film_args(cls) -> 'ExternalLibraryArgs':
+        """Factory method for FILM-specific args"""
+        return cls(
+            multi=1.0,
+            video="",
+            output="",
+            img="",
+            exp=1
+        )
+
+
+@dataclass(frozen=True)
+class TestFixtureArgs:
+    """
+    Immutable args for test fixtures to replace SimpleNamespace objects.
+    
+    Replaces patterns in tests/conftest.py:
+    args = SimpleNamespace()
+    """
+    W: int = 512
+    H: int = 512
+    seed: int = 42
+    sampler: str = "Euler"
+    steps: int = 20
+    cfg_scale: float = 7.0
+    strength: float = 0.85
+    use_init: bool = False
+    animation_mode: str = "3D"
+    max_frames: int = 100
+    fps: int = 30
+    batch_name: str = "test_batch"
+    
+    @classmethod
+    def create_minimal_args(cls) -> 'TestFixtureArgs':
+        """Factory method for minimal test args"""
+        return cls()
+    
+    @classmethod
+    def create_animation_args(cls) -> 'TestFixtureArgs':
+        """Factory method for animation test args"""
+        return cls(
+            max_frames=50,
+            animation_mode="2D"
+        )
+    
+    @classmethod
+    def create_video_args(cls) -> 'TestFixtureArgs':
+        """Factory method for video test args"""
+        return cls(
+            fps=24,
+            max_frames=120
+        )
+
+
+# Type aliases for common patterns
+ImageTuple = Tuple[Image.Image, ...]
+StringTuple = Tuple[str, ...]
+FloatTuple = Tuple[float, ...]
+
+# Validation functions for data integrity
+def validate_processing_result(result: ProcessingResult) -> bool:
+    """Validate ProcessingResult data integrity"""
+    if not isinstance(result.images, tuple):
+        return False
+    if not isinstance(result.info, str):
+        return False
+    if not isinstance(result.success, bool):
+        return False
+    if result.processing_time < 0:
+        return False
+    return True
+
+def validate_ui_defaults(defaults: UIDefaults) -> bool:
+    """Validate UIDefaults data integrity"""
+    required_keys = ['deforum_args', 'animation_args', 'video_args', 'parseq_args', 'wan_args', 'root_args']
+    for key in required_keys:
+        if not hasattr(defaults, key):
+            return False
+        if not isinstance(getattr(defaults, key), dict):
+            return False
+    return True 
