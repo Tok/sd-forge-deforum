@@ -22,7 +22,7 @@ __all__ = [
     
     # Frame interpolation
     'run_rife_new_video_infer',
-    'run_film_interpolation',
+    'run_film_interp_infer',
     
     # Depth estimation
     'run_midas_depth',
