@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional, Any
 
 from .render_data import RenderData
-from ...args import DeforumAnimArgs, DeforumArgs
+from ...config.arg_defaults import DeforumAnimArgs, DeforumArgs
 
 
 @dataclass(init=True, frozen=True, repr=False, eq=False)

@@ -15,7 +15,7 @@ from .defaults import mask_fill_choices, get_camera_shake_list
 from ..integrations.controlnet.core_integration import controlnet_component_names
 from ..utils.deprecation_utils import handle_deprecated_settings
 from .general_utils import get_deforum_version, clean_gradio_path_strings
-from .data_models import SettingsState
+from ..models.data_models import SettingsState
 
 
 def get_extension_base_dir():

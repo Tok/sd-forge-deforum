@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import List
+from dataclasses import dataclass
 
-from ...util import log_utils
+from ....utils import log_utils
 
 
 class KeyFrameDistribution(Enum):
