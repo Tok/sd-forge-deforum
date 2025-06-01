@@ -7,7 +7,7 @@ from PIL import Image, ImageOps, ImageChops
 from modules.shared import cmd_opts, device as sh_device
 from modules import devices
 import shutil
-from .frame_interpolation import clean_folder_name
+from ..media.frame_interpolation_pipeline import clean_folder_name
 from rife.inference_video import duplicate_pngs_from_folder
 from ..media.video_audio_pipeline import get_quick_vid_info, vid2frames, ffmpeg_stitch_video
 
