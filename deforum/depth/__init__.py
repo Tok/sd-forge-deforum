@@ -9,6 +9,7 @@ from .video_depth_extraction import *
 
 __all__ = [
     # Core depth functionality
+    'DepthModel',
     'process_depth',
     'depth_warp',
     
