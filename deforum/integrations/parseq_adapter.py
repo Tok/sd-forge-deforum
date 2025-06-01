@@ -6,7 +6,8 @@ from operator import itemgetter
 import numpy as np
 import pandas as pd
 import requests
-from .animation_key_frames import DeformAnimKeys, ControlNetKeys, LooperAnimKeys, FreeUAnimKeys, KohyaHRFixAnimKeys
+import os
+from .animation_key_frames import DeformAnimKeys, ControlNetKeys, LooperAnimKeys
 from .rendering.util import log_utils
 from .rich import console
 from .general_utils import tickOrCross
@@ -17,124 +18,54 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 IGNORED_FIELDS = ['fi', 'use_looper', 'imagesToKeyframe', 'schedules']
 
 class ParseqAdapter():
-    def __init__(self, parseq_args, anim_args, video_args, controlnet_args, loop_args, freeu_args, kohya_hrfix_keys, mute=False):
-
-        # Basic data extraction
-        self.use_parseq = parseq_args.parseq_manifest and parseq_args.parseq_manifest.strip()
-        self.use_deltas = parseq_args.parseq_use_deltas
-        self.non_schedule_overrides = parseq_args.parseq_non_schedule_overrides
-
-        self.video_args = video_args
+    def __init__(self, parseq_args, anim_args, video_args, controlnet_args, loop_args, mute=False):
+        self.parseq_args = parseq_args
         self.anim_args = anim_args
-
-        self.parseq_json = self.load_manifest(parseq_args) if self.use_parseq else json.loads('{ "rendered_frames": [{"frame": 0}] }')
-        self.rendered_frames = self.parseq_json['rendered_frames']       
-
-        # Store the settings from the UI in case we override them, so we can report clearly on what's going on.
-        self.a1111_fps = video_args.fps
-        self.a1111_cadence = anim_args.diffusion_cadence
-        self.a1111_frame_count = anim_args.max_frames
-
-        # These options in the Parseq manifest will override the options used by Deforum _if and only if_ parseq_non_schedule_overrides is true.
-        # Warning: we mutate fields on the actual anim_args and video_args objects
-        if (self.use_parseq):
-            self.fps = self.parseq_json['options']['output_fps'] if 'output_fps' in self.parseq_json['options'] else None
-            self.cadence = self.parseq_json['options']['cadence'] if 'cadence' in self.parseq_json['options'] else None
+        self.video_args = video_args
+        self.controlnet_args = controlnet_args
+        self.loop_args = loop_args
+        self.mute = mute
+        
+        self.use_parseq = parseq_args.parseq_manifest != None and parseq_args.parseq_manifest.strip()
+        
+        if self.use_parseq:
+            # Initialize parseq
+            self.parseq_json = self.load_parseq_json()
+            self.rendered_frames = self.parseq_json.get('rendered_frames', [])
             self.frame_count = len(self.rendered_frames)
-            if self.manages_max_frames():
-                anim_args.max_frames = self.frame_count
-            if self.manages_cadence():
-                anim_args.diffusion_cadence = self.cadence
-            if self.manages_fps():
-                video_args.fps = self.fps
-
-        # Wrap the original schedules with Parseq decorators, so that Parseq values will override the original values IFF appropriate.
-        self.anim_keys = ParseqAnimKeysDecorator(self, DeformAnimKeys(anim_args))
-        self.cn_keys = ParseqControlNetKeysDecorator(self, ControlNetKeys(anim_args, controlnet_args)) if (controlnet_args and len(controlnet_args.__dict__)>0) else None
-        # -1 because seed seems to be unused in LooperAnimKeys
-        self.looper_keys = ParseqLooperKeysDecorator(self, LooperAnimKeys(loop_args, anim_args, -1)) if loop_args else None
-        self.freeu_keys = ParseqFreeUKeysDecorator(self, FreeUAnimKeys(anim_args, freeu_args)) if freeu_args else None
-        self.kohya_hrfix_keys = ParseqKohyaHRFixKeysDecorator(self, KohyaHRFixAnimKeys(anim_args, kohya_hrfix_keys)) if kohya_hrfix_keys else None
-    
-        # Validation
-        if (self.use_parseq):
-            max_frame = self.get_max('frame')
-            expected_frame_count = max_frame+1
-            if (self.frame_count != expected_frame_count): 
-                logging.warning(f"There may be duplicated or missing frame data in the Parseq input: expected {expected_frame_count} frames including frame 0 because the highest frame number is {max_frame}, but there are {self.frame_count} frames defined.")
-            if not mute:
-                self.print_parseq_table()
-    
-    # Resolve manifest either directly from supplied value or via supplied URL
-    def load_manifest(self, parseq_args):
-        manifestOrUrl = parseq_args.parseq_manifest.strip()
-        if (manifestOrUrl.startswith('http')):
-            logging.info(f"Loading Parseq manifest from URL: {manifestOrUrl}")
-            try:
-                body = requests.get(manifestOrUrl).text
-                logging.debug(f"Loaded remote manifest: {body}")
-                parseq_json = json.loads(body)
-                if not parseq_json or not 'rendered_frames' in parseq_json:
-                    raise Exception(f"The JSON data does not look like a Parseq manifest (missing field 'rendered_frames').")
-
-                # SIDE EFFECT!
-                # Add the parseq manifest without the detailed frame data to parseq_args.
-                # This ensures it will be saved in the settings file, so that you can always
-                # see exactly what parseq prompts and keyframes were used, even if what the URL
-                # points to changes.
-                parseq_args.fetched_parseq_manifest_summary = copy.deepcopy(parseq_json)
-                if parseq_args.fetched_parseq_manifest_summary['rendered_frames']:
-                    del parseq_args.fetched_parseq_manifest_summary['rendered_frames']
-                if parseq_args.fetched_parseq_manifest_summary['rendered_frames_meta']:
-                    del parseq_args.fetched_parseq_manifest_summary['rendered_frames_meta']
-
-                return parseq_json
-
-            except Exception as e:
-                logging.error(f"Unable to load Parseq manifest from URL: {manifestOrUrl}")
-                raise e
+            
+            # Create key objects with parseq decorators
+            self.anim_keys = ParseqAnimKeysDecorator(self, DeformAnimKeys(anim_args, anim_args.seed))
+            self.controlnet_keys = ParseqControlNetKeysDecorator(self, ControlNetKeys(anim_args, controlnet_args)) if controlnet_args else None
+            self.looper_keys = ParseqLooperKeysDecorator(self, LooperAnimKeys(loop_args, anim_args, anim_args.seed)) if loop_args else None
+            
+            if not self.mute:
+                log_utils.info(f"Using Parseq: {tickOrCross(self.use_parseq)}")
         else:
-            return json.loads(manifestOrUrl)        
-
-    def print_parseq_table(self):
-        from rich.table import Table
-        from rich import box
-
-        table = Table(padding=0, box=box.ROUNDED, show_lines=True)
-        table.add_column("", style="white bold")
-        table.add_column("Parseq", style=log_utils.HEX_BLUE)
-        table.add_column("Deforum", style=log_utils.HEX_GREEN)
-
-        table.add_row("Animation",         '\n'.join(self.anim_keys.managed_fields()),                      '\n'.join(self.anim_keys.unmanaged_fields()))
-        if self.cn_keys:
-            table.add_row("ControlNet",    '\n'.join(self.cn_keys.managed_fields()),                        '\n'.join(self.cn_keys.unmanaged_fields()))
-        if self.looper_keys:
-            table.add_row("Guided Images", '\n'.join(self.looper_keys.managed_fields()),                    '\n'.join(self.looper_keys.unmanaged_fields()))            
-        table.add_row("Prompts",            tickOrCross(self.manages_prompts()),                            tickOrCross(not self.manages_prompts()))
-        table.add_row("Frames",             str(self.frame_count) + tickOrCross(self.manages_max_frames()), str(self.a1111_frame_count) + tickOrCross(not self.manages_max_frames()))
-        table.add_row("FPS",                str(self.fps)  + tickOrCross(self.manages_fps()),               str(self.a1111_fps) + tickOrCross(not self.manages_fps()))
-        table.add_row("Cadence",            str(self.cadence) + tickOrCross(self.manages_cadence()),        str(self.a1111_cadence) + tickOrCross(not self.manages_cadence()))
-
-        console.print("\nUse this table to validate your Parseq & Deforum setup:")
-        console.print(table)
-
+            self.anim_keys = None
+            self.controlnet_keys = None
+            self.looper_keys = None
+            
+    def load_parseq_json(self):
+        """Load and validate parseq JSON manifest"""
+        try:
+            if os.path.exists(self.parseq_args.parseq_manifest):
+                with open(self.parseq_args.parseq_manifest, 'r') as f:
+                    return json.load(f)
+            else:
+                # Try to parse as JSON string
+                return json.loads(self.parseq_args.parseq_manifest)
+        except Exception as e:
+            log_utils.error(f"Failed to load parseq manifest: {e}")
+            return {}
+    
     def manages_prompts(self):
-        return self.use_parseq and 'deforum_prompt' in self.rendered_frames[0].keys()
+        """Check if parseq manages prompts"""
+        return self.use_parseq and any('prompt' in frame for frame in self.rendered_frames)
     
     def manages_seed(self):
-        return self.use_parseq and 'seed' in self.rendered_frames[0].keys()    
-    
-    def manages_cadence(self):
-        return self.use_parseq and self.non_schedule_overrides and self.cadence
-    
-    def manages_fps(self):
-        return self.use_parseq and self.non_schedule_overrides and self.fps
-    
-    def manages_max_frames(self):
-        return self.use_parseq and self.non_schedule_overrides and self.frame_count
-    
-    def get_max(self, seriesName):
-        return max(self.rendered_frames, key=itemgetter(seriesName))[seriesName]
+        """Check if parseq manages seed"""
+        return self.use_parseq and any('seed' in frame for frame in self.rendered_frames)
 
 
 class ParseqAbstractDecorator():  
@@ -234,13 +165,11 @@ class ParseqControlNetKeysDecorator(ParseqAbstractDecorator):
     def __init__(self, adapter: ParseqAdapter, cn_keys):
         super().__init__(adapter, cn_keys)
 
-class ParseqFreeUKeysDecorator(ParseqAbstractDecorator):
-    def __init__(self, adapter: ParseqAdapter, freeu_keys):
-        super().__init__(adapter, freeu_keys)
 
-class ParseqKohyaHRFixKeysDecorator(ParseqAbstractDecorator):
-    def __init__(self, adapter: ParseqAdapter, kohya_hrfix_keys):
-        super().__init__(adapter, kohya_hrfix_keys)        
+class ParseqLooperKeysDecorator(ParseqAbstractDecorator):
+    def __init__(self, adapter: ParseqAdapter, looper_keys):
+        super().__init__(adapter, looper_keys)
+
 
 class ParseqAnimKeysDecorator(ParseqAbstractDecorator):
     def __init__(self, adapter: ParseqAdapter, anim_keys):
@@ -251,7 +180,7 @@ class ParseqAnimKeysDecorator(ParseqAbstractDecorator):
         # However, many animation parameters are relative to the previous frame if there is enough
         # loopback strength. So if you want to rotate 180 degrees over 5 frames, the animation engine expects:
         # 45, 45, 45, 45. Therefore, for such parameter, we use the fact that Parseq supplies delta values.
-        optional_delta = '_delta' if self.adapter.use_deltas else ''
+        optional_delta = '_delta' if self.adapter.use_parseq else ''
         self.angle_series = super().parseq_to_series('angle' + optional_delta)
         self.zoom_series = super().parseq_to_series('zoom' + optional_delta)        
         self.translation_x_series = super().parseq_to_series('translation_x' + optional_delta)
@@ -291,21 +220,4 @@ class ParseqAnimKeysDecorator(ParseqAbstractDecorator):
 
         # TODO - move to a different decorator?
         self.prompts = super().parseq_to_series('deforum_prompt') # formatted as "{positive} --neg {negative}"
-
-
-class ParseqLooperKeysDecorator(ParseqAbstractDecorator):
-    def __init__(self, adapter: ParseqAdapter, looper_keys):
-        super().__init__(adapter, looper_keys)
-
-        # The Deforum UI offers an "Image strength schedule" in the Guided Images section,
-        # which simply overrides the strength schedule if guided images is enabled.
-        # In Parseq, we just re-use the same strength schedule.
-        self.image_strength_schedule_series = super().parseq_to_series('strength')
-
-        # We explicitly state the mapping for all other guided images fields so we can strip the prefix
-        # that we use in Parseq.
-        self.blendFactorMax_series = super().parseq_to_series('guided_blendFactorMax')
-        self.blendFactorSlope_series = super().parseq_to_series('guided_blendFactorSlope')
-        self.tweening_frames_schedule_series = super().parseq_to_series('guided_tweening_frames')
-        self.color_correction_factor_series = super().parseq_to_series('guided_color_correction_factor')
 

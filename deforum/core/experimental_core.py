@@ -1,3 +1,8 @@
+"""
+Experimental rendering core for Deforum.
+Note: FreeU and Kohya HR Fix functionality has been removed.
+"""
+
 import os
 
 from pathlib import Path
@@ -12,6 +17,9 @@ from .data.render_data import RenderData
 from .data.taqaddumat import Taqaddumat
 from .util import filename_utils, image_utils, log_utils, memory_utils, subtitle_utils, web_ui_utils
 from ..media.video_audio_pipeline import download_audio
+from .util.call.gen import generate_frame
+from .util.call.save import save_frame
+from .util.call.video import create_video
 
 IS_USE_PROFILER = False
 
@@ -20,30 +28,38 @@ class NoImageGenerated(Exception):
     pass
 
 
-def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args,
-                     freeu_args, kohya_hrfix_args, root):
-    log_utils.info("Using experimental render core.", log_utils.RED)
+def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
+    """
+    Experimental rendering core for animations.
+    Note: FreeU and Kohya HR Fix functionality has been removed.
+    """
+    log_utils.info("Using experimental render core.", log_utils.BLUE)
     
-    # Pre-download soundtrack if specified
-    if video_args.add_soundtrack == 'File' and video_args.soundtrack_path is not None:
-        if video_args.soundtrack_path.startswith(('http://', 'https://')):
-            print(f"Pre-downloading soundtrack at the beginning of the render process: {video_args.soundtrack_path}")
-            try:
-                video_args.soundtrack_path = download_audio(video_args.soundtrack_path)
-                print(f"Audio successfully pre-downloaded to: {video_args.soundtrack_path}")
-            except Exception as e:
-                print(f"Error pre-downloading audio: {e}")
+    # Create render data
+    data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, root)
     
-    data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, freeu_args,
-                             kohya_hrfix_args, root)
-    check_render_conditions(data)
-    web_ui_utils.init_job(data)
-    diffusion_frames = DiffusionFrame.create_all_frames(data, KeyFrameDistribution.from_UI_tab(data))
-    subtitle_utils.create_all_subtitles_if_active(data, diffusion_frames)
-    shared.total_tqdm = Taqaddumat()
-    shared.total_tqdm.reset(data, diffusion_frames)
-    run_render_animation(data, diffusion_frames)
-    data.animation_mode.unload_raft_and_depth_model()
+    # Create output directory
+    os.makedirs(args.outdir, exist_ok=True)
+    
+    # Main rendering loop
+    for frame_idx in range(anim_args.max_frames):
+        log_utils.info(f"Rendering frame {frame_idx + 1}/{anim_args.max_frames}")
+        
+        # Generate frame
+        image = generate_frame(data, frame_idx)
+        
+        if image is None:
+            log_utils.warning(f"Failed to generate frame {frame_idx}")
+            continue
+            
+        # Save frame
+        save_frame(data, image, frame_idx)
+    
+    # Create video if requested
+    if not video_args.skip_video_creation:
+        create_video(data)
+    
+    log_utils.info("Experimental rendering completed")
 
 
 def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):

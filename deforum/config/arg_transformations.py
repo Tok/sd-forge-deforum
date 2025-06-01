@@ -8,6 +8,8 @@ import os
 import time
 from types import SimpleNamespace
 import pathlib
+from .general_utils import substitute_placeholders, get_deforum_version, clean_gradio_path_strings
+from ..core.util import log_utils
 
 # Conditional imports
 try:
@@ -198,74 +200,122 @@ def create_additional_substitutions() -> SimpleNamespace:
     )
 
 
-def process_args(args_dict_main, run_id):
-    """Process arguments from main dictionary.
-    
-    Args:
-        args_dict_main: Main arguments dictionary
-        run_id: Run identifier
-        
-    Returns:
-        Tuple of processed argument objects
+def process_args(args_dict, index=0):
     """
-    from .settings import load_args
+    Process and transform arguments for Deforum execution.
+    Note: FreeU and Kohya HR Fix functionality has been removed.
     
-    # Extract settings
-    override_settings_with_file = args_dict_main['override_settings_with_file']
-    custom_settings_file = args_dict_main['custom_settings_file']
-    p = args_dict_main['p']
+    Returns:
+        tuple: (args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, wan_args)
+    """
+    try:
+        # Extract basic arguments
+        args = SimpleNamespace(**args_dict.get('args', {}))
+        anim_args = SimpleNamespace(**args_dict.get('anim_args', {}))
+        video_args = SimpleNamespace(**args_dict.get('video_args', {}))
+        parseq_args = SimpleNamespace(**args_dict.get('parseq_args', {}))
+        loop_args = SimpleNamespace(**args_dict.get('loop_args', {}))
+        controlnet_args = SimpleNamespace(**args_dict.get('controlnet_args', {}))
+        wan_args = SimpleNamespace(**args_dict.get('wan_args', {}))
+        
+        # Create root object
+        root = SimpleNamespace()
+        root.timestring = args_dict.get('timestring', '')
+        root.animation_prompts = args_dict.get('animation_prompts', {})
+        root.models_path = args_dict.get('models_path', '')
+        root.device = args_dict.get('device', 'cuda')
+        root.half_precision = args_dict.get('half_precision', True)
+        
+        # Process paths and placeholders
+        if hasattr(args, 'outdir') and args.outdir:
+            args.outdir = substitute_placeholders(
+                args.outdir, 
+                [args, anim_args, video_args], 
+                os.path.dirname(args.outdir)
+            )
+            args.outdir = clean_gradio_path_strings(args.outdir)
+        
+        # Validate required fields
+        if not hasattr(args, 'outdir') or not args.outdir:
+            log_utils.error("Output directory not specified")
+            return False, None, None, None, None, None, None, None, None
+        
+        # Set defaults for missing fields
+        if not hasattr(anim_args, 'max_frames'):
+            anim_args.max_frames = 100
+        if not hasattr(anim_args, 'animation_mode'):
+            anim_args.animation_mode = '2D'
+        if not hasattr(video_args, 'fps'):
+            video_args.fps = 15
+        
+        log_utils.info(f"Arguments processed successfully for index {index}")
+        
+        return True, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, wan_args
+        
+    except Exception as e:
+        log_utils.error(f"Error processing arguments: {e}")
+        return False, None, None, None, None, None, None, None, None
 
-    # Create immutable argument objects using functional approach
-    root = SimpleNamespace(**RootArgs())
-    args = create_namespace_from_dict(args_dict_main, DeforumArgs)
-    anim_args = create_namespace_from_dict(args_dict_main, DeforumAnimArgs)
-    video_args = create_namespace_from_dict(args_dict_main, DeforumOutputArgs)
-    parseq_args = create_namespace_from_dict(args_dict_main, ParseqArgs)
-    controlnet_args = create_namespace_from_dict(args_dict_main, controlnet_component_names)
-    wan_args = create_namespace_from_dict(args_dict_main, WanArgs)
 
-    # Process animation prompts
-    process_animation_prompts(args_dict_main, root)
-
-    # Load settings from file if requested
-    args_loaded_ok = True
-    if override_settings_with_file:
-        args_loaded_ok = load_args(
-            args_dict_main, args, anim_args, parseq_args, 
-            controlnet_args, video_args, custom_settings_file, root, run_id
-        )
-
-    # Process seed settings
-    process_seed_settings(args, root)
+def validate_args(args, anim_args, video_args):
+    """
+    Validate argument consistency and requirements.
+    Note: FreeU and Kohya HR Fix functionality has been removed.
+    """
+    errors = []
     
-    # Set timestring
-    root.timestring = time.strftime('%Y%m%d%H%M%S')
+    # Check output directory
+    if not args.outdir:
+        errors.append("Output directory is required")
     
-    # Sanitize strength
-    args.strength = sanitize_strength(args.strength)
+    # Check frame count
+    if anim_args.max_frames <= 0:
+        errors.append("Max frames must be greater than 0")
     
-    # Setup prompt information
-    args.prompts = json.loads(args_dict_main['animation_prompts'])
-    args.positive_prompts = args_dict_main['animation_prompts_positive']
-    args.negative_prompts = args_dict_main['animation_prompts_negative']
+    # Check animation mode
+    valid_modes = ['2D', '3D', 'Video Input', 'Interpolation']
+    if anim_args.animation_mode not in valid_modes:
+        errors.append(f"Animation mode must be one of: {valid_modes}")
+    
+    # Check FPS
+    if video_args.fps <= 0:
+        errors.append("FPS must be greater than 0")
+    
+    return errors
 
-    # Process init image settings
-    process_init_image_settings(args, anim_args)
 
-    # Create substitution variables
-    additional_substitutions = create_additional_substitutions()
-    current_arg_list = [args, anim_args, video_args, parseq_args, root, additional_substitutions]
+def create_default_args():
+    """
+    Create default argument objects.
+    Note: FreeU and Kohya HR Fix functionality has been removed.
+    """
+    args = SimpleNamespace()
+    args.outdir = ""
+    args.seed = -1
+    args.W = 512
+    args.H = 512
+    args.steps = 20
+    args.cfg_scale = 7.0
+    args.sampler = "euler"
+    args.scheduler = "normal"
     
-    # Setup output directory
-    setup_output_directory(args, root, p, current_arg_list)
+    anim_args = SimpleNamespace()
+    anim_args.max_frames = 100
+    anim_args.animation_mode = "2D"
+    anim_args.border = "replicate"
     
-    # Setup default image
-    setup_default_image(args, root)
-
-    # Create placeholder namespaces for backward compatibility
-    freeu_args = SimpleNamespace()
-    kohya_hrfix_args = SimpleNamespace()
+    video_args = SimpleNamespace()
+    video_args.fps = 15
+    video_args.skip_video_creation = False
+    
+    parseq_args = SimpleNamespace()
+    parseq_args.parseq_manifest = ""
+    
     loop_args = SimpleNamespace()
-
-    return (args_loaded_ok, root, args, anim_args, video_args, parseq_args, 
-            loop_args, controlnet_args, freeu_args, kohya_hrfix_args, wan_args) 
+    loop_args.use_looper = False
+    
+    controlnet_args = SimpleNamespace()
+    
+    wan_args = SimpleNamespace()
+    
+    return args, anim_args, video_args, parseq_args, loop_args, controlnet_args, wan_args 

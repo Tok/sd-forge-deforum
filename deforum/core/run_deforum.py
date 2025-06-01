@@ -57,7 +57,7 @@ def run_deforum(*args):
         args_dict['self'] = None
         args_dict['p'] = p
         try:
-            args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, wan_args = process_args(args_dict, i)
+            args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, wan_args = process_args(args_dict, i)
         except Exception as e:
             print("\n*START OF TRACEBACK*")
             traceback.print_exc()
@@ -97,11 +97,11 @@ def run_deforum(*args):
             print(f"{YELLOW}Starting job {job_id}...{RESET_COLOR}")
             if anim_args.animation_mode == '2D' or anim_args.animation_mode == '3D':
                 if anim_args.use_mask_video: 
-                    render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)  # allow mask video without an input video
+                    render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)  # allow mask video without an input video
                 else:    
-                    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
+                    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
             elif anim_args.animation_mode == 'Interpolation':
-                render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
+                render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
             elif anim_args.animation_mode == 'Wan Video':
                 # Use direct Wan integration
                 try:
@@ -123,7 +123,7 @@ def run_deforum(*args):
                     print(f"Using smart model discovery and direct integration.")
                     
                     # Use the generate function that handles everything
-                    output_dir = generate_wan_video(args, anim_args, video_args, 0, False, False, root, root.animation_prompts, loop_args, parseq_args, freeu_args, controlnet_args, None, None, None, wan_args, None)
+                    output_dir = generate_wan_video(args, anim_args, video_args, 0, False, False, root, root.animation_prompts, loop_args, parseq_args, controlnet_args, None, None, None, wan_args, None)
                     
                     print(f"✅ Wan video generation completed successfully!")
                     print(f"📁 Output directory: {output_dir}")
@@ -232,7 +232,7 @@ def run_deforum(*args):
 
         if shared.opts.data.get("deforum_enable_persistent_settings", False):
             persistent_sett_path = shared.opts.data.get("deforum_persistent_settings_path")
-            save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root, persistent_sett_path, wan_args)
+            save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, video_args, root, persistent_sett_path, wan_args)
 
         # Close the pipeline, not to interfere with ControlNet
         try:

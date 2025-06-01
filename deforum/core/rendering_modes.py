@@ -1,3 +1,8 @@
+"""
+Rendering modes for different types of Deforum animations.
+Note: FreeU and Kohya HR Fix functionality has been removed.
+"""
+
 import os
 import time
 import pathlib
@@ -15,57 +20,126 @@ from .parseq_adapter import ParseqAdapter
 from .save_images import save_image
 from .settings import save_settings_from_animation_run
 
-def render_input_video(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root):
-    # create a folder for the video input frames to live in
+def render_input_video(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
+    """
+    Render animation using video input frames.
+    Note: FreeU and Kohya HR Fix functionality has been removed.
+    """
+    # create a folder for the video input frames
     video_in_frame_path = os.path.join(args.outdir, 'inputframes') 
     os.makedirs(video_in_frame_path, exist_ok=True)
-
+    
     # save the video frames from input video
     print(f"Exporting Video Frames (1 every {anim_args.extract_nth_frame}) frames to {video_in_frame_path}...")
-    vid2frames(video_path = anim_args.video_init_path, video_in_frame_path=video_in_frame_path, n=anim_args.extract_nth_frame, overwrite=anim_args.overwrite_extracted_frames, extract_from_frame=anim_args.extract_from_frame, extract_to_frame=anim_args.extract_to_frame)
-
+    try:
+        for f in os.listdir(video_in_frame_path):
+            os.remove(os.path.join(video_in_frame_path, f))
+    except:
+        pass
+    
+    vf = f'select=not(mod(n\\,{anim_args.extract_nth_frame}))'
+    if os.path.exists(args.video_init_path):
+        try:
+            subprocess.run(['ffmpeg', '-i', f'{args.video_init_path}', '-vf', f'{vf}', '-vsync', 'vfr', '-q:v', '1', '-pix_fmt', 'rgb24', f'{video_in_frame_path}/%04d.jpg', '-y'], cwd=video_in_frame_path, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error exporting frames: {e}")
+            return
+    else:
+        print(f"Video not found: {args.video_init_path}")
+        return
+    
     # determine max frames from length of input frames
-    anim_args.max_frames = len([f for f in pathlib.Path(video_in_frame_path).glob('*.jpg')])
+    anim_args.max_frames = len([f for f in os.listdir(video_in_frame_path) if f.endswith('.jpg')])
     args.use_init = True
     print(f"Loading {anim_args.max_frames} input frames from {video_in_frame_path} and saving video frames to {args.outdir}")
+    
+    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
 
-    if anim_args.use_mask_video:
-        # create a folder for the mask video input frames to live in
-        mask_in_frame_path = os.path.join(args.outdir, 'maskframes') 
-        os.makedirs(mask_in_frame_path, exist_ok=True)
 
-        # save the video frames from mask video
-        print(f"Exporting Video Frames (1 every {anim_args.extract_nth_frame}) frames to {mask_in_frame_path}...")
-        vid2frames(video_path=anim_args.video_mask_path,video_in_frame_path=mask_in_frame_path, n=anim_args.extract_nth_frame, overwrite=anim_args.overwrite_extracted_frames, extract_from_frame=anim_args.extract_from_frame, extract_to_frame=anim_args.extract_to_frame)
-        max_mask_frames = len([f for f in pathlib.Path(mask_in_frame_path).glob('*.jpg')])
-
-        # limit max frames if there are less frames in the video mask compared to input video
-        if max_mask_frames < anim_args.max_frames :
-            anim_args.max_mask_frames
-            print ("Video mask contains less frames than init video, max frames limited to number of mask frames.")
-        args.use_mask = True
-        args.overlay_mask = True
-
-    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
-
-# Modified a copy of the above to allow using masking video with out a init video.
-def render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root):
-    # create a folder for the video input frames to live in
+def render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
+    """
+    Render animation with video mask support.
+    Note: FreeU and Kohya HR Fix functionality has been removed.
+    """
+    # create a folder for the video mask frames
     mask_in_frame_path = os.path.join(args.outdir, 'maskframes') 
     os.makedirs(mask_in_frame_path, exist_ok=True)
-
+    
     # save the video frames from mask video
-    print(f"Exporting Video Frames (1 every {anim_args.extract_nth_frame}) frames to {mask_in_frame_path}...")
-    vid2frames(video_path=anim_args.video_mask_path, video_in_frame_path=mask_in_frame_path, n=anim_args.extract_nth_frame, overwrite=anim_args.overwrite_extracted_frames, extract_from_frame=anim_args.extract_from_frame, extract_to_frame=anim_args.extract_to_frame)
-    args.use_mask = True
-    #args.overlay_mask = True
+    print(f"Exporting Video Mask Frames (1 every {anim_args.extract_nth_frame}) frames to {mask_in_frame_path}...")
+    try:
+        for f in os.listdir(mask_in_frame_path):
+            os.remove(os.path.join(mask_in_frame_path, f))
+    except:
+        pass
+    
+    vf = f'select=not(mod(n\\,{anim_args.extract_nth_frame}))'
+    if os.path.exists(anim_args.video_mask_path):
+        try:
+            subprocess.run(['ffmpeg', '-i', f'{anim_args.video_mask_path}', '-vf', f'{vf}', '-vsync', 'vfr', '-q:v', '1', '-pix_fmt', 'rgb24', f'{mask_in_frame_path}/%04d.jpg', '-y'], cwd=mask_in_frame_path, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error exporting mask frames: {e}")
+            return
+    else:
+        print(f"Video mask not found: {anim_args.video_mask_path}")
+        return
+    
+    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
 
-    # determine max frames from length of input frames
-    anim_args.max_frames = len([f for f in pathlib.Path(mask_in_frame_path).glob('*.jpg')])
-    #args.use_init = True
-    print(f"Loading {anim_args.max_frames} input frames from {mask_in_frame_path} and saving video frames to {args.outdir}")
 
-    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
+def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
+    """
+    Render interpolation between keyframes.
+    Note: FreeU and Kohya HR Fix functionality has been removed.
+    """
+    # initialise Parseq adapter
+    parseq_adapter = ParseqAdapter(parseq_args, anim_args, video_args, controlnet_args, loop_args)
+
+    # expand key frame strings to values
+    keys = DeformAnimKeys(anim_args, args.seed) if not parseq_adapter.use_parseq else parseq_adapter.anim_keys
+
+    # create output folder for the batch
+    os.makedirs(args.outdir, exist_ok=True)
+    print(f"Saving interpolation frames to {args.outdir}")
+
+    # save settings.txt file for the current run
+    save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, video_args, root)
+
+    # Interpolation mode - render images for each keyframe
+    frame_idx = 0
+    
+    # Get keyframes from prompts
+    keyframes = []
+    for i, prompt in root.animation_prompts.items():
+        if str(i).isdigit():
+            keyframes.append(int(i))
+        else:
+            keyframes.append(int(numexpr.evaluate(i)))
+    
+    keyframes.sort()
+    
+    # Generate images for each keyframe
+    for keyframe in keyframes:
+        if keyframe >= anim_args.max_frames:
+            break
+            
+        print(f"Generating keyframe {keyframe}")
+        
+        # Set frame-specific parameters
+        args.prompt = root.animation_prompts.get(str(keyframe), args.prompt)
+        args.seed = int(keys.seed_schedule_series[keyframe]) if args.seed_behavior == 'schedule' else args.seed
+        
+        # Generate image
+        image = generate(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter, keyframe)
+        
+        if image is None:
+            break
+            
+        # Save image
+        filename = f"{root.timestring}_{keyframe:09}.png"
+        image.save(os.path.join(args.outdir, filename))
+        
+        frame_idx += 1
 
 def get_parsed_value(value, frame_idx, max_f):
     pattern = r'`.*?`'
@@ -78,20 +152,20 @@ def get_parsed_value(value, frame_idx, max_f):
         parsed_value = parsed_value.replace(matched_string, str(value))
     return parsed_value
 
-def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root):
+def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
 
     # use parseq if manifest is provided
-    parseq_adapter = ParseqAdapter(parseq_args, anim_args, video_args, controlnet_args, loop_args, freeu_args, kohya_hrfix_args)
+    parseq_adapter = ParseqAdapter(parseq_args, anim_args, video_args, controlnet_args, loop_args)
 
     # expand key frame strings to values
-    keys = DeformAnimKeys(anim_args) if not parseq_adapter.use_parseq else parseq_adapter.anim_keys
+    keys = DeformAnimKeys(anim_args, args.seed) if not parseq_adapter.use_parseq else parseq_adapter.anim_keys
 
     # create output folder for the batch
     os.makedirs(args.outdir, exist_ok=True)
     print(f"Saving interpolation animation frames to {args.outdir}")
 
     # save settings.txt file for the current run
-    save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, video_args, root)
+    save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, video_args, root)
         
     # Compute interpolated prompts
     if parseq_adapter.manages_prompts():
@@ -150,8 +224,7 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
         args.seed = int(keys.seed_schedule_series[frame_idx]) if (args.seed_behavior == 'schedule' or parseq_adapter.manages_seed()) else args.seed
         opts.data["CLIP_stop_at_last_layers"] = scheduled_clipskip if scheduled_clipskip is not None else opts.data["CLIP_stop_at_last_layers"]
 
-        image = generate(args, keys, anim_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args,
-                         root, parseq_adapter, frame_idx, scheduled_sampler_name, scheduled_scheduler_name)
+        image = generate(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter, frame_idx, scheduled_sampler_name, scheduled_scheduler_name)
         filename = f"{root.timestring}_{frame_idx:09}.png"
 
         save_image(image, 'PIL', filename, args, video_args, root)
