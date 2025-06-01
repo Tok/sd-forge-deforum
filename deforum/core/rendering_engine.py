@@ -29,7 +29,7 @@ from .masks import do_overlay_mask
 from ..prompt import prepare_prompt
 from modules.shared import opts, cmd_opts, state, sd_model
 from modules import lowvram, devices, sd_hijack
-from .rendering import experimental_core
+from . import experimental_core
 from ..utils import log_utils
 from .RAFT import RAFT
 from ..media.video_audio_pipeline import download_audio
