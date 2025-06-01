@@ -8,7 +8,7 @@ from cv2.typing import MatLike
 from .data.render_data import RenderData
 from ..utils import image_utils, turbo_utils
 from ..utils.fun_utils import tube
-from ..colors import maintain_colors
+from ..utils.colors import maintain_colors
 from ..masks import do_overlay_mask
 
 """
