@@ -27,7 +27,7 @@ This document outlines Deforum's modern functional programming architecture and 
 **Previous Completed Phases:**
 - **Phase 2.7**: Split 3,725-line UI elements file into 8 modules (90% reduction)
 - **Phase 2.8**: Split 1,432-line arguments file into 4 modules (97% reduction) 
-- **Phase 2.9**: WAN Integration Refactoring (96% average reduction across 2 large files)
+- **Phase 2.9**: ✅ **COMPLETED** - WAN Integration + Utils Consolidation (96% reduction + directory cleanup)
 
 ---
 
@@ -49,6 +49,37 @@ This document outlines Deforum's modern functional programming architecture and 
    - **Priority**: Medium - Animation enhancement
 
 **Estimated Impact**: ~2,100 lines → focused modules (85%+ reduction expected)
+
+---
+
+### **✅ Phase 2.9 Completion Summary - WAN Integration + Utils Consolidation**
+
+**Completed Actions:**
+1. **WAN Integration Refactoring** (2,310 lines → 7 focused modules)
+   - Split `wan_simple_integration.py` (1,206 lines) → 4 modules
+   - Split `movement_analyzer.py` (1,104 lines) → 3 modules
+   - **96% average reduction** in file sizes
+   - Maintained full backward compatibility
+
+2. **Utils Directory Consolidation**
+   - **Merged** `core/util/` and `utils/` directories (eliminated duplication)
+   - **Moved** all utilities from `core/util/` to unified `utils/` structure
+   - **Updated** 15+ files with corrected import paths
+   - **Created** backward compatibility layers for args imports
+   - **Fixed** circular import issues with conditional imports
+
+3. **Import Path Modernization**
+   - Updated imports from old `core.util` and `rendering.util` paths
+   - Fixed emoji_utils, log_utils, and color constant imports
+   - Created `deforum/config/args.py` and `deforum/core/args.py` compatibility layers
+   - Maintained 100% backward compatibility for existing imports
+
+**Technical Benefits:**
+- **Eliminated Directory Confusion**: Single `utils/` directory instead of duplicated structure
+- **Clean Import Paths**: Consistent `from ..utils import` pattern throughout codebase
+- **Modular WAN System**: Each WAN component has single responsibility
+- **Enhanced Maintainability**: Easier to locate and modify utility functions
+- **Future-Ready**: Clean foundation for continued refactoring
 
 ---
 
