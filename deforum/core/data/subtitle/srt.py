@@ -3,8 +3,8 @@ import os
 from dataclasses import dataclass
 from decimal import Decimal
 
-from ...util import opt_utils
-from ....subtitle_handler import init_srt_file
+from ....utils import opt_utils
+from ....utils.subtitle_handler import init_srt_file
 
 
 @dataclass(init=True, frozen=True, repr=False, eq=False)
