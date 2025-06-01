@@ -289,7 +289,7 @@ def save_settings(*args, **kwargs):
     
     args_dict["animation_prompts_positive"] = data['animation_prompts_positive']
     args_dict["animation_prompts_negative"] = data['animation_prompts_negative']
-    loop_dict = pack_args(data, LoopArgs)
+    loop_dict = {}
     controlnet_dict = pack_args(data, controlnet_component_names)
     wan_args_dict = pack_args(data, WanArgs)
     video_args_dict = pack_args(data, DeforumOutputArgs)
