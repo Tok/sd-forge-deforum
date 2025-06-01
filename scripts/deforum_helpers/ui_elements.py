@@ -1773,6 +1773,8 @@ def get_tab_output(da, dv):
                 with FormRow() as ncnn_upscale_factor_model_row:
                     upscale_factor_ncnn = gr.Dropdown(label='Upscale Factor', elem_id="upscale_factor_ncnn",
                                                       choices=['x2', 'x3', 'x4'], value='x2')
+                    # Alias for gradio_funcs.py compatibility
+                    ncnn_upscale_factor = upscale_factor_ncnn
                     ncnn_upscale_model = gr.Dropdown(label='NCNN Model', elem_id="ncnn_upscale_model",
                                                      choices=['realesr-animevideov3'], value='realesr-animevideov3')
                     ncnn_upscale_keep_imgs = gr.Checkbox(label='Keep Imgs', value=True, elem_id="ncnn_upscale_keep_imgs")
@@ -3420,6 +3422,12 @@ def get_tab_animation(da, dloopArgs):
             
             with FormRow() as depth_warp_row_1:
                 use_depth_warping = create_gr_elem(da.use_depth_warping)
+                # LeReS license message (shown when LeReS depth algorithm is selected)
+                leres_license_msg = gr.HTML(
+                    value=get_gradio_html('leres'), 
+                    visible=False,
+                    elem_id='leres_license_msg'
+                )
                 depth_algorithm = create_gr_elem(da.depth_algorithm)
                 midas_weight = create_gr_elem(da.midas_weight)
             with FormRow() as depth_warp_row_2:
