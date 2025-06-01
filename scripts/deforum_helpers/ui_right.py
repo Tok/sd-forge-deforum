@@ -117,7 +117,19 @@ def on_ui_tabs():
                     load_settings_btn = gr.Button('Load All Settings', elem_id='deforum_load_settings_btn')
                     load_video_settings_btn = gr.Button('Load Video Settings', elem_id='deforum_load_video_settings_btn')
 
-        component_list = [components[name] for name in get_component_names() if name in components]
+        # Handle missing components by creating dummy values for them
+        # This prevents KeyErrors while maintaining backward compatibility
+        missing_components = {}
+        for name in get_component_names():
+            if name not in components:
+                print(f"⚠️ Creating dummy component for missing: {name}")
+                # Create a dummy component - use a hidden textbox as a safe default
+                missing_components[name] = gr.Textbox(value="", visible=False, elem_id=f"dummy_{name}")
+        
+        # Merge dummy components with actual components
+        all_components = {**components, **missing_components}
+        
+        component_list = [all_components[name] for name in get_component_names()]
 
         submit.click(
                     fn=wrap_gradio_gpu_call(run_deforum),
@@ -131,8 +143,18 @@ def on_ui_tabs():
                     ],
                 )
         
-        settings_component_list = [components[name] for name in get_settings_component_names() if name in components]
-        video_settings_component_list = [components[name] for name in list(DeforumOutputArgs().keys()) if name in components]
+        settings_component_names = get_settings_component_names()
+        settings_missing_components = {}
+        for name in settings_component_names:
+            if name not in all_components:
+                print(f"⚠️ Creating dummy settings component for missing: {name}")
+                settings_missing_components[name] = gr.Textbox(value="", visible=False, elem_id=f"dummy_settings_{name}")
+        
+        # Merge settings dummy components
+        all_settings_components = {**all_components, **settings_missing_components}
+        
+        settings_component_list = [all_settings_components[name] for name in settings_component_names]
+        video_settings_component_list = [all_settings_components[name] for name in list(DeforumOutputArgs().keys())]
 
         save_settings_btn.click(
             fn=wrap_gradio_call(save_settings),
