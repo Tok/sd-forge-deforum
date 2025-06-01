@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from ...keyframe_animation import DeformAnimKeys
-
 
 @dataclass
 class DiffusionFrameData:
