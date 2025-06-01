@@ -4,7 +4,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from ...data.render_data import RenderData
+from ..render_data import RenderData
 from ... import img_2_img_tubes
 from ...util import image_utils, log_utils, turbo_utils, web_ui_utils
 from ...util.call.subtitle import call_write_subtitle_from_to

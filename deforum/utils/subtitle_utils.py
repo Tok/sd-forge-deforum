@@ -1,9 +1,9 @@
 from typing import List
 
 from . import log_utils, opt_utils
-from ..data import RenderData
-from ..data.frame import DiffusionFrame
-from ...subtitle_handler import calculate_frame_duration, frame_time, time_to_srt_format
+from ..core.data import RenderData
+from ..core.data.frame import DiffusionFrame
+from .subtitle_handler import calculate_frame_duration, frame_time, time_to_srt_format
 
 
 def create_all_subtitles_if_active(data: RenderData, diffusion_frames: List[DiffusionFrame]):

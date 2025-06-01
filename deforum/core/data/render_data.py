@@ -13,10 +13,10 @@ from .images import Images
 from .mask import Mask
 from .shakify.shaker import Shaker
 from .subtitle import Srt
-from ..util import depth_utils, log_utils, memory_utils, opt_utils
-from ..util.call.images import call_get_mask_from_file_with_frame
-from ..util.call.mask import call_compose_mask_with_check
-from ..util.call.video_and_audio import call_get_next_frame
+from ...utils import depth_utils, log_utils, memory_utils, opt_utils
+from ...utils.call.images import call_get_mask_from_file_with_frame
+from ...utils.call.mask import call_compose_mask_with_check
+from ...utils.call.video_and_audio import call_get_next_frame
 from ...args import DeforumArgs, DeforumAnimArgs, ParseqArgs, RootArgs, FreeUArgs, KohyaHRFixArgs
 from ...deforum_controlnet import unpack_controlnet_vids, is_controlnet_enabled
 from ...generate import (isJson)
