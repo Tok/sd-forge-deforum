@@ -12,7 +12,6 @@ from ..media.image_loading import load_img, prepare_mask, check_mask_for_errors
 from ..integrations.webui_pipeline import get_webui_sd_pipeline
 from ..utils.rich import console
 from ..config.defaults import get_samplers_list, get_schedulers_list
-from ..prompt import check_is_number
 from .opts_overrider import A1111OptionsOverrider
 import cv2
 import numpy as np
