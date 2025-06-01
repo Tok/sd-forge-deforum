@@ -7,7 +7,6 @@ import torch
 from PIL import Image
 from einops import rearrange
 from modules.shared import state, opts
-from ..prompt import check_is_number
 from .general_utils import debug_print
 from ..utils import log_utils
 

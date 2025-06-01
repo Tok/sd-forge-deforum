@@ -1,6 +1,13 @@
 import cv2
 import pkg_resources
-from skimage.exposure import match_histograms
+
+try:
+    from skimage.exposure import match_histograms
+except ImportError:
+    def match_histograms(prev_img, color_match_sample, **kwargs):
+        """Fallback implementation when skimage is not available"""
+        print("Warning: skimage not available, using fallback color matching")
+        return prev_img
 
 def maintain_colors(prev_img, color_match_sample, mode):
     
