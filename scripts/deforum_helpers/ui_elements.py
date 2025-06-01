@@ -3411,6 +3411,13 @@ def get_tab_animation(da, dloopArgs):
         
         # Depth and 3D Settings
         with gr.Accordion(f"{emoji_utils.depth()} 3D Depth Processing", open=False):
+            # HTML message for when not in 3D mode (required by gradio_funcs.py)
+            depth_warp_msg_html = gr.HTML(
+                value='Please switch to 3D animation mode to view this section.',
+                elem_id='depth_warp_msg_html', 
+                visible=False  # Initially hidden, shown/hidden by animation mode changes
+            )
+            
             with FormRow() as depth_warp_row_1:
                 use_depth_warping = create_gr_elem(da.use_depth_warping)
                 depth_algorithm = create_gr_elem(da.depth_algorithm)
