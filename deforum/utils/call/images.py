@@ -1,5 +1,5 @@
 import cv2
-from ....load_images import get_mask_from_file
+from ....media.image_loading import get_mask_from_file
 from ....noise import add_noise
 from ....media.video_audio_pipeline import get_next_frame
 

@@ -9,7 +9,7 @@ from ...utils import emoji_utils
 from ...media.video_audio_pipeline import SUPPORTED_IMAGE_EXTENSIONS, SUPPORTED_VIDEO_EXTENSIONS, get_extension_if_valid, \
     get_quick_vid_info, vid2frames, convert_image
 from ...core.keyframe_animation import ControlNetKeys
-from .load_images import load_image
+from ...media.image_loading import load_image
 
 from lib_controlnet.global_state import update_controlnet_filenames, get_all_preprocessor_names, \
     get_all_controlnet_names, get_sorted_preprocessors, get_preprocessor

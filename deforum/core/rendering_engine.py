@@ -18,7 +18,7 @@ from .colors import maintain_colors
 from .parseq_adapter import ParseqAdapter
 from .seed import next_seed
 from .image_sharpening import unsharp_mask
-from .load_images import get_mask, load_img, load_image, get_mask_from_file
+from ..media.image_loading import get_mask, load_img, load_image, get_mask_from_file
 from .save_images import save_image
 from .composable_masks import compose_mask_with_check
 from .settings import save_settings_from_animation_run
