@@ -1,4 +1,4 @@
-from ...animation import anim_frame_warp
+from ...core.animation_controller import anim_frame_warp
 
 
 def call_anim_frame_warp(data, i, image, depth_prediction):
