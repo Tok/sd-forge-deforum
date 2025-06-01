@@ -14,6 +14,17 @@ from enum import Enum
 import numpy as np
 from PIL import Image
 
+# Import legacy args for backward compatibility with tests
+try:
+    from .args import DeforumAnimArgs, DeforumArgs as LegacyDeforumArgs, ParseqArgs as LegacyParseqArgs, WanArgs as LegacyWanArgs, RootArgs as LegacyRootArgs
+except ImportError:
+    # Fallback if circular import issues
+    DeforumAnimArgs = None
+    LegacyDeforumArgs = None
+    LegacyParseqArgs = None
+    LegacyWanArgs = None
+    LegacyRootArgs = None
+
 
 class AnimationMode(Enum):
     """Animation mode enumeration"""
@@ -677,6 +688,7 @@ class ExternalLibraryArgs:
     Replaces patterns like:
     args = SimpleNamespace() in RIFE and FILM libraries
     """
+    # Common fields
     multi: float = 1.0
     video: str = ""
     output: str = ""
@@ -690,6 +702,28 @@ class ExternalLibraryArgs:
     fps: Optional[float] = None
     png: bool = False
     ext: str = "mp4"
+    
+    # RIFE-specific fields
+    modelDir: Optional[str] = None
+    fp16: bool = False
+    deforum_models_path: Optional[str] = None
+    raw_output_imgs_path: Optional[str] = None
+    img_batch_id: Optional[str] = None
+    ffmpeg_location: str = "ffmpeg"
+    audio_track: Optional[str] = None
+    interp_x_amount: int = 2
+    slow_mo_enabled: bool = False
+    slow_mo_x_amount: int = 2
+    ffmpeg_crf: int = 17
+    ffmpeg_preset: str = "veryslow"
+    keep_imgs: bool = False
+    orig_vid_name: Optional[str] = None
+    
+    # FILM-specific fields  
+    model_path: Optional[str] = None
+    input_folder: Optional[str] = None
+    save_folder: Optional[str] = None
+    inter_frames: Optional[int] = None
     
     @classmethod
     def create_rife_args(cls) -> 'ExternalLibraryArgs':
@@ -707,7 +741,15 @@ class ExternalLibraryArgs:
             scale=1.0,
             fps=None,
             png=False,
-            ext="mp4"
+            ext="mp4",
+            fp16=False,
+            interp_x_amount=2,
+            slow_mo_enabled=False,
+            slow_mo_x_amount=2,
+            ffmpeg_crf=17,
+            ffmpeg_preset="veryslow",
+            keep_imgs=False,
+            ffmpeg_location="ffmpeg"
         )
     
     @classmethod  

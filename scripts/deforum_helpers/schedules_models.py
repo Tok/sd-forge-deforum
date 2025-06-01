@@ -14,6 +14,13 @@ from typing import Dict, List, Optional, Tuple, Any, Union
 import pandas as pd
 import numpy as np
 
+# Backward compatibility alias for tests
+try:
+    from .animation_key_frames import FrameInterpolater
+except ImportError:
+    # Fallback if module not available
+    FrameInterpolater = None
+
 
 @dataclass(frozen=True)
 class AnimationSchedules:
@@ -101,8 +108,6 @@ class AnimationSchedules:
         
         Replaces the mutable DeformAnimKeys.__init__ pattern.
         """
-        from .animation_key_frames import FrameInterpolater
-        
         fi = FrameInterpolater(max_frames, seed)
         
         return cls(
@@ -172,8 +177,6 @@ class ControlNetSchedules:
         
         Replaces the mutable ControlNetKeys.__init__ pattern with setattr.
         """
-        from .animation_key_frames import FrameInterpolater
-        
         fi = FrameInterpolater(max_frames=anim_args.max_frames)
         schedules = {}
         
@@ -212,8 +215,6 @@ class FreeUSchedules:
     @classmethod
     def from_args(cls, anim_args: Any, freeu_args: Any) -> 'FreeUSchedules':
         """Pure factory method to create FreeU schedules"""
-        from .animation_key_frames import FrameInterpolater
-        
         fi = FrameInterpolater(max_frames=anim_args.max_frames)
         
         # Get defaults
@@ -258,8 +259,6 @@ class KohyaSchedules:
     @classmethod
     def from_args(cls, anim_args: Any, kohya_hrfix_args: Any) -> 'KohyaSchedules':
         """Pure factory method to create Kohya schedules"""
-        from .animation_key_frames import FrameInterpolater
-        
         fi = FrameInterpolater(max_frames=anim_args.max_frames)
         
         # Get defaults
@@ -311,8 +310,6 @@ class LooperSchedules:
     @classmethod
     def from_args(cls, loop_args: Any, anim_args: Any, seed: int = -1) -> 'LooperSchedules':
         """Pure factory method to create looper schedules"""
-        from .animation_key_frames import FrameInterpolater
-        
         fi = FrameInterpolater(anim_args.max_frames, seed)
         
         return cls(

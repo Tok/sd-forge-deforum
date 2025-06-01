@@ -22,15 +22,19 @@ from .args import DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, R
 from .deforum_controlnet import setup_controlnet_ui
 from .ui_elements import (get_tab_prompts, get_tab_init, get_tab_output, get_tab_ffmpeg, 
                           get_tab_setup, get_tab_animation, get_tab_advanced)
+from .data_models import UIDefaults
 
 def set_arg_lists():
-    # convert dicts to NameSpaces for easy working (args.param instead of args['param']
-    d = SimpleNamespace(**DeforumArgs())  # default args
-    da = SimpleNamespace(**DeforumAnimArgs())  # default anim args
-    dp = SimpleNamespace(**ParseqArgs())  # default parseq ars
-    dv = SimpleNamespace(**DeforumOutputArgs())  # default video args
-    dr = SimpleNamespace(**RootArgs())  # ROOT args
-    dw = SimpleNamespace(**WanArgs())  # Wan args
+    # Create immutable UI defaults using functional args system
+    ui_defaults = UIDefaults.create_defaults()
+    
+    # Convert to individual namespace objects for backward compatibility during transition
+    d = SimpleNamespace(**ui_defaults.deforum_args)
+    da = SimpleNamespace(**ui_defaults.animation_args) 
+    dp = SimpleNamespace(**ui_defaults.parseq_args)
+    dv = SimpleNamespace(**ui_defaults.video_args)
+    dr = SimpleNamespace(**ui_defaults.root_args)
+    dw = SimpleNamespace(**ui_defaults.wan_args)
     
     # Create placeholder for removed LoopArgs with proper UI element format
     loop_args_dict = {

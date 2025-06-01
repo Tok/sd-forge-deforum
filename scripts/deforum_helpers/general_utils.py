@@ -44,7 +44,7 @@ def get_os():
     return {"Windows": "Windows", "Linux": "Linux", "Darwin": "Mac"}.get(platform.system(), "Unknown")
 
 
-# used in src/rife/inference_video.py and more, soon
+# used in external_libs/rife/inference_video.py and more, soon
 def duplicate_pngs_from_folder(from_folder, to_folder, img_batch_id, orig_vid_name):
     import cv2
     # TODO: don't copy-paste at all if the input is a video (now it copy-pastes, and if input is deforum run is also converts to make sure no errors rise cuz of 24-32 bit depth differences)

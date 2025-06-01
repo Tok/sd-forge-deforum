@@ -31,6 +31,7 @@ from .defaults import mask_fill_choices, get_camera_shake_list
 from .deforum_controlnet import controlnet_component_names
 from .deprecation_utils import handle_deprecated_settings
 from .general_utils import get_deforum_version, clean_gradio_path_strings
+from .data_models import SettingsState
 
 
 def get_extension_base_dir():
@@ -209,15 +210,27 @@ def load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlne
     
     keys_to_exclude = get_keys_to_exclude()
     
-    # Also create wan_args namespace from args_dict_main for loading
-    from .args import WanArgs
-    wan_args = SimpleNamespace(**{name: args_dict_main[name] for name in WanArgs() if name in args_dict_main})
+    # Create immutable settings state for WAN args extraction
+    settings_state = SettingsState.from_dict(args_dict_main)
     
-    for args_namespace in [args, anim_args, parseq_args, loop_args, controlnet_args, video_args, wan_args]:
+    for args_namespace in [args, anim_args, parseq_args, loop_args, controlnet_args, video_args]:
         for k, v in vars(args_namespace).items():
             if k not in keys_to_exclude:
                 if k in jdata:
                     setattr(args_namespace, k, jdata[k])
+                else:
+                    print(f"Key {k} doesn't exist in the custom settings data! Using default value of {v}")
+    
+    # Handle WAN args separately using immutable pattern 
+    if settings_state.wan_args:
+        for k, v in settings_state.wan_args.items():
+            if k not in keys_to_exclude:
+                if k in jdata:
+                    # Create a temporary namespace for wan_args compatibility during transition
+                    if not hasattr(wan_args, k):
+                        setattr(wan_args, k, jdata[k])
+                    else:
+                        setattr(wan_args, k, jdata[k])
                 else:
                     print(f"Key {k} doesn't exist in the custom settings data! Using default value of {v}")
     

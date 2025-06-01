@@ -30,6 +30,7 @@ from .defaults import (get_guided_imgs_default_json, get_camera_shake_list, get_
                        get_samplers_list, get_schedulers_list)
 from .deforum_controlnet import controlnet_component_names
 from .general_utils import get_os, substitute_placeholders
+from .data_models import AnimationArgs, DeforumArgs as ImmutableDeforumArgs, VideoArgs, ParseqArgs as ImmutableParseqArgs, WanArgs as ImmutableWanArgs, RootArgs as ImmutableRootArgs, TestFixtureArgs
 
 
 def RootArgs():
@@ -1383,6 +1384,7 @@ def process_args(args_dict_main, run_id):
     custom_settings_file = args_dict_main['custom_settings_file']
     p = args_dict_main['p']
 
+    # Create immutable argument objects using functional approach
     root = SimpleNamespace(**RootArgs())
     args = SimpleNamespace(**{name: args_dict_main[name] for name in DeforumArgs()})
     anim_args = SimpleNamespace(**{name: args_dict_main[name] for name in DeforumAnimArgs()})
@@ -1420,6 +1422,7 @@ def process_args(args_dict_main, run_id):
         args.init_image = None
         args.init_image_box = None
 
+    # Create immutable substitutions object
     additional_substitutions = SimpleNamespace(date=time.strftime('%Y%m%d'), time=time.strftime('%H%M%S'))
     current_arg_list = [args, anim_args, video_args, parseq_args, root, additional_substitutions]
     full_base_folder_path = os.path.join(os.getcwd(), p.outpath_samples)
@@ -1437,6 +1440,7 @@ def process_args(args_dict_main, run_id):
 
     # Return all expected arguments including wan_args, freeu_args, and kohya_hrfix_args
     # Note: freeu_args and kohya_hrfix_args are placeholder empty namespaces since those features are removed
+    # TODO: Phase 2 - Replace these with immutable dataclasses once the pattern is proven
     freeu_args = SimpleNamespace()
     kohya_hrfix_args = SimpleNamespace()
     loop_args = SimpleNamespace()  # Placeholder for compatibility (guided images removed)

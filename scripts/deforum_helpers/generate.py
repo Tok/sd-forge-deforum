@@ -33,7 +33,7 @@ from .prompt import check_is_number
 from .opts_overrider import A1111OptionsOverrider
 import cv2
 import numpy as np
-from types import SimpleNamespace
+from .data_models import ProcessingResult
 
 from .deforum_scripts_overrides import add_forge_script_to_deforum_run, initialise_forge_scripts
 
@@ -215,7 +215,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, freeu_args
         
         if args.motion_preview_mode:
             state.assign_current_image(root.default_img)
-            processed = SimpleNamespace(images = [root.default_img], info = "Generating motion preview...")
+            processed = ProcessingResult.create_motion_preview(root.default_img)
         else:
             p_txt = processing.StableDiffusionProcessingTxt2Img(
                 sd_model=sd_model,
@@ -352,7 +352,7 @@ def mock_process_images(args, p, init_image):
 
     image = Image.fromarray(cv2.cvtColor(blend, cv2.COLOR_BGR2RGB))
     state.assign_current_image(image)
-    return SimpleNamespace(images = [image], info = "Generating motion preview...")
+    return ProcessingResult.create_motion_preview(image)
 
 def print_combined_table(args, anim_args, p, keys, frame_idx):
     from rich.table import Table

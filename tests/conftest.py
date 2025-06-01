@@ -18,6 +18,13 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 TEST_DATA_DIR = FIXTURES_DIR / "testdata"
 
+# Import the test fixture args for immutable test data
+try:
+    from deforum_helpers.data_models import TestFixtureArgs
+except ImportError:
+    # Fallback for when the module isn't available in test environment
+    TestFixtureArgs = None
+
 
 @pytest.fixture(scope="session")
 def repo_root():
@@ -40,58 +47,100 @@ def test_data_dir():
 @pytest.fixture
 def sample_animation_args():
     """Sample animation arguments for testing"""
-    args = SimpleNamespace()
-    args.translation_x = "0:(0)"
-    args.translation_y = "0:(0)"
-    args.translation_z = "0:(0)"
-    args.rotation_3d_x = "0:(0)"
-    args.rotation_3d_y = "0:(0)"
-    args.rotation_3d_z = "0:(0)"
-    args.zoom = "0:(1.0)"
-    args.angle = "0:(0)"
-    args.max_frames = 120
-    args.shake_name = "None"
-    args.shake_intensity = 1.0
-    args.shake_speed = 1.0
-    return args
+    if TestFixtureArgs:
+        return TestFixtureArgs.create_animation_args()
+    else:
+        # Fallback to mutable pattern if immutable not available
+        args = SimpleNamespace()
+        args.translation_x = "0:(0)"
+        args.translation_y = "0:(0)"
+        args.translation_z = "0:(0)"
+        args.rotation_3d_x = "0:(0)"
+        args.rotation_3d_y = "0:(0)"
+        args.rotation_3d_z = "0:(0)"
+        args.zoom = "0:(1.0)"
+        args.angle = "0:(0)"
+        args.max_frames = 120
+        args.shake_name = "None"
+        args.shake_intensity = 1.0
+        args.shake_speed = 1.0
+        return args
 
 
 @pytest.fixture
 def sample_movement_args():
     """Sample animation arguments with movement for testing"""
-    args = SimpleNamespace()
-    args.translation_x = "0:(0), 30:(10), 60:(0)"
-    args.translation_y = "0:(0), 20:(5), 40:(-5), 60:(0)"
-    args.translation_z = "0:(0), 45:(15)"
-    args.rotation_3d_x = "0:(0), 30:(2)"
-    args.rotation_3d_y = "0:(0), 15:(5), 45:(-3)"
-    args.rotation_3d_z = "0:(0)"
-    args.zoom = "0:(1.0), 30:(1.2), 60:(1.0)"
-    args.angle = "0:(0)"
-    args.max_frames = 60
-    args.shake_name = "None"
-    args.shake_intensity = 1.0
-    args.shake_speed = 1.0
-    return args
+    if TestFixtureArgs:
+        # Create movement-specific test fixture
+        return TestFixtureArgs(
+            max_frames=60,
+            animation_mode="3D",
+            translation_x="0:(0), 30:(10), 60:(0)",
+            translation_y="0:(0), 20:(5), 40:(-5), 60:(0)",
+            translation_z="0:(0), 45:(15)",
+            rotation_3d_x="0:(0), 30:(2)",
+            rotation_3d_y="0:(0), 15:(5), 45:(-3)",
+            rotation_3d_z="0:(0)",
+            zoom="0:(1.0), 30:(1.2), 60:(1.0)",
+            angle="0:(0)",
+            shake_name="None",
+            shake_intensity=1.0,
+            shake_speed=1.0
+        )
+    else:
+        # Fallback to mutable pattern
+        args = SimpleNamespace()
+        args.translation_x = "0:(0), 30:(10), 60:(0)"
+        args.translation_y = "0:(0), 20:(5), 40:(-5), 60:(0)"
+        args.translation_z = "0:(0), 45:(15)"
+        args.rotation_3d_x = "0:(0), 30:(2)"
+        args.rotation_3d_y = "0:(0), 15:(5), 45:(-3)"
+        args.rotation_3d_z = "0:(0)"
+        args.zoom = "0:(1.0), 30:(1.2), 60:(1.0)"
+        args.angle = "0:(0)"
+        args.max_frames = 60
+        args.shake_name = "None"
+        args.shake_intensity = 1.0
+        args.shake_speed = 1.0
+        return args
 
 
 @pytest.fixture
 def sample_shakify_args():
     """Sample animation arguments with Camera Shakify enabled"""
-    args = SimpleNamespace()
-    args.translation_x = "0:(0)"
-    args.translation_y = "0:(0)"
-    args.translation_z = "0:(0)"
-    args.rotation_3d_x = "0:(0)"
-    args.rotation_3d_y = "0:(0)"
-    args.rotation_3d_z = "0:(0)"
-    args.zoom = "0:(1.0)"
-    args.angle = "0:(0)"
-    args.max_frames = 60
-    args.shake_name = "INVESTIGATION"
-    args.shake_intensity = 1.0
-    args.shake_speed = 1.0
-    return args
+    if TestFixtureArgs:
+        # Create shakify-specific test fixture
+        return TestFixtureArgs(
+            max_frames=60,
+            animation_mode="3D",
+            translation_x="0:(0)",
+            translation_y="0:(0)",
+            translation_z="0:(0)",
+            rotation_3d_x="0:(0)",
+            rotation_3d_y="0:(0)",
+            rotation_3d_z="0:(0)",
+            zoom="0:(1.0)",
+            angle="0:(0)",
+            shake_name="INVESTIGATION",
+            shake_intensity=1.0,
+            shake_speed=1.0
+        )
+    else:
+        # Fallback to mutable pattern
+        args = SimpleNamespace()
+        args.translation_x = "0:(0)"
+        args.translation_y = "0:(0)"
+        args.translation_z = "0:(0)"
+        args.rotation_3d_x = "0:(0)"
+        args.rotation_3d_y = "0:(0)"
+        args.rotation_3d_z = "0:(0)"
+        args.zoom = "0:(1.0)"
+        args.angle = "0:(0)"
+        args.max_frames = 60
+        args.shake_name = "INVESTIGATION"
+        args.shake_intensity = 1.0
+        args.shake_speed = 1.0
+        return args
 
 
 @pytest.fixture
