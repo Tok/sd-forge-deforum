@@ -11,73 +11,110 @@ from pathlib import Path
 from typing import Dict, Optional, List
 import time
 
+def get_webui_root() -> Path:
+    """Get the WebUI root directory reliably"""
+    # Start from this file's location and navigate up to find webui root
+    current_path = Path(__file__).resolve()
+    
+    # Navigate up from extensions/sd-forge-deforum to webui root
+    # Path is typically: webui/extensions/sd-forge-deforum/deforum/integrations/wan/wan_model_downloader.py
+    # So we go up 6 levels: wan -> integrations -> deforum -> sd-forge-deforum -> extensions -> webui
+    webui_root = current_path.parent.parent.parent.parent.parent.parent
+    
+    # Validate that this looks like a webui directory
+    expected_webui_files = ['launch.py', 'webui.py', 'modules']
+    if all((webui_root / item).exists() for item in expected_webui_files if isinstance(item, str)) and (webui_root / 'modules').is_dir():
+        return webui_root
+    
+    # Fallback: try to find webui root by looking for characteristic files
+    search_path = current_path
+    for _ in range(10):  # Max 10 levels up
+        search_path = search_path.parent
+        if all((search_path / item).exists() for item in expected_webui_files if isinstance(item, str)) and (search_path / 'modules').is_dir():
+            return search_path
+        if search_path.parent == search_path:  # Reached filesystem root
+            break
+    
+    # Final fallback: use current working directory
+    return Path.cwd()
+
 class WanModelDownloader:
     """Handles automatic downloading of Wan models"""
     
     def __init__(self):
-        # Dynamically detect the models directory
+        # Detect WebUI root and use proper models directory
+        self.webui_root = get_webui_root()
         self.models_dir = self._detect_models_directory()
         self.available_models = {
             "1.3B VACE": {
                 "repo_id": "Wan-AI/Wan2.1-VACE-1.3B",
                 "local_dir": str(self.models_dir / "Wan2.1-VACE-1.3B"),
-                "description": "1.3B All-in-One Video Creation & Editing (T2V + I2V, 480P)",
-                "size_gb": 8
+                "description": "VACE 1.3B - All-in-One (T2V + I2V + FLF2V)",
+                "size_gb": 3.2
             },
             "14B VACE": {
-                "repo_id": "Wan-AI/Wan2.1-VACE-14B", 
+                "repo_id": "Wan-AI/Wan2.1-VACE-14B",
                 "local_dir": str(self.models_dir / "Wan2.1-VACE-14B"),
-                "description": "14B All-in-One Video Creation & Editing (T2V + I2V, 480P/720P)",
-                "size_gb": 75
+                "description": "VACE 14B - All-in-One (T2V + I2V + FLF2V) - High Quality",
+                "size_gb": 28.0
             },
-            # Legacy models (keep for backwards compatibility)
-            "1.3B T2V (Legacy)": {
+            "1.3B T2V": {
                 "repo_id": "Wan-AI/Wan2.1-T2V-1.3B",
                 "local_dir": str(self.models_dir / "Wan2.1-T2V-1.3B"),
-                "description": "1.3B Text-to-Video model (480P) - Legacy",
-                "size_gb": 8
+                "description": "Text-to-Video 1.3B - Fast Generation",
+                "size_gb": 3.0
             },
-            "14B T2V (Legacy)": {
-                "repo_id": "Wan-AI/Wan2.1-T2V-14B", 
+            "14B T2V": {
+                "repo_id": "Wan-AI/Wan2.1-T2V-14B",
                 "local_dir": str(self.models_dir / "Wan2.1-T2V-14B"),
-                "description": "14B Text-to-Video model (480P/720P) - Legacy",
-                "size_gb": 75
+                "description": "Text-to-Video 14B - High Quality",
+                "size_gb": 26.0
             },
-            "14B I2V 720P (Legacy)": {
+            "14B I2V-720P": {
                 "repo_id": "Wan-AI/Wan2.1-I2V-14B-720P",
                 "local_dir": str(self.models_dir / "Wan2.1-I2V-14B-720P"),
-                "description": "14B Image-to-Video model (720P) - Legacy",
-                "size_gb": 75
+                "description": "Image-to-Video 14B - 720P Resolution",
+                "size_gb": 26.0
             },
-            "14B I2V 480P (Legacy)": {
-                "repo_id": "Wan-AI/Wan2.1-I2V-14B-480P", 
+            "14B I2V-480P": {
+                "repo_id": "Wan-AI/Wan2.1-I2V-14B-480P",
                 "local_dir": str(self.models_dir / "Wan2.1-I2V-14B-480P"),
-                "description": "14B Image-to-Video model (480P) - Legacy",
-                "size_gb": 75
-            }
+                "description": "Image-to-Video 14B - 480P Resolution", 
+                "size_gb": 26.0
+            },
         }
+        
+        print(f"🎯 Wan Model Downloader initialized")
+        print(f"📁 WebUI root: {self.webui_root}")
+        print(f"📁 Models directory: {self.models_dir}")
     
     def _detect_models_directory(self) -> Path:
         """Detect the best models directory for the current installation"""
-        # Try to find the webui models directory
-        extension_root = Path(__file__).parent.parent.parent.parent
+        # Primary: WebUI models directory
+        webui_models = self.webui_root / "models" / "wan"
         
-        # Option 1: webui/models/wan (standard installation)
-        webui_models = extension_root.parent.parent / "models" / "wan"
-        if webui_models.parent.exists():
-            webui_models.mkdir(exist_ok=True)
+        try:
+            # Create the directory if it doesn't exist
+            webui_models.mkdir(parents=True, exist_ok=True)
+            print(f"✅ Using WebUI models directory: {webui_models}")
             return webui_models
-        
-        # Option 2: Current working directory models/wan
-        local_models = Path("models/wan")
-        if local_models.parent.exists() or Path("models").exists():
-            local_models.mkdir(parents=True, exist_ok=True)
-            return local_models
-        
-        # Option 3: Extension directory models (fallback)
-        extension_models = extension_root / "models" / "wan"
-        extension_models.mkdir(parents=True, exist_ok=True)
-        return extension_models
+        except Exception as e:
+            print(f"⚠️ Cannot create WebUI models directory: {e}")
+            
+            # Fallback: Current working directory models/wan
+            local_models = Path("models/wan")
+            try:
+                local_models.mkdir(parents=True, exist_ok=True)
+                print(f"✅ Using local models directory: {local_models}")
+                return local_models
+            except Exception as e2:
+                print(f"⚠️ Cannot create local models directory: {e2}")
+                
+                # Final fallback: Extension directory models
+                extension_models = Path(__file__).parent.parent.parent / "models" / "wan"
+                extension_models.mkdir(parents=True, exist_ok=True)
+                print(f"✅ Using extension models directory: {extension_models}")
+                return extension_models
     
     def check_huggingface_cli(self) -> bool:
         """Check if huggingface-cli is available"""
@@ -258,8 +295,8 @@ class WanModelDownloader:
         else:
             print("❌ Failed to download VACE model, trying legacy fallback...")
             # Fallback to legacy models
-            if self.download_model("1.3B T2V (Legacy)"):
-                results["t2v"] = self.get_model_path("1.3B T2V (Legacy)")
+            if self.download_model("1.3B T2V"):
+                results["t2v"] = self.get_model_path("1.3B T2V")
                 results["i2v"] = results["t2v"]
                 print("⚠️ Warning: Using legacy T2V model for I2V. This will break continuity.")
             else:
@@ -305,14 +342,14 @@ class WanModelDownloader:
         print("🔄 Using legacy separate T2V/I2V models...")
         
         # Download legacy T2V
-        t2v_model = "14B T2V (Legacy)"
+        t2v_model = "14B T2V"
         print(f"📥 Downloading legacy T2V model: {t2v_model}")
         if self.download_model(t2v_model):
             results["t2v"] = self.get_model_path(t2v_model)
         
         # Download legacy I2V if requested
         if download_i2v:
-            i2v_model = "14B I2V 720P (Legacy)"
+            i2v_model = "14B I2V-720P"
             print(f"📥 Downloading legacy I2V model: {i2v_model}")
             if self.download_model(i2v_model):
                 results["i2v"] = self.get_model_path(i2v_model)

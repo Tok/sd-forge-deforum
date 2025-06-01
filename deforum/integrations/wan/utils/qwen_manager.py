@@ -8,44 +8,76 @@ import sys
 import torch
 import psutil
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from .prompt_extend import QwenPromptExpander
+import warnings
+import gc
 
+def get_webui_root() -> Path:
+    """Get the WebUI root directory reliably"""
+    # Start from this file's location and navigate up to find webui root
+    current_path = Path(__file__).resolve()
+    
+    # Navigate up from extensions/sd-forge-deforum to webui root
+    # Path is typically: webui/extensions/sd-forge-deforum/deforum/integrations/wan/utils/qwen_manager.py
+    # So we go up 7 levels: utils -> wan -> integrations -> deforum -> sd-forge-deforum -> extensions -> webui
+    webui_root = current_path.parent.parent.parent.parent.parent.parent.parent
+    
+    # Validate that this looks like a webui directory
+    expected_webui_files = ['launch.py', 'webui.py', 'modules']
+    if all((webui_root / item).exists() for item in expected_webui_files if isinstance(item, str)) and (webui_root / 'modules').is_dir():
+        return webui_root
+    
+    # Fallback: try to find webui root by looking for characteristic files
+    search_path = current_path
+    for _ in range(10):  # Max 10 levels up
+        search_path = search_path.parent
+        if all((search_path / item).exists() for item in expected_webui_files if isinstance(item, str)) and (search_path / 'modules').is_dir():
+            return search_path
+        if search_path.parent == search_path:  # Reached filesystem root
+            break
+    
+    # Final fallback: use current working directory
+    return Path.cwd()
+
+# Suppress specific warnings
+warnings.filterwarnings("ignore", message=".*Some weights of.*were not initialized.*")
+warnings.filterwarnings("ignore", message=".*torch.nn.utils.weight_norm is deprecated.*")
 
 class QwenModelManager:
     """Manages Qwen models for prompt enhancement"""
     
     # Model specifications with VRAM requirements and capabilities
     MODEL_SPECS = {
-        "QwenVL2.5_7B": {
-            "hf_name": "Qwen/Qwen2.5-VL-7B-Instruct",
-            "vram_gb": 16,
-            "is_vl": True,
-            "description": "7B Vision-Language model, supports image+text input"
+        "Qwen2.5_3B": {
+            "hf_name": "Qwen/Qwen2.5-3B-Instruct",
+            "vram_gb": 8.0,
+            "description": "3B parameter model - Fast and efficient",
+            "is_vl": False
         },
-        "QwenVL2.5_3B": {
-            "hf_name": "Qwen/Qwen2.5-VL-3B-Instruct", 
-            "vram_gb": 8,
-            "is_vl": True,
-            "description": "3B Vision-Language model, supports image+text input"
+        "Qwen2.5_7B": {
+            "hf_name": "Qwen/Qwen2.5-7B-Instruct", 
+            "vram_gb": 16.0,
+            "description": "7B parameter model - Good balance of quality and speed",
+            "is_vl": False
         },
         "Qwen2.5_14B": {
             "hf_name": "Qwen/Qwen2.5-14B-Instruct",
-            "vram_gb": 28,
-            "is_vl": False,
-            "description": "14B Text-only model, high quality prompt enhancement"
+            "vram_gb": 32.0,
+            "description": "14B parameter model - High quality text generation",
+            "is_vl": False
         },
-        "Qwen2.5_7B": {
-            "hf_name": "Qwen/Qwen2.5-7B-Instruct",
-            "vram_gb": 14,
-            "is_vl": False,
-            "description": "7B Text-only model, good balance of quality and speed"
+        "QwenVL2.5_3B": {
+            "hf_name": "Qwen/Qwen2-VL-2B-Instruct",
+            "vram_gb": 8.0,
+            "description": "3B vision-language model - Image understanding",
+            "is_vl": True
         },
-        "Qwen2.5_3B": {
-            "hf_name": "Qwen/Qwen2.5-3B-Instruct",
-            "vram_gb": 6,
-            "is_vl": False,
-            "description": "3B Text-only model, fast and memory-efficient"
+        "QwenVL2.5_7B": {
+            "hf_name": "Qwen/Qwen2-VL-7B-Instruct",
+            "vram_gb": 16.0,
+            "description": "7B vision-language model - Advanced image understanding",
+            "is_vl": True
         }
     }
     
@@ -57,20 +89,18 @@ class QwenModelManager:
             models_dir: Directory to store Qwen models. If None, uses WebUI models directory
         """
         if models_dir is None:
-            # Use WebUI models directory structure - store in models/wan
-            try:
-                import modules.paths as paths
-                base_models_dir = Path(paths.models_path)
-            except:
-                # Fallback to relative path if WebUI not available
-                base_models_dir = Path("models")
-            
-            models_dir = base_models_dir / "wan"
+            # Use WebUI models directory structure - store in models/wan/qwen
+            webui_root = get_webui_root()
+            base_models_dir = webui_root / "models"
+            models_dir = base_models_dir / "wan" / "qwen"
         
         self.models_dir = Path(models_dir)
         self.models_dir.mkdir(parents=True, exist_ok=True)
         self._cached_expander = None
         self._current_model = None
+        
+        print(f"🧠 Qwen Model Manager initialized")
+        print(f"📁 Models directory: {self.models_dir}")
         
     def get_available_vram(self) -> float:
         """Get available VRAM in GB"""
@@ -361,7 +391,6 @@ class QwenModelManager:
                 del expander
                 
                 # Force garbage collection
-                import gc
                 gc.collect()
                 
                 # Clear CUDA cache
@@ -411,7 +440,6 @@ class QwenModelManager:
         
         # Additional cleanup steps
         try:
-            import gc
             gc.collect()
             
             if torch.cuda.is_available():

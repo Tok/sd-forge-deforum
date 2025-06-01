@@ -10,10 +10,38 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import sys
 
+def get_webui_root() -> Path:
+    """Get the WebUI root directory reliably"""
+    # Start from this file's location and navigate up to find webui root
+    current_path = Path(__file__).resolve()
+    
+    # Navigate up from extensions/sd-forge-deforum to webui root
+    # Path is typically: webui/extensions/sd-forge-deforum/deforum/integrations/wan/wan_model_discovery.py
+    # So we go up 6 levels: wan -> integrations -> deforum -> sd-forge-deforum -> extensions -> webui
+    webui_root = current_path.parent.parent.parent.parent.parent.parent
+    
+    # Validate that this looks like a webui directory
+    expected_webui_files = ['launch.py', 'webui.py', 'modules']
+    if all((webui_root / item).exists() for item in expected_webui_files if isinstance(item, str)) and (webui_root / 'modules').is_dir():
+        return webui_root
+    
+    # Fallback: try to find webui root by looking for characteristic files
+    search_path = current_path
+    for _ in range(10):  # Max 10 levels up
+        search_path = search_path.parent
+        if all((search_path / item).exists() for item in expected_webui_files if isinstance(item, str)) and (search_path / 'modules').is_dir():
+            return search_path
+        if search_path.parent == search_path:  # Reached filesystem root
+            break
+    
+    # Final fallback: use current working directory
+    return Path.cwd()
+
 class WanModelDiscovery:
     """Smart Wan model discovery that finds models automatically"""
     
     def __init__(self):
+        self.webui_root = get_webui_root()
         self.common_model_locations = self._get_common_model_locations()
         self.discovered_models = []
         
@@ -21,40 +49,30 @@ class WanModelDiscovery:
         """Get common locations where Wan models might be stored"""
         locations = []
         
-        # Current extension directory
-        current_dir = Path(__file__).parent.parent.parent
+        # Primary locations (WebUI models directory)
+        webui_models = self.webui_root / "models"
         
-        # Default search paths
-        search_paths = [
-            current_dir / "models" / "wan",
-            current_dir / "models" / "Wan",
-            current_dir / "deforum" / "integrations" / "external_repos" / "wan2.1" / "models",
-            Path.home() / ".cache" / "huggingface" / "hub"
-        ]
-        
-        # Common model locations
+        # Common model locations in priority order
         potential_locations = [
-            # Webui model directories
-            current_dir.parent.parent / "models" / "wan",
-            current_dir.parent.parent / "models" / "wan",
-            current_dir.parent.parent / "models" / "Wan",
-            current_dir.parent.parent / "models" / "wan_models",
-            
-            # Extension model directories  
-            current_dir / "models",
-            current_dir / "wan_models",
+            # PRIMARY: WebUI models directory (standard location)
+            webui_models / "wan",
+            webui_models / "Wan", 
+            webui_models / "wan_models",
+            webui_models / "video" / "wan",
             
             # HuggingFace cache (common location)
             Path.home() / ".cache" / "huggingface" / "hub",
             
-            # Common download locations
+            # Extension-specific model directories (for development/testing)
+            Path(__file__).parent.parent.parent / "models" / "wan",
+            Path(__file__).parent.parent.parent / "wan_models",
+            
+            # Official Wan repo model locations (for development)
+            Path(__file__).parent.parent.parent / "deforum" / "integrations" / "external_repos" / "wan2.1" / "models",
+            
+            # Alternative common locations
             Path.home() / "Downloads",
             Path("C:/") / "AI_Models" / "wan" if os.name == 'nt' else Path.home() / "AI_Models" / "wan",
-            
-            # Official Wan repo model locations
-            current_dir / "deforum" / "integrations" / "external_repos" / "wan2.1" / "models",
-            
-            # User's documents (common on Windows)
             Path.home() / "Documents" / "AI_Models" / "wan" if os.name == 'nt' else None,
         ]
         
@@ -62,6 +80,7 @@ class WanModelDiscovery:
         for loc in potential_locations:
             if loc and loc.exists():
                 locations.append(loc)
+                print(f"   📁 Model search path: {loc}")
                 
         return locations
     

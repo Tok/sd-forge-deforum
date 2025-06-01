@@ -14,6 +14,33 @@ import sys
 import json
 from decimal import Decimal
 
+def get_webui_root() -> Path:
+    """Get the WebUI root directory reliably"""
+    # Start from this file's location and navigate up to find webui root
+    current_path = Path(__file__).resolve()
+    
+    # Navigate up from extensions/sd-forge-deforum to webui root
+    # Path is typically: webui/extensions/sd-forge-deforum/deforum/integrations/wan/wan_simple_integration.py
+    # So we go up 6 levels: wan -> integrations -> deforum -> sd-forge-deforum -> extensions -> webui
+    webui_root = current_path.parent.parent.parent.parent.parent.parent
+    
+    # Validate that this looks like a webui directory
+    expected_webui_files = ['launch.py', 'webui.py', 'modules']
+    if all((webui_root / item).exists() for item in expected_webui_files if isinstance(item, str)) and (webui_root / 'modules').is_dir():
+        return webui_root
+    
+    # Fallback: try to find webui root by looking for characteristic files
+    search_path = current_path
+    for _ in range(10):  # Max 10 levels up
+        search_path = search_path.parent
+        if all((search_path / item).exists() for item in expected_webui_files if isinstance(item, str)) and (search_path / 'modules').is_dir():
+            return search_path
+        if search_path.parent == search_path:  # Reached filesystem root
+            break
+    
+    # Final fallback: use current working directory
+    return Path.cwd()
+
 # Import our new styled progress utilities
 from .utils.wan_progress_utils import (
     WanModelLoadingContext, WanGenerationContext,
@@ -31,6 +58,7 @@ class WanSimpleIntegration:
     
     def __init__(self, device='cuda'):
         self.device = device if torch.cuda.is_available() else 'cpu'
+        self.webui_root = get_webui_root()
         self.models = []
         self.pipeline = None
         self.model_size = None
@@ -38,20 +66,28 @@ class WanSimpleIntegration:
         self.optimal_height = 480
         self.flash_attention_mode = "auto"  # auto, enabled, disabled
         print_wan_info(f"Simple Integration initialized on {self.device}")
+        print_wan_info(f"WebUI root detected: {self.webui_root}")
     
     def discover_models(self) -> List[Dict]:
         """Discover available Wan models with styled progress"""
         models = []
+        
+        # Use WebUI models directory as primary location
+        webui_models = self.webui_root / "models"
+        
         search_paths = [
-            Path("models/wan"),
-            Path("models/Wan"),
-            Path("models"),
-            Path("../models/wan"),
-            Path("../models/Wan"),
-            Path.cwd() / "deforum" / "integrations" / "external_repos" / "wan2.1",
+            # PRIMARY: WebUI models directory (standard location)
+            webui_models / "wan",
+            webui_models / "Wan",
+            webui_models / "wan_models", 
+            webui_models / "video" / "wan",
+            
+            # Extension directory for development/testing
+            Path(__file__).parent.parent.parent / "deforum" / "integrations" / "external_repos" / "wan2.1",
         ]
         
         print_wan_progress("Discovering Wan models...")
+        print_wan_info(f"Primary model directory: {webui_models}")
         
         for search_path in search_paths:
             if search_path.exists():
@@ -66,6 +102,8 @@ class WanSimpleIntegration:
         
         if not models:
             print_wan_warning("No Wan models found in search paths")
+            print_wan_info("💡 Expected model location: {webui_models / 'wan'}")
+            print_wan_info("💡 Download command: huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir {webui_models / 'wan' / 'Wan2.1-T2V-1.3B'}")
         else:
             print_wan_success(f"Discovery complete - found {len(models)} model(s)")
             
@@ -194,10 +232,15 @@ class WanSimpleIntegration:
         try:
             incomplete_models = []
             
-            # Check common model directories
+            # Check WebUI models directory
+            webui_models = self.webui_root / "models"
             search_paths = [
-                Path.cwd() / "models" / "wan",
-                Path.cwd() / "deforum" / "integrations" / "external_repos" / "wan2.1",
+                webui_models / "wan",
+                webui_models / "Wan",
+                webui_models / "wan_models",
+                webui_models / "video" / "wan",
+                # Also check external repos for development
+                Path(__file__).parent.parent.parent / "deforum" / "integrations" / "external_repos" / "wan2.1",
             ]
             
             for search_path in search_paths:
