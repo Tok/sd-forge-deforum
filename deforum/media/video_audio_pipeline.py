@@ -19,7 +19,7 @@ from modules.shared import state, opts
 from pkg_resources import resource_filename
 
 from .general_utils import checksum, clean_gradio_path_strings, debug_print
-from .http_client import get_http_client
+from ..utils.http_client import get_http_client
 from ..utils.rich import console
 
 SUPPORTED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "bmp", "webp"]
