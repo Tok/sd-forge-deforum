@@ -21,7 +21,7 @@ __all__ = [
     'is_controlnet_enabled',
     
     # Frame interpolation
-    'run_rife_interpolation',
+    'run_rife_new_video_infer',
     'run_film_interpolation',
     
     # Depth estimation
