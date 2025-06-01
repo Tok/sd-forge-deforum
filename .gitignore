@@ -138,8 +138,8 @@ outputs/
 results/
 generated/
 
-# Model files & weights
-models/
+# Model files & weights (only at root level, not code directories)
+/models/
 *.safetensors
 *.bin
 *.ckpt
