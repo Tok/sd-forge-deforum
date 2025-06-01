@@ -1,8 +1,8 @@
 import cv2
 from PIL import Image
 
-from ...composable_masks import compose_mask_with_check
-from ...image_sharpening import unsharp_mask
+from ..composable_mask_system import compose_mask_with_check
+from ...media.image_enhancement import unsharp_mask
 
 
 def call_compose_mask_with_check(init, mask_seq, val_masks, image):
