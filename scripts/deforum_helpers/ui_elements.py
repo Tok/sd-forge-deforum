@@ -2866,17 +2866,61 @@ def wan_generate_with_validation(*component_args):
 
 def get_tab_ffmpeg():
     """FFmpeg post-processing tab with upscaling, interpolation, and audio replacement"""
-    from .ffmpeg_utils import FFmpegProcessor
+    
+    # Check if FFmpeg is available before creating the processor
+    try:
+        from .ffmpeg_utils import FFmpegProcessor
+        ffmpeg_processor = FFmpegProcessor()
+        ffmpeg_available = True
+        ffmpeg_error = None
+    except Exception as e:
+        ffmpeg_available = False
+        ffmpeg_error = str(e)
+        ffmpeg_processor = None
     
     with gr.TabItem(f"{emoji_utils.hybrid()} FFmpeg Post-Processing", elem_id='ffmpeg_tab'):
         
-        # Global FFmpeg processor
-        ffmpeg_processor = FFmpegProcessor()
+        if not ffmpeg_available:
+            # Show FFmpeg installation instructions when not available
+            gr.HTML(f"""
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 10px 0;">
+                <h3 style="color: #856404; margin-top: 0;">⚠️ FFmpeg Not Available</h3>
+                <p><strong>Error:</strong> {ffmpeg_error}</p>
+                
+                <h4>📥 How to Install FFmpeg:</h4>
+                <p><strong>Windows (Recommended):</strong></p>
+                <ol>
+                    <li>Download FFmpeg from <a href="https://www.gyan.dev/ffmpeg/builds/" target="_blank">gyan.dev/ffmpeg/builds</a></li>
+                    <li>Extract to <code>C:\\ffmpeg</code></li>
+                    <li>Add <code>C:\\ffmpeg\\bin</code> to your system PATH</li>
+                    <li>Restart WebUI</li>
+                </ol>
+                
+                <p><strong>Alternative (Windows with Chocolatey):</strong></p>
+                <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px;">choco install ffmpeg</pre>
+                
+                <p><strong>Alternative (Windows with winget):</strong></p>
+                <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px;">winget install FFmpeg</pre>
+                
+                <p><strong>Linux:</strong></p>
+                <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px;">sudo apt install ffmpeg  # Ubuntu/Debian
+sudo yum install ffmpeg   # CentOS/RHEL</pre>
+                
+                <p><strong>macOS:</strong></p>
+                <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px;">brew install ffmpeg</pre>
+                
+                <p>💡 <strong>Tip:</strong> After installation, restart WebUI to enable FFmpeg post-processing features.</p>
+            </div>
+            """)
+            
+            # Return early - no functional content when FFmpeg unavailable
+            return locals()
         
+        # FFmpeg is available - show full functionality
         gr.HTML("""
         <h3>🎬 FFmpeg Video Post-Processing</h3>
         <p>Professional video post-processing using FFmpeg: upscaling, frame interpolation, and audio replacement.</p>
-        <p><strong>Requirements:</strong> FFmpeg must be installed and available in your system PATH.</p>
+        <p><strong>✅ FFmpeg detected and ready to use!</strong></p>
         """)
         
         # Video file upload
@@ -2996,7 +3040,7 @@ def get_tab_ffmpeg():
             
             output_file_info = gr.HTML(value="<p>No output files yet</p>")
             
-        # Event Handlers
+        # Event Handlers (only if FFmpeg is available)
         def analyze_video_handler(video_file):
             """Analyze uploaded video and display information"""
             if not video_file:
