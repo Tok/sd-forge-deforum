@@ -3,7 +3,7 @@ from pathlib import Path
 import shutil
 import time
 import subprocess
-from .frame_interpolation import clean_folder_name
+from .frame_interpolation_pipeline import clean_folder_name
 from .general_utils import duplicate_pngs_from_folder, checksum
 from .video_audio_pipeline import vid2frames, ffmpeg_stitch_video, extract_number, media_file_has_audio
 from torch.hub import download_url_to_file
