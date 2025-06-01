@@ -124,8 +124,6 @@ def run_deforum(*args):
                     render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)  # allow mask video without an input video
                 else:    
                     render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
-            elif anim_args.animation_mode == 'Video Input':
-                render_input_video(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)#TODO: prettify code
             elif anim_args.animation_mode == 'Interpolation':
                 render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, root)
             elif anim_args.animation_mode == 'Wan Video':

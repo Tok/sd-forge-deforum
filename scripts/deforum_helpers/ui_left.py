@@ -171,16 +171,27 @@ def setup_deforum_left_side_ui():
             # Create list of all UI components in the correct order
             component_inputs = []
             missing_components = []
+            # Filter out known missing components (hybrid and wan) to reduce warnings
+            hybrid_wan_prefixes = ['hybrid_', 'wan_']
             for name in component_names:
                 if name in locals():
                     component_inputs.append(locals()[name])
                 else:
+                    # Only warn about unexpected missing components (not hybrid/wan)
+                    is_expected_missing = any(name.startswith(prefix) for prefix in hybrid_wan_prefixes)
+                    if not is_expected_missing:
+                        print(f"⚠️ Warning: Component '{name}' not found in locals()")
                     missing_components.append(name)
-                    print(f"⚠️ Warning: Component '{name}' not found in locals()")
             
             print(f"📊 Found {len(component_inputs)} UI components for Wan generation")
-            if missing_components:
-                print(f"⚠️ Missing {len(missing_components)} components: {missing_components[:5]}...")
+            # Only show count of hybrid/wan missing components
+            hybrid_wan_missing = [name for name in missing_components if any(name.startswith(prefix) for prefix in hybrid_wan_prefixes)]
+            other_missing = [name for name in missing_components if not any(name.startswith(prefix) for prefix in hybrid_wan_prefixes)]
+            
+            if hybrid_wan_missing:
+                print(f"ℹ️ Skipped {len(hybrid_wan_missing)} disabled hybrid/wan components")
+            if other_missing:
+                print(f"⚠️ Missing {len(other_missing)} unexpected components: {other_missing[:3]}{'...' if len(other_missing) > 3 else ''}")
             
             # Create a wrapper function with better error handling
             def wan_generate_wrapper(*args):

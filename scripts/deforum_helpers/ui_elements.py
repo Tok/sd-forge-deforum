@@ -1610,7 +1610,7 @@ def get_tab_wan(dw: SimpleNamespace):
     component_names = get_component_names()
     
     print(f"🔗 Connecting Wan generate button...")
-    print(f"📊 Found {len(component_names)} UI components for Wan generation")
+    # Component count is already displayed in ui_left.py with more detail
     
     # NOTE: enhance_prompts_btn connection is now handled in ui_left.py for proper component access
     
@@ -3365,31 +3365,30 @@ def get_tab_animation(da, dloopArgs):
                 - **Variable Cadence**: Intelligent distribution based on content importance
                 - **Better Results**: Focuses processing on frames that matter most
                 
+                🧪 **EXPERIMENTAL CORE**: Active when Keyframe Distribution ≠ "Off"
+                
                 The experimental render core automatically manages cadence based on your settings.
                 """)
         
         # Movement and Camera Controls
         with gr.Accordion(f"{emoji_utils._emoji('📷')} Camera Movement", open=True):
             with gr.Tabs():
-                # 2D Movement Tab
-                with gr.TabItem("2D Movement"):
+                # 3D Movement Tab (primary movement controls)
+                with gr.TabItem("3D Movement"):
                     with FormColumn() as only_2d_motion_column:
                         angle = create_row(da.angle)
                         zoom = create_row(da.zoom)
                         with FormColumn() as both_anim_mode_motion_params_column:
                             translation_x, translation_y = create_row(da, 'translation_x', 'translation_y')
                         transform_center_x, transform_center_y = create_row(da, 'transform_center_x', 'transform_center_y')
-                
-                # 3D Movement Tab  
-                with gr.TabItem("3D Movement"):
                     with FormColumn() as only_3d_motion_column:
                         translation_z = create_row(da.translation_z)
                         rotation_3d_x, rotation_3d_y, rotation_3d_z = create_row(da, 'rotation_3d_x', 'rotation_3d_y', 'rotation_3d_z')
                         fov_schedule = create_row(da.fov_schedule)
                         near_schedule, far_schedule = create_row(da, 'near_schedule', 'far_schedule')
                 
-                # Camera Shake Tab (Shakify integration)
-                with gr.TabItem("Camera Shake"):
+                # Camera Shake Tab (Shakify integration) - Add handcam emoji
+                with gr.TabItem(f"{emoji_utils._emoji('📹')} Camera Shake"):
                     with FormColumn(min_width=220):
                         create_row(gr.Markdown(f"""
                             **{emoji_utils.video_camera()} Shakify Integration**: Add realistic camera shake effects using EatTheFuture's
@@ -3412,7 +3411,7 @@ def get_tab_animation(da, dloopArgs):
                         perspective_flip_fv = create_gr_elem(da.perspective_flip_fv)
         
         # Depth and 3D Settings
-        with gr.Accordion(f"{emoji_utils.depth()} 3D Depth Processing", open=False):
+        with gr.Accordion(f"{emoji_utils.depth()} 3D Depth Processing", open=True):
             # HTML message for when not in 3D mode (required by gradio_funcs.py)
             depth_warp_msg_html = gr.HTML(
                 value='Please switch to 3D animation mode to view this section.',

@@ -64,8 +64,8 @@ def DeforumAnimArgs():
         "animation_mode": {
             "label": "Animation mode",
             "type": "radio",
-            "choices": ['2D', '3D', 'Video Input', 'Interpolation', 'Wan Video'],
-            "value": "2D",
+            "choices": ['2D', '3D', 'Interpolation', 'Wan Video'],
+            "value": "3D",
             "info": "control animation mode, will hide non relevant params upon change"
         },
         "max_frames": {
@@ -438,7 +438,7 @@ def DeforumAnimArgs():
         "color_coherence": {
             "label": "Color coherence",
             "type": "dropdown",
-            "choices": ['None', 'HSV', 'LAB', 'RGB', 'Video Input', 'Image'],
+            "choices": ['None', 'HSV', 'LAB', 'RGB', 'Image'],
             "value": "None",
             "info": "choose an algorithm/ method for keeping color coherence across the animation"
         },
@@ -997,52 +997,6 @@ def DeforumArgs():
     }
 
 
-def LoopArgs():
-    return {
-        "use_looper": {
-            "label": "Enable guided images mode",
-            "type": "checkbox",
-            "value": False,
-        },
-        "init_images": {
-            "label": "Images to use for keyframe guidance",
-            "type": "textbox",
-            "lines": 9,
-            "value": get_guided_imgs_default_json(),
-        },
-        "image_strength_schedule": {
-            "label": "Image strength schedule",
-            "type": "textbox",
-            "value": "0:(0.85)",
-        },
-        "image_keyframe_strength_schedule": {
-            "label": "Image strength schedule",
-            "type": "textbox",
-            "value": "0:(0.20)",
-        },
-        "blendFactorMax": {
-            "label": "Blend factor max",
-            "type": "textbox",
-            "value": "0:(0.35)",
-        },
-        "blendFactorSlope": {
-            "label": "Blend factor slope",
-            "type": "textbox",
-            "value": "0:(0.25)",
-        },
-        "tweening_frames_schedule": {
-            "label": "Tweening frames schedule",
-            "type": "textbox",
-            "value": "0:(20)",
-        },
-        "color_correction_factor": {
-            "label": "Color correction factor",
-            "type": "textbox",
-            "value": "0:(0.075)",
-        }
-    }
-
-
 def ParseqArgs():
     return {
         "parseq_manifest": {
@@ -1411,7 +1365,7 @@ def DeforumOutputArgs():
 def get_component_names():
     return ['override_settings_with_file', 'custom_settings_file', *DeforumAnimArgs().keys(), 'animation_prompts',
             'animation_prompts_positive', 'animation_prompts_negative',
-            *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(), *LoopArgs().keys(),
+            *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(),
             *controlnet_component_names(), *WanArgs().keys()]
 
 
@@ -1434,7 +1388,6 @@ def process_args(args_dict_main, run_id):
     anim_args = SimpleNamespace(**{name: args_dict_main[name] for name in DeforumAnimArgs()})
     video_args = SimpleNamespace(**{name: args_dict_main[name] for name in DeforumOutputArgs()})
     parseq_args = SimpleNamespace(**{name: args_dict_main[name] for name in ParseqArgs()})
-    loop_args = SimpleNamespace(**{name: args_dict_main[name] for name in LoopArgs()})
     controlnet_args = SimpleNamespace(**{name: args_dict_main[name] for name in controlnet_component_names()})
     wan_args = SimpleNamespace(**{name: args_dict_main[name] for name in WanArgs()})
 
@@ -1442,7 +1395,7 @@ def process_args(args_dict_main, run_id):
 
     args_loaded_ok = True
     if override_settings_with_file:
-        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, video_args, custom_settings_file, root, run_id)
+        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, controlnet_args, video_args, custom_settings_file, root, run_id)
 
     positive_prompts = args_dict_main['animation_prompts_positive']
     negative_prompts = args_dict_main['animation_prompts_negative']
@@ -1467,9 +1420,6 @@ def process_args(args_dict_main, run_id):
         args.init_image = None
         args.init_image_box = None
 
-    elif anim_args.animation_mode == 'Video Input':
-        args.use_init = True
-
     additional_substitutions = SimpleNamespace(date=time.strftime('%Y%m%d'), time=time.strftime('%H%M%S'))
     current_arg_list = [args, anim_args, video_args, parseq_args, root, additional_substitutions]
     full_base_folder_path = os.path.join(os.getcwd(), p.outpath_samples)
@@ -1489,5 +1439,6 @@ def process_args(args_dict_main, run_id):
     # Note: freeu_args and kohya_hrfix_args are placeholder empty namespaces since those features are removed
     freeu_args = SimpleNamespace()
     kohya_hrfix_args = SimpleNamespace()
+    loop_args = SimpleNamespace()  # Placeholder for compatibility (guided images removed)
 
     return args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, freeu_args, kohya_hrfix_args, wan_args
