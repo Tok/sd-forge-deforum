@@ -12,15 +12,26 @@ This package follows contemporary Python standards with:
 - Comprehensive type hints
 """
 
+# Import only modules that don't depend on WebUI
 from .models import data_models, schedule_models
-from .config import arguments, settings, defaults
-from .core import *
-from .animation import *
-from .depth import *
-from .media import *
-from .ui import *
-from .prompt import *
-from .utils import *
+
+# Lazy imports for WebUI-dependent modules
+def _lazy_import_config():
+    """Lazy import of config modules that depend on WebUI modules"""
+    try:
+        from .config import arguments, settings, defaults
+        return arguments, settings, defaults
+    except ImportError as e:
+        # WebUI modules not available yet, return None
+        return None, None, None
+
+def _lazy_import_ui():
+    """Lazy import of UI modules"""
+    try:
+        from . import ui
+        return ui
+    except ImportError:
+        return None
 
 __version__ = "2.0.0"
 __author__ = "Deforum LLC"
@@ -36,30 +47,7 @@ __all__ = [
     'data_models',
     'schedule_models',
     
-    # Configuration
-    'arguments',
-    'settings',
-    'defaults',
-    
-    # Animation system
-    'animation_controller',
-    'keyframe_animation',
-    'movement_analysis',
-    
-    # Depth processing
-    'depth_estimation',
-    'depth_warping',
-    
-    # Media processing
-    'video_processing',
-    'audio_processing',
-    'frame_interpolation',
-    
-    # UI components
-    'interface_panels',
-    'gradio_components',
-    
-    # Prompt system
-    'prompt_enhancement',
-    'prompt_processing',
+    # Lazy loading functions
+    '_lazy_import_config',
+    '_lazy_import_ui',
 ] 
