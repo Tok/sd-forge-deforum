@@ -6,8 +6,8 @@ from PIL import Image
 
 from ..render_data import RenderData
 from ... import img_2_img_tubes
-from ...util import image_utils, log_utils, turbo_utils, web_ui_utils
-from ...util.call.subtitle import call_write_subtitle_from_to
+from ....utils import image_utils, log_utils, turbo_utils, web_ui_utils
+from ....utils.call.subtitle import call_write_subtitle_from_to
 
 
 @dataclass(init=True, frozen=False, repr=False, eq=False)
