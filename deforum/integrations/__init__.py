@@ -16,8 +16,9 @@ from .webui_pipeline import *
 
 __all__ = [
     # ControlNet integration
-    'setup_controlnet',
-    'process_controlnet',
+    'setup_controlnet_ui',
+    'get_controlnet_script_args',
+    'is_controlnet_enabled',
     
     # Frame interpolation
     'run_rife_interpolation',
