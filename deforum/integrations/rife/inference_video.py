@@ -20,7 +20,7 @@ import numpy as np
 from tqdm import tqdm
 import warnings
 from .model.pytorch_msssim import ssim_matlab
-from ...data_models import ExternalLibraryArgs
+from ...models.data_models import ExternalLibraryArgs
 
 from deforum.media.video_audio_pipeline import ffmpeg_stitch_video
 from deforum.utils.general_utils import duplicate_pngs_from_folder
