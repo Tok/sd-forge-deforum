@@ -3207,7 +3207,7 @@ def get_tab_ffmpeg():
 
 def get_tab_setup(d, da):
     """🎯 SETUP TAB - Essential generation settings (replaces Run tab)"""
-    with gr.TabItem(f"🎯 Setup"):
+    with gr.TabItem(emoji_utils.tab_title(emoji_utils.setup, "Setup")):
         with gr.Accordion("📝 Generation Essentials", open=True):
             # Core generation settings
             with FormRow():
@@ -3229,8 +3229,8 @@ def get_tab_setup(d, da):
         
         # EXPERIMENTAL RENDER CORE - PROMINENTLY FEATURED
         with gr.Accordion("🚀 Experimental Render Core (Zirteq Fork Exclusive)", open=True):
-            gr.Markdown("""
-            **🎯 This fork uses an exclusive experimental render core with variable cadence**
+            gr.Markdown(f"""
+            **{emoji_utils._emoji('🎯', essential=True)} This fork uses an exclusive experimental render core with variable cadence**
             
             **Key Benefits:**
             - **Variable Cadence**: Intelligent frame distribution for better quality
@@ -3238,7 +3238,7 @@ def get_tab_setup(d, da):
             - **Higher Efficiency**: Generate smooth videos with higher cadence settings
             - **Better Synchronization**: Prompts align precisely with visual changes
             
-            **⚠️ Important**: This is the default render core for this fork and should remain enabled for optimal results.
+            **{emoji_utils.warn} Important**: This is the default render core for this fork and should remain enabled for optimal results.
             """)
             
             # Keyframe distribution is THE setting that controls experimental core
@@ -3297,14 +3297,14 @@ def get_tab_setup(d, da):
 
 def get_tab_animation(da, dloopArgs):
     """🎬 ANIMATION TAB - Movement, timing, and motion settings"""
-    with gr.TabItem(f"🎬 Animation"):
+    with gr.TabItem(emoji_utils.tab_title(emoji_utils.animation, "Animation")):
         # Core Animation Controls
-        with gr.Accordion("🎯 Core Animation", open=True):
+        with gr.Accordion(f"{emoji_utils._emoji('🎯')} Core Animation", open=True):
             border = create_row(da.border)
             
             # Note: Keyframe Distribution moved to Setup tab as part of Experimental Render Core
-            gr.Markdown("""
-            **📝 Note**: **Keyframe Distribution** (experimental render core control) is now in the **Setup tab** 
+            gr.Markdown(f"""
+            **{emoji_utils._emoji('📝')} Note**: **Keyframe Distribution** (experimental render core control) is now in the **Setup tab** 
             for better visibility since it's fundamental to how this fork works.
             """)
             
@@ -3321,7 +3321,7 @@ def get_tab_animation(da, dloopArgs):
                 """)
         
         # Movement and Camera Controls
-        with gr.Accordion("📷 Camera Movement", open=True):
+        with gr.Accordion(f"{emoji_utils._emoji('📷')} Camera Movement", open=True):
             with gr.Tabs():
                 # 2D Movement Tab
                 with gr.TabItem("2D Movement"):
@@ -3340,8 +3340,8 @@ def get_tab_animation(da, dloopArgs):
                 # Camera Shake Tab (Shakify integration)
                 with gr.TabItem("Camera Shake"):
                     with FormColumn(min_width=220):
-                        create_row(gr.Markdown("""
-                            **Shakify Integration**: Add realistic camera shake effects using EatTheFuture's
+                        create_row(gr.Markdown(f"""
+                            **{emoji_utils.video_camera()} Shakify Integration**: Add realistic camera shake effects using EatTheFuture's
                             Camera Shakify data. Enhances realism and engagement.
                         """))
                         shake_name = create_row(da.shake_name)
@@ -3358,7 +3358,7 @@ def get_tab_animation(da, dloopArgs):
                         perspective_flip_fv = create_gr_elem(da.perspective_flip_fv)
         
         # Depth and 3D Settings
-        with gr.Accordion("🔍 3D Depth Processing", open=False):
+        with gr.Accordion(f"{emoji_utils.depth()} 3D Depth Processing", open=False):
             use_depth_warping = create_row(da.use_depth_warping)
             depth_algorithm = create_row(da.depth_algorithm)
             midas_weight = create_row(da.midas_weight)
@@ -3370,7 +3370,7 @@ def get_tab_animation(da, dloopArgs):
             aspect_ratio_use_old_formula = create_row(da.aspect_ratio_use_old_formula)
         
         # Guided Images (moved from keyframes)
-        with gr.Accordion('🎨 Guided Images', open=False):
+        with gr.Accordion(f"{emoji_utils.coherence()} Guided Images", open=False):
             with gr.Accordion('*Important: Read before using*', open=False):
                 gr.HTML(value=get_gradio_html('guided_imgs'))
             
@@ -3389,10 +3389,10 @@ def get_tab_animation(da, dloopArgs):
 
 def get_tab_advanced(d, da):
     """⚙️ ADVANCED TAB - Fine-tuning, schedules, noise, and coherence"""
-    with gr.TabItem(f"⚙️ Advanced"):
+    with gr.TabItem(emoji_utils.tab_title(emoji_utils.advanced, "Advanced")):
         
         # Strength and CFG Schedules
-        with gr.Accordion("💪 Strength & CFG Schedules", open=True):
+        with gr.Accordion(f"{emoji_utils.strength()} Strength & CFG Schedules", open=True):
             strength_schedule = create_row(da.strength_schedule)
             keyframe_strength_schedule = create_row(da.keyframe_strength_schedule)
             cfg_scale_schedule = create_row(da.cfg_scale_schedule)
@@ -3402,7 +3402,7 @@ def get_tab_advanced(d, da):
         with gr.Accordion("📅 Advanced Scheduling", open=False):
             with gr.Tabs():
                 # Seed Scheduling
-                with gr.TabItem("Seed"):
+                with gr.TabItem(emoji_utils.tab_title(emoji_utils.seed, "Seed")):
                     with FormRow(visible=False) as seed_schedule_row:
                         seed_schedule = create_gr_elem(da.seed_schedule)
                     enable_subseed_scheduling = create_row(da.enable_subseed_scheduling)
@@ -3426,7 +3426,7 @@ def get_tab_advanced(d, da):
                     clipskip_schedule = create_row(da.clipskip_schedule)
         
         # Noise Settings
-        with gr.Accordion("🌊 Noise & Randomization", open=False):
+        with gr.Accordion(f"{emoji_utils.noise()} Noise & Randomization", open=False):
             noise_type = create_row(da.noise_type)
             noise_schedule = create_row(da.noise_schedule)
             with FormRow():
@@ -3438,7 +3438,7 @@ def get_tab_advanced(d, da):
             noise_multiplier_schedule = create_row(da.noise_multiplier_schedule)
         
         # Color Coherence & Optical Flow
-        with gr.Accordion("🎨 Color Coherence & Flow", open=False):
+        with gr.Accordion(f"{emoji_utils.coherence()} Color Coherence & Flow", open=False):
             color_coherence, color_force_grayscale = create_row(da, 'color_coherence', 'color_force_grayscale')
             legacy_colormatch = create_row(da.legacy_colormatch)
             
@@ -3465,7 +3465,7 @@ def get_tab_advanced(d, da):
             )
         
         # Anti-Blur and Quality
-        with gr.Accordion("✨ Anti-Blur & Quality", open=False):
+        with gr.Accordion(f"{emoji_utils.anti_blur()} Anti-Blur & Quality", open=False):
             amount_schedule = create_row(da.amount_schedule)
             kernel_schedule = create_row(da.kernel_schedule)
             sigma_schedule = create_row(da.sigma_schedule)
