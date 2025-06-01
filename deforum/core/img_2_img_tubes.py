@@ -9,7 +9,7 @@ from .data.render_data import RenderData
 from ..utils import image_utils, turbo_utils
 from ..utils.fun_utils import tube
 from ..utils.colors import maintain_colors
-from ..masks import do_overlay_mask
+from ..utils.mask_utilities import do_overlay_mask
 
 """
 This module provides functions for conditionally processing images through various transformations.
