@@ -8,7 +8,7 @@ from scipy.interpolate import CubicSpline
 from .enum.shakify_key import ShakifyKey as Key
 from .enum.xyz import Xyz
 from .shake_data import SHAKE_LIST
-from ...util import log_utils
+from ....utils import log_utils
 from ....defaults import get_camera_shake_list
 
 FRAME = 'frame'
