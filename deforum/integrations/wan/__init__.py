@@ -52,7 +52,10 @@ __author__ = "Deforum WAN Team"
 __all__ = [
     "WanUnifiedIntegration",
     "WanModelDiscovery", 
-    "WanProceduralPipeline"
+    "WanProceduralPipeline",
+    'run_wan_generation',
+    'enhance_with_wan',
+    'wan_video_processing',
 ]
 
 def create_wan_pipeline(model_path: str = None, pipeline_type: str = "auto"):

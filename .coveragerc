@@ -1,0 +1,68 @@
+[run]
+# Source code to measure
+source = scripts
+
+# Files to include in coverage
+include = 
+    scripts/*
+    scripts/deforum_helpers/*
+
+# Files to exclude from coverage
+omit = 
+    */tests/*
+    */test_*
+    */__pycache__/*
+    */venv/*
+    */env/*
+    */build/*
+    */dist/*
+    */.git/*
+    */node_modules/*
+    # Exclude UI files (hard to test)
+    scripts/deforum_helpers/ui_*.py
+    # Exclude external dependencies
+    scripts/deforum_helpers/wan/Wan2.1/*
+    # Exclude generated files
+    scripts/deforum_helpers/wan/utils/shakify_data.py
+
+# Branch coverage
+branch = True
+
+# Parallel processing
+parallel = True
+
+[report]
+# Reporting options
+precision = 2
+show_missing = True
+skip_covered = False
+sort = Cover
+
+# Exclude lines from coverage
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    if settings.DEBUG
+    raise AssertionError
+    raise NotImplementedError
+    if 0:
+    if __name__ == .__main__.:
+    class .*\bProtocol\):
+    @(abc\.)?abstractmethod
+
+# Fail if coverage is below threshold
+fail_under = 60
+
+[html]
+# HTML report options
+directory = htmlcov
+title = Deforum Test Coverage Report
+
+[xml]
+# XML report for CI/CD
+output = coverage.xml
+
+[json]
+# JSON report for programmatic access
+output = coverage.json 
