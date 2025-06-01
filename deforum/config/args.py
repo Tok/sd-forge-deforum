@@ -115,8 +115,44 @@ def get_settings_component_names():
     ]
 
 def set_arg_lists(*args, **kwargs):
-    """Set argument lists - placeholder for compatibility"""
-    pass
+    """Set argument lists - returns initialized argument objects"""
+    try:
+        # Try to create instances using the dataclasses
+        from ..models.data_models import (
+            DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, 
+            RootArgs, WanArgs, LoopArgs
+        )
+        
+        d = DeforumArgs()
+        da = DeforumAnimArgs() 
+        dp = ParseqArgs()
+        dv = DeforumOutputArgs()
+        dr = RootArgs()
+        dw = WanArgs()
+        dloopArgs = LoopArgs()
+        
+        return d, da, dp, dv, dr, dw, dloopArgs
+        
+    except (ImportError, TypeError) as e:
+        # Fallback: create simple objects with basic attributes
+        print(f"⚠️ Using fallback argument objects: {e}")
+        
+        # Create simple namespace objects with basic attributes
+        from types import SimpleNamespace
+        
+        d = SimpleNamespace()
+        da = SimpleNamespace()
+        dp = SimpleNamespace()
+        dv = SimpleNamespace()
+        dr = SimpleNamespace()
+        dw = SimpleNamespace()
+        dloopArgs = SimpleNamespace()
+        
+        # Add basic attributes that the UI expects
+        d.show_info_on_ui = False
+        d.show_controlnet_tab = False
+        
+        return d, da, dp, dv, dr, dw, dloopArgs
 
 # Export everything for backward compatibility
 __all__ = [
