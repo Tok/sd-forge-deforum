@@ -117,7 +117,7 @@ def on_ui_tabs():
                     load_settings_btn = gr.Button('Load All Settings', elem_id='deforum_load_settings_btn')
                     load_video_settings_btn = gr.Button('Load Video Settings', elem_id='deforum_load_video_settings_btn')
 
-        component_list = [components[name] for name in get_component_names()]
+        component_list = [components[name] for name in get_component_names() if name in components]
 
         submit.click(
                     fn=wrap_gradio_gpu_call(run_deforum),
@@ -131,8 +131,8 @@ def on_ui_tabs():
                     ],
                 )
         
-        settings_component_list = [components[name] for name in get_settings_component_names()]
-        video_settings_component_list = [components[name] for name in list(DeforumOutputArgs().keys())]
+        settings_component_list = [components[name] for name in get_settings_component_names() if name in components]
+        video_settings_component_list = [components[name] for name in list(DeforumOutputArgs().keys()) if name in components]
 
         save_settings_btn.click(
             fn=wrap_gradio_call(save_settings),
