@@ -21,7 +21,7 @@ from ...config.args import DeforumArgs, DeforumAnimArgs, ParseqArgs, RootArgs
 from ...integrations.controlnet.core_integration import unpack_controlnet_vids, is_controlnet_enabled
 from ..main_generation_pipeline import isJson
 from ...integrations.parseq_adapter import ParseqAdapter
-from ...settings import save_settings_from_animation_run
+from ...config.settings import save_settings_from_animation_run
 
 
 @dataclass(init=True, frozen=True, repr=False, eq=False)
