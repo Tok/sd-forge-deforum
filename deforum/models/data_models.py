@@ -450,6 +450,39 @@ class RootArgs:
     initial_ancestral_eta: float = 1.0
 
 
+@dataclass(frozen=True)
+class LoopArgs:
+    """Immutable loop arguments for guided images with validation"""
+    
+    # Core looper settings
+    use_looper: bool = False
+    init_images: str = ""
+    
+    # Schedules for guided images
+    image_strength_schedule: str = "0: (0.75)"
+    image_keyframe_strength_schedule: str = "0: (0.50)"
+    blendFactorMax: str = "0: (0.35)"
+    blendFactorSlope: str = "0: (0.25)"
+    tweening_frames_schedule: str = "0: (20)"
+    color_correction_factor: str = "0: (0.075)"
+    
+    def __post_init__(self):
+        """Validate loop arguments after initialization"""
+        # Validate schedule strings
+        if self.image_strength_schedule:
+            validate_schedule_string(self.image_strength_schedule, "image_strength_schedule")
+        if self.image_keyframe_strength_schedule:
+            validate_schedule_string(self.image_keyframe_strength_schedule, "image_keyframe_strength_schedule")
+        if self.blendFactorMax:
+            validate_schedule_string(self.blendFactorMax, "blendFactorMax")
+        if self.blendFactorSlope:
+            validate_schedule_string(self.blendFactorSlope, "blendFactorSlope")
+        if self.tweening_frames_schedule:
+            validate_schedule_string(self.tweening_frames_schedule, "tweening_frames_schedule")
+        if self.color_correction_factor:
+            validate_schedule_string(self.color_correction_factor, "color_correction_factor")
+
+
 # Helper functions for creating data models from legacy dictionaries
 def create_animation_args_from_dict(data: Dict[str, Any]) -> AnimationArgs:
     """Create AnimationArgs from legacy dictionary data"""
@@ -529,6 +562,13 @@ def create_root_args_from_dict(data: Dict[str, Any]) -> RootArgs:
         filtered_data['prompt_keyframes'] = list(filtered_data['prompt_keyframes'])
     
     return RootArgs(**filtered_data)
+
+
+def create_loop_args_from_dict(data: Dict[str, Any]) -> LoopArgs:
+    """Create LoopArgs from legacy dictionary data"""
+    loop_fields = {field.name for field in LoopArgs.__dataclass_fields__.values()}
+    filtered_data = {k: v for k, v in data.items() if k in loop_fields}
+    return LoopArgs(**filtered_data)
 
 
 @dataclass(frozen=True)
