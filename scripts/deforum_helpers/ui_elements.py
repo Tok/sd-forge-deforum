@@ -2868,7 +2868,7 @@ def get_tab_ffmpeg():
     """FFmpeg post-processing tab with upscaling, interpolation, and audio replacement"""
     from .ffmpeg_utils import FFmpegProcessor
     
-    with gr.TabItem(f"{emoji_utils.gear()} FFmpeg Post-Processing", elem_id='ffmpeg_tab'):
+    with gr.TabItem(f"{emoji_utils.hybrid()} FFmpeg Post-Processing", elem_id='ffmpeg_tab'):
         
         # Global FFmpeg processor
         ffmpeg_processor = FFmpegProcessor()
