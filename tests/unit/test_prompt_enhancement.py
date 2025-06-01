@@ -22,15 +22,8 @@ from deforum.prompt.prompt_enhancement import (
     enhance_prompts_with_cache,
     enhance_single_prompt,
     validate_enhancement_cache,
-    clear_expired_cache_entries
-)
-
-import pytest
-import json
-from typing import Dict, Tuple
-from unittest.mock import Mock
-
-from scripts.deforum_helpers.prompt_enhancement import (
+    clear_expired_cache_entries,
+    
     # Data structures and enums
     PromptLanguage, PromptStyle, ModelType,
     ModelSpec, PromptEnhancementRequest, PromptEnhancementResult, EnhancementConfig,
@@ -54,12 +47,17 @@ from scripts.deforum_helpers.prompt_enhancement import (
     create_enhancement_request_from_legacy, enhance_prompts_legacy_interface
 )
 
+import pytest
+import json
+from typing import Dict, Tuple
+from unittest.mock import Mock
+
 
 class MockModelInferenceService:
     """Mock model inference service for testing"""
     
     def __init__(self, available_models=None, success=True, enhanced_suffix=" enhanced"):
-        self.available_models = available_models or ["Qwen2.5_7B", "Qwen2.5_3B"]
+        self.available_models = available_models or ["Qwen2.1_7B", "Qwen2.1_3B"]
         self.success = success
         self.enhanced_suffix = enhanced_suffix
         self.call_count = 0
@@ -118,7 +116,7 @@ class TestDataStructures:
         result = PromptEnhancementResult(
             enhanced_prompts={"0": "enhanced"},
             original_prompts={"0": "original"},
-            model_used="Qwen2.5_7B",
+            model_used="Qwen2.1_7B",
             language=PromptLanguage.ENGLISH,
             processing_time=1.0,
             success=True
@@ -128,7 +126,7 @@ class TestDataStructures:
             result.success = False
         
         assert result.success is True
-        assert result.model_used == "Qwen2.5_7B"
+        assert result.model_used == "Qwen2.1_7B"
     
     def test_enhancement_config_immutability(self):
         """Test that EnhancementConfig is immutable"""
@@ -306,27 +304,27 @@ class TestModelSelection:
     
     def test_auto_select_model(self):
         """Test automatic model selection"""
-        available_models = ["Qwen2.5_3B", "Qwen2.5_7B", "QwenVL2.5_7B"]
+        available_models = ["Qwen2.1_3B", "Qwen2.1_7B", "QwenVL2.1_7B"]
         
         # Test normal selection with adequate VRAM
         selected = auto_select_model(available_models, target_vram_gb=20.0)
-        assert selected == "QwenVL2.5_7B"  # Largest VL model that fits
+        assert selected == "QwenVL2.1_7B"  # Largest VL model that fits
         
         # Test limited VRAM - 7B model needs 14GB, so 10GB should select 3B
         selected = auto_select_model(available_models, target_vram_gb=10.0)
-        assert selected == "Qwen2.5_3B"  # Only 3B model fits in 10GB
+        assert selected == "Qwen2.1_3B"  # Only 3B model fits in 10GB
         
         # Test adequate VRAM for 7B but not VL - should prefer 7B text model
         selected = auto_select_model(available_models, target_vram_gb=15.0)
-        assert selected == "Qwen2.5_7B"  # 7B text model fits, VL doesn't
+        assert selected == "Qwen2.1_7B"  # 7B text model fits, VL doesn't
         
         # Test very limited VRAM
         selected = auto_select_model(available_models, target_vram_gb=4.0)
-        assert selected == "Qwen2.5_3B"  # Smallest available
+        assert selected == "Qwen2.1_3B"  # Smallest available
         
         # Test empty list
         selected = auto_select_model([])
-        assert selected == "Qwen2.5_7B"  # Default fallback
+        assert selected == "Qwen2.1_7B"  # Default fallback
         
         # Test unknown models
         selected = auto_select_model(["unknown_model"], target_vram_gb=10.0)
@@ -339,7 +337,7 @@ class TestCoreEnhancementFunctions:
     def test_enhance_single_prompt(self):
         """Test single prompt enhancement"""
         mock_service = MockModelInferenceService()
-        model_spec = MODEL_SPECS["Qwen2.5_7B"]
+        model_spec = MODEL_SPECS["Qwen2.1_7B"]
         config = EnhancementConfig()
         
         success, enhanced, error = enhance_single_prompt(
@@ -360,7 +358,7 @@ class TestCoreEnhancementFunctions:
     def test_enhance_single_prompt_failure(self):
         """Test single prompt enhancement failure"""
         mock_service = MockModelInferenceService(success=False)
-        model_spec = MODEL_SPECS["Qwen2.5_7B"]
+        model_spec = MODEL_SPECS["Qwen2.1_7B"]
         config = EnhancementConfig()
         
         success, enhanced, error = enhance_single_prompt(
@@ -380,7 +378,7 @@ class TestCoreEnhancementFunctions:
     def test_enhance_single_prompt_empty(self):
         """Test enhancement with empty prompt"""
         mock_service = MockModelInferenceService()
-        model_spec = MODEL_SPECS["Qwen2.5_7B"]
+        model_spec = MODEL_SPECS["Qwen2.1_7B"]
         config = EnhancementConfig()
         
         success, enhanced, error = enhance_single_prompt(
@@ -401,7 +399,7 @@ class TestCoreEnhancementFunctions:
     def test_enhance_prompts_batch(self):
         """Test batch prompt enhancement"""
         mock_service = MockModelInferenceService()
-        model_spec = MODEL_SPECS["Qwen2.5_7B"]
+        model_spec = MODEL_SPECS["Qwen2.1_7B"]
         config = EnhancementConfig()
         
         prompts = {"0": "prompt 1", "30": "prompt 2"}
@@ -425,7 +423,7 @@ class TestCoreEnhancementFunctions:
             (False, "original 2", "enhancement failed")
         ]
         
-        model_spec = MODEL_SPECS["Qwen2.5_7B"]
+        model_spec = MODEL_SPECS["Qwen2.1_7B"]
         config = EnhancementConfig()
         prompts = {"0": "prompt 1", "30": "prompt 2"}
         
@@ -450,7 +448,7 @@ class TestHighLevelEnhancement:
             prompts={"0": "test prompt", "30": "another prompt"},
             language=PromptLanguage.ENGLISH,
             style=PromptStyle.CINEMATIC,
-            model_name="Qwen2.5_7B"
+            model_name="Qwen2.1_7B"
         )
         
         result = enhance_prompts(request, mock_service)
@@ -459,7 +457,7 @@ class TestHighLevelEnhancement:
         assert len(result.enhanced_prompts) == 2
         assert "cinematic" in result.enhanced_prompts["0"]
         assert " enhanced" in result.enhanced_prompts["0"]
-        assert result.model_used == "Qwen2.5_7B"
+        assert result.model_used == "Qwen2.1_7B"
         assert result.language == PromptLanguage.ENGLISH
         assert result.enhancement_count == 2
         assert result.processing_time > 0
@@ -498,12 +496,12 @@ class TestHighLevelEnhancement:
     
     def test_enhance_prompts_model_unavailable(self):
         """Test enhancement with unavailable model"""
-        mock_service = MockModelInferenceService(available_models=["Qwen2.5_3B"])  # Only 3B available, not 7B
+        mock_service = MockModelInferenceService(available_models=["Qwen2.1_3B"])  # Only 3B available, not 7B
         
         request = PromptEnhancementRequest(
             prompts={"0": "test"},
             language=PromptLanguage.ENGLISH,
-            model_name="Qwen2.5_7B"  # Request 7B which is not available
+            model_name="Qwen2.1_7B"  # Request 7B which is not available
         )
         
         result = enhance_prompts(request, mock_service)
@@ -536,7 +534,7 @@ class TestStatisticsAndAnalysis:
         result = PromptEnhancementResult(
             enhanced_prompts={"0": "enhanced prompt", "30": "another enhanced"},
             original_prompts={"0": "prompt", "30": "another"},
-            model_used="Qwen2.5_7B",
+            model_used="Qwen2.1_7B",
             language=PromptLanguage.ENGLISH,
             processing_time=1.5,
             success=True,
@@ -550,7 +548,7 @@ class TestStatisticsAndAnalysis:
         assert stats["success_rate"] == 1.0
         assert stats["average_length_increase"] > 0  # "enhanced " and " enhanced"
         assert stats["processing_time"] == 1.5
-        assert stats["model_used"] == "Qwen2.5_7B"
+        assert stats["model_used"] == "Qwen2.1_7B"
         assert stats["language"] == "english"
         assert stats["success"] is True
     
@@ -579,7 +577,7 @@ class TestStatisticsAndAnalysis:
         result = PromptEnhancementResult(
             enhanced_prompts={"0": "enhanced"},
             original_prompts={"0": "original"},
-            model_used="Qwen2.5_7B",
+            model_used="Qwen2.1_7B",
             language=PromptLanguage.ENGLISH,
             processing_time=1.0,
             success=True,
@@ -591,7 +589,7 @@ class TestStatisticsAndAnalysis:
         assert "Total Prompts: 1" in report
         assert "Enhanced: 1" in report
         assert "Success Rate: 100.0%" in report
-        assert "Qwen2.5_7B" in report
+        assert "Qwen2.1_7B" in report
         
         # Failure case
         result_fail = PromptEnhancementResult(
@@ -618,12 +616,12 @@ class TestLegacyCompatibility:
         prompts = {"0": "test prompt"}
         
         request = create_enhancement_request_from_legacy(
-            prompts, model_name="Qwen2.5_7B", language="English"
+            prompts, model_name="Qwen2.1_7B", language="English"
         )
         
         assert request.prompts == prompts
         assert request.language == PromptLanguage.ENGLISH
-        assert request.model_name == "Qwen2.5_7B"
+        assert request.model_name == "Qwen2.1_7B"
         
         # Test Auto-Select
         request_auto = create_enhancement_request_from_legacy(
@@ -639,7 +637,7 @@ class TestLegacyCompatibility:
         prompts = {"0": "test prompt"}
         
         enhanced = enhance_prompts_legacy_interface(
-            prompts, mock_service, model_name="Qwen2.5_7B", language="English"
+            prompts, mock_service, model_name="Qwen2.1_7B", language="English"
         )
         
         assert enhanced == {"0": "test prompt enhanced"}
@@ -677,7 +675,7 @@ class TestIntegrationScenarios:
         request = PromptEnhancementRequest(
             prompts={"0": "测试提示"},
             language=PromptLanguage.CHINESE,
-            model_name="Qwen2.5_7B"
+            model_name="Qwen2.1_7B"
         )
         
         result = enhance_prompts(request, mock_service)
@@ -699,7 +697,7 @@ class TestIntegrationScenarios:
         request = PromptEnhancementRequest(
             prompts=prompts,
             language=PromptLanguage.ENGLISH,
-            model_name="Qwen2.5_3B"
+            model_name="Qwen2.1_3B"
         )
         
         result = enhance_prompts(request, mock_service)
@@ -811,7 +809,7 @@ class TestFunctionalProgrammingPrinciples:
         request = PromptEnhancementRequest(
             prompts={"0": "test"},
             language=PromptLanguage.ENGLISH,
-            model_name="Qwen2.5_7B"
+            model_name="Qwen2.1_7B"
         )
         
         # Should handle exception gracefully
@@ -833,7 +831,7 @@ class TestFunctionalProgrammingPrinciples:
         
         # Test batch processing functional composition
         mock_service = MockModelInferenceService()
-        model_spec = MODEL_SPECS["Qwen2.5_7B"]
+        model_spec = MODEL_SPECS["Qwen2.1_7B"]
         config = EnhancementConfig()
         
         prompts = {"0": "prompt1", "30": "prompt2", "60": "prompt3"}
