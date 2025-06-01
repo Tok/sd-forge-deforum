@@ -332,12 +332,6 @@ def get_tab_prompts(da):
                 animation_prompts_negative = create_row(
                     gr.Textbox(label="Prompts negative", value="nsfw, nude", lines=1, interactive=True,
                                placeholder="words here will be added to the end of all negative prompts.  ignored with Flux."))
-                # COMPOSABLE MASK SCHEDULING ACCORD
-                with gr.Accordion('Composable Mask scheduling', open=False):
-                    gr.HTML(value=get_gradio_html('composable_masks'))
-                    mask_schedule = create_row(da.mask_schedule)
-                    use_noise_mask = create_row(da.use_noise_mask)
-                    noise_mask_schedule = create_row(da.noise_mask_schedule)
             
             # ========== AI ENHANCEMENT TAB ==========
             with gr.TabItem("🎨 AI Enhancement"):
@@ -3737,6 +3731,5 @@ def get_tab_advanced(d, da):
             gr.HTML(value=get_gradio_html('composable_masks'))
             mask_schedule = create_row(da.mask_schedule)
             use_noise_mask = create_row(da.use_noise_mask)
-            noise_mask_schedule = create_row(da.noise_mask_schedule)
     
     return {k: v for k, v in {**locals(), **vars()}.items()}
