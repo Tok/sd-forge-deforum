@@ -21,7 +21,6 @@ from ...config.args import DeforumArgs, DeforumAnimArgs, ParseqArgs, RootArgs
 from ...integrations.controlnet.core_integration import unpack_controlnet_vids, is_controlnet_enabled
 from ..main_generation_pipeline import isJson
 from ...integrations.parseq_adapter import ParseqAdapter
-from ...prompt import prepare_prompt
 from ...settings import save_settings_from_animation_run
 
 
@@ -204,6 +203,7 @@ class RenderData:
 
     def prompt_for_current_step(self, frame, i):
         """returns value to be set back into the prompt"""
+        from ...prompt import prepare_prompt
         prompt = self.args.args.prompt
         max_frames = self.args.anim_args.max_frames
         seed = frame.seed
