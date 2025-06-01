@@ -15,7 +15,7 @@ def find_clipseg():
     basedirs = [os.getcwd()]
     src_basedirs = []
     for basedir in basedirs:
-        src_basedirs.append(os.path.join(os.path.sep.join(os.path.abspath(__file__).split(os.path.sep)[:-2]), 'deforum_helpers', 'src'))
+        src_basedirs.append(os.path.join(os.path.sep.join(os.path.abspath(__file__).split(os.path.sep)[:-3]), 'deforum', 'utils'))
 
     for basedir in src_basedirs:
         pth = os.path.join(basedir, './clipseg/weights/rd64-uni.pth')

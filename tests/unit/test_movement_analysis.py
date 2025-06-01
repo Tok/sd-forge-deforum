@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
 
 """
-Unit tests for movement analysis functionality.
-Tests the WAN movement analyzer and related components.
+Comprehensive tests for Deforum's movement analysis system.
+Tests movement detection, analysis, and description generation.
 """
 
 import pytest
 import unittest
+from unittest.mock import Mock, patch, MagicMock
 import math
-from typing import Dict, Any, List, Tuple
-from pathlib import Path
+from typing import Dict, Any, List
 
-# Import from the new location
-from deforum.integrations.wan.utils.movement_analyzer import (
+# Import the movement analysis system from the new package structure
+from deforum.animation.movement_analysis import (
     MovementAnalyzer,
-    analyze_movement_patterns,
-    calculate_movement_strength,
-    detect_zoom_changes,
-    enhance_movement_description
+    CachedMovementAnalyzer,
+    FrameMovementCalculator,
+    MovementDescriptionGenerator,
+    analyze_camera_movement,
+    detect_movement_type,
+    generate_movement_description,
+    calculate_movement_intensity,
+    get_movement_keywords,
+    cache_movement_analysis
 )
 
 from scripts.deforum_helpers.movement_analysis import (
@@ -35,7 +40,7 @@ from scripts.deforum_helpers.movement_analysis import (
     should_group_segments, group_similar_segments,
     
     # Description functions
-    generate_movement_description, describe_segment_group, generate_overall_description,
+    describe_segment_group, generate_overall_description,
     calculate_movement_strength,
     
     # High-level functions
@@ -46,7 +51,8 @@ from scripts.deforum_helpers.movement_analysis import (
     create_movement_schedule_series
 )
 
-from scripts.deforum_helpers.data_models import AnimationArgs
+# Import animation args from the new package structure
+from deforum.models.data_models import AnimationArgs
 
 
 class TestDataStructures:

@@ -1,20 +1,46 @@
-"""
-Comprehensive Test Suite for Functional Rendering System
+#!/usr/bin/env python3
 
-This module tests all components of the functional rendering system including:
-- Immutable frame state models
-- Pure frame processing functions  
-- Functional rendering pipeline
-- Legacy compatibility adapter
-- Error handling and validation
+"""
+Comprehensive tests for Deforum's functional rendering system.
+Tests immutable frame processing, functional pipelines, and rendering logic.
 """
 
+import pytest
 import unittest
+from unittest.mock import Mock, patch, MagicMock
 import tempfile
-import time
 from pathlib import Path
-from unittest.mock import Mock, patch
-import numpy as np
+import json
+
+# Import the rendering system from the new package structure  
+from deforum.rendering.frame_models import (
+    FrameData,
+    RenderingState,
+    ImmutableFrameProcessor,
+    create_frame_data,
+    validate_frame_data
+)
+
+from deforum.rendering.frame_processing import (
+    process_frame_functional,
+    create_frame_processor,
+    apply_frame_transformations,
+    validate_processing_pipeline
+)
+
+from deforum.rendering.rendering_pipeline import (
+    FunctionalRenderingPipeline,
+    create_rendering_pipeline,
+    execute_rendering_step,
+    validate_pipeline_configuration
+)
+
+from deforum.rendering.legacy_renderer import (
+    render_animation_functional,
+    convert_legacy_args,
+    ensure_backward_compatibility,
+    migrate_to_functional_rendering
+)
 
 # Import the functional rendering system
 try:

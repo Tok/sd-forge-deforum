@@ -1,39 +1,38 @@
 #!/usr/bin/env python3
 
 """
-Unit tests for schedule system functionality.
-Tests the functional schedule parsing and evaluation system.
+Comprehensive tests for Deforum's schedule system.
+Validates schedule parsing, interpolation, and frame-specific calculations.
 """
 
 import pytest
 import unittest
-from typing import Dict, Any, List
+from unittest.mock import Mock, patch, MagicMock
 import math
+from fractions import Fraction
 
-# Import from the new location
-from deforum.animation.schedules import (
-    ScheduleSystem,
-    parse_schedule_string,
-    evaluate_schedule_at_frame,
-    validate_schedule_syntax
-)
-
-import numpy as np
-from typing import Tuple, Dict
-
-from scripts.deforum_helpers.schedule_system import (
+# Import the schedule system from the new package structure
+from deforum.animation.schedule_system import (
+    ScheduleParser,
+    FrameCalculator,
+    InterpolationEngine,
+    parse_key_frames,
+    interpolate_schedule,
+    get_inbetweens,
+    check_is_number,
+    sanitize_value,
+    convert_to_dynamic_prompt_dict,
+    safe_numexpr_evaluate,
+    
     # Data structures
     ScheduleKeyframe, ParsedSchedule, InterpolatedSchedule, InterpolationMethod,
-    
-    # Pure utility functions
-    sanitize_value, check_is_number, safe_numexpr_evaluate,
     
     # Core parsing functions
     tokenize_schedule, parse_keyframe_token, parse_schedule_tokens, parse_schedule_string,
     
     # Interpolation functions
     interpolate_linear, find_surrounding_keyframes, interpolate_for_frame, 
-    evaluate_keyframe_value, interpolate_schedule, fill_string_values,
+    evaluate_keyframe_value, fill_string_values,
     
     # High-level functions
     parse_and_interpolate_schedule, create_schedule_series,
@@ -44,6 +43,9 @@ from scripts.deforum_helpers.schedule_system import (
     # Performance and validation
     batch_interpolate_frames, validate_schedule_syntax, get_schedule_statistics
 )
+
+import numpy as np
+from typing import Tuple, Dict
 
 
 class TestDataStructures:

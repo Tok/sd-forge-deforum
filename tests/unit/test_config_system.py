@@ -1,14 +1,27 @@
-"""
-Unit tests for the functional configuration system.
+#!/usr/bin/env python3
 
-Tests the immutable dataclasses, pure conversion functions, and processing logic
-while ensuring backward compatibility with the legacy args system.
+"""
+Comprehensive tests for Deforum's configuration system.
+Tests settings management, argument validation, and config loading.
 """
 
 import pytest
+import unittest
+from unittest.mock import Mock, patch, MagicMock
+import tempfile
 import json
-from types import SimpleNamespace
-from dataclasses import asdict
+from pathlib import Path
+
+# Import the configuration system from the new package structure
+from deforum.config import (
+    ConfigurationManager,
+    SettingsValidator,
+    ArgumentLoader,
+    save_configuration,
+    load_configuration,
+    validate_all_settings,
+    merge_configurations
+)
 
 # Import with fallback for missing dependencies
 try:
@@ -66,6 +79,23 @@ except ImportError as e:
 
 # Skip all tests if config system is not available
 pytestmark = pytest.mark.skipif(not CONFIG_AVAILABLE, reason="Config system dependencies not available")
+
+
+# Import argument models from the new package structure
+from deforum.config.argument_models import (
+    DeforumArguments,
+    AnimationArguments,
+    OutputArguments,
+    create_default_arguments,
+    validate_argument_types,
+    merge_argument_sets
+)
+
+from deforum.models.data_models import (
+    DeforumArgs,
+    DeforumAnimArgs,
+    DeforumOutputArgs
+)
 
 
 class TestDataStructureImmutability:

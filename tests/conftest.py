@@ -1,18 +1,28 @@
+#!/usr/bin/env python3
+
 """
-Pytest configuration and shared fixtures for Deforum tests
+Test configuration and fixtures for Deforum tests.
+Provides common test utilities, fixtures, and mock objects.
 """
 
-import os
-import sys
 import pytest
+import sys
+import os
 from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
 
-# Add the scripts directory to sys.path for imports
-REPO_ROOT = Path(__file__).parent.parent
-SCRIPTS_DIR = REPO_ROOT / "scripts"
-sys.path.insert(0, str(SCRIPTS_DIR))
+# Add the project root to Python path for testing
+_test_dir = Path(__file__).parent
+_project_root = _test_dir.parent
+sys.path.insert(0, str(_project_root))
+
+# Import test fixtures and utilities
+try:
+    from deforum.models.data_models import TestFixtureArgs
+except ImportError:
+    # Create minimal TestFixtureArgs if not available
+    TestFixtureArgs = SimpleNamespace
 
 # Test data directory
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -29,13 +39,13 @@ except ImportError:
 @pytest.fixture(scope="session")
 def repo_root():
     """Path to the repository root directory"""
-    return REPO_ROOT
+    return _project_root
 
 
 @pytest.fixture(scope="session")
 def scripts_dir():
     """Path to the scripts directory"""
-    return SCRIPTS_DIR
+    return _project_root / "scripts"
 
 
 @pytest.fixture(scope="session")
@@ -166,7 +176,7 @@ def sample_enhanced_prompts():
 @pytest.fixture
 def mock_qwen_manager():
     """Mock Qwen manager for testing prompt enhancement"""
-    with patch('deforum_helpers.wan.utils.qwen_manager.qwen_manager') as mock:
+    with patch('deforum.integrations.wan.utils.qwen_manager.qwen_manager') as mock:
         mock.is_model_loaded.return_value = False
         mock.is_model_downloaded.return_value = True
         mock.auto_select_model.return_value = "Qwen2.5-7B-Instruct"
@@ -215,7 +225,7 @@ def clean_imports():
     # Remove any modules that might have been imported during tests
     modules_to_remove = [
         mod for mod in sys.modules.keys() 
-        if mod.startswith('deforum_helpers') or mod.startswith('wan')
+        if mod.startswith('deforum') or mod.startswith('wan')
     ]
     for mod in modules_to_remove:
         if mod in sys.modules:

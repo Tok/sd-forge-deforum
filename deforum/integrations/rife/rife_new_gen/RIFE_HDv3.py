@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+
+"""
+RIFE HDv3 implementation for frame interpolation.
+Enhanced version with better performance and quality.
+"""
+
 import os, sys
 import torch
 import torch.nn as nn
@@ -11,7 +18,7 @@ from .IFNet_HDv3 import *
 import torch.nn.functional as F
 from ..model.loss import *
 sys.path.append('../../')
-from deforum_helpers.general_utils import checksum
+from deforum.utils.general_utils import checksum
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

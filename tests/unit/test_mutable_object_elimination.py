@@ -1,15 +1,31 @@
-"""
-Unit tests for mutable object elimination.
+#!/usr/bin/env python3
 
-Tests the new immutable data structures that replace SimpleNamespace usage
-throughout the Deforum codebase, ensuring functional programming principles
-and backward compatibility.
+"""
+Comprehensive tests for Deforum's immutable data model system.
+Tests functional programming patterns and immutable object handling.
 """
 
 import pytest
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch
+import unittest
+from unittest.mock import Mock, patch, MagicMock
+from typing import Dict, Any, List
+import copy
+
+# Import the data models from the new package structure
+from deforum.models.data_models import (
+    DeforumArgs,
+    DeforumAnimArgs,
+    DeforumOutputArgs,
+    validate_args,
+    create_immutable_args
+)
+
+from deforum.models.schedule_models import (
+    FrameInterpolater,
+    ScheduleDefinition,
+    create_immutable_schedule,
+    validate_schedule_data
+)
 
 # Import with fallback for missing dependencies
 try:

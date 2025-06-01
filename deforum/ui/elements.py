@@ -1142,7 +1142,7 @@ The auto-discovery will find your models automatically!
         
         # Provide helpful troubleshooting info
         print(f"\n🔧 TROUBLESHOOTING:")
-        print(f"   • Check model availability with: python scripts/deforum_helpers/wan_direct_integration.py")
+        print(f"   • Check model availability with: python -m deforum.integrations.wan.direct_integration")
         print(f"   • Download models: huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan")
         print(f"   • Verify Wan models are in: models/wan/ directory")
         
@@ -1707,7 +1707,7 @@ def get_tab_wan(dw: SimpleNamespace):
             with gr.Accordion("🆘 Troubleshooting", open=False):
                 gr.Markdown("""
                 If generation fails:
-                1. **Check models**: Run `python scripts/deforum_helpers/wan_direct_integration.py`
+                1. **Check models**: Run `python -m deforum.integrations.wan.direct_integration`
                 2. **Download missing models**: Use commands in Auto-Discovery section
                 3. **Verify placement**: Models should be in `models/wan/` directory
                 4. **Check logs**: Look for auto-discovery messages in console

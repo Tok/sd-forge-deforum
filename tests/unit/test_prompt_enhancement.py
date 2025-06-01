@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
 
 """
-Unit tests for prompt enhancement functionality.
-Tests the WAN prompt enhancement and AI-driven description generation.
+Comprehensive tests for Deforum's prompt enhancement system.
+Tests WAN 2.1 integration, caching, and AI-powered prompt enhancement.
 """
 
 import pytest
 import unittest
-from typing import Dict, Any, List
-from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock, call
 import json
+import tempfile
+import os
+from datetime import datetime, timedelta
 
-# Import from the new location
-from deforum.prompt.enhancement import (
+# Import the prompt enhancement system from the new package structure
+from deforum.prompt.prompt_enhancement import (
     PromptEnhancer,
-    enhance_prompt_with_movement,
-    generate_ai_description,
-    validate_prompt_format
+    CachedPromptEnhancer,
+    PromptCache,
+    WanPromptEnhancer,
+    enhance_prompts_with_cache,
+    enhance_single_prompt,
+    validate_enhancement_cache,
+    clear_expired_cache_entries
 )
 
 import pytest
@@ -36,7 +42,7 @@ from scripts.deforum_helpers.prompt_enhancement import (
     auto_select_model,
     
     # Core enhancement functions
-    enhance_single_prompt, enhance_prompts_batch, enhance_prompts,
+    enhance_prompts_batch, enhance_prompts,
     
     # Convenience functions
     enhance_prompts_simple,
