@@ -19,7 +19,7 @@ from ...utils.call.mask import call_compose_mask_with_check
 from ...utils.call.video_and_audio import call_get_next_frame
 from ...config.args import DeforumArgs, DeforumAnimArgs, ParseqArgs, RootArgs
 from ...integrations.controlnet.core_integration import unpack_controlnet_vids, is_controlnet_enabled
-from ...generate import (isJson)
+from ..main_generation_pipeline import isJson
 from ...parseq_adapter import ParseqAdapter
 from ...prompt import prepare_prompt
 from ...settings import save_settings_from_animation_run
