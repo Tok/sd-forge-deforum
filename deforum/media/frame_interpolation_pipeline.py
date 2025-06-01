@@ -1,13 +1,41 @@
 import sys
 import os
 from pathlib import Path
-from rife.inference_video import run_rife_new_video_infer
-from .video_audio_pipeline import get_quick_vid_info, vid2frames, media_file_has_audio, extract_number, ffmpeg_stitch_video
-from film_interpolation.film_inference import run_film_interp_infer
-from .general_utils import duplicate_pngs_from_folder, checksum, convert_images_from_list
-from modules.shared import opts
 
-DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False)
+# Conditional imports for optional frame interpolation dependencies
+try:
+    from rife.inference_video import run_rife_new_video_infer
+    RIFE_AVAILABLE = True
+except ImportError:
+    RIFE_AVAILABLE = False
+    def run_rife_new_video_infer(*args, **kwargs):
+        raise ImportError("RIFE is not installed. Please install RIFE for frame interpolation functionality.")
+
+try:
+    from film_interpolation.film_inference import run_film_interp_infer
+    FILM_AVAILABLE = True
+except ImportError:
+    FILM_AVAILABLE = False
+    def run_film_interp_infer(*args, **kwargs):
+        raise ImportError("FILM interpolation is not installed. Please install FILM for frame interpolation functionality.")
+
+from .video_audio_pipeline import get_quick_vid_info, vid2frames, media_file_has_audio, extract_number, ffmpeg_stitch_video
+from .general_utils import duplicate_pngs_from_folder, checksum, convert_images_from_list
+
+# Conditional import for WebUI modules
+try:
+    from modules.shared import opts
+    WEBUI_AVAILABLE = True
+except ImportError:
+    WEBUI_AVAILABLE = False
+    # Fallback opts object
+    class FallbackOpts:
+        def __init__(self):
+            self.data = {}
+            self.outdir_samples = "./outputs"
+    opts = FallbackOpts()
+
+DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False) if WEBUI_AVAILABLE else False
 
 # gets 'RIFE v4.3', returns: 'RIFE43'   
 def extract_rife_name(string):
@@ -84,6 +112,12 @@ def process_video_interpolation(frame_interpolation_engine, frame_interpolation_
     if frame_interpolation_engine == 'None':
         return
     elif frame_interpolation_engine.startswith("RIFE"):
+        # Check if RIFE is available
+        if not RIFE_AVAILABLE:
+            print(f"❌ RIFE interpolation requested but RIFE is not installed.")
+            print("Please install RIFE for frame interpolation functionality.")
+            return None
+            
         # make sure interp_x is valid and in range
         if frame_interpolation_x_amount not in range(2, 11):
             raise Error("frame_interpolation_x_amount must be between 2x and 10x")
@@ -99,6 +133,12 @@ def process_video_interpolation(frame_interpolation_engine, frame_interpolation_
         # run actual rife interpolation and video stitching etc - the whole suite
         return run_rife_new_video_infer(interp_x_amount=frame_interpolation_x_amount, slow_mo_enabled = frame_interpolation_slow_mo_enabled, slow_mo_x_amount=frame_interpolation_slow_mo_amount, model=actual_model_folder_name, fps=fps, deforum_models_path=deforum_models_path, audio_track=real_audio_track, raw_output_imgs_path=raw_output_imgs_path, img_batch_id=img_batch_id, ffmpeg_location=ffmpeg_location, ffmpeg_crf=ffmpeg_crf, ffmpeg_preset=ffmpeg_preset, keep_imgs=keep_interp_imgs, orig_vid_name=orig_vid_name, UHD=UHD, srt_path=srt_path)
     elif frame_interpolation_engine == 'FILM':
+        # Check if FILM is available
+        if not FILM_AVAILABLE:
+            print(f"❌ FILM interpolation requested but FILM is not installed.")
+            print("Please install FILM for frame interpolation functionality.")
+            return None
+            
         return prepare_film_inference(deforum_models_path=deforum_models_path, x_am=frame_interpolation_x_amount, sl_enabled=frame_interpolation_slow_mo_enabled, sl_am=frame_interpolation_slow_mo_amount, keep_imgs=keep_interp_imgs, raw_output_imgs_path=raw_output_imgs_path, img_batch_id=img_batch_id, f_location=ffmpeg_location, f_crf=ffmpeg_crf, f_preset=ffmpeg_preset, fps=fps, audio_track=real_audio_track, orig_vid_name=orig_vid_name, is_random_pics_run=is_random_pics_run, srt_path=srt_path)
     else:
         print("Unknown Frame Interpolation engine chosen. Doing nothing.")
