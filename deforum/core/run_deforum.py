@@ -8,7 +8,7 @@ from modules.sd_models import forge_model_reload, FakeInitialModel
 from modules.processing import Processed, StableDiffusionProcessingImg2Img
 from .args import get_component_names, process_args
 from ..utils.deforum_tqdm import DeforumTQDM
-from .save_images import dump_frames_cache, reset_frames_cache
+from ..media.image_saving import dump_frames_cache, reset_frames_cache
 from ..media.frame_interpolation_pipeline import process_video_interpolation
 from .general_utils import get_deforum_version, get_commit_date
 from .upscaling import make_upscale_v2
