@@ -19,8 +19,50 @@ try:
         RootArgs, WanArgs, LoopArgs, ControlnetArgs
     )
 except ImportError:
-    # Fallback if models not available
-    pass
+    # Fallback if models not available - create placeholder classes
+    class LoopArgs:
+        """Fallback LoopArgs for when data_models import fails"""
+        def __init__(self):
+            self.use_looper = False
+            self.init_images = ""
+            self.image_strength_schedule = "0: (0.75)"
+            self.image_keyframe_strength_schedule = "0: (0.50)"
+            self.blendFactorMax = "0: (0.35)"
+            self.blendFactorSlope = "0: (0.25)"
+            self.tweening_frames_schedule = "0: (20)"
+            self.color_correction_factor = "0: (0.075)"
+    
+    class ControlnetArgs:
+        """Fallback ControlnetArgs for when data_models import fails"""
+        def __init__(self):
+            # Initialize all CN attributes with defaults
+            for i in range(1, 6):
+                setattr(self, f'cn_{i}_enabled', False)
+                setattr(self, f'cn_{i}_overwrite_frames', False)
+                setattr(self, f'cn_{i}_vid_path', "")
+                setattr(self, f'cn_{i}_mask_vid_path', "")
+                setattr(self, f'cn_{i}_use_vid_as_input', False)
+                setattr(self, f'cn_{i}_low_vram', False)
+                setattr(self, f'cn_{i}_pixel_perfect', False)
+                setattr(self, f'cn_{i}_module', "None")
+                setattr(self, f'cn_{i}_model', "None")
+                setattr(self, f'cn_{i}_weight', "0: (1.0)")
+                setattr(self, f'cn_{i}_guidance_start', "0: (0.0)")
+                setattr(self, f'cn_{i}_guidance_end', "0: (1.0)")
+                setattr(self, f'cn_{i}_processor_res', 64)
+                setattr(self, f'cn_{i}_threshold_a', 64)
+                setattr(self, f'cn_{i}_threshold_b', 64)
+                setattr(self, f'cn_{i}_resize_mode', "Scale to Fit (Inner Fit)")
+                setattr(self, f'cn_{i}_control_mode', "Balanced")
+                setattr(self, f'cn_{i}_loopback_mode', False)
+    
+    # Provide fallback classes for other imports if needed
+    DeforumArgs = None
+    DeforumAnimArgs = None
+    ParseqArgs = None
+    DeforumOutputArgs = None
+    RootArgs = None
+    WanArgs = None
 
 # Re-export component name functions
 try:
