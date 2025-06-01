@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-from ...util import opt_utils
+from ....utils import opt_utils
 from ...depth import DepthModel
 from ...RAFT import RAFT
 # Note: hybrid video imports removed - functionality not available
