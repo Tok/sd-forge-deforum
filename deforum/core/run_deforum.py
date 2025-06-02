@@ -39,11 +39,21 @@ def run_deforum(*args):
 
     times_to_run = 1
     # find how many times in total we need to run according to file count uploaded to Batch Mode upload box
-    # but we need to respec the Enable batch mode checkbox. If it's false, then don't increment times_to_run (this check
+    # but we need to respect the Enable batch mode checkbox. If it's false, then don't increment times_to_run (this check
     # is necessary because before we were holding onto the length of custom_settings_file even when enable batch mode was
     # set back to false
-    if args_dict['custom_settings_file'] is not None and args_dict['override_settings_with_file'] and len(args_dict['custom_settings_file']) > 1:
+    
+    # CRITICAL FIX: Add defensive checks for batch mode components
+    if (args_dict.get('custom_settings_file') is not None and 
+        args_dict.get('override_settings_with_file', False) and 
+        args_dict['custom_settings_file'] is not None and 
+        len(args_dict['custom_settings_file']) > 1):
         times_to_run = len(args_dict['custom_settings_file'])
+    else:
+        # Fallback: check if batch mode components exist but values are None
+        if args_dict.get('override_settings_with_file', False):
+            print("⚠️ Batch mode enabled but no files uploaded, running once with current settings")
+        times_to_run = 1
 
     print(f"times_to_run: {times_to_run}")
     # extract the job_id_prefix before entering the loop. Why? Because once we're in the loop, args gets turned into a SimpleNamespace
@@ -69,8 +79,13 @@ def run_deforum(*args):
                 print(f"{ORANGE}WARNING:{RESET_COLOR} skipped running from the following setting file, as it contains an invalid JSON: {os.path.basename(args_dict['custom_settings_file'][i].name)}")
                 continue
             else:
-                print(f"{RED}ERROR!{RESET_COLOR} Couldn't load data from '{os.path.basename(args_dict['custom_settings_file'][i].name)}'. Make sure it's a valid JSON using a JSON validator")
-                return None, None, None, f"Couldn't load data from '{os.path.basename(args_dict['custom_settings_file'][i].name)}'. Make sure it's a valid JSON using a JSON validator"
+                custom_file_name = ""
+                if args_dict.get('custom_settings_file') and len(args_dict['custom_settings_file']) > i:
+                    custom_file_name = os.path.basename(args_dict['custom_settings_file'][i].name)
+                else:
+                    custom_file_name = "settings file"
+                print(f"{RED}ERROR!{RESET_COLOR} Couldn't load data from '{custom_file_name}'. Make sure it's a valid JSON using a JSON validator")
+                return None, None, None, f"Couldn't load data from '{custom_file_name}'. Make sure it's a valid JSON using a JSON validator"
 
         root.initial_clipskip = shared.opts.data.get("CLIP_stop_at_last_layers", 1)
         root.initial_img2img_fix_steps = shared.opts.data.get("img2img_fix_steps", False)

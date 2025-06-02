@@ -13,6 +13,7 @@ from .animation_components import get_tab_animation, get_tab_prompts
 from .wan_components import get_tab_wan
 from .output_components import get_tab_output, get_tab_ffmpeg
 from .settings_components import get_tab_setup, get_tab_advanced
+from .missing_components import create_missing_component_placeholders
 from .component_builders import create_gr_elem, create_row
 
 # Legacy imports for compatibility (to be phased out)
@@ -111,25 +112,29 @@ def setup_deforum_left_side_ui():
             controlnet_dict = {}
             if d.show_controlnet_tab:
                 controlnet_dict = setup_controlnet_ui()
-            
-            # Merge all component dictionaries
-            all_components = {
-                **tab_run_params,
-                **tab_setup_params, 
-                **tab_prompts_params,
-                **tab_keyframes_params,
-                **tab_animation_params,
-                **tab_init_params,
-                **tab_wan_params,
-                **tab_output_params,
-                **tab_ffmpeg_params,
-                **tab_advanced_params,
-                **controlnet_dict
-            }
-            
-            # Add components to locals for backward compatibility
-            for key, value in all_components.items():
-                locals()[key] = value
+        
+        # CRITICAL FIX: Add missing component placeholders to prevent warnings
+        missing_components = create_missing_component_placeholders()
+        
+        # Merge all component dictionaries
+        all_components = {
+            **tab_run_params,
+            **tab_setup_params, 
+            **tab_prompts_params,
+            **tab_keyframes_params,
+            **tab_animation_params,
+            **tab_init_params,
+            **tab_wan_params,
+            **tab_output_params,
+            **tab_ffmpeg_params,
+            **tab_advanced_params,
+            **controlnet_dict,
+            **missing_components  # Add missing components to prevent warnings
+        }
+        
+        # Add components to locals for backward compatibility
+        for key, value in all_components.items():
+            locals()[key] = value
     
     # Set up UI interactions
     # show_info_on_ui.change(fn=change_css, inputs=show_info_on_ui, outputs=[css_output])

@@ -19,46 +19,56 @@ def get_tab_setup(d, da):
     Returns:
         Dict of component references
     """
+    components = {}
+    
     with gr.TabItem(f"{emoji_utils.gear()} Setup"):
         
         # BASIC SETUP
         with gr.Accordion("🛠️ Basic Setup", open=True):
             with FormRow():
-                W = create_gr_elem(d.W)
-                H = create_gr_elem(d.H)
+                components['W'] = create_gr_elem(d.W)
+                components['H'] = create_gr_elem(d.H)
                 
             with FormRow():
-                show_info_on_ui = create_gr_elem(d.show_info_on_ui)
-                show_controlnet_tab = create_gr_elem(d.show_controlnet_tab)
+                components['show_info_on_ui'] = create_gr_elem(d.show_info_on_ui)
+                components['show_controlnet_tab'] = create_gr_elem(d.show_controlnet_tab)
                 
         # GENERATION SETTINGS
         with gr.Accordion("⚙️ Generation Settings", open=True):
             with FormRow():
-                sampler = create_gr_elem(d.sampler)
-                scheduler = create_gr_elem(d.scheduler)
-                steps = create_gr_elem(d.steps)
+                components['sampler'] = create_gr_elem(d.sampler)
+                components['scheduler'] = create_gr_elem(d.scheduler)
+                components['steps'] = create_gr_elem(d.steps)
                 
             with FormRow():
-                seed = create_gr_elem(d.seed)
-                batch_name = create_gr_elem(d.batch_name)
+                components['seed'] = create_gr_elem(d.seed)
+                components['batch_name'] = create_gr_elem(d.batch_name)
                 
         # IMAGE SETTINGS
         with gr.Accordion("🖼️ Image Settings", open=False):
             with FormRow():
-                tiling = create_gr_elem(d.tiling)
-                restore_faces = create_gr_elem(d.restore_faces)
+                components['tiling'] = create_gr_elem(d.tiling)
+                components['restore_faces'] = create_gr_elem(d.restore_faces)
                 
             with FormRow():
-                seed_resize_from_w = create_gr_elem(d.seed_resize_from_w)
-                seed_resize_from_h = create_gr_elem(d.seed_resize_from_h)
+                components['seed_resize_from_w'] = create_gr_elem(d.seed_resize_from_w)
+                components['seed_resize_from_h'] = create_gr_elem(d.seed_resize_from_h)
                 
         # PATHS AND FILES
         with gr.Accordion("📁 Paths and Files", open=False):
             with FormRow():
-                prompts_path = create_gr_elem(d.prompts_path)
-                negative_prompts_path = create_gr_elem(d.negative_prompts_path)
+                components['prompts_path'] = create_gr_elem(d.prompts_path)
+                components['negative_prompts_path'] = create_gr_elem(d.negative_prompts_path)
+        
+        # BATCH MODE SECTION - CRITICAL FIX
+        batch_components = create_batch_mode_section()
+        components.update(batch_components)
+        
+        # SETTINGS PERSISTENCE SECTION
+        settings_components = create_settings_persistence_section()
+        components.update(settings_components)
                 
-    return {k: v for k, v in {**locals(), **vars()}.items()}
+    return components
 
 
 def get_tab_advanced(d, da):
@@ -71,28 +81,34 @@ def get_tab_advanced(d, da):
     Returns:
         Dict of component references
     """
+    components = {}
+    
     with gr.TabItem(f"{emoji_utils.wrench()} Advanced"):
         
         # ADVANCED GENERATION
         with gr.Accordion("🧪 Advanced Generation", open=True):
             with FormRow():
-                seed_behavior = create_gr_elem(d.seed_behavior)
-                seed_iter_N = create_gr_elem(d.seed_iter_N)
+                components['seed_behavior'] = create_gr_elem(d.seed_behavior)
+                components['seed_iter_N'] = create_gr_elem(d.seed_iter_N)
                 
             with FormRow():
-                motion_preview_mode = create_gr_elem(d.motion_preview_mode)
+                components['motion_preview_mode'] = create_gr_elem(d.motion_preview_mode)
                 
         # ERROR HANDLING
         with gr.Accordion("⚠️ Error Handling", open=False):
             with FormRow():
-                reroll_blank_frames = create_gr_elem(d.reroll_blank_frames)
-                reroll_patience = create_gr_elem(d.reroll_patience)
+                components['reroll_blank_frames'] = create_gr_elem(d.reroll_blank_frames)
+                components['reroll_patience'] = create_gr_elem(d.reroll_patience)
                 
         # MEMORY OPTIMIZATION
         with gr.Accordion("💾 Memory Optimization", open=False):
             with FormRow():
-                store_frames_in_ram = create_gr_elem(da.store_frames_in_ram)
+                components['store_frames_in_ram'] = create_gr_elem(da.store_frames_in_ram)
                 
+        # DEBUG INFO SECTION
+        debug_components = create_debug_info_section()
+        components.update(debug_components)
+        
         # EXPERIMENTAL FEATURES
         with gr.Accordion("🧪 Experimental Features", open=False):
             gr.Markdown("""
@@ -104,7 +120,7 @@ def get_tab_advanced(d, da):
             with FormRow():
                 gr.Markdown("No experimental features currently available.")
                 
-    return {k: v for k, v in {**locals(), **vars()}.items()}
+    return components
 
 
 def create_batch_mode_section():
@@ -308,4 +324,4 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         'refresh_debug_btn': refresh_debug_btn,
         'copy_debug_btn': copy_debug_btn,
         'copy_status': copy_status
-    } 
+    }
