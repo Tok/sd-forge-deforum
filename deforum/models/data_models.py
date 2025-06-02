@@ -81,7 +81,7 @@ def validate_schedule_string(schedule_str: str, parameter_name: str = "schedule"
         ValueError: If the schedule string format is invalid
     """
     if not schedule_str or not isinstance(schedule_str, str):
-        raise ValueError(f"{parameter_name} must follow format 'frame:(value)' or 'frame1:(value1), frame2:(value2)'. Got: {schedule_str}")
+        raise ValueError(f"{parameter_name} must follow format 'frame:(expression), frame:(expression), ...'. Got: {schedule_str}")
     
     # Basic pattern that handles nested parentheses and complex expressions
     # Format: frame:(expression), frame:(expression), ...
@@ -320,6 +320,33 @@ class DeforumArgs:
 
 
 @dataclass(frozen=True)
+class DeforumOutputArgs:
+    """Immutable output and video processing arguments with validation"""
+    
+    # Video output settings
+    fps: float = 15.0
+    add_soundtrack: str = "File"
+    soundtrack_path: str = "https://ia801303.us.archive.org/26/items/amen-breaks/cw_amen13_173.mp3"
+    make_gif: bool = False
+    delete_imgs: bool = False
+    
+    # Output format settings
+    output_format: str = "mp4"
+    ffmpeg_location: str = "ffmpeg"
+    ffmpeg_crf: int = 17
+    ffmpeg_preset: str = "slow"
+    use_manual_settings: bool = False
+    
+    def __post_init__(self):
+        """Validate output arguments after initialization"""
+        validate_positive_int(int(self.fps), "fps")
+        if self.fps <= 0:
+            raise ValueError("fps must be positive")
+        if self.add_soundtrack not in ["None", "File", "Init Video"]:
+            raise ValueError("add_soundtrack must be 'None', 'File', or 'Init Video'")
+
+
+@dataclass(frozen=True)
 class VideoArgs:
     """Immutable video output arguments with validation"""
     
@@ -481,6 +508,143 @@ class LoopArgs:
             validate_schedule_string(self.tweening_frames_schedule, "tweening_frames_schedule")
         if self.color_correction_factor:
             validate_schedule_string(self.color_correction_factor, "color_correction_factor")
+
+
+@dataclass(frozen=True)
+class ControlnetArgs:
+    """Immutable ControlNet arguments for all 5 models with validation"""
+    
+    # ControlNet 1
+    cn_1_enabled: bool = False
+    cn_1_overwrite_frames: bool = False
+    cn_1_vid_path: str = ""
+    cn_1_mask_vid_path: str = ""
+    cn_1_use_vid_as_input: bool = False
+    cn_1_low_vram: bool = False
+    cn_1_pixel_perfect: bool = False
+    cn_1_module: str = "None"
+    cn_1_model: str = "None"
+    cn_1_weight: str = "0: (1.0)"
+    cn_1_guidance_start: str = "0: (0.0)"
+    cn_1_guidance_end: str = "0: (1.0)"
+    cn_1_processor_res: int = 64
+    cn_1_threshold_a: int = 64
+    cn_1_threshold_b: int = 64
+    cn_1_resize_mode: str = "Scale to Fit (Inner Fit)"
+    cn_1_control_mode: str = "Balanced"
+    cn_1_loopback_mode: bool = False
+    
+    # ControlNet 2
+    cn_2_enabled: bool = False
+    cn_2_overwrite_frames: bool = False
+    cn_2_vid_path: str = ""
+    cn_2_mask_vid_path: str = ""
+    cn_2_use_vid_as_input: bool = False
+    cn_2_low_vram: bool = False
+    cn_2_pixel_perfect: bool = False
+    cn_2_module: str = "None"
+    cn_2_model: str = "None"
+    cn_2_weight: str = "0: (1.0)"
+    cn_2_guidance_start: str = "0: (0.0)"
+    cn_2_guidance_end: str = "0: (1.0)"
+    cn_2_processor_res: int = 64
+    cn_2_threshold_a: int = 64
+    cn_2_threshold_b: int = 64
+    cn_2_resize_mode: str = "Scale to Fit (Inner Fit)"
+    cn_2_control_mode: str = "Balanced"
+    cn_2_loopback_mode: bool = False
+    
+    # ControlNet 3
+    cn_3_enabled: bool = False
+    cn_3_overwrite_frames: bool = False
+    cn_3_vid_path: str = ""
+    cn_3_mask_vid_path: str = ""
+    cn_3_use_vid_as_input: bool = False
+    cn_3_low_vram: bool = False
+    cn_3_pixel_perfect: bool = False
+    cn_3_module: str = "None"
+    cn_3_model: str = "None"
+    cn_3_weight: str = "0: (1.0)"
+    cn_3_guidance_start: str = "0: (0.0)"
+    cn_3_guidance_end: str = "0: (1.0)"
+    cn_3_processor_res: int = 64
+    cn_3_threshold_a: int = 64
+    cn_3_threshold_b: int = 64
+    cn_3_resize_mode: str = "Scale to Fit (Inner Fit)"
+    cn_3_control_mode: str = "Balanced"
+    cn_3_loopback_mode: bool = False
+    
+    # ControlNet 4
+    cn_4_enabled: bool = False
+    cn_4_overwrite_frames: bool = False
+    cn_4_vid_path: str = ""
+    cn_4_mask_vid_path: str = ""
+    cn_4_use_vid_as_input: bool = False
+    cn_4_low_vram: bool = False
+    cn_4_pixel_perfect: bool = False
+    cn_4_module: str = "None"
+    cn_4_model: str = "None"
+    cn_4_weight: str = "0: (1.0)"
+    cn_4_guidance_start: str = "0: (0.0)"
+    cn_4_guidance_end: str = "0: (1.0)"
+    cn_4_processor_res: int = 64
+    cn_4_threshold_a: int = 64
+    cn_4_threshold_b: int = 64
+    cn_4_resize_mode: str = "Scale to Fit (Inner Fit)"
+    cn_4_control_mode: str = "Balanced"
+    cn_4_loopback_mode: bool = False
+    
+    # ControlNet 5
+    cn_5_enabled: bool = False
+    cn_5_overwrite_frames: bool = False
+    cn_5_vid_path: str = ""
+    cn_5_mask_vid_path: str = ""
+    cn_5_use_vid_as_input: bool = False
+    cn_5_low_vram: bool = False
+    cn_5_pixel_perfect: bool = False
+    cn_5_module: str = "None"
+    cn_5_model: str = "None"
+    cn_5_weight: str = "0: (1.0)"
+    cn_5_guidance_start: str = "0: (0.0)"
+    cn_5_guidance_end: str = "0: (1.0)"
+    cn_5_processor_res: int = 64
+    cn_5_threshold_a: int = 64
+    cn_5_threshold_b: int = 64
+    cn_5_resize_mode: str = "Scale to Fit (Inner Fit)"
+    cn_5_control_mode: str = "Balanced"
+    cn_5_loopback_mode: bool = False
+    
+    def __post_init__(self):
+        """Validate ControlNet arguments after initialization"""
+        # Validate schedule strings for weight, guidance_start, guidance_end
+        for i in range(1, 6):
+            weight_attr = f"cn_{i}_weight"
+            start_attr = f"cn_{i}_guidance_start"
+            end_attr = f"cn_{i}_guidance_end"
+            
+            weight_val = getattr(self, weight_attr)
+            start_val = getattr(self, start_attr)
+            end_val = getattr(self, end_attr)
+            
+            if weight_val:
+                validate_schedule_string(weight_val, weight_attr)
+            if start_val:
+                validate_schedule_string(start_val, start_attr)
+            if end_val:
+                validate_schedule_string(end_val, end_attr)
+            
+            # Validate processor resolution
+            proc_res_attr = f"cn_{i}_processor_res"
+            proc_res_val = getattr(self, proc_res_attr)
+            validate_range(proc_res_val, 64, 2048, proc_res_attr)
+            
+            # Validate thresholds
+            threshold_a_attr = f"cn_{i}_threshold_a"
+            threshold_b_attr = f"cn_{i}_threshold_b"
+            threshold_a_val = getattr(self, threshold_a_attr)
+            threshold_b_val = getattr(self, threshold_b_attr)
+            validate_range(threshold_a_val, 0, 1024, threshold_a_attr)
+            validate_range(threshold_b_val, 0, 1024, threshold_b_attr)
 
 
 # Helper functions for creating data models from legacy dictionaries

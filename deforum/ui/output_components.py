@@ -363,41 +363,82 @@ def get_tab_ffmpeg():
         def toggle_custom_fps(target_fps):
             return gr.update(visible=(target_fps == "Custom"))
         
-        # Connect event handlers
-        analyze_btn.click(
-            fn=analyze_video_handler,
-            inputs=[video_file],
-            outputs=[video_info]
-        )
+        # Connect event handlers - safely
+        if analyze_btn is not None and hasattr(analyze_btn, '_id'):
+            valid_inputs = [comp for comp in [video_file] if comp is not None and hasattr(comp, '_id')]
+            valid_outputs = [comp for comp in [video_info] if comp is not None and hasattr(comp, '_id')]
+            if valid_inputs and valid_outputs:
+                try:
+                    analyze_btn.click(
+                        fn=analyze_video_handler,
+                        inputs=valid_inputs,
+                        outputs=valid_outputs
+                    )
+                except Exception as e:
+                    print(f"⚠️ Failed to connect analyze button: {e}")
         
-        upscale_btn.click(
-            fn=upscale_video_handler,
-            inputs=[video_file, resolution, custom_res, quality, upscale_suffix],
-            outputs=[processing_status]
-        )
+        if upscale_btn is not None and hasattr(upscale_btn, '_id'):
+            valid_inputs = [comp for comp in [video_file, resolution, custom_res, quality, upscale_suffix] if comp is not None and hasattr(comp, '_id')]
+            valid_outputs = [comp for comp in [processing_status] if comp is not None and hasattr(comp, '_id')]
+            if valid_inputs and valid_outputs:
+                try:
+                    upscale_btn.click(
+                        fn=upscale_video_handler,
+                        inputs=valid_inputs,
+                        outputs=valid_outputs
+                    )
+                except Exception as e:
+                    print(f"⚠️ Failed to connect upscale button: {e}")
         
-        interpolate_btn.click(
-            fn=interpolate_video_handler,
-            inputs=[video_file, target_fps, custom_fps, interpolation_method, interpolation_suffix],
-            outputs=[processing_status]
-        )
+        if interpolate_btn is not None and hasattr(interpolate_btn, '_id'):
+            valid_inputs = [comp for comp in [video_file, target_fps, custom_fps, interpolation_method, interpolation_suffix] if comp is not None and hasattr(comp, '_id')]
+            valid_outputs = [comp for comp in [processing_status] if comp is not None and hasattr(comp, '_id')]
+            if valid_inputs and valid_outputs:
+                try:
+                    interpolate_btn.click(
+                        fn=interpolate_video_handler,
+                        inputs=valid_inputs,
+                        outputs=valid_outputs
+                    )
+                except Exception as e:
+                    print(f"⚠️ Failed to connect interpolate button: {e}")
         
-        replace_audio_btn.click(
-            fn=replace_audio_handler,
-            inputs=[video_file, audio_file, start_time, audio_suffix],
-            outputs=[processing_status]
-        )
+        if replace_audio_btn is not None and hasattr(replace_audio_btn, '_id'):
+            valid_inputs = [comp for comp in [video_file, audio_file, start_time, audio_suffix] if comp is not None and hasattr(comp, '_id')]
+            valid_outputs = [comp for comp in [processing_status] if comp is not None and hasattr(comp, '_id')]
+            if valid_inputs and valid_outputs:
+                try:
+                    replace_audio_btn.click(
+                        fn=replace_audio_handler,
+                        inputs=valid_inputs,
+                        outputs=valid_outputs
+                    )
+                except Exception as e:
+                    print(f"⚠️ Failed to connect replace audio button: {e}")
         
-        resolution.change(
-            fn=toggle_custom_resolution,
-            inputs=[resolution],
-            outputs=[custom_res]
-        )
+        # Toggle handlers - safely
+        if resolution is not None and hasattr(resolution, '_id'):
+            valid_outputs = [comp for comp in [custom_res] if comp is not None and hasattr(comp, '_id')]
+            if valid_outputs:
+                try:
+                    resolution.change(
+                        fn=toggle_custom_resolution,
+                        inputs=[resolution],
+                        outputs=valid_outputs
+                    )
+                except Exception as e:
+                    print(f"⚠️ Failed to connect resolution change handler: {e}")
         
-        target_fps.change(
-            fn=toggle_custom_fps,
-            inputs=[target_fps],
-            outputs=[custom_fps]
-        )
+        if target_fps is not None and hasattr(target_fps, '_id'):
+            valid_outputs = [comp for comp in [custom_fps] if comp is not None and hasattr(comp, '_id')]
+            if valid_outputs:
+                try:
+                    target_fps.change(
+                        fn=toggle_custom_fps,
+                        inputs=[target_fps],
+                        outputs=valid_outputs
+                    )
+                except Exception as e:
+                    print(f"⚠️ Failed to connect target_fps change handler: {e}")
         
     return {k: v for k, v in {**locals(), **vars()}.items()} 

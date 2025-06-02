@@ -12,60 +12,178 @@ import subprocess
 f_models_path = ph.models_path + '/Deforum'
 
 def handle_change_functions(l_vars):
-    l_vars['override_settings_with_file'].change(fn=hide_if_false, inputs=l_vars['override_settings_with_file'], outputs=l_vars['custom_settings_file'])
-    l_vars['sampler'].change(fn=show_when_ddim, inputs=l_vars['sampler'], outputs=l_vars['enable_ddim_eta_scheduling'])
-    l_vars['sampler'].change(fn=show_when_ancestral_samplers, inputs=l_vars['sampler'], outputs=l_vars['enable_ancestral_eta_scheduling'])
-    l_vars['enable_ancestral_eta_scheduling'].change(fn=hide_if_false, inputs=l_vars['enable_ancestral_eta_scheduling'], outputs=l_vars['ancestral_eta_schedule'])
-    l_vars['enable_ddim_eta_scheduling'].change(fn=hide_if_false, inputs=l_vars['enable_ddim_eta_scheduling'], outputs=l_vars['ddim_eta_schedule'])
-    l_vars['animation_mode'].change(fn=change_max_frames_visibility, inputs=l_vars['animation_mode'], outputs=l_vars['max_frames'])
-    diffusion_cadence_outputs = [l_vars['diffusion_cadence'], l_vars['optical_flow_cadence_row'], l_vars['cadence_flow_factor_schedule'],
-                                 l_vars['optical_flow_redo_generation'], l_vars['redo_flow_factor_schedule'], l_vars['diffusion_redo']]
-    for output in diffusion_cadence_outputs:
-        l_vars['animation_mode'].change(fn=change_diffusion_cadence_visibility, inputs=l_vars['animation_mode'], outputs=output)
-    three_d_related_outputs = [l_vars['only_3d_motion_column'], l_vars['depth_warp_row_1'], l_vars['depth_warp_row_2'], l_vars['depth_warp_row_3'], l_vars['depth_warp_row_4'],
-                               l_vars['depth_warp_row_5'], l_vars['depth_warp_row_6'], l_vars['depth_warp_row_7']]
-    for output in three_d_related_outputs:
-        l_vars['animation_mode'].change(fn=disble_3d_related_stuff, inputs=l_vars['animation_mode'], outputs=output)
-    pers_flip_outputs = [l_vars['per_f_th_row'], l_vars['per_f_ph_row'], l_vars['per_f_ga_row'], l_vars['per_f_f_row']]
-    for output in pers_flip_outputs:
-        l_vars['enable_perspective_flip'].change(fn=hide_if_false, inputs=l_vars['enable_perspective_flip'], outputs=output)
-        l_vars['animation_mode'].change(fn=per_flip_handle, inputs=[l_vars['animation_mode'], l_vars['enable_perspective_flip']], outputs=output)
-    l_vars['animation_mode'].change(fn=only_show_in_non_3d_mode, inputs=l_vars['animation_mode'], outputs=l_vars['depth_warp_msg_html'])
-    l_vars['animation_mode'].change(fn=enable_2d_related_stuff, inputs=l_vars['animation_mode'], outputs=l_vars['only_2d_motion_column'])
-    l_vars['animation_mode'].change(fn=disable_by_interpolation, inputs=l_vars['animation_mode'], outputs=l_vars['color_force_grayscale'])
-    l_vars['animation_mode'].change(fn=disable_by_interpolation, inputs=l_vars['animation_mode'], outputs=l_vars['noise_tab_column'])
-    l_vars['animation_mode'].change(fn=disable_pers_flip_accord, inputs=l_vars['animation_mode'], outputs=l_vars['enable_per_f_row'])
-    l_vars['animation_mode'].change(fn=disable_pers_flip_accord, inputs=l_vars['animation_mode'], outputs=l_vars['both_anim_mode_motion_params_column'])
-    l_vars['aspect_ratio_use_old_formula'].change(fn=hide_if_true, inputs=l_vars['aspect_ratio_use_old_formula'], outputs=l_vars['aspect_ratio_schedule'])
-    l_vars['optical_flow_redo_generation'].change(fn=hide_if_none, inputs=l_vars['optical_flow_redo_generation'], outputs=l_vars['redo_flow_factor_schedule_column'])
-    l_vars['optical_flow_cadence'].change(fn=hide_if_none, inputs=l_vars['optical_flow_cadence'], outputs=l_vars['cadence_flow_factor_schedule_column'])
-    l_vars['seed_behavior'].change(fn=change_seed_iter_visibility, inputs=l_vars['seed_behavior'], outputs=l_vars['seed_iter_N_row'])
-    l_vars['seed_behavior'].change(fn=change_seed_schedule_visibility, inputs=l_vars['seed_behavior'], outputs=l_vars['seed_schedule_row'])
-    l_vars['color_coherence'].change(fn=change_color_coherence_video_every_N_frames_visibility, inputs=l_vars['color_coherence'], outputs=l_vars['color_coherence_video_every_N_frames_row'])
-    l_vars['color_coherence'].change(fn=change_color_coherence_image_path_visibility, inputs=l_vars['color_coherence'], outputs=l_vars['color_coherence_image_path_row'])
-    l_vars['noise_type'].change(fn=change_perlin_visibility, inputs=l_vars['noise_type'], outputs=l_vars['perlin_row'])
-    l_vars['diffusion_cadence'].change(fn=hide_optical_flow_cadence, inputs=l_vars['diffusion_cadence'], outputs=l_vars['optical_flow_cadence_row'])
-    l_vars['depth_algorithm'].change(fn=legacy_3d_mode, inputs=l_vars['depth_algorithm'], outputs=l_vars['midas_weight'])
-    l_vars['depth_algorithm'].change(fn=show_leres_html_msg, inputs=l_vars['depth_algorithm'], outputs=l_vars['leres_license_msg'])
-    l_vars['fps'].change(fn=change_gif_button_visibility, inputs=l_vars['fps'], outputs=l_vars['make_gif'])
-    l_vars['r_upscale_model'].change(fn=update_r_upscale_factor, inputs=l_vars['r_upscale_model'], outputs=l_vars['r_upscale_factor'])
-    l_vars['ncnn_upscale_model'].change(fn=update_r_upscale_factor, inputs=l_vars['ncnn_upscale_model'], outputs=l_vars['ncnn_upscale_factor'])
-    l_vars['ncnn_upscale_model'].change(update_upscale_out_res_by_model_name, inputs=[l_vars['ncnn_upscale_in_vid_res'], l_vars['ncnn_upscale_model']],
-                                          outputs=l_vars['ncnn_upscale_out_vid_res'])
-    l_vars['ncnn_upscale_factor'].change(update_upscale_out_res, inputs=[l_vars['ncnn_upscale_in_vid_res'], l_vars['ncnn_upscale_factor']], outputs=l_vars['ncnn_upscale_out_vid_res'])
-    l_vars['vid_to_upscale_chosen_file'].change(vid_upscale_gradio_update_stats, inputs=[l_vars['vid_to_upscale_chosen_file'], l_vars['ncnn_upscale_factor']],
-                                                  outputs=[l_vars['ncnn_upscale_in_vid_fps_ui_window'], l_vars['ncnn_upscale_in_vid_frame_count_window'], l_vars['ncnn_upscale_in_vid_res'],
-                                                           l_vars['ncnn_upscale_out_vid_res']])
-    skip_video_creation_outputs = [l_vars['fps_out_format_row'], l_vars['soundtrack_row'], l_vars['store_frames_in_ram'], l_vars['make_gif'], l_vars['r_upscale_row'],
-                                   l_vars['delete_imgs'], l_vars['delete_input_frames']]
-    for output in skip_video_creation_outputs:
-        l_vars['skip_video_creation'].change(fn=change_visibility_from_skip_video, inputs=l_vars['skip_video_creation'], outputs=output)
-    l_vars['frame_interpolation_slow_mo_enabled'].change(fn=hide_if_false, inputs=l_vars['frame_interpolation_slow_mo_enabled'], outputs=l_vars['frame_interp_slow_mo_amount_column'])
-    l_vars['frame_interpolation_engine'].change(fn=change_interp_x_max_limit, inputs=[l_vars['frame_interpolation_engine'], l_vars['frame_interpolation_x_amount']],
-                                                  outputs=l_vars['frame_interpolation_x_amount'])
-    interp_hide_list = [l_vars['frame_interpolation_slow_mo_enabled'], l_vars['frame_interpolation_keep_imgs'], l_vars['frame_interpolation_use_upscaled'], l_vars['frame_interp_amounts_row']]
-    for output in interp_hide_list:
-        l_vars['frame_interpolation_engine'].change(fn=hide_interp_by_interp_status, inputs=l_vars['frame_interpolation_engine'], outputs=output)
+    """
+    Set up Gradio component change handlers.
+    
+    Args:
+        l_vars: Dictionary of local variables containing UI components
+    """
+    try:
+        # Helper function to safely get components
+        def safe_get_component(component_name):
+            if component_name in l_vars:
+                return l_vars[component_name]
+            else:
+                print(f"⚠️ Warning: UI component '{component_name}' not found, skipping related event handlers")
+                return None
+        
+        # Helper function to safely set up change handlers
+        def safe_change_handler(component, handler_func, inputs, outputs):
+            # Validate the main component
+            if component is None or not hasattr(component, '_id'):
+                return
+            
+            # Validate inputs - can be single component or list
+            if isinstance(inputs, list):
+                valid_inputs = [inp for inp in inputs if inp is not None and hasattr(inp, '_id')]
+                if len(valid_inputs) != len(inputs):
+                    return  # Skip if any input is invalid
+                inputs = valid_inputs
+            else:
+                if inputs is None or not hasattr(inputs, '_id'):
+                    return
+            
+            # Validate outputs - can be single component or list  
+            if isinstance(outputs, list):
+                valid_outputs = [out for out in outputs if out is not None and hasattr(out, '_id')]
+                if not valid_outputs:
+                    return  # Skip if no valid outputs
+                outputs = valid_outputs
+            else:
+                if outputs is None or not hasattr(outputs, '_id'):
+                    return
+            
+            # Set up the change handler with validated components
+            try:
+                component.change(fn=handler_func, inputs=inputs, outputs=outputs)
+            except Exception as e:
+                print(f"⚠️ Error setting up change handler for {getattr(component, 'elem_id', 'unknown')}: {e}")
+        
+        # Original change handlers with error handling
+        override_settings_with_file = safe_get_component('override_settings_with_file')
+        custom_settings_file = safe_get_component('custom_settings_file')
+        if override_settings_with_file and custom_settings_file:
+            safe_change_handler(override_settings_with_file, hide_if_false, override_settings_with_file, custom_settings_file)
+        
+        sampler = safe_get_component('sampler')
+        enable_ddim_eta_scheduling = safe_get_component('enable_ddim_eta_scheduling')
+        enable_ancestral_eta_scheduling = safe_get_component('enable_ancestral_eta_scheduling')
+        ancestral_eta_schedule = safe_get_component('ancestral_eta_schedule')
+        ddim_eta_schedule = safe_get_component('ddim_eta_schedule')
+        
+        if sampler and enable_ddim_eta_scheduling:
+            safe_change_handler(sampler, show_when_ddim, sampler, enable_ddim_eta_scheduling)
+        if sampler and enable_ancestral_eta_scheduling:
+            safe_change_handler(sampler, show_when_ancestral_samplers, sampler, enable_ancestral_eta_scheduling)
+        if enable_ancestral_eta_scheduling and ancestral_eta_schedule:
+            safe_change_handler(enable_ancestral_eta_scheduling, hide_if_false, enable_ancestral_eta_scheduling, ancestral_eta_schedule)
+        if enable_ddim_eta_scheduling and ddim_eta_schedule:
+            safe_change_handler(enable_ddim_eta_scheduling, hide_if_false, enable_ddim_eta_scheduling, ddim_eta_schedule)
+        
+        animation_mode = safe_get_component('animation_mode')
+        max_frames = safe_get_component('max_frames')
+        if animation_mode and max_frames:
+            safe_change_handler(animation_mode, change_max_frames_visibility, animation_mode, max_frames)
+        
+        # Diffusion cadence outputs - handle missing components gracefully
+        diffusion_cadence = safe_get_component('diffusion_cadence')
+        optical_flow_cadence_row = safe_get_component('optical_flow_cadence_row')
+        cadence_flow_factor_schedule = safe_get_component('cadence_flow_factor_schedule')
+        optical_flow_redo_generation = safe_get_component('optical_flow_redo_generation')
+        redo_flow_factor_schedule = safe_get_component('redo_flow_factor_schedule')
+        diffusion_redo = safe_get_component('diffusion_redo')
+        
+        diffusion_cadence_outputs = [comp for comp in [diffusion_cadence, optical_flow_cadence_row, cadence_flow_factor_schedule,
+                                     optical_flow_redo_generation, redo_flow_factor_schedule, diffusion_redo] if comp is not None]
+        
+        if animation_mode:
+            for output in diffusion_cadence_outputs:
+                safe_change_handler(animation_mode, change_diffusion_cadence_visibility, animation_mode, output)
+        
+        # Continue with remaining handlers, using safe access
+        if animation_mode:
+            for comp_name in ['only_3d_motion_column', 'depth_warp_row_1', 'depth_warp_row_2', 'depth_warp_row_3', 'depth_warp_row_4',
+                             'depth_warp_row_5', 'depth_warp_row_6', 'depth_warp_row_7']:
+                comp = safe_get_component(comp_name)
+                if comp:
+                    safe_change_handler(animation_mode, disble_3d_related_stuff, animation_mode, comp)
+        
+        enable_perspective_flip = safe_get_component('enable_perspective_flip')
+        if animation_mode and enable_perspective_flip:
+            for comp_name in ['per_f_th_row', 'per_f_ph_row', 'per_f_ga_row', 'per_f_f_row']:
+                comp = safe_get_component(comp_name)
+                if comp:
+                    safe_change_handler(enable_perspective_flip, hide_if_false, enable_perspective_flip, comp)
+                    safe_change_handler(animation_mode, per_flip_handle, [animation_mode, enable_perspective_flip], comp)
+        
+        # More safe handlers
+        if animation_mode:
+            for comp_name, handler in [
+                ('depth_warp_msg_html', only_show_in_non_3d_mode),
+                ('only_2d_motion_column', enable_2d_related_stuff),
+                ('color_force_grayscale', disable_by_interpolation),
+                ('noise_tab_column', disable_by_interpolation),
+                ('enable_per_f_row', disable_pers_flip_accord),
+                ('both_anim_mode_motion_params_column', disable_pers_flip_accord)
+            ]:
+                comp = safe_get_component(comp_name)
+                if comp:
+                    safe_change_handler(animation_mode, handler, animation_mode, comp)
+        
+        # Continue with rest of handlers using safe access
+        for comp_name, input_comp, output_comp, handler in [
+            ('aspect_ratio_use_old_formula', 'aspect_ratio_use_old_formula', 'aspect_ratio_schedule', hide_if_true),
+            ('optical_flow_redo_generation', 'optical_flow_redo_generation', 'redo_flow_factor_schedule_column', hide_if_none),
+            ('optical_flow_cadence', 'optical_flow_cadence', 'cadence_flow_factor_schedule_column', hide_if_none),
+            ('seed_behavior', 'seed_behavior', 'seed_iter_N_row', change_seed_iter_visibility),
+            ('seed_behavior', 'seed_behavior', 'seed_schedule_row', change_seed_schedule_visibility),
+            ('color_coherence', 'color_coherence', 'color_coherence_video_every_N_frames_row', change_color_coherence_video_every_N_frames_visibility),
+            ('color_coherence', 'color_coherence', 'color_coherence_image_path_row', change_color_coherence_image_path_visibility),
+            ('noise_type', 'noise_type', 'perlin_row', change_perlin_visibility),
+            ('depth_algorithm', 'depth_algorithm', 'midas_weight', legacy_3d_mode),
+            ('depth_algorithm', 'depth_algorithm', 'leres_license_msg', show_leres_html_msg),
+            ('fps', 'fps', 'make_gif', change_gif_button_visibility),
+            ('r_upscale_model', 'r_upscale_model', 'r_upscale_factor', update_r_upscale_factor),
+            ('ncnn_upscale_model', 'ncnn_upscale_model', 'ncnn_upscale_factor', update_r_upscale_factor)
+        ]:
+            input_component = safe_get_component(input_comp)
+            output_component = safe_get_component(output_comp)
+            if input_component and output_component:
+                safe_change_handler(input_component, handler, input_component, output_component)
+        
+        # Special handlers with multiple inputs/outputs
+        if diffusion_cadence and optical_flow_cadence_row:
+            safe_change_handler(diffusion_cadence, hide_optical_flow_cadence, diffusion_cadence, optical_flow_cadence_row)
+        
+        # Skip video creation outputs
+        skip_video_creation = safe_get_component('skip_video_creation')
+        if skip_video_creation:
+            for comp_name in ['fps_out_format_row', 'soundtrack_row', 'store_frames_in_ram', 'make_gif', 'r_upscale_row',
+                             'delete_imgs', 'delete_input_frames']:
+                comp = safe_get_component(comp_name)
+                if comp:
+                    safe_change_handler(skip_video_creation, change_visibility_from_skip_video, skip_video_creation, comp)
+        
+        # Frame interpolation handlers
+        frame_interpolation_slow_mo_enabled = safe_get_component('frame_interpolation_slow_mo_enabled')
+        frame_interp_slow_mo_amount_column = safe_get_component('frame_interp_slow_mo_amount_column')
+        if frame_interpolation_slow_mo_enabled and frame_interp_slow_mo_amount_column:
+            safe_change_handler(frame_interpolation_slow_mo_enabled, hide_if_false, frame_interpolation_slow_mo_enabled, frame_interp_slow_mo_amount_column)
+        
+        frame_interpolation_engine = safe_get_component('frame_interpolation_engine')
+        frame_interpolation_x_amount = safe_get_component('frame_interpolation_x_amount')
+        if frame_interpolation_engine and frame_interpolation_x_amount:
+            safe_change_handler(frame_interpolation_engine, change_interp_x_max_limit, [frame_interpolation_engine, frame_interpolation_x_amount], frame_interpolation_x_amount)
+        
+        # Interpolation hide list
+        if frame_interpolation_engine:
+            for comp_name in ['frame_interpolation_slow_mo_enabled', 'frame_interpolation_keep_imgs', 'frame_interpolation_use_upscaled', 'frame_interp_amounts_row']:
+                comp = safe_get_component(comp_name)
+                if comp:
+                    safe_change_handler(frame_interpolation_engine, hide_interp_by_interp_status, frame_interpolation_engine, comp)
+    except Exception as e:
+        print(f"⚠️ Error in handle_change_functions: {e}")
+        print("Extension will continue loading with limited UI functionality")
 
 # START gradio-to-frame-interoplation/ upscaling functions
 def upload_vid_to_interpolate(file, engine, x_am, sl_enabled, sl_am, keep_imgs, in_vid_fps):

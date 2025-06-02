@@ -126,14 +126,43 @@ def setup_controlnet_ui_raw():
         hide_output_list = [pixel_perfect, low_vram, mod_row, module, weight_row, start_cs_row, end_cs_row, env_row, overwrite_frames, vid_path_row, control_mode_row, mask_vid_path_row,
                             control_loopback_row]  # add mask_vid_path_row when masks are working again
         for cn_output in hide_output_list:
-            enabled.change(fn=hide_ui_by_cn_status, inputs=enabled, outputs=cn_output)
-        module.change(build_sliders, inputs=[module, pixel_perfect], outputs=[processor_res, threshold_a, threshold_b, advanced_column, model, refresh_models])
+            # Safely connect enabled change handler
+            if enabled is not None and hasattr(enabled, '_id') and cn_output is not None and hasattr(cn_output, '_id'):
+                try:
+                    enabled.change(fn=hide_ui_by_cn_status, inputs=enabled, outputs=cn_output)
+                except Exception as e:
+                    print(f"⚠️ Failed to connect ControlNet enabled change handler: {e}")
+        
+        # Safely connect module change handler
+        if module is not None and hasattr(module, '_id'):
+            valid_inputs = [comp for comp in [module, pixel_perfect] if comp is not None and hasattr(comp, '_id')]
+            valid_outputs = [comp for comp in [processor_res, threshold_a, threshold_b, advanced_column, model, refresh_models] if comp is not None and hasattr(comp, '_id')]
+            if valid_inputs and valid_outputs:
+                try:
+                    module.change(build_sliders, inputs=valid_inputs, outputs=valid_outputs)
+                except Exception as e:
+                    print(f"⚠️ Failed to connect ControlNet module change handler: {e}")
+        
         # hide vid/image input fields
         loopback_outs = [vid_path_row, mask_vid_path_row]
         for loopback_output in loopback_outs:
-            loopback_mode.change(fn=hide_file_textboxes, inputs=loopback_mode, outputs=loopback_output)
-        # handle pixel perfect ui changes
-        pixel_perfect.change(build_sliders, inputs=[module, pixel_perfect], outputs=[processor_res, threshold_a, threshold_b, advanced_column, model, refresh_models])
+            # Safely connect loopback_mode change handler
+            if loopback_mode is not None and hasattr(loopback_mode, '_id') and loopback_output is not None and hasattr(loopback_output, '_id'):
+                try:
+                    loopback_mode.change(fn=hide_file_textboxes, inputs=loopback_mode, outputs=loopback_output)
+                except Exception as e:
+                    print(f"⚠️ Failed to connect ControlNet loopback_mode change handler: {e}")
+        
+        # handle pixel perfect ui changes - safely
+        if pixel_perfect is not None and hasattr(pixel_perfect, '_id'):
+            valid_inputs = [comp for comp in [module, pixel_perfect] if comp is not None and hasattr(comp, '_id')]
+            valid_outputs = [comp for comp in [processor_res, threshold_a, threshold_b, advanced_column, model, refresh_models] if comp is not None and hasattr(comp, '_id')]
+            if valid_inputs and valid_outputs:
+                try:
+                    pixel_perfect.change(build_sliders, inputs=valid_inputs, outputs=valid_outputs)
+                except Exception as e:
+                    print(f"⚠️ Failed to connect ControlNet pixel_perfect change handler: {e}")
+        
         infotext_fields.extend([
             (module, f"ControlNet Preprocessor"),
             (model, f"ControlNet Model"),

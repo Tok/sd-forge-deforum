@@ -127,7 +127,11 @@ def _create_motion_tab(da, components):
                 def reset_zoom_field():
                     return {zoom: gr.update(value='0:(1)', visible=True)}
 
-                reset_zoom_button.click(fn=reset_zoom_field, inputs=[], outputs=[zoom])
+                # Only set up click handler if zoom component is valid
+                if zoom is not None and hasattr(zoom, '_id'):
+                    reset_zoom_button.click(fn=reset_zoom_field, inputs=[], outputs=[zoom])
+                else:
+                    print("⚠️ Warning: Cannot set up zoom reset button - zoom component is invalid")
                 
             angle = create_row(da.angle)
             transform_center_x = create_row(da.transform_center_x)
@@ -152,7 +156,11 @@ def _create_motion_tab(da, components):
                 def reset_tr_z_field():
                     return {translation_z: gr.update(value='0:(0)', visible=True)}
 
-                reset_tr_z_button.click(fn=reset_tr_z_field, inputs=[], outputs=[translation_z])
+                # Only set up click handler if translation_z component is valid
+                if translation_z is not None and hasattr(translation_z, '_id'):
+                    reset_tr_z_button.click(fn=reset_tr_z_field, inputs=[], outputs=[translation_z])
+                else:
+                    print("⚠️ Warning: Cannot set up translation_z reset button - component is invalid")
                 
             rotation_3d_x = create_row(da.rotation_3d_x)
             rotation_3d_y = create_row(da.rotation_3d_y)

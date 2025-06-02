@@ -360,37 +360,47 @@ def _create_advanced_settings_section(dw):
 
 def _create_qwen_management_section():
     """Create the Qwen model management section."""
-    with gr.Accordion("🧠 Qwen Model Management", open=False):
-        gr.Markdown("""
-        **Model Information & Auto-Download Status**
-        
-        Monitor Qwen model availability and manage downloads:
-        """)
-        
-        qwen_model_status = gr.HTML(
-            label="Qwen Model Status",
-            value="⏳ Checking model availability...",
-            elem_id="wan_qwen_model_status"
-        )
-        
-        with FormRow():
-            check_qwen_models_btn = gr.Button(
-                "🔍 Check Model Status",
-                variant="secondary",
-                elem_id="wan_check_qwen_models_btn"
+    try:
+        with gr.Accordion("🧠 Qwen Model Management", open=False):
+            gr.Markdown("""
+            **Model Information & Auto-Download Status**
+            
+            Monitor Qwen model availability and manage downloads:
+            """)
+            
+            qwen_model_status = gr.HTML(
+                label="Qwen Model Status",
+                value="⏳ Checking model availability...",
+                elem_id="wan_qwen_model_status"
             )
-            download_qwen_model_btn = gr.Button(
-                "📥 Download Selected Model",
-                variant="primary",
-                elem_id="wan_download_qwen_model_btn"
-            )
-            cleanup_qwen_cache_btn = gr.Button(
-                "🧹 Cleanup Model Cache",
-                variant="secondary",
-                elem_id="wan_cleanup_qwen_cache_btn"
-            )
+            
+            with FormRow():
+                check_qwen_models_btn = gr.Button(
+                    "🔍 Check Model Status",
+                    variant="secondary",
+                    elem_id="wan_check_qwen_models_btn"
+                )
+                download_qwen_model_btn = gr.Button(
+                    "📥 Download Selected Model",
+                    variant="primary",
+                    elem_id="wan_download_qwen_model_btn"
+                )
+                cleanup_qwen_cache_btn = gr.Button(
+                    "🧹 Cleanup Model Cache",
+                    variant="secondary",
+                    elem_id="wan_cleanup_qwen_cache_btn"
+                )
+        
+        return qwen_model_status, check_qwen_models_btn, download_qwen_model_btn, cleanup_qwen_cache_btn
     
-    return qwen_model_status, check_qwen_models_btn, download_qwen_model_btn, cleanup_qwen_cache_btn
+    except Exception as e:
+        print(f"⚠️ Error creating Qwen management section: {e}")
+        # Return placeholder components to prevent None values
+        qwen_model_status = gr.HTML(value=f"❌ Error creating Qwen management: {e}")
+        check_qwen_models_btn = gr.Button("Error - Check Model Status", variant="secondary")
+        download_qwen_model_btn = gr.Button("Error - Download Model", variant="primary") 
+        cleanup_qwen_cache_btn = gr.Button("Error - Cleanup Cache", variant="secondary")
+        return qwen_model_status, check_qwen_models_btn, download_qwen_model_btn, cleanup_qwen_cache_btn
 
 
 def _create_autodiscovery_section():
@@ -682,14 +692,47 @@ def _connect_wan_event_handlers(
 ):
     """Connect all WAN event handlers."""
     
+    def safe_connect_handler(component, fn, inputs, outputs):
+        """Safely connect event handler with None component validation."""
+        if component is not None and hasattr(component, '_id'):
+            # Validate inputs
+            safe_inputs = []
+            if inputs:
+                for inp in inputs:
+                    if inp is not None and hasattr(inp, '_id'):
+                        safe_inputs.append(inp)
+            
+            # Validate outputs
+            safe_outputs = []
+            if outputs:
+                for out in outputs:
+                    if out is not None and hasattr(out, '_id'):
+                        safe_outputs.append(out)
+            
+            # Only connect if we have valid components
+            if safe_outputs:  # At least need valid outputs
+                try:
+                    component.change(fn=fn, inputs=safe_inputs if safe_inputs else [], outputs=safe_outputs)
+                    return True
+                except Exception as e:
+                    print(f"⚠️ Failed to connect handler: {e}")
+                    return False
+            else:
+                print(f"⚠️ Skipping handler - no valid outputs")
+                return False
+        else:
+            print(f"⚠️ Skipping handler - invalid component")
+            return False
+    
     # Movement sensitivity override toggle
     def toggle_movement_sensitivity_override(override_enabled):
         return gr.update(interactive=override_enabled)
     
-    movement_sensitivity_override.change(
-        fn=toggle_movement_sensitivity_override,
-        inputs=[movement_sensitivity_override],
-        outputs=[wan_movement_sensitivity]
+    safe_connect_handler(
+        movement_sensitivity_override,
+        toggle_movement_sensitivity_override,
+        [movement_sensitivity_override],
+        [wan_movement_sensitivity]
     )
     
     # Flash attention handlers
@@ -711,25 +754,33 @@ def _connect_wan_event_handlers(
         except Exception as e:
             return f"❌ <span style='color: #f44336;'>Error updating mode: {e}</span>"
     
-    # Connect flash attention handlers
-    check_flash_attention_btn.click(
-        fn=check_flash_attention_status,
-        inputs=[],
-        outputs=[wan_flash_attention_status]
-    )
+    # Connect flash attention handlers safely
+    if check_flash_attention_btn is not None and hasattr(check_flash_attention_btn, '_id'):
+        if wan_flash_attention_status is not None and hasattr(wan_flash_attention_status, '_id'):
+            try:
+                check_flash_attention_btn.click(
+                    fn=check_flash_attention_status,
+                    inputs=[],
+                    outputs=[wan_flash_attention_status]
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to connect flash attention check: {e}")
     
-    wan_flash_attention_mode.change(
-        fn=update_flash_attention_mode,
-        inputs=[wan_flash_attention_mode],
-        outputs=[wan_flash_attention_status]
+    safe_connect_handler(
+        wan_flash_attention_mode,
+        update_flash_attention_mode,
+        [wan_flash_attention_mode],
+        [wan_flash_attention_status]
     )
     
     # Initialize flash attention status
     try:
-        from ..integrations.wan.wan_flash_attention_patch import get_flash_attention_status_html
-        wan_flash_attention_status.value = get_flash_attention_status_html()
+        if wan_flash_attention_status is not None:
+            from ..integrations.wan.wan_flash_attention_patch import get_flash_attention_status_html
+            wan_flash_attention_status.value = get_flash_attention_status_html()
     except Exception:
-        wan_flash_attention_status.value = "⚠️ <span style='color: #FF9800;'>Status check unavailable</span>"
+        if wan_flash_attention_status is not None:
+            wan_flash_attention_status.value = "⚠️ <span style='color: #FF9800;'>Status check unavailable</span>"
     
     # Movement analysis handlers
     from .wan_event_handlers import (
@@ -739,70 +790,113 @@ def _connect_wan_event_handlers(
         cleanup_qwen_cache_handler
     )
     
-    # Connect movement analysis
-    analyze_movement_btn.click(
-        fn=analyze_movement_handler,
-        inputs=[wan_enhanced_prompts, wan_enable_shakify, wan_movement_sensitivity_override, wan_manual_sensitivity],
-        outputs=[wan_enhanced_prompts, wan_movement_description]
+    # Connect movement analysis safely
+    if analyze_movement_btn is not None and hasattr(analyze_movement_btn, '_id'):
+        valid_inputs = [comp for comp in [wan_enhanced_prompts, wan_enable_shakify, wan_movement_sensitivity_override, wan_manual_sensitivity] if comp is not None and hasattr(comp, '_id')]
+        valid_outputs = [comp for comp in [wan_enhanced_prompts, wan_movement_description] if comp is not None and hasattr(comp, '_id')]
+        
+        if valid_outputs:
+            try:
+                analyze_movement_btn.click(
+                    fn=analyze_movement_handler,
+                    inputs=valid_inputs,
+                    outputs=valid_outputs
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to connect movement analysis: {e}")
+    
+    # Connect sensitivity override toggle safely
+    safe_connect_handler(
+        wan_movement_sensitivity_override,
+        lambda override_enabled: gr.update(visible=override_enabled),
+        [wan_movement_sensitivity_override],
+        [manual_sensitivity_row]
     )
     
-    # Connect sensitivity override toggle
-    wan_movement_sensitivity_override.change(
-        fn=lambda override_enabled: gr.update(visible=override_enabled),
-        inputs=[wan_movement_sensitivity_override],
-        outputs=[manual_sensitivity_row]
+    # Connect generation validation safely
+    if wan_generate_button is not None and hasattr(wan_generate_button, '_id'):
+        valid_outputs = [comp for comp in [wan_generation_status] if comp is not None and hasattr(comp, '_id')]
+        if valid_outputs:
+            try:
+                wan_generate_button.click(
+                    fn=validate_wan_generation,
+                    inputs=[wan_enhanced_prompts] if wan_enhanced_prompts is not None and hasattr(wan_enhanced_prompts, '_id') else [],
+                    outputs=valid_outputs
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to connect generation validation: {e}")
+    
+    # Auto-validate when prompts change safely
+    safe_connect_handler(
+        wan_enhanced_prompts,
+        validate_wan_generation,
+        [wan_enhanced_prompts],
+        [wan_generation_status]
     )
     
-    # Connect generation validation
-    wan_generate_button.click(
-        fn=validate_wan_generation,
-        inputs=[wan_enhanced_prompts],
-        outputs=[wan_generation_status]
-    )
+    # Connect prompt loading buttons safely
+    if load_deforum_to_wan_btn is not None and hasattr(load_deforum_to_wan_btn, '_id'):
+        valid_outputs = [comp for comp in [wan_enhanced_prompts] if comp is not None and hasattr(comp, '_id')]
+        if valid_outputs:
+            try:
+                load_deforum_to_wan_btn.click(
+                    fn=load_deforum_to_wan_prompts_handler,
+                    inputs=[],
+                    outputs=valid_outputs
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to connect Deforum to WAN loading: {e}")
     
-    # Auto-validate when prompts change
-    wan_enhanced_prompts.change(
-        fn=validate_wan_generation,
-        inputs=[wan_enhanced_prompts],
-        outputs=[wan_generation_status]
-    )
+    if load_wan_defaults_btn is not None and hasattr(load_wan_defaults_btn, '_id'):
+        valid_outputs = [comp for comp in [wan_enhanced_prompts] if comp is not None and hasattr(comp, '_id')]
+        if valid_outputs:
+            try:
+                load_wan_defaults_btn.click(
+                    fn=load_wan_defaults_handler,
+                    inputs=[],
+                    outputs=valid_outputs
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to connect WAN defaults loading: {e}")
     
-    # Connect prompt loading buttons
-    load_deforum_to_wan_btn.click(
-        fn=load_deforum_to_wan_prompts_handler,
-        inputs=[],
-        outputs=[wan_enhanced_prompts]
-    )
-    
-    load_wan_defaults_btn.click(
-        fn=load_wan_defaults_handler,
-        inputs=[],
-        outputs=[wan_enhanced_prompts]
-    )
-    
-    # Connect Qwen model management
-    check_qwen_models_btn.click(
-        fn=check_qwen_models_handler,
-        inputs=[local_vars.get('wan_qwen_model')],
-        outputs=[qwen_model_status]
-    )
-    
-    download_qwen_model_btn.click(
-        fn=download_qwen_model_handler,
-        inputs=[local_vars.get('wan_qwen_model'), local_vars.get('wan_qwen_auto_download')],
-        outputs=[qwen_model_status]
-    )
-    
-    cleanup_qwen_cache_btn.click(
-        fn=cleanup_qwen_cache_handler,
-        inputs=[],
-        outputs=[qwen_model_status]
-    )
-    
-    # Auto-update model status when selection changes
-    if 'wan_qwen_model' in local_vars:
-        local_vars['wan_qwen_model'].change(
-            fn=check_qwen_models_handler,
-            inputs=[local_vars['wan_qwen_model']],
-            outputs=[qwen_model_status]
-        ) 
+    # Connect Qwen model management safely
+    try:
+        if check_qwen_models_btn is not None and hasattr(check_qwen_models_btn, '_id'):
+            valid_inputs = [comp for comp in [local_vars.get('wan_qwen_model')] if comp is not None and hasattr(comp, '_id')]
+            valid_outputs = [comp for comp in [qwen_model_status] if comp is not None and hasattr(comp, '_id')]
+            if valid_outputs:
+                check_qwen_models_btn.click(
+                    fn=check_qwen_models_handler,
+                    inputs=valid_inputs,
+                    outputs=valid_outputs
+                )
+        
+        if download_qwen_model_btn is not None and hasattr(download_qwen_model_btn, '_id'):
+            valid_inputs = [comp for comp in [local_vars.get('wan_qwen_model'), local_vars.get('wan_qwen_auto_download')] if comp is not None and hasattr(comp, '_id')]
+            valid_outputs = [comp for comp in [qwen_model_status] if comp is not None and hasattr(comp, '_id')]
+            if valid_outputs:
+                download_qwen_model_btn.click(
+                    fn=download_qwen_model_handler,
+                    inputs=valid_inputs,
+                    outputs=valid_outputs
+                )
+        
+        if cleanup_qwen_cache_btn is not None and hasattr(cleanup_qwen_cache_btn, '_id'):
+            valid_outputs = [comp for comp in [qwen_model_status] if comp is not None and hasattr(comp, '_id')]
+            if valid_outputs:
+                cleanup_qwen_cache_btn.click(
+                    fn=cleanup_qwen_cache_handler,
+                    inputs=[],
+                    outputs=valid_outputs
+                )
+        
+        # Auto-update model status when selection changes - safely
+        if 'wan_qwen_model' in local_vars and local_vars['wan_qwen_model'] is not None:
+            safe_connect_handler(
+                local_vars['wan_qwen_model'],
+                check_qwen_models_handler,
+                [local_vars['wan_qwen_model']],
+                [qwen_model_status]
+            )
+    except Exception as e:
+        print(f"⚠️ Error connecting Qwen model event handlers: {e}") 

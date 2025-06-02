@@ -19,6 +19,7 @@ from .component_builders import create_gr_elem, create_row
 from ..config.args import set_arg_lists, get_component_names
 from ..config.defaults import get_gradio_html
 from .gradio_functions import change_css, handle_change_functions
+from ..utils.core_utilities import debug_print
 
 # ControlNet import (conditional)
 try:
@@ -64,6 +65,8 @@ def setup_deforum_left_side_ui():
     # Show info toggle
     with gr.Row(variant='compact'):
         show_info_on_ui = gr.Checkbox(label="Show more info", value=d.show_info_on_ui, interactive=True)
+        # Create a proper HTML component for CSS output instead of creating it inline
+        # css_output = gr.HTML(visible=False)
     
     # Main tab interface
     with gr.Blocks():
@@ -129,7 +132,7 @@ def setup_deforum_left_side_ui():
                 locals()[key] = value
     
     # Set up UI interactions
-    show_info_on_ui.change(fn=change_css, inputs=show_info_on_ui, outputs=[gr.HTML()])
+    # show_info_on_ui.change(fn=change_css, inputs=show_info_on_ui, outputs=[css_output])
     handle_change_functions(locals())
     
     # ========== WAN AI INTEGRATION ==========
@@ -148,29 +151,42 @@ def setup_deforum_left_side_ui():
 
 def _setup_wan_integration(components):
     """Set up WAN AI integration with event handlers."""
-    print("🔗 Setting up WAN AI integration...")
+    debug_print("Setting up WAN AI integration...")
     
-    # Wan Generate button
+    # Wan Generate button - with safe import
     if 'wan_generate_button' in components and 'wan_generation_status' in components:
         try:
-            # Import the main generation function
-            from .elements import wan_generate_video as wan_generate_video_main
+            # Try to import the main generation function safely
+            try:
+                from .elements import wan_generate_video as wan_generate_video_main
+            except ImportError as import_error:
+                debug_print(f"Could not import wan_generate_video: {import_error}")
+                # Skip WAN generate button setup if import fails
+                print("⚠️ Skipping WAN generate button - import failed")
+                return
             
             component_names = get_component_names()
             component_inputs = []
             
+            # Filter out None components and validate _id
             for name in component_names:
                 if name in components:
-                    component_inputs.append(components[name])
+                    comp = components[name]
+                    if comp is not None and hasattr(comp, '_id'):
+                        component_inputs.append(comp)
             
-            print(f"📊 Found {len(component_inputs)} UI components for WAN generation")
+            debug_print(f"Found {len(component_inputs)} valid UI components for WAN generation")
             
-            components['wan_generate_button'].click(
-                fn=wan_generate_video_main,
-                inputs=component_inputs,
-                outputs=[components['wan_generation_status']]
-            )
-            print("✅ WAN generate button connected")
+            # Only set up the click handler if we have valid components
+            if component_inputs and components.get('wan_generation_status') is not None and hasattr(components['wan_generation_status'], '_id'):
+                components['wan_generate_button'].click(
+                    fn=wan_generate_video_main,
+                    inputs=component_inputs,
+                    outputs=[components['wan_generation_status']]
+                )
+                debug_print("WAN generate button connected")
+            else:
+                debug_print("Skipping WAN generate button - missing valid components")
             
         except Exception as e:
             print(f"⚠️ Failed to connect WAN generate button: {e}")
@@ -178,40 +194,56 @@ def _setup_wan_integration(components):
     # Movement Analysis
     if 'analyze_movement_btn' in components:
         try:
-            components['analyze_movement_btn'].click(
-                fn=analyze_movement_handler,
-                inputs=[
-                    components.get('wan_enhanced_prompts', gr.Textbox()),
-                    components.get('wan_enable_shakify', gr.Checkbox(value=True)),
-                    components.get('wan_movement_sensitivity_override', gr.Checkbox()),
-                    components.get('wan_manual_sensitivity', gr.Slider(value=1.0))
-                ],
-                outputs=[
-                    components.get('wan_enhanced_prompts', gr.Textbox()),
-                    components.get('wan_movement_description', gr.Textbox())
-                ]
-            )
-            print("✅ Movement analysis connected")
+            # Filter out None components and validate _id
+            inputs = [comp for comp in [
+                components.get('wan_enhanced_prompts'),
+                components.get('wan_enable_shakify'),
+                components.get('wan_movement_sensitivity_override'),
+                components.get('wan_manual_sensitivity')
+            ] if comp is not None and hasattr(comp, '_id')]
+            
+            outputs = [comp for comp in [
+                components.get('wan_enhanced_prompts'),
+                components.get('wan_movement_description')
+            ] if comp is not None and hasattr(comp, '_id')]
+            
+            if inputs and outputs and len(inputs) >= 1 and len(outputs) >= 1:  # Ensure minimum required components
+                components['analyze_movement_btn'].click(
+                    fn=analyze_movement_handler,
+                    inputs=inputs,
+                    outputs=outputs
+                )
+                debug_print("Movement analysis connected")
+            else:
+                debug_print("Skipping movement analysis - missing components")
         except Exception as e:
             print(f"⚠️ Failed to connect movement analysis: {e}")
     
     # Prompt Enhancement  
     if 'enhance_prompts_btn' in components:
         try:
-            components['enhance_prompts_btn'].click(
-                fn=enhance_prompts_handler,
-                inputs=[
-                    components.get('wan_enhanced_prompts', gr.Textbox()),
-                    components.get('wan_qwen_model', gr.Dropdown()),
-                    components.get('wan_qwen_language', gr.Dropdown()),
-                    components.get('wan_qwen_auto_download', gr.Checkbox())
-                ],
-                outputs=[
-                    components.get('wan_enhanced_prompts', gr.Textbox()),
-                    components.get('enhancement_progress', gr.Textbox())
-                ]
-            )
-            print("✅ Prompt enhancement connected")
+            # Filter out None components and validate _id
+            inputs = [comp for comp in [
+                components.get('wan_enhanced_prompts'),
+                components.get('wan_qwen_model'),
+                components.get('wan_qwen_language'),
+                components.get('wan_qwen_auto_download')
+            ] if comp is not None and hasattr(comp, '_id')]
+            
+            outputs = [comp for comp in [
+                components.get('wan_enhanced_prompts'),
+                components.get('enhancement_progress')
+            ] if comp is not None and hasattr(comp, '_id')]
+            
+            if inputs and outputs and len(inputs) >= 1 and len(outputs) >= 1:  # Ensure minimum required components
+                components['enhance_prompts_btn'].click(
+                    fn=enhance_prompts_handler,
+                    inputs=inputs,
+                    outputs=outputs
+                )
+                debug_print("Prompt enhancement connected")
+            else:
+                debug_print("Skipping prompt enhancement - missing components")
         except Exception as e:
             print(f"⚠️ Failed to connect prompt enhancement: {e}")
     
@@ -228,24 +260,36 @@ def _setup_prompt_loading_buttons(components):
             if 'animation_prompts' in components:
                 enhance_prompts_handler._animation_prompts_component = components['animation_prompts']
             
-            components['load_deforum_to_wan_btn'].click(
-                fn=load_deforum_to_wan_prompts_handler,
-                inputs=[],
-                outputs=[components.get('wan_enhanced_prompts', gr.Textbox())]
-            )
-            print("✅ Load Deforum to WAN connected")
+            # Filter outputs for None components and validate _id
+            outputs = [comp for comp in [components.get('wan_enhanced_prompts')] if comp is not None and hasattr(comp, '_id')]
+            
+            if outputs:
+                components['load_deforum_to_wan_btn'].click(
+                    fn=load_deforum_to_wan_prompts_handler,
+                    inputs=[],
+                    outputs=outputs
+                )
+                debug_print("Load Deforum to WAN connected")
+            else:
+                debug_print("Skipping Load Deforum to WAN - missing output component")
         except Exception as e:
             print(f"⚠️ Failed to connect Deforum to WAN: {e}")
     
     # Load WAN defaults
     if 'load_wan_defaults_btn' in components:
         try:
-            components['load_wan_defaults_btn'].click(
-                fn=load_wan_defaults_handler,
-                inputs=[],
-                outputs=[components.get('wan_enhanced_prompts', gr.Textbox())]
-            )
-            print("✅ Load WAN defaults connected")
+            # Filter outputs for None components and validate _id
+            outputs = [comp for comp in [components.get('wan_enhanced_prompts')] if comp is not None and hasattr(comp, '_id')]
+            
+            if outputs:
+                components['load_wan_defaults_btn'].click(
+                    fn=load_wan_defaults_handler,
+                    inputs=[],
+                    outputs=outputs
+                )
+                debug_print("Load WAN defaults connected")
+            else:
+                debug_print("Skipping Load WAN defaults - missing output component")
         except Exception as e:
             print(f"⚠️ Failed to connect WAN defaults: {e}")
     
@@ -258,37 +302,57 @@ def _setup_model_management_buttons(components):
     
     if 'check_qwen_models_btn' in components:
         try:
-            components['check_qwen_models_btn'].click(
-                fn=check_qwen_models_handler,
-                inputs=[components.get('wan_qwen_model', gr.Dropdown())],
-                outputs=[components.get('qwen_model_status', gr.HTML())]
-            )
-            print("✅ Check Qwen models connected")
+            # Filter inputs and outputs for None components
+            inputs = [comp for comp in [components.get('wan_qwen_model')] if comp is not None and hasattr(comp, '_id')]
+            outputs = [comp for comp in [components.get('qwen_model_status')] if comp is not None and hasattr(comp, '_id')]
+            
+            if inputs and outputs:
+                components['check_qwen_models_btn'].click(
+                    fn=check_qwen_models_handler,
+                    inputs=inputs,
+                    outputs=outputs
+                )
+                debug_print("Check Qwen models connected")
+            else:
+                debug_print("Skipping Check Qwen models - missing components")
         except Exception as e:
             print(f"⚠️ Failed to connect Qwen model check: {e}")
     
     if 'download_qwen_model_btn' in components:
         try:
-            components['download_qwen_model_btn'].click(
-                fn=download_qwen_model_handler,
-                inputs=[
-                    components.get('wan_qwen_model', gr.Dropdown()),
-                    components.get('wan_qwen_auto_download', gr.Checkbox())
-                ],
-                outputs=[components.get('qwen_model_status', gr.HTML())]
-            )
-            print("✅ Download Qwen model connected")
+            # Filter inputs and outputs for None components
+            inputs = [comp for comp in [
+                components.get('wan_qwen_model'),
+                components.get('wan_qwen_auto_download')
+            ] if comp is not None and hasattr(comp, '_id')]
+            outputs = [comp for comp in [components.get('qwen_model_status')] if comp is not None and hasattr(comp, '_id')]
+            
+            if inputs and outputs and len(inputs) >= 1:
+                components['download_qwen_model_btn'].click(
+                    fn=download_qwen_model_handler,
+                    inputs=inputs,
+                    outputs=outputs
+                )
+                debug_print("Download Qwen model connected")
+            else:
+                debug_print("Skipping Download Qwen model - missing components")
         except Exception as e:
             print(f"⚠️ Failed to connect Qwen model download: {e}")
     
     if 'cleanup_qwen_cache_btn' in components:
         try:
-            components['cleanup_qwen_cache_btn'].click(
-                fn=cleanup_qwen_cache_handler,
-                inputs=[],
-                outputs=[components.get('qwen_model_status', gr.HTML())]
-            )
-            print("✅ Cleanup Qwen cache connected")
+            # Filter outputs for None components
+            outputs = [comp for comp in [components.get('qwen_model_status')] if comp is not None and hasattr(comp, '_id')]
+            
+            if outputs:
+                components['cleanup_qwen_cache_btn'].click(
+                    fn=cleanup_qwen_cache_handler,
+                    inputs=[],
+                    outputs=outputs
+                )
+                debug_print("Cleanup Qwen cache connected")
+            else:
+                debug_print("Skipping Cleanup Qwen cache - missing output component")
         except Exception as e:
             print(f"⚠️ Failed to connect Qwen cache cleanup: {e}")
 
@@ -300,49 +364,62 @@ def _setup_prompt_enhancement(components):
     try:
         # Random style/theme buttons
         if 'random_style_btn' in components:
-            components['random_style_btn'].click(
-                fn=random_style_handler,
-                inputs=[],
-                outputs=[components.get('style_dropdown', gr.Dropdown())]
-            )
+            outputs = [comp for comp in [components.get('style_dropdown')] if comp is not None and hasattr(comp, '_id')]
+            if outputs:
+                components['random_style_btn'].click(
+                    fn=random_style_handler,
+                    inputs=[],
+                    outputs=outputs
+                )
         
         if 'random_theme_btn' in components:
-            components['random_theme_btn'].click(
-                fn=random_theme_handler,
-                inputs=[],
-                outputs=[components.get('theme_dropdown', gr.Dropdown())]
-            )
+            outputs = [comp for comp in [components.get('theme_dropdown')] if comp is not None and hasattr(comp, '_id')]
+            if outputs:
+                components['random_theme_btn'].click(
+                    fn=random_theme_handler,
+                    inputs=[],
+                    outputs=outputs
+                )
         
         if 'random_both_btn' in components:
-            components['random_both_btn'].click(
-                fn=random_both_handler,
-                inputs=[],
-                outputs=[
-                    components.get('style_dropdown', gr.Dropdown()),
-                    components.get('theme_dropdown', gr.Dropdown())
-                ]
-            )
+            outputs = [comp for comp in [
+                components.get('style_dropdown'),
+                components.get('theme_dropdown')
+            ] if comp is not None and hasattr(comp, '_id')]
+            if outputs and len(outputs) >= 2:
+                components['random_both_btn'].click(
+                    fn=random_both_handler,
+                    inputs=[],
+                    outputs=outputs
+                )
         
         # Enhancement buttons
         if 'enhance_deforum_btn' in components:
-            components['enhance_deforum_btn'].click(
-                fn=enhance_deforum_prompts_handler,
-                inputs=[
-                    components.get('animation_prompts', gr.Textbox()),
-                    components.get('style_dropdown', gr.Dropdown()),
-                    components.get('theme_dropdown', gr.Dropdown()),
-                    components.get('custom_style', gr.Textbox()),
-                    components.get('custom_theme', gr.Textbox()),
-                    components.get('qwen_model_dropdown', gr.Dropdown()),
-                    components.get('qwen_language', gr.Dropdown()),
-                    components.get('qwen_auto_download', gr.Checkbox())
-                ],
-                outputs=[
-                    components.get('animation_prompts', gr.Textbox()),
-                    components.get('enhancement_status', gr.Textbox()),
-                    components.get('enhancement_progress', gr.Textbox())
-                ]
-            )
+            inputs = [comp for comp in [
+                components.get('animation_prompts'),
+                components.get('style_dropdown'),
+                components.get('theme_dropdown'),
+                components.get('custom_style'),
+                components.get('custom_theme'),
+                components.get('qwen_model_dropdown'),
+                components.get('qwen_language'),
+                components.get('qwen_auto_download')
+            ] if comp is not None and hasattr(comp, '_id')]
+            
+            outputs = [comp for comp in [
+                components.get('animation_prompts'),
+                components.get('enhancement_status'),
+                components.get('enhancement_progress')
+            ] if comp is not None and hasattr(comp, '_id')]
+            
+            if inputs and outputs and len(inputs) >= 1 and len(outputs) >= 1:
+                components['enhance_deforum_btn'].click(
+                    fn=enhance_deforum_prompts_handler,
+                    inputs=inputs,
+                    outputs=outputs
+                )
+            else:
+                print("⚠️ Skipping enhance_deforum_btn - missing components")
         
         print("✅ Prompt enhancement connected")
         
@@ -394,11 +471,13 @@ def _setup_model_validation(components):
         
         for button_name, callback in validation_buttons:
             if button_name in components:
-                components[button_name].click(
-                    fn=callback,
-                    inputs=[],
-                    outputs=[components.get('validation_output', gr.Textbox())]
-                )
+                outputs = [comp for comp in [components.get('validation_output')] if comp is not None and hasattr(comp, '_id')]
+                if outputs:
+                    components[button_name].click(
+                        fn=callback,
+                        inputs=[],
+                        outputs=outputs
+                    )
         
         print("✅ Model validation connected")
         

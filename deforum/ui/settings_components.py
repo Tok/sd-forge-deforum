@@ -137,15 +137,21 @@ def create_batch_mode_section():
                 elem_id="custom_setting_file"
             )
         
-        # Toggle visibility of file upload
+        # Toggle visibility of file upload - safely
         def toggle_settings_file(enabled):
             return gr.update(visible=enabled)
         
-        override_settings_with_file.change(
-            fn=toggle_settings_file,
-            inputs=[override_settings_with_file],
-            outputs=[settings_file_row]
-        )
+        if override_settings_with_file is not None and hasattr(override_settings_with_file, '_id'):
+            valid_outputs = [comp for comp in [settings_file_row] if comp is not None and hasattr(comp, '_id')]
+            if valid_outputs:
+                try:
+                    override_settings_with_file.change(
+                        fn=toggle_settings_file,
+                        inputs=[override_settings_with_file],
+                        outputs=valid_outputs
+                    )
+                except Exception as e:
+                    print(f"⚠️ Failed to connect override_settings_with_file change handler: {e}")
     
     return {
         'override_settings_with_file': override_settings_with_file,
@@ -231,6 +237,9 @@ def create_debug_info_section():
                 variant="secondary"
             )
         
+        # Create a hidden status component instead of creating it inline
+        copy_status = gr.Textbox(visible=False)
+        
         def get_debug_info():
             """Collect system debug information."""
             try:
@@ -291,11 +300,12 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         copy_debug_btn.click(
             fn=copy_to_clipboard,
             inputs=[debug_info],
-            outputs=[gr.Textbox(visible=False)]  # Hidden status output
+            outputs=[copy_status]  # Use the proper component instead of inline creation
         )
     
     return {
         'debug_info': debug_info,
         'refresh_debug_btn': refresh_debug_btn,
-        'copy_debug_btn': copy_debug_btn
+        'copy_debug_btn': copy_debug_btn,
+        'copy_status': copy_status
     } 

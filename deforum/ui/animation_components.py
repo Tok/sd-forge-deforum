@@ -251,17 +251,30 @@ def get_tab_prompts(da):
                 return f"❌ **Validation Error:** {str(e)}"
         
         # Connect validation handler
-        validate_prompts_btn.click(
-            fn=validate_prompts_handler,
-            inputs=[animation_prompts],
-            outputs=[validation_output]
-        )
+        if validate_prompts_btn is not None and hasattr(validate_prompts_btn, '_id'):
+            valid_inputs = [comp for comp in [animation_prompts] if comp is not None and hasattr(comp, '_id')]
+            valid_outputs = [comp for comp in [validation_output] if comp is not None and hasattr(comp, '_id')]
+            if valid_inputs and valid_outputs:
+                try:
+                    validate_prompts_btn.click(
+                        fn=validate_prompts_handler,
+                        inputs=valid_inputs,
+                        outputs=valid_outputs
+                    )
+                except Exception as e:
+                    print(f"⚠️ Failed to connect validation button: {e}")
         
-        # Auto-validate on change (debounced)
-        animation_prompts.change(
-            fn=validate_prompts_handler,
-            inputs=[animation_prompts], 
-            outputs=[validation_output]
-        )
+        # Auto-validate on change (debounced) - safely
+        if animation_prompts is not None and hasattr(animation_prompts, '_id'):
+            valid_outputs = [comp for comp in [validation_output] if comp is not None and hasattr(comp, '_id')]
+            if valid_outputs:
+                try:
+                    animation_prompts.change(
+                        fn=validate_prompts_handler,
+                        inputs=[animation_prompts], 
+                        outputs=valid_outputs
+                    )
+                except Exception as e:
+                    print(f"⚠️ Failed to connect animation prompts change handler: {e}")
     
     return {k: v for k, v in {**locals(), **vars()}.items()} 
