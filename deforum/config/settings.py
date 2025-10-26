@@ -80,7 +80,6 @@ def load_args(args_dict_main, args, anim_args, parseq_args, audio_sync_args, loo
                             logger.info(f"{emoji_if_enabled('🔍')} LOAD_ARGS: Setting {k} in {namespace_name}: {old_val} → {new_val}")
                     else:
                         logger.info(f"Key {k} doesn't exist in the custom settings data! Using default value of {v}")
-        logger.info(args, anim_args, parseq_args, loop_args)
         return True
 
 # save settings function that get calls when run_deforum is being called
