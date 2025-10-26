@@ -985,7 +985,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     label="Sync Status",
                     value="",
                     interactive=False,
-                    lines=2,
+                    lines=12,
                     info="Status messages will appear here"
                 )
 
