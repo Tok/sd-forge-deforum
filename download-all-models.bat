@@ -26,8 +26,8 @@ if not exist "models\Stable-diffusion\Flux" mkdir "models\Stable-diffusion\Flux"
 if not exist "models\VAE" mkdir "models\VAE"
 if not exist "models\ControlNet" mkdir "models\ControlNet"
 if not exist "models\Deforum\film_interpolation" mkdir "models\Deforum\film_interpolation"
-if not exist "models\wan" mkdir "models\wan"
-if not exist "models\qwen" mkdir "models\qwen"
+if not exist "models\Deforum\wan" mkdir "models\Deforum\wan"
+if not exist "models\Deforum\qwen" mkdir "models\Deforum\qwen"
 echo [OK] Directories created
 echo.
 
@@ -214,19 +214,19 @@ goto :skip_wan
 
 :download_flf2v_func
 echo Downloading Wan2.1-FLF2V-14B...
-huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers --local-dir models\wan\Wan2.1-FLF2V-14B --resume-download
+huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers --local-dir models\Deforum\wan\Wan2.1-FLF2V-14B --resume-download
 echo [OK] FLF2V-14B downloaded
 exit /b 0
 
 :download_ti2v_5b_func
 echo Downloading Wan2.2-TI2V-5B...
-huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models\wan\Wan2.2-TI2V-5B --resume-download
+huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models\Deforum\wan\Wan2.2-TI2V-5B --resume-download
 echo [OK] TI2V-5B downloaded
 exit /b 0
 
 :download_ti2v_14b_func
 echo Downloading Wan2.2-TI2V-A14B...
-huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models\wan\Wan2.2-TI2V-A14B --resume-download
+huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models\Deforum\wan\Wan2.2-TI2V-A14B --resume-download
 echo [OK] TI2V-A14B downloaded
 exit /b 0
 
@@ -274,19 +274,19 @@ goto :skip_qwen
 
 :download_qwen_3b_func
 echo Downloading Qwen2.5-3B-Instruct...
-huggingface-cli download Qwen/Qwen2.5-3B-Instruct --local-dir models\qwen\Qwen2.5-3B-Instruct --resume-download
+huggingface-cli download Qwen/Qwen2.5-3B-Instruct --local-dir models\Deforum\qwen\Qwen2.5-3B-Instruct --resume-download
 echo [OK] Qwen2.5-3B-Instruct downloaded
 exit /b 0
 
 :download_qwen_7b_func
 echo Downloading Qwen2.5-7B-Instruct...
-huggingface-cli download Qwen/Qwen2.5-7B-Instruct --local-dir models\qwen\Qwen2.5-7B-Instruct --resume-download
+huggingface-cli download Qwen/Qwen2.5-7B-Instruct --local-dir models\Deforum\qwen\Qwen2.5-7B-Instruct --resume-download
 echo [OK] Qwen2.5-7B-Instruct downloaded
 exit /b 0
 
 :download_qwen_14b_func
 echo Downloading Qwen2.5-14B-Instruct...
-huggingface-cli download Qwen/Qwen2.5-14B-Instruct --local-dir models\qwen\Qwen2.5-14B-Instruct --resume-download
+huggingface-cli download Qwen/Qwen2.5-14B-Instruct --local-dir models\Deforum\qwen\Qwen2.5-14B-Instruct --resume-download
 echo [OK] Qwen2.5-14B-Instruct downloaded
 exit /b 0
 
@@ -307,8 +307,8 @@ echo   * Flux: models\Stable-diffusion\Flux\
 echo   * VAE ^& Text Encoders: models\VAE\
 echo   * ControlNet: models\ControlNet\
 echo   * FILM: models\Deforum\film_interpolation\
-echo   * Wan: models\wan\
-echo   * Qwen: models\qwen\
+echo   * Wan AI Video: models\Deforum\wan\
+echo   * Qwen Prompts: models\Deforum\qwen\
 echo.
 echo Note: Depth models (Depth-Anything V2) will be auto-downloaded
 echo on first use. Gifski and Real-ESRGAN binaries are also auto-downloaded.

@@ -35,8 +35,8 @@ mkdir -p models/Stable-diffusion/Flux
 mkdir -p models/VAE
 mkdir -p models/ControlNet
 mkdir -p models/Deforum/film_interpolation
-mkdir -p models/wan
-mkdir -p models/qwen
+mkdir -p models/Deforum/wan
+mkdir -p models/Deforum/qwen
 echo -e "${GREEN}✓ Directories created${NC}"
 echo ""
 
@@ -199,7 +199,7 @@ case $wan_choice in
     1|4)
         echo -e "${YELLOW}Downloading Wan2.1-FLF2V-14B...${NC}"
         huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers \
-            --local-dir models/wan/Wan2.1-FLF2V-14B \
+            --local-dir models/Deforum/wan/Wan2.1-FLF2V-14B \
             --resume-download
         echo -e "${GREEN}✓ FLF2V-14B downloaded${NC}"
         ;&  # Fall through if choice was 4
@@ -209,7 +209,7 @@ case $wan_choice in
     2|4)
         echo -e "${YELLOW}Downloading Wan2.2-TI2V-5B...${NC}"
         huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers \
-            --local-dir models/wan/Wan2.2-TI2V-5B \
+            --local-dir models/Deforum/wan/Wan2.2-TI2V-5B \
             --resume-download
         echo -e "${GREEN}✓ TI2V-5B downloaded${NC}"
         ;&  # Fall through if choice was 4
@@ -219,7 +219,7 @@ case $wan_choice in
     3|4)
         echo -e "${YELLOW}Downloading Wan2.2-TI2V-A14B...${NC}"
         huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers \
-            --local-dir models/wan/Wan2.2-TI2V-A14B \
+            --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B \
             --resume-download
         echo -e "${GREEN}✓ TI2V-A14B downloaded${NC}"
         ;;
@@ -245,7 +245,7 @@ case $qwen_choice in
     1|4)
         echo -e "${YELLOW}Downloading Qwen2.5-3B-Instruct...${NC}"
         huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
-            --local-dir models/qwen/Qwen2.5-3B-Instruct \
+            --local-dir models/Deforum/qwen/Qwen2.5-3B-Instruct \
             --resume-download
         echo -e "${GREEN}✓ Qwen2.5-3B-Instruct downloaded${NC}"
         ;&  # Fall through if choice was 4
@@ -255,7 +255,7 @@ case $qwen_choice in
     2|4)
         echo -e "${YELLOW}Downloading Qwen2.5-7B-Instruct...${NC}"
         huggingface-cli download Qwen/Qwen2.5-7B-Instruct \
-            --local-dir models/qwen/Qwen2.5-7B-Instruct \
+            --local-dir models/Deforum/qwen/Qwen2.5-7B-Instruct \
             --resume-download
         echo -e "${GREEN}✓ Qwen2.5-7B-Instruct downloaded${NC}"
         ;&  # Fall through if choice was 4
@@ -265,7 +265,7 @@ case $qwen_choice in
     3|4)
         echo -e "${YELLOW}Downloading Qwen2.5-14B-Instruct...${NC}"
         huggingface-cli download Qwen/Qwen2.5-14B-Instruct \
-            --local-dir models/qwen/Qwen2.5-14B-Instruct \
+            --local-dir models/Deforum/qwen/Qwen2.5-14B-Instruct \
             --resume-download
         echo -e "${GREEN}✓ Qwen2.5-14B-Instruct downloaded${NC}"
         ;;
@@ -288,8 +288,8 @@ echo "  • Flux: models/Stable-diffusion/Flux/"
 echo "  • VAE & Text Encoders: models/VAE/"
 echo "  • ControlNet: models/ControlNet/"
 echo "  • FILM: models/Deforum/film_interpolation/"
-echo "  • Wan: models/wan/"
-echo "  • Qwen: models/qwen/"
+echo "  • Wan AI Video: models/Deforum/wan/"
+echo "  • Qwen Prompts: models/Deforum/qwen/"
 echo ""
 echo -e "${BLUE}Note:${NC} Depth models (Depth-Anything V2) will be auto-downloaded"
 echo "on first use. Gifski and Real-ESRGAN binaries are also auto-downloaded."
