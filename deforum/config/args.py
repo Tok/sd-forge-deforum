@@ -219,13 +219,13 @@ def DeforumAnimArgs():
             "label": "Strength schedule (normal/tween frames)",
             "type": "textbox",
             "value": "0: (0.85)",
-            "info": "Amount of previous frame to pass through for TWEEN/NON-KEYFRAME frames. HIGH strength (0.85) = fewer diffusion steps (3/20) = stability. Controls steps: [steps - (strength * steps)]. Should be HIGHER than keyframe strength."
+            "info": "Proportion of previous frame to utilize (0-1). Higher = more previous frame influence = fewer diffusion steps. Formula: [steps - (strength * steps)]. 0.85 = 85% previous frame → 3/20 steps → stability. For tween/non-keyframe frames. Should be HIGHER than keyframe strength."
         },
         "keyframe_strength_schedule": {
             "label": "Strength schedule (keyframes)",
             "type": "textbox",
             "value": "0: (0.15)",
-            "info": "Amount of previous frame to pass through for KEYFRAME frames (frames with prompt entries). LOW strength (0.15) = more diffusion steps (17/20) = dramatic changes. At 0 it generates totally new image. Should be LOWER than normal strength. Ignored if Parseq is used or when Classic 3D mode active."
+            "info": "Proportion of previous frame to utilize (0-1). Lower = less previous frame influence = more diffusion steps. Formula: [steps - (strength * steps)]. 0.15 = 15% previous frame → 17/20 steps → dramatic changes. 0 = brand new image. For keyframe frames (with prompt entries). Should be LOWER than normal strength. Ignored if Parseq is used or when Classic 3D mode active."
         },
         "contrast_schedule": "0: (1.0)",
         "cfg_scale_schedule": {

@@ -285,9 +285,15 @@ class DiffusionFrame:
 
     @staticmethod
     def _select_keyframe_or_cadence_strength(data: RenderData, index, is_keyframe):
+        # Deforum strength = proportion of previous frame to utilize (0-1).
+        # Formula: diffusion_steps = total_steps - (strength * total_steps)
+        #
         # Keyframes use `keyframe_strength_schedule` (should be LOW = more diffusion steps = dramatic changes).
         # Non-keyframes use `strength_schedule` (should be HIGH = fewer diffusion steps = stability).
-        # Parseq overrides with its own unified strength schedule.
+        #
+        # Parseq uses same definition as Deforum (NOT SD's denoising_strength).
+        # When Parseq is active, it overrides with its own unified strength schedule.
+        #
         # Schedule series indices shifted to start at 0.
         keys = data.animation_keys.deform_keys
         idx = index - 1
