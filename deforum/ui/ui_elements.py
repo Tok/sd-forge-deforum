@@ -33,12 +33,28 @@ from deforum.utils.ui.builders import (
     create_accordion_md_row
 )
 
+# Import extracted tab modules
+from deforum.ui.tabs.tab_run import get_tab_run
+from deforum.ui.tabs.tab_keyframes import get_tab_keyframes
+from deforum.ui.tabs.tab_prompts import get_tab_prompts
+from deforum.ui.tabs.tab_qwen import get_tab_qwen
+from deforum.ui.tabs.tab_shakify import get_tab_shakify
+from deforum.ui.tabs.tab_masking import get_tab_masking
+from deforum.ui.tabs.tab_depth import get_tab_depth_warping
+from deforum.ui.tabs.tab_init import get_tab_init
+from deforum.ui.tabs.tab_wan import get_tab_wan
+from deforum.ui.tabs.tab_distribution import get_tab_distribution
+from deforum.ui.tabs.tab_output import get_tab_output
+
 
 # ******** Important message ********
 # All get_tab functions use FormRow()/ FormColumn() by default,
 # unless we have a gr.File inside that row/column, then we use gr.Row()/gr.Column() instead.
 # ******** Important message ********
-def get_tab_run(d, da):
+# NOTE: Tab functions below are now imported from deforum.ui.tabs.* modules
+# The old inline definitions are kept for reference but should be removed after testing
+
+def get_tab_run_OLD(d, da):
     with (gr.TabItem(f"{emoji_utils.run()} Run")):  # RUN TAB
         motion_preview_mode = create_row(d.motion_preview_mode)
         sampler, scheduler, steps = create_row(d, 'sampler', 'scheduler', 'steps')
