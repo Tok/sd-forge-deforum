@@ -23,6 +23,11 @@ except ImportError:
 
 from deforum.utils.system.logging.themes import get_theme_colors, RESET_COLOR, BOLD
 from deforum.utils.system.logging.emoji import get_themed_emoji
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 class LogLevel(Enum):
@@ -93,7 +98,7 @@ class DeforumLogger:
             emoji: Optional emoji name
         """
         if self._should_log(LogLevel.DEBUG):
-            print(self._format_message('debug', msg, emoji))
+            logger.info(self._format_message('debug', msg, emoji))
 
     def info(self, msg: str, emoji: Optional[str] = None):
         """Log info message (normal operation).
@@ -103,7 +108,7 @@ class DeforumLogger:
             emoji: Optional emoji name
         """
         if self._should_log(LogLevel.INFO):
-            print(self._format_message('info', msg, emoji))
+            logger.info(self._format_message('info', msg, emoji))
 
     def warning(self, msg: str, emoji: Optional[str] = None):
         """Log warning message.
@@ -113,7 +118,7 @@ class DeforumLogger:
             emoji: Optional emoji name
         """
         if self._should_log(LogLevel.WARNING):
-            print(self._format_message('warning', msg, emoji))
+            logger.info(self._format_message('warning', msg, emoji))
 
     def error(self, msg: str, emoji: Optional[str] = None):
         """Log error message.
@@ -123,7 +128,7 @@ class DeforumLogger:
             emoji: Optional emoji name
         """
         if self._should_log(LogLevel.ERROR):
-            print(self._format_message('error', msg, emoji))
+            logger.info(self._format_message('error', msg, emoji))
 
     def critical(self, msg: str, emoji: Optional[str] = None):
         """Log critical error message.
@@ -133,7 +138,7 @@ class DeforumLogger:
             emoji: Optional emoji name
         """
         if self._should_log(LogLevel.CRITICAL):
-            print(self._format_message('critical', msg, emoji))
+            logger.info(self._format_message('critical', msg, emoji))
 
     def header(self, msg: str, width: int = 80):
         """Print styled header/section divider.
@@ -154,19 +159,19 @@ class DeforumLogger:
             # Gradient border using different shades
             border_chars = ['='] * width
             border = ''.join(border_chars)
-            print(f"{color}{border}{reset}")
-            print(f"{color}{bold}{msg.center(width)}{reset}")
-            print(f"{color}{border}{reset}")
+            logger.info(f"{color}{border}{reset}")
+            logger.info(f"{color}{bold}{msg.center(width)}{reset}")
+            logger.info(f"{color}{border}{reset}")
         elif self.theme == 'classic':
             border = '=' * width
-            print(f"{color}{border}{reset}")
-            print(f"{bold}{msg.center(width)}{reset}")
-            print(f"{color}{border}{reset}")
+            logger.info(f"{color}{border}{reset}")
+            logger.info(f"{bold}{msg.center(width)}{reset}")
+            logger.info(f"{color}{border}{reset}")
         else:  # simple
             border = '=' * width
-            print(border)
-            print(msg.center(width))
-            print(border)
+            logger.info(border)
+            logger.info(msg.center(width))
+            logger.info(border)
 
     def progress(
         self,
@@ -203,10 +208,12 @@ class DeforumLogger:
             Dictionary of tqdm parameters
         """
         if self.theme == 'slopcore':
+            # Use mid-range purple from slopcore gradient
             return {
                 'bar_format': '{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]',
-                'colour': '#667eea',  # Use slopcore light purple
+                'colour': '#7B6DB8',  # Mid purple from slopcore gradient (shade 4)
                 'ncols': 100,
+                'ascii': False,
             }
         elif self.theme == 'classic':
             # IMPORTANT: Keep classic colorful style unchanged!
@@ -236,9 +243,9 @@ class DeforumLogger:
         reset = self.colors['reset']
 
         if self.theme == 'simple':
-            print(char * width)
+            logger.info(char * width)
         else:
-            print(f"{color}{char * width}{reset}")
+            logger.info(f"{color}{char * width}{reset}")
 
 
 # ============================================================================

@@ -30,6 +30,11 @@ from .defaults import (get_guided_imgs_default_json, get_camera_shake_list, get_
                        get_samplers_list, get_schedulers_list)
 from deforum.integrations.controlnet.legacy_controlnet_stubs import controlnet_component_names
 from deforum.utils.general import get_os, substitute_placeholders
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 def RootArgs():
@@ -1559,20 +1564,20 @@ def process_args(args_dict_main, run_id):
         fps_ratio = current_fps / prompt_authored_fps
         converted_prompts = {}
 
-        print(f"\n🔄 Converting prompt frame numbers from {prompt_authored_fps} FPS → {current_fps} FPS (ratio: {fps_ratio:.4f})")
+        logger.info(f"\n🔄 Converting prompt frame numbers from {prompt_authored_fps} FPS → {current_fps} FPS (ratio: {fps_ratio:.4f})", emoji='refresh')
 
         for frame_key, prompt_text in root.animation_prompts.items():
             try:
                 old_frame = int(frame_key)
                 new_frame = int(old_frame * fps_ratio)
                 converted_prompts[str(new_frame)] = prompt_text
-                print(f"   Frame {old_frame} → {new_frame}")
+                logger.info(f"   Frame {old_frame} → {new_frame}")
             except ValueError:
                 # Non-numeric key (e.g., "max_f"), keep as-is
                 converted_prompts[frame_key] = prompt_text
 
         root.animation_prompts = converted_prompts
-        print(f"✅ Converted {len(converted_prompts)} prompt frame numbers\n")
+        logger.info(f"✅ Converted {len(converted_prompts)} prompt frame numbers\n")
 
     args_loaded_ok = True
     if override_settings_with_file:

@@ -24,6 +24,11 @@ from modules.shared import opts
 
 # Import pure functions from refactored utils module
 from deforum.utils.math.interpolation import (
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
     extract_rife_name,
     clean_folder_name,
     set_interp_out_fps,
@@ -43,7 +48,7 @@ def gradio_f_interp_get_fps_and_fcount(vid_path, interp_x, slow_x_enabled, slom_
 # handle call to interpolate an uploaded video from gradio button in args.py (the function that calls this func is named 'upload_vid_to_rife')
 def process_interp_vid_upload_logic(file, engine, x_am, sl_enabled, sl_am, keep_imgs, f_location, f_crf, f_preset, in_vid_fps, f_models_path, vid_file_name):
 
-    print("got a request to *frame interpolate* an existing video.")
+    logger.info("got a request to *frame interpolate* an existing video.")
 
     _, _, resolution = get_quick_vid_info(file.name)
     folder_name = clean_folder_name(Path(vid_file_name).stem)
@@ -101,7 +106,7 @@ def process_video_interpolation(frame_interpolation_engine, frame_interpolation_
     elif frame_interpolation_engine == 'FILM':
         return prepare_film_inference(deforum_models_path=deforum_models_path, x_am=frame_interpolation_x_amount, sl_enabled=frame_interpolation_slow_mo_enabled, sl_am=frame_interpolation_slow_mo_amount, keep_imgs=keep_interp_imgs, raw_output_imgs_path=raw_output_imgs_path, img_batch_id=img_batch_id, f_location=ffmpeg_location, f_crf=ffmpeg_crf, f_preset=ffmpeg_preset, fps=fps, audio_track=real_audio_track, orig_vid_name=orig_vid_name, is_random_pics_run=is_random_pics_run, srt_path=srt_path)
     else:
-        print("Unknown Frame Interpolation engine chosen. Doing nothing.")
+        logger.info("Unknown Frame Interpolation engine chosen. Doing nothing.")
         return None
         
 def prepare_film_inference(deforum_models_path, x_am, sl_enabled, sl_am, keep_imgs, raw_output_imgs_path, img_batch_id, f_location, f_crf, f_preset, fps, audio_track, orig_vid_name, is_random_pics_run, srt_path=None):
@@ -166,7 +171,7 @@ def prepare_film_inference(deforum_models_path, x_am, sl_enabled, sl_am, keep_im
         ffmpeg_stitch_video(ffmpeg_location=f_location, fps=fps, outmp4_path=interp_vid_path, stitch_from_frame=0, stitch_to_frame=999999999, imgs_path=img_path_for_ffmpeg, add_soundtrack=add_soundtrack, audio_path=audio_track, crf=f_crf, preset=f_preset, srt_path=srt_path)
     except Exception as e:
         exception_raised = True
-        print(f"An error occurred while stitching the video: {e}")
+        logger.info(f"An error occurred while stitching the video: {e}")
 
     if orig_vid_name and (keep_imgs or exception_raised):
         shutil.move(custom_interp_path, parent_folder) 
@@ -207,7 +212,7 @@ def check_and_download_film_model(model_name, model_dest_folder):
 
 def process_interp_pics_upload_logic(pic_list, engine, x_am, sl_enabled, sl_am, keep_imgs, f_location, f_crf, f_preset, fps, f_models_path, resolution, add_soundtrack, audio_track):
     pic_path_list = [pic.name for pic in pic_list]
-    print(f"got a request to *frame interpolate* a set of {len(pic_list)} images.")
+    logger.info(f"got a request to *frame interpolate* a set of {len(pic_list)} images.")
     folder_name = clean_folder_name(Path(pic_list[0].name).stem)
     outdir_no_tmp = os.path.join(os.getcwd(), 'outputs', 'frame-interpolation', folder_name)
     i = 1

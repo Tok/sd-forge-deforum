@@ -31,6 +31,11 @@ from deforum.utils.generation.prompts import (
 )
 # Import keyframe parser for parsing prompt strings
 from deforum.core.keyframes import FrameInterpolater
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 # Optional imports for console output
 try:
@@ -295,10 +300,10 @@ def prepare_prompt(prompt_series: str, max_frames: int, seed: int, frame_idx: in
     prompt_to_print = prompt_to_print.strip()
     after_neg = "".join(after_neg).strip()
 
-    print(f"{GREEN}Seed: {RESET_COLOR}{seed}")
-    print(f"{PURPLE}Prompt: {RESET_COLOR}{prompt_to_print}")
+    logger.info(f"{GREEN}Seed: {RESET_COLOR}{seed}")
+    logger.info(f"{PURPLE}Prompt: {RESET_COLOR}{prompt_to_print}")
     if after_neg and after_neg.strip():
-        print(f"{RED}Neg Prompt: {RESET_COLOR}{after_neg}")
+        logger.info(f"{RED}Neg Prompt: {RESET_COLOR}{after_neg}")
         prompt_to_print += f" --neg {after_neg}"
 
     return prompt_to_print

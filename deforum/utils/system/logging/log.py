@@ -1,5 +1,10 @@
 # Import pure functions from refactored utils module
 from deforum.utils.image.color import (
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
     hex_to_ansi_foreground as from_hex_color,
 )
 
@@ -48,33 +53,33 @@ def print_tween_frame_from_to_info(frame, is_disabled=True):
         if end_i > 0:
             formatted_values = [f"{val:.2f}" for val in frame.tween_values()]
             count = end_i - start_i + 1
-            print(f"{ORANGE}Creating in-between: {RESET_COLOR}{count} frames ({start_i}-->{end_i}){formatted_values}")
+            logger.info(f"{ORANGE}Creating in-between: {RESET_COLOR}{count} frames ({start_i}-->{end_i}){formatted_values}")
 
 
 def print_animation_frame_info(i, max_frames):
-    print("")
-    print(f"{BLUE}Animation frame: {RESET_COLOR}{BOLD}{i}{RESET_COLOR}/{max_frames}")
+    logger.info("")
+    logger.info(f"{BLUE}Animation frame: {RESET_COLOR}{BOLD}{i}{RESET_COLOR}/{max_frames}")
 
 
 def print_tween_frame_info(data, i, cadence_flow, tween, is_disabled=True):
     if not is_disabled:  # disabled because it's spamming the cli on high cadence settings.
         msg_flow_name = '' if cadence_flow is None else data.args.anim_args.optical_flow_cadence + ' optical flow '
         msg_frame_info = f"cadence frame: {i}; tween: {tween:0.2f};"
-        print(f"Creating in-between {msg_flow_name}{msg_frame_info}")
+        logger.info(f"Creating in-between {msg_flow_name}{msg_frame_info}")
 
 
 def print_init_frame_info(init_frame):
-    print(f"Using video init frame {init_frame}")
+    logger.info(f"Using video init frame {init_frame}")
 
 
 def print_optical_flow_info(data, optical_flow_redo_generation, random_seed):
     msg_start = "Optical flow redo is diffusing and warping using"
     msg_end = "optical flow before generation."
-    print(f"{msg_start} {optical_flow_redo_generation} and seed {random_seed} {msg_end}")
+    logger.info(f"{msg_start} {optical_flow_redo_generation} and seed {random_seed} {msg_end}")
 
 
 def print_redo_generation_info(data, n):
-    print(f"Redo generation {n + 1} of {int(data.args.anim_args.diffusion_redo)} before final generation")
+    logger.info(f"Redo generation {n + 1} of {int(data.args.anim_args.diffusion_redo)} before final generation")
 
 
 def print_tween_frame_creation_info(key_frames, index_dist):
@@ -100,30 +105,30 @@ def print_key_frame_debug_info_if_verbose(diffusion_frames):
 
 
 def print_warning_generate_returned_no_image():
-    print(f"{YELLOW}Warning: {RESET_COLOR}Generate returned no image. Skipping to next iteration.")
+    logger.warning(f"{YELLOW}{RESET_COLOR}Generate returned no image. Skipping to next iteration.")
 
 
 def print_cuda_memory_state(cuda):
     for i in range(cuda.device_count()):
-        print(f"CUDA memory allocated on device {i}: {cuda.memory_allocated(i)} of {cuda.max_memory_allocated(i)}")
-        print(f"CUDA memory reserved on device {i}: {cuda.memory_reserved(i)} of {cuda.max_memory_reserved(i)}")
+        logger.info(f"CUDA memory allocated on device {i}: {cuda.memory_allocated(i)} of {cuda.max_memory_allocated(i)}")
+        logger.info(f"CUDA memory reserved on device {i}: {cuda.memory_reserved(i)} of {cuda.max_memory_reserved(i)}")
 
 
 def info(s: str, color: str = None):
     message = f"{color}{s}{RESET_COLOR}" if color else s
-    print(f"{BLUE}{BOLD}Info: {RESET_COLOR}{message}")
+    logger.info(f"{BLUE}{BOLD}Info: {RESET_COLOR}{message}")
 
 
 def error(s: str):
-    print(f"{RED}{BOLD}Error: {RESET_COLOR}{s}")
+    logger.error(f"{RED}{BOLD}{RESET_COLOR}{s}")
 
 
 def warning(s: str):
-    print(f"{ORANGE}{BOLD}Warning: {RESET_COLOR}{s}")
+    logger.warning(f"{ORANGE}{BOLD}{RESET_COLOR}{s}")
 
 
 def debug(s: str):
     # Lazy import to avoid circular dependency
     from deforum.rendering.options import is_verbose
     if is_verbose():
-        print(f"{YELLOW}{BOLD}Debug: {RESET_COLOR}{s}")
+        logger.info(f"{YELLOW}{BOLD}Debug: {RESET_COLOR}{s}")

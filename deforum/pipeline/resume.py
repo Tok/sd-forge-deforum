@@ -17,6 +17,11 @@
 import os
 import cv2
 from modules.shared import opts
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 # Resume requires at least two actual frames in order to work
 # 'Actual' frames are defined as frames that go through generation
@@ -42,9 +47,9 @@ def get_resume_vars(folder, timestring, cadence):
                 frame_count += 1
                 # add this to debugging var
                 if DEBUG_MODE:
-                    print(f"\033[36mResuming:\033[0m File: {filename}")
+                    logger.info(f"\033[36mResuming:\033[0m File: {filename}")
 
-    print(f"\033[36mResuming:\033[0m Current frame count: {frame_count}")
+    logger.info(f"\033[36mResuming:\033[0m Current frame count: {frame_count}")
 
     # get last frame from frame count corrected for any trailing cadence frames
     last_frame = frame_count - (frame_count % cadence)
@@ -62,7 +67,7 @@ def get_resume_vars(folder, timestring, cadence):
     next_img = cv2.imread(path)
 
     # report resume last/next in console
-    print(f"\033[36mResuming:\033[0m Last frame: {prev_frame} - Next frame: {next_frame} ")
+    logger.info(f"\033[36mResuming:\033[0m Last frame: {prev_frame} - Next frame: {next_frame} ")
 
     # returns:
     #   last frame count, accounting for cadence

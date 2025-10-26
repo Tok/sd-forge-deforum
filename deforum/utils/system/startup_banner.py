@@ -30,4 +30,4 @@ def print_startup_banner():
 {border_top}
 """
 
-    print(banner)
+    logger.info(banner)

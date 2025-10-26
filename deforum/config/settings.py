@@ -27,6 +27,11 @@ from .defaults import mask_fill_choices, get_camera_shake_list
 from deforum.integrations.controlnet.legacy_controlnet_stubs import controlnet_component_names
 from deforum.utils.validation.deprecation import handle_deprecated_settings
 from deforum.utils.general import get_deforum_version, clean_gradio_path_strings
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 def get_extension_base_dir():
@@ -46,9 +51,9 @@ def get_keys_to_exclude():
 
 def load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, wan_args, video_args, custom_settings_file, root, run_id):
     custom_settings_file = custom_settings_file[run_id]
-    print(f"reading custom settings from {custom_settings_file.name}")
+    logger.info(f"reading custom settings from {custom_settings_file.name}")
     if not os.path.isfile(custom_settings_file.name):
-        print('Custom settings file does not exist. Using in-notebook settings.')
+        logger.info('Custom settings file does not exist. Using in-notebook settings.')
         return
     with open(custom_settings_file.name, "r") as f:
         try:
@@ -72,10 +77,10 @@ def load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlne
                         setattr(args_namespace, k, jdata[k])
                         # Debug logging for wan_flf2v settings
                         if k.startswith('wan_flf2v'):
-                            print(f"🔍 LOAD_ARGS: Setting {k} in {namespace_name}: {old_val} → {new_val}")
+                            logger.info(f"🔍 LOAD_ARGS: Setting {k} in {namespace_name}: {old_val} → {new_val}")
                     else:
-                        print(f"Key {k} doesn't exist in the custom settings data! Using default value of {v}")
-        print(args, anim_args, parseq_args, loop_args)
+                        logger.info(f"Key {k} doesn't exist in the custom settings data! Using default value of {v}")
+        logger.info(args, anim_args, parseq_args, loop_args)
         return True
 
 # save settings function that get calls when run_deforum is being called
@@ -119,7 +124,7 @@ def save_settings(*args, **kwargs):
     if not settings_path:
         from modules import paths_internal
         settings_path = os.path.join(paths_internal.script_path, "deforum_settings.txt")
-        print(f"No settings path provided, using default path in webui root: {settings_path}")
+        logger.info(f"No settings path provided, using default path in webui root: {settings_path}")
     
     settings_path = os.path.realpath(settings_path)
     
@@ -128,13 +133,13 @@ def save_settings(*args, **kwargs):
     if not os.path.exists(settings_dir) and settings_dir != '':
         try:
             os.makedirs(settings_dir, exist_ok=True)
-            print(f"Created directory: {settings_dir}")
+            logger.info(f"Created directory: {settings_dir}")
         except Exception as e:
-            print(f"Error creating directory {settings_dir}: {str(e)}")
+            logger.info(f"Error creating directory {settings_dir}: {str(e)}")
             # If we can't create the directory, save to the webui root as fallback
             from modules import paths_internal
             settings_path = os.path.join(paths_internal.script_path, "deforum_settings.txt")
-            print(f"Falling back to saving in webui root: {settings_path}")
+            logger.info(f"Falling back to saving in webui root: {settings_path}")
     
     settings_component_names = get_settings_component_names()
     data = {settings_component_names[i]: args[i+1] for i in range(0, len(settings_component_names))}
@@ -146,7 +151,7 @@ def save_settings(*args, **kwargs):
     try:
         args_dict["prompts"] = json.loads(data['animation_prompts'])
     except json.JSONDecodeError as e:
-        print(f"Error parsing animation prompts JSON: {str(e)}")
+        logger.info(f"Error parsing animation prompts JSON: {str(e)}")
         # Use empty prompts as fallback if JSON is invalid
         args_dict["prompts"] = {}
     
@@ -172,22 +177,22 @@ def save_settings(*args, **kwargs):
     
     # Save the file with error handling
     try:
-        print(f"Saving settings to {settings_path}")
+        logger.info(f"Saving settings to {settings_path}")
         with open(settings_path, "w", encoding='utf-8') as f:
             f.write(json.dumps(filtered_combined, ensure_ascii=False, indent=4))
-        print(f"Settings saved successfully to {settings_path}")
+        logger.info(f"Settings saved successfully to {settings_path}")
     except Exception as e:
-        print(f"Error saving settings to {settings_path}: {str(e)}")
+        logger.info(f"Error saving settings to {settings_path}: {str(e)}")
         # Try to save to webui root as fallback
         try:
             from modules import paths_internal
             fallback_path = os.path.join(paths_internal.script_path, "deforum_settings.txt")
-            print(f"Attempting to save to fallback location: {fallback_path}")
+            logger.info(f"Attempting to save to fallback location: {fallback_path}")
             with open(fallback_path, "w", encoding='utf-8') as f:
                 f.write(json.dumps(filtered_combined, ensure_ascii=False, indent=4))
-            print(f"Settings saved to fallback location: {fallback_path}")
+            logger.info(f"Settings saved to fallback location: {fallback_path}")
         except Exception as e2:
-            print(f"Error saving to fallback location: {str(e2)}")
+            logger.info(f"Error saving to fallback location: {str(e2)}")
     
     # Return empty message to clear any previous messages
     return [""]
@@ -211,23 +216,23 @@ def load_all_settings(*args, ui_launch=False, update_path=False, **kwargs):
         from modules import paths_internal
         webui_root_settings = os.path.join(paths_internal.script_path, "deforum_settings.txt")
         if os.path.isfile(webui_root_settings):
-            print(f"Using settings file from webui root: {webui_root_settings}")
+            logger.info(f"Using settings file from webui root: {webui_root_settings}")
             settings_path = webui_root_settings
     
     # Check if the file exists, if not fall back to default settings
     if not os.path.isfile(settings_path):
         default_path = get_default_settings_path()
-        print(f"The settings file '{settings_path}' does not exist. Using default settings from {default_path}")
+        logger.info(f"The settings file '{settings_path}' does not exist. Using default settings from {default_path}")
         settings_path = default_path
         # If default file also doesn't exist, return unchanged data
         if not os.path.isfile(settings_path):
-            print(f"Default settings file '{default_path}' also not found. The values will be unchanged.")
+            logger.info(f"Default settings file '{default_path}' also not found. The values will be unchanged.")
             if ui_launch:
                 return ({key: gr.update(value=value) for key, value in data.items()},)
             else:
                 return [settings_path] + list(data.values()) + [""]
     
-    print(f"Reading settings from {settings_path}")
+    logger.info(f"Reading settings from {settings_path}")
 
     try:
         with open(settings_path, "r", encoding='utf-8') as f:
@@ -236,13 +241,13 @@ def load_all_settings(*args, ui_launch=False, update_path=False, **kwargs):
             if 'animation_prompts' in jdata:
                 jdata['prompts'] = jdata['animation_prompts']
     except Exception as e:
-        print(f"Error loading settings file: {str(e)}")
+        logger.info(f"Error loading settings file: {str(e)}")
         # If there's an error loading the file, fall back to default settings
         default_path = get_default_settings_path()
-        print(f"Falling back to default settings from {default_path}")
+        logger.info(f"Falling back to default settings from {default_path}")
         settings_path = default_path
         if not os.path.isfile(settings_path):
-            print(f"Default settings file '{default_path}' also not found. The values will be unchanged.")
+            logger.info(f"Default settings file '{default_path}' also not found. The values will be unchanged.")
             if ui_launch:
                 return ({key: gr.update(value=value) for key, value in data.items()},)
             else:
@@ -263,7 +268,7 @@ def load_all_settings(*args, ui_launch=False, update_path=False, **kwargs):
             val = mask_fill_choices[val]
         elif key in {'reroll_blank_frames', 'noise_type'} and key not in jdata:
             default_key_val = (DeforumArgs if key != 'noise_type' else DeforumAnimArgs)[key]
-            print(f"{key} not found in load file, using default value: {default_key_val}")
+            logger.info(f"{key} not found in load file, using default value: {default_key_val}")
             val = default_key_val
         elif key in {'animation_prompts_positive', 'animation_prompts_negative'}:
             val = jdata.get(key, default_val)
@@ -275,11 +280,11 @@ def load_all_settings(*args, ui_launch=False, update_path=False, **kwargs):
             camera_shake_list = get_camera_shake_list()
             if val in camera_shake_list.keys():
                 # If it's a key, convert it to the display name
-                print(f"Converting camera shake key '{val}' to display name '{camera_shake_list[val]}'")
+                logger.info(f"Converting camera shake key '{val}' to display name '{camera_shake_list[val]}'")
                 val = camera_shake_list[val]
             # Make sure the value exists in the list of display names
             elif val not in camera_shake_list.values():
-                print(f"Warning: Unknown camera shake value '{val}'. Using default 'Investigation'.")
+                logger.warning(f"Unknown camera shake value '{val}'. Using default 'Investigation'.")
                 val = 'Investigation'
 
         result[key] = val
@@ -308,33 +313,33 @@ def load_video_settings(*args, **kwargs):
         from modules import paths_internal
         webui_root_settings = os.path.join(paths_internal.script_path, "deforum_settings.txt")
         if os.path.isfile(webui_root_settings):
-            print(f"Using video settings from webui root file: {webui_root_settings}")
+            logger.info(f"Using video settings from webui root file: {webui_root_settings}")
             video_settings_path = webui_root_settings
     
     # Check if the file exists, if not fall back to default settings
     if not os.path.isfile(video_settings_path):
         default_path = get_default_settings_path()
-        print(f"The video settings file '{video_settings_path}' does not exist. Using default settings from {default_path}")
+        logger.info(f"The video settings file '{video_settings_path}' does not exist. Using default settings from {default_path}")
         video_settings_path = default_path
         # If default file also doesn't exist, return unchanged data
         if not os.path.isfile(video_settings_path):
-            print(f"Default settings file '{default_path}' also not found. The values will be unchanged.")
+            logger.info(f"Default settings file '{default_path}' also not found. The values will be unchanged.")
             return [data[name] for name in vid_args_names]
     
-    print(f"Reading video settings from {video_settings_path}")
+    logger.info(f"Reading video settings from {video_settings_path}")
     
     try:
         with open(video_settings_path, "r", encoding='utf-8') as f:
             jdata = json.load(f)
             handle_deprecated_settings(jdata)
     except Exception as e:
-        print(f"Error loading video settings file: {str(e)}")
+        logger.info(f"Error loading video settings file: {str(e)}")
         # If there's an error loading the file, fall back to default settings
         default_path = get_default_settings_path()
-        print(f"Falling back to default settings from {default_path}")
+        logger.info(f"Falling back to default settings from {default_path}")
         video_settings_path = default_path
         if not os.path.isfile(video_settings_path):
-            print(f"Default settings file '{default_path}' also not found. The values will be unchanged.")
+            logger.info(f"Default settings file '{default_path}' also not found. The values will be unchanged.")
             return [data[name] for name in vid_args_names]
         with open(video_settings_path, "r", encoding='utf-8') as f:
             jdata = json.load(f)

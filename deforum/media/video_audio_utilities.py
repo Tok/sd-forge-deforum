@@ -44,6 +44,11 @@ from deforum.utils.filesystem.paths import (
     get_frame_name,
 )
 from deforum.utils.filesystem.video_paths import (
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
     get_next_frame_path,
     get_output_video_path as get_manual_frame_to_vid_output_path,
 )
@@ -145,7 +150,7 @@ def vid2frames(video_path, video_in_frame_path, n=1, overwrite=True, extract_fro
             os.makedirs(video_in_frame_path, exist_ok=True) # just deleted the folder so we need to make it again
             input_content = os.listdir(video_in_frame_path)
 
-        print(f"Trying to extract frames from video with input FPS of {video_fps}. Please wait patiently.")
+        logger.info(f"Trying to extract frames from video with input FPS of {video_fps}. Please wait patiently.")
         if len(input_content) == 0:
             vidcap.set(cv2.CAP_PROP_POS_FRAMES, extract_from_frame) # Set the starting frame
             success,image = vidcap.read()
@@ -167,9 +172,9 @@ def vid2frames(video_path, video_in_frame_path, n=1, overwrite=True, extract_fro
                         t += 1
                     count += 1
                     success, image = vidcap.read()
-            print(f"Extracted {count} frames from video in {time.time() - start_time:.2f} seconds!")
+            logger.info(f"Extracted {count} frames from video in {time.time() - start_time:.2f} seconds!")
         else:
-            print("Frames already unpacked")
+            logger.info("Frames already unpacked")
         vidcap.release()
         return video_fps
 
@@ -258,11 +263,11 @@ def download_audio(audio_path):
 
         # Check cache first
         if os.path.exists(cache_path):
-            print(f"Using cached audio file: {cache_filename}")
+            logger.info(f"Using cached audio file: {cache_filename}")
             return cache_path
 
         # Download if not cached
-        print(f"Downloading audio file from: {url}")
+        logger.info(f"Downloading audio file from: {url}")
         response = get_http_client().get(url, stream=True)
         response.raise_for_status()
 
@@ -272,7 +277,7 @@ def download_audio(audio_path):
                 if chunk:
                     f.write(chunk)
 
-        print(f"Audio cached to: {cache_filename}")
+        logger.info(f"Audio cached to: {cache_filename}")
         audio_path = cache_path
     return audio_path
 
@@ -286,13 +291,13 @@ def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch
     downloaded_audio_path = None
     if add_soundtrack != 'None' and audio_path is not None:
         try:
-            print(f"Downloading audio file from: {audio_path}")
+            logger.info(f"Downloading audio file from: {audio_path}")
             downloaded_audio_path = download_audio(audio_path)
-            print(f"Audio downloaded to: {downloaded_audio_path}")
+            logger.info(f"Audio downloaded to: {downloaded_audio_path}")
         except Exception as e:
-            print(f"Error downloading audio: {e}")
+            logger.info(f"Error downloading audio: {e}")
     
-    print(f"Got a request to stitch frames to video using FFmpeg.\nFrames:\n{imgs_path}\nTo Video:\n{outmp4_path}")
+    logger.info(f"Got a request to stitch frames to video using FFmpeg.\nFrames:\n{imgs_path}\nTo Video:\n{outmp4_path}")
     msg_to_print = f"Stitching *video*..."
     console.print(msg_to_print, style="blink yellow", end="")
     if stitch_to_frame == -1:
@@ -321,17 +326,17 @@ def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch
         
         # Check if the process was successful
         if process.returncode != 0:
-            print(f"FFmpeg stderr: {stderr}")
-            print(f"FFmpeg stdout: {stdout}")
+            logger.info(f"FFmpeg stderr: {stderr}")
+            logger.info(f"FFmpeg stdout: {stdout}")
             raise RuntimeError(f"FFmpeg failed with return code {process.returncode}: {stderr}")
             
     except FileNotFoundError:
-        print("\r" + " " * len(msg_to_print), end="", flush=True)
-        print(f"\r{msg_to_print}", flush=True)
+        logger.info("\r" + " " * len(msg_to_print), end="", flush=True)
+        logger.info(f"\r{msg_to_print}", flush=True)
         raise FileNotFoundError("FFmpeg not found. Please make sure you have a working ffmpeg path under 'ffmpeg_location' parameter.")
     except Exception as e:
-        print("\r" + " " * len(msg_to_print), end="", flush=True)
-        print(f"\r{msg_to_print}", flush=True)
+        logger.info("\r" + " " * len(msg_to_print), end="", flush=True)
+        logger.info(f"\r{msg_to_print}", flush=True)
         raise Exception(f'Error stitching frames to video. Actual runtime error:{e}')
     
     add_soundtrack_status = None
@@ -400,18 +405,18 @@ def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch
             add_srt_status = f"\rError adding subtitles to video: {e}"
             add_srt_success = False
 
-    print("\r" + " " * len(msg_to_print), end="", flush=True)
-    print(f"\r{msg_to_print}", flush=True)
+    logger.info("\r" + " " * len(msg_to_print), end="", flush=True)
+    logger.info(f"\r{msg_to_print}", flush=True)
 
     status_summary = f"\rVideo stitching \033[0;32mdone\033[0m in {time.time() - start_time:.2f} seconds!"
     if add_soundtrack_status:
-        print(add_soundtrack_status, flush=True)
+        logger.info(add_soundtrack_status, flush=True)
         status_summary += " Audio embedded successfully." if add_soundtrack_success else " Sorry, no audio - see above for errors."
     if add_srt_status:
-        print(add_srt_status, flush=True)
+        logger.info(add_srt_status, flush=True)
         status_summary += " Subtitles embedded successfully." if add_srt_success else " Sorry, no subtitles - see above for errors."
 
-    print(status_summary, flush=True)
+    logger.info(status_summary, flush=True)
 
 # get_frame_name imported from deforum.utils.filesystem.paths
 
@@ -449,7 +454,7 @@ def direct_stitch_vid_from_frames(image_path, fps, add_soundtrack, audio_path):
         except (AttributeError, ValueError):
             pass
     if min_id is None or not all(os.path.isfile(image_path % (min_id + i)) for i in range(2)):
-        print("Couldn't find images that match the provided path/ pattern. At least 2 matched images are required.")
+        logger.info("Couldn't find images that match the provided path/ pattern. At least 2 matched images are required.")
         return
     out_mp4_path = get_manual_frame_to_vid_output_path(image_path)
     ffmpeg_stitch_video(ffmpeg_location=f_location, fps=fps, outmp4_path=out_mp4_path, stitch_from_frame=min_id,
@@ -511,36 +516,36 @@ def make_gifski_gif(imgs_raw_path, imgs_batch_id, fps, models_folder, current_us
         input_img_pattern_for_gifski = os.path.join(imgs_raw_path, imgs_batch_id + '_0*.png')
         cmd = [gifski_location, '-o', final_gif_path, input_img_pattern_for_gifski, '--fps', str(fps), '--quality', str(95)]
     else: # should never this else as we check before, but just in case
-        print("\r" + " " * len(msg_to_print), end="", flush=True)
-        print(f"\r{msg_to_print}", flush=True)
+        logger.info("\r" + " " * len(msg_to_print), end="", flush=True)
+        logger.info(f"\r{msg_to_print}", flush=True)
         raise Exception(f"No support for OS type: {current_user_os}")
         
     check_and_download_gifski(models_folder, current_user_os)
 
     try:
         process = subprocess.run(cmd, capture_output=True, check=True, text=True, cwd=(models_folder if current_user_os == 'Mac' else None))
-        print("\r" + " " * len(msg_to_print), end="", flush=True)
-        print(f"\r{msg_to_print}", flush=True)
-        print(f"GIF stitching \033[0;32mdone\033[0m in {time.time() - start_time:.2f} seconds!")
+        logger.info("\r" + " " * len(msg_to_print), end="", flush=True)
+        logger.info(f"\r{msg_to_print}", flush=True)
+        logger.info(f"GIF stitching \033[0;32mdone\033[0m in {time.time() - start_time:.2f} seconds!")
     except Exception as e:
-        print("\r" + " " * len(msg_to_print), end="", flush=True)
-        print(f"\r{msg_to_print}", flush=True)
-        print(f"GIF stitching *failed* with error:\n{e}")
+        logger.info("\r" + " " * len(msg_to_print), end="", flush=True)
+        logger.info(f"\r{msg_to_print}", flush=True)
+        logger.error(f"GIF stitching *failed* with error:\n{e}")
         
 def handle_imgs_deletion(vid_path=None, imgs_folder_path=None, batch_id=None):
     try:
         total_imgs_to_delete = count_matching_frames(imgs_folder_path, batch_id)
         if total_imgs_to_delete is None or total_imgs_to_delete == 0:
             return
-        print("Deleting raw images, as requested:")
+        logger.info("Deleting raw images, as requested:")
         _, fcount, _ = get_quick_vid_info(vid_path)
         if fcount == total_imgs_to_delete:
             total_imgs_deleted = delete_matching_frames(imgs_folder_path, batch_id)
-            print(f"Deleted {total_imgs_deleted} out of {total_imgs_to_delete} imgs!")
+            logger.info(f"Deleted {total_imgs_deleted} out of {total_imgs_to_delete} imgs!")
         else:
-            print("Did not delete imgs as there was a mismatch between # of frames in folder, and # of frames in actual video. Please check and delete manually. ")
+            logger.info("Did not delete imgs as there was a mismatch between # of frames in folder, and # of frames in actual video. Please check and delete manually. ")
     except Exception as e:
-        print(f"Error deleting raw images. Please delete them manually if you want. Actual error:\n{e}")
+        logger.error(f"Error deleting raw images. Please delete them manually if you want. Actual error:\n{e}")
 
 # handle deletion of inputframes created by video frame extraction
 def handle_input_frames_deletion(imgs_folder_path=None):
@@ -548,12 +553,12 @@ def handle_input_frames_deletion(imgs_folder_path=None):
         total_imgs_to_delete = count_matching_frames(imgs_folder_path, None)
         if total_imgs_to_delete is None or total_imgs_to_delete == 0:
             return
-        print("Deleting input frames, as requested:")
+        logger.info("Deleting input frames, as requested:")
         total_imgs_deleted = delete_input_frames(imgs_folder_path)
-        print(f"Deleted {total_imgs_deleted} out of {total_imgs_to_delete} inputframes!")
+        logger.info(f"Deleted {total_imgs_deleted} out of {total_imgs_to_delete} inputframes!")
         os.rmdir(imgs_folder_path)
     except Exception as e:
-        print(f"Error deleting input frames. Please delete them manually if you want. Actual error:\n{e}")
+        logger.error(f"Error deleting input frames. Please delete them manually if you want. Actual error:\n{e}")
 
 def handle_cn_frames_deletion(cn_input_frames_list):
     try:
@@ -563,10 +568,10 @@ def handle_cn_frames_deletion(cn_input_frames_list):
                 if total_cn_imgs_to_delete is None or total_cn_imgs_to_delete == 0:
                     continue
                 total_imgs_deleted = delete_input_frames(cn_inputframes_folder)
-                print(f"Deleted {total_imgs_deleted} CN inputframes out of {total_cn_imgs_to_delete}!")
+                logger.info(f"Deleted {total_imgs_deleted} CN inputframes out of {total_cn_imgs_to_delete}!")
                 os.rmdir(cn_inputframes_folder)
     except Exception as e:
-        print(f"Error deleting CN input frames. Please delete them manually if you want. Actual error:\n{e}")
+        logger.error(f"Error deleting CN input frames. Please delete them manually if you want. Actual error:\n{e}")
 
 def delete_matching_frames(from_folder, img_batch_id):
     return sum(1 for f in os.listdir(from_folder) if get_matching_frame(f, img_batch_id) and os.remove(os.path.join(from_folder, f)) is None)
@@ -602,7 +607,7 @@ def render_preview(args, anim_args, video_args, root, frame_idx, last_preview_fr
         if os.path.exists(mp4_temp_path):
             print(f"--! Skipping preview video on frame {frame_idx} (previous preview still rendering to {mp4_temp_path}...")            
         else:
-            print(f"--> Rendering preview video up to frame {frame_idx} to {mp4_preview_path}...")
+            logger.info(f"--> Rendering preview video up to frame {frame_idx} to {mp4_preview_path}...")
             try:
                 ffmpeg_stitch_video(ffmpeg_location=f_location, fps=video_args.fps, outmp4_path=mp4_temp_path, stitch_from_frame=1, stitch_to_frame=frame_idx, imgs_path=image_path, add_soundtrack=video_args.add_soundtrack, audio_path=real_audio_track, crf=f_crf, preset=f_preset, srt_path=srt_path)
             finally:

@@ -26,10 +26,15 @@ from torch.hub import download_url_to_file
 from deforum.utils.ui.console import console
 
 from modules.shared import opts
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 # NCNN Upscale section START
 def process_ncnn_upscale_vid_upload_logic(vid_path, in_vid_fps, in_vid_res, out_vid_res, models_path, upscale_model, upscale_factor, keep_imgs, f_location, f_crf, f_preset, current_user_os):
-    print(f"Got a request to *upscale* a video using {upscale_model} at {upscale_factor}")
+    logger.info(f"Got a request to *upscale* a video using {upscale_model} at {upscale_factor}")
 
     folder_name = clean_folder_name(Path(vid_path.name).stem)
     outdir = opts.outdir_samples or os.path.join(os.getcwd(), 'outputs')
@@ -67,9 +72,9 @@ def process_ncnn_video_upscaling(vid_path, outdir, in_vid_fps, in_vid_res, out_v
     start_time = time.time()
     # make call to ncnn upscaling executble
     process = subprocess.run(cmd, capture_output=True, check=True, text=True)
-    print("\r" + " " * len(msg_to_print), end="", flush=True)
-    print(f"\r{msg_to_print}", flush=True)
-    print(f"\rUpscaling \033[0;32mdone\033[0m in {time.time() - start_time:.2f} seconds!", flush=True)
+    logger.info("\r" + " " * len(msg_to_print), end="", flush=True)
+    logger.info(f"\r{msg_to_print}", flush=True)
+    logger.info(f"\rUpscaling \033[0;32mdone\033[0m in {time.time() - start_time:.2f} seconds!", flush=True)
     # set custom path for ffmpeg func below
     upscaled_imgs_path_for_ffmpeg = os.path.join(upscaled_folder_path, "%09d.png")
     add_soundtrack = 'None'
@@ -157,9 +162,9 @@ def make_upscale_v2(upscale_factor, upscale_model, keep_imgs, imgs_raw_path, img
     start_time = time.time()
     # make call to ncnn upscaling executble
     process = subprocess.run(cmd, capture_output=True, check=True, text=True, cwd=(os.path.join(deforum_models_path, 'realesrgan_ncnn') if current_user_os == 'Mac' else None))
-    print("\r" + " " * len(msg_to_print), end="", flush=True)
-    print(f"\r{msg_to_print}", flush=True)
-    print(f"\rUpscaling \033[0;32mdone\033[0m in {time.time() - start_time:.2f} seconds!", flush=True)
+    logger.info("\r" + " " * len(msg_to_print), end="", flush=True)
+    logger.info(f"\r{msg_to_print}", flush=True)
+    logger.info(f"\rUpscaling \033[0;32mdone\033[0m in {time.time() - start_time:.2f} seconds!", flush=True)
     # set custom path for ffmpeg func below - no batch ID in filename (matches depth-maps pattern)
     upscaled_imgs_path_for_ffmpeg = os.path.join(upscaled_folder_path, "%09d.png")
     # stitch video from upscaled pngs

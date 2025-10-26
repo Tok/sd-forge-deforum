@@ -1,6 +1,11 @@
 from torchvision import transforms
 # noinspection PyUnresolvedReferences
 from transformers import pipeline  # provided by Forge
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 class DepthAnything:
@@ -18,7 +23,7 @@ class DepthAnything:
             'large': 'depth-anything/Depth-Anything-V2-Large-hf'
         }
         model_name = model_map.get(model_size.lower(), model_map['small'])
-        print(f"Loading Depth Anything V2 model ({model_size}) from {model_name}...")
+        logger.info(f"Loading Depth Anything V2 model ({model_size}) from {model_name}...")
         self.pipe = pipeline(task='depth-estimation', model=model_name, device=device)
         self.pipe.model.to(device)
 

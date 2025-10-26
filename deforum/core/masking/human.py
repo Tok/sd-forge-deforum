@@ -18,6 +18,11 @@ import os, cv2
 import torch
 from pathlib import Path
 from multiprocessing import freeze_support
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 def extract_frames(input_video_path, output_imgs_path):
     # Open the video file
@@ -34,7 +39,7 @@ def extract_frames(input_video_path, output_imgs_path):
         success, image = vidcap.read()
         if success:
             cv2.imwrite(os.path.join(output_imgs_path, f"frame{i}.png"), image)
-    print(f"{frame_count} frames extracted and saved to {output_imgs_path}")
+    logger.info(f"{frame_count} frames extracted and saved to {output_imgs_path}")
     
 def video2humanmasks(input_frames_path, output_folder_path, output_type, fps):
     # freeze support is needed for video outputting

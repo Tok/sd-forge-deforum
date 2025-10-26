@@ -5,6 +5,11 @@ All Deforum modes now require Flux, so we check if it's properly configured.
 """
 
 import modules.shared as shared
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 def is_flux_available() -> bool:
@@ -36,7 +41,7 @@ def is_flux_available() -> bool:
         return False
 
     except Exception as e:
-        print(f"Warning: Could not check Flux availability: {e}")
+        logger.error(f"Could not check Flux availability: {e}")
         # If we can't check, assume it's available to not block the user
         return True
 

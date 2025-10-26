@@ -23,6 +23,11 @@ import torchvision.transforms.functional as TF
 # Import pure functions from refactored utils module
 from deforum.utils.general import clean_gradio_path_strings
 from deforum.utils.validation.validators import (
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
     blank_if_none,
     none_if_blank,
 )
@@ -43,8 +48,8 @@ def load_img(path : str, image_box :Image.Image, shape=None, use_alpha_as_mask=F
         # check using init image alpha as mask if mask is not blank
         extrema = mask_image.getextrema()
         if (extrema == (0,0)) or extrema == (255,255):
-            print("use_alpha_as_mask==True: Using the alpha channel from the init image as a mask, but the alpha channel is blank.")
-            print("ignoring alpha as mask.")
+            logger.info("use_alpha_as_mask==True: Using the alpha channel from the init image as a mask, but the alpha channel is blank.")
+            logger.info("ignoring alpha as mask.")
             mask_image = None
 
     return image, mask_image

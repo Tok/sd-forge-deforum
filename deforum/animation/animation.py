@@ -26,6 +26,11 @@ from deforum.utils.image.transforms import (
     warpMatrix,
 )
 from deforum.utils.media.depth import (
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
     prepare_depth_tensor,
     get_depth_min_max_formatted as depth_min_max_and_formatted,
 )
@@ -292,7 +297,7 @@ def transform_image_3d_new(device, prev_img_cv2, depth_tensor, rot_mat, translat
     if is_depth_tensor_invalid_or_missing:
         # if none, then 3D depth is turned off, so no warning is needed.
         if depth_tensor is not None:
-            print("Depth tensor invalid. Generating a Flat depth for this frame.")
+            logger.info("Depth tensor invalid. Generating a Flat depth for this frame.")
         # create flat depth
         z = torch.ones_like(x)
     # create z from depth tensor

@@ -18,6 +18,11 @@ import os
 import cv2
 import gc
 import time
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 def get_output_folder(output_path, batch_folder):
     out_path = os.path.join(output_path,time.strftime('%Y-%m'))
@@ -44,11 +49,11 @@ def dump_frames_cache(root):
             if img is not None and hasattr(img, 'shape') and img.size > 0:
                 cv2.imwrite(image_cache['path'], img)
             else:
-                print(f"Warning: Skipping save for {image_cache['path']} - invalid or empty image")
+                logger.warning(f"Skipping save for {image_cache['path']} - invalid or empty image")
         elif image_cache['image_type'] == 'PIL':
             img = image_cache['image']
             if img is not None:
                 img.save(image_cache['path'])
             else:
-                print(f"Warning: Skipping save for {image_cache['path']} - invalid or empty image")
+                logger.warning(f"Skipping save for {image_cache['path']} - invalid or empty image")
     # do not reset the cache since we're going to add frame erasing later function #TODO 
