@@ -9,9 +9,9 @@ Defines color palettes and styling for three themes:
 from deforum.utils.image.color import hex_to_ansi_foreground as from_hex_color
 
 # ============================================================================
-# SLOPCORE THEME - Blue to Purple gradient + Yellow for warnings
+# SLOPCORE THEME - Blue to Purple gradient (7 shades)
 # ============================================================================
-# 7-shade gradient from bright blue through purple (inspired by banner gradient)
+# Core slopcore identity: 7-shade gradient from bright blue through purple
 
 HEX_SLOPCORE_1 = '#4A90E2'  # Bright blue
 HEX_SLOPCORE_2 = '#5883D8'  # Blue-purple
@@ -20,8 +20,11 @@ HEX_SLOPCORE_4 = '#7B6DB8'  # Mid purple
 HEX_SLOPCORE_5 = '#8F5CA0'  # Purple
 HEX_SLOPCORE_6 = '#A353A8'  # Deep purple
 HEX_SLOPCORE_7 = '#764BA2'  # Darkest purple (banner end)
-HEX_SLOPCORE_YELLOW = '#FFEA56'  # Same yellow as Precalculations tqdm (classic yellow)
-HEX_SLOPCORE_RED = '#FE797B'     # Red for errors (classic red)
+
+# Functional colors (borrowed from classic theme for slopcore mode)
+# These are NOT slopcore colors, but used for practical UX purposes
+HEX_FUNCTIONAL_YELLOW = '#FFEA56'  # Yellow for warnings (classic yellow, matches Precalculations tqdm)
+HEX_FUNCTIONAL_RED = '#FE797B'     # Red for errors (classic red)
 
 SLOPCORE_1 = from_hex_color(HEX_SLOPCORE_1)  # Bright blue
 SLOPCORE_2 = from_hex_color(HEX_SLOPCORE_2)  # Blue-purple
@@ -30,8 +33,10 @@ SLOPCORE_4 = from_hex_color(HEX_SLOPCORE_4)  # Mid purple
 SLOPCORE_5 = from_hex_color(HEX_SLOPCORE_5)  # Purple
 SLOPCORE_6 = from_hex_color(HEX_SLOPCORE_6)  # Deep purple
 SLOPCORE_7 = from_hex_color(HEX_SLOPCORE_7)  # Darkest purple
-SLOPCORE_YELLOW = from_hex_color(HEX_SLOPCORE_YELLOW)  # Gold/Yellow
-SLOPCORE_RED = from_hex_color(HEX_SLOPCORE_RED)  # Red for errors
+
+# Functional color conversions (not part of slopcore palette)
+FUNCTIONAL_YELLOW = from_hex_color(HEX_FUNCTIONAL_YELLOW)  # For warnings
+FUNCTIONAL_RED = from_hex_color(HEX_FUNCTIONAL_RED)  # For errors
 
 # ============================================================================
 # CLASSIC THEME - Original vibrant colors
@@ -111,11 +116,11 @@ def get_theme_colors(theme: str) -> dict:
     """
     if theme == 'slopcore':
         return {
-            'debug': SLOPCORE_1,       # Bright blue (lightest)
-            'info': SLOPCORE_3,         # Light purple
-            'warning': SLOPCORE_YELLOW, # Yellow (matches Precalculations tqdm)
-            'error': SLOPCORE_RED,      # Red (classic red for errors)
-            'critical': SLOPCORE_7,     # Darkest purple
+            'debug': SLOPCORE_1,        # Bright blue (lightest)
+            'info': SLOPCORE_3,          # Light purple
+            'warning': FUNCTIONAL_YELLOW, # Yellow (NOT slopcore - functional color)
+            'error': FUNCTIONAL_RED,      # Red (NOT slopcore - functional color)
+            'critical': SLOPCORE_7,      # Darkest purple
             'header': SLOPCORE_2,       # Blue-purple
             'emphasis': SLOPCORE_4,     # Mid purple
             'reset': RESET_COLOR,
