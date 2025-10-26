@@ -1,7 +1,6 @@
 def _select(emoji):
-    # Lazy import to avoid circular dependency
-    from deforum.rendering.options import is_emojis_disabled
-    return '' if is_emojis_disabled() else emoji
+    # Just return the emoji - caller is responsible for checking if emojis are enabled
+    return emoji
 
 
 # Use emojis sparingly to catch attention to essential items.
@@ -180,13 +179,8 @@ def get_themed_emoji(emoji_name: str, theme: str = 'classic') -> str:
         theme: One of 'slopcore', 'classic', 'simple'
 
     Returns:
-        Emoji string based on theme (empty string if emojis disabled)
+        Emoji string based on theme (caller is responsible for checking if emojis are enabled)
     """
-    from deforum.rendering.options import is_emojis_disabled
-
-    if is_emojis_disabled():
-        return ''
-
     if theme == 'simple':
         # Simple theme: use emojis but keep them minimal
         return globals()[emoji_name]() if emoji_name in globals() else ''
