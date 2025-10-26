@@ -285,9 +285,10 @@ class DiffusionFrame:
 
     @staticmethod
     def _select_keyframe_or_cadence_strength(data: RenderData, index, is_keyframe):
-        # Applies `strength_schedule` if Parseq is active or if there is no entry with index i in the Deforum prompts.
-        # otherwise `keyframe_strength_schedule` is applied, which should be set lower (=more denoise on keyframes).
-        # schedule series indices shifted to start at 0.
+        # Keyframes use `keyframe_strength_schedule` (should be LOW = more diffusion steps = dramatic changes).
+        # Non-keyframes use `strength_schedule` (should be HIGH = fewer diffusion steps = stability).
+        # Parseq overrides with its own unified strength schedule.
+        # Schedule series indices shifted to start at 0.
         keys = data.animation_keys.deform_keys
         idx = index - 1
 
@@ -296,9 +297,10 @@ class DiffusionFrame:
             log_utils.warning(f"Frame index {index} (0-indexed: {idx}) exceeds strength schedule series length, using default value.")
             return 0.85  # Default strength value
 
-        return (keys.strength_schedule_series[idx]
-                if data.parseq_adapter.use_parseq or is_keyframe
-                else keys.keyframe_strength_schedule_series[idx])
+        # FIXED: Apply keyframe_strength to keyframes, normal strength to non-keyframes
+        return (keys.keyframe_strength_schedule_series[idx]
+                if is_keyframe and not data.parseq_adapter.use_parseq
+                else keys.strength_schedule_series[idx])
 
     @staticmethod
     def _get_keyframe_type_from_schedule(data: RenderData, index):

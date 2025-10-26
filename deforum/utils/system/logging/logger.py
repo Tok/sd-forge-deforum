@@ -85,55 +85,60 @@ class DeforumLogger:
         level_label = level.upper()
         return f"{color}{bold}{level_label}:{reset} {emoji_str}{msg}"
 
-    def debug(self, msg: str, emoji: Optional[str] = None):
+    def debug(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log debug message (verbose internal details).
 
         Args:
             msg: Message text
             emoji: Optional emoji name
+            **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
         """
         if self._should_log(LogLevel.DEBUG):
-            print(self._format_message('debug', msg, emoji))
+            print(self._format_message('debug', msg, emoji), **kwargs)
 
-    def info(self, msg: str, emoji: Optional[str] = None):
+    def info(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log info message (normal operation).
 
         Args:
             msg: Message text
             emoji: Optional emoji name
+            **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
         """
         if self._should_log(LogLevel.INFO):
-            print(self._format_message('info', msg, emoji))
+            print(self._format_message('info', msg, emoji), **kwargs)
 
-    def warning(self, msg: str, emoji: Optional[str] = None):
+    def warning(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log warning message.
 
         Args:
             msg: Message text
             emoji: Optional emoji name
+            **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
         """
         if self._should_log(LogLevel.WARNING):
-            print(self._format_message('warning', msg, emoji))
+            print(self._format_message('warning', msg, emoji), **kwargs)
 
-    def error(self, msg: str, emoji: Optional[str] = None):
+    def error(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log error message.
 
         Args:
             msg: Message text
             emoji: Optional emoji name
+            **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
         """
         if self._should_log(LogLevel.ERROR):
-            print(self._format_message('error', msg, emoji))
+            print(self._format_message('error', msg, emoji), **kwargs)
 
-    def critical(self, msg: str, emoji: Optional[str] = None):
+    def critical(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log critical error message.
 
         Args:
             msg: Message text
             emoji: Optional emoji name
+            **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
         """
         if self._should_log(LogLevel.CRITICAL):
-            print(self._format_message('critical', msg, emoji))
+            print(self._format_message('critical', msg, emoji), **kwargs)
 
     def header(self, msg: str, width: int = 80):
         """Print styled header/section divider.

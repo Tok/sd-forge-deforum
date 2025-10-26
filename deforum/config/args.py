@@ -218,14 +218,14 @@ def DeforumAnimArgs():
         "strength_schedule": {
             "label": "Strength schedule (normal/tween frames)",
             "type": "textbox",
-            "value": "0: (0.2)",
-            "info": "Amount of presence of previous frame to influence next frame for TWEEN frames (non-keyframes). Controls steps: [steps - (strength * steps)]. New 3D default: 0.2. Should be LOWER than keyframe strength."
+            "value": "0: (0.85)",
+            "info": "Amount of previous frame to pass through for TWEEN/NON-KEYFRAME frames. HIGH strength (0.85) = fewer diffusion steps (3/20) = stability. Controls steps: [steps - (strength * steps)]. Should be HIGHER than keyframe strength."
         },
         "keyframe_strength_schedule": {
             "label": "Strength schedule (keyframes)",
             "type": "textbox",
-            "value": "0: (0.85)",
-            "info": "Like 'Strength schedule' but only for frames with an entry in 'prompts' (keyframes). Should be HIGHER than normal strength. Keyframes Only/New 3D default: 0.85. At 0 it generates a totally new image on every prompt change. Ignored if Parseq is used or when Classic 3D mode active."
+            "value": "0: (0.15)",
+            "info": "Amount of previous frame to pass through for KEYFRAME frames (frames with prompt entries). LOW strength (0.15) = more diffusion steps (17/20) = dramatic changes. At 0 it generates totally new image. Should be LOWER than normal strength. Ignored if Parseq is used or when Classic 3D mode active."
         },
         "contrast_schedule": "0: (1.0)",
         "cfg_scale_schedule": {

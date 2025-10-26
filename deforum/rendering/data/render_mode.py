@@ -139,7 +139,8 @@ _MODE_CONFIGS = {
         shows_pseudo_cadence=False,
         description=(
             "Modern keyframe redistribution with dual strength schedules. "
-            "Combines regular cadence diffusions (high strength) with keyframe diffusions (low strength). "
+            "Keyframes use LOW strength (0.15 default) for dramatic changes (17/20 steps). "
+            "Cadence/tween frames use HIGH strength (0.85 default) for stability (3/20 steps). "
             "Keyframes replace closest cadence frames for rhythm preservation. "
             "Balances quality, speed, and stability. Works with RAFT and ControlNet. "
             "Uses both strength schedules: keyframe_strength for keyframes, normal strength for cadence frames. "
