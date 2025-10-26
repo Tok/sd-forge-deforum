@@ -68,6 +68,12 @@ logs/
 /test_*.py
 /debug_*.py
 
+# Temporary planning/strategy documents (not permanent docs)
+/*_PLAN.md
+/*_STRATEGY.md
+/TODO_*.md
+/PHASE_*.md
+
 # Test artifacts
 test-server.log
 .test-server.pid
