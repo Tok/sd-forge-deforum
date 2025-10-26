@@ -1694,6 +1694,8 @@ def auto_assign_keyframe_types_handler(animation_prompts_json, chunk_size):
     """
     Auto-assign keyframe types based on tween distances between keyframes.
 
+    Uses pure functions from deforum.utils.parsing.keyframes for the logic.
+
     Logic:
     - Short sections (< 80% of chunk_size): Use "flf2v"
     - Long sections (>= 80% of chunk_size): Use "tween"
@@ -1701,7 +1703,7 @@ def auto_assign_keyframe_types_handler(animation_prompts_json, chunk_size):
     Returns: keyframe_type_schedule string in format "0:(tween), 60:(flf2v), 120:(tween)"
     """
     import json
-    import re
+    from deforum.utils.parsing.keyframes import auto_assign_keyframe_types
 
     try:
         # Parse animation prompts JSON
@@ -1710,38 +1712,9 @@ def auto_assign_keyframe_types_handler(animation_prompts_json, chunk_size):
         else:
             animation_prompts = animation_prompts_json
 
-        # Extract frame numbers and sort them
-        frame_numbers = []
-        for key in animation_prompts.keys():
-            # Handle both numeric keys and expressions like "max_f-2"
-            if key.isdigit():
-                frame_numbers.append(int(key))
-            elif re.match(r'^\d+$', str(key)):
-                frame_numbers.append(int(key))
+        # Auto-assign using pure function
+        result, _ = auto_assign_keyframe_types(animation_prompts, chunk_size)
 
-        if not frame_numbers:
-            return "0:(tween)"
-
-        frame_numbers.sort()
-
-        # Calculate threshold (80% of chunk_size)
-        threshold = int(chunk_size * 0.8)
-
-        # Build keyframe type schedule
-        schedule_parts = []
-        for i, frame in enumerate(frame_numbers):
-            if i == 0:
-                # First keyframe always starts with tween
-                schedule_parts.append(f"{frame}:(tween)")
-            else:
-                # Calculate distance to previous keyframe
-                distance = frame - frame_numbers[i - 1]
-
-                # Suggest flf2v for short sections, tween for long sections
-                suggested_type = "flf2v" if distance <= threshold else "tween"
-                schedule_parts.append(f"{frame}:({suggested_type})")
-
-        result = ", ".join(schedule_parts)
         print(f"🤖 Auto-assigned keyframe types: {result}")
         return result
 
