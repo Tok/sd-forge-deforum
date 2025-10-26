@@ -1,11 +1,11 @@
-"""Unit tests for deforum.ui.audio_sync_logic module.
+"""Unit tests for deforum.utils.audio.sync module.
 
 Tests pure business logic functions for audio synchronization.
 All functions here are side-effect free and easily testable.
 """
 
 import pytest
-from deforum.ui.audio_sync_logic import (
+from deforum.utils.audio.sync import (
     calculate_keyframes_per_beat,
     calculate_bpm_based_target,
     apply_keyframe_adjustment,

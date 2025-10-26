@@ -361,7 +361,7 @@ def setup_deforum_left_side_ui():
                         generate_keyframes_from_events,
                         distribute_prompts_across_keyframes
                     )
-                    from deforum.ui.audio_sync_logic import (
+                    from deforum.utils.audio.sync import (
                         calculate_keyframes_per_beat,
                         calculate_bpm_based_target,
                         resolve_keyframe_target,

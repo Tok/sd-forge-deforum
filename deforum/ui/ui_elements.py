@@ -26,38 +26,12 @@ from deforum.config.defaults import get_gradio_html, DeforumAnimPrompts
 from deforum.ui.gradio_funcs import (upload_vid_to_interpolate, upload_pics_to_interpolate,
                            ncnn_upload_vid_to_upscale)
 from deforum.media.video_audio_utilities import direct_stitch_vid_from_frames
-
-
-def create_gr_elem(d):
-    # Capitalize and CamelCase the orig value under "type", which defines gr.inputs.type in lower_case.
-    # Examples: "dropdown" becomes gr.Dropdown, and "checkbox_group" becomes gr.CheckboxGroup.
-    obj_type_str = ''.join(word.title() for word in d["type"].split('_'))
-    obj_type = getattr(gr, obj_type_str)
-
-    # Prepare parameters for gradio element creation
-    params = {k: v for k, v in d.items() if k != "type" and v is not None}
-
-    # Special case: Since some elements can have 'type' parameter and we are already using 'type' to specify
-    # which element to use we need a separate parameter that will be used to overwrite 'type' at this point.
-    # E.g. for Radio element we should specify 'type_param' which is then used to set gr.radio's type.
-    if 'type_param' in params:
-        params['type'] = params.pop('type_param')
-
-    return obj_type(**params)
-
-
-def is_gradio_component(args):
-    return isinstance(args, (gr.Button, gr.Textbox, gr.Slider, gr.Dropdown,
-                             gr.HTML, gr.Radio, gr.Interface, gr.Markdown,
-                             gr.Checkbox))  # TODO...
-
-
-def create_row(args, *attrs):
-    # If attrs are provided, create components from the attributes of args.
-    # Otherwise, pass through a single component or create one.
-    with FormRow():
-        return [create_gr_elem(getattr(args, attr)) for attr in attrs] if attrs \
-            else args if is_gradio_component(args) else create_gr_elem(args)
+from deforum.utils.ui.builders import (
+    create_gr_elem,
+    is_gradio_component,
+    create_row,
+    create_accordion_md_row
+)
 
 
 # ******** Important message ********
@@ -2777,12 +2751,6 @@ def create_keyframe_distribution_info_tab():
             - Mark frames with 'Info' (e.g., "event")
             - Use formulas like: `if (f == info_match_last("event")) 0.25 else 0.75`
     """)
-
-
-def create_accordion_md_row(name, markdown, is_open=False):
-    with FormRow():
-        with gr.Accordion(name, open=is_open):
-            gr.Markdown(markdown)
 
 
 # QwenPromptExpander and Movement Analysis Event Handlers - moved outside for proper import
