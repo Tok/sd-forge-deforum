@@ -4,6 +4,10 @@ Provides AI-powered prompt generation using Qwen with multiple generation modes
 and intensity levels for audio-synchronized animations.
 """
 
+from deforum.utils.system.logging import get_logger
+
+logger = get_logger()
+
 
 def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, start_prompt, end_prompt):
     """Generate prompts using Qwen with multiple modes and intensity levels.

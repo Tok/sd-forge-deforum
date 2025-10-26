@@ -29,42 +29,43 @@ def print_startup_banner():
     RESET = "\033[0m"
     BOLD = "\033[1m"
 
-    # Create gradient border using all 7 shades (14-15 chars per shade for 101 total)
-    # Text line is 99 chars, so border is 101 for slight overflow
+    # Create gradient border using all 7 shades (13-14 chars per shade for 95 total)
+    # Text line is 95 chars, so border matches exactly (no extra padding needed)
     border_top = (
-        f"{SLOPCORE_1}##############"   # 14 chars - Bright blue
-        f"{SLOPCORE_2}##############"   # 14 chars - Blue-purple
-        f"{SLOPCORE_3}###############"  # 15 chars - Light purple
-        f"{SLOPCORE_4}###############"  # 15 chars - Mid purple (center)
-        f"{SLOPCORE_5}###############"  # 15 chars - Purple
-        f"{SLOPCORE_6}##############"   # 14 chars - Deep purple
-        f"{SLOPCORE_7}##############"   # 14 chars - Darkest purple
+        f"{SLOPCORE_1}#############"   # 13 chars - Bright blue
+        f"{SLOPCORE_2}#############"   # 13 chars - Blue-purple
+        f"{SLOPCORE_3}##############"  # 14 chars - Light purple
+        f"{SLOPCORE_4}##############"  # 14 chars - Mid purple (center)
+        f"{SLOPCORE_5}##############"  # 14 chars - Purple
+        f"{SLOPCORE_6}#############"   # 13 chars - Deep purple
+        f"{SLOPCORE_7}#############"   # 13 chars - Darkest purple
         f"{RESET}"
     )
     # Reverse gradient for bottom border
     border_bot = (
-        f"{SLOPCORE_7}##############"
-        f"{SLOPCORE_6}##############"
-        f"{SLOPCORE_5}###############"
-        f"{SLOPCORE_4}###############"
-        f"{SLOPCORE_3}###############"
-        f"{SLOPCORE_2}##############"
-        f"{SLOPCORE_1}##############"
+        f"{SLOPCORE_7}#############"
+        f"{SLOPCORE_6}#############"
+        f"{SLOPCORE_5}##############"
+        f"{SLOPCORE_4}##############"
+        f"{SLOPCORE_3}##############"
+        f"{SLOPCORE_2}#############"
+        f"{SLOPCORE_1}#############"
         f"{RESET}"
     )
 
+    # Text and border both 95 chars - perfect match
     banner = f"""
 {border_top}
-{SLOPCORE_4}{BOLD}⚡ Stable Diffusion WebUI Forge Enhanced By Zirteq's Fluxabled Fork of the Deforum Extension ⚡{RESET}
+{SLOPCORE_4}{BOLD}Stable Diffusion WebUI Forge Enhanced By Zirteq's Fluxabled Fork of the Deforum Extension{RESET}
 {border_bot}
 {WHITE}Applying compatibility patches for enhanced Flux.1 + Wan 2.1 AI Video integration:
-  • FlowMatchEulerDiscreteScheduler patching (deforum/integrations/flux_controlnet/diffusers_compat.py)
-  • Wan FLF2V pipeline integration with Forge's Flux backend
-  • Unified Flux + Wan workflows with seamless model management{RESET}
-{BOLD}💡 Note:{RESET} This fork is optimized for Flux/Wan workflows.
+  - FlowMatchEulerDiscreteScheduler patching (deforum/integrations/flux_controlnet/diffusers_compat.py)
+  - Wan FLF2V pipeline integration with Forge's Flux backend
+  - Unified Flux + Wan workflows with seamless model management{RESET}
+{BOLD}Note:{RESET} This fork is optimized for Flux/Wan workflows.
 {BOLD}For best results:{RESET} Run in a dedicated Forge instance to avoid interfering
    with other extensions and Forge base functionality.
-{BOLD}📚 More Info:{RESET} https://github.com/Tok/sd-forge-deforum
+{BOLD}More Info:{RESET} https://github.com/Tok/sd-forge-deforum
 {border_top}
 """
 

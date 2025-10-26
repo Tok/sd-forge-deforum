@@ -11,7 +11,7 @@ from deforum.utils.system.logging.log import (
     HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED, HEX_PURPLE, HEX_YELLOW,
     BLUE, GREEN, ORANGE, RED, PURPLE, YELLOW, RESET_COLOR, BOLD
 )
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -121,25 +121,33 @@ def print_wan_info(message: str, color: str = BLUE):
     """Print Wan info message with styling"""
     logger.info(f"{color}{BOLD}Wan: {RESET_COLOR}{message}")
 
-    
+
 def print_wan_success(message: str):
     """Print Wan success message"""
-    print_wan_info(f"✅ {message}", GREEN)
+    emoji = emoji_if_enabled('✅')
+    prefix = f"{emoji} " if emoji else ""
+    print_wan_info(f"{prefix}{message}", GREEN)
 
-    
+
 def print_wan_warning(message: str):
     """Print Wan warning message"""
-    print_wan_info(f"⚠️ {message}", ORANGE)
+    emoji = emoji_if_enabled('⚠️')
+    prefix = f"{emoji} " if emoji else ""
+    print_wan_info(f"{prefix}{message}", ORANGE)
 
-    
+
 def print_wan_error(message: str):
     """Print Wan error message"""
-    print_wan_info(f"❌ {message}", RED)
+    emoji = emoji_if_enabled('❌')
+    prefix = f"{emoji} " if emoji else ""
+    print_wan_info(f"{prefix}{message}", RED)
 
-    
+
 def print_wan_progress(message: str):
     """Print Wan progress message"""
-    print_wan_info(f"🎬 {message}", PURPLE)
+    emoji = emoji_if_enabled('🎬')
+    prefix = f"{emoji} " if emoji else ""
+    print_wan_info(f"{prefix}{message}", PURPLE)
 
 
 def create_wan_model_loader_progress(model_name: str) -> WanProgressBar:
