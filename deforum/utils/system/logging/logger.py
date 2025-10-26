@@ -251,26 +251,52 @@ _logger_instance: Optional[DeforumLogger] = None
 
 
 def emoji_if_enabled(emoji_str: str) -> str:
-    """Return emoji string only if emojis are enabled in settings, otherwise empty string.
+    """Return emoji string only if emojis are enabled, with theme-aware substitutions.
 
     This allows inline emojis in logger messages to respect the emoji toggle:
     logger.info(f"{emoji_if_enabled('✅')} Task complete")
+
+    In slopcore mode, certain emojis are substituted for aesthetic consistency:
+    - ✅ (green check) → ✓ (white/black check mark)
 
     Args:
         emoji_str: The emoji character(s) to conditionally show
 
     Returns:
-        The emoji string if emojis enabled, empty string otherwise
+        The themed emoji string if emojis enabled, empty string otherwise
     """
     global _logger_instance
+
+    # Check if emojis are enabled
+    emojis_enabled = False
+    theme = 'classic'
+
     if _logger_instance and hasattr(_logger_instance, 'emojis_enabled'):
-        return emoji_str if _logger_instance.emojis_enabled else ''
-    # If no logger yet, check settings directly
-    try:
-        from deforum.rendering.options import is_emojis_disabled
-        return '' if is_emojis_disabled() else emoji_str
-    except:
-        return emoji_str  # Fallback: show emoji
+        emojis_enabled = _logger_instance.emojis_enabled
+        theme = getattr(_logger_instance, 'theme', 'classic')
+    else:
+        # If no logger yet, check settings directly
+        try:
+            from deforum.rendering.options import is_emojis_disabled, get_log_theme
+            emojis_enabled = not is_emojis_disabled()
+            theme = get_log_theme()
+        except:
+            emojis_enabled = True  # Fallback: show emoji
+
+    if not emojis_enabled:
+        return ''
+
+    # Apply theme-specific emoji substitutions
+    if theme == 'slopcore':
+        # Map colored emojis to monochrome equivalents for aesthetic consistency
+        SLOPCORE_EMOJI_MAP = {
+            '✅': '✓',  # Green check → White/black check mark
+            '❌': '✗',  # Red X → White/black X
+            '⚠️': '⚠',  # Warning (remove variation selector for cleaner look)
+        }
+        return SLOPCORE_EMOJI_MAP.get(emoji_str, emoji_str)
+
+    return emoji_str
 
 
 def get_logger() -> DeforumLogger:
