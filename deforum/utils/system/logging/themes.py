@@ -21,6 +21,7 @@ HEX_SLOPCORE_5 = '#8F5CA0'  # Purple
 HEX_SLOPCORE_6 = '#A353A8'  # Deep purple
 HEX_SLOPCORE_7 = '#764BA2'  # Darkest purple (banner end)
 HEX_SLOPCORE_YELLOW = '#FFEA56'  # Same yellow as Precalculations tqdm (classic yellow)
+HEX_SLOPCORE_RED = '#FE797B'     # Red for errors (classic red)
 
 SLOPCORE_1 = from_hex_color(HEX_SLOPCORE_1)  # Bright blue
 SLOPCORE_2 = from_hex_color(HEX_SLOPCORE_2)  # Blue-purple
@@ -30,6 +31,7 @@ SLOPCORE_5 = from_hex_color(HEX_SLOPCORE_5)  # Purple
 SLOPCORE_6 = from_hex_color(HEX_SLOPCORE_6)  # Deep purple
 SLOPCORE_7 = from_hex_color(HEX_SLOPCORE_7)  # Darkest purple
 SLOPCORE_YELLOW = from_hex_color(HEX_SLOPCORE_YELLOW)  # Gold/Yellow
+SLOPCORE_RED = from_hex_color(HEX_SLOPCORE_RED)  # Red for errors
 
 # ============================================================================
 # CLASSIC THEME - Original vibrant colors
@@ -112,7 +114,7 @@ def get_theme_colors(theme: str) -> dict:
             'debug': SLOPCORE_1,       # Bright blue (lightest)
             'info': SLOPCORE_3,         # Light purple
             'warning': SLOPCORE_YELLOW, # Yellow (matches Precalculations tqdm)
-            'error': SLOPCORE_6,        # Deep purple
+            'error': SLOPCORE_RED,      # Red (classic red for errors)
             'critical': SLOPCORE_7,     # Darkest purple
             'header': SLOPCORE_2,       # Blue-purple
             'emphasis': SLOPCORE_4,     # Mid purple

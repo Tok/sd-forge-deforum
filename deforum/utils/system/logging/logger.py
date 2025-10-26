@@ -250,6 +250,29 @@ class DeforumLogger:
 _logger_instance: Optional[DeforumLogger] = None
 
 
+def emoji_if_enabled(emoji_str: str) -> str:
+    """Return emoji string only if emojis are enabled in settings, otherwise empty string.
+
+    This allows inline emojis in logger messages to respect the emoji toggle:
+    logger.info(f"{emoji_if_enabled('✅')} Task complete")
+
+    Args:
+        emoji_str: The emoji character(s) to conditionally show
+
+    Returns:
+        The emoji string if emojis enabled, empty string otherwise
+    """
+    global _logger_instance
+    if _logger_instance and hasattr(_logger_instance, 'emojis_enabled'):
+        return emoji_str if _logger_instance.emojis_enabled else ''
+    # If no logger yet, check settings directly
+    try:
+        from deforum.rendering.options import is_emojis_disabled
+        return '' if is_emojis_disabled() else emoji_str
+    except:
+        return emoji_str  # Fallback: show emoji
+
+
 def get_logger() -> DeforumLogger:
     """Get global logger instance (singleton).
 
