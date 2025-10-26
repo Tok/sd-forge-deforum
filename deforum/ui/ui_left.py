@@ -542,7 +542,7 @@ def setup_deforum_left_side_ui():
 
                         # Create visualization
                         total_frames = max_frame + 1
-                        viz_width = 60
+                        viz_width = 120
                         viz = ['_'] * viz_width
                         for kf in keyframes:
                             pos = int((kf['frame'] / total_frames) * (viz_width - 1))
