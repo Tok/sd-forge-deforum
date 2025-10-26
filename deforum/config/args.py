@@ -1106,8 +1106,8 @@ def AudioSyncArgs():
             "minimum": 0.0,
             "maximum": 1.0,
             "step": 0.05,
-            "value": 0.5,
-            "info": "Event detection sensitivity (0.0-1.0). Higher = more sensitive, detects weaker events. Start with 0.5 and adjust"
+            "value": 0.7,
+            "info": "Event detection sensitivity (0.0-1.0). Higher = more sensitive, detects weaker events. 0.7 is a good starting point"
         },
         "audio_intensity_threshold": {
             "label": "Intensity Threshold",
