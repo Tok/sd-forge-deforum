@@ -509,6 +509,7 @@ def setup_deforum_left_side_ui():
                         print(f"⚠️ Warning: Audio sync component '{comp_name}' not found")
 
                 if len(audio_sync_inputs) == len(required_components):
+                    # Main sync button (0% adjustment)
                     locals()['audio_sync_button'].click(
                         fn=synchronize_prompts_to_audio,
                         inputs=audio_sync_inputs,
@@ -517,7 +518,28 @@ def setup_deforum_left_side_ui():
                             locals()['audio_sync_status']
                         ]
                     )
-                    print("🎵 Audio sync button connected successfully")
+
+                    # -5% button (fewer events)
+                    locals()['audio_sync_fewer_button'].click(
+                        fn=lambda *args: synchronize_prompts_to_audio(*args, threshold_adjustment=0.05),
+                        inputs=audio_sync_inputs,
+                        outputs=[
+                            locals()['animation_prompts'],
+                            locals()['audio_sync_status']
+                        ]
+                    )
+
+                    # +5% button (more events)
+                    locals()['audio_sync_more_button'].click(
+                        fn=lambda *args: synchronize_prompts_to_audio(*args, threshold_adjustment=-0.05),
+                        inputs=audio_sync_inputs,
+                        outputs=[
+                            locals()['animation_prompts'],
+                            locals()['audio_sync_status']
+                        ]
+                    )
+
+                    print("🎵 Audio sync buttons connected successfully (main, -5%, +5%)")
                 else:
                     print(f"⚠️ Could not connect audio sync button: missing components")
 
