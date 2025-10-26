@@ -67,29 +67,43 @@ def on_ui_tabs():
     # Slopcore gradient aesthetic for Generate button and hide unwanted buttons
     slopcore_css = """
     /* Slopcore gradient for Generate button and audio sync buttons */
+    /* Use universal descendant selectors to catch buttons regardless of Gradio wrapper structure */
     #deforum_generate,
+    #deforum_generate *,
     button#deforum_generate,
     #deforum_generate > button,
     [id*="deforum_generate"] button,
     #audio_sync_button,
+    #audio_sync_button *,
     button#audio_sync_button,
     #audio_sync_button > button,
     [id*="audio_sync_button"] button,
+    #audio_sync_button button,
     #audio_sync_fewer_button,
+    #audio_sync_fewer_button *,
     button#audio_sync_fewer_button,
     #audio_sync_fewer_button > button,
     [id*="audio_sync_fewer_button"] button,
+    #audio_sync_fewer_button button,
     #audio_sync_more_button,
+    #audio_sync_more_button *,
     button#audio_sync_more_button,
     #audio_sync_more_button > button,
     [id*="audio_sync_more_button"] button,
+    #audio_sync_more_button button,
     #audio_ai_generate_button,
+    #audio_ai_generate_button *,
     button#audio_ai_generate_button,
     #audio_ai_generate_button > button,
     [id*="audio_ai_generate_button"] button,
+    #audio_ai_generate_button button,
+    .slopcore-button,
+    .slopcore-button *,
     .slopcore-button button,
     div.slopcore-button button,
     button.slopcore-button,
+    *[class*="slopcore-button"],
+    *[class*="slopcore-button"] button,
     .generate-box-generating,
     .generate-box-interrupting {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
@@ -102,29 +116,43 @@ def on_ui_tabs():
         box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3) !important;
         transition: all 0.3s ease !important;
     }
+    /* Hover states with universal selectors */
     #deforum_generate:hover,
+    #deforum_generate *:hover,
     button#deforum_generate:hover,
     #deforum_generate > button:hover,
     [id*="deforum_generate"] button:hover,
     #audio_sync_button:hover,
+    #audio_sync_button *:hover,
     button#audio_sync_button:hover,
     #audio_sync_button > button:hover,
     [id*="audio_sync_button"] button:hover,
+    #audio_sync_button button:hover,
     #audio_sync_fewer_button:hover,
+    #audio_sync_fewer_button *:hover,
     button#audio_sync_fewer_button:hover,
     #audio_sync_fewer_button > button:hover,
     [id*="audio_sync_fewer_button"] button:hover,
+    #audio_sync_fewer_button button:hover,
     #audio_sync_more_button:hover,
+    #audio_sync_more_button *:hover,
     button#audio_sync_more_button:hover,
     #audio_sync_more_button > button:hover,
     [id*="audio_sync_more_button"] button:hover,
+    #audio_sync_more_button button:hover,
     #audio_ai_generate_button:hover,
+    #audio_ai_generate_button *:hover,
     button#audio_ai_generate_button:hover,
     #audio_ai_generate_button > button:hover,
     [id*="audio_ai_generate_button"] button:hover,
+    #audio_ai_generate_button button:hover,
+    .slopcore-button:hover,
+    .slopcore-button *:hover,
     .slopcore-button button:hover,
     div.slopcore-button button:hover,
-    button.slopcore-button:hover {
+    button.slopcore-button:hover,
+    *[class*="slopcore-button"]:hover,
+    *[class*="slopcore-button"] button:hover {
         background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
         background-image: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
         background-color: #764ba2 !important;
