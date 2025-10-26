@@ -312,6 +312,11 @@ def setup_deforum_left_side_ui():
                     )
 
             # Wire up audio sync button to synchronize prompts with audio events
+            print(f"DEBUG: Checking audio sync wiring conditions...")
+            print(f"  audio_sync_button in locals(): {'audio_sync_button' in locals()}")
+            print(f"  audio_sync_status in locals(): {'audio_sync_status' in locals()}")
+            print(f"  audio_sync_button in tab_prompts_params: {'audio_sync_button' in tab_prompts_params}")
+
             if 'audio_sync_button' in locals() and 'audio_sync_status' in locals():
                 def synchronize_prompts_to_audio(
                     soundtrack_path_val,

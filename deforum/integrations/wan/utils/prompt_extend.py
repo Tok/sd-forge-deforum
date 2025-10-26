@@ -234,7 +234,7 @@ class QwenPromptExpander(PromptExpander):
             **kwargs: Additional keyword arguments that can be passed to the function or method.
         '''
         if model_name is None:
-            model_name = 'Qwen2.5_14B' if not is_vl else 'QwenVL2.5_7B'
+            model_name = 'Qwen2.5_3B' if not is_vl else 'QwenVL2.5_7B'  # Default to 3B for lower VRAM
         super().__init__(model_name, is_vl, device, **kwargs)
         if (not os.path.exists(self.model_name)) and (self.model_name
                                                       in self.model_dict):
