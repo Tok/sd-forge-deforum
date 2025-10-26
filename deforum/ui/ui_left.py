@@ -536,6 +536,14 @@ def setup_deforum_left_side_ui():
                     if not found:
                         print(f"⚠️ Warning: Audio sync component '{comp_name}' not found")
 
+                print(f"🔍 DEBUG Audio sync wiring check:")
+                print(f"   Inputs collected: {len(audio_sync_inputs)}/{len(required_components)}")
+                print(f"   audio_sync_button: {audio_sync_button is not None}")
+                print(f"   audio_sync_fewer_button: {audio_sync_fewer_button is not None}")
+                print(f"   audio_sync_more_button: {audio_sync_more_button is not None}")
+                print(f"   audio_sync_status: {audio_sync_status is not None}")
+                print(f"   animation_prompts: {animation_prompts is not None}")
+
                 if len(audio_sync_inputs) == len(required_components):
                     # Buttons already retrieved above, just check they all exist
                     if all([audio_sync_button, audio_sync_fewer_button, audio_sync_more_button, audio_sync_status, animation_prompts]):
@@ -563,8 +571,10 @@ def setup_deforum_left_side_ui():
                         print("🎵 Audio sync buttons connected successfully (main, -5%, +5%)")
                     else:
                         print(f"⚠️ Could not connect audio sync buttons: missing button/output components")
+                        print(f"   Condition checks: audio_sync_button={audio_sync_button is not None}, fewer={audio_sync_fewer_button is not None}, more={audio_sync_more_button is not None}, status={audio_sync_status is not None}, prompts={animation_prompts is not None}")
                 else:
                     print(f"⚠️ Could not connect audio sync button: missing input components ({len(audio_sync_inputs)}/{len(required_components)})")
+                    print(f"   Missing components: {[comp for comp in required_components if comp not in [c for c in audio_sync_inputs]]}")
 
             # Wire up AI prompt generation button
             if audio_ai_generate_button is not None:
@@ -764,10 +774,18 @@ def setup_deforum_left_side_ui():
 
                         result = qwen(prompt=generation_prompt, system_prompt=system_prompt, tar_lang="en")
 
+                        # Check if generation succeeded first
+                        if not result.status:
+                            raise Exception(f"Qwen generation failed: {result.message}")
+
                         # Extract the prompt text from PromptOutput object
                         result_text = result.prompt
 
-                        # Check if we got actual prompt text (status can be misleading)
+                        # Check if result is just echoing back the input (means generation failed silently)
+                        if result_text == generation_prompt:
+                            raise Exception(f"Qwen returned input prompt unchanged - generation failed: {result.message}")
+
+                        # Check if we got actual prompt text
                         if not result_text or not result_text.strip():
                             raise Exception(f"Qwen generation failed: {result.message if hasattr(result, 'message') else 'No prompts generated'}")
 
