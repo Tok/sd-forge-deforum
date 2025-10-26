@@ -22,7 +22,7 @@ import os
 # sys.path setup is done in scripts/deforum_extend_paths.py
 
 try:
-    from deforum.utils.startup_banner import print_startup_banner
+    from deforum.utils.system.startup_banner import print_startup_banner
     print_startup_banner()
 except Exception as e:
     print(f"[Deforum] Warning: Could not print startup banner: {e}")
