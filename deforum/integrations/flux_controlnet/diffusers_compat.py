@@ -4,6 +4,12 @@ Diffusers Compatibility Patch for Forge + Wan 2.2
 Fixes compatibility issues between diffusers git main (required for WanPipeline) and Forge's Flux backend
 """
 
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
+
 def patch_flow_match_scheduler():
     """
     Patch FlowMatchEulerDiscreteScheduler.time_shift to handle None self parameter
