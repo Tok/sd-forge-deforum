@@ -217,6 +217,25 @@ class QwenPromptExpander(PromptExpander):
         "Qwen2.5_14B": "Qwen/Qwen2.5-14B-Instruct",
     }
 
+    @staticmethod
+    def _get_local_model_path(model_shortname):
+        """Get local model path, trying multiple locations."""
+        import os
+        # Try new location first
+        new_path = os.path.join("models", "Deforum", "qwen", model_shortname)
+        if os.path.exists(new_path):
+            return new_path
+
+        # Try old location (backward compatibility during migration)
+        old_path = os.path.join("models", "wan", model_shortname)
+        if os.path.exists(old_path):
+            print(f"⚠️ Using Qwen model from OLD path: {old_path}")
+            print(f"   Consider moving to NEW path: {new_path}")
+            return old_path
+
+        # Not found locally, will use HuggingFace
+        return None
+
     def __init__(self, model_name=None, device=0, is_vl=False, **kwargs):
         '''
         Args:
@@ -236,9 +255,18 @@ class QwenPromptExpander(PromptExpander):
         if model_name is None:
             model_name = 'Qwen2.5_3B' if not is_vl else 'QwenVL2.5_7B'  # Default to 3B for lower VRAM
         super().__init__(model_name, is_vl, device, **kwargs)
-        if (not os.path.exists(self.model_name)) and (self.model_name
-                                                      in self.model_dict):
-            self.model_name = self.model_dict[self.model_name]
+
+        # Try to find local model first (supports both old and new paths)
+        if self.model_name in self.model_dict:
+            local_path = self._get_local_model_path(self.model_name)
+            if local_path:
+                self.model_name = local_path
+            else:
+                # Use HuggingFace model ID (will auto-download to cache)
+                self.model_name = self.model_dict[self.model_name]
+        elif not os.path.exists(self.model_name):
+            # Not a valid path and not in model_dict - assume it's a HuggingFace ID
+            pass
 
         try:
             if self.is_vl:
