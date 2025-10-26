@@ -762,7 +762,7 @@ def get_tab_depth_warping(da, skip_tabitem=False):
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
-def get_tab_init(d, da, dp):
+def get_tab_init(d, da, dp, dau):
     with gr.TabItem('Init'):
         with gr.Tabs():
             # PARSEQ INNER-TAB - Now first and will be auto-selected
@@ -792,6 +792,20 @@ def get_tab_init(d, da, dp):
                     overwrite_extracted_frames = create_gr_elem(da.overwrite_extracted_frames)
                 # NOTE: use_mask_video and video_mask_path moved to dedicated Masking tab
             # NOTE: Mask Init tab moved to dedicated Masking tab
+            # AUDIO SYNC INNER-TAB - Disabled when Parseq is active
+            with gr.Tab("Audio Sync"):
+                gr.HTML(value="<p>Audio event detection for prompt synchronization. Disabled when Parseq is active (Parseq has its own audio features).</p>")
+                enable_audio_sync = create_row(dau.enable_audio_sync)
+                audio_file_path = create_row(dau.audio_file_path)
+                audio_detection_method = create_row(dau.audio_detection_method)
+                audio_frequency_band = create_row(dau.audio_frequency_band)
+                audio_lowpass_cutoff = create_row(dau.audio_lowpass_cutoff)
+                audio_distortion_gain = create_row(dau.audio_distortion_gain)
+                audio_distortion_type = create_row(dau.audio_distortion_type)
+                audio_sensitivity = create_row(dau.audio_sensitivity)
+                audio_intensity_threshold = create_row(dau.audio_intensity_threshold)
+                audio_min_spacing_frames = create_row(dau.audio_min_spacing_frames)
+                audio_apply_to_prompts = create_row(dau.audio_apply_to_prompts)
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 

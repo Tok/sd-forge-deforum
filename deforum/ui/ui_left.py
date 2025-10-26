@@ -18,7 +18,7 @@ from types import SimpleNamespace
 import gradio as gr
 from deforum.config.defaults import get_gradio_html
 from deforum.ui.gradio_funcs import change_css, handle_change_functions
-from deforum.config.args import DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, RootArgs, LoopArgs, WanArgs
+from deforum.config.args import DeforumArgs, DeforumAnimArgs, ParseqArgs, AudioSyncArgs, DeforumOutputArgs, RootArgs, LoopArgs, WanArgs
 from deforum.utils.system.logging import emoji as emoji_utils
 # TEMPORARILY DISABLED: ControlNet support disabled until Flux-specific reimplementation
 # from .deforum_controlnet import setup_controlnet_ui
@@ -30,11 +30,12 @@ def set_arg_lists():
     d = SimpleNamespace(**DeforumArgs())  # default args
     da = SimpleNamespace(**DeforumAnimArgs())  # default anim args
     dp = SimpleNamespace(**ParseqArgs())  # default parseq ars
+    dau = SimpleNamespace(**AudioSyncArgs())  # default audio sync args
     dv = SimpleNamespace(**DeforumOutputArgs())  # default video args
     dr = SimpleNamespace(**RootArgs())  # ROOT args
     dw = SimpleNamespace(**WanArgs())  # Wan args
     dloopArgs = SimpleNamespace(**LoopArgs())  # Guided imgs args
-    return d, da, dp, dv, dr, dw, dloopArgs
+    return d, da, dp, dau, dv, dr, dw, dloopArgs
 
 def wan_generate_video():
     """
@@ -108,7 +109,7 @@ Error: {str(e)}
         return f"❌ Error: {str(e)}"
 
 def setup_deforum_left_side_ui():
-    d, da, dp, dv, dr, dw, dloopArgs = set_arg_lists()
+    d, da, dp, dau, dv, dr, dw, dloopArgs = set_arg_lists()
 
     # FLUX AVAILABILITY CHECK - All Deforum modes require Flux
     from deforum.utils.system.flux_check import should_show_flux_blocker, get_flux_setup_message
@@ -190,7 +191,7 @@ def setup_deforum_left_side_ui():
         with gr.Tabs() as main_tabs:
             # Get main tab contents in new workflow order:
             # Tabs visible in all modes:
-            tab_init_params = get_tab_init(d, da, dp)  # 1. Init - all modes
+            tab_init_params = get_tab_init(d, da, dp, dau)  # 1. Init - all modes
             from .ui_elements import get_tab_distribution, get_tab_shakify, get_tab_depth_warping
             tab_distribution_params = get_tab_distribution(da)  # 2. Distribution - all modes
             tab_prompts_params = get_tab_prompts(da, dw, dv)  # 3. Prompts - all modes (now includes audio/timing)
