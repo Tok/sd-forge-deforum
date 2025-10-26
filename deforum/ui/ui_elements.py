@@ -997,19 +997,29 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     info="Status messages will appear here"
                 )
 
-    # Explicitly capture audio AI components (they're in locals but explicitly listing ensures return)
-    audio_components_dict = {
-        'audio_ai_generation_mode': audio_ai_generation_mode,
-        'audio_ai_intensity': audio_ai_intensity,
-        'audio_ai_style': audio_ai_style,
-        'audio_ai_prompt_theme': audio_ai_prompt_theme,
-        'audio_ai_prompt_count': audio_ai_prompt_count,
-        'audio_ai_start_prompt': audio_ai_start_prompt,
-        'audio_ai_end_prompt': audio_ai_end_prompt,
-        'audio_sync_prompts': audio_sync_prompts,
-    }
+    # Build result dict from locals/vars
+    result = {k: v for k, v in {**locals(), **vars()}.items()}
 
-    return {**{k: v for k, v in {**locals(), **vars()}.items()}, **audio_components_dict}
+    # DEBUG: Check what audio components are in locals()
+    audio_component_names = [
+        'audio_ai_generation_mode', 'audio_ai_intensity', 'audio_ai_style',
+        'audio_ai_prompt_theme', 'audio_ai_prompt_count', 'audio_ai_start_prompt',
+        'audio_ai_end_prompt', 'audio_sync_prompts'
+    ]
+
+    local_scope = locals()
+    found_components = [name for name in audio_component_names if name in local_scope]
+    missing_components = [name for name in audio_component_names if name not in local_scope]
+
+    print(f"🔍 DEBUG get_tab_init() return:")
+    print(f"   Found in locals(): {found_components}")
+    print(f"   Missing from locals(): {missing_components}")
+
+    # Add found components to result
+    for comp_name in found_components:
+        result[comp_name] = local_scope[comp_name]
+
+    return result
 
 
 
