@@ -892,7 +892,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
 
                 gr.Markdown("---")
                 gr.Markdown("### 🎯 Automatic Prompt Synchronization")
-                gr.Markdown("Enter your prompts below (one per line or comma-separated). Click **Synchronize** to automatically distribute them across detected audio events.")
+                gr.Markdown("Enter your prompts below (one per line or comma-separated). Click **Synchronize** to **detect audio events and populate the Prompts tab** with your prompts distributed across detected keyframes.")
 
                 # AI prompt generation controls - Subject first, then style
                 with FormRow():
@@ -980,13 +980,30 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         info="Leave at 0 for auto-detect based on audio. Or specify desired count."
                     )
 
-                # Synchronize button with purple slopecore gradient styling
-                audio_sync_button = gr.Button(
-                    "🎵 Synchronize to Audio",
-                    variant="primary",
-                    elem_id="audio_sync_button",
-                    elem_classes=["slopcore-button"]
-                )
+                # Synchronize buttons with purple slopecore gradient styling
+                gr.Markdown("**Click to detect audio events and populate the Prompts tab:**")
+                with FormRow():
+                    audio_sync_fewer_button = gr.Button(
+                        "🎵 -5% Events",
+                        variant="secondary",
+                        elem_id="audio_sync_fewer_button",
+                        elem_classes=["slopcore-button"],
+                        scale=1
+                    )
+                    audio_sync_button = gr.Button(
+                        "🎵 Synchronize to Audio",
+                        variant="primary",
+                        elem_id="audio_sync_button",
+                        elem_classes=["slopcore-button"],
+                        scale=2
+                    )
+                    audio_sync_more_button = gr.Button(
+                        "🎵 +5% Events",
+                        variant="secondary",
+                        elem_id="audio_sync_more_button",
+                        elem_classes=["slopcore-button"],
+                        scale=1
+                    )
 
                 # Status output
                 audio_sync_status = gr.Textbox(

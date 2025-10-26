@@ -323,9 +323,17 @@ def setup_deforum_left_side_ui():
                     sensitivity,
                     intensity_threshold,
                     min_spacing_frames,
-                    current_fps
+                    current_fps,
+                    threshold_adjustment=0.0  # ±0.05 adjustment for more/fewer events
                 ):
-                    """Detect audio events and distribute prompts across them."""
+                    """Detect audio events and distribute prompts across them.
+
+                    Args:
+                        threshold_adjustment: Adjust intensity threshold (negative = more events, positive = fewer events)
+                    """
+                    # Apply threshold adjustment (-5% = -0.05, +5% = +0.05)
+                    adjusted_threshold = max(0.0, min(1.0, intensity_threshold + threshold_adjustment))
+
                     try:
                         from pathlib import Path
                         import json
@@ -410,7 +418,7 @@ def setup_deforum_left_side_ui():
                             event_intensities[:num_keyframes],
                             fps=fps_val,
                             min_spacing_frames=min_spacing_frames,
-                            intensity_threshold=intensity_threshold / 100.0
+                            intensity_threshold=adjusted_threshold / 100.0
                         )
 
                         if not keyframes:
