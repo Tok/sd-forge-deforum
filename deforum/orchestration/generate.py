@@ -42,6 +42,11 @@ from deforum.utils.general import debug_print
 # Import pure functions from refactored utils module
 from deforum.utils.validation.validators import is_valid_json as isJson
 from deforum.utils.functional import pairwise as pairwise_repl
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 def load_mask_latent(mask_input, shape):
     # mask_input (str or PIL Image.Image): Path to the mask image or a PIL Image object
@@ -134,20 +139,20 @@ def generate(args, keys, anim_args, loop_args, controlnet_args, root, parseq_ada
 
     if caught_vae_exception or not image.getbbox():
         patience = args.reroll_patience
-        print("Blank frame detected! If you don't have the NSFW filter enabled, this may be due to a glitch!")
+        logger.info("Blank frame detected! If you don't have the NSFW filter enabled, this may be due to a glitch!")
         if args.reroll_blank_frames == 'reroll':
             while caught_vae_exception or not image.getbbox():
-                print("Rerolling with +1 seed...")
+                logger.info("Rerolling with +1 seed...")
                 args.seed += 1
                 image, caught_vae_exception = generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
                 patience -= 1
                 if patience == 0:
-                    print("Rerolling with +1 seed failed for 10 iterations! Try setting webui's precision to 'full' and if it fails, please report this to the devs! Interrupting...")
+                    logger.error("Rerolling with +1 seed failed for 10 iterations! Try setting webui's precision to 'full' and if it fails, please report this to the devs! Interrupting...")
                     state.interrupted = True
                     state.assign_current_image(image)
                     return None
         elif args.reroll_blank_frames == 'interrupt':
-            print("Interrupting to save your eyes...")
+            logger.info("Interrupting to save your eyes...")
             state.interrupted = True
             state.assign_current_image(image)
             return None
@@ -161,7 +166,7 @@ def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, 
             image = generate_inner(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter, frame, sampler_name, scheduler_name)
         except Exception as e:
             if "A tensor with all NaNs was produced in VAE." in repr(e):
-                print(e)
+                logger.info(e)
                 return None, True
             else:
                 raise e
@@ -262,7 +267,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
     else:
 
         if anim_args.animation_mode != 'Interpolation':
-            print(f"Not using an init image (doing pure txt2img)")
+            logger.info(f"Not using an init image (doing pure txt2img)")
         
         if args.motion_preview_mode:
             state.assign_current_image(root.default_img)

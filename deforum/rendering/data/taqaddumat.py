@@ -6,6 +6,11 @@ from tqdm import tqdm
 
 from deforum.utils.system.logging import log as log_utils
 from deforum.utils.system.logging.log import HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED, HEX_PURPLE
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 class Taqaddumat:
@@ -76,7 +81,7 @@ class Taqaddumat:
         self.total_frames.update()
         self.total_frames.refresh()
         if Taqaddumat.is_last_iteration(self.tweens):
-            print("\n")
+            logger.info("\n")
 
     def increment_step_count(self):
         if self.steps.n == 0:
@@ -87,13 +92,13 @@ class Taqaddumat:
         self.total_steps.update()
         self.total_steps.refresh()
         if Taqaddumat.is_last_iteration(self.steps):
-            print("\n")
+            logger.info("\n")
 
     def increment_animation_cycle_count(self):
         # Calls to tqdm.update() without an argument increment it by 1.
         self.total_animation_cycles.update()
         self.total_animation_cycles.refresh()
-        print("")
+        logger.info("")
 
     def reset_tween_count(self, n):
         if n == 0:
@@ -113,7 +118,7 @@ class Taqaddumat:
         self.total_steps.clear()
         self.total_frames.clear()
         self.total_animation_cycles.clear()
-        print("\n\n\n\n")
+        logger.info("\n\n\n\n")
 
     @staticmethod
     def is_last_iteration(taqaddum):

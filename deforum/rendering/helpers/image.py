@@ -15,6 +15,11 @@ from deforum.rendering.data.render_data import RenderData
 
 # Import pure conversion functions from refactored utils module
 from deforum.utils.image.processing import (
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
     bgr_to_rgb,
     numpy_to_pil,
     pil_to_numpy,
@@ -71,7 +76,7 @@ def save_cadence_frame_and_depth_map_if_active(data: RenderData, frame, image):
 
 def load_image(image_path):
     if not os.path.isfile(image_path):
-        print(f"File does not exist: {image_path}")
+        logger.info(f"File does not exist: {image_path}")
         return None
     return cv2.imread(str(image_path))
 

@@ -16,6 +16,11 @@ from deforum.utils.parsing.schedules import (
     interpolate_schedule_values as interpolate_schedule,
 )
 from deforum.utils.parsing.schedule_manipulation import (
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
     apply_shakify_to_schedule,
 )
 
@@ -27,10 +32,10 @@ try:
     import pandas as pd
     from scipy.interpolate import CubicSpline
     SHAKIFY_AVAILABLE = True
-    print("🎬 Camera Shakify integration available")
+    logger.info("Camera Shakify integration available", emoji='movie_camera')
 except ImportError:
     SHAKIFY_AVAILABLE = False
-    print("⚠️ Camera Shakify integration not available")
+    logger.warning("⚠️ Camera Shakify integration not available")
 
 # Try to import DeformAnimKeys, but fall back to standalone parsing if not available
 try:
@@ -57,11 +62,11 @@ def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: fl
     if not shake_name or shake_name.lower() in ['none', 'off', ''] or shake_intensity <= 0:
         return None
     
-    print(f"🎬 Creating Camera Shakify data: {shake_name} (intensity: {shake_intensity}, speed: {shake_speed}, frame_start: {frame_start})")
+    logger.info(f"Creating Camera Shakify data: {shake_name} (intensity: {shake_intensity}, speed: {shake_speed}, frame_start: {frame_start})", emoji='movie_camera')
     
     # Check if shakify is available and shake pattern exists
     if not SHAKIFY_AVAILABLE or not SHAKE_LIST:
-        print(f"⚠️ Camera Shakify not available, skipping shake generation")
+        logger.warning(f"⚠️ Camera Shakify not available, skipping shake generation")
         return None
     
     # Look for the shake pattern in SHAKE_LIST
@@ -70,9 +75,9 @@ def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: fl
     
     if shake_key in SHAKE_LIST:
         shake_pattern = SHAKE_LIST[shake_key]
-        print(f"✅ Found shake pattern: {shake_pattern[0]} at {shake_pattern[1]} fps")
+        logger.info(f"✅ Found shake pattern: {shake_pattern[0]} at {shake_pattern[1]} fps")
     else:
-        print(f"⚠️ Shake pattern '{shake_name}' not found in available patterns: {list(SHAKE_LIST.keys())}")
+        logger.warning(f"⚠️ Shake pattern '{shake_name}' not found in available patterns: {list(SHAKE_LIST.keys())}")
         return None
     
     # Extract shake data from the pattern
@@ -114,7 +119,7 @@ def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: fl
                     # No data for this axis, use zero
                     result[transform_type][axis].append(0.0)
     
-    print(f"✅ Generated frame-specific Camera Shakify data for frames {frame_start}-{frame_start + max_frames - 1} using pattern '{pattern_name}'")
+    logger.info(f"✅ Generated frame-specific Camera Shakify data for frames {frame_start}-{frame_start + max_frames - 1} using pattern '{pattern_name}'")
     return result
 
 
@@ -715,7 +720,7 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
     shakify_data = None
     if shake_name and shake_name != 'None' and SHAKIFY_AVAILABLE:
         shakify_data = create_shakify_data(shake_name, shake_intensity, shake_speed, target_fps=30, max_frames=max_frames, frame_start=frame_start)
-        print(f"🎬 Camera Shakify '{shake_name}' integration: {'✅ Success' if shakify_data else '❌ Failed'}")
+        logger.error(f"Camera Shakify '{shake_name}' integration: {'✅ Success' if shakify_data else '❌ Failed'}", emoji='movie_camera')
     
     # 2. Create combined movement schedules (base + shake)
     # This mimics what the render core does with _maybe_shake
@@ -736,9 +741,9 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
         combined_rotation_z = apply_shakify_to_schedule(
             anim_args.rotation_3d_z, shakify_data['rotation_3d']['z'], max_frames)
         
-        print(f"🔧 Applied frame-offset Camera Shakify to movement schedules (starting frame {frame_start})")
-        print(f"   📐 Combined Translation X: {combined_translation_x[:50]}...")
-        print(f"   📐 Combined Rotation Y: {combined_rotation_y[:50]}...")
+        logger.info(f"Applied frame-offset Camera Shakify to movement schedules (starting frame {frame_start})", emoji='wrench')
+        logger.info(f"   📐 Combined Translation X: {combined_translation_x[:50]}...")
+        logger.info(f"   📐 Combined Rotation Y: {combined_rotation_y[:50]}...")
         
         # Store combined schedules in anim_args for motion intensity calculation
         anim_args.combined_translation_x = combined_translation_x
@@ -766,7 +771,7 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
         anim_args.combined_rotation_z = combined_rotation_z
     
     # 3. Parse combined schedules for frame-by-frame analysis
-    print(f"🔍 Parsing combined schedules for frame-by-frame analysis...")
+    logger.info(f"🔍 Parsing combined schedules for frame-by-frame analysis...")
     
     # Parse combined schedules into frame values
     tx_keyframes = parse_schedule_string(combined_translation_x, max_frames)
@@ -789,14 +794,14 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
     zoom_values = interpolate_schedule(zoom_keyframes, max_frames)
     
     # Debug output with bounds checking
-    print(f"📊 Frame 0 values: TX={tx_values[0]:.4f}, TY={ty_values[0]:.4f}, TZ={tz_values[0]:.4f}, Zoom={zoom_values[0]:.4f}")
+    logger.info(f"Frame 0 values: TX={tx_values[0]:.4f}, TY={ty_values[0]:.4f}, TZ={tz_values[0]:.4f}, Zoom={zoom_values[0]:.4f}", emoji='distribution')
     if len(tx_values) > 10:
-        print(f"📊 Frame 10 values: TX={tx_values[10]:.4f}, TY={ty_values[10]:.4f}, TZ={tz_values[10]:.4f}, Zoom={zoom_values[10]:.4f}")
+        logger.info(f"Frame 10 values: TX={tx_values[10]:.4f}, TY={ty_values[10]:.4f}, TZ={tz_values[10]:.4f}, Zoom={zoom_values[10]:.4f}", emoji='distribution')
     if len(tx_values) > 20:
-        print(f"📊 Frame 20 values: TX={tx_values[20]:.4f}, TY={ty_values[20]:.4f}, TZ={tz_values[20]:.4f}, Zoom={zoom_values[20]:.4f}")
+        logger.info(f"Frame 20 values: TX={tx_values[20]:.4f}, TY={ty_values[20]:.4f}, TZ={tz_values[20]:.4f}, Zoom={zoom_values[20]:.4f}", emoji='distribution')
     if len(tx_values) > 1:
         last_frame = len(tx_values) - 1
-        print(f"📊 Frame {last_frame} values: TX={tx_values[last_frame]:.4f}, TY={ty_values[last_frame]:.4f}, TZ={tz_values[last_frame]:.4f}, Zoom={zoom_values[last_frame]:.4f}")
+        logger.info(f"Frame {last_frame} values: TX={tx_values[last_frame]:.4f}, TY={ty_values[last_frame]:.4f}, TZ={tz_values[last_frame]:.4f}, Zoom={zoom_values[last_frame]:.4f}", emoji='distribution')
     
     # 4. Analyze frame-by-frame movement segments with detailed descriptions
     descriptions = []
@@ -818,9 +823,9 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
     # Combine all movement segments
     all_segments = tx_segments + ty_segments + tz_segments + rx_segments + ry_segments + rz_segments + zoom_segments
     
-    print(f"🔍 Found {len(all_segments)} movement segments:")
+    logger.info(f"🔍 Found {len(all_segments)} movement segments:")
     for i, seg in enumerate(all_segments):
-        print(f"   {i+1}. {seg['movement_type']} {seg['direction']} frames {seg['start_frame']}-{seg['end_frame']}")
+        logger.info(f"   {i+1}. {seg['movement_type']} {seg['direction']} frames {seg['start_frame']}-{seg['end_frame']}")
     
     if all_segments:
         # Sort segments by frame order for chronological descriptions
@@ -830,13 +835,13 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
         analyzer_instance = MovementAnalyzer(sensitivity)
         grouped_movements = analyzer_instance._group_similar_segments(all_segments, max_frames)
         
-        print(f"📊 Grouped into {len(grouped_movements)} movement groups:")
+        logger.info(f"Grouped into {len(grouped_movements)} movement groups:", emoji='distribution')
         for i, group in enumerate(grouped_movements):
             group_type = group[0]['movement_type']
             group_direction = group[0]['direction']
             group_start = min(seg['start_frame'] for seg in group)
             group_end = max(seg['end_frame'] for seg in group)
-            print(f"   Group {i+1}: {group_type} {group_direction} frames {group_start}-{group_end} ({len(group)} segments)")
+            logger.info(f"   Group {i+1}: {group_type} {group_direction} frames {group_start}-{group_end} ({len(group)} segments)")
         
         # Generate detailed descriptions for each group
         total_strength = 0.0
@@ -858,11 +863,11 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
             if desc:
                 movement_descriptions.append(desc)
                 total_strength += strength
-                print(f"   Generated: '{desc}' (strength: {strength:.3f})")
+                logger.info(f"   Generated: '{desc}' (strength: {strength:.3f})")
         
         # Create final description with specific directional information
         if not movement_descriptions:
-            print(f"📷 No valid movement descriptions generated")
+            logger.info(f"📷 No valid movement descriptions generated")
             return "static camera position", 0.0
         
         if len(movement_descriptions) == 1:
@@ -877,14 +882,14 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
         
         final_strength = min(total_strength, 2.0)  # Cap at 2.0
         
-        print(f"🎯 Generated combined description: {combined_description}")
-        print(f"🎯 Total movement strength: {final_strength:.3f}")
+        logger.info(f"🎯 Generated combined description: {combined_description}")
+        logger.info(f"🎯 Total movement strength: {final_strength:.3f}")
         
         return combined_description, final_strength
     
     else:
         # No movement segments detected
-        print(f"📷 No movement segments detected in combined schedules")
+        logger.info(f"📷 No movement segments detected in combined schedules")
         return "static camera position", 0.0
 
 
@@ -905,7 +910,7 @@ def generate_wan_motion_intensity_schedule(anim_args, max_frames: int = 100, sen
     
     # Use combined schedules if available (with Camera Shakify applied), otherwise use originals
     if hasattr(anim_args, 'combined_translation_x'):
-        print(f"📊 Using combined schedules (with Camera Shakify) for motion intensity")
+        logger.info(f"Using combined schedules (with Camera Shakify) for motion intensity", emoji='distribution')
         translation_x = str(anim_args.combined_translation_x)
         translation_y = str(anim_args.combined_translation_y)
         translation_z = str(anim_args.combined_translation_z)
@@ -913,7 +918,7 @@ def generate_wan_motion_intensity_schedule(anim_args, max_frames: int = 100, sen
         rotation_3d_y = str(anim_args.combined_rotation_y)
         rotation_3d_z = str(anim_args.combined_rotation_z)
     else:
-        print(f"📊 Using original schedules for motion intensity")
+        logger.info(f"Using original schedules for motion intensity", emoji='distribution')
         translation_x = str(getattr(anim_args, 'translation_x', "0: (0)"))
         translation_y = str(getattr(anim_args, 'translation_y', "0: (0)"))
         translation_z = str(getattr(anim_args, 'translation_z', "0: (0)"))
@@ -945,10 +950,10 @@ def generate_wan_motion_intensity_schedule(anim_args, max_frames: int = 100, sen
     zoom_values = interpolate_schedule(zoom_keyframes, max_frames)
     angle_values = interpolate_schedule(angle_keyframes, max_frames)
     
-    print(f"📊 Motion intensity calculation - sample values:")
-    print(f"   Frame 0: TX={tx_values[0]:.4f}, RY={ry_values[0]:.4f}")
-    print(f"   Frame 10: TX={tx_values[10]:.4f}, RY={ry_values[10]:.4f}")
-    print(f"   Frame 20: TX={tx_values[20]:.4f}, RY={ry_values[20]:.4f}")
+    logger.info(f"Motion intensity calculation - sample values:", emoji='distribution')
+    logger.info(f"   Frame 0: TX={tx_values[0]:.4f}, RY={ry_values[0]:.4f}")
+    logger.info(f"   Frame 10: TX={tx_values[10]:.4f}, RY={ry_values[10]:.4f}")
+    logger.info(f"   Frame 20: TX={tx_values[20]:.4f}, RY={ry_values[20]:.4f}")
     
     # Calculate motion intensity for each frame
     motion_intensities = []
@@ -982,7 +987,7 @@ def generate_wan_motion_intensity_schedule(anim_args, max_frames: int = 100, sen
             
             # Debug output for first few frames
             if frame <= 5:
-                print(f"   Frame {frame}: TX_delta={tx_delta:.4f}, RY_delta={ry_delta:.4f}, total={total_delta:.4f}, intensity={frame_intensity:.4f}")
+                logger.info(f"   Frame {frame}: TX_delta={tx_delta:.4f}, RY_delta={ry_delta:.4f}, total={total_delta:.4f}, intensity={frame_intensity:.4f}")
         
         motion_intensities.append(frame_intensity)
     
@@ -1002,6 +1007,6 @@ def generate_wan_motion_intensity_schedule(anim_args, max_frames: int = 100, sen
     
     schedule_string = ", ".join(keyframes)
     
-    print(f"📐 Generated Wan motion intensity schedule: {schedule_string}")
+    logger.info(f"📐 Generated Wan motion intensity schedule: {schedule_string}")
     
     return schedule_string 

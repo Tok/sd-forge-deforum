@@ -10,6 +10,11 @@ import psutil
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from .prompt_extend import QwenPromptExpander
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 class QwenModelManager:
@@ -96,7 +101,7 @@ class QwenModelManager:
         """
         available_vram = self.get_available_vram()
         
-        print(f"🧠 Available VRAM: {available_vram:.1f}GB")
+        logger.info(f"🧠 Available VRAM: {available_vram:.1f}GB")
         
         # Prefer 3B models for better compatibility and speed
         preferred_models = ["Qwen2.5_3B", "QwenVL2.5_3B"] if prefer_vl else ["Qwen2.5_3B"]
@@ -105,7 +110,7 @@ class QwenModelManager:
         for model_name in preferred_models:
             specs = self.MODEL_SPECS.get(model_name)
             if specs and specs['vram_gb'] <= available_vram:
-                print(f"✅ Auto-selected: {model_name} ({specs['description']})")
+                logger.info(f"✅ Auto-selected: {model_name} ({specs['description']})")
                 return model_name
         
         # Fallback: Sort models by VRAM requirement (ascending) and find best fit
@@ -128,10 +133,10 @@ class QwenModelManager:
         # If no model fits, use the smallest one (3B)
         if best_model is None:
             best_model = "Qwen2.5_3B"
-            print(f"⚠️ No model fits in {available_vram:.1f}GB VRAM, using smallest: {best_model}")
+            logger.warning(f"⚠️ No model fits in {available_vram:.1f}GB VRAM, using smallest: {best_model}")
         else:
             specs = self.MODEL_SPECS[best_model]
-            print(f"✅ Auto-selected: {best_model} ({specs['description']})")
+            logger.info(f"✅ Auto-selected: {best_model} ({specs['description']})")
             
         return best_model
         
@@ -172,18 +177,18 @@ class QwenModelManager:
             model_name = self.auto_select_model()
 
         if self.is_model_downloaded(model_name):
-            print(f"✅ Model {model_name} already available")
+            logger.info(f"✅ Model {model_name} already available")
             return True
 
         model_spec = self.MODEL_SPECS.get(model_name)
         if not model_spec:
-            print(f"❌ Unknown model: {model_name}")
+            logger.info(f"Unknown model: {model_name}", emoji='off')
             return False
 
-        print(f"📥 Downloading Qwen model: {model_name}")
-        print(f"   HuggingFace: {model_spec['hf_name']}")
-        print(f"   VRAM requirement: {model_spec['vram_gb']}GB")
-        print(f"   Description: {model_spec['description']}")
+        logger.info(f"📥 Downloading Qwen model: {model_name}")
+        logger.info(f"   HuggingFace: {model_spec['hf_name']}")
+        logger.info(f"   VRAM requirement: {model_spec['vram_gb']}GB")
+        logger.info(f"   Description: {model_spec['description']}")
 
         try:
             # Work around Forge's huggingface_hub monkey-patching by using CLI
@@ -195,15 +200,15 @@ class QwenModelManager:
 
             # Get current file descriptor limit
             soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
-            print(f"📊 Current file descriptor limit: {soft_limit}/{hard_limit}")
+            logger.info(f"Current file descriptor limit: {soft_limit}/{hard_limit}", emoji='distribution')
 
             # Temporarily increase soft limit to hard limit
             try:
                 new_limit = min(hard_limit, 8192)  # Cap at 8192 for safety
                 resource.setrlimit(resource.RLIMIT_NOFILE, (new_limit, hard_limit))
-                print(f"✅ Temporarily increased file descriptor limit to {new_limit}")
+                logger.info(f"✅ Temporarily increased file descriptor limit to {new_limit}")
             except Exception as limit_e:
-                print(f"⚠️ Could not increase file limit: {limit_e}")
+                logger.error(f"⚠️ Could not increase file limit: {limit_e}")
                 # Continue anyway
 
             # Use CLI with increased limits
@@ -215,7 +220,7 @@ class QwenModelManager:
                 "--resume-download"  # Allow resuming
             ]
 
-            print(f"🚀 Running: {' '.join(cmd)}")
+            logger.info(f"🚀 Running: {' '.join(cmd)}")
 
             # Run with real-time output
             process = subprocess.Popen(
@@ -231,28 +236,28 @@ class QwenModelManager:
             for line in process.stdout:
                 line = line.strip()
                 if line:
-                    print(f"   {line}")
+                    logger.info(f"   {line}")
 
             process.wait()
 
             # Restore original file descriptor limit
             try:
                 resource.setrlimit(resource.RLIMIT_NOFILE, (soft_limit, hard_limit))
-                print(f"✅ Restored file descriptor limit to {soft_limit}")
+                logger.info(f"✅ Restored file descriptor limit to {soft_limit}")
             except:
                 pass
 
             if process.returncode == 0:
-                print(f"✅ Successfully downloaded {model_name} to {local_path}")
+                logger.info(f"✅ Successfully downloaded {model_name} to {local_path}")
                 return True
             else:
-                print(f"❌ Download failed with return code {process.returncode}")
-                print("💡 Trying to use cached/online version...")
+                logger.error(f"Download failed with return code {process.returncode}", emoji='off')
+                logger.info("Trying to use cached/online version...", emoji='bulb')
                 return self._download_with_transformers(model_name, model_spec)
 
         except Exception as e:
-            print(f"❌ Failed to download {model_name}: {e}")
-            print("💡 Trying to use cached/online version...")
+            logger.error(f"Failed to download {model_name}: {e}", emoji='off')
+            logger.info("Trying to use cached/online version...", emoji='bulb')
             return self._download_with_transformers(model_name, model_spec)
             
     def _download_with_transformers(self, model_name: str, model_spec: Dict) -> bool:
@@ -260,17 +265,17 @@ class QwenModelManager:
         try:
             from transformers import AutoConfig, AutoTokenizer
             
-            print(f"📥 Downloading {model_name} using transformers...")
+            logger.info(f"📥 Downloading {model_name} using transformers...")
             
             # This will cache the model
             AutoConfig.from_pretrained(model_spec['hf_name'])
             AutoTokenizer.from_pretrained(model_spec['hf_name'])
             
-            print(f"✅ {model_name} cached successfully")
+            logger.info(f"✅ {model_name} cached successfully")
             return True
             
         except Exception as e:
-            print(f"❌ Failed to download {model_name} with transformers: {e}")
+            logger.error(f"Failed to download {model_name} with transformers: {e}", emoji='off')
             return False
             
     def create_prompt_expander(self, model_name: str, auto_download: bool = True) -> Optional[QwenPromptExpander]:
@@ -289,13 +294,13 @@ class QwenModelManager:
             
         model_spec = self.MODEL_SPECS.get(model_name)
         if not model_spec:
-            print(f"❌ Unknown model: {model_name}")
+            logger.info(f"Unknown model: {model_name}", emoji='off')
             return None
             
         # Download model if needed
         if auto_download and not self.is_model_downloaded(model_name):
             if not self.download_model(model_name):
-                print(f"❌ Failed to download {model_name}")
+                logger.error(f"Failed to download {model_name}", emoji='off')
                 return None
                 
         try:
@@ -313,11 +318,11 @@ class QwenModelManager:
                 device=0 if torch.cuda.is_available() else "cpu"
             )
             
-            print(f"✅ Created QwenPromptExpander with {model_name}")
+            logger.info(f"✅ Created QwenPromptExpander with {model_name}")
             return expander
             
         except Exception as e:
-            print(f"❌ Failed to create QwenPromptExpander: {e}")
+            logger.error(f"Failed to create QwenPromptExpander: {e}", emoji='off')
             return None
             
     def enhance_prompts(self, 
@@ -344,7 +349,7 @@ class QwenModelManager:
         if self._cached_expander is None or self._cached_expander[0] != model_name:
             expander = self.create_prompt_expander(model_name, auto_download)
             if expander is None:
-                print("❌ Failed to create prompt expander, returning original prompts")
+                logger.error("Failed to create prompt expander, returning original prompts", emoji='off')
                 return prompts
             self._cached_expander = (model_name, expander)
         else:
@@ -352,11 +357,11 @@ class QwenModelManager:
             
         enhanced_prompts = {}
         
-        print(f"🎨 Enhancing {len(prompts)} prompts with {model_name}...")
+        logger.info(f"Enhancing {len(prompts)} prompts with {model_name}...", emoji='palette')
         
         for frame_num, original_prompt in prompts.items():
             try:
-                print(f"   📝 Enhancing frame {frame_num}: {original_prompt[:50]}...")
+                logger.info(f"   📝 Enhancing frame {frame_num}: {original_prompt[:50]}...")
                 
                 result = expander(
                     prompt=original_prompt,
@@ -365,16 +370,16 @@ class QwenModelManager:
                 
                 if result.status:
                     enhanced_prompts[frame_num] = result.prompt
-                    print(f"   ✅ Enhanced: {result.prompt[:50]}...")
+                    logger.info(f"   ✅ Enhanced: {result.prompt[:50]}...")
                 else:
                     enhanced_prompts[frame_num] = original_prompt
-                    print(f"   ⚠️ Enhancement failed, using original prompt")
+                    logger.error(f"   ⚠️ Enhancement failed, using original prompt")
                     
             except Exception as e:
-                print(f"   ❌ Error enhancing frame {frame_num}: {e}")
+                logger.error(f"   ❌ Error enhancing frame {frame_num}: {e}")
                 enhanced_prompts[frame_num] = original_prompt
                 
-        print(f"✅ Enhanced {len(enhanced_prompts)} prompts successfully")
+        logger.info(f"✅ Enhanced {len(enhanced_prompts)} prompts successfully")
         return enhanced_prompts
         
     def get_model_info(self, model_name: str) -> Dict:
@@ -392,7 +397,7 @@ class QwenModelManager:
         if self._cached_expander is not None:
             try:
                 model_name, expander = self._cached_expander
-                print(f"🧹 Cleaning up Qwen model: {model_name}")
+                logger.info(f"Cleaning up Qwen model: {model_name}", emoji='broom')
                 
                 # Properly cleanup the model
                 if hasattr(expander, 'model') and expander.model is not None:
@@ -416,16 +421,16 @@ class QwenModelManager:
                     torch.cuda.synchronize()
                     
             except Exception as e:
-                print(f"⚠️ Error during cleanup: {e}")
+                logger.warning(f"⚠️ Error during cleanup: {e}")
                 
             self._cached_expander = None
             self._current_model = None
-            print("✅ Qwen model cache cleaned up successfully")
+            logger.info("✅ Qwen model cache cleaned up successfully")
             
     def ensure_model_unloaded(self):
         """Ensure Qwen model is unloaded before other operations"""
         if self._cached_expander is not None:
-            print("🔄 Unloading Qwen model before rendering...")
+            logger.info("Unloading Qwen model before rendering...", emoji='refresh')
             self.cleanup_cache()
             
     def is_model_loaded(self) -> bool:
@@ -450,7 +455,7 @@ class QwenModelManager:
         
     def force_cleanup_all(self):
         """Force cleanup of all cached models and clear VRAM"""
-        print("🧹 Force cleanup: Clearing all Qwen models from VRAM...")
+        logger.info("Force cleanup: Clearing all Qwen models from VRAM...", emoji='broom')
         
         # Cleanup cached expander
         self.cleanup_cache()
@@ -467,9 +472,9 @@ class QwenModelManager:
                 torch.cuda.reset_peak_memory_stats()
                 
         except Exception as e:
-            print(f"⚠️ Error during force cleanup: {e}")
+            logger.warning(f"⚠️ Error during force cleanup: {e}")
             
-        print("✅ Force cleanup completed")
+        logger.info("✅ Force cleanup completed")
 
 
 # Global instance for easy access

@@ -25,6 +25,11 @@ from pathlib import Path
 import os
 import sys
 import subprocess
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 class WanFlowMatchingPipeline:
@@ -45,7 +50,7 @@ class WanFlowMatchingPipeline:
         """
         Setup the official Wan 2.1 repository
         """
-        print("🚀 Setting up official Wan 2.1 repository...")
+        logger.info("🚀 Setting up official Wan 2.1 repository...")
         
         # Get extension root directory
         extension_root = Path(__file__).parent.parent.parent.parent
@@ -58,7 +63,7 @@ class WanFlowMatchingPipeline:
             ]
             
             if all(f.exists() for f in key_files):
-                print(f"✅ Official Wan repository already exists at: {wan_repo_dir}")
+                logger.info(f"✅ Official Wan repository already exists at: {wan_repo_dir}")
                 return wan_repo_dir
                 
         # Clone repository
@@ -76,7 +81,7 @@ class WanFlowMatchingPipeline:
             if result.returncode != 0:
                 raise subprocess.CalledProcessError(result.returncode, "git clone", result.stderr)
             
-            print(f"✅ Wan 2.1 repository cloned successfully")
+            logger.info(f"✅ Wan 2.1 repository cloned successfully")
             return wan_repo_dir
             
         except Exception as e:
@@ -86,7 +91,7 @@ class WanFlowMatchingPipeline:
         """
         Load model components using real implementation with fallbacks
         """
-        print(f"🔧 Loading Wan model from: {self.model_path}")
+        logger.info(f"Loading Wan model from: {self.model_path}", emoji='wrench')
         
         # Setup repository
         self.wan_repo_path = self.setup_wan_repository()
@@ -101,22 +106,22 @@ class WanFlowMatchingPipeline:
         if not model_files:
             raise FileNotFoundError(f"No model files found in {self.model_path}")
         
-        print(f"📋 Found {len(model_files)} model files")
+        logger.info(f"📋 Found {len(model_files)} model files")
         
         try:
             # Try to import and initialize official Wan modules
-            print("📦 Attempting to load official Wan pipeline...")
+            logger.info("📦 Attempting to load official Wan pipeline...")
             
             # This is where we would load the actual official WAN pipeline
             # For now, we'll implement a realistic fallback
             self._initialize_official_pipeline()
             
-            print("✅ Official Wan pipeline loaded successfully")
+            logger.info("✅ Official Wan pipeline loaded successfully")
             self.loaded = True
             
         except Exception as e:
-            print(f"⚠️ Official Wan pipeline failed: {e}")
-            print("🔄 Using enhanced fallback implementation...")
+            logger.error(f"⚠️ Official Wan pipeline failed: {e}")
+            logger.info("Using enhanced fallback implementation...", emoji='refresh')
             self._initialize_fallback_pipeline()
             self.loaded = True
         
@@ -131,7 +136,7 @@ class WanFlowMatchingPipeline:
             
             # Initialize official pipeline (this would be the real implementation)
             # For now, we simulate this since the actual implementation depends on the real WAN repo
-            print("🔧 Initializing official WAN text2video pipeline...")
+            logger.info("Initializing official WAN text2video pipeline...", emoji='wrench')
             
             # This would be the actual initialization:
             # self.official_pipeline = {
@@ -149,7 +154,7 @@ class WanFlowMatchingPipeline:
         """
         Initialize enhanced fallback pipeline
         """
-        print("🔧 Initializing enhanced fallback WAN pipeline...")
+        logger.info("Initializing enhanced fallback WAN pipeline...", emoji='wrench')
         
         class EnhancedFallbackPipeline:
             def __init__(self, model_path, device):
@@ -166,7 +171,7 @@ class WanFlowMatchingPipeline:
                 """
                 Enhanced video generation with more realistic motion and content
                 """
-                print(f"🎬 Enhanced generation: {num_frames} frames for '{prompt[:50]}...'")
+                logger.info(f"Enhanced generation: {num_frames} frames for '{prompt[:50]}...'", emoji='movie_camera')
                 
                 frames = []
                 
@@ -184,7 +189,7 @@ class WanFlowMatchingPipeline:
                     frames.append(frame)
                     
                     if i % 15 == 0:
-                        print(f"  Enhanced frame {i+1}/{num_frames}")
+                        logger.info(f"  Enhanced frame {i+1}/{num_frames}")
                 
                 return frames
             
@@ -365,8 +370,8 @@ class WanFlowMatchingPipeline:
             torch.manual_seed(seed)
             np.random.seed(seed)
             
-        print(f"🎬 Generating {num_frames} frames at {width}x{height}")
-        print(f"📝 Prompt: {prompt}")
+        logger.info(f"Generating {num_frames} frames at {width}x{height}", emoji='movie_camera')
+        logger.info(f"📝 Prompt: {prompt}")
         
         try:
             frames = self.official_pipeline.generate_text2video(
@@ -378,7 +383,7 @@ class WanFlowMatchingPipeline:
                 guidance_scale=guidance_scale
             )
             
-            print(f"✅ Generated {len(frames)} frames using enhanced Wan pipeline")
+            logger.info(f"✅ Generated {len(frames)} frames using enhanced Wan pipeline")
             return frames
             
         except Exception as e:
@@ -391,12 +396,12 @@ def create_wan_pipeline(model_path: str,
     """
     Create and initialize Wan Flow Matching pipeline - Real Implementation
     """
-    print("🚀 Creating real Wan Flow Matching pipeline...")
+    logger.info("🚀 Creating real Wan Flow Matching pipeline...")
     
     pipeline = WanFlowMatchingPipeline(model_path, device)
     pipeline.load_model_components()
     
-    print("✅ Wan Flow Matching pipeline ready!")
+    logger.info("✅ Wan Flow Matching pipeline ready!")
     return pipeline
 
 

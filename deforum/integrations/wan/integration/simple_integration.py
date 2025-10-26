@@ -12,6 +12,11 @@ from typing import List, Dict, Optional, Any
 import json
 from PIL import Image
 import tempfile
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 class WanSimpleIntegration:
     """Simple, robust WAN integration that directly loads models"""
@@ -45,21 +50,21 @@ class WanSimpleIntegration:
     def load_simple_wan_pipeline(self, model_info: Dict) -> bool:
         """Load WAN models properly - create custom pipeline for WAN format"""
         try:
-            print(f"🔧 Loading WAN model: {model_info['name']}")
-            print(f"📁 Model path: {model_info['path']}")
+            logger.info(f"Loading WAN model: {model_info['name']}", emoji='wrench')
+            logger.info(f"📁 Model path: {model_info['path']}")
             
             # WAN models are not standard Diffusers format, we need a custom loader
-            print("🚀 Creating custom WAN pipeline...")
+            logger.info("🚀 Creating custom WAN pipeline...")
             
             # Create a custom WAN pipeline class
             pipeline = self._create_custom_wan_pipeline(model_info)
             
             self.pipeline = pipeline
-            print("✅ WAN model loaded successfully with custom pipeline")
+            logger.info("✅ WAN model loaded successfully with custom pipeline")
             return True
                 
         except Exception as e:
-            print(f"❌ Failed to load WAN model: {e}")
+            logger.error(f"Failed to load WAN model: {e}", emoji='off')
             raise RuntimeError(f"WAN model loading failed: {e}")
     
     def _create_custom_wan_pipeline(self, model_info: Dict):
@@ -75,7 +80,7 @@ class WanSimpleIntegration:
                 with open(config_path, 'r') as f:
                     self.config = json.load(f)
                 
-                print(f"📋 WAN Model config: {self.config}")
+                logger.info(f"📋 WAN Model config: {self.config}")
                 
                 # For now, this is a stub that will demonstrate proper WAN loading
                 # In a full implementation, we would load the actual model components
@@ -88,7 +93,7 @@ class WanSimpleIntegration:
                 try:
                     from .wan import create_wan_pipeline
                     
-                    print("🚀 Using organized WAN implementation!")
+                    logger.info("🚀 Using organized WAN implementation!")
                     
                     # Create WAN pipeline
                     wan_pipeline = create_wan_pipeline(str(self.model_path), "auto")
@@ -113,7 +118,7 @@ class WanSimpleIntegration:
                     )
                     
                     if success and os.path.exists(temp_output):
-                        print(f"✅ WAN video generated successfully!")
+                        logger.info(f"✅ WAN video generated successfully!")
                         
                         # Load video frames to return
                         import imageio
@@ -139,13 +144,13 @@ class WanSimpleIntegration:
                         raise RuntimeError("WAN video generation failed")
                         
                 except ImportError as e:
-                    print(f"❌ Could not import organized WAN implementation: {e}")
+                    logger.error(f"Could not import organized WAN implementation: {e}", emoji='off')
                     
                     # Try fallback to old implementation
                     try:
                         from .wan_real_implementation import generate_video_with_real_wan
                         
-                        print("🔄 Falling back to old WAN implementation...")
+                        logger.info("Falling back to old WAN implementation...", emoji='refresh')
                         
                         # Generate temporary output path
                         import tempfile
@@ -168,7 +173,7 @@ class WanSimpleIntegration:
                         )
                         
                         if success and os.path.exists(temp_output):
-                            print(f"✅ WAN video generated successfully!")
+                            logger.info(f"✅ WAN video generated successfully!")
                             
                             # Load video frames to return
                             import imageio
@@ -194,10 +199,10 @@ class WanSimpleIntegration:
                             raise RuntimeError("Old WAN implementation failed")
                             
                     except ImportError:
-                        print(f"❌ Could not import old WAN implementation either")
+                        logger.error(f"Could not import old WAN implementation either", emoji='off')
                         
                         # Final fallback to procedural generation
-                        print("🔄 Using procedural video generation as final fallback...")
+                        logger.info("Using procedural video generation as final fallback...", emoji='refresh')
                     
                     # Generate procedural video frames
                     import numpy as np
@@ -257,10 +262,10 @@ class WanSimpleIntegration:
             missing_files.append("T5 file (models_t5_umt5-xxl-enc-bf16.pth, t5.pth, or t5.safetensors)")
         
         if missing_files:
-            print(f"❌ Missing required model files: {missing_files}")
+            logger.info(f"Missing required model files: {missing_files}", emoji='off')
             return False
             
-        print("✅ All required WAN model files found")
+        logger.info("✅ All required WAN model files found")
         return True
     
     def _generate_with_wan_pipeline(self, 
@@ -277,12 +282,12 @@ class WanSimpleIntegration:
             if not self.pipeline:
                 raise RuntimeError("WAN pipeline not loaded")
             
-            print(f"🎬 Running WAN inference...")
-            print(f"   📝 Prompt: {prompt[:50]}...")
-            print(f"   📐 Size: {width}x{height}")
-            print(f"   🎬 Frames: {num_frames}")
-            print(f"   🔧 Steps: {steps}")
-            print(f"   📏 Guidance: {guidance_scale}")
+            logger.info(f"Running WAN inference...", emoji='movie_camera')
+            logger.info(f"   📝 Prompt: {prompt[:50]}...")
+            logger.info(f"   📐 Size: {width}x{height}")
+            logger.info(f"   🎬 Frames: {num_frames}", emoji='movie_camera')
+            logger.info(f"   🔧 Steps: {steps}", emoji='wrench')
+            logger.info(f"   📏 Guidance: {guidance_scale}", emoji='scale')
             
             # Set seed for reproducibility
             if seed > 0:
@@ -317,7 +322,7 @@ class WanSimpleIntegration:
                 if 'return_dict' in sig.parameters:
                     generation_kwargs['return_dict'] = False
             
-            print("🚀 Starting WAN model inference...")
+            logger.info("🚀 Starting WAN model inference...")
             
             # Generate the video
             with torch.no_grad():
@@ -336,11 +341,11 @@ class WanSimpleIntegration:
             # Save frames as video
             self._save_frames_as_video(frames, output_path, fps=8)
             
-            print(f"✅ WAN video saved to: {output_path}")
+            logger.info(f"✅ WAN video saved to: {output_path}")
             return True
             
         except Exception as e:
-            print(f"❌ WAN pipeline generation failed: {e}")
+            logger.error(f"WAN pipeline generation failed: {e}", emoji='off')
             import traceback
             traceback.print_exc()
             raise RuntimeError(f"WAN pipeline generation failed: {e}")
@@ -351,17 +356,17 @@ class WanSimpleIntegration:
             import imageio
             import numpy as np
             
-            print(f"💾 Saving video with {len(frames) if hasattr(frames, '__len__') else 'unknown'} frames...")
+            logger.info(f"💾 Saving video with {len(frames) if hasattr(frames, '__len__') else 'unknown'} frames...")
             
             # Handle tensor format conversion
             if isinstance(frames, torch.Tensor):
-                print(f"🔄 Converting tensor with shape: {frames.shape}")
+                logger.info(f"Converting tensor with shape: {frames.shape}", emoji='refresh')
                 frames_np = frames.cpu().numpy()
                 
                 # Handle different tensor formats
                 if len(frames_np.shape) == 4:  # (C, F, H, W) or (F, H, W, C)
                     if frames_np.shape[0] == 3:  # (C, F, H, W) - channels first
-                        print("🔄 Converting from (C, F, H, W) to (F, H, W, C)")
+                        logger.info("Converting from (C, F, H, W) to (F, H, W, C)", emoji='refresh')
                         frames_np = frames_np.transpose(1, 2, 3, 0)  # (F, H, W, C)
                     # else assume (F, H, W, C) already
                 
@@ -384,7 +389,7 @@ class WanSimpleIntegration:
                         else:
                             frame = np.clip(frame, 0, 255).astype(np.uint8)
                     
-                    print(f"  Frame {i}: shape={frame.shape}, dtype={frame.dtype}, min={frame.min()}, max={frame.max()}")
+                    logger.info(f"  Frame {i}: shape={frame.shape}, dtype={frame.dtype}, min={frame.min()}, max={frame.max()}")
                     processed_frames.append(frame)
             
             else:
@@ -419,17 +424,17 @@ class WanSimpleIntegration:
                         else:
                             frame_np = np.clip(frame_np, 0, 255).astype(np.uint8)
                     
-                    print(f"  Frame {i}: shape={frame_np.shape}, dtype={frame_np.dtype}")
+                    logger.info(f"  Frame {i}: shape={frame_np.shape}, dtype={frame_np.dtype}")
                     processed_frames.append(frame_np)
             
-            print(f"🎬 Saving {len(processed_frames)} frames to {output_path}")
+            logger.info(f"Saving {len(processed_frames)} frames to {output_path}", emoji='movie_camera')
             
             # Save as video
             imageio.mimsave(output_path, processed_frames, fps=fps, format='mp4')
-            print(f"✅ Video saved successfully with {len(processed_frames)} frames at {fps} FPS")
+            logger.info(f"✅ Video saved successfully with {len(processed_frames)} frames at {fps} FPS")
             
         except Exception as e:
-            print(f"❌ Failed to save video: {e}")
+            logger.error(f"Failed to save video: {e}", emoji='off')
             import traceback
             traceback.print_exc()
             raise RuntimeError(f"Failed to save video: {e}")
@@ -447,11 +452,11 @@ class WanSimpleIntegration:
                             **kwargs) -> Optional[str]:
         """Generate video using simple WAN integration"""
         
-        print(f"🎬 Generating video using SIMPLE WAN integration...")
-        print(f"   📝 Prompt: {prompt}")
-        print(f"   📐 Size: {width}x{height}")
-        print(f"   🎬 Frames: {num_frames}")
-        print(f"   📁 Model: {model_info['name']} ({model_info['type']}, {model_info['size']})")
+        logger.info(f"Generating video using SIMPLE WAN integration...", emoji='movie_camera')
+        logger.info(f"   📝 Prompt: {prompt}")
+        logger.info(f"   📐 Size: {width}x{height}")
+        logger.info(f"   🎬 Frames: {num_frames}", emoji='movie_camera')
+        logger.info(f"   📁 Model: {model_info['name']} ({model_info['type']}, {model_info['size']})")
         
         # Validate model first
         if not self._validate_wan_model(model_info):
@@ -471,7 +476,7 @@ class WanSimpleIntegration:
             output_filename = f"wan_video_{timestamp}.mp4"
             output_path = os.path.join(output_dir, output_filename)
             
-            print("🎬 Generating video with WAN model...")
+            logger.info("Generating video with WAN model...", emoji='movie_camera')
             
             # Real WAN video generation
             result = self._generate_with_wan_pipeline(
@@ -486,13 +491,13 @@ class WanSimpleIntegration:
             )
             
             if result:
-                print(f"✅ WAN video generated: {output_path}")
+                logger.info(f"✅ WAN video generated: {output_path}")
                 return output_path
             else:
                 raise RuntimeError("WAN video generation returned no result")
                 
         except Exception as e:
-            print(f"❌ WAN video generation failed: {e}")
+            logger.error(f"WAN video generation failed: {e}", emoji='off')
             raise RuntimeError(f"WAN video generation failed: {e}")
     
     def unload_model(self):
@@ -507,9 +512,9 @@ class WanSimpleIntegration:
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                     
-                print("🧹 WAN model unloaded, memory freed")
+                logger.info("WAN model unloaded, memory freed", emoji='broom')
             except Exception as e:
-                print(f"⚠️ Error unloading model: {e}")
+                logger.warning(f"⚠️ Error unloading model: {e}")
 
 def generate_video_with_simple_wan(prompt: str, 
                                  output_dir: str,
@@ -557,20 +562,20 @@ Then restart generation.""")
 
 if __name__ == "__main__":
     # Test the simple integration
-    print("🧪 Testing WAN Simple Integration...")
+    logger.info("🧪 Testing WAN Simple Integration...")
     
     integration = WanSimpleIntegration()
     
     # Test model discovery
     models = integration.discover_models()
     if models:
-        print(f"✅ Found {len(models)} model(s)")
+        logger.info(f"✅ Found {len(models)} model(s)")
         best = integration.get_best_model()
-        print(f"🏆 Best model: {best['name']} ({best['type']}, {best['size']})")
+        logger.info(f"🏆 Best model: {best['name']} ({best['type']}, {best['size']})")
         
         # Test simple loading
         if integration.load_simple_wan_pipeline(best):
-            print("✅ Simple WAN integration ready")
+            logger.info("✅ Simple WAN integration ready")
             
             # Test demo generation
             output = integration.generate_video_simple(
@@ -581,10 +586,10 @@ if __name__ == "__main__":
             )
             
             if output:
-                print(f"✅ Demo generation successful: {output}")
+                logger.info(f"✅ Demo generation successful: {output}")
             else:
-                print("❌ Demo generation failed")
+                logger.error("Demo generation failed", emoji='off')
         else:
-            print("❌ Failed to load WAN models")
+            logger.error("Failed to load WAN models", emoji='off')
     else:
         print("❌ No models found") 

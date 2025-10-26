@@ -10,6 +10,11 @@ from modules.ui_components import FormRow, FormColumn
 from deforum.utils.system.logging import emoji as emoji_utils
 from deforum.utils.ui.builders import create_gr_elem, create_row
 from deforum.config.defaults import get_gradio_html
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 def get_tab_init(d, da, dp, dau, dv=None):
@@ -316,9 +321,9 @@ def get_tab_init(d, da, dp, dau, dv=None):
     found_components = [name for name in audio_component_names if name in local_scope]
     missing_components = [name for name in audio_component_names if name not in local_scope]
 
-    print(f"🔍 DEBUG get_tab_init() return:")
-    print(f"   Found in locals(): {found_components}")
-    print(f"   Missing from locals(): {missing_components}")
+    logger.info(f"🔍 DEBUG get_tab_init() return:")
+    logger.info(f"   Found in locals(): {found_components}")
+    logger.info(f"   Missing from locals(): {missing_components}")
 
     # Add found components to result
     for comp_name in found_components:

@@ -1,13 +1,18 @@
 from deforum.orchestration.generate import generate
 from deforum.rendering.helpers.flux_controlnet import should_use_flux_controlnet_for_frame, prepare_flux_controlnet_for_frame
 from deforum.integrations.flux_controlnet import clear_control_samples
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 def call_generate(data, frame: 'DiffusionFrame', redo_seed: int = None):
     # Check if we should use Flux ControlNet for this frame
     if should_use_flux_controlnet_for_frame(data, frame):
         # Prepare Flux ControlNet control samples (V2 - Forge-native)
-        print(f"🌐 Using Flux ControlNet V2 for keyframe {frame.i}")
+        logger.info(f"🌐 Using Flux ControlNet V2 for keyframe {frame.i}")
         prepare_flux_controlnet_for_frame(data, frame)
         # Control samples are now stored and will be injected into Forge's pipeline
         # Continue with standard generation flow

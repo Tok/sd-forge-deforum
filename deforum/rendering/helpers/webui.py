@@ -2,6 +2,11 @@ import time
 
 from deforum.api.api import JobStatusTracker
 from modules.shared import state
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 WEB_UI_SLEEP_DELAY = 0.1
 
@@ -16,11 +21,11 @@ def update_job(data, i):
     state.job = f"frame {frame}/{max_frames}"
     state.job_no = frame + 1
     if state.skipped:
-        print("\n** PAUSED **")
+        logger.info("\n** PAUSED **")
         state.skipped = False
         while not state.skipped:
             time.sleep(WEB_UI_SLEEP_DELAY)
-        print("** RESUMING **")
+        logger.info("** RESUMING **")
 
 
 def update_status_tracker(data, i):

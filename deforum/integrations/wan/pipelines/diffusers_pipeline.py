@@ -25,14 +25,19 @@ import torch
 import torch.cuda.amp as amp
 import numpy as np
 from tqdm import tqdm
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 try:
     import imageio
     from PIL import Image
-    print("✅ Basic dependencies loaded successfully")
+    logger.info("✅ Basic dependencies loaded successfully")
 except ImportError as e:
-    print(f"❌ Missing basic dependencies: {e}")
-    print("💡 Install with: pip install imageio pillow")
+    logger.info(f"Missing basic dependencies: {e}", emoji='off')
+    logger.info("Install with: pip install imageio pillow", emoji='bulb')
 
 
 class WanSimplePipeline:
@@ -46,7 +51,7 @@ class WanSimplePipeline:
         
     def load_components(self):
         """Load pipeline components"""
-        print(f"🚀 Loading WAN model components...")
+        logger.info(f"🚀 Loading WAN model components...")
         
         # Validate model files exist
         required_files = [
@@ -61,13 +66,13 @@ class WanSimplePipeline:
             file_path = self.model_path / file
             if file_path.exists():
                 size_gb = file_path.stat().st_size / (1024**3)
-                print(f"✅ Found {file}: {size_gb:.1f}GB")
+                logger.info(f"✅ Found {file}: {size_gb:.1f}GB")
             else:
-                print(f"❌ Missing {file}")
+                logger.info(f"Missing {file}", emoji='off')
                 files_exist = False
         
         if not files_exist:
-            print("❌ Cannot load WAN pipeline - missing required files")
+            logger.info("Cannot load WAN pipeline - missing required files", emoji='off')
             return False
         
         try:
@@ -77,40 +82,40 @@ class WanSimplePipeline:
             from ..models.t5_encoder import T5Encoder
             
             # Load DiT model
-            print("🔄 Loading DiT model...")
+            logger.info("Loading DiT model...", emoji='refresh')
             dit_path = self.model_path / "diffusion_pytorch_model.safetensors"
             self.dit_model = WanModel.from_pretrained(str(dit_path))
             self.dit_model.to(self.device)
             self.dit_model.eval()
-            print("✅ DiT model loaded")
+            logger.info("✅ DiT model loaded")
             
             # Load VAE
-            print("🔄 Loading VAE...")
+            logger.info("Loading VAE...", emoji='refresh')
             vae_path = self.model_path / "Wan2.1_VAE.pth"
             self.vae = WanVAE.from_pretrained(str(vae_path))
             self.vae.to(self.device)
             self.vae.eval()
-            print("✅ VAE loaded")
+            logger.info("✅ VAE loaded")
             
             # Load T5 text encoder
-            print("🔄 Loading T5 text encoder...")
+            logger.info("Loading T5 text encoder...", emoji='refresh')
             t5_path = self.model_path / "models_t5_umt5-xxl-enc-bf16.pth"
             self.text_encoder = T5Encoder.from_pretrained(str(t5_path))
             self.text_encoder.to(self.device)
             self.text_encoder.eval()
-            print("✅ T5 text encoder loaded")
+            logger.info("✅ T5 text encoder loaded")
             
             # Create flow matching scheduler
             from ..utils.fm_solvers import FlowDPMSolverMultistepScheduler
             self.scheduler = FlowDPMSolverMultistepScheduler(num_train_timesteps=1000)
-            print("✅ Scheduler loaded")
+            logger.info("✅ Scheduler loaded")
             
             self.loaded = True
-            print(f"✅ Real WAN pipeline loaded successfully")
+            logger.info(f"✅ Real WAN pipeline loaded successfully")
             return True
             
         except Exception as e:
-            print(f"❌ Failed to load WAN components: {e}")
+            logger.error(f"Failed to load WAN components: {e}", emoji='off')
             import traceback
             traceback.print_exc()
             return False
@@ -130,11 +135,11 @@ class WanSimplePipeline:
         if not self.loaded:
             raise RuntimeError("Pipeline not loaded")
         
-        print(f"🎬 Generating WAN video...")
-        print(f"   📝 Prompt: {prompt[:50]}...")
-        print(f"   📐 Size: {width}x{height}")
-        print(f"   🎬 Frames: {num_frames}")
-        print(f"   🔧 Steps: {num_inference_steps}")
+        logger.info(f"Generating WAN video...", emoji='movie_camera')
+        logger.info(f"   📝 Prompt: {prompt[:50]}...")
+        logger.info(f"   📐 Size: {width}x{height}")
+        logger.info(f"   🎬 Frames: {num_frames}", emoji='movie_camera')
+        logger.info(f"   🔧 Steps: {num_inference_steps}", emoji='wrench')
         
         try:
             # Encode text prompt
@@ -188,16 +193,16 @@ class WanSimplePipeline:
                 video = (video + 1) / 2  # Convert from [-1, 1] to [0, 1]
                 video = video.permute(1, 2, 3, 0)  # (C, F, H, W) -> (F, H, W, C)
             
-            print("✅ WAN video generation complete!")
+            logger.info("✅ WAN video generation complete!")
             return video
             
         except Exception as e:
-            print(f"❌ WAN inference failed: {e}")
+            logger.error(f"WAN inference failed: {e}", emoji='off')
             import traceback
             traceback.print_exc()
             
             # Fallback to procedural generation
-            print("🔄 Falling back to procedural generation...")
+            logger.info("Falling back to procedural generation...", emoji='refresh')
             return self._generate_procedural_video(prompt, num_frames, width, height)
     
     def _generate_procedural_video(self, prompt: str, num_frames: int, width: int, height: int):
@@ -368,10 +373,10 @@ class WanRealIntegration:
                 missing.append(file)
         
         if missing:
-            print(f"❌ Missing model files: {missing}")
+            logger.info(f"Missing model files: {missing}", emoji='off')
             return False
         
-        print("✅ All required WAN model files found")
+        logger.info("✅ All required WAN model files found")
         return True
     
     def load_pipeline(self, model_path: str) -> bool:
@@ -382,7 +387,7 @@ class WanRealIntegration:
             
             # Detect model type and size
             model_type, size = self.detect_model_type(model_path)
-            print(f"🔍 Detected model: {model_type.upper()} {size}")
+            logger.info(f"🔍 Detected model: {model_type.upper()} {size}")
             
             # Load configuration
             config = self.load_model_config(model_path, model_type, size)
@@ -394,7 +399,7 @@ class WanRealIntegration:
             return self.pipeline.load_components()
             
         except Exception as e:
-            print(f"❌ Failed to load WAN pipeline: {e}")
+            logger.error(f"Failed to load WAN pipeline: {e}", emoji='off')
             import traceback
             traceback.print_exc()
             return False
@@ -437,11 +442,11 @@ class WanRealIntegration:
             # Save video
             self._save_video(result, output_path)
             
-            print(f"💾 Video saved to: {output_path}")
+            logger.info(f"💾 Video saved to: {output_path}")
             return True
             
         except Exception as e:
-            print(f"❌ WAN video generation failed: {e}")
+            logger.error(f"WAN video generation failed: {e}", emoji='off')
             import traceback
             traceback.print_exc()
             return False
@@ -470,7 +475,7 @@ class WanRealIntegration:
             imageio.mimsave(output_path, frames_list, fps=fps, format='mp4')
             
         except Exception as e:
-            print(f"❌ Failed to save video: {e}")
+            logger.error(f"Failed to save video: {e}", emoji='off')
             raise
 
 
@@ -542,6 +547,6 @@ if __name__ == "__main__":
     )
     
     if success:
-        print("🎉 Simplified WAN video generation completed successfully!")
+        logger.info("🎉 Simplified WAN video generation completed successfully!")
     else:
         print("❌ Simplified WAN video generation failed!") 

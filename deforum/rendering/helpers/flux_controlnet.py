@@ -31,6 +31,11 @@ import numpy as np
 import os
 from PIL import Image
 from typing import Optional, TYPE_CHECKING
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 if TYPE_CHECKING:
     from ..data.render_data import RenderData
@@ -63,7 +68,7 @@ def get_local_flux_model_path() -> Optional[str]:
             # Check for Flux model files
             flux_files = list(flux_dir.glob("*.safetensors"))
             if flux_files:
-                print(f"  Found local Flux model: {flux_files[0].name}")
+                logger.info(f"  Found local Flux model: {flux_files[0].name}")
                 # For diffusers, we need the directory, not the specific file
                 # But diffusers expects a model with config.json, etc.
                 # Since we only have .safetensors, we can't use it directly
@@ -73,7 +78,7 @@ def get_local_flux_model_path() -> Optional[str]:
         return None
 
     except Exception as e:
-        print(f"  Could not detect local Flux model: {e}")
+        logger.error(f"  Could not detect local Flux model: {e}")
         return None
 
 
@@ -192,16 +197,16 @@ def prepare_flux_controlnet_for_frame(
     canny_low = getattr(anim_args, 'flux_controlnet_canny_low', 100)
     canny_high = getattr(anim_args, 'flux_controlnet_canny_high', 200)
 
-    print(f"   Type: {control_type}, Model: {model_name}, Strength: {strength}")
+    logger.info(f"   Type: {control_type}, Model: {model_name}, Strength: {strength}")
 
     # Get control image
     control_image = get_control_image_for_frame(data, frame, control_type)
     if control_image is None:
-        print(f"⚠️ Could not get {control_type} control image, skipping ControlNet")
+        logger.error(f"⚠️ Could not get {control_type} control image, skipping ControlNet")
         return
 
-    print(f"   Control image shape: {control_image.shape}")
-    print(f"   Control image dtype: {control_image.dtype}, range: [{control_image.min():.3f}, {control_image.max():.3f}]")
+    logger.info(f"   Control image shape: {control_image.shape}")
+    logger.info(f"   Control image dtype: {control_image.dtype}, range: [{control_image.min():.3f}, {control_image.max():.3f}]")
 
     # Overlay canny edges on depth-raft-preview.png if canny mode
     if control_type == "canny":
@@ -227,19 +232,19 @@ def prepare_flux_controlnet_for_frame(
                     overlay = overlay_canny_edges(depth_preview_rgb, canny_edges_bold, edge_color=(255, 0, 0), alpha=0.8)
                     # Save back to same file
                     cv2.imwrite(depth_preview_path, cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
-                    print(f"   💡 Overlaid canny edges on: {depth_preview_path}")
+                    logger.info(f"   💡 Overlaid canny edges on: {depth_preview_path}", emoji='bulb')
             else:
                 # Create black preview image if it doesn't exist
-                print(f"   ℹ️ Depth preview not found, creating black preview: {depth_preview_path}")
+                logger.info(f"   ℹ️ Depth preview not found, creating black preview: {depth_preview_path}")
                 # Create black image matching control image size
                 black_preview = np.zeros_like(control_image)
                 # Overlay bold canny edges on black background
                 overlay = overlay_canny_edges(black_preview, canny_edges_bold, edge_color=(255, 0, 0), alpha=1.0)
                 # Save
                 cv2.imwrite(depth_preview_path, cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
-                print(f"   💡 Created canny edge preview: {depth_preview_path}")
+                logger.info(f"   💡 Created canny edge preview: {depth_preview_path}", emoji='bulb')
         except Exception as e:
-            print(f"   ⚠️ Could not overlay canny visualization: {e}")
+            logger.error(f"   ⚠️ Could not overlay canny visualization: {e}")
             import traceback
             traceback.print_exc()
 
@@ -282,10 +287,10 @@ def prepare_flux_controlnet_for_frame(
         # Store control samples for Forge to pick up
         store_control_samples(controlnet_block_samples, controlnet_single_block_samples)
 
-        print(f"✓ Flux ControlNet V2 prepared successfully")
+        logger.info(f"✓ Flux ControlNet V2 prepared successfully")
 
     except Exception as e:
-        print(f"⚠️ Flux ControlNet V2 error: {e}")
+        logger.error(f"⚠️ Flux ControlNet V2 error: {e}")
         import traceback
         traceback.print_exc()
         # Control samples not stored, generation will proceed without ControlNet

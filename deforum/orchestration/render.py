@@ -50,19 +50,24 @@ from deforum.rendering import core
 from deforum.utils.system.logging import log
 from deforum.integrations.raft import RAFT
 from deforum.api.api import JobStatusTracker
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
     # Pre-download soundtrack if specified
     if video_args.add_soundtrack == 'File' and video_args.soundtrack_path is not None:
         if video_args.soundtrack_path.startswith(('http://', 'https://')):
-            print(f"Pre-downloading soundtrack at the beginning of the render process: {video_args.soundtrack_path}")
+            logger.info(f"Pre-downloading soundtrack at the beginning of the render process: {video_args.soundtrack_path}")
             try:
                 from deforum.media.video_audio_utilities import download_audio
                 video_args.soundtrack_path = download_audio(video_args.soundtrack_path)
-                print(f"Audio successfully pre-downloaded to: {video_args.soundtrack_path}")
+                logger.info(f"Audio successfully pre-downloaded to: {video_args.soundtrack_path}")
             except Exception as e:
-                print(f"Error pre-downloading audio: {e}")
+                logger.info(f"Error pre-downloading audio: {e}")
 
     # Always use render core (legacy core removed)
     core.render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)

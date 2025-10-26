@@ -10,6 +10,11 @@ import sys
 from pathlib import Path
 from typing import Dict, Optional, List
 import time
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 class WanModelDownloader:
     """Handles automatic downloading of Wan models"""
@@ -80,7 +85,7 @@ class WanModelDownloader:
     def install_huggingface_hub(self) -> bool:
         """Install huggingface_hub if not available"""
         try:
-            print("📦 Installing huggingface_hub...")
+            logger.info("📦 Installing huggingface_hub...")
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "huggingface_hub"],
                 capture_output=True,
@@ -89,23 +94,23 @@ class WanModelDownloader:
             )
             
             if result.returncode == 0:
-                print("✅ huggingface_hub installed successfully")
+                logger.info("✅ huggingface_hub installed successfully")
                 return True
             else:
-                print(f"❌ Failed to install huggingface_hub: {result.stderr}")
+                logger.error(f"Failed to install huggingface_hub: {result.stderr}", emoji='off')
                 return False
                 
         except subprocess.TimeoutExpired:
-            print("❌ Installation timed out")
+            logger.info("Installation timed out", emoji='off')
             return False
         except Exception as e:
-            print(f"❌ Installation error: {e}")
+            logger.error(f"Installation error: {e}", emoji='off')
             return False
     
     def download_model(self, model_key: str, progress_callback=None) -> bool:
         """Download a specific model"""
         if model_key not in self.available_models:
-            print(f"❌ Unknown model: {model_key}")
+            logger.info(f"Unknown model: {model_key}", emoji='off')
             return False
 
         model_info = self.available_models[model_key]
@@ -113,27 +118,27 @@ class WanModelDownloader:
 
         # Check if model already exists
         if self.is_model_downloaded(model_key):
-            print(f"✅ Model {model_key} already exists at {local_dir}")
+            logger.info(f"✅ Model {model_key} already exists at {local_dir}")
             if progress_callback:
                 progress_callback(f"✅ Model already downloaded at {local_dir}")
             return True
 
         # Install huggingface_hub if needed
         if not self.check_huggingface_cli():
-            print("⚠️ huggingface_hub not found, installing...")
+            logger.warning("⚠️ huggingface_hub not found, installing...")
             if progress_callback:
                 progress_callback("📦 Installing huggingface_hub...")
             if not self.install_huggingface_hub():
                 error_msg = "❌ Failed to install huggingface_hub"
-                print(error_msg)
+                logger.info(error_msg)
                 if progress_callback:
                     progress_callback(error_msg)
                 return False
 
-        print(f"📥 Downloading {model_key} ({model_info['description']})...")
-        print(f"   📂 From: {model_info['repo_id']}")
-        print(f"   📁 To: {local_dir}")
-        print(f"   💾 Size: ~{model_info['size_gb']}GB")
+        logger.info(f"📥 Downloading {model_key} ({model_info['description']})...")
+        logger.info(f"   📂 From: {model_info['repo_id']}")
+        logger.info(f"   📁 To: {local_dir}")
+        logger.info(f"   💾 Size: ~{model_info['size_gb']}GB")
 
         if progress_callback:
             progress_callback(f"📥 Downloading {model_key} from {model_info['repo_id']}\nSize: ~{model_info['size_gb']}GB\nThis may take a while...")
@@ -148,17 +153,17 @@ class WanModelDownloader:
 
             # Get current file descriptor limit
             soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
-            print(f"📊 Current file descriptor limit: {soft_limit}/{hard_limit}")
+            logger.info(f"Current file descriptor limit: {soft_limit}/{hard_limit}", emoji='distribution')
 
             # Temporarily increase soft limit to hard limit
             try:
                 new_limit = min(hard_limit, 8192)  # Cap at 8192 for safety
                 resource.setrlimit(resource.RLIMIT_NOFILE, (new_limit, hard_limit))
-                print(f"✅ Temporarily increased file descriptor limit to {new_limit}")
+                logger.info(f"✅ Temporarily increased file descriptor limit to {new_limit}")
                 if progress_callback:
                     progress_callback(f"🔧 Increased file descriptor limit to {new_limit} for download")
             except Exception as limit_e:
-                print(f"⚠️ Could not increase file limit: {limit_e}")
+                logger.error(f"⚠️ Could not increase file limit: {limit_e}")
                 # Continue anyway
 
             # Use CLI with increased limits
@@ -170,7 +175,7 @@ class WanModelDownloader:
                 "--resume-download"  # Allow resuming
             ]
 
-            print(f"🚀 Running: {' '.join(cmd)}")
+            logger.info(f"🚀 Running: {' '.join(cmd)}")
             if progress_callback:
                 progress_callback(f"🚀 Starting download (this may take 15-30 minutes)...\nDownloading to: {local_dir}")
 
@@ -189,7 +194,7 @@ class WanModelDownloader:
             for line in process.stdout:
                 line = line.strip()
                 if line:
-                    print(f"   {line}")
+                    logger.info(f"   {line}")
                     # Only update callback every 10 lines to avoid UI spam
                     if "Fetching" in line or "Downloading" in line or "%" in line:
                         last_progress = line
@@ -201,26 +206,26 @@ class WanModelDownloader:
             # Restore original file descriptor limit
             try:
                 resource.setrlimit(resource.RLIMIT_NOFILE, (soft_limit, hard_limit))
-                print(f"✅ Restored file descriptor limit to {soft_limit}")
+                logger.info(f"✅ Restored file descriptor limit to {soft_limit}")
             except:
                 pass
 
             if process.returncode == 0:
                 success_msg = f"✅ Successfully downloaded {model_key} to {local_dir}"
-                print(success_msg)
+                logger.info(success_msg)
                 if progress_callback:
                     progress_callback(success_msg)
                 return True
             else:
                 error_msg = f"❌ Download failed with return code {process.returncode}"
-                print(error_msg)
+                logger.info(error_msg)
                 if progress_callback:
                     progress_callback(error_msg)
                 return False
 
         except Exception as e:
             error_msg = f"❌ Download error: {e}"
-            print(error_msg)
+            logger.info(error_msg)
             if progress_callback:
                 progress_callback(error_msg)
             import traceback
@@ -288,16 +293,16 @@ class WanModelDownloader:
         results = {}
 
         # Download TI2V-5B (Recommended - works with 16GB VRAM using aggressive CPU offload)
-        print("🎯 Auto-downloading Wan 2.2 TI2V-5B (Unified T2V+I2V, 720p@24fps)")
-        print("💡 This model works with 16GB VRAM using automatic CPU offload optimizations")
+        logger.info("🎯 Auto-downloading Wan 2.2 TI2V-5B (Unified T2V+I2V, 720p@24fps)")
+        logger.info("This model works with 16GB VRAM using automatic CPU offload optimizations", emoji='bulb')
         if self.download_model("TI2V-5B"):
             model_path = self.get_model_path("TI2V-5B")
             results["t2v"] = model_path
             results["i2v"] = model_path  # TI2V handles both T2V and I2V
-            print("✅ TI2V-5B ready for unified T2V and I2V generation")
-            print("🔧 Will auto-enable CPU offload, attention slicing, and VAE optimizations for 16GB VRAM")
+            logger.info("✅ TI2V-5B ready for unified T2V and I2V generation")
+            logger.info("Will auto-enable CPU offload, attention slicing, and VAE optimizations for 16GB VRAM", emoji='wrench')
         else:
-            print("❌ Failed to download TI2V-5B model")
+            logger.error("Failed to download TI2V-5B model", emoji='off')
 
         return results
     
@@ -308,21 +313,21 @@ class WanModelDownloader:
         # Determine which TI2V model to download (Wan 2.2 only)
         if "A14B" in prefer_size or "14B" in prefer_size:
             primary_model = "TI2V-A14B"
-            print("✅ Wan 2.2 TI2V-A14B: MoE, unified T2V+I2V, 720p, highest quality")
+            logger.info("✅ Wan 2.2 TI2V-A14B: MoE, unified T2V+I2V, 720p, highest quality")
         else:
             # Default to TI2V-5B (recommended)
             primary_model = "TI2V-5B"
-            print("✅ Wan 2.2 TI2V-5B: Unified T2V+I2V, 720p@24fps, RTX 4090")
+            logger.info("✅ Wan 2.2 TI2V-5B: Unified T2V+I2V, 720p@24fps, RTX 4090")
 
         # Download the TI2V model
-        print(f"📥 Downloading {primary_model}...")
+        logger.info(f"📥 Downloading {primary_model}...")
         if self.download_model(primary_model):
             model_path = self.get_model_path(primary_model)
             results["t2v"] = model_path
             results["i2v"] = model_path  # TI2V handles both T2V and I2V
-            print(f"✅ {primary_model} ready for unified T2V and I2V generation")
+            logger.info(f"✅ {primary_model} ready for unified T2V and I2V generation")
         else:
-            print(f"❌ Failed to download {primary_model}")
+            logger.error(f"Failed to download {primary_model}", emoji='off')
 
         return results
 
@@ -340,10 +345,10 @@ if __name__ == "__main__":
     # Test the downloader
     downloader = WanModelDownloader()
     
-    print("🔍 Available models:")
+    logger.info("🔍 Available models:")
     for model in downloader.list_available_models():
         status = "✅ Downloaded" if model["downloaded"] else "❌ Not downloaded"
-        print(f"   {model['key']}: {model['description']} ({model['size_gb']}GB) - {status}")
+        logger.info(f"   {model['key']}: {model['description']} ({model['size_gb']}GB) - {status}")
     
     # Test download (uncomment to actually download)
     # print("\n📥 Testing download...")

@@ -25,6 +25,11 @@ from .utils.wan_progress_utils import (
 from deforum.media.video_audio_utilities import download_audio
 from deforum.media.subtitle_handler import init_srt_file, write_frame_subtitle, calculate_frame_duration
 from deforum.config.settings import save_settings_from_animation_run
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 class WanSimpleIntegration:
     """Simplified Wan integration with auto-discovery and proper progress styling"""
@@ -182,7 +187,7 @@ class WanSimpleIntegration:
 
         best_model = min(usable_models, key=model_priority)
         quantization_info = best_model.get('quantization', 'Unknown')
-        print(f"🎯 Best model selected: {best_model['name']} ({best_model['type']}, {best_model['size']}, {quantization_info})")
+        logger.info(f"🎯 Best model selected: {best_model['name']} ({best_model['type']}, {best_model['size']}, {quantization_info})")
         return best_model
     
     def load_simple_wan_pipeline(self, model_info: Dict, wan_args=None) -> bool:
@@ -220,7 +225,7 @@ class WanSimpleIntegration:
             wan_repo_path = extension_root / "Wan2.1"
             
             if wan_repo_path.exists() and (wan_repo_path / "wan").exists():
-                print(f"🔧 Trying official Wan implementation from: {wan_repo_path}")
+                logger.info(f"Trying official Wan implementation from: {wan_repo_path}", emoji='wrench')
                 
                 if str(wan_repo_path) not in sys.path:
                     sys.path.insert(0, str(wan_repo_path))
@@ -239,14 +244,14 @@ class WanSimpleIntegration:
                         
                         success = apply_flash_attention_patch()
                         if success:
-                            print("✅ Flash Attention monkey patch applied successfully")
+                            logger.info("✅ Flash Attention monkey patch applied successfully")
                         else:
-                            print("⚠️ Flash Attention patch could not be applied - may be already patched")
+                            logger.error("⚠️ Flash Attention patch could not be applied - may be already patched")
                     except Exception as patch_e:
-                        print(f"⚠️ Flash Attention patch failed: {patch_e}")
-                        print("🔄 Continuing without patches...")
+                        logger.error(f"⚠️ Flash Attention patch failed: {patch_e}")
+                        logger.info("Continuing without patches...", emoji='refresh')
                     
-                    print("🚀 Loading with official Wan T2V...")
+                    logger.info("🚀 Loading with official Wan T2V...")
                     
                     # Create minimal config
                     class MinimalConfig:
@@ -283,7 +288,7 @@ class WanSimpleIntegration:
                             aligned_height = ((height + 15) // 16) * 16
                             
                             if aligned_width != width or aligned_height != height:
-                                print(f"🔧 Dimension alignment: {width}x{height} -> {aligned_width}x{aligned_height}")
+                                logger.info(f"Dimension alignment: {width}x{height} -> {aligned_width}x{aligned_height}", emoji='wrench')
                             
                             return self.t2v_model.generate(
                                 input_prompt=prompt,
@@ -303,12 +308,12 @@ class WanSimpleIntegration:
                             return self.__call__(enhanced_prompt, height, width, num_frames, num_inference_steps, guidance_scale, **kwargs)
                     
                     self.pipeline = WanWrapper(t2v_model)
-                    print("✅ Official Wan model loaded successfully")
+                    logger.info("✅ Official Wan model loaded successfully")
                     return True
                     
                 except Exception as wan_e:
-                    print(f"⚠️ Official Wan loading failed: {wan_e}")
-                    print("🔄 Trying diffusers fallback...")
+                    logger.error(f"⚠️ Official Wan loading failed: {wan_e}")
+                    logger.info("Trying diffusers fallback...", emoji='refresh')
             
             # Strategy 2: Try diffusers fallback
             try:
@@ -333,16 +338,16 @@ class WanSimpleIntegration:
                 vae = None
 
                 if is_wan22_diffusers:
-                    print("🔄 Loading Wan 2.2 Diffusers pipeline...")
+                    logger.info("Loading Wan 2.2 Diffusers pipeline...", emoji='refresh')
 
                     # Apply compatibility patches BEFORE importing diffusers
                     # This ensures patches are active even if diffusers was imported elsewhere
                     try:
                         from deforum.integrations.flux_controlnet.diffusers_compat import apply_all_patches
-                        print("🔧 Applying diffusers compatibility patches before pipeline load...")
+                        logger.info("Applying diffusers compatibility patches before pipeline load...", emoji='wrench')
                         apply_all_patches()
                     except Exception as patch_e:
-                        print(f"⚠️ Warning: Compatibility patches failed: {patch_e}")
+                        logger.error(f"Compatibility patches failed: {patch_e}")
                         import traceback
                         traceback.print_exc()
 
@@ -402,7 +407,7 @@ class WanSimpleIntegration:
 
                     if is_flf2v_model:
                         # FLF2V models MUST use WanImageToVideoPipeline
-                        print("🔄 Loading Wan 2.1 FLF2V model with WanImageToVideoPipeline...")
+                        logger.info("Loading Wan 2.1 FLF2V model with WanImageToVideoPipeline...", emoji='refresh')
 
                         try:
                             from diffusers import WanImageToVideoPipeline as _WanImageToVideoPipeline  # type: ignore
@@ -420,7 +425,7 @@ class WanSimpleIntegration:
                             raise RuntimeError("WanImageToVideoPipeline not available in diffusers. Update diffusers to support FLF2V models.")
                     else:
                         # Fallback to generic DiffusionPipeline for other Wan 2.1 models
-                        print("🔄 Loading with generic DiffusionPipeline...")
+                        logger.info("Loading with generic DiffusionPipeline...", emoji='refresh')
                         from diffusers import DiffusionPipeline  # type: ignore
 
                         pipeline = DiffusionPipeline.from_pretrained(
@@ -1163,7 +1168,7 @@ class WanSimpleIntegration:
                             return self.i2v_pipeline(**generation_kwargs)
 
                 self.pipeline = DiffusersWrapper(pipeline, i2v_pipeline)
-                print("✅ Diffusers model loaded successfully")
+                logger.info("✅ Diffusers model loaded successfully")
                 
                 # Provide clear feedback about I2V support
                 if i2v_pipeline is not None:
@@ -1181,7 +1186,7 @@ class WanSimpleIntegration:
                 return True
                 
             except Exception as diffusers_e:
-                print(f"❌ Diffusers loading failed: {diffusers_e}")
+                logger.error(f"Diffusers loading failed: {diffusers_e}", emoji='off')
 
                 # Determine model version for error message (2.1 for FLF2V, 2.2 for TI2V)
                 model_version = "2.1" if model_info.get('type') == 'FLF2V' else "2.2"
@@ -1200,7 +1205,7 @@ Error: {diffusers_e}
 """)
         
         except Exception as e:
-            print(f"❌ Standard model loading failed: {e}")
+            logger.error(f"Standard model loading failed: {e}", emoji='off')
             return False
     
     def generate_video_with_i2v_chaining(self, clips, model_info, output_dir, wan_args=None, **kwargs):

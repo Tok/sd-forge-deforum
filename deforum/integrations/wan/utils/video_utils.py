@@ -8,13 +8,18 @@ import numpy as np
 import torch
 from typing import List, Union, Optional
 from pathlib import Path
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 try:
     import imageio
     from PIL import Image
-    print("✅ Video utilities dependencies loaded")
+    logger.info("✅ Video utilities dependencies loaded")
 except ImportError as e:
-    print(f"❌ Missing video dependencies: {e}")
+    logger.info(f"Missing video dependencies: {e}", emoji='off')
 
 
 class VideoProcessor:
@@ -26,17 +31,17 @@ class VideoProcessor:
     def save_frames_as_video(self, frames, output_path: str, fps: int = 16):
         """Save frames as video file with proper format handling"""
         try:
-            print(f"💾 Saving video with {len(frames) if hasattr(frames, '__len__') else 'unknown'} frames...")
+            logger.info(f"💾 Saving video with {len(frames) if hasattr(frames, '__len__') else 'unknown'} frames...")
             
             # Handle tensor format conversion
             if isinstance(frames, torch.Tensor):
-                print(f"🔄 Converting tensor with shape: {frames.shape}")
+                logger.info(f"Converting tensor with shape: {frames.shape}", emoji='refresh')
                 frames_np = frames.cpu().numpy()
                 
                 # Handle different tensor formats
                 if len(frames_np.shape) == 4:  # (C, F, H, W) or (F, H, W, C)
                     if frames_np.shape[0] == 3:  # (C, F, H, W) - channels first
-                        print("🔄 Converting from (C, F, H, W) to (F, H, W, C)")
+                        logger.info("Converting from (C, F, H, W) to (F, H, W, C)", emoji='refresh')
                         frames_np = frames_np.transpose(1, 2, 3, 0)  # (F, H, W, C)
                     # else assume (F, H, W, C) already
                 
@@ -66,19 +71,19 @@ class VideoProcessor:
                     frame_np = self._process_frame(frame_np, i)
                     processed_frames.append(frame_np)
             
-            print(f"🎬 Saving {len(processed_frames)} frames to {output_path}")
+            logger.info(f"Saving {len(processed_frames)} frames to {output_path}", emoji='movie_camera')
             
             # Ensure output directory exists
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             
             # Save as video
             imageio.mimsave(output_path, processed_frames, fps=fps, format='mp4')
-            print(f"✅ Video saved successfully with {len(processed_frames)} frames at {fps} FPS")
+            logger.info(f"✅ Video saved successfully with {len(processed_frames)} frames at {fps} FPS")
             
             return True
             
         except Exception as e:
-            print(f"❌ Failed to save video: {e}")
+            logger.error(f"Failed to save video: {e}", emoji='off')
             import traceback
             traceback.print_exc()
             return False
@@ -105,7 +110,7 @@ class VideoProcessor:
         
         # Validate final frame
         if len(frame.shape) != 3 or frame.shape[2] != 3:
-            print(f"⚠️ Frame {frame_idx}: Invalid shape {frame.shape}, fixing...")
+            logger.warning(f"⚠️ Frame {frame_idx}: Invalid shape {frame.shape}, fixing...")
             if len(frame.shape) == 2:
                 frame = np.stack([frame, frame, frame], axis=2)
             elif len(frame.shape) == 3:
@@ -126,11 +131,11 @@ class VideoProcessor:
                 processed_frame = self._process_frame(frame, i)
                 processed_frames.append(processed_frame)
             
-            print(f"✅ Loaded {len(processed_frames)} frames from {video_path}")
+            logger.info(f"✅ Loaded {len(processed_frames)} frames from {video_path}")
             return processed_frames
             
         except Exception as e:
-            print(f"❌ Failed to load video: {e}")
+            logger.error(f"Failed to load video: {e}", emoji='off')
             return []
     
     def frames_to_tensor(self, frames: List[np.ndarray], format: str = "CFHW") -> torch.Tensor:

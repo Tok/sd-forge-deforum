@@ -5,6 +5,11 @@ Extracted from ui_left.py to reduce complexity.
 """
 
 import gradio as gr
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 def synchronize_prompts_to_audio(
@@ -48,14 +53,14 @@ def synchronize_prompts_to_audio(
         build_status_message
     )
 
-    print("="*80)
-    print("🎵 AUDIO SYNC FUNCTION CALLED")
-    print(f"   Soundtrack: {soundtrack_path_val}")
-    print(f"   Prompts: {audio_sync_prompts_val[:100]}...")
-    print(f"   Detection: {detection_method}, Sensitivity: {sensitivity}")
+    logger.info("="*80)
+    logger.info("AUDIO SYNC FUNCTION CALLED", emoji='sound')
+    logger.info(f"   Soundtrack: {soundtrack_path_val}")
+    logger.info(f"   Prompts: {audio_sync_prompts_val[:100]}...")
+    logger.info(f"   Detection: {detection_method}, Sensitivity: {sensitivity}")
     if keyframe_adjustment != 0:
-        print(f"   Keyframe adjustment: {keyframe_adjustment:+d}%")
-    print("="*80)
+        logger.info(f"   Keyframe adjustment: {keyframe_adjustment:+d}%")
+    logger.info("="*80)
 
     try:
         # 1. VALIDATION: Check soundtrack path
@@ -67,12 +72,12 @@ def synchronize_prompts_to_audio(
         if not prompts:
             return gr.update(), gr.update(), "✗ Error: Please enter at least one prompt"
 
-        print(f"✅ Parsed {len(prompts)} prompts from input")
+        logger.info(f"✅ Parsed {len(prompts)} prompts from input")
 
         # 3. LOAD AUDIO: Process audio file for analysis
         try:
             audio_data = process_audio_for_detection(soundtrack_path_val)
-            print(f"✅ Loaded audio: {audio_data['duration']:.2f}s at {audio_data['sr']}Hz")
+            logger.info(f"✅ Loaded audio: {audio_data['duration']:.2f}s at {audio_data['sr']}Hz")
         except Exception as e:
             return gr.update(), gr.update(), f"✗ Error loading audio: {str(e)}"
 
@@ -88,7 +93,7 @@ def synchronize_prompts_to_audio(
         if not events:
             return gr.update(), gr.update(), f"✗ Error: No audio events detected. Check your audio file."
 
-        print(f"✅ Detected {len(events)} events using {detection_method} method")
+        logger.info(f"✅ Detected {len(events)} events using {detection_method} method")
 
         # 5. CALCULATE TARGET: Determine how many keyframes to generate
         # (taking into account keyframe adjustment from +/- buttons)
@@ -105,7 +110,7 @@ def synchronize_prompts_to_audio(
         if keyframe_adjustment != 0:
             adjusted_target = int(resolved_target * (1 + keyframe_adjustment / 100))
             adjusted_target = max(2, min(adjusted_target, len(events)))  # Clamp to valid range
-            print(f"🔧 Adjusted target: {resolved_target} → {adjusted_target} ({keyframe_adjustment:+d}%)")
+            logger.info(f"Adjusted target: {resolved_target} → {adjusted_target} ({keyframe_adjustment:+d}%)", emoji='wrench')
             resolved_target = adjusted_target
 
         # 6. GENERATE KEYFRAMES: Convert events to keyframes with spacing
@@ -122,7 +127,7 @@ def synchronize_prompts_to_audio(
         if not keyframes:
             return gr.update(), gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
 
-        print(f"✅ Generated {len(keyframes)} keyframes with spacing ≥{adjusted_min_spacing} frames")
+        logger.info(f"✅ Generated {len(keyframes)} keyframes with spacing ≥{adjusted_min_spacing} frames")
 
         # 7. COMPENSATE FOR LOST KEYFRAMES: If we lost too many keyframes due to spacing,
         #    try again with reduced spacing
@@ -130,8 +135,8 @@ def synchronize_prompts_to_audio(
             compensation_target = calculate_compensation_target(resolved_target, len(keyframes))
             compensated_spacing = int(adjusted_min_spacing * 0.5)  # Reduce spacing by 50%
 
-            print(f"⚠️ Compensation triggered: {len(keyframes)} < {resolved_target * 0.7:.0f}")
-            print(f"   Retrying with target={compensation_target}, spacing={compensated_spacing}")
+            logger.warning(f"⚠️ Compensation triggered: {len(keyframes)} < {resolved_target * 0.7:.0f}")
+            logger.info(f"   Retrying with target={compensation_target}, spacing={compensated_spacing}")
 
             keyframes = generate_keyframes_from_events(
                 events=events,
@@ -141,7 +146,7 @@ def synchronize_prompts_to_audio(
             )
 
             if keyframes:
-                print(f"✅ Compensation successful: {len(keyframes)} keyframes generated")
+                logger.info(f"✅ Compensation successful: {len(keyframes)} keyframes generated")
 
         # 8. DISTRIBUTE PROMPTS: Assign prompts to keyframes
         prompt_assignments = distribute_prompts_across_keyframes(
@@ -150,7 +155,7 @@ def synchronize_prompts_to_audio(
             distribution_mode=distribution_mode
         )
 
-        print(f"✅ Distributed {len(prompts)} prompts across {len(keyframes)} keyframes")
+        logger.info(f"✅ Distributed {len(prompts)} prompts across {len(keyframes)} keyframes")
 
         # 9. FORMAT OUTPUT: Convert to Deforum schedule format
         schedule_dict = {kf: prompt for kf, prompt in prompt_assignments.items()}
@@ -167,19 +172,19 @@ def synchronize_prompts_to_audio(
             visualization=visualization
         )
 
-        print("="*80)
-        print("✅ AUDIO SYNC COMPLETE")
-        print(f"   Keyframes: {len(keyframes)}")
-        print(f"   Prompts: {len(prompts)}")
-        print(f"   Total frames: {total_frames}")
-        print("="*80)
+        logger.info("="*80)
+        logger.info("✅ AUDIO SYNC COMPLETE")
+        logger.info(f"   Keyframes: {len(keyframes)}")
+        logger.info(f"   Prompts: {len(prompts)}")
+        logger.info(f"   Total frames: {total_frames}")
+        logger.info("="*80)
 
-        print(f"🔍 DEBUG synchronize_prompts_to_audio return:")
-        print(f"   formatted_schedule type: {type(formatted_schedule)}, length: {len(formatted_schedule)}")
-        print(f"   formatted_schedule preview: {formatted_schedule[:100]}...")
-        print(f"   target_count: {len(keyframes)}")
-        print(f"   status_msg length: {len(status_msg)} chars")
-        print(f"   status_msg first line: {status_msg.split(chr(10))[0]}")
+        logger.info(f"🔍 DEBUG synchronize_prompts_to_audio return:")
+        logger.info(f"   formatted_schedule type: {type(formatted_schedule)}, length: {len(formatted_schedule)}")
+        logger.info(f"   formatted_schedule preview: {formatted_schedule[:100]}...")
+        logger.info(f"   target_count: {len(keyframes)}")
+        logger.info(f"   status_msg length: {len(status_msg)} chars")
+        logger.info(f"   status_msg first line: {status_msg.split(chr(10))[0]}")
 
         return (
             gr.update(value=formatted_schedule),

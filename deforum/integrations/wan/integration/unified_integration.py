@@ -11,6 +11,11 @@ from pathlib import Path
 from ..utils.model_discovery import WanModelDiscovery
 from ..utils.video_utils import VideoProcessor
 from ..pipelines.procedural_pipeline import WanProceduralPipeline
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 class WanUnifiedIntegration:
@@ -38,23 +43,23 @@ class WanUnifiedIntegration:
         try:
             if model_path:
                 # Try to load specific model
-                print(f"🔄 Loading WAN pipeline from: {model_path}")
+                logger.info(f"Loading WAN pipeline from: {model_path}", emoji='refresh')
                 return self._load_model_pipeline(model_path, pipeline_type)
             else:
                 # Auto-discover and load best model
-                print(f"🔍 Auto-discovering WAN models...")
+                logger.info(f"🔍 Auto-discovering WAN models...")
                 best_model = self.get_best_model()
                 
                 if best_model:
-                    print(f"🎯 Found model: {best_model['name']}")
+                    logger.info(f"🎯 Found model: {best_model['name']}")
                     return self._load_model_pipeline(best_model['path'], pipeline_type)
                 else:
-                    print(f"⚠️ No WAN models found, using procedural pipeline")
+                    logger.warning(f"⚠️ No WAN models found, using procedural pipeline")
                     return self._load_procedural_pipeline()
                     
         except Exception as e:
-            print(f"❌ Failed to load WAN pipeline: {e}")
-            print(f"🔄 Falling back to procedural pipeline...")
+            logger.error(f"Failed to load WAN pipeline: {e}", emoji='off')
+            logger.info(f"Falling back to procedural pipeline...", emoji='refresh')
             return self._load_procedural_pipeline()
     
     def _load_model_pipeline(self, model_path: str, pipeline_type: str) -> bool:
@@ -62,7 +67,7 @@ class WanUnifiedIntegration:
         
         # Validate model files
         if not self._validate_model_files(model_path):
-            print(f"❌ Model validation failed, using procedural pipeline")
+            logger.error(f"Model validation failed, using procedural pipeline", emoji='off')
             return self._load_procedural_pipeline()
         
         # Try different pipeline types in order of preference
@@ -88,7 +93,7 @@ class WanUnifiedIntegration:
                     return self._load_vace_pipeline(model_path)
                     
             except Exception as e:
-                print(f"❌ Failed to load {attempt_type} pipeline: {e}")
+                logger.error(f"Failed to load {attempt_type} pipeline: {e}", emoji='off')
                 continue
         
         # If all else fails, use procedural
@@ -100,7 +105,7 @@ class WanUnifiedIntegration:
             # Import the old working implementation as diffusers pipeline
             from ...wan_real_implementation import WanRealIntegration
             
-            print(f"🚀 Loading Diffusers-based WAN pipeline...")
+            logger.info(f"🚀 Loading Diffusers-based WAN pipeline...")
             
             real_integration = WanRealIntegration()
             success = real_integration.load_pipeline(model_path)
@@ -109,13 +114,13 @@ class WanUnifiedIntegration:
                 self.pipeline = real_integration
                 self.pipeline_type = "diffusers"
                 self.model_info = {"path": model_path, "type": "diffusers"}
-                print(f"✅ Diffusers WAN pipeline loaded")
+                logger.info(f"✅ Diffusers WAN pipeline loaded")
                 return True
             else:
                 raise RuntimeError("Failed to load diffusers pipeline")
                 
         except Exception as e:
-            print(f"❌ Diffusers pipeline failed: {e}")
+            logger.error(f"Diffusers pipeline failed: {e}", emoji='off')
             raise
     
     def _load_vace_pipeline(self, model_path: str) -> bool:
@@ -124,7 +129,7 @@ class WanUnifiedIntegration:
             # Import the complete implementation as VACE pipeline
             from ...wan_complete_implementation import WanWorkingIntegration
             
-            print(f"🚀 Loading VACE WAN pipeline...")
+            logger.info(f"🚀 Loading VACE WAN pipeline...")
             
             complete_integration = WanWorkingIntegration()
             success = complete_integration.load_pipeline(model_path)
@@ -133,19 +138,19 @@ class WanUnifiedIntegration:
                 self.pipeline = complete_integration
                 self.pipeline_type = "vace"
                 self.model_info = {"path": model_path, "type": "vace"}
-                print(f"✅ VACE WAN pipeline loaded")
+                logger.info(f"✅ VACE WAN pipeline loaded")
                 return True
             else:
                 raise RuntimeError("Failed to load VACE pipeline")
                 
         except Exception as e:
-            print(f"❌ VACE pipeline failed: {e}")
+            logger.error(f"VACE pipeline failed: {e}", emoji='off')
             raise
     
     def _load_procedural_pipeline(self) -> bool:
         """Load procedural fallback pipeline"""
         try:
-            print(f"🚀 Loading procedural WAN pipeline...")
+            logger.info(f"🚀 Loading procedural WAN pipeline...")
             
             self.pipeline = WanProceduralPipeline(self.device)
             success = self.pipeline.load_components()
@@ -153,13 +158,13 @@ class WanUnifiedIntegration:
             if success:
                 self.pipeline_type = "procedural"
                 self.model_info = {"type": "procedural"}
-                print(f"✅ Procedural WAN pipeline loaded")
+                logger.info(f"✅ Procedural WAN pipeline loaded")
                 return True
             else:
                 raise RuntimeError("Failed to load procedural pipeline")
                 
         except Exception as e:
-            print(f"❌ Procedural pipeline failed: {e}")
+            logger.error(f"Procedural pipeline failed: {e}", emoji='off')
             raise
     
     def _validate_model_files(self, model_path: str) -> bool:
@@ -189,10 +194,10 @@ class WanUnifiedIntegration:
             missing_files.append("T5 file")
         
         if missing_files:
-            print(f"❌ Missing required model files: {missing_files}")
+            logger.info(f"Missing required model files: {missing_files}", emoji='off')
             return False
             
-        print("✅ All required WAN model files found")
+        logger.info("✅ All required WAN model files found")
         return True
     
     def _load_model_config(self, model_path: str) -> Dict:
@@ -222,14 +227,14 @@ class WanUnifiedIntegration:
         """Generate video using loaded pipeline"""
         
         if not self.pipeline:
-            print(f"⚠️ No pipeline loaded, auto-loading...")
+            logger.warning(f"⚠️ No pipeline loaded, auto-loading...")
             if not self.load_pipeline():
                 raise RuntimeError("Failed to load any WAN pipeline")
         
-        print(f"🎬 Generating video with {self.pipeline_type} pipeline...")
-        print(f"   📝 Prompt: {prompt[:50]}...")
-        print(f"   📐 Size: {width}x{height}")
-        print(f"   🎬 Frames: {num_frames}")
+        logger.info(f"Generating video with {self.pipeline_type} pipeline...", emoji='movie_camera')
+        logger.info(f"   📝 Prompt: {prompt[:50]}...")
+        logger.info(f"   📐 Size: {width}x{height}")
+        logger.info(f"   🎬 Frames: {num_frames}", emoji='movie_camera')
         
         try:
             # Different pipelines have different interfaces
@@ -276,11 +281,11 @@ class WanUnifiedIntegration:
                 raise RuntimeError(f"Unknown pipeline type: {self.pipeline_type}")
                 
         except Exception as e:
-            print(f"❌ {self.pipeline_type} pipeline failed: {e}")
+            logger.error(f"{self.pipeline_type} pipeline failed: {e}", emoji='off')
             
             # Try fallback to procedural if not already using it
             if self.pipeline_type != "procedural":
-                print(f"🔄 Falling back to procedural pipeline...")
+                logger.info(f"Falling back to procedural pipeline...", emoji='refresh')
                 if self._load_procedural_pipeline():
                     return self.generate_video(
                         prompt=prompt,
@@ -313,10 +318,10 @@ class WanUnifiedIntegration:
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                     
-                print("🧹 WAN pipeline unloaded")
+                logger.info("WAN pipeline unloaded", emoji='broom')
                 
             except Exception as e:
-                print(f"⚠️ Error unloading pipeline: {e}")
+                logger.warning(f"⚠️ Error unloading pipeline: {e}")
     
     def get_pipeline_info(self) -> Dict:
         """Get information about current pipeline"""

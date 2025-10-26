@@ -9,6 +9,11 @@ import torchvision
 
 # Import pure functions from refactored utils module
 from deforum.utils.conversion.types import (
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
     generate_random_name as rand_name,
     string_to_boolean as str2bool_pure,
 )
@@ -53,7 +58,7 @@ def cache_video(tensor,
             error = e
             continue
     else:
-        print(f'cache_video failed, error: {error}', flush=True)
+        logger.error(f'cache_video failed, error: {error}', flush=True)
         return None
 
 

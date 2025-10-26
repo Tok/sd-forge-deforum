@@ -26,6 +26,11 @@ from deforum.ui.ui_elements import (get_tab_run, get_tab_keyframes, get_tab_prom
                           get_tab_output, get_tab_masking)
 from deforum.ui.handlers.audio_prompt_generator import generate_prompts_with_ai
 from deforum.ui.handlers.audio_sync import synchronize_prompts_to_audio
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 def set_arg_lists():
     # convert dicts to NameSpaces for easy working (args.param instead of args['param']
@@ -45,7 +50,7 @@ def wan_generate_video():
     Returns a status message indicating the feature is integrated but needs models
     """
     try:
-        print("🎬 Wan video generation button clicked!")
+        logger.info("Wan video generation button clicked!", emoji='movie_camera')
         
         # Try to discover models to check if setup is complete
         try:
@@ -104,7 +109,7 @@ Error: {str(e)}
 4. Try restarting the WebUI"""
             
     except Exception as e:
-        print(f"❌ Wan button error: {e}")
+        logger.error(f"Wan button error: {e}", emoji='off')
         return f"❌ Error: {str(e)}"
 
 def setup_deforum_left_side_ui():
@@ -256,9 +261,9 @@ def setup_deforum_left_side_ui():
             locals()['tab_wan'] = tab_wan
 
             # ====== AUDIO SYNC BUTTON WIRING (moved inside tabs context) ======
-            print("🔍 DEBUG: Button wiring section reached - checking for audio components...")
-            print(f"   audio_upload in locals: {'audio_upload' in locals()}")
-            print(f"   audio_ai_generate_button in locals: {'audio_ai_generate_button' in locals()}")
+            logger.debug("Button wiring section reached - checking for audio components...")
+            logger.info(f"   audio_upload in locals: {'audio_upload' in locals()}")
+            logger.info(f"   audio_ai_generate_button in locals: {'audio_ai_generate_button' in locals()}")
 
             # Wire up audio upload to use actual FPS and update max_frames
             if 'audio_upload' in locals() and 'soundtrack_path' in locals():
@@ -313,9 +318,9 @@ def setup_deforum_left_side_ui():
             # Wire up audio sync button to synchronize prompts with audio events
             # Get buttons from tab_init_params (they're in Init tab, not Prompts tab!)
             # Get animation_prompts from tab_prompts_params (it's in Prompts tab)
-            print("🔍 DEBUG: Attempting to retrieve audio sync components...")
-            print(f"   tab_init_params type: {type(tab_init_params)}")
-            print(f"   tab_prompts_params type: {type(tab_prompts_params)}")
+            logger.debug("Attempting to retrieve audio sync components...")
+            logger.info(f"   tab_init_params type: {type(tab_init_params)}")
+            logger.info(f"   tab_prompts_params type: {type(tab_prompts_params)}")
 
             audio_sync_button = tab_init_params.get('audio_sync_button')
             audio_sync_fewer_button = tab_init_params.get('audio_sync_fewer_button')
@@ -324,10 +329,10 @@ def setup_deforum_left_side_ui():
             audio_target_keyframe_count = tab_init_params.get('audio_target_keyframe_count')
             animation_prompts = tab_prompts_params.get('animation_prompts')
 
-            print(f"   Retrieved audio_sync_button: {audio_sync_button is not None}")
-            print(f"   Retrieved audio_sync_status: {audio_sync_status is not None}")
-            print(f"   Retrieved audio_target_keyframe_count: {audio_target_keyframe_count is not None}")
-            print(f"   Retrieved animation_prompts: {animation_prompts is not None}")
+            logger.info(f"   Retrieved audio_sync_button: {audio_sync_button is not None}")
+            logger.info(f"   Retrieved audio_sync_status: {audio_sync_status is not None}")
+            logger.info(f"   Retrieved audio_target_keyframe_count: {audio_target_keyframe_count is not None}")
+            logger.info(f"   Retrieved animation_prompts: {animation_prompts is not None}")
 
             if audio_sync_button and audio_sync_status:
 
@@ -364,15 +369,15 @@ def setup_deforum_left_side_ui():
                         found = True
 
                     if not found:
-                        print(f"⚠️ Warning: Audio sync component '{comp_name}' not found")
+                        logger.warning(f"Audio sync component '{comp_name}' not found")
 
-                print(f"🔍 DEBUG Audio sync wiring check:")
-                print(f"   Inputs collected: {len(audio_sync_inputs)}/{len(required_components)}")
-                print(f"   audio_sync_button: {audio_sync_button is not None}")
-                print(f"   audio_sync_fewer_button: {audio_sync_fewer_button is not None}")
-                print(f"   audio_sync_more_button: {audio_sync_more_button is not None}")
-                print(f"   audio_sync_status: {audio_sync_status is not None}")
-                print(f"   animation_prompts: {animation_prompts is not None}")
+                logger.info(f"🔍 DEBUG Audio sync wiring check:")
+                logger.info(f"   Inputs collected: {len(audio_sync_inputs)}/{len(required_components)}")
+                logger.info(f"   audio_sync_button: {audio_sync_button is not None}")
+                logger.info(f"   audio_sync_fewer_button: {audio_sync_fewer_button is not None}")
+                logger.info(f"   audio_sync_more_button: {audio_sync_more_button is not None}")
+                logger.info(f"   audio_sync_status: {audio_sync_status is not None}")
+                logger.info(f"   animation_prompts: {animation_prompts is not None}")
 
                 if len(audio_sync_inputs) == len(required_components):
                     # Buttons already retrieved above, just check they all exist
@@ -387,7 +392,7 @@ def setup_deforum_left_side_ui():
                         # -5% button (fewer keyframes)
                         def fewer_keyframes_wrapper(*args):
                             result = synchronize_prompts_to_audio(*args, keyframe_adjustment=-5)
-                            print(f"🔍 DEBUG fewer_keyframes_wrapper returning: {type(result)}, len={len(result) if isinstance(result, tuple) else 'N/A'}")
+                            logger.info(f"🔍 DEBUG fewer_keyframes_wrapper returning: {type(result)}, len={len(result) if isinstance(result, tuple) else 'N/A'}")
                             return result
 
                         audio_sync_fewer_button.click(
@@ -399,7 +404,7 @@ def setup_deforum_left_side_ui():
                         # +5% button (more keyframes)
                         def more_keyframes_wrapper(*args):
                             result = synchronize_prompts_to_audio(*args, keyframe_adjustment=5)
-                            print(f"🔍 DEBUG more_keyframes_wrapper returning: {type(result)}, len={len(result) if isinstance(result, tuple) else 'N/A'}")
+                            logger.info(f"🔍 DEBUG more_keyframes_wrapper returning: {type(result)}, len={len(result) if isinstance(result, tuple) else 'N/A'}")
                             return result
 
                         audio_sync_more_button.click(
@@ -408,13 +413,13 @@ def setup_deforum_left_side_ui():
                             outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
                         )
 
-                        print("🎵 Audio sync buttons connected successfully (main, -5%, +5%)")
+                        logger.info("Audio sync buttons connected successfully (main, -5%, +5%)", emoji='sound')
                     else:
-                        print(f"⚠️ Could not connect audio sync buttons: missing button/output components")
-                        print(f"   Condition checks: audio_sync_button={audio_sync_button is not None}, fewer={audio_sync_fewer_button is not None}, more={audio_sync_more_button is not None}, status={audio_sync_status is not None}, prompts={animation_prompts is not None}")
+                        logger.error(f"⚠️ Could not connect audio sync buttons: missing button/output components")
+                        logger.info(f"   Condition checks: audio_sync_button={audio_sync_button is not None}, fewer={audio_sync_fewer_button is not None}, more={audio_sync_more_button is not None}, status={audio_sync_status is not None}, prompts={animation_prompts is not None}")
                 else:
-                    print(f"⚠️ Could not connect audio sync button: missing input components ({len(audio_sync_inputs)}/{len(required_components)})")
-                    print(f"   Missing components: {[comp for comp in required_components if comp not in [c for c in audio_sync_inputs]]}")
+                    logger.error(f"⚠️ Could not connect audio sync button: missing input components ({len(audio_sync_inputs)}/{len(required_components)})")
+                    logger.info(f"   Missing components: {[comp for comp in required_components if comp not in [c for c in audio_sync_inputs]]}")
 
             # Wire up AI prompt generation button (using extracted handler)
             if audio_ai_generate_button is not None:
@@ -433,7 +438,7 @@ def setup_deforum_left_side_ui():
                     inputs=[audio_ai_generation_mode],
                     outputs=[audio_ai_start_prompt, audio_ai_end_prompt]
                 )
-                print("   ✓ Mode change visibility toggle wired")
+                logger.info("   ✓ Mode change visibility toggle wired")
 
                 # Wire up generate button
                 audio_ai_generate_button.click(
@@ -449,7 +454,7 @@ def setup_deforum_left_side_ui():
                     ],
                     outputs=[audio_sync_prompts]
                 )
-                print("✨ AI prompt generation button connected successfully")
+                logger.info("✨ AI prompt generation button connected successfully")
 
 
 
@@ -573,7 +578,7 @@ def setup_deforum_left_side_ui():
     # Set up Wan Generate button if it exists - with better error handling
     if 'wan_generate_button' in locals() and 'wan_generation_status' in locals():
         try:
-            print("🔗 Connecting Wan generate button...")
+            logger.info("🔗 Connecting Wan generate button...")
             
             # Import the real Wan generation function from ui_elements
             from .ui_elements import wan_generate_video as wan_generate_video_main
@@ -590,23 +595,23 @@ def setup_deforum_left_side_ui():
                     component_inputs.append(locals()[name])
                 else:
                     missing_components.append(name)
-                    print(f"⚠️ Warning: Component '{name}' not found in locals()")
+                    logger.warning(f"Component '{name}' not found in locals()")
             
-            print(f"📊 Found {len(component_inputs)} UI components for Wan generation")
+            logger.info(f"Found {len(component_inputs)} UI components for Wan generation", emoji='distribution')
             if missing_components:
-                print(f"⚠️ Missing {len(missing_components)} components: {missing_components[:5]}...")
+                logger.warning(f"⚠️ Missing {len(missing_components)} components: {missing_components[:5]}...")
             
             # Create a wrapper function with better error handling
             def wan_generate_wrapper(*args):
                 try:
-                    print(f"🎬 Wan generate button clicked! Received {len(args)} arguments")
-                    print("🔄 Calling wan_generate_video_main...")
+                    logger.info(f"Wan generate button clicked! Received {len(args)} arguments", emoji='movie_camera')
+                    logger.info("Calling wan_generate_video_main...", emoji='refresh')
                     result = wan_generate_video_main(*args)
-                    print(f"✅ Wan generation completed: {str(result)[:100]}...")
+                    logger.info(f"✅ Wan generation completed: {str(result)[:100]}...")
                     return result
                 except Exception as e:
                     error_msg = f"❌ Wan generation error: {str(e)}"
-                    print(error_msg)
+                    logger.info(error_msg)
                     import traceback
                     traceback.print_exc()
                     return error_msg
@@ -616,9 +621,9 @@ def setup_deforum_left_side_ui():
                 inputs=component_inputs,  # Pass all UI component values
                 outputs=[locals()['wan_generation_status']]
             )
-            print("✅ Wan generate button connected successfully")
+            logger.info("✅ Wan generate button connected successfully")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Wan generate button: {e}")
+            logger.error(f"Failed to connect Wan generate button: {e}")
             import traceback
             traceback.print_exc()
             # Fallback to the simple placeholder function
@@ -634,7 +639,7 @@ def setup_deforum_left_side_ui():
     # Set up Wan Prompt Enhancement button with proper wan_enhanced_prompts access
     if 'enhance_prompts_btn' in locals() and 'wan_enhanced_prompts' in locals():
         try:
-            print("🔗 Connecting Wan prompt enhancement button...")
+            logger.info("🔗 Connecting Wan prompt enhancement button...")
             
             from .ui_elements import enhance_prompts_handler
             
@@ -654,7 +659,7 @@ def setup_deforum_left_side_ui():
                     ],
                     outputs=[locals()['wan_enhanced_prompts'], locals()['enhancement_progress']]
                 )
-                print("✅ Wan prompt enhancement button connected successfully with progress feedback")
+                logger.info("✅ Wan prompt enhancement button connected successfully with progress feedback")
             else:
                 # Fallback connection without progress feedback
                 def enhance_wrapper(*args):
@@ -673,16 +678,16 @@ def setup_deforum_left_side_ui():
                     ],
                     outputs=[locals()['wan_enhanced_prompts']]
                 )
-                print("✅ Wan prompt enhancement button connected successfully (without progress feedback)")
+                logger.info("✅ Wan prompt enhancement button connected successfully (without progress feedback)")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Wan prompt enhancement button: {e}")
+            logger.error(f"Failed to connect Wan prompt enhancement button: {e}")
             import traceback
             traceback.print_exc()
 
     # Set up Auto-Assign Keyframe Types button
     if 'auto_assign_keyframe_types_btn' in locals() and 'keyframe_type_schedule' in locals():
         try:
-            print("🔗 Connecting auto-assign keyframe types button...")
+            logger.info("🔗 Connecting auto-assign keyframe types button...")
 
             from .ui_elements import auto_assign_keyframe_types_handler
 
@@ -696,11 +701,11 @@ def setup_deforum_left_side_ui():
                     ],
                     outputs=[locals()['keyframe_type_schedule']]
                 )
-                print("✅ Auto-assign keyframe types button connected successfully")
+                logger.info("✅ Auto-assign keyframe types button connected successfully")
             else:
-                print("⚠️ Warning: animation_prompts or wan_flf2v_chunk_size not found in locals()")
+                logger.warning("animation_prompts or wan_flf2v_chunk_size not found in locals()")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect auto-assign keyframe types button: {e}")
+            logger.error(f"Failed to connect auto-assign keyframe types button: {e}")
             import traceback
             traceback.print_exc()
 
@@ -763,18 +768,18 @@ def setup_deforum_left_side_ui():
         if 'wan_movement_description' in locals():
             analyze_movement_handler._wan_movement_description_component = locals()['wan_movement_description']
         
-        print(f"✅ Movement schedule references set up for {len(movement_components)} Deforum schedules")
-        print(f"📊 Sample schedules: translation_x='{movement_components.get('translation_x', 'N/A')[:30]}...', zoom='{movement_components.get('zoom', 'N/A')}'")
+        logger.info(f"✅ Movement schedule references set up for {len(movement_components)} Deforum schedules")
+        logger.info(f"Sample schedules: translation_x='{movement_components.get('translation_x', 'N/A')[:30]}...', zoom='{movement_components.get('zoom', 'N/A')}'", emoji='distribution')
         
     except Exception as e:
-        print(f"⚠️ Warning: Failed to set up movement schedule references: {e}")
+        logger.error(f"Failed to set up movement schedule references: {e}")
         import traceback
         traceback.print_exc()
 
     # Set up Wan prompt template loading buttons
     if 'load_wan_prompts_btn' in locals() and 'wan_enhanced_prompts' in locals():
         try:
-            print("🔗 Connecting Wan prompt loading button...")
+            logger.info("🔗 Connecting Wan prompt loading button...")
             
             from .ui_elements import load_wan_prompts_handler
             
@@ -783,13 +788,13 @@ def setup_deforum_left_side_ui():
                 inputs=[],
                 outputs=[locals()['wan_enhanced_prompts']]
             )
-            print("✅ Wan prompt loading button connected")
+            logger.info("✅ Wan prompt loading button connected")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Wan prompt button: {e}")
+            logger.error(f"Failed to connect Wan prompt button: {e}")
     
     if 'load_deforum_prompts_btn' in locals() and 'wan_enhanced_prompts' in locals():
         try:
-            print("🔗 Connecting Deforum prompts loading button...")
+            logger.info("🔗 Connecting Deforum prompts loading button...")
             
             from .ui_elements import load_deforum_prompts_handler
             
@@ -798,14 +803,14 @@ def setup_deforum_left_side_ui():
                 inputs=[],
                 outputs=[locals()['wan_enhanced_prompts']]
             )
-            print("✅ Deforum prompts loading button connected")
+            logger.info("✅ Deforum prompts loading button connected")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Deforum prompts button: {e}")
+            logger.error(f"Failed to connect Deforum prompts button: {e}")
     
     # Set up load Deforum to Wan and load defaults buttons
     if 'load_deforum_to_wan_btn' in locals() and 'wan_enhanced_prompts' in locals():
         try:
-            print("🔗 Connecting Load Deforum to Wan button...")
+            logger.info("🔗 Connecting Load Deforum to Wan button...")
             
             from .ui_elements import load_deforum_to_wan_prompts_handler, enhance_prompts_handler
             
@@ -818,13 +823,13 @@ def setup_deforum_left_side_ui():
                 inputs=[],
                 outputs=[locals()['wan_enhanced_prompts']]
             )
-            print("✅ Load Deforum to Wan button connected")
+            logger.info("✅ Load Deforum to Wan button connected")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Load Deforum to Wan button: {e}")
+            logger.error(f"Failed to connect Load Deforum to Wan button: {e}")
     
     if 'load_wan_defaults_btn' in locals() and 'wan_enhanced_prompts' in locals():
         try:
-            print("🔗 Connecting Load Wan Defaults button...")
+            logger.info("🔗 Connecting Load Wan Defaults button...")
             
             from .ui_elements import load_wan_defaults_handler
             
@@ -833,9 +838,9 @@ def setup_deforum_left_side_ui():
                 inputs=[],
                 outputs=[locals()['wan_enhanced_prompts']]
             )
-            print("✅ Load Wan Defaults button connected")
+            logger.info("✅ Load Wan Defaults button connected")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to connect Load Wan Defaults button: {e}")
+            logger.error(f"Failed to connect Load Wan Defaults button: {e}")
 
     # Set up Wan Model Validation buttons
     try:
@@ -1120,14 +1125,14 @@ def setup_deforum_left_side_ui():
                         inputs=[],
                         outputs=[locals()['validation_output']]
                     )
-                print(f"✅ Connected {button_name}")
+                logger.info(f"✅ Connected {button_name}")
             
-        print("✅ All Wan model validation buttons connected")
+        logger.info("✅ All Wan model validation buttons connected")
         
     except ImportError:
-        print("⚠️ WanModelValidator not available - validation buttons will not work")
+        logger.warning("⚠️ WanModelValidator not available - validation buttons will not work")
     except Exception as e:
-        print(f"⚠️ Failed to set up validation buttons: {e}")
+        logger.error(f"⚠️ Failed to set up validation buttons: {e}")
 
     # Merge all tab component dicts into main locals() for component access
     result = locals().copy()

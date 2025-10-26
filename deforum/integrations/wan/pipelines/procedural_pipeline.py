@@ -12,6 +12,11 @@ from pathlib import Path
 from tqdm import tqdm
 
 from ..utils.video_utils import VideoProcessor
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 class WanProceduralPipeline:
@@ -24,9 +29,9 @@ class WanProceduralPipeline:
         
     def load_components(self):
         """Load pipeline components (no-op for procedural)"""
-        print(f"🚀 Loading procedural WAN pipeline...")
+        logger.info(f"🚀 Loading procedural WAN pipeline...")
         self.loaded = True
-        print(f"✅ Procedural WAN pipeline loaded")
+        logger.info(f"✅ Procedural WAN pipeline loaded")
         return True
     
     def __call__(self, 
@@ -44,11 +49,11 @@ class WanProceduralPipeline:
         if not self.loaded:
             self.load_components()
         
-        print(f"🎬 Generating procedural WAN video...")
-        print(f"   📝 Prompt: {prompt[:50]}...")
-        print(f"   📐 Size: {width}x{height}")
-        print(f"   🎬 Frames: {num_frames}")
-        print(f"   🔧 Steps: {num_inference_steps}")
+        logger.info(f"Generating procedural WAN video...", emoji='movie_camera')
+        logger.info(f"   📝 Prompt: {prompt[:50]}...")
+        logger.info(f"   📐 Size: {width}x{height}")
+        logger.info(f"   🎬 Frames: {num_frames}", emoji='movie_camera')
+        logger.info(f"   🔧 Steps: {num_inference_steps}", emoji='wrench')
         
         # Generate procedural video frames
         frames = []
@@ -63,7 +68,7 @@ class WanProceduralPipeline:
             # Simulate processing time
             time.sleep(0.05)  # Reduced for faster generation
         
-        print("✅ Procedural WAN video generation complete!")
+        logger.info("✅ Procedural WAN video generation complete!")
         
         # Convert to tensor format
         frames_tensor = self.video_processor.frames_to_tensor(frames, format="CFHW")
@@ -106,13 +111,13 @@ class WanProceduralPipeline:
             success = self.video_processor.save_frames_as_video(result, output_path)
             
             if success:
-                print(f"💾 Video saved to: {output_path}")
+                logger.info(f"💾 Video saved to: {output_path}")
                 return True
             else:
                 raise RuntimeError("Failed to save video")
             
         except Exception as e:
-            print(f"❌ Procedural video generation failed: {e}")
+            logger.error(f"Procedural video generation failed: {e}", emoji='off')
             import traceback
             traceback.print_exc()
             return False

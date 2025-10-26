@@ -18,6 +18,11 @@ from .models import (
     temporarily_unpatch_hf_download
 )
 from .preprocessors import (
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
     preprocess_image_for_controlnet,
     numpy_to_pil
 )
@@ -78,16 +83,16 @@ class FluxControlNetV2Manager:
         self.vae = None
         self.is_loaded = False
 
-        print(f"🌐 Initialized Flux {control_type.title()} ControlNet V2 (Forge-native)")
-        print(f"   Model: {get_model_info(control_type, model_name)}")
+        logger.info(f"🌐 Initialized Flux {control_type.title()} ControlNet V2 (Forge-native)")
+        logger.info(f"   Model: {get_model_info(control_type, model_name)}")
 
     def load_model(self):
         """Load ControlNet model and Flux VAE."""
         if self.is_loaded:
-            print("   ControlNet model already loaded")
+            logger.info("   ControlNet model already loaded")
             return
 
-        print("🌐 Loading Flux ControlNet model (v2 - model only)...")
+        logger.info("🌐 Loading Flux ControlNet model (v2 - model only)...")
 
         # Load ControlNet model (~3.6GB)
         self.controlnet = load_flux_controlnet_model(
@@ -100,40 +105,40 @@ class FluxControlNetV2Manager:
         self.controlnet = self.controlnet.to(self.device)
 
         # Use Forge's already-loaded Flux VAE for control image encoding
-        print("🌐 Accessing Forge's Flux VAE for control image encoding...")
+        logger.info("🌐 Accessing Forge's Flux VAE for control image encoding...")
         try:
             from modules.shared import sd_model
 
             # Forge's Flux model already has VAE loaded
             if hasattr(sd_model, 'forge_objects') and hasattr(sd_model.forge_objects, 'vae'):
                 forge_vae = sd_model.forge_objects.vae
-                print(f"   ✓ Using Forge's loaded Flux VAE")
+                logger.info(f"   ✓ Using Forge's loaded Flux VAE")
 
                 # Forge's VAE is backend.patcher.vae.VAE, we need to extract the actual model
                 if hasattr(forge_vae, 'first_stage_model'):
                     self.vae = forge_vae.first_stage_model
-                    print(f"   ✓ Extracted VAE model from Forge wrapper")
+                    logger.info(f"   ✓ Extracted VAE model from Forge wrapper")
                 else:
                     self.vae = forge_vae
 
                 # Make sure it's on the right device
                 self.vae = self.vae.to(self.device)
-                print("✓ Forge's Flux VAE ready for use")
+                logger.info("✓ Forge's Flux VAE ready for use")
             else:
-                print("   ⚠️ Could not access Forge's VAE")
+                logger.error("   ⚠️ Could not access Forge's VAE")
                 self.vae = None
 
         except Exception as e:
-            print(f"⚠️ Could not access Forge's Flux VAE: {e}")
+            logger.error(f"⚠️ Could not access Forge's Flux VAE: {e}")
             import traceback
             traceback.print_exc()
-            print("   Will proceed without VAE (control will not work)")
+            logger.info("   Will proceed without VAE (control will not work)")
             self.vae = None
 
         self.is_loaded = True
 
-        print(f"✓ Flux ControlNet model loaded ({self.control_type}, ~3.6GB)")
-        print("   No pipeline created - will use Forge's Flux transformer")
+        logger.info(f"✓ Flux ControlNet model loaded ({self.control_type}, ~3.6GB)")
+        logger.info("   No pipeline created - will use Forge's Flux transformer")
 
     def compute_control_samples(
         self,
@@ -199,13 +204,13 @@ class FluxControlNetV2Manager:
         control_rgb = control_rgb.permute(2, 0, 1).unsqueeze(0)  # (B, C, H, W)
         control_rgb = control_rgb.to(device=self.device, dtype=torch.float32)  # VAE needs float32
 
-        print(f"🌐 Computing ControlNet control samples...")
-        print(f"   Control RGB shape: {control_rgb.shape}")
-        print(f"   Control RGB range: [{control_rgb.min():.3f}, {control_rgb.max():.3f}]")
+        logger.info(f"🌐 Computing ControlNet control samples...")
+        logger.info(f"   Control RGB shape: {control_rgb.shape}")
+        logger.info(f"   Control RGB range: [{control_rgb.min():.3f}, {control_rgb.max():.3f}]")
 
         # VAE encode and patchify control image to match hidden_states format
         if self.vae is not None:
-            print(f"   VAE encoding control image with Forge's Flux VAE...")
+            logger.info(f"   VAE encoding control image with Forge's Flux VAE...")
             try:
                 with torch.inference_mode():
                     # Forge's VAE model - use encode
@@ -222,11 +227,11 @@ class FluxControlNetV2Manager:
 
                         # Call encode without regulation (will use posterior.sample())
                         control_latent = self.vae.encode(control_rgb_normalized)
-                        print(f"   Using Forge's backend VAE encoder (dtype: {vae_dtype})")
+                        logger.info(f"   Using Forge's backend VAE encoder (dtype: {vae_dtype})")
                     else:
                         # Fallback to diffusers-style (shouldn't happen now)
                         control_latent = self.vae.encode(control_rgb).latent_dist.sample()
-                        print(f"   Using diffusers-style VAE encoder")
+                        logger.info(f"   Using diffusers-style VAE encoder")
 
                     # Apply VAE scaling (Flux VAE config)
                     # shift_factor and scaling_factor from Flux VAE
@@ -234,65 +239,65 @@ class FluxControlNetV2Manager:
                     scaling_factor = 0.3611  # Flux VAE default
                     control_latent = (control_latent - shift_factor) * scaling_factor
 
-                    print(f"   Control latent shape: {control_latent.shape}")
+                    logger.info(f"   Control latent shape: {control_latent.shape}")
 
                     # Patchify latent to match transformer input
                     batch_size, num_channels, latent_h, latent_w = control_latent.shape
                     control_tensor = _pack_latents(control_latent, batch_size, num_channels, latent_h, latent_w)
                     control_tensor = control_tensor.to(dtype=self.torch_dtype)
 
-                    print(f"   Control patchified shape: {control_tensor.shape}")
+                    logger.info(f"   Control patchified shape: {control_tensor.shape}")
 
                     # Create dummy hidden_states matching control_tensor shape if not provided
                     if hidden_states is None:
                         hidden_states = torch.zeros_like(control_tensor)
-                        print(f"   Created dummy hidden_states matching control shape: {hidden_states.shape}")
+                        logger.info(f"   Created dummy hidden_states matching control shape: {hidden_states.shape}")
 
                     # Create dummy parameters if not provided (required by ControlNet)
                     if timestep is None:
                         # Use middle timestep (500 out of 1000)
                         timestep = torch.tensor([500.0], device=self.device, dtype=torch.float32)
-                        print(f"   Created dummy timestep: {timestep}")
+                        logger.info(f"   Created dummy timestep: {timestep}")
 
                     if encoder_hidden_states is None:
                         # Create dummy text embeddings (Flux uses 4096 dim)
                         encoder_hidden_states = torch.zeros((1, 77, 4096), device=self.device, dtype=self.torch_dtype)
-                        print(f"   Created dummy encoder_hidden_states: {encoder_hidden_states.shape}")
+                        logger.info(f"   Created dummy encoder_hidden_states: {encoder_hidden_states.shape}")
 
                     if pooled_projections is None:
                         # Create dummy pooled projections (Flux uses 768 dim)
                         pooled_projections = torch.zeros((1, 768), device=self.device, dtype=self.torch_dtype)
-                        print(f"   Created dummy pooled_projections: {pooled_projections.shape}")
+                        logger.info(f"   Created dummy pooled_projections: {pooled_projections.shape}")
 
                     if img_ids is None:
                         # Create position IDs for image tokens
                         batch_size, seq_len, _ = hidden_states.shape
                         img_ids = torch.zeros((batch_size, seq_len, 3), device=self.device, dtype=torch.float32)
-                        print(f"   Created dummy img_ids: {img_ids.shape}")
+                        logger.info(f"   Created dummy img_ids: {img_ids.shape}")
 
                     if txt_ids is None:
                         # Create position IDs for text tokens (matches encoder_hidden_states seq len)
                         txt_ids = torch.zeros((1, 77, 3), device=self.device, dtype=torch.float32)
-                        print(f"   Created dummy txt_ids: {txt_ids.shape}")
+                        logger.info(f"   Created dummy txt_ids: {txt_ids.shape}")
 
                     if guidance is None:
                         # Create dummy guidance (scalar guidance scale, typically 3.5 for Flux)
                         guidance = torch.tensor([3.5], device=self.device, dtype=torch.float32)
-                        print(f"   Created dummy guidance: {guidance}")
+                        logger.info(f"   Created dummy guidance: {guidance}")
             except Exception as e:
-                print(f"   ⚠️ VAE encoding failed: {e}")
+                logger.error(f"   ⚠️ VAE encoding failed: {e}")
                 import traceback
                 traceback.print_exc()
-                print(f"   Falling back to RGB image (may not work)")
+                logger.info(f"   Falling back to RGB image (may not work)")
                 control_tensor = control_rgb.to(dtype=self.torch_dtype)
         else:
             # No VAE available - control will not work
-            print(f"   ⚠️ No VAE available - control will not work correctly")
-            print(f"   ⚠️ Make sure Flux model is loaded in Forge")
+            logger.warning(f"   ⚠️ No VAE available - control will not work correctly")
+            logger.warning(f"   ⚠️ Make sure Flux model is loaded in Forge")
             control_tensor = control_rgb.to(dtype=self.torch_dtype)
 
-        print(f"   Hidden states shape: {hidden_states.shape if hidden_states is not None else 'None'}")
-        print(f"   Conditioning scale: {conditioning_scale}")
+        logger.info(f"   Hidden states shape: {hidden_states.shape if hidden_states is not None else 'None'}")
+        logger.info(f"   Conditioning scale: {conditioning_scale}")
 
         # Call FluxControlNetModel.forward() directly
         with torch.inference_mode():
@@ -313,9 +318,9 @@ class FluxControlNetV2Manager:
         controlnet_block_samples = controlnet_output.controlnet_block_samples
         controlnet_single_block_samples = controlnet_output.controlnet_single_block_samples
 
-        print(f"✓ ControlNet samples computed:")
-        print(f"   Block samples: {len(controlnet_block_samples) if controlnet_block_samples is not None else 0} tensors")
-        print(f"   Single block samples: {len(controlnet_single_block_samples) if controlnet_single_block_samples is not None else 0} tensors")
+        logger.info(f"✓ ControlNet samples computed:")
+        logger.info(f"   Block samples: {len(controlnet_block_samples) if controlnet_block_samples is not None else 0} tensors")
+        logger.info(f"   Single block samples: {len(controlnet_single_block_samples) if controlnet_single_block_samples is not None else 0} tensors")
 
         return controlnet_block_samples, controlnet_single_block_samples
 
@@ -328,4 +333,4 @@ class FluxControlNetV2Manager:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        print("🌐 Flux ControlNet V2 models unloaded")
+        logger.info("🌐 Flux ControlNet V2 models unloaded")

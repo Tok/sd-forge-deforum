@@ -10,6 +10,11 @@ import os
 import sys
 from pathlib import Path
 import shutil
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 def find_wan_models():
     """Find all Wan model directories"""
@@ -24,32 +29,32 @@ def find_wan_models():
         Path("models/Wan"),
     ]
     
-    print(f"🔍 Searching for models in:")
+    logger.info(f"🔍 Searching for models in:")
     for path in search_paths:
-        print(f"   - {path.absolute()}")
+        logger.info(f"   - {path.absolute()}")
     
     models = []
     for base_path in search_paths:
         if base_path.exists():
-            print(f"✅ Found directory: {base_path}")
+            logger.info(f"✅ Found directory: {base_path}")
             
             # Look for direct model files in this directory
             if _looks_like_model_dir(base_path):
                 models.append(base_path)
-                print(f"   📁 Found model directory: {base_path.name}")
+                logger.info(f"   📁 Found model directory: {base_path.name}")
             
             # Also look in subdirectories
             for item in base_path.iterdir():
                 if item.is_dir() and 'wan' in item.name.lower():
                     if _looks_like_model_dir(item):
                         models.append(item)
-                        print(f"   📁 Found model directory: {item.name}")
+                        logger.info(f"   📁 Found model directory: {item.name}")
                 elif item.is_dir() and _looks_like_model_dir(item):
                     # Check subdirectories that might contain models even if they don't have 'wan' in name
                     models.append(item)  
-                    print(f"   📁 Found model directory: {item.name}")
+                    logger.info(f"   📁 Found model directory: {item.name}")
         else:
-            print(f"❌ Directory not found: {base_path}")
+            logger.info(f"Directory not found: {base_path}", emoji='off')
     
     return models
 
@@ -120,40 +125,40 @@ def validate_vace_model(model_path: Path) -> tuple[bool, list]:
     return is_valid, missing_files
 
 def main():
-    print("🔍 Wan Model Cleanup Utility")
-    print("=" * 50)
+    logger.info("🔍 Wan Model Cleanup Utility")
+    logger.info("=" * 50)
     
     models = find_wan_models()
     if not models:
-        print("❌ No Wan models found in common locations")
+        logger.info("No Wan models found in common locations", emoji='off')
         return
     
-    print(f"📁 Found {len(models)} Wan model(s):")
+    logger.info(f"📁 Found {len(models)} Wan model(s):")
     
     corrupted_models = []
     valid_models = []
     
     for i, model in enumerate(models, 1):
-        print(f"\n{i}. Checking: {model.name}")
-        print(f"   Path: {model}")
+        logger.info(f"\n{i}. Checking: {model.name}")
+        logger.info(f"   Path: {model}")
         
         if 'vace' in model.name.lower():
             is_valid, missing = validate_vace_model(model)
             if is_valid:
-                print(f"   ✅ Valid VACE model")
+                logger.info(f"   ✅ Valid VACE model")
                 valid_models.append(model)
             else:
-                print(f"   ❌ Corrupted VACE model")
-                print(f"   Missing: {len(missing)} components")
+                logger.info(f"   ❌ Corrupted VACE model", emoji='off')
+                logger.info(f"   Missing: {len(missing)} components")
                 for missing_item in missing[:3]:  # Show first 3
-                    print(f"     - {missing_item}")
+                    logger.info(f"     - {missing_item}")
                 if len(missing) > 3:
-                    print(f"     - ... and {len(missing) - 3} more")
+                    logger.info(f"     - ... and {len(missing) - 3} more")
                 corrupted_models.append(model)
         else:
             # Basic check for legacy models and unknown types
             if (model / "model_index.json").exists():
-                print(f"   ✅ Valid legacy model")
+                logger.info(f"   ✅ Valid legacy model")
                 valid_models.append(model)
             else:
                 # Check if it has any recognizable Wan model structure
@@ -166,37 +171,37 @@ def main():
                 )
                 
                 if has_valid_structure:
-                    print(f"   ✅ Valid legacy model (has recognizable structure)")
+                    logger.info(f"   ✅ Valid legacy model (has recognizable structure)")
                     valid_models.append(model)
                 else:
-                    print(f"   ❌ Invalid/leftover files (not a proper Wan model)")
+                    logger.info(f"   ❌ Invalid/leftover files (not a proper Wan model)", emoji='off')
                     print(f"   Contains: {[f.name for f in model.iterdir()][:5]}...")  # Show first 5 files
                     corrupted_models.append(model)
     
-    print(f"\n📊 Summary:")
-    print(f"   ✅ Valid models: {len(valid_models)}")
-    print(f"   ❌ Corrupted models: {len(corrupted_models)}")
+    logger.info(f"\n📊 Summary:", emoji='distribution')
+    logger.info(f"   ✅ Valid models: {len(valid_models)}")
+    logger.info(f"   ❌ Corrupted models: {len(corrupted_models)}", emoji='off')
     
     if corrupted_models:
-        print(f"\n🔧 Corrupted models found:")
+        logger.info(f"\n🔧 Corrupted models found:", emoji='wrench')
         for model in corrupted_models:
-            print(f"   - {model.name} ({model})")
+            logger.info(f"   - {model.name} ({model})")
         
         response = input(f"\n❓ Delete {len(corrupted_models)} corrupted model(s)? (y/N): ").strip().lower()
         if response in ['y', 'yes']:
             for model in corrupted_models:
-                print(f"🗑️ Deleting: {model}")
+                logger.info(f"🗑️ Deleting: {model}")
                 try:
                     shutil.rmtree(model)
-                    print(f"   ✅ Deleted successfully")
+                    logger.info(f"   ✅ Deleted successfully")
                 except Exception as e:
-                    print(f"   ❌ Failed to delete: {e}")
+                    logger.error(f"   ❌ Failed to delete: {e}")
             
-            print(f"\n💡 To download Wan 2.2 TI2V models:")
-            print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
-            print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
+            logger.info(f"\n💡 To download Wan 2.2 TI2V models:", emoji='bulb')
+            logger.info(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
+            logger.info(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
         else:
-            print(f"   Models left unchanged. You can delete them manually if needed.")
+            logger.info(f"   Models left unchanged. You can delete them manually if needed.")
 
 if __name__ == "__main__":
     main() 

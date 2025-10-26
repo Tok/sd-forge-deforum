@@ -10,6 +10,11 @@ from typing import List, Optional, Union
 
 import torch
 from PIL import Image
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 try:
     from flash_attn import flash_attn_varlen_func
@@ -229,8 +234,8 @@ class QwenPromptExpander(PromptExpander):
         # Try old location (backward compatibility during migration)
         old_path = os.path.join("models", "wan", model_shortname)
         if os.path.exists(old_path):
-            print(f"⚠️ Using Qwen model from OLD path: {old_path}")
-            print(f"   Consider moving to NEW path: {new_path}")
+            logger.warning(f"⚠️ Using Qwen model from OLD path: {old_path}")
+            logger.info(f"   Consider moving to NEW path: {new_path}")
             return old_path
 
         # Not found locally, will use HuggingFace
@@ -306,17 +311,17 @@ class QwenPromptExpander(PromptExpander):
                     device_map="cpu")
                 self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
                 
-            print(f"✅ Successfully loaded Qwen model: {self.model_name}")
+            logger.info(f"✅ Successfully loaded Qwen model: {self.model_name}")
             
         except Exception as e:
             # Note: Model may still work despite this error (transformers version mismatch)
             # Only print warning if it's not the common 'etag' error
             error_str = str(e)
             if 'etag' not in error_str.lower():
-                print(f"❌ Failed to load Qwen model {self.model_name}: {e}")
-                print("💡 Please ensure the model is downloaded to the correct path")
+                logger.error(f"Failed to load Qwen model {self.model_name}: {e}", emoji='off')
+                logger.info("Please ensure the model is downloaded to the correct path", emoji='bulb')
             else:
-                print(f"⚠️ Qwen model load warning (can be ignored if generation works): {error_str[:100]}")
+                logger.warning(f"⚠️ Qwen model load warning (can be ignored if generation works): {error_str[:100]}")
             self.model = None
             self.tokenizer = None
             if hasattr(self, 'processor'):
@@ -452,7 +457,7 @@ class QwenPromptExpander(PromptExpander):
 
 
 if __name__ == "__main__":
-    print("🧪 Testing QwenPromptExpander with local models only...")
+    logger.info("🧪 Testing QwenPromptExpander with local models only...")
     
     seed = 100
     prompt = "夏日海滩度假风格，一只戴着墨镜的白色猫咪坐在冲浪板上。猫咪毛发蓬松，表情悠闲，直视镜头。背景是模糊的海滩景色，海水清澈，远处有绿色的山丘和蓝天白云。猫咪的姿态自然放松，仿佛在享受海风和阳光。近景特写，强调猫咪的细节和海滩的清新氛围。"
@@ -462,56 +467,56 @@ if __name__ == "__main__":
     # For local models, use the directory path where you downloaded the models
     qwen_model_name = "./models/Qwen2.5-7B-Instruct/"  # Example path
     
-    print(f"📥 Testing text-only Qwen model: {qwen_model_name}")
+    logger.info(f"📥 Testing text-only Qwen model: {qwen_model_name}")
     try:
         qwen_prompt_expander = QwenPromptExpander(
             model_name=qwen_model_name, is_vl=False, device=0)
         
-        print("🔄 Testing Chinese prompt enhancement...")
+        logger.info("Testing Chinese prompt enhancement...", emoji='refresh')
         qwen_result = qwen_prompt_expander(prompt, tar_lang="zh")
         if qwen_result.status:
-            print("✅ Chinese enhancement successful:")
-            print(f"   {qwen_result.prompt[:100]}...")
+            logger.info("✅ Chinese enhancement successful:")
+            logger.info(f"   {qwen_result.prompt[:100]}...")
         else:
-            print(f"❌ Chinese enhancement failed: {qwen_result.message}")
+            logger.error(f"Chinese enhancement failed: {qwen_result.message}", emoji='off')
         
-        print("🔄 Testing English prompt enhancement...")
+        logger.info("Testing English prompt enhancement...", emoji='refresh')
         qwen_result = qwen_prompt_expander(en_prompt, tar_lang="en")
         if qwen_result.status:
-            print("✅ English enhancement successful:")
-            print(f"   {qwen_result.prompt[:100]}...")
+            logger.info("✅ English enhancement successful:")
+            logger.info(f"   {qwen_result.prompt[:100]}...")
         else:
-            print(f"❌ English enhancement failed: {qwen_result.message}")
+            logger.error(f"English enhancement failed: {qwen_result.message}", emoji='off')
             
     except Exception as e:
-        print(f"❌ Failed to initialize text-only Qwen model: {e}")
+        logger.error(f"Failed to initialize text-only Qwen model: {e}", emoji='off')
     
     # Test Vision-Language Qwen models
     qwen_vl_model_name = "./models/Qwen2.5-VL-7B-Instruct/"  # Example path
     image_path = "./examples/test_image.jpg"  # Example image path
     
-    print(f"\n📥 Testing vision-language Qwen model: {qwen_vl_model_name}")
+    logger.info(f"\n📥 Testing vision-language Qwen model: {qwen_vl_model_name}")
     try:
         qwen_vl_expander = QwenPromptExpander(
             model_name=qwen_vl_model_name, is_vl=True, device=0)
         
         if os.path.exists(image_path):
-            print("🔄 Testing vision-language prompt enhancement...")
+            logger.info("Testing vision-language prompt enhancement...", emoji='refresh')
             qwen_result = qwen_vl_expander(
                 prompt, tar_lang="zh", image=image_path, seed=seed)
             if qwen_result.status:
-                print("✅ Vision-language enhancement successful:")
-                print(f"   {qwen_result.prompt[:100]}...")
+                logger.info("✅ Vision-language enhancement successful:")
+                logger.info(f"   {qwen_result.prompt[:100]}...")
             else:
-                print(f"❌ Vision-language enhancement failed: {qwen_result.message}")
+                logger.error(f"Vision-language enhancement failed: {qwen_result.message}", emoji='off')
         else:
-            print(f"⚠️ Test image not found: {image_path}")
+            logger.warning(f"⚠️ Test image not found: {image_path}")
             
     except Exception as e:
-        print(f"❌ Failed to initialize vision-language Qwen model: {e}")
+        logger.error(f"Failed to initialize vision-language Qwen model: {e}", emoji='off')
     
-    print("\n📝 Notes:")
-    print("- Download Qwen models to your local directory first")
-    print("- Adjust model paths in the test code above")
-    print("- Ensure you have sufficient VRAM for the models")
-    print("- Models will be auto-downloaded to webui/models/Deforum/qwen/ in production")
+    logger.info("\n📝 Notes:")
+    logger.info("- Download Qwen models to your local directory first")
+    logger.info("- Adjust model paths in the test code above")
+    logger.info("- Ensure you have sufficient VRAM for the models")
+    logger.info("- Models will be auto-downloaded to webui/models/Deforum/qwen/ in production")

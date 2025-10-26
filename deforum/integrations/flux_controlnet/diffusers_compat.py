@@ -82,11 +82,11 @@ def patch_flow_match_scheduler():
         # Replace the method
         FlowMatchEulerDiscreteScheduler.time_shift = patched_time_shift
 
-        print("✅ Diffusers compatibility patch applied: FlowMatchEulerDiscreteScheduler.time_shift")
+        logger.info("✅ Diffusers compatibility patch applied: FlowMatchEulerDiscreteScheduler.time_shift")
         return True
 
     except Exception as e:
-        print(f"⚠️ Failed to apply diffusers compatibility patch: {e}")
+        logger.error(f"⚠️ Failed to apply diffusers compatibility patch: {e}")
         return False
 
 
@@ -101,11 +101,11 @@ def patch_torch_rmsnorm():
     import torch.nn as nn
 
     if hasattr(nn, 'RMSNorm'):
-        print("✅ torch.nn.RMSNorm already available (PyTorch 2.4.0+)")
+        logger.info("✅ torch.nn.RMSNorm already available (PyTorch 2.4.0+)")
         return True
 
     try:
-        print("🔧 Adding RMSNorm compatibility for PyTorch < 2.4.0...")
+        logger.info("Adding RMSNorm compatibility for PyTorch < 2.4.0...", emoji='wrench')
 
         class RMSNorm(nn.Module):
             """
@@ -152,11 +152,11 @@ def patch_torch_rmsnorm():
         nn.RMSNorm = RMSNorm
         torch.nn.RMSNorm = RMSNorm
 
-        print("✅ RMSNorm compatibility patch applied successfully")
+        logger.info("✅ RMSNorm compatibility patch applied successfully")
         return True
 
     except Exception as e:
-        print(f"⚠️ Failed to apply RMSNorm patch: {e}")
+        logger.error(f"⚠️ Failed to apply RMSNorm patch: {e}")
         return False
 
 
@@ -176,17 +176,17 @@ def patch_diffusers_attention():
         # Check PyTorch version
         torch_version = tuple(int(x) for x in torch.__version__.split('.')[:2])
         if torch_version >= (2, 4):
-            print("✅ PyTorch 2.4.0+ detected - enable_gqa parameter supported")
+            logger.info("✅ PyTorch 2.4.0+ detected - enable_gqa parameter supported")
             return True
 
-        print(f"🔧 PyTorch {torch.__version__} detected - patching scaled_dot_product_attention...")
+        logger.info(f"PyTorch {torch.__version__} detected - patching scaled_dot_product_attention...", emoji='wrench')
 
         # Save original PyTorch function
         original_sdpa = torch.nn.functional.scaled_dot_product_attention
 
         # PyTorch 2.3.1 supports these parameters (hardcoded since it's a C++ builtin)
         supported_params_231 = {'query', 'key', 'value', 'attn_mask', 'dropout_p', 'is_causal', 'scale'}
-        print(f"   PyTorch 2.3.1 SDPA parameters: {supported_params_231}")
+        logger.info(f"   PyTorch 2.3.1 SDPA parameters: {supported_params_231}")
 
         def patched_scaled_dot_product_attention(*args, **kwargs):
             """Wrapper that filters out unsupported parameters like enable_gqa"""
@@ -195,12 +195,12 @@ def patch_diffusers_attention():
                 enable_gqa_value = kwargs.pop('enable_gqa')
                 # Only warn if it's True (False is default anyway)
                 if enable_gqa_value:
-                    print("   ⚠️ enable_gqa=True requested but not supported in PyTorch 2.3.1, ignoring")
+                    logger.warning("   ⚠️ enable_gqa=True requested but not supported in PyTorch 2.3.1, ignoring")
 
             # Remove any other parameters not supported in PyTorch 2.3.1
             unsupported = [k for k in list(kwargs.keys()) if k not in supported_params_231]
             for param in unsupported:
-                print(f"   ⚠️ Removing unsupported parameter: {param}={kwargs[param]}")
+                logger.warning(f"   ⚠️ Removing unsupported parameter: {param}={kwargs[param]}")
                 kwargs.pop(param)
 
             # Call original function with filtered parameters
@@ -209,11 +209,11 @@ def patch_diffusers_attention():
         # Replace PyTorch's function globally
         torch.nn.functional.scaled_dot_product_attention = patched_scaled_dot_product_attention
 
-        print("✅ PyTorch scaled_dot_product_attention patched to filter enable_gqa")
+        logger.info("✅ PyTorch scaled_dot_product_attention patched to filter enable_gqa")
         return True
 
     except Exception as e:
-        print(f"⚠️ Failed to apply attention patch: {e}")
+        logger.error(f"⚠️ Failed to apply attention patch: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -348,11 +348,11 @@ def patch_forge_flux_controlnet():
         IntegratedFluxTransformer2DModel.inner_forward = patched_inner_forward
         IntegratedFluxTransformer2DModel.forward = patched_forward
 
-        print("✅ Forge Flux ControlNet patch applied: IntegratedFluxTransformer2DModel now supports ControlNet")
+        logger.info("✅ Forge Flux ControlNet patch applied: IntegratedFluxTransformer2DModel now supports ControlNet")
         return True
 
     except Exception as e:
-        print(f"⚠️ Failed to apply Forge Flux ControlNet patch: {e}")
+        logger.error(f"⚠️ Failed to apply Forge Flux ControlNet patch: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -396,9 +396,9 @@ def patch_forge_kmodel_for_controlnet():
 
                     # Debug print once per generation
                     if not hasattr(self, '_flux_cn_logged'):
-                        print(f"🌐 Passing Flux ControlNet samples to transformer")
-                        print(f"   Block samples: {len(controlnet_block_samples) if controlnet_block_samples is not None else 0} tensors")
-                        print(f"   Single block samples: {len(controlnet_single_block_samples) if controlnet_single_block_samples is not None else 0} tensors")
+                        logger.info(f"🌐 Passing Flux ControlNet samples to transformer")
+                        logger.info(f"   Block samples: {len(controlnet_block_samples) if controlnet_block_samples is not None else 0} tensors")
+                        logger.info(f"   Single block samples: {len(controlnet_single_block_samples) if controlnet_single_block_samples is not None else 0} tensors")
                         self._flux_cn_logged = True
             except Exception as e:
                 # Silently fail if control samples not available (not all generations use ControlNet)
@@ -410,11 +410,11 @@ def patch_forge_kmodel_for_controlnet():
         # Replace the method
         KModel.apply_model = patched_apply_model
 
-        print("✅ Forge KModel patch applied: apply_model now supports Flux ControlNet")
+        logger.info("✅ Forge KModel patch applied: apply_model now supports Flux ControlNet")
         return True
 
     except Exception as e:
-        print(f"⚠️ Failed to apply KModel ControlNet patch: {e}")
+        logger.error(f"⚠️ Failed to apply KModel ControlNet patch: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -422,7 +422,7 @@ def patch_forge_kmodel_for_controlnet():
 
 def apply_all_patches():
     """Apply all compatibility patches"""
-    print("🔧 Applying diffusers compatibility patches for Forge + Wan 2.2 + Flux ControlNet...")
+    logger.info("Applying diffusers compatibility patches for Forge + Wan 2.2 + Flux ControlNet...", emoji='wrench')
     patch_torch_rmsnorm()
     patch_flow_match_scheduler()
     patch_diffusers_attention()

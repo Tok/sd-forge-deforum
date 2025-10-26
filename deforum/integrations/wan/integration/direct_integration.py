@@ -12,6 +12,11 @@ from pathlib import Path
 from typing import List, Dict, Optional, Any
 import tempfile
 import shutil
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 class WanDirectIntegration:
     """Direct integration using official WAN repository"""
@@ -25,16 +30,16 @@ class WanDirectIntegration:
     def setup_wan_repository(self) -> bool:
         """Ensure WAN repository is available and up to date"""
         if not self.wan_repo_path.exists():
-            print("📥 Cloning official WAN repository...")
+            logger.info("📥 Cloning official WAN repository...")
             return self._clone_wan_repository()
         else:
-            print("✅ WAN repository already available")
+            logger.info("✅ WAN repository already available")
             return True
     
     def _clone_wan_repository(self) -> bool:
         """Clone the official WAN repository"""
         try:
-            print("🌐 Cloning from https://github.com/Wan-Video/Wan2.1.git...")
+            logger.info("🌐 Cloning from https://github.com/Wan-Video/Wan2.1.git...")
             result = subprocess.run([
                 "git", "clone", "--depth", "1",
                 "https://github.com/Wan-Video/Wan2.1.git",
@@ -42,14 +47,14 @@ class WanDirectIntegration:
             ], capture_output=True, text=True, timeout=300)
             
             if result.returncode == 0:
-                print("✅ WAN repository cloned successfully")
+                logger.info("✅ WAN repository cloned successfully")
                 return True
             else:
-                print(f"❌ Failed to clone: {result.stderr}")
+                logger.error(f"Failed to clone: {result.stderr}", emoji='off')
                 return False
                 
         except Exception as e:
-            print(f"❌ Error cloning repository: {e}")
+            logger.error(f"Error cloning repository: {e}", emoji='off')
             return False
     
     def discover_models(self) -> List[Dict]:
@@ -87,11 +92,11 @@ class WanDirectIntegration:
         if not self.setup_wan_repository():
             raise RuntimeError("Failed to setup WAN repository")
         
-        print(f"🎬 Generating video using official WAN repository...")
-        print(f"   📝 Prompt: {prompt}")
-        print(f"   📐 Size: {width}x{height}")
-        print(f"   🎬 Frames: {num_frames}")
-        print(f"   📁 Model: {model_info['name']} ({model_info['type']}, {model_info['size']})")
+        logger.info(f"Generating video using official WAN repository...", emoji='movie_camera')
+        logger.info(f"   📝 Prompt: {prompt}")
+        logger.info(f"   📐 Size: {width}x{height}")
+        logger.info(f"   🎬 Frames: {num_frames}", emoji='movie_camera')
+        logger.info(f"   📁 Model: {model_info['name']} ({model_info['type']}, {model_info['size']})")
         
         # Determine the correct task based on model type and size
         task = self._determine_wan_task(model_info)
@@ -114,14 +119,14 @@ class WanDirectIntegration:
         try:
             output_file = self._run_wan_generation(wan_args)
             if output_file and Path(output_file).exists():
-                print(f"✅ Video generated successfully: {output_file}")
+                logger.info(f"✅ Video generated successfully: {output_file}")
                 return output_file
             else:
-                print("❌ Video generation failed - no output file created")
+                logger.error("Video generation failed - no output file created", emoji='off')
                 return None
                 
         except Exception as e:
-            print(f"❌ Video generation failed: {e}")
+            logger.error(f"Video generation failed: {e}", emoji='off')
             return None
     
     def _determine_wan_task(self, model_info: Dict) -> str:
@@ -164,7 +169,7 @@ class WanDirectIntegration:
         # Ensure num_frames follows WAN's 4n+1 rule
         if (num_frames - 1) % 4 != 0:
             num_frames = ((num_frames - 1) // 4) * 4 + 1
-            print(f"   ✅ Adjusted frames to WAN requirement: {num_frames} (4n+1 rule)")
+            logger.info(f"   ✅ Adjusted frames to WAN requirement: {num_frames} (4n+1 rule)")
         
         args = [
             sys.executable,  # Python interpreter
@@ -199,8 +204,8 @@ class WanDirectIntegration:
         
         try:
             os.chdir(self.wan_repo_path)
-            print(f"🚀 Running official WAN generation in {self.wan_repo_path}")
-            print(f"   🔧 Command: {' '.join(args)}")
+            logger.info(f"🚀 Running official WAN generation in {self.wan_repo_path}")
+            logger.info(f"   🔧 Command: {' '.join(args)}", emoji='wrench')
             
             # Add WAN repo to Python path temporarily
             env = os.environ.copy()
@@ -217,22 +222,22 @@ class WanDirectIntegration:
             )
             
             if result.returncode == 0:
-                print("✅ Official WAN generation completed successfully")
+                logger.info("✅ Official WAN generation completed successfully")
                 
                 # Parse output to find generated video file
                 output_file = self._parse_wan_output(result.stdout, args)
                 return output_file
             else:
-                print(f"❌ WAN generation failed:")
-                print(f"   stdout: {result.stdout}")
-                print(f"   stderr: {result.stderr}")
+                logger.error(f"WAN generation failed:", emoji='off')
+                logger.info(f"   stdout: {result.stdout}")
+                logger.info(f"   stderr: {result.stderr}")
                 return None
                 
         except subprocess.TimeoutExpired:
-            print("❌ WAN generation timed out after 10 minutes")
+            logger.info("WAN generation timed out after 10 minutes", emoji='off')
             return None
         except Exception as e:
-            print(f"❌ Error running WAN generation: {e}")
+            logger.error(f"Error running WAN generation: {e}", emoji='off')
             return None
         finally:
             os.chdir(original_cwd)
@@ -280,11 +285,11 @@ class WanDirectIntegration:
         
         requirements_file = self.wan_repo_path / "requirements.txt"
         if not requirements_file.exists():
-            print("⚠️ No requirements.txt found in WAN repository")
+            logger.warning("⚠️ No requirements.txt found in WAN repository")
             return True
         
         try:
-            print("📦 Installing WAN dependencies...")
+            logger.info("📦 Installing WAN dependencies...")
             
             # Install essential dependencies first (avoid conflicts)
             essential_deps = [
@@ -297,25 +302,25 @@ class WanDirectIntegration:
             
             for dep in essential_deps:
                 try:
-                    print(f"   📦 Installing {dep}...")
+                    logger.info(f"   📦 Installing {dep}...")
                     result = subprocess.run([
                         sys.executable, "-m", "pip", "install", dep, "--quiet"
                     ], capture_output=True, text=True, timeout=60)
                     
                     if result.returncode == 0:
-                        print(f"   ✅ {dep} installed")
+                        logger.info(f"   ✅ {dep} installed")
                     else:
-                        print(f"   ⚠️ {dep} installation warning: {result.stderr[:100]}")
+                        logger.warning(f"   ⚠️ {dep} installation warning: {result.stderr[:100]}")
                         
                 except Exception as e:
-                    print(f"   ⚠️ {dep} installation error: {e}")
+                    logger.error(f"   ⚠️ {dep} installation error: {e}")
                     continue  # Continue with other dependencies
             
-            print("✅ WAN dependencies installation completed")
+            logger.info("✅ WAN dependencies installation completed")
             return True
                 
         except Exception as e:
-            print(f"❌ Error installing dependencies: {e}")
+            logger.error(f"Error installing dependencies: {e}", emoji='off')
             return False
 
 def generate_video_with_official_wan(prompt: str, 
@@ -334,14 +339,14 @@ def generate_video_with_official_wan(prompt: str,
     # Find the best model
     best_model = integration.get_best_model()
     if not best_model:
-        print("❌ No WAN models found")
-        print("💡 Please download a WAN model first:")
-        print("   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir ./models/Deforum/wan")
+        logger.info("No WAN models found", emoji='off')
+        logger.info("Please download a WAN model first:", emoji='bulb')
+        logger.info("   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir ./models/Deforum/wan")
         return None
     
     # Install dependencies if needed
     if not integration.install_wan_dependencies():
-        print("⚠️ Failed to install WAN dependencies, continuing anyway...")
+        logger.error("⚠️ Failed to install WAN dependencies, continuing anyway...")
     
     # Generate video
     return integration.generate_video_direct(
@@ -359,21 +364,21 @@ def generate_video_with_official_wan(prompt: str,
 
 if __name__ == "__main__":
     # Test the direct integration
-    print("🧪 Testing WAN Direct Integration...")
+    logger.info("🧪 Testing WAN Direct Integration...")
     
     integration = WanDirectIntegration()
     
     # Test model discovery
     models = integration.discover_models()
     if models:
-        print(f"✅ Found {len(models)} model(s)")
+        logger.info(f"✅ Found {len(models)} model(s)")
         best = integration.get_best_model()
-        print(f"🏆 Best model: {best['name']} ({best['type']}, {best['size']})")
+        logger.info(f"🏆 Best model: {best['name']} ({best['type']}, {best['size']})")
         
         # Test repository setup
         if integration.setup_wan_repository():
-            print("✅ WAN repository ready")
+            logger.info("✅ WAN repository ready")
         else:
-            print("❌ Failed to setup WAN repository")
+            logger.error("Failed to setup WAN repository", emoji='off')
     else:
         print("❌ No models found") 

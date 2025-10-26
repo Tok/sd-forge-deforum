@@ -31,6 +31,11 @@ from deforum.config.settings import save_settings_from_animation_run
 
 # Import pure functions from refactored utils module
 from deforum.utils.parsing.expressions import parse_frame_expression
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 def render_input_video(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
     # create a folder for the video input frames to live in
@@ -38,13 +43,13 @@ def render_input_video(args, anim_args, video_args, parseq_args, loop_args, cont
     os.makedirs(video_in_frame_path, exist_ok=True)
 
     # save the video frames from input video
-    print(f"Exporting Video Frames (1 every {anim_args.extract_nth_frame}) frames to {video_in_frame_path}...")
+    logger.info(f"Exporting Video Frames (1 every {anim_args.extract_nth_frame}) frames to {video_in_frame_path}...")
     vid2frames(video_path = anim_args.video_init_path, video_in_frame_path=video_in_frame_path, n=anim_args.extract_nth_frame, overwrite=anim_args.overwrite_extracted_frames, extract_from_frame=anim_args.extract_from_frame, extract_to_frame=anim_args.extract_to_frame)
 
     # determine max frames from length of input frames
     anim_args.max_frames = len([f for f in pathlib.Path(video_in_frame_path).glob('*.jpg')])
     args.use_init = True
-    print(f"Loading {anim_args.max_frames} input frames from {video_in_frame_path} and saving video frames to {args.outdir}")
+    logger.info(f"Loading {anim_args.max_frames} input frames from {video_in_frame_path} and saving video frames to {args.outdir}")
 
     if anim_args.use_mask_video:
         # create a folder for the mask video input frames to live in
@@ -52,7 +57,7 @@ def render_input_video(args, anim_args, video_args, parseq_args, loop_args, cont
         os.makedirs(mask_in_frame_path, exist_ok=True)
 
         # save the video frames from mask video
-        print(f"Exporting Video Frames (1 every {anim_args.extract_nth_frame}) frames to {mask_in_frame_path}...")
+        logger.info(f"Exporting Video Frames (1 every {anim_args.extract_nth_frame}) frames to {mask_in_frame_path}...")
         vid2frames(video_path=anim_args.video_mask_path,video_in_frame_path=mask_in_frame_path, n=anim_args.extract_nth_frame, overwrite=anim_args.overwrite_extracted_frames, extract_from_frame=anim_args.extract_from_frame, extract_to_frame=anim_args.extract_to_frame)
         max_mask_frames = len([f for f in pathlib.Path(mask_in_frame_path).glob('*.jpg')])
 
@@ -72,7 +77,7 @@ def render_animation_with_video_mask(args, anim_args, video_args, parseq_args, l
     os.makedirs(mask_in_frame_path, exist_ok=True)
 
     # save the video frames from mask video
-    print(f"Exporting Video Frames (1 every {anim_args.extract_nth_frame}) frames to {mask_in_frame_path}...")
+    logger.info(f"Exporting Video Frames (1 every {anim_args.extract_nth_frame}) frames to {mask_in_frame_path}...")
     vid2frames(video_path=anim_args.video_mask_path, video_in_frame_path=mask_in_frame_path, n=anim_args.extract_nth_frame, overwrite=anim_args.overwrite_extracted_frames, extract_from_frame=anim_args.extract_from_frame, extract_to_frame=anim_args.extract_to_frame)
     args.use_mask = True
     #args.overlay_mask = True
@@ -80,7 +85,7 @@ def render_animation_with_video_mask(args, anim_args, video_args, parseq_args, l
     # determine max frames from length of input frames
     anim_args.max_frames = len([f for f in pathlib.Path(mask_in_frame_path).glob('*.jpg')])
     #args.use_init = True
-    print(f"Loading {anim_args.max_frames} input frames from {mask_in_frame_path} and saving video frames to {args.outdir}")
+    logger.info(f"Loading {anim_args.max_frames} input frames from {mask_in_frame_path} and saving video frames to {args.outdir}")
 
     render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
 
@@ -101,17 +106,17 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
 
     # create output folder for the batch
     os.makedirs(args.outdir, exist_ok=True)
-    print(f"Saving interpolation animation frames to {args.outdir}")
+    logger.info(f"Saving interpolation animation frames to {args.outdir}")
 
     # save settings.txt file for the current run
     save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, video_args, root)
         
     # Compute interpolated prompts
     if parseq_adapter.manages_prompts():
-        print("Parseq prompts are assumed to already be interpolated - not doing any additional prompt interpolation")
+        logger.info("Parseq prompts are assumed to already be interpolated - not doing any additional prompt interpolation")
         prompt_series = keys.prompts
     else:
-        print("Generating interpolated prompts for all frames")
+        logger.info("Generating interpolated prompts for all frames")
         prompt_series = interpolate_prompts(root.animation_prompts, anim_args.max_frames)
     
     state.job_count = anim_args.max_frames
@@ -127,8 +132,8 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
 
         print(f"{BLUE}Interpolation frame: {RESET_COLOR}"
               f"{BOLD}{frame_idx}{RESET_COLOR}/{anim_args.max_frames}  ")
-        print(f"{GREEN}Seed: {RESET_COLOR}{args.seed}")
-        print(f"{PURPLE}Prompt: {RESET_COLOR}{prompt_to_print}")
+        logger.info(f"{GREEN}Seed: {RESET_COLOR}{args.seed}")
+        logger.info(f"{PURPLE}Prompt: {RESET_COLOR}{prompt_to_print}")
 
         state.job = f"frame {frame_idx + 1}/{anim_args.max_frames}"
         state.job_no = frame_idx + 1
@@ -136,11 +141,11 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
         if state.interrupted:
             break
         if state.skipped:
-            print("\n** PAUSED **")
+            logger.info("\n** PAUSED **")
             state.skipped = False
             while not state.skipped:
                 time.sleep(0.1)
-            print("** RESUMING **")
+            logger.info("** RESUMING **")
         
         # grab inputs for current frame generation
         args.prompt = prompt_to_print

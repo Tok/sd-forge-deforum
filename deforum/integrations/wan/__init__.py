@@ -34,13 +34,18 @@ from . import pipelines
 from . import configs
 # Note: models module not yet implemented - imports are local in pipelines
 from . import integration
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 # Try to import unified integration, fallback if dependencies missing
 try:
     from .integration.unified_integration import WanUnifiedIntegration
     UNIFIED_AVAILABLE = True
 except ImportError as e:
-    print(f"⚠️ Unified integration not available: {e}")
+    logger.warning(f"⚠️ Unified integration not available: {e}")
     WanUnifiedIntegration = None
     UNIFIED_AVAILABLE = False
 
@@ -75,7 +80,7 @@ def create_wan_pipeline(model_path: str = None, pipeline_type: str = "auto"):
         return integration
     else:
         # Fallback to procedural pipeline if unified not available
-        print("🔄 Using procedural pipeline fallback")
+        logger.info("Using procedural pipeline fallback", emoji='refresh')
         pipeline = WanProceduralPipeline()
         pipeline.load_components()
         return pipeline

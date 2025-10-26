@@ -18,6 +18,11 @@ from deforum.utils.system.logging import log as log_utils
 from deforum.rendering.helpers import memory as memory_utils
 from deforum.rendering.helpers import subtitle as subtitle_utils
 from deforum.rendering.helpers import webui as web_ui_utils
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 IS_USE_PROFILER = False
 
@@ -41,13 +46,13 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     # Pre-download soundtrack if specified
     if video_args.add_soundtrack == 'File' and video_args.soundtrack_path is not None:
         if video_args.soundtrack_path.startswith(('http://', 'https://')):
-            print(f"Pre-downloading soundtrack at the beginning of the render process: {video_args.soundtrack_path}")
+            logger.info(f"Pre-downloading soundtrack at the beginning of the render process: {video_args.soundtrack_path}")
             try:
                 from deforum.media.video_audio_utilities import download_audio
                 video_args.soundtrack_path = download_audio(video_args.soundtrack_path)
-                print(f"Audio successfully pre-downloaded to: {video_args.soundtrack_path}")
+                logger.info(f"Audio successfully pre-downloaded to: {video_args.soundtrack_path}")
             except Exception as e:
-                print(f"Error pre-downloading audio: {e}")
+                logger.error(f"Pre-downloading audio failed: {e}")
     
     data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, root)
     check_render_conditions(data)

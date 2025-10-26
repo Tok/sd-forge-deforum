@@ -8,6 +8,11 @@ from typing import Optional, Any
 
 # Import the same color constants as render core
 from deforum.utils.system.logging.log import (
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
     HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED, HEX_PURPLE, HEX_YELLOW,
     BLUE, GREEN, ORANGE, RED, PURPLE, YELLOW, RESET_COLOR, BOLD
 )
@@ -114,7 +119,7 @@ class WanProgressBar:
 
 def print_wan_info(message: str, color: str = BLUE):
     """Print Wan info message with styling"""
-    print(f"{color}{BOLD}Wan: {RESET_COLOR}{message}")
+    logger.info(f"{color}{BOLD}Wan: {RESET_COLOR}{message}")
 
     
 def print_wan_success(message: str):

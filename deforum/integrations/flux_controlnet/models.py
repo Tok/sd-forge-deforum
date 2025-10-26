@@ -9,6 +9,11 @@ from diffusers import FluxControlNetModel
 from typing import Optional, Dict
 import os
 from contextlib import contextmanager
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 @contextmanager
@@ -39,16 +44,16 @@ def temporarily_unpatch_hf_download():
                         # Found the original function
                         file_download._download_to_tmp_and_move = obj
                         restored = True
-                        print("  Temporarily using original HF download (avoiding Forge patch)")
+                        logger.info("  Temporarily using original HF download (avoiding Forge patch)")
                         break
                 except (ValueError, AttributeError):
                     continue
 
         if not restored:
-            print("  Using patched HF download (couldn't restore original, may fail)")
+            logger.info("  Using patched HF download (couldn't restore original, may fail)")
 
     except Exception as e:
-        print(f"  Warning during HF download unpatch setup: {e}")
+        logger.info(f"  Warning during HF download unpatch setup: {e}")
 
     try:
         yield
@@ -58,9 +63,9 @@ def temporarily_unpatch_hf_download():
             try:
                 from huggingface_hub import file_download
                 file_download._download_to_tmp_and_move = patched_fn
-                print("  Restored Forge HF download patch")
+                logger.info("  Restored Forge HF download patch")
             except Exception as e:
-                print(f"  Warning: Could not restore HF patch: {e}")
+                logger.error(f"  Could not restore HF patch: {e}")
 
 
 # Available Flux ControlNet models
@@ -117,7 +122,7 @@ def load_flux_controlnet_model(
     # Check if model is already cached
     cache_key = f"{control_type}_{model_name}"
     if cache_key in _model_cache:
-        print(f"Using cached Flux {control_type.title()} ControlNet model: {model_name}")
+        logger.info(f"Using cached Flux {control_type.title()} ControlNet model: {model_name}")
         return _model_cache[cache_key]
 
     # Get model repo ID
@@ -131,8 +136,8 @@ def load_flux_controlnet_model(
 
     model_id = models[model_name]
 
-    print(f"Loading Flux {control_type.title()} ControlNet model: {model_id}")
-    print(f"This may take a while on first load (downloading from HuggingFace)...")
+    logger.info(f"Loading Flux {control_type.title()} ControlNet model: {model_id}")
+    logger.info(f"This may take a while on first load (downloading from HuggingFace)...")
 
     # Load model with temporarily unpatched HF download to avoid etag parameter conflict
     try:
@@ -145,11 +150,11 @@ def load_flux_controlnet_model(
         # Cache the model
         _model_cache[cache_key] = controlnet
 
-        print(f"✓ Flux {control_type.title()} ControlNet model loaded successfully")
+        logger.info(f"✓ Flux {control_type.title()} ControlNet model loaded successfully")
         return controlnet
 
     except Exception as e:
-        print(f"Error loading Flux ControlNet model {model_id}: {e}")
+        logger.info(f"Error loading Flux ControlNet model {model_id}: {e}")
         raise
 
 
@@ -166,7 +171,7 @@ def unload_controlnet_models():
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-    print("Flux ControlNet models unloaded from cache")
+    logger.info("Flux ControlNet models unloaded from cache")
 
 
 def get_model_info(control_type: str, model_name: str) -> str:

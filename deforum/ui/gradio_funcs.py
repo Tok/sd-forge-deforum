@@ -23,6 +23,11 @@ from deforum.media.interpolation import process_interp_vid_upload_logic, process
 
 # Import pure functions from refactored utils module
 from deforum.utils.math.resolution import (
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
     calculate_upscaled_resolution,
     calculate_upscaled_resolution_by_model,
 )
@@ -118,7 +123,7 @@ def upload_pics_to_interpolate(pic_list, engine, x_am, sl_enabled, sl_am, keep_i
 
 def ncnn_upload_vid_to_upscale(vid_path, in_vid_fps, in_vid_res, out_vid_res, upscale_model, upscale_factor, keep_imgs):
     if vid_path is None:
-        print("Please upload a video :)")
+        logger.info("Please upload a video :)")
         return
     f_location, f_crf, f_preset = get_ffmpeg_params()
     current_user = get_os()

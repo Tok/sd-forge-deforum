@@ -165,7 +165,7 @@ def run_deforum(*args):
     if args_dict['custom_settings_file'] is not None and args_dict['override_settings_with_file'] and len(args_dict['custom_settings_file']) > 1:
         times_to_run = len(args_dict['custom_settings_file'])
 
-    print(f"times_to_run: {times_to_run}")
+    logger.info(f"times_to_run: {times_to_run}")
     # extract the job_id_prefix before entering the loop. Why? Because once we're in the loop, args gets turned into a SimpleNamespace
     # so if we're in batch mode, the 2nd time we come into the loop, args[0] throws an exception
     job_id_prefix = f"{args[0]}"
@@ -173,33 +173,33 @@ def run_deforum(*args):
         job_id = f"{job_id_prefix}-{i}"
         JobStatusTracker().update_phase(job_id, DeforumJobPhase.PREPARING)
 
-        print(f"{UNDERLINE}{YELLOW}Zirteqs Fluxabled Fork of the Deforum Extension for WebUI Forge{RESET_COLOR}")
-        print(f"Version: {get_commit_date()} | Git commit: {get_deforum_version()}")
-        print(f"Starting job {job_id}...")
+        logger.info(f"{UNDERLINE}{YELLOW}Zirteqs Fluxabled Fork of the Deforum Extension for WebUI Forge{RESET_COLOR}")
+        logger.info(f"Version: {get_commit_date()} | Git commit: {get_deforum_version()}")
+        logger.info(f"Starting job {job_id}...")
         args_dict['self'] = None
         args_dict['p'] = p
         try:
             args_loaded_ok, root, args, anim_args, video_args, parseq_args, audio_sync_args, loop_args, controlnet_args, wan_args = process_args(args_dict, i)
-            print(f"🔍 DEBUG: anim_args.animation_mode after process_args: '{anim_args.animation_mode}'")
+            logger.debug(f"anim_args.animation_mode after process_args: '{anim_args.animation_mode}'")
             # Ensure animation_mode from args_dict (possibly loaded from resume) is reflected in anim_args
             if 'animation_mode' in args_dict:
-                print(f"🔍 DEBUG: Overriding anim_args.animation_mode with args_dict value: '{args_dict['animation_mode']}'")
+                logger.debug(f"Overriding anim_args.animation_mode with args_dict value: '{args_dict['animation_mode']}'")
                 anim_args.animation_mode = args_dict['animation_mode']
-            print(f"🔍 DEBUG: Final anim_args.animation_mode: '{anim_args.animation_mode}'")
+            logger.debug(f"Final anim_args.animation_mode: '{anim_args.animation_mode}'")
         except Exception as e:
             JobStatusTracker().fail_job(job_id, error_type="TERMINAL", message="Invalid arguments.")
-            print("\n*START OF TRACEBACK*")
+            logger.error("\n*START OF TRACEBACK*")
             traceback.print_exc()
-            print("*END OF TRACEBACK*\nUser friendly error message:")
-            print(f"Error: {e}. Please, check your prompts with a JSON validator.")
+            logger.error("*END OF TRACEBACK*\nUser friendly error message:")
+            logger.error(f"{e}. Please, check your prompts with a JSON validator.")
             return None, None, None, f"Error: '{e}'. Please, check your prompts with a JSON validator. Full error message is in your terminal/ cli.", []
         if args_loaded_ok is False:
             if times_to_run > 1:
-                print(f"{ORANGE}WARNING:{RESET_COLOR} skipped running from the following setting file, as it contains an invalid JSON: {os.path.basename(args_dict['custom_settings_file'][i].name)}")
+                logger.warning(f"{ORANGE}{RESET_COLOR} skipped running from the following setting file, as it contains an invalid JSON: {os.path.basename(args_dict['custom_settings_file'][i].name)}")
                 continue
             else:
                 JobStatusTracker().fail_job(job_id, error_type="TERMINAL", message="Invalid settings file.")
-                print(f"{RED}ERROR!{RESET_COLOR} Couldn't load data from '{os.path.basename(args_dict['custom_settings_file'][i].name)}'. Make sure it's a valid JSON using a JSON validator")
+                logger.info(f"{RED}ERROR!{RESET_COLOR} Couldn't load data from '{os.path.basename(args_dict['custom_settings_file'][i].name)}'. Make sure it's a valid JSON using a JSON validator")
                 return None, None, None, f"Couldn't load data from '{os.path.basename(args_dict['custom_settings_file'][i].name)}'. Make sure it's a valid JSON using a JSON validator", []
 
         root.initial_clipskip = shared.opts.data.get("CLIP_stop_at_last_layers", 1)
@@ -224,7 +224,7 @@ def run_deforum(*args):
         try:  # dispatch to appropriate renderer
             JobStatusTracker().update_phase(job_id, DeforumJobPhase.GENERATING)
             JobStatusTracker().update_output_info(job_id, outdir=args.outdir, timestring=root.timestring)
-            print(f"\n🎬 DEBUG: Dispatching to renderer for mode: '{anim_args.animation_mode}'")
+            logger.debug(f"\n🎬 Dispatching to renderer for mode: '{anim_args.animation_mode}'")
             if anim_args.animation_mode == '2D' or anim_args.animation_mode == '3D':
                 if anim_args.use_mask_video: 
                     render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)  # allow mask video without an input video
@@ -239,14 +239,14 @@ def run_deforum(*args):
                 from deforum.rendering.flux_interp import render_flux_interp
                 render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, wan_args, root)
             else:
-                print('Other modes are not available yet!')
+                logger.info('Other modes are not available yet!')
         except Exception as e:
             JobStatusTracker().fail_job(job_id, error_type="RETRYABLE", message="Generation error.")
-            print("\n*START OF TRACEBACK*")
+            logger.error("\n*START OF TRACEBACK*")
             traceback.print_exc()
-            print("*END OF TRACEBACK*\n")
-            print("User friendly error message:")
-            print(f"Error: {e}. Please, check your schedules/ init values.")
+            logger.error("*END OF TRACEBACK*\n")
+            logger.info("User friendly error message:")
+            logger.error(f"{e}. Please, check your schedules/ init values.")
             return None, None, None, f"Error: '{e}'. Before reporting, please check your schedules/ init values. Full error message is in your terminal/ cli.", []
         finally:
             shared.total_tqdm = tqdm_backup
@@ -275,10 +275,10 @@ def run_deforum(*args):
             need_to_frame_interpolate = True
 
         if video_args.skip_video_creation:
-            print("\nSkipping video creation, uncheck 'Skip video creation' in 'Output' tab if you want to get a video too :)")
+            logger.info("\nSkipping video creation, uncheck 'Skip video creation' in 'Output' tab if you want to get a video too :)")
         elif is_wan_mode:
             # Wan modes handle their own video creation, skip generic video creation
-            print("\nWan mode already created video, skipping generic video creation")
+            logger.info("\nWan mode already created video, skipping generic video creation")
         else:
             # Stitch video using ffmpeg!
             try:
@@ -291,9 +291,9 @@ def run_deforum(*args):
                 last_vid_data = f'<p style=\"font-weight:bold;margin-bottom:0em\">Deforum extension for Forge </p><video controls loop><source src="{data_url}" type="video/mp4"></video>'
             except Exception as e:
                 if need_to_frame_interpolate:
-                    print(f"FFMPEG DID NOT STITCH ANY VIDEO. However, you requested to frame interpolate  - so we will continue to frame interpolation, but you'll be left only with the interpolated frames and not a video, since ffmpeg couldn't run. Original ffmpeg error: {e}")
+                    logger.error(f"FFMPEG DID NOT STITCH ANY VIDEO. However, you requested to frame interpolate  - so we will continue to frame interpolation, but you'll be left only with the interpolated frames and not a video, since ffmpeg couldn't run. Original ffmpeg error: {e}")
                 else:
-                    print(f"** FFMPEG DID NOT STITCH ANY VIDEO ** Error: {e}")
+                    logger.error(f"FFMPEG DID NOT STITCH ANY VIDEO - {e}")
                 pass
               
         if video_args.make_gif and not video_args.skip_video_creation and not video_args.store_frames_in_ram and not is_wan_mode:
@@ -306,14 +306,14 @@ def run_deforum(*args):
 
         # FRAME INTERPOLATION TIME
         if need_to_frame_interpolate:
-            print(f"Got a request to *frame interpolate* using {video_args.frame_interpolation_engine}")
+            logger.info(f"Got a request to *frame interpolate* using {video_args.frame_interpolation_engine}")
             path_to_interpolate = args.outdir
 
             # Match upscaling.py naming convention (no timestring, like depth-maps)
             upscaled_folder_path = os.path.join(args.outdir, "upscaled")
             use_upscaled_images = video_args.frame_interpolation_use_upscaled and os.path.exists(upscaled_folder_path) and len(os.listdir(upscaled_folder_path)) > 1
             if use_upscaled_images:
-                print(f"Using upscaled images for frame interpolation.")
+                logger.info(f"Using upscaled images for frame interpolation.")
                 path_to_interpolate = upscaled_folder_path
             
             ouput_vid_path = process_video_interpolation(frame_interpolation_engine=video_args.frame_interpolation_engine, frame_interpolation_x_amount=video_args.frame_interpolation_x_amount,frame_interpolation_slow_mo_enabled=video_args.frame_interpolation_slow_mo_enabled, frame_interpolation_slow_mo_amount=video_args.frame_interpolation_slow_mo_amount, orig_vid_fps=video_args.fps, deforum_models_path=root.models_path, real_audio_track=real_audio_track, raw_output_imgs_path=path_to_interpolate, img_batch_id=root.timestring, ffmpeg_location=f_location, ffmpeg_crf=f_crf, ffmpeg_preset=f_preset, keep_interp_imgs=video_args.frame_interpolation_keep_imgs, orig_vid_name=None, resolution=None, srt_path=srt_path)
@@ -324,7 +324,7 @@ def run_deforum(*args):
                 # Get filename without extension using os.path functions
                 base_name = os.path.splitext(os.path.basename(ouput_vid_path))[0]
                 ouput_vid_path_final = os.path.join(args.outdir, base_name + "_upscaled.mp4")
-                print(f"Moving upscaled, interpolated vid from {ouput_vid_path} to {ouput_vid_path_final}")
+                logger.info(f"Moving upscaled, interpolated vid from {ouput_vid_path} to {ouput_vid_path_final}")
                 shutil.move(ouput_vid_path, ouput_vid_path_final)
 
         if video_args.delete_imgs and not video_args.skip_video_creation:
@@ -333,7 +333,7 @@ def run_deforum(*args):
         if video_args.delete_input_frames:
             # Check if the path exists
             if os.path.exists(os.path.join(args.outdir, 'inputframes')):
-                print(f"Deleting inputframes")
+                logger.info(f"Deleting inputframes")
                 handle_input_frames_deletion(imgs_folder_path=os.path.join(args.outdir, 'inputframes'))
             # Now do CN input frame deletion
             cn_inputframes_list = [os.path.join(args.outdir, f'controlnet_{i}_inputframes') for i in range(1, num_of_models + 1)]

@@ -45,6 +45,11 @@ from deforum.ui.tabs.tab_init import get_tab_init
 from deforum.ui.tabs.tab_wan import get_tab_wan
 from deforum.ui.tabs.tab_distribution import get_tab_distribution
 from deforum.ui.tabs.tab_output import get_tab_output
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 # ******** Important message ********
@@ -1021,9 +1026,9 @@ def get_tab_init(d, da, dp, dau, dv=None):
     found_components = [name for name in audio_component_names if name in local_scope]
     missing_components = [name for name in audio_component_names if name not in local_scope]
 
-    print(f"🔍 DEBUG get_tab_init() return:")
-    print(f"   Found in locals(): {found_components}")
-    print(f"   Missing from locals(): {missing_components}")
+    logger.info(f"🔍 DEBUG get_tab_init() return:")
+    logger.info(f"   Found in locals(): {found_components}")
+    logger.info(f"   Missing from locals(): {missing_components}")
 
     # Add found components to result
     for comp_name in found_components:
@@ -1039,7 +1044,7 @@ def wan_generate_video(*component_args):
     This function calls the main Deforum generation pipeline with Wan mode
     """
     try:
-        print(f"🎬 Wan video generation button clicked! Received {len(component_args)} arguments")
+        logger.info(f"Wan video generation button clicked! Received {len(component_args)} arguments", emoji='movie_camera')
         
         # Import the main Deforum run function
         from deforum.orchestration.run_deforum import run_deforum
@@ -1059,37 +1064,37 @@ def wan_generate_video(*component_args):
             if auto_download_index < len(component_args):
                 wan_auto_download = component_args[auto_download_index]
         except (ValueError, IndexError):
-            print("⚠️ Could not find wan_auto_download setting, using default: True")
+            logger.error("⚠️ Could not find wan_auto_download setting, using default: True")
         
         # If no models found and auto-download is enabled, try to download
         if not models and wan_auto_download:
-            print("📥 No models found and auto-download enabled. Downloading recommended model...")
+            logger.info("📥 No models found and auto-download enabled. Downloading recommended model...")
             
             try:
                 from deforum.integrations.wan.wan_model_downloader import WanModelDownloader
                 downloader = WanModelDownloader()
                 
                 # Try to download TI2V-5B (Wan 2.2 unified text/image-to-video)
-                print("📥 Downloading Wan 2.2 TI2V-5B model (recommended: 24GB VRAM, RTX 4090)...")
+                logger.info("📥 Downloading Wan 2.2 TI2V-5B model (recommended: 24GB VRAM, RTX 4090)...")
                 if downloader.download_model("TI2V-5B"):
-                    print("✅ TI2V-5B model download completed!")
+                    logger.info("✅ TI2V-5B model download completed!")
                     # Re-discover models after download
                     models = integration.discover_models()
                 else:
-                    print("❌ TI2V-5B download failed, trying A14B (MoE)...")
+                    logger.error("TI2V-5B download failed, trying A14B (MoE)...", emoji='off')
                     # Fallback to A14B MoE
                     if downloader.download_model("A14B"):
-                        print("✅ A14B MoE model download completed!")
+                        logger.info("✅ A14B MoE model download completed!")
                         models = integration.discover_models()
                     else:
-                        print("❌ All model downloads failed")
+                        logger.error("All model downloads failed", emoji='off')
                         
             except Exception as e:
-                print(f"❌ Auto-download failed: {e}")
+                logger.error(f"Auto-download failed: {e}", emoji='off')
         
         # If we have models but they might be corrupted, validate them
         if models:
-            print("🔍 Validating discovered models...")
+            logger.info("🔍 Validating discovered models...")
             valid_models = []
             corrupted_models = []
             
@@ -1099,10 +1104,10 @@ def wan_generate_video(*component_args):
                     model_path = Path(model['path'])
                     if (model_path / "model_index.json").exists():
                         valid_models.append(model)
-                        print(f"✅ {model['name']}: Valid {model['type']} model")
+                        logger.info(f"✅ {model['name']}: Valid {model['type']} model")
                     else:
                         corrupted_models.append(model)
-                        print(f"❌ {model['name']}: Incomplete {model['type']} model")
+                        logger.info(f"{model['name']}: Incomplete {model['type']} model", emoji='off')
                 else:
                     # Unknown model type - likely invalid leftover files
                     model_path = Path(model['path'])
@@ -1116,39 +1121,39 @@ def wan_generate_video(*component_args):
                     
                     if has_valid_structure:
                         valid_models.append(model)
-                        print(f"✅ {model['name']}: Valid legacy model")
+                        logger.info(f"✅ {model['name']}: Valid legacy model")
                     else:
                         corrupted_models.append(model)
-                        print(f"❌ {model['name']}: Invalid/leftover files (not a proper Wan model)")
+                        logger.info(f"{model['name']}: Invalid/leftover files (not a proper Wan model)", emoji='off')
             
             # If we found corrupted models and auto-download is enabled, offer repair
             if corrupted_models and wan_auto_download:
-                print(f"⚠️ Found {len(corrupted_models)} corrupted model(s)")
-                print("🛠️ MANUAL CLEANUP INSTRUCTIONS:")
-                print("For safety, corrupted models are NOT automatically deleted.")
-                print("If you want to remove them, please:")
-                print()
+                logger.warning(f"⚠️ Found {len(corrupted_models)} corrupted model(s)")
+                logger.info("MANUAL CLEANUP INSTRUCTIONS:", emoji='tools')
+                logger.info("For safety, corrupted models are NOT automatically deleted.")
+                logger.info("If you want to remove them, please:")
+                logger.info()
                 
                 for corrupted_model in corrupted_models:
-                    print(f"❌ {corrupted_model['name']}: {corrupted_model['path']}")
+                    logger.info(f"{corrupted_model['name']}: {corrupted_model['path']}", emoji='off')
                 
-                print()
-                print("🗑️ To manually remove corrupted models:")
+                logger.info()
+                logger.info("🗑️ To manually remove corrupted models:")
                 for corrupted_model in corrupted_models:
-                    print(f"   rm -rf \"{corrupted_model['path']}\"")
+                    logger.info(f"   rm -rf \"{corrupted_model['path']}\"")
                 
-                print()
-                print("📥 To re-download models:")
+                logger.info()
+                logger.info("📥 To re-download models:")
                 for corrupted_model in corrupted_models:
                     model_name = corrupted_model['name'].lower()
                     if 'ti2v' in model_name and '5b' in model_name:
-                        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
+                        logger.info(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
                     elif 'a14b' in model_name or '14b' in model_name:
-                        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
+                        logger.info(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
                 
-                print()
-                print("💡 TIP: Enable 'Auto-Download Models' for automatic downloading of missing models")
-                print("⚠️ SAFETY: Always verify corruption before deleting - some errors may be temporary")
+                logger.info()
+                logger.info("TIP: Enable 'Auto-Download Models' for automatic downloading of missing models", emoji='bulb')
+                logger.warning("⚠️ SAFETY: Always verify corruption before deleting - some errors may be temporary")
             
             # Update models list to only include valid models
             models = valid_models
@@ -1188,9 +1193,9 @@ TI2V models are unified text/image-to-video (Wan 2.2) - recommended!
 
 💡 TI2V models handle both text-to-video and image-to-video in one unified model!"""
         
-        print(f"✅ Found {len(models)} Wan model(s):")
+        logger.info(f"✅ Found {len(models)} Wan model(s):")
         for i, model in enumerate(models, 1):
-            print(f"   {i}. {model['name']} ({model['size']}) - {model['path']}")
+            logger.info(f"   {i}. {model['name']} ({model['size']}) - {model['path']}")
         
         # Get component names to find the animation_prompts index
         from deforum.config.args import get_component_names
@@ -1205,17 +1210,17 @@ TI2V models are unified text/image-to-video (Wan 2.2) - recommended!
             animation_prompts_index = component_names.index('animation_prompts')
             if animation_prompts_index < len(component_args):
                 animation_prompts = component_args[animation_prompts_index]
-                print(f"📝 Found animation_prompts at index {animation_prompts_index}")
+                logger.info(f"📝 Found animation_prompts at index {animation_prompts_index}")
             else:
-                print(f"⚠️ animation_prompts index {animation_prompts_index} out of range (have {len(component_args)} args)")
+                logger.warning(f"⚠️ animation_prompts index {animation_prompts_index} out of range (have {len(component_args)} args)")
         except ValueError:
-            print("⚠️ Could not find animation_prompts in component names")
+            logger.error("⚠️ Could not find animation_prompts in component names")
         
         try:
             animation_mode_index = component_names.index('animation_mode')
-            print(f"📝 Found animation_mode at index {animation_mode_index}")
+            logger.info(f"📝 Found animation_mode at index {animation_mode_index}")
         except ValueError:
-            print("⚠️ Could not find animation_mode in component names")
+            logger.error("⚠️ Could not find animation_mode in component names")
         
         # Validate prompts
         if not animation_prompts or animation_prompts.strip() == '{"0": "a beautiful landscape"}':
@@ -1243,16 +1248,16 @@ Each prompt will be smoothly connected using I2V continuity!"""
         
         if animation_mode_index is not None and animation_mode_index < len(component_args):
             component_args[animation_mode_index] = 'Flux/Wan'
-            print(f"✅ Set animation mode to 'Flux/Wan' at index {animation_mode_index}")
+            logger.info(f"✅ Set animation mode to 'Flux/Wan' at index {animation_mode_index}")
         else:
-            print("⚠️ Could not set animation mode - index not found or out of range")
+            logger.error("⚠️ Could not set animation mode - index not found or out of range")
         
         # Generate a unique job ID
         import uuid
         job_id = str(uuid.uuid4())[:8]
         
-        print(f"🚀 Starting Wan video generation with job ID: {job_id}")
-        print(f"📝 Using prompts: {str(animation_prompts)[:100]}...")
+        logger.info(f"🚀 Starting Wan video generation with job ID: {job_id}")
+        logger.info(f"📝 Using prompts: {str(animation_prompts)[:100]}...")
         
         # Call the main Deforum generation function
         # run_deforum expects: job_id, custom_settings_file, *component_values
@@ -1262,8 +1267,8 @@ Each prompt will be smoothly connected using I2V continuity!"""
         component_names = get_component_names()
         expected_component_count = len(component_names)
         
-        print(f"🔧 Debug: Expected {expected_component_count} components, have {len(component_args)} args")
-        print(f"🔧 Debug: Component names count: {len(component_names)}")
+        logger.info(f"Debug: Expected {expected_component_count} components, have {len(component_args)} args", emoji='wrench')
+        logger.info(f"Debug: Component names count: {len(component_names)}", emoji='wrench')
         
         # We need exactly: [job_id, custom_settings_file] + component_values
         # So total args should be 2 + len(component_names)
@@ -1274,10 +1279,10 @@ Each prompt will be smoothly connected using I2V continuity!"""
             if i < len(component_args):
                 final_args.append(component_args[i])
             else:
-                print(f"⚠️ Warning: Missing component at index {i}, using None")
+                logger.warning(f"Missing component at index {i}, using None")
                 final_args.append(None)
         
-        print(f"🔧 Debug: Final args count: {len(final_args)} (should be {2 + expected_component_count})")
+        logger.info(f"Debug: Final args count: {len(final_args)} (should be {2 + expected_component_count})", emoji='wrench')
         
         result = run_deforum(*final_args)
         
@@ -1294,7 +1299,7 @@ Each prompt will be smoothly connected using I2V continuity!"""
             
     except Exception as e:
         error_msg = f"❌ Wan generation error: {str(e)}"
-        print(error_msg)
+        logger.info(error_msg)
         import traceback
         traceback.print_exc()
         return error_msg
@@ -1305,17 +1310,17 @@ def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo
     from deforum.integrations.wan.wan_simple_integration import WanSimpleIntegration
     import time
     
-    print("🎬 Wan video generation started with AUTO-DISCOVERY (Internal Call)")
-    print("🔍 Using smart model discovery instead of manual paths")
+    logger.info("Wan video generation started with AUTO-DISCOVERY (Internal Call)", emoji='movie_camera')
+    logger.info("🔍 Using smart model discovery instead of manual paths")
     
     # Ensure Qwen models are unloaded before video generation to free VRAM
     try:
         from deforum.integrations.wan.utils.qwen_manager import qwen_manager
         if qwen_manager.is_model_loaded():
-            print("🔄 Unloading Qwen models before video generation...")
+            logger.info("Unloading Qwen models before video generation...", emoji='refresh')
             qwen_manager.ensure_model_unloaded()
     except Exception as e:
-        print(f"⚠️ Warning: Could not cleanup Qwen models: {e}")
+        logger.error(f"Could not cleanup Qwen models: {e}")
     
     start_time = time.time()
     
@@ -1324,7 +1329,7 @@ def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo
         integration = WanSimpleIntegration()
         
         # Auto-discover models
-        print("🔍 Auto-discovering Wan models...")
+        logger.info("🔍 Auto-discovering Wan models...")
         models = integration.discover_models()
         
         if not models:
@@ -1353,14 +1358,14 @@ The auto-discovery will find your models automatically!
             # Auto-detect best model using priority logic (TI2V > T2V > I2V, FP8 > GGUF > FP16)
             selected_model = integration.get_best_model()
             if selected_model:
-                print(f"🎯 Auto-detected best model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
+                logger.info(f"🎯 Auto-detected best model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
             else:
                 raise RuntimeError("No Wan models available! Please download a model first.")
 
         elif user_model_choice == "Custom Path":
             # User will provide custom path via wan_model_path
             custom_path = wan_args.wan_model_path
-            print(f"📁 Using custom model path: {custom_path}")
+            logger.info(f"📁 Using custom model path: {custom_path}")
             # TODO: Add custom path validation and loading
             raise NotImplementedError("Custom path loading not yet implemented. Please use Auto-Detect or specific model selection.")
 
@@ -1377,11 +1382,11 @@ The auto-discovery will find your models automatically!
                 for model in models:
                     if size_to_match == model['size']:
                         selected_model = model
-                        print(f"✅ Using user-selected model: {model['name']} ({model['size']})")
+                        logger.info(f"✅ Using user-selected model: {model['name']} ({model['size']})")
                         break
 
                 if not selected_model:
-                    print(f"⚠️ Requested {size_to_match} model not found, falling back to auto-detect")
+                    logger.warning(f"⚠️ Requested {size_to_match} model not found, falling back to auto-detect")
                     selected_model = integration.get_best_model()
             else:
                 # Fallback to auto-detect
@@ -1390,34 +1395,34 @@ The auto-discovery will find your models automatically!
         if not selected_model:
             raise RuntimeError("No Wan models available! Please download a model first.")
             
-        print(f"🎯 Selected model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
-        print(f"📁 Model path: {selected_model['path']}")
+        logger.info(f"🎯 Selected model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
+        logger.info(f"📁 Model path: {selected_model['path']}")
 
         # Load the pipeline before generation
-        print("🔄 Loading Wan pipeline...")
+        logger.info("Loading Wan pipeline...", emoji='refresh')
         if not integration.load_simple_wan_pipeline(selected_model, wan_args):
             raise RuntimeError(f"Failed to load Wan pipeline for {selected_model['name']}")
-        print("✅ Wan pipeline loaded successfully")
+        logger.info("✅ Wan pipeline loaded successfully")
 
         # Prepare output directory with proper batch name
         import os
         
-        print("="*80)
-        print("🔍 DEBUG: Output Directory Setup")
-        print("="*80)
+        logger.info("="*80)
+        logger.debug("Output Directory Setup")
+        logger.info("="*80)
         
         # Log all relevant attributes
-        print(f"📋 args.outdir exists: {hasattr(args, 'outdir')}")
+        logger.info(f"📋 args.outdir exists: {hasattr(args, 'outdir')}")
         if hasattr(args, 'outdir'):
-            print(f"📋 args.outdir value: {args.outdir}")
-        print(f"📋 args.batch_name exists: {hasattr(args, 'batch_name')}")
+            logger.info(f"📋 args.outdir value: {args.outdir}")
+        logger.info(f"📋 args.batch_name exists: {hasattr(args, 'batch_name')}")
         if hasattr(args, 'batch_name'):
-            print(f"📋 args.batch_name value: {args.batch_name}")
-        print(f"📋 root.timestring: {root.timestring}")
-        print(f"📋 root.raw_batch_name exists: {hasattr(root, 'raw_batch_name')}")
+            logger.info(f"📋 args.batch_name value: {args.batch_name}")
+        logger.info(f"📋 root.timestring: {root.timestring}")
+        logger.info(f"📋 root.raw_batch_name exists: {hasattr(root, 'raw_batch_name')}")
         if hasattr(root, 'raw_batch_name'):
-            print(f"📋 root.raw_batch_name: {root.raw_batch_name}")
-        print("-"*80)
+            logger.info(f"📋 root.raw_batch_name: {root.raw_batch_name}")
+        logger.info("-"*80)
         
         # Determine output directory
         output_directory = None
@@ -1427,10 +1432,10 @@ The auto-discovery will find your models automatically!
             # Validate that outdir has a timestring or unique identifier
             if 'Deforum_' in args.outdir or any(char.isdigit() for char in os.path.basename(args.outdir)):
                 output_directory = args.outdir
-                print(f"✅ Using args.outdir (contains identifier): {output_directory}")
+                logger.info(f"✅ Using args.outdir (contains identifier): {output_directory}")
             else:
-                print(f"⚠️ args.outdir lacks unique identifier: {args.outdir}")
-                print(f"⚠️ Will reconstruct with batch name to avoid collisions")
+                logger.warning(f"⚠️ args.outdir lacks unique identifier: {args.outdir}")
+                logger.warning(f"⚠️ Will reconstruct with batch name to avoid collisions")
         
         # Strategy 2: Construct from batch_name if outdir not suitable
         if not output_directory:
@@ -1442,30 +1447,30 @@ The auto-discovery will find your models automatically!
             # Try args.batch_name first
             if hasattr(args, 'batch_name') and args.batch_name:
                 batch_name = args.batch_name
-                print(f"📝 Using args.batch_name: {batch_name}")
+                logger.info(f"📝 Using args.batch_name: {batch_name}")
             
             # Try root.raw_batch_name
             elif hasattr(root, 'raw_batch_name') and root.raw_batch_name:
                 batch_name = root.raw_batch_name
-                print(f"📝 Using root.raw_batch_name: {batch_name}")
+                logger.info(f"📝 Using root.raw_batch_name: {batch_name}")
             
             # Default fallback
             else:
                 batch_name = 'Deforum_{timestring}'
-                print(f"⚠️ No batch_name found, using default: {batch_name}")
+                logger.warning(f"⚠️ No batch_name found, using default: {batch_name}")
             
             # Substitute placeholders
             if '{timestring}' in batch_name or batch_name == 'Deforum':
                 batch_name = batch_name.replace('{timestring}', root.timestring)
-                print(f"🔄 Substituted timestring: {batch_name}")
+                logger.info(f"Substituted timestring: {batch_name}", emoji='refresh')
             
             # Final validation: ensure batch_name has unique identifier
             if not any(char.isdigit() for char in batch_name):
                 batch_name = f"{batch_name}_{root.timestring}"
-                print(f"⚠️ Added timestring for uniqueness: {batch_name}")
+                logger.warning(f"⚠️ Added timestring for uniqueness: {batch_name}")
             
             output_directory = os.path.join(deforum_outpath, batch_name)
-            print(f"✅ Constructed output directory: {output_directory}")
+            logger.info(f"✅ Constructed output directory: {output_directory}")
         
         # Ensure directory exists
         os.makedirs(output_directory, exist_ok=True)
@@ -1473,20 +1478,20 @@ The auto-discovery will find your models automatically!
         # Final validation
         dir_name = os.path.basename(output_directory)
         if dir_name == 'Deforum' or dir_name == 'deforum':
-            print("="*80)
-            print(f"❌ CRITICAL ERROR: Output directory has no unique identifier!")
-            print(f"❌ Directory: {output_directory}")
-            print(f"❌ This will cause files from different generations to mix!")
-            print("="*80)
+            logger.info("="*80)
+            logger.error(f"CRITICAL ERROR: Output directory has no unique identifier!", emoji='off')
+            logger.info(f"Directory: {output_directory}", emoji='off')
+            logger.info(f"This will cause files from different generations to mix!", emoji='off')
+            logger.info("="*80)
             raise RuntimeError(f"Invalid output directory (no unique ID): {output_directory}")
         
-        print("="*80)
-        print(f"✅ Final output directory: {output_directory}")
-        print(f"✅ Directory name: {dir_name}")
-        print("="*80)
+        logger.info("="*80)
+        logger.info(f"✅ Final output directory: {output_directory}")
+        logger.info(f"✅ Directory name: {dir_name}")
+        logger.info("="*80)
         
         # Generate video using direct integration
-        print("🚀 Starting direct Wan integration...")
+        logger.info("🚀 Starting direct Wan integration...")
         
         # Parse prompts for Wan scheduling
         def parse_prompts_and_timing(animation_prompts, wan_args, video_args):
@@ -1508,16 +1513,16 @@ The auto-discovery will find your models automatically!
                     import json
                     enhanced_prompts_data = json.loads(wan_args.wan_enhanced_prompts)
                     if enhanced_prompts_data:
-                        print("🎨 Using enhanced prompts from QwenPromptExpander")
+                        logger.info("Using enhanced prompts from QwenPromptExpander", emoji='palette')
                         final_prompts = enhanced_prompts_data
                 except (json.JSONDecodeError, ValueError):
-                    print("⚠️ Could not parse enhanced prompts, using original prompts")
+                    logger.error("⚠️ Could not parse enhanced prompts, using original prompts")
             
             # Add movement description if available
             movement_description = ""
             if wan_args.wan_movement_description:
                 movement_description = wan_args.wan_movement_description.split('\n')[0]  # Get first line
-                print(f"📐 Adding movement description: {movement_description}")
+                logger.info(f"📐 Adding movement description: {movement_description}")
             
             # Re-sort with final prompts
             sorted_prompts = sorted(final_prompts.items(), key=lambda x: int(x[0]))
@@ -1561,9 +1566,9 @@ The auto-discovery will find your models automatically!
                 
                 # Show enhanced/movement prompt info
                 if wan_args.wan_enhanced_prompts or wan_args.wan_movement_description:
-                    print(f"  🎨 Enhanced Clip {i+1}: '{clean_prompt[:80]}...' (frames: {frame_count})")
+                    logger.info(f"  🎨 Enhanced Clip {i+1}: '{clean_prompt[:80]}...' (frames: {frame_count})", emoji='palette')
                 else:
-                    print(f"  Clip {i+1}: '{clean_prompt[:50]}...' (start: frame {start_frame}, frames: {frame_count})")
+                    logger.info(f"  Clip {i+1}: '{clean_prompt[:50]}...' (start: frame {start_frame}, frames: {frame_count})")
             
             return prompt_schedule
         
@@ -1577,7 +1582,7 @@ The auto-discovery will find your models automatically!
             try:
                 from deforum.integrations.wan.utils.movement_analyzer import analyze_deforum_movement, generate_wan_motion_intensity_schedule
                 
-                print("🎬 Calculating dynamic motion strength from movement schedules...")
+                logger.info("Calculating dynamic motion strength from movement schedules...", emoji='movie_camera')
                 
                 # Generate both description and average strength for backwards compatibility
                 _, dynamic_motion_strength = analyze_deforum_movement(
@@ -1594,15 +1599,15 @@ The auto-discovery will find your models automatically!
                 )
                 
                 motion_strength = dynamic_motion_strength  # Fallback for simple integrations
-                print(f"✅ Dynamic motion strength: {motion_strength:.2f} (average)")
-                print(f"📐 Generated motion intensity schedule with frame-by-frame control")
+                logger.info(f"✅ Dynamic motion strength: {motion_strength:.2f} (average)")
+                logger.info(f"📐 Generated motion intensity schedule with frame-by-frame control")
                 
             except Exception as e:
-                print(f"⚠️ Dynamic motion strength calculation failed: {e}, using default: {motion_strength}")
+                logger.error(f"⚠️ Dynamic motion strength calculation failed: {e}, using default: {motion_strength}")
         elif wan_args.wan_motion_strength_override:
-            print(f"🔧 Using manual motion strength override: {motion_strength}")
+            logger.info(f"Using manual motion strength override: {motion_strength}", emoji='wrench')
         else:
-            print(f"📊 Using default motion strength: {motion_strength}")
+            logger.info(f"Using default motion strength: {motion_strength}", emoji='distribution')
         
         # Parse resolution - handle both old format (864x480) and new format (864x480 (Landscape))
         resolution_str = wan_args.wan_resolution
@@ -1617,28 +1622,28 @@ The auto-discovery will find your models automatically!
         is_720p = (width >= 1280 and height >= 720) or (width >= 720 and height >= 1280)
         is_480p = (width <= 864 and height <= 480) or (width <= 480 and height <= 864)
         
-        print(f"\n🔍 Model/Resolution Validation:")
-        print(f"   📦 Model: {model_name} ({model_size})")
-        print(f"   📐 Resolution: {width}x{height} ({'720p' if is_720p else '480p' if is_480p else 'Custom'})")
+        logger.info(f"\n🔍 Model/Resolution Validation:")
+        logger.info(f"   📦 Model: {model_name} ({model_size})")
+        logger.info(f"   📐 Resolution: {width}x{height} ({'720p' if is_720p else '480p' if is_480p else 'Custom'})")
         
         # Check for resolution/model mismatches and warn
         if "5B" in model_size and is_720p:
-            print(f"\n✅ Perfect Match: TI2V-5B + 720p")
-            print(f"   📦 Model: {model_name} (optimized for 720p@24fps)")
-            print(f"   📐 Resolution: {width}x{height} (720p)")
-            print(f"   🎯 Optimal configuration for TI2V-5B!")
+            logger.info(f"\n✅ Perfect Match: TI2V-5B + 720p")
+            logger.info(f"   📦 Model: {model_name} (optimized for 720p@24fps)")
+            logger.info(f"   📐 Resolution: {width}x{height} (720p)")
+            logger.info(f"   🎯 Optimal configuration for TI2V-5B!")
 
         elif "5B" in model_size and is_480p:
-            print(f"\n💡 INFO: TI2V-5B + 480p Resolution")
-            print(f"   📦 Model: {model_name} (optimized for 720p)")
-            print(f"   📐 Resolution: {width}x{height} (480p)")
-            print(f"   ✅ This works, but you could use 1280x720 for better quality")
+            logger.info(f"\n💡 INFO: TI2V-5B + 480p Resolution", emoji='bulb')
+            logger.info(f"   📦 Model: {model_name} (optimized for 720p)")
+            logger.info(f"   📐 Resolution: {width}x{height} (480p)")
+            logger.info(f"   ✅ This works, but you could use 1280x720 for better quality")
 
         elif "A14B" in model_size and is_720p:
-            print(f"\n✅ Perfect Match: TI2V-A14B + 720p")
-            print(f"   📦 Model: {model_name} (MoE architecture, highest quality)")
-            print(f"   📐 Resolution: {width}x{height} (720p)")
-            print(f"   🎯 Maximum quality configuration!")
+            logger.info(f"\n✅ Perfect Match: TI2V-A14B + 720p")
+            logger.info(f"   📦 Model: {model_name} (MoE architecture, highest quality)")
+            logger.info(f"   📐 Resolution: {width}x{height} (720p)")
+            logger.info(f"   🎯 Maximum quality configuration!")
 
         
         # Prepare clips data for generation
@@ -1654,11 +1659,11 @@ The auto-discovery will find your models automatically!
         # Add motion intensity schedule to wan_args for use by Wan integration
         if motion_intensity_schedule:
             wan_args.wan_motion_intensity_schedule = motion_intensity_schedule
-            print(f"💡 Added motion intensity schedule to wan_args for frame-by-frame control")
+            logger.info(f"Added motion intensity schedule to wan_args for frame-by-frame control", emoji='bulb')
         
         # Wan 2.2 TI2V models always use unified T2V+I2V (no separate modes)
         mode_description = "unified TI2V generation"
-        print(f"\n🎬 Using Wan 2.2 TI2V unified generation for {len(clips_data)} clips with frame continuity")
+        logger.info(f"\n🎬 Using Wan 2.2 TI2V unified generation for {len(clips_data)} clips with frame continuity", emoji='movie_camera')
 
         # Generate video using I2V chaining (TI2V supports both T2V and I2V)
         result = integration.generate_video_with_i2v_chaining(
@@ -1682,11 +1687,11 @@ The auto-discovery will find your models automatically!
         total_time = time.time() - start_time
         
         if generated_videos:
-            print(f"\n🎉 Wan {mode_description} generation completed!")
-            print(f"✅ Generated seamless video with {len(clips_data)} clips using {mode_description}")
-            print(f"⏱️ Total time: {total_time:.1f} seconds")
-            print(f"📁 Output file: {generated_videos[0]}")
-            print(f"🔗 {mode_description} ensures smooth transitions between clips")
+            logger.info(f"\n🎉 Wan {mode_description} generation completed!")
+            logger.info(f"✅ Generated seamless video with {len(clips_data)} clips using {mode_description}")
+            logger.info(f"Total time: {total_time:.1f} seconds", emoji='stopwatch')
+            logger.info(f"📁 Output file: {generated_videos[0]}")
+            logger.info(f"🔗 {mode_description} ensures smooth transitions between clips")
                 
             # Return the output directory for Deforum's video processing
             return str(output_directory)
@@ -1694,13 +1699,13 @@ The auto-discovery will find your models automatically!
             raise RuntimeError(f"❌ Wan {mode_description} failed")
             
     except Exception as e:
-        print(f"❌ Wan generation failed: {e}")
+        logger.error(f"Wan generation failed: {e}", emoji='off')
         
         # Provide helpful troubleshooting info
-        print(f"\n🔧 TROUBLESHOOTING:")
-        print(f"   • Check model availability with: python scripts/deforum_helpers/wan_direct_integration.py")
-        print(f"   • Download models: huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan")
-        print(f"   • Verify Wan models are in: models/Deforum/wan/ directory")
+        logger.info(f"\n🔧 TROUBLESHOOTING:", emoji='wrench')
+        logger.info(f"   • Check model availability with: python scripts/deforum_helpers/wan_direct_integration.py")
+        logger.info(f"   • Download models: huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan")
+        logger.info(f"   • Verify Wan models are in: models/Deforum/wan/ directory")
         
         # Re-raise for Deforum error handling
         raise
@@ -1731,11 +1736,11 @@ def auto_assign_keyframe_types_handler(animation_prompts_json, chunk_size):
         # Auto-assign using pure function
         result, _ = auto_assign_keyframe_types(animation_prompts, chunk_size)
 
-        print(f"🤖 Auto-assigned keyframe types: {result}")
+        logger.info(f"🤖 Auto-assigned keyframe types: {result}")
         return result
 
     except Exception as e:
-        print(f"❌ Error auto-assigning keyframe types: {e}")
+        logger.error(f"Error auto-assigning keyframe types: {e}", emoji='off')
         return "0:(tween)"
 
 
@@ -2749,8 +2754,8 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
         from deforum.integrations.wan.utils.qwen_manager import qwen_manager
         import json
         
-        print(f"🎨 AI Prompt Enhancement requested for {qwen_model}")
-        print(f"📝 Received prompts: {str(current_prompts)[:100]}...")
+        logger.info(f"AI Prompt Enhancement requested for {qwen_model}", emoji='palette')
+        logger.info(f"📝 Received prompts: {str(current_prompts)[:100]}...")
         
         # Progress: Start
         progress_update = "🎨 Starting AI Prompt Enhancement...\n"
@@ -2782,7 +2787,7 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
             
             # If different model requested, cleanup first
             if qwen_model != "Auto-Select" and current_model != qwen_model:
-                print(f"🔄 Switching from {current_model} to {qwen_model}")
+                logger.info(f"Switching from {current_model} to {qwen_model}", emoji='refresh')
                 progress_update += f"🔄 Switching from {current_model} to {qwen_model}...\n"
                 qwen_manager.cleanup_cache()
         
@@ -2790,10 +2795,10 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
         if not qwen_manager.is_model_loaded():
             if qwen_model == "Auto-Select":
                 selected_model = qwen_manager.auto_select_model()
-                print(f"🤖 Auto-selected model: {selected_model}")
+                logger.info(f"🤖 Auto-selected model: {selected_model}")
                 progress_update += f"🤖 Auto-selected model: {selected_model}\n"
             else:
-                print(f"📥 Loading Qwen model: {qwen_model}")
+                logger.info(f"📥 Loading Qwen model: {qwen_model}")
                 progress_update += f"📥 Loading Qwen model: {qwen_model}...\n"
         
         # Get wan prompts from the current_prompts parameter (passed directly)
@@ -2803,7 +2808,7 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
             try:
                 # Try to parse as JSON first
                 animation_prompts = json.loads(current_prompts)
-                print(f"✅ Successfully parsed {len(animation_prompts)} Wan prompts as JSON")
+                logger.info(f"✅ Successfully parsed {len(animation_prompts)} Wan prompts as JSON")
                 progress_update += f"✅ Parsed {len(animation_prompts)} prompts successfully\n"
             except json.JSONDecodeError:
                 # Try to parse as readable format (Frame X: prompt)
@@ -2825,16 +2830,16 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
                             animation_prompts[frame_num] = prompt_part
                     
                     if animation_prompts:
-                        print(f"✅ Successfully parsed {len(animation_prompts)} Wan prompts as readable format")
+                        logger.info(f"✅ Successfully parsed {len(animation_prompts)} Wan prompts as readable format")
                         progress_update += f"✅ Parsed {len(animation_prompts)} prompts from readable format\n"
                     else:
                         raise ValueError("No valid prompts found")
                 except Exception as e:
-                    print(f"❌ Could not parse Wan prompts: {e}")
+                    logger.error(f"Could not parse Wan prompts: {e}", emoji='off')
                     error_msg = f"❌ Invalid format in Wan prompts. Expected JSON format like:\n{{\n  \"0\": \"prompt text\",\n  \"60\": \"another prompt\"\n}}\n\nOr readable format like:\nFrame 0: prompt text\nFrame 60: another prompt"
                     return error_msg, progress_update + "❌ Failed to parse prompts!"
         else:
-            print("⚠️ Empty Wan prompts")
+            logger.warning("⚠️ Empty Wan prompts")
             
         # Check if we got valid prompts
         if not animation_prompts:
@@ -2872,7 +2877,7 @@ Set up prompts like:
 }"""
             return error_msg, progress_update + "❌ Default prompts detected!"
         
-        print(f"🎨 Enhancing {len(animation_prompts)} Wan prompts with {qwen_model}")
+        logger.info(f"Enhancing {len(animation_prompts)} Wan prompts with {qwen_model}", emoji='palette')
         progress_update += f"🎨 Starting enhancement of {len(animation_prompts)} prompts...\n"
         
         # Create the Qwen prompt expander with better error handling
@@ -2926,7 +2931,7 @@ Model download started automatically. This may take a few minutes.
             movement_description = ""
             if hasattr(enhance_prompts_handler, '_movement_description'):
                 movement_description = enhance_prompts_handler._movement_description
-                print(f"📐 Found movement description to append: {movement_description}")
+                logger.info(f"📐 Found movement description to append: {movement_description}")
                 progress_update += "📐 Adding movement descriptions...\n"
             
             # Append movement descriptions to enhanced prompts if available
@@ -2934,27 +2939,27 @@ Model download started automatically. This may take a few minutes.
                 for frame_key in enhanced_prompts_dict:
                     original_prompt = enhanced_prompts_dict[frame_key]
                     enhanced_prompts_dict[frame_key] = f"{original_prompt}. {movement_description}"
-                print(f"✅ Appended movement description to {len(enhanced_prompts_dict)} enhanced prompts")
+                logger.info(f"✅ Appended movement description to {len(enhanced_prompts_dict)} enhanced prompts")
                 progress_update += f"✅ Added movement to {len(enhanced_prompts_dict)} prompts\n"
             
             # Format the enhanced prompts as JSON
             enhanced_json = json.dumps(enhanced_prompts_dict, ensure_ascii=False, indent=2)
             
-            print(f"✅ Successfully enhanced {len(enhanced_prompts_dict)} prompts")
+            logger.info(f"✅ Successfully enhanced {len(enhanced_prompts_dict)} prompts")
             progress_update += f"✅ Enhancement complete! {len(enhanced_prompts_dict)} prompts ready\n"
             
             # Return the enhanced prompts and success progress
             return enhanced_json, progress_update + "🎉 Ready for generation!"
             
         except Exception as e:
-            print(f"❌ Error enhancing prompts: {e}")
+            logger.error(f"Error enhancing prompts: {e}", emoji='off')
             import traceback
             traceback.print_exc()
             error_msg = f"❌ Error enhancing prompts: {str(e)}"
             return error_msg, progress_update + f"❌ Enhancement failed: {str(e)}"
     
     except Exception as e:
-        print(f"❌ Fatal error in enhance_prompts_handler: {e}")
+        logger.info(f"Fatal error in enhance_prompts_handler: {e}", emoji='off')
         import traceback
         traceback.print_exc()
         error_msg = f"❌ Fatal error: {str(e)}"
@@ -2968,9 +2973,9 @@ def analyze_movement_handler(current_prompts, enable_shakify=True, sensitivity_o
         from types import SimpleNamespace
         import json
         
-        print("🎬 Starting enhanced movement analysis with fine-grained detection...")
-        print(f"🎬 Camera Shakify: {'ENABLED' if enable_shakify else 'DISABLED'}")
-        print(f"🎯 Sensitivity: {'MANUAL ({:.1f})'.format(manual_sensitivity) if sensitivity_override else 'AUTO-CALCULATED'}")
+        logger.info("Starting enhanced movement analysis with fine-grained detection...", emoji='movie_camera')
+        logger.info(f"Camera Shakify: {'ENABLED' if enable_shakify else 'DISABLED'}", emoji='movie_camera')
+        logger.info(f"🎯 Sensitivity: {'MANUAL ({:.1f})'.format(manual_sensitivity) if sensitivity_override else 'AUTO-CALCULATED'}")
         
         # Validate current prompts
         if not current_prompts or current_prompts.strip() == "":
@@ -3008,14 +3013,14 @@ Movement descriptions will be added to your existing prompts."""
                 anim_args.angle = components.get('angle', "0:(0)")
                 anim_args.max_frames = int(components.get('max_frames', 100))
                 
-                print("✅ Using actual Deforum movement schedules from UI")
-                print(f"📊 Translation X: {anim_args.translation_x}")
-                print(f"📊 Translation Z: {anim_args.translation_z}")
-                print(f"📊 Rotation Y: {anim_args.rotation_3d_y}")
-                print(f"📊 Zoom: {anim_args.zoom}")
+                logger.info("✅ Using actual Deforum movement schedules from UI")
+                logger.info(f"Translation X: {anim_args.translation_x}", emoji='distribution')
+                logger.info(f"Translation Z: {anim_args.translation_z}", emoji='distribution')
+                logger.info(f"Rotation Y: {anim_args.rotation_3d_y}", emoji='distribution')
+                logger.info(f"Zoom: {anim_args.zoom}", emoji='distribution')
                 
             except Exception as e:
-                print(f"⚠️ Could not access movement schedules: {e}")
+                logger.error(f"⚠️ Could not access movement schedules: {e}")
                 # Use static defaults for testing
                 anim_args.translation_x = "0:(0)"
                 anim_args.translation_y = "0:(0)"
@@ -3027,7 +3032,7 @@ Movement descriptions will be added to your existing prompts."""
                 anim_args.angle = "0:(0)"
                 anim_args.max_frames = 120
         else:
-            print("⚠️ No stored movement schedule references found")
+            logger.warning("⚠️ No stored movement schedule references found")
             # Use static defaults for testing
             anim_args.translation_x = "0:(0)"
             anim_args.translation_y = "0:(0)"
@@ -3048,7 +3053,7 @@ Movement descriptions will be added to your existing prompts."""
                     anim_args.shake_name = components.get('shake_name', "None")
                     anim_args.shake_intensity = float(components.get('shake_intensity', 1.0))
                     anim_args.shake_speed = float(components.get('shake_speed', 1.0))
-                    print(f"✅ Using Camera Shakify settings from UI components")
+                    logger.info(f"✅ Using Camera Shakify settings from UI components")
                 else:
                     # Fallback to reading from DeforumArgs if component references not available
                     from deforum.config.args import DeforumArgs
@@ -3056,20 +3061,20 @@ Movement descriptions will be added to your existing prompts."""
                     anim_args.shake_name = getattr(current_args, 'shake_name', "None")
                     anim_args.shake_intensity = getattr(current_args, 'shake_intensity', 1.0)
                     anim_args.shake_speed = getattr(current_args, 'shake_speed', 1.0)
-                    print(f"✅ Using Camera Shakify settings from DeforumArgs fallback")
+                    logger.info(f"✅ Using Camera Shakify settings from DeforumArgs fallback")
                 
                 # Camera Shakify is enabled when shake_name is not "None"
                 camera_shake_enabled = anim_args.shake_name and anim_args.shake_name != "None"
                 
                 if camera_shake_enabled:
-                    print(f"🎬 Camera Shakify ENABLED:")
-                    print(f"   Shake Name: {anim_args.shake_name}")
-                    print(f"   Intensity: {anim_args.shake_intensity}")
-                    print(f"   Speed: {anim_args.shake_speed}")
+                    logger.info(f"Camera Shakify ENABLED:", emoji='movie_camera')
+                    logger.info(f"   Shake Name: {anim_args.shake_name}")
+                    logger.info(f"   Intensity: {anim_args.shake_intensity}")
+                    logger.info(f"   Speed: {anim_args.shake_speed}")
                 else:
-                    print(f"📷 Camera Shakify disabled (shake_name: {anim_args.shake_name})")
+                    logger.info(f"📷 Camera Shakify disabled (shake_name: {anim_args.shake_name})")
             except Exception as e:
-                print(f"⚠️ Could not read Camera Shakify settings: {e}")
+                logger.error(f"⚠️ Could not read Camera Shakify settings: {e}")
                 # Disable Shakify on error
                 anim_args.shake_name = "None"
                 anim_args.shake_intensity = 1.0
@@ -3079,16 +3084,16 @@ Movement descriptions will be added to your existing prompts."""
             anim_args.shake_name = "None"
             anim_args.shake_intensity = 1.0
             anim_args.shake_speed = 1.0
-            print(f"🎬 Camera Shakify manually disabled via UI checkbox")
+            logger.info(f"Camera Shakify manually disabled via UI checkbox", emoji='movie_camera')
         
         # Determine sensitivity
         if sensitivity_override:
             sensitivity = manual_sensitivity
             sensitivity_reason = f"manual override ({sensitivity:.1f})"
-            print(f"🎯 Using manual sensitivity: {sensitivity}")
+            logger.info(f"🎯 Using manual sensitivity: {sensitivity}")
         else:
             # Auto-calculate movement sensitivity from the schedules
-            print("🧮 Auto-calculating movement sensitivity from Deforum schedules...")
+            logger.info("🧮 Auto-calculating movement sensitivity from Deforum schedules...")
             
             # Create a MovementAnalyzer to calculate optimal sensitivity
             analyzer = MovementAnalyzer(sensitivity=1.0)  # Start with baseline
@@ -3140,11 +3145,11 @@ Movement descriptions will be added to your existing prompts."""
                     sensitivity = 0.5
                     sensitivity_reason = "low sensitivity for very large movement"
                 
-                print(f"📊 Total movement magnitude: {total_movement:.1f}")
-                print(f"🎯 Auto-calculated sensitivity: {sensitivity} ({sensitivity_reason})")
+                logger.info(f"Total movement magnitude: {total_movement:.1f}", emoji='distribution')
+                logger.info(f"🎯 Auto-calculated sensitivity: {sensitivity} ({sensitivity_reason})")
                 
             except Exception as e:
-                print(f"⚠️ Could not auto-calculate sensitivity: {e}, using default 2.0")
+                logger.error(f"⚠️ Could not auto-calculate sensitivity: {e}, using default 2.0")
                 sensitivity = 2.0
                 sensitivity_reason = "default (calculation failed)"
         
@@ -3162,10 +3167,10 @@ Movement descriptions will be added to your existing prompts."""
             sensitivity=sensitivity
         )
         
-        print(f"🎯 Enhanced movement analysis result:")
-        print(f"   Description: {movement_desc}")
-        print(f"   Strength: {average_motion_strength:.3f}")
-        print(f"   Motion Intensity Schedule: {motion_intensity_schedule}")
+        logger.info(f"🎯 Enhanced movement analysis result:")
+        logger.info(f"   Description: {movement_desc}")
+        logger.info(f"   Strength: {average_motion_strength:.3f}")
+        logger.info(f"   Motion Intensity Schedule: {motion_intensity_schedule}")
         
         # Update prompts with movement descriptions (cleaner approach)
         updated_prompts = {}
@@ -3249,9 +3254,9 @@ Ready for AI enhancement or video generation."""
 
 ✅ Analysis complete for {len(updated_prompts)} prompts."""
         
-        print(f"✅ Updated {len(updated_prompts)} Wan prompts with enhanced movement descriptions")
-        print(f"📊 Use this motion intensity schedule in Wan: {motion_intensity_schedule}")
-        print(f"💡 Copy this schedule to Wan's Motion Intensity field for synchronized movement effects!")
+        logger.info(f"✅ Updated {len(updated_prompts)} Wan prompts with enhanced movement descriptions")
+        logger.info(f"Use this motion intensity schedule in Wan: {motion_intensity_schedule}", emoji='distribution')
+        logger.info(f"Copy this schedule to Wan's Motion Intensity field for synchronized movement effects!", emoji='bulb')
         
         # Store movement description for enhance_prompts_handler
         analyze_movement_handler._movement_description = movement_desc
@@ -3259,7 +3264,7 @@ Ready for AI enhancement or video generation."""
         return updated_json, result_message
         
     except Exception as e:
-        print(f"❌ Error in enhanced movement analysis: {str(e)}")
+        logger.error(f"Error in enhanced movement analysis: {str(e)}", emoji='off')
         import traceback
         traceback.print_exc()
         error_msg = f"""❌ Error in enhanced movement analysis: {str(e)}
@@ -3278,7 +3283,7 @@ def check_qwen_models_handler(qwen_model):
     try:
         from deforum.integrations.wan.utils.qwen_manager import qwen_manager
         
-        print(f"🔍 Checking Qwen model status: {qwen_model}")
+        logger.info(f"🔍 Checking Qwen model status: {qwen_model}")
         
         # Get model information
         model_info = qwen_manager.get_model_info(qwen_model)
@@ -3354,7 +3359,7 @@ def check_qwen_models_handler(qwen_model):
         return "<br>".join(status_parts)
         
     except Exception as e:
-        print(f"❌ Error checking Qwen model status: {e}")
+        logger.error(f"Error checking Qwen model status: {e}", emoji='off')
         return f"❌ <span style='color: #f44336;'>Error checking model status: {str(e)}</span>"
 
 
@@ -3373,12 +3378,12 @@ def download_qwen_model_handler(qwen_model, auto_download_enabled):
 <strong style='color: #333;'>Or download manually:</strong><br>
 Use HuggingFace CLI or git to download the model"""
         
-        print(f"📥 Downloading Qwen model: {qwen_model}")
+        logger.info(f"📥 Downloading Qwen model: {qwen_model}")
         
         # Handle auto-select
         if qwen_model == "Auto-Select":
             selected_model = qwen_manager.auto_select_model()
-            print(f"🤖 Auto-selected model for download: {selected_model}")
+            logger.info(f"🤖 Auto-selected model for download: {selected_model}")
         else:
             selected_model = qwen_model
         
@@ -3419,7 +3424,7 @@ Use HuggingFace CLI or git to download the model"""
         return "<br>".join(download_status)
         
     except Exception as e:
-        print(f"❌ Error downloading Qwen model: {e}")
+        logger.error(f"Error downloading Qwen model: {e}", emoji='off')
         return f"❌ <span style='color: #f44336;'>Download error: {str(e)}</span>"
 
 
@@ -3428,7 +3433,7 @@ def cleanup_qwen_cache_handler():
     try:
         from deforum.integrations.wan.utils.qwen_manager import qwen_manager
         
-        print("🧹 Cleaning up Qwen model cache...")
+        logger.info("Cleaning up Qwen model cache...", emoji='broom')
         
         # Check if any model is loaded
         if not qwen_manager.is_model_loaded():
@@ -3462,7 +3467,7 @@ def cleanup_qwen_cache_handler():
         return "<br>".join(result)
         
     except Exception as e:
-        print(f"❌ Error during Qwen cache cleanup: {e}")
+        logger.error(f"Error during Qwen cache cleanup: {e}", emoji='off')
         return f"❌ <span style='color: #f44336;'>Cleanup error: {str(e)}</span>"
 
 
@@ -3521,7 +3526,7 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
 
     except Exception as e:
         import traceback
-        print(f"❌ Error in FPS converter: {e}")
+        logger.error(f"Error in FPS converter: {e}", emoji='off')
         traceback.print_exc()
         return prompts_json, f"❌ <span style='color: #f44336;'>Error: {str(e)}</span>"
 
@@ -3540,7 +3545,7 @@ def load_wan_prompts_handler():
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'default_settings.txt')
 
         if not os.path.exists(settings_path):
-            print(f"❌ Default settings file not found: {settings_path}")
+            logger.info(f"Default settings file not found: {settings_path}", emoji='off')
             return "0: A peaceful landscape scene, photorealistic"
 
         with open(settings_path, 'r', encoding='utf-8') as f:
@@ -3550,16 +3555,16 @@ def load_wan_prompts_handler():
         wan_prompts = settings.get('wan_prompts', {})
 
         if not wan_prompts:
-            print("⚠️ No wan_prompts found in default settings, falling back to basic prompt")
+            logger.warning("⚠️ No wan_prompts found in default settings, falling back to basic prompt")
             return "0: A peaceful landscape scene, photorealistic"
 
         # Convert prompts dict to textarea format using pure function
         result = format_prompts_as_multiline(wan_prompts)
-        print(f"✅ Loaded {len(wan_prompts)} Wan prompts from default settings")
+        logger.info(f"✅ Loaded {len(wan_prompts)} Wan prompts from default settings")
         return result
 
     except Exception as e:
-        print(f"❌ Error loading Wan prompts: {e}")
+        logger.error(f"Error loading Wan prompts: {e}", emoji='off')
         return f"0: Error loading prompts: {str(e)}"
 
 
@@ -3577,7 +3582,7 @@ def load_deforum_prompts_handler():
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'default_settings.txt')
 
         if not os.path.exists(settings_path):
-            print(f"❌ Default settings file not found: {settings_path}")
+            logger.info(f"Default settings file not found: {settings_path}", emoji='off')
             return "0: A peaceful landscape scene, photorealistic"
 
         with open(settings_path, 'r', encoding='utf-8') as f:
@@ -3587,16 +3592,16 @@ def load_deforum_prompts_handler():
         deforum_prompts = settings.get('prompts', {})
 
         if not deforum_prompts:
-            print("⚠️ No prompts found in default settings, falling back to basic prompt")
+            logger.warning("⚠️ No prompts found in default settings, falling back to basic prompt")
             return "0: A peaceful landscape scene, photorealistic"
 
         # Convert prompts dict to textarea format using pure function
         result = format_prompts_as_multiline(deforum_prompts)
-        print(f"✅ Loaded {len(deforum_prompts)} Deforum prompts from default settings")
+        logger.info(f"✅ Loaded {len(deforum_prompts)} Deforum prompts from default settings")
         return result
 
     except Exception as e:
-        print(f"❌ Error loading Deforum prompts: {e}")
+        logger.error(f"Error loading Deforum prompts: {e}", emoji='off')
         return f"0: Error loading prompts: {str(e)}"
 
 
@@ -3620,9 +3625,9 @@ def load_deforum_to_wan_prompts_handler():
         if hasattr(enhance_prompts_handler, '_animation_prompts_component'):
             try:
                 animation_prompts_json = enhance_prompts_handler._animation_prompts_component.value
-                print(f"📋 Loading Deforum prompts to Wan prompts field")
+                logger.info(f"📋 Loading Deforum prompts to Wan prompts field")
             except Exception as e:
-                print(f"⚠️ Could not access animation_prompts component: {e}")
+                logger.error(f"⚠️ Could not access animation_prompts component: {e}")
 
         # Validate not empty
         is_valid, error = validate_prompts_not_empty(animation_prompts_json)
@@ -3643,7 +3648,7 @@ def load_deforum_to_wan_prompts_handler():
 
         # Return as JSON
         result = format_prompts_as_json(wan_prompts_dict)
-        print(f"✅ Converted {len(prompts_dict)} Deforum prompts to Wan JSON format")
+        logger.info(f"✅ Converted {len(prompts_dict)} Deforum prompts to Wan JSON format")
         return result
 
     except Exception as e:
@@ -3679,14 +3684,14 @@ def load_wan_defaults_handler():
             if wan_prompts:
                 # Return as JSON using pure function
                 result = format_prompts_as_json(wan_prompts)
-                print(f"✅ Loaded {len(wan_prompts)} default Wan prompts from settings")
+                logger.info(f"✅ Loaded {len(wan_prompts)} default Wan prompts from settings")
                 return result
             else:
                 # Use fallback
                 return format_prompts_as_json(create_fallback_prompts())
 
         except Exception as e:
-            print(f"⚠️ Error loading default settings: {e}")
+            logger.warning(f"⚠️ Error loading default settings: {e}")
             # Return simple fallback
             return format_prompts_as_json(create_fallback_prompts())
             

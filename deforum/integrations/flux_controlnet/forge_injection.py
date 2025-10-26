@@ -6,6 +6,11 @@ accessed by the patched KModel.apply_model during sampling.
 
 import torch
 from typing import Optional, Tuple
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 # Global storage for control samples (accessed by both generation code and patches)
 _current_controlnet_samples: Optional[Tuple] = None
@@ -25,9 +30,9 @@ def store_control_samples(
     """
     global _current_controlnet_samples
     _current_controlnet_samples = (controlnet_block_samples, controlnet_single_block_samples)
-    print(f"🌐 Stored Flux ControlNet samples for generation")
-    print(f"   Block samples: {len(controlnet_block_samples) if controlnet_block_samples is not None else 0} tensors")
-    print(f"   Single block samples: {len(controlnet_single_block_samples) if controlnet_single_block_samples is not None else 0} tensors")
+    logger.info(f"🌐 Stored Flux ControlNet samples for generation")
+    logger.info(f"   Block samples: {len(controlnet_block_samples) if controlnet_block_samples is not None else 0} tensors")
+    logger.info(f"   Single block samples: {len(controlnet_single_block_samples) if controlnet_single_block_samples is not None else 0} tensors")
 
 
 def get_stored_control_samples() -> Optional[Tuple]:

@@ -13,6 +13,11 @@ compatibility for systems without flash attention.
 import torch
 import warnings
 import sys
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 def patched_flash_attention(
@@ -203,7 +208,7 @@ def apply_flash_attention_patch():
             try:
                 import wan.modules.attention as wan_attention
             except ImportError:
-                print("⚠️ Wan attention module not found - skipping flash attention patch")
+                logger.warning("⚠️ Wan attention module not found - skipping flash attention patch")
                 return False
         
         # Check if the module has the flash_attention function
@@ -232,13 +237,13 @@ def apply_flash_attention_patch():
                     class DummyFlashAttn:
                         @staticmethod
                         def flash_attn_varlen_func(*args, **kwargs):
-                            print("⚠️ WARNING: Original flash_attn called instead of patched function!")
+                            logger.warning("⚠️ Original flash_attn called instead of patched function!")
                             # Fall back to our patched function logic
                             # This should not happen, but provides safety
                             return patched_flash_attention(*args, **kwargs).unflatten(0, args[0].shape[:2])
                     
                     wan_attention.flash_attn = DummyFlashAttn()
-                    print("🔧 Added dummy flash_attn to module namespace to prevent NameError")
+                    logger.info("Added dummy flash_attn to module namespace to prevent NameError", emoji='wrench')
             
             # Same for flash_attn_interface
             if not hasattr(wan_attention, 'flash_attn_interface') or wan_attention.flash_attn_interface is None:
@@ -260,18 +265,18 @@ def apply_flash_attention_patch():
                 # Force use of PyTorch fallback
                 wan_attention.FLASH_ATTN_2_AVAILABLE = False
                 wan_attention.FLASH_ATTN_3_AVAILABLE = False
-                print("🔧 Forced Flash Attention to False for PyTorch fallback")
+                logger.info("Forced Flash Attention to False for PyTorch fallback", emoji='wrench')
             elif _FLASH_ATTENTION_MODE == "Force Flash Attention":
                 # Keep original values but will fail if flash attention not available
                 wan_attention.FLASH_ATTN_2_AVAILABLE = original_flash_attn_2
                 wan_attention.FLASH_ATTN_3_AVAILABLE = original_flash_attn_3
                 if not (original_flash_attn_2 or original_flash_attn_3):
-                    print("⚠️ Force Flash Attention requested but Flash Attention not available!")
+                    logger.warning("⚠️ Force Flash Attention requested but Flash Attention not available!")
             else:  # Auto mode
                 # Set FLASH_ATTN_2_AVAILABLE = True to bypass assertion, our patched function handles fallback
                 wan_attention.FLASH_ATTN_2_AVAILABLE = True
                 wan_attention.FLASH_ATTN_3_AVAILABLE = original_flash_attn_3
-                print("🔧 Auto mode: Set FLASH_ATTN_2_AVAILABLE = True for assertion bypass")
+                logger.info("Auto mode: Set FLASH_ATTN_2_AVAILABLE = True for assertion bypass", emoji='wrench')
             
             # Apply the patch - replace the function EVERYWHERE
             wan_attention.flash_attention = patched_flash_attention
@@ -284,7 +289,7 @@ def apply_flash_attention_patch():
             if 'flash_attention' in wan_attention.__dict__:
                 wan_attention.__dict__['flash_attention'] = patched_flash_attention
                 
-            print("🔧 Patched flash_attention function comprehensively")
+            logger.info("Patched flash_attention function comprehensively", emoji='wrench')
             
             # CRITICAL: Also patch the model.py module which imports flash_attention directly
             # This is the key fix - model.py has "from .attention import flash_attention"
@@ -294,7 +299,7 @@ def apply_flash_attention_patch():
                     if hasattr(wan_model, 'flash_attention'):
                         wan_model._original_flash_attention = wan_model.flash_attention
                         wan_model.flash_attention = patched_flash_attention
-                        print("🔧 Also patched flash_attention reference in wan.modules.model")
+                        logger.info("Also patched flash_attention reference in wan.modules.model", emoji='wrench')
                 else:
                     # Try to import and patch
                     try:
@@ -302,11 +307,11 @@ def apply_flash_attention_patch():
                         if hasattr(wan_model, 'flash_attention'):
                             wan_model._original_flash_attention = wan_model.flash_attention
                             wan_model.flash_attention = patched_flash_attention
-                            print("🔧 Also patched flash_attention reference in wan.modules.model")
+                            logger.info("Also patched flash_attention reference in wan.modules.model", emoji='wrench')
                     except ImportError:
-                        print("⚠️ Could not import wan.modules.model for patching")
+                        logger.error("⚠️ Could not import wan.modules.model for patching")
             except Exception as e:
-                print(f"⚠️ Could not patch wan.modules.model: {e}")
+                logger.error(f"⚠️ Could not patch wan.modules.model: {e}")
             
             # ALSO patch the attention function if it exists to ensure it uses our patched version
             if hasattr(wan_attention, 'attention'):
@@ -328,19 +333,19 @@ def apply_flash_attention_patch():
                     )
                 
                 wan_attention.attention = patched_attention
-                print("   ✅ Also patched attention function")
+                logger.info("   ✅ Also patched attention function")
             
-            print("✅ Applied flash attention monkey patch successfully")
-            print(f"   📊 FLASH_ATTN_2_AVAILABLE: {wan_attention.FLASH_ATTN_2_AVAILABLE}")
-            print(f"   📊 FLASH_ATTN_3_AVAILABLE: {wan_attention.FLASH_ATTN_3_AVAILABLE}")
-            print(f"   🔧 Mode: {_FLASH_ATTENTION_MODE}")
+            logger.info("✅ Applied flash attention monkey patch successfully")
+            logger.info(f"   📊 FLASH_ATTN_2_AVAILABLE: {wan_attention.FLASH_ATTN_2_AVAILABLE}", emoji='distribution')
+            logger.info(f"   📊 FLASH_ATTN_3_AVAILABLE: {wan_attention.FLASH_ATTN_3_AVAILABLE}", emoji='distribution')
+            logger.info(f"   🔧 Mode: {_FLASH_ATTENTION_MODE}", emoji='wrench')
             return True
         else:
-            print("⚠️ flash_attention function not found in Wan attention module")
+            logger.warning("⚠️ flash_attention function not found in Wan attention module")
             return False
             
     except Exception as e:
-        print(f"❌ Failed to apply flash attention patch: {e}")
+        logger.error(f"Failed to apply flash attention patch: {e}", emoji='off')
         import traceback
         traceback.print_exc()
         return False
@@ -401,7 +406,7 @@ def update_patched_flash_attention_mode(mode="Auto (Recommended)"):
     """
     global _FLASH_ATTENTION_MODE
     _FLASH_ATTENTION_MODE = mode
-    print(f"🔧 Flash Attention mode set to: {mode}")
+    logger.info(f"Flash Attention mode set to: {mode}", emoji='wrench')
 
 
 # Global variable to track flash attention mode
@@ -410,14 +415,14 @@ _FLASH_ATTENTION_MODE = "Auto (Recommended)"
 
 if __name__ == "__main__":
     # Test the patch application
-    print("🔍 Flash Attention Availability:")
+    logger.info("🔍 Flash Attention Availability:")
     status = check_flash_attention_availability()
     for impl, available in status.items():
-        print(f"   {impl}: {'✅' if available else '❌'}")
+        logger.info(f"   {impl}: {'✅' if available else '❌'}", emoji='off')
     
-    print(f"\n🔧 Testing monkey patch (won't apply without Wan module loaded)...")
+    logger.info(f"\n🔧 Testing monkey patch (won't apply without Wan module loaded)...", emoji='wrench')
     success = apply_flash_attention_patch()
     if success:
-        print("✅ Patch applied successfully!")
+        logger.info("✅ Patch applied successfully!")
     else:
         print("❌ Patch could not be applied (normal when Wan not loaded)") 

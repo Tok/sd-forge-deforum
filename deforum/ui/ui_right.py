@@ -26,6 +26,11 @@ from deforum.utils.general import get_deforum_version, get_commit_date
 from deforum.ui.ui_left import setup_deforum_left_side_ui
 from scripts.deforum_extend_paths import deforum_sys_extend
 import gradio as gr
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 def get_latest_frames():
     """Poll for latest frame and depth map preview files during generation"""
@@ -384,7 +389,7 @@ def on_ui_tabs():
 
     # handle settings loading on UI launch
     def trigger_load_general_settings():
-        print("Loading general settings...")
+        logger.info("Loading general settings...")
         
         # First check if deforum_settings.txt exists in webui root
         import os
@@ -395,11 +400,11 @@ def on_ui_tabs():
         if os.path.isfile(webui_root_settings):
             # Use the settings file from webui root if it exists
             settings_file_path = webui_root_settings
-            print(f"Loading existing settings from webui root: {settings_file_path}")
+            logger.info(f"Loading existing settings from webui root: {settings_file_path}")
         else:
             # Fall back to default settings provided by the extension
             settings_file_path = get_default_settings_path()
-            print(f"No settings found in webui root, using default settings from: {settings_file_path}")
+            logger.info(f"No settings found in webui root, using default settings from: {settings_file_path}")
         
         # Update the settings path field with the path
         settings_path.value = settings_file_path
@@ -420,7 +425,7 @@ def on_ui_tabs():
         anim_mode = components['animation_mode'].value
         should_show = anim_mode == '3D'
         depth_preview_image.visible = should_show
-        print(f"Depth preview gallery: visible={should_show} (anim_mode={anim_mode})")
+        logger.info(f"Depth preview gallery: visible={should_show} (anim_mode={anim_mode})")
 
     # Always load settings on startup - either from persistent settings path (if enabled),
     # from webui root, or from the extension's default settings

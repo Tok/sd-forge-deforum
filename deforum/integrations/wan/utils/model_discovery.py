@@ -9,6 +9,11 @@ import json
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import sys
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 class WanModelDiscovery:
     """Smart WAN model discovery that finds models automatically"""
@@ -59,12 +64,12 @@ class WanModelDiscovery:
     
     def discover_models(self) -> List[Dict]:
         """Discover all available WAN models automatically"""
-        print("🔍 Auto-discovering WAN models...")
+        logger.info("🔍 Auto-discovering WAN models...")
         
         discovered = []
         
         for location in self.common_model_locations:
-            print(f"   📂 Searching: {location}")
+            logger.info(f"   📂 Searching: {location}")
             models = self._scan_directory_for_models(location)
             discovered.extend(models)
             
@@ -77,11 +82,11 @@ class WanModelDiscovery:
         self.discovered_models = self._sort_models_by_preference(unique_models)
         
         if self.discovered_models:
-            print(f"✅ Found {len(self.discovered_models)} WAN model(s):")
+            logger.info(f"✅ Found {len(self.discovered_models)} WAN model(s):")
             for i, model in enumerate(self.discovered_models):
-                print(f"   {i+1}. {model['name']} ({model['type']}, {model['size']}) - {model['path']}")
+                logger.info(f"   {i+1}. {model['name']} ({model['type']}, {model['size']}) - {model['path']}")
         else:
-            print("❌ No WAN models found in common locations")
+            logger.info("No WAN models found in common locations", emoji='off')
             
         return self.discovered_models
     
@@ -191,7 +196,7 @@ class WanModelDiscovery:
             }
             
         except Exception as e:
-            print(f"   ⚠️ Error analyzing {directory}: {e}")
+            logger.warning(f"   ⚠️ Error analyzing {directory}: {e}")
             return None
     
     def _detect_model_type(self, directory: Path) -> str:
@@ -402,18 +407,18 @@ def get_best_wan_model() -> Optional[Dict]:
 
 if __name__ == "__main__":
     # Test the discovery system
-    print("🧪 Testing WAN Model Discovery System...")
+    logger.info("🧪 Testing WAN Model Discovery System...")
     
     discovery = WanModelDiscovery()
     models = discovery.discover_models()
     
     if models:
-        print(f"\n🎉 Discovery successful! Found {len(models)} model(s)")
+        logger.info(f"\n🎉 Discovery successful! Found {len(models)} model(s)")
         best = discovery.get_best_model()
-        print(f"🏆 Best model: {best['name']} ({best['type']}, {best['size']})")
-        print(f"📁 Path: {best['path']}")
+        logger.info(f"🏆 Best model: {best['name']} ({best['type']}, {best['size']})")
+        logger.info(f"📁 Path: {best['path']}")
     else:
-        print("\n❌ No models found - you may need to download WAN models first")
-        print("💡 Suggested locations to place models:")
+        logger.info("\n❌ No models found - you may need to download WAN models first", emoji='off')
+        logger.info("Suggested locations to place models:", emoji='bulb')
         for loc in discovery.common_model_locations:
             print(f"   📂 {loc}") 

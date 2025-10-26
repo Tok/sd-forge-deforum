@@ -26,6 +26,11 @@ from deforum.orchestration.generate import isJson
 from deforum.integrations.parseq import ParseqAdapter
 from deforum.core.prompts import prepare_prompt
 from deforum.config.settings import save_settings_from_animation_run
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 @dataclass(init=True, frozen=True, repr=False, eq=False)
@@ -262,7 +267,7 @@ class RenderData:
     @staticmethod
     def create_output_directory_for_the_batch(directory):
         os.makedirs(directory, exist_ok=True)
-        print(f"Saving animation frames to:\n{directory}")
+        logger.info(f"Saving animation frames to:\n{directory}")
 
     @staticmethod
     def create_parseq_adapter(args):
