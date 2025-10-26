@@ -750,7 +750,11 @@ def setup_deforum_left_side_ui():
 
                         # Generate with Qwen
                         print(f"🤖 Generating {count} prompts | Mode: {generation_mode} | Intensity: {intensity} | Style: {style or 'none'} | Theme: {theme}")
-                        result = qwen(prompt=generation_prompt, tar_lang="en")
+
+                        # Use a simple system prompt and user prompt format
+                        system_prompt = "You are a creative AI assistant helping generate prompts for animated sequences. Return ONLY the prompts, one per line, with no numbering or extra formatting."
+
+                        result = qwen(prompt=generation_prompt, system_prompt=system_prompt, tar_lang="en")
 
                         # Extract the prompt text from PromptOutput object
                         result_text = result.prompt
