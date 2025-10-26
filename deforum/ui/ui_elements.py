@@ -889,6 +889,73 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     audio_distortion_gain = create_gr_elem(dau.audio_distortion_gain)
                     audio_sensitivity = create_gr_elem(dau.audio_sensitivity)
                     audio_intensity_threshold = create_gr_elem(dau.audio_intensity_threshold)
+
+                gr.Markdown("---")
+                gr.Markdown("### 🎯 Automatic Prompt Synchronization")
+                gr.Markdown("Enter your prompts below (one per line or comma-separated). Click **Synchronize** to automatically distribute them across detected audio events.")
+
+                # AI prompt generation row
+                with FormRow():
+                    audio_ai_prompt_count = gr.Number(
+                        label="Number of AI Prompts",
+                        value=5,
+                        precision=0,
+                        minimum=1,
+                        maximum=20,
+                        info="How many prompts to generate with AI"
+                    )
+                    audio_ai_prompt_theme = gr.Textbox(
+                        label="Prompt Theme",
+                        value="bunny",
+                        placeholder="e.g., bunny, dragon, landscape",
+                        info="Theme for AI-generated prompts"
+                    )
+                    audio_ai_generate_button = gr.Button(
+                        "✨ Generate Prompts with AI",
+                        variant="secondary",
+                        elem_id="audio_ai_generate_button"
+                    )
+
+                # Prompt input for auto-sync
+                audio_sync_prompts = gr.Textbox(
+                    label="Prompts for Synchronization",
+                    lines=5,
+                    value="bunny in forest\nbunny hopping\nbunny sitting\nbunny looking around",
+                    placeholder="Enter prompts (one per line or comma-separated)",
+                    info="These will be distributed across audio events when you click Synchronize"
+                )
+
+                # Distribution settings
+                with FormRow():
+                    audio_prompt_distribution_mode = gr.Dropdown(
+                        label="Distribution Mode",
+                        choices=["cycle", "sequential", "intensity", "random"],
+                        value="cycle",
+                        info="How to distribute prompts: cycle=repeat, sequential=divide into sections, intensity=assign by beat strength"
+                    )
+                    audio_target_keyframe_count = gr.Number(
+                        label="Target Keyframes (optional)",
+                        value=0,
+                        precision=0,
+                        info="Leave at 0 for auto-detect based on audio. Or specify desired count."
+                    )
+
+                # Synchronize button with purple slopecore gradient styling
+                audio_sync_button = gr.Button(
+                    "🎵 Synchronize to Audio",
+                    variant="primary",
+                    elem_id="audio_sync_button",
+                )
+
+                # Status output
+                audio_sync_status = gr.Textbox(
+                    label="Sync Status",
+                    value="",
+                    interactive=False,
+                    lines=2,
+                    info="Status messages will appear here"
+                )
+
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 

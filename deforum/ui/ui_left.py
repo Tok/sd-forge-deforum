@@ -411,6 +411,225 @@ def setup_deforum_left_side_ui():
                 ]
             )
 
+    # Wire up audio sync button to synchronize prompts with audio events
+    if 'audio_sync_button' in locals() and 'audio_sync_status' in locals():
+        def synchronize_prompts_to_audio(
+            soundtrack_path_val,
+            audio_sync_prompts_val,
+            distribution_mode,
+            target_count,
+            detection_method,
+            frequency_band,
+            sensitivity,
+            intensity_threshold,
+            min_spacing_frames,
+            current_fps
+        ):
+            """Detect audio events and distribute prompts across them."""
+            try:
+                from pathlib import Path
+                import json
+
+                # Validate soundtrack path
+                if not soundtrack_path_val or not Path(soundtrack_path_val).exists():
+                    return gr.update(), "✗ Error: Please upload an audio file first"
+
+                # Parse user prompts
+                from deforum.audio import parse_prompt_list
+                user_prompts = parse_prompt_list(audio_sync_prompts_val)
+
+                if not user_prompts:
+                    return gr.update(), "✗ Error: Please enter at least one prompt"
+
+                # Load and analyze audio
+                from deforum.audio import (
+                    process_audio_for_detection,
+                    detect_events,
+                    generate_keyframes_from_events,
+                    distribute_prompts_across_keyframes,
+                    suggest_keyframe_count_from_audio
+                )
+                import librosa
+
+                # Load audio file
+                y, sr = librosa.load(soundtrack_path_val, sr=None)
+                duration = librosa.get_duration(y=y, sr=sr)
+                fps_val = current_fps if current_fps and current_fps > 0 else 24
+
+                # Process audio for detection
+                y_processed = process_audio_for_detection(
+                    y, sr,
+                    frequency_band=frequency_band,
+                    lowpass_cutoff=4000,
+                    distortion_gain=10.0
+                )
+
+                # Detect events
+                event_times = detect_events(
+                    y_processed, sr,
+                    method=detection_method,
+                    sensitivity=sensitivity / 100.0  # Convert 0-100 to 0-1
+                )
+
+                if not event_times:
+                    return gr.update(), "✗ Error: No audio events detected. Try adjusting sensitivity."
+
+                # Determine keyframe count
+                if target_count and target_count > 0:
+                    num_keyframes = int(target_count)
+                else:
+                    num_keyframes = suggest_keyframe_count_from_audio(
+                        duration, fps_val,
+                        desired_prompts=len(user_prompts)
+                    )
+
+                # Limit to detected events
+                num_keyframes = min(num_keyframes, len(event_times))
+
+                # Generate keyframes from events
+                keyframes = generate_keyframes_from_events(
+                    event_times[:num_keyframes],
+                    fps=fps_val,
+                    min_spacing_frames=min_spacing_frames,
+                    intensity_threshold=intensity_threshold / 100.0
+                )
+
+                if not keyframes:
+                    return gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
+
+                # Distribute prompts across keyframes
+                animation_prompts_json = distribute_prompts_across_keyframes(
+                    keyframes, user_prompts, mode=distribution_mode
+                )
+
+                # Parse back to add formatting
+                schedule = json.loads(animation_prompts_json)
+                formatted_schedule = json.dumps(schedule, indent=2)
+
+                status_msg = (
+                    f"✓ Successfully synchronized!\n"
+                    f"• Audio: {duration:.1f}s @ {fps_val} FPS\n"
+                    f"• Events detected: {len(event_times)}\n"
+                    f"• Keyframes created: {len(keyframes)}\n"
+                    f"• Prompts used: {len(user_prompts)} (mode: {distribution_mode})"
+                )
+
+                return formatted_schedule, status_msg
+
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return gr.update(), f"✗ Error: {str(e)}"
+
+        # Get all required inputs
+        audio_sync_inputs = []
+        required_components = [
+            'soundtrack_path',
+            'audio_sync_prompts',
+            'audio_prompt_distribution_mode',
+            'audio_target_keyframe_count',
+            'audio_detection_method',
+            'audio_frequency_band',
+            'audio_sensitivity',
+            'audio_intensity_threshold',
+            'audio_min_spacing_frames',
+            'fps'
+        ]
+
+        for comp_name in required_components:
+            if comp_name in locals():
+                audio_sync_inputs.append(locals()[comp_name])
+            else:
+                print(f"⚠️ Warning: Audio sync component '{comp_name}' not found")
+
+        if len(audio_sync_inputs) == len(required_components):
+            locals()['audio_sync_button'].click(
+                fn=synchronize_prompts_to_audio,
+                inputs=audio_sync_inputs,
+                outputs=[
+                    locals()['animation_prompts'],  # Update prompts in Prompts tab
+                    locals()['audio_sync_status']
+                ]
+            )
+            print("🎵 Audio sync button connected successfully")
+        else:
+            print(f"⚠️ Could not connect audio sync button: missing components")
+
+    # Wire up AI prompt generation button
+    if 'audio_ai_generate_button' in locals():
+        def generate_prompts_with_ai(count, theme):
+            """Generate escalating prompts using Qwen."""
+            try:
+                from deforum.wan.qwen_prompt_expander import QwenPromptExpander
+
+                # Initialize Qwen (will auto-select model based on VRAM)
+                qwen = QwenPromptExpander()
+
+                # Create prompt for Qwen to generate escalating prompts
+                generation_prompt = f"""Generate {int(count)} creative and escalating prompts for an animated video featuring a {theme}.
+
+Requirements:
+- Each prompt should be a simple, descriptive phrase
+- Start with calm/static scenes and progressively increase action/intensity
+- Focus on varied actions, poses, and settings
+- Keep each prompt concise (5-10 words)
+- Return ONLY the prompts, one per line
+- No numbering, no explanations
+
+Example for "bunny":
+bunny in forest
+bunny hopping gently
+bunny sitting by tree
+bunny looking around curiously
+bunny jumping energetically
+
+Now generate {int(count)} prompts for: {theme}"""
+
+                # Generate with Qwen
+                print(f"🤖 Generating {count} prompts for theme: {theme}")
+                result = qwen.enhance_prompt(generation_prompt)
+
+                # Clean up the result (remove any numbering or extra formatting)
+                lines = [line.strip() for line in result.split('\n') if line.strip()]
+                # Filter out lines that look like numbering or explanations
+                prompts = []
+                for line in lines:
+                    # Skip lines with numbering like "1.", "1)", etc.
+                    if line[0].isdigit() and (line[1] == '.' or line[1] == ')'):
+                        line = line[2:].strip()
+                    if line and not line.startswith('#') and not line.startswith('//'):
+                        prompts.append(line)
+
+                # Take only the requested count
+                prompts = prompts[:int(count)]
+
+                # Join with newlines
+                prompts_text = '\n'.join(prompts)
+
+                print(f"✓ Generated {len(prompts)} prompts")
+                return prompts_text
+
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                error_msg = f"Error generating prompts: {str(e)}\n\nUsing fallback prompts..."
+                # Fallback to simple template-based generation
+                actions = ["resting", "moving slowly", "looking around", "moving quickly", "jumping"]
+                fallback = '\n'.join([f"{theme} {action}" for action in actions[:int(count)]])
+                print(f"⚠️ {error_msg}")
+                return fallback
+
+        if 'audio_ai_prompt_count' in locals() and 'audio_ai_prompt_theme' in locals() and 'audio_sync_prompts' in locals():
+            locals()['audio_ai_generate_button'].click(
+                fn=generate_prompts_with_ai,
+                inputs=[
+                    locals()['audio_ai_prompt_count'],
+                    locals()['audio_ai_prompt_theme']
+                ],
+                outputs=[locals()['audio_sync_prompts']]
+            )
+            print("✨ AI prompt generation button connected successfully")
+
     # Set up Wan Generate button if it exists - with better error handling
     if 'wan_generate_button' in locals() and 'wan_generation_status' in locals():
         try:

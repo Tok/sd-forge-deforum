@@ -30,6 +30,12 @@ from .keyframe_generation import (
     filter_events_by_intensity,
 )
 
+from .prompt_distribution import (
+    distribute_prompts_across_keyframes,
+    suggest_keyframe_count_from_audio,
+    parse_prompt_list,
+)
+
 __all__ = [
     # Analysis
     "detect_events",
@@ -45,4 +51,8 @@ __all__ = [
     "generate_keyframes_from_events",
     "cluster_nearby_events",
     "filter_events_by_intensity",
+    # Prompt distribution
+    "distribute_prompts_across_keyframes",
+    "suggest_keyframe_count_from_audio",
+    "parse_prompt_list",
 ]
