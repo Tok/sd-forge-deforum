@@ -225,69 +225,7 @@ def on_ui_tabs():
     }
     """
 
-    # JavaScript to force slopcore styling after Gradio loads (monkey-patch)
-    slopcore_js = """
-    <script>
-    function applySlopcoreStyles() {
-        // Target all slopcore buttons by ID and class
-        const selectors = [
-            '#deforum_generate',
-            '#audio_sync_button',
-            '#audio_sync_fewer_button',
-            '#audio_sync_more_button',
-            '#audio_ai_generate_button',
-            '.slopcore-button'
-        ];
-
-        const gradient = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-
-        selectors.forEach(selector => {
-            const elements = document.querySelectorAll(selector);
-            elements.forEach(el => {
-                // Apply to the element itself
-                el.style.background = gradient;
-                el.style.backgroundImage = gradient;
-                el.style.backgroundColor = '#667eea';
-                el.style.border = 'none';
-                el.style.color = 'white';
-                el.style.fontWeight = '600';
-                el.style.textShadow = '0 1px 2px rgba(0,0,0,0.2)';
-                el.style.boxShadow = '0 4px 6px rgba(102, 126, 234, 0.3)';
-                el.style.transition = 'all 0.3s ease';
-
-                // Also apply to any button child (Gradio wrapping)
-                const btn = el.querySelector('button');
-                if (btn) {
-                    btn.style.background = gradient;
-                    btn.style.backgroundImage = gradient;
-                    btn.style.backgroundColor = '#667eea';
-                    btn.style.border = 'none';
-                    btn.style.color = 'white';
-                    btn.style.fontWeight = '600';
-                    btn.style.textShadow = '0 1px 2px rgba(0,0,0,0.2)';
-                    btn.style.boxShadow = '0 4px 6px rgba(102, 126, 234, 0.3)';
-                }
-            });
-        });
-    }
-
-    // Apply immediately
-    applySlopcoreStyles();
-
-    // Re-apply after Gradio finishes loading (in case it overrides)
-    setTimeout(applySlopcoreStyles, 100);
-    setTimeout(applySlopcoreStyles, 500);
-    setTimeout(applySlopcoreStyles, 1000);
-
-    // Also re-apply on any DOM mutations (when tabs change, etc.)
-    if (typeof MutationObserver !== 'undefined') {
-        const observer = new MutationObserver(applySlopcoreStyles);
-        observer.observe(document.body, { childList: true, subtree: true });
-    }
-    </script>
-    """
-
-    with gr.Blocks(analytics_enabled=False, css=slopcore_css, head=slopcore_js) as deforum_interface:
+    with gr.Blocks(analytics_enabled=False, css=slopcore_css) as deforum_interface:
         components = {}
         dummy_component = gr.Button(visible=False)
         with gr.Row(elem_id='deforum_progress_row', equal_height=False, variant='compact'):
@@ -297,6 +235,48 @@ def on_ui_tabs():
             with gr.Column(scale=1, variant='compact'):  # Right side preview column
                 with gr.Row(variant='compact'):
                     i1 = gr.HTML(i1_store, elem_id='deforum_header')
+
+                # JavaScript monkey-patch to force slopcore button styling
+                gr.HTML("""
+                <script>
+                (function() {
+                    function applySlopcoreStyles() {
+                        const selectors = [
+                            '#deforum_generate', '#audio_sync_button',
+                            '#audio_sync_fewer_button', '#audio_sync_more_button',
+                            '#audio_ai_generate_button', '.slopcore-button'
+                        ];
+                        const gradient = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+
+                        selectors.forEach(selector => {
+                            document.querySelectorAll(selector).forEach(el => {
+                                [el, el.querySelector('button')].filter(Boolean).forEach(btn => {
+                                    btn.style.background = gradient;
+                                    btn.style.backgroundImage = gradient;
+                                    btn.style.backgroundColor = '#667eea';
+                                    btn.style.border = 'none';
+                                    btn.style.color = 'white';
+                                    btn.style.fontWeight = '600';
+                                    btn.style.textShadow = '0 1px 2px rgba(0,0,0,0.2)';
+                                    btn.style.boxShadow = '0 4px 6px rgba(102, 126, 234, 0.3)';
+                                });
+                            });
+                        });
+                    }
+
+                    // Apply multiple times to catch Gradio's CSS loading
+                    applySlopcoreStyles();
+                    setTimeout(applySlopcoreStyles, 100);
+                    setTimeout(applySlopcoreStyles, 500);
+                    setTimeout(applySlopcoreStyles, 1000);
+                    setTimeout(applySlopcoreStyles, 2000);
+
+                    // Re-apply on mutations (tab switching, etc.)
+                    new MutationObserver(applySlopcoreStyles).observe(document.body, {childList: true, subtree: true});
+                })();
+                </script>
+                """, visible=False)
+
                 id_part = 'deforum'
 
                 # Use Deforum-specific output directory (hidden - only for folder button access)
