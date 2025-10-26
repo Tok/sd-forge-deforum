@@ -4,6 +4,7 @@ Provides AI-powered prompt generation using Qwen with multiple generation modes
 and intensity levels for audio-synchronized animations.
 """
 
+import gradio as gr
 from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 logger = get_logger()
@@ -24,14 +25,8 @@ def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, st
     Returns:
         str: Generated prompts (one per line)
     """
-    logger.info("="*80)
-    logger.info(f"AI PROMPT GENERATION BUTTON CLICKED!", emoji='palette')
-    logger.info(f"   Mode: {generation_mode}")
-    logger.info(f"   Intensity: {intensity}")
-    logger.info(f"   Style: {style}")
-    logger.info(f"   Theme: {theme}")
-    logger.info(f"   Count: {count}")
-    logger.info("="*80)
+    logger.debug(f"AI PROMPT GENERATION BUTTON CLICKED!", emoji='palette')
+    logger.debug(f"   Mode: {generation_mode}, Intensity: {intensity}, Style: {style}, Theme: {theme}, Count: {count}")
 
     try:
         from deforum.integrations.wan.utils.prompt_extend import QwenPromptExpander
@@ -214,7 +209,7 @@ Requirements:
 Generate {int(count)} {style_text}prompts for {theme}:"""
 
         # Generate with Qwen
-        logger.info(f"🤖 Generating {count} prompts | Mode: {generation_mode} | Intensity: {intensity} | Style: {style or 'none'} | Theme: {theme}")
+        logger.info(f"Generating {count} AI prompts: {generation_mode}/{intensity} {style or ''} {theme}".strip(), emoji='robot')
 
         # Use a simple system prompt and user prompt format
         system_prompt = "You are a creative AI assistant helping generate prompts for animated sequences. Return ONLY the prompts, one per line, with no numbering or extra formatting."
@@ -256,7 +251,7 @@ Generate {int(count)} {style_text}prompts for {theme}:"""
         prompts_text = '\n'.join(prompts)
 
         logger.info(f"{emoji_if_enabled('✓')} Generated {len(prompts)} prompts")
-        return prompts_text
+        return gr.update(value=prompts_text)
 
     except Exception as e:
         import traceback
@@ -270,4 +265,4 @@ Generate {int(count)} {style_text}prompts for {theme}:"""
         else:
             actions = ["resting peacefully", "moving slowly", "actively exploring", "racing dynamically", "GOING WILD"]
             fallback = '\n'.join([f"{style_prefix}{theme} {action}" for action in actions[:int(count)]])
-        return fallback
+        return gr.update(value=fallback)

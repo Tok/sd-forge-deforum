@@ -108,11 +108,10 @@ def synchronize_prompts_to_audio(
 
         # 4. DETECT EVENTS: Detect beats/onsets in audio
         events = detect_events(
-            audio_data=audio_data,
+            audio=y_processed,
+            sample_rate=sr,
             method=detection_method,
-            frequency_band=frequency_band,
-            sensitivity=sensitivity,
-            intensity_threshold=intensity_threshold
+            sensitivity=sensitivity
         )
 
         if not events:
@@ -124,9 +123,20 @@ def synchronize_prompts_to_audio(
         # (taking into account keyframe adjustment from +/- buttons)
         total_frames = int(audio_data['duration'] * current_fps)
 
-        # BPM-based target calculation (if applicable)
-        keyframes_per_beat = calculate_keyframes_per_beat(current_fps, events, audio_data['duration'])
-        bpm_based_target = calculate_bpm_based_target(events, audio_data['duration'], keyframes_per_beat)
+        # Estimate BPM from event intervals
+        if len(events) > 1:
+            import numpy as np
+            event_intervals = np.diff(events)
+            median_interval = np.median(event_intervals)
+            estimated_bpm = 60.0 / median_interval if median_interval > 0 else 120.0
+        else:
+            estimated_bpm = 120.0  # Default fallback
+
+        # BPM-based target calculation
+        keyframes_per_beat = calculate_keyframes_per_beat(estimated_bpm)
+        bpm_based_target = calculate_bpm_based_target(audio_data['duration'], estimated_bpm, keyframes_per_beat)
+
+        logger.debug(f"Estimated BPM: {estimated_bpm:.1f}, keyframes_per_beat: {keyframes_per_beat}, bpm_target: {bpm_based_target}")
 
         # Resolve target (use explicit target or BPM-based)
         resolved_target = resolve_keyframe_target(distribution_mode, target_count, bpm_based_target)

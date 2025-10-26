@@ -58,10 +58,10 @@ def print_startup_banner():
 {border_top}
 {SLOPCORE_4}{BOLD}Stable Diffusion WebUI Forge Enhanced By Zirteq's Fluxabled Fork of the Deforum Extension{RESET}
 {border_bot}
-{WHITE}Applying compatibility patches for enhanced Flux.1 + Wan 2.1 AI Video integration:
-  - FlowMatchEulerDiscreteScheduler patching (deforum/integrations/flux_controlnet/diffusers_compat.py)
-  - Wan FLF2V pipeline integration with Forge's Flux backend
-  - Unified Flux + Wan workflows with seamless model management{RESET}
+{WHITE}Applying compatibility patches for Flux.1 ControlNet V2 + Wan 2.1/2.2 AI Video:
+  - Flux ControlNet V2 support (patching Forge's IntegratedFluxTransformer2DModel)
+  - FlowMatchEulerDiscreteScheduler compatibility (diffusers git main + Forge)
+  - Wan 2.1 FLF2V + Wan 2.2 TI2V pipeline integration{RESET}
 {BOLD}Note:{RESET} This fork is optimized for Flux/Wan workflows.
 {BOLD}For best results:{RESET} Run in a dedicated Forge instance to avoid interfering
    with other extensions and Forge base functionality.

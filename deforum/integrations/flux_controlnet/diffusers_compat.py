@@ -88,7 +88,7 @@ def patch_flow_match_scheduler():
         # Replace the method
         FlowMatchEulerDiscreteScheduler.time_shift = patched_time_shift
 
-        logger.info(f"{emoji_if_enabled('✅')} Diffusers compatibility patch applied: FlowMatchEulerDiscreteScheduler.time_shift")
+        logger.info(f"{emoji_if_enabled('✅')} FlowMatchEulerDiscreteScheduler.time_shift patched")
         return True
 
     except Exception as e:
@@ -107,11 +107,11 @@ def patch_torch_rmsnorm():
     import torch.nn as nn
 
     if hasattr(nn, 'RMSNorm'):
-        logger.info(f"{emoji_if_enabled('✅')} torch.nn.RMSNorm already available (PyTorch 2.4.0+)")
+        logger.debug(f"{emoji_if_enabled('✅')} torch.nn.RMSNorm already available (PyTorch 2.4.0+)")
         return True
 
     try:
-        logger.info("Adding RMSNorm compatibility for PyTorch < 2.4.0...", emoji='wrench')
+        logger.debug("Adding RMSNorm compatibility for PyTorch < 2.4.0...", emoji='wrench')
 
         class RMSNorm(nn.Module):
             """
@@ -158,7 +158,7 @@ def patch_torch_rmsnorm():
         nn.RMSNorm = RMSNorm
         torch.nn.RMSNorm = RMSNorm
 
-        logger.info(f"{emoji_if_enabled('✅')} RMSNorm compatibility patch applied successfully")
+        logger.info(f"{emoji_if_enabled('✅')} torch.nn.RMSNorm added (PyTorch 2.3.1 compatibility)")
         return True
 
     except Exception as e:
@@ -182,17 +182,17 @@ def patch_diffusers_attention():
         # Check PyTorch version
         torch_version = tuple(int(x) for x in torch.__version__.split('.')[:2])
         if torch_version >= (2, 4):
-            logger.info(f"{emoji_if_enabled('✅')} PyTorch 2.4.0+ detected - enable_gqa parameter supported")
+            logger.debug(f"{emoji_if_enabled('✅')} PyTorch 2.4.0+ detected - enable_gqa parameter supported")
             return True
 
-        logger.info(f"PyTorch {torch.__version__} detected - patching scaled_dot_product_attention...", emoji='wrench')
+        logger.debug(f"PyTorch {torch.__version__} detected - patching scaled_dot_product_attention...", emoji='wrench')
 
         # Save original PyTorch function
         original_sdpa = torch.nn.functional.scaled_dot_product_attention
 
         # PyTorch 2.3.1 supports these parameters (hardcoded since it's a C++ builtin)
         supported_params_231 = {'query', 'key', 'value', 'attn_mask', 'dropout_p', 'is_causal', 'scale'}
-        logger.info(f"   PyTorch 2.3.1 SDPA parameters: {supported_params_231}")
+        logger.debug(f"   PyTorch 2.3.1 SDPA parameters: {supported_params_231}")
 
         def patched_scaled_dot_product_attention(*args, **kwargs):
             """Wrapper that filters out unsupported parameters like enable_gqa"""
@@ -215,7 +215,7 @@ def patch_diffusers_attention():
         # Replace PyTorch's function globally
         torch.nn.functional.scaled_dot_product_attention = patched_scaled_dot_product_attention
 
-        logger.info(f"{emoji_if_enabled('✅')} PyTorch scaled_dot_product_attention patched to filter enable_gqa")
+        logger.info(f"{emoji_if_enabled('✅')} scaled_dot_product_attention patched (enable_gqa filter)")
         return True
 
     except Exception as e:
@@ -354,7 +354,7 @@ def patch_forge_flux_controlnet():
         IntegratedFluxTransformer2DModel.inner_forward = patched_inner_forward
         IntegratedFluxTransformer2DModel.forward = patched_forward
 
-        logger.info(f"{emoji_if_enabled('✅')} Forge Flux ControlNet patch applied: IntegratedFluxTransformer2DModel now supports ControlNet")
+        logger.info(f"{emoji_if_enabled('✅')} IntegratedFluxTransformer2DModel patched (Flux ControlNet V2)")
         return True
 
     except Exception as e:
@@ -402,9 +402,9 @@ def patch_forge_kmodel_for_controlnet():
 
                     # Debug print once per generation
                     if not hasattr(self, '_flux_cn_logged'):
-                        logger.info(f"🌐 Passing Flux ControlNet samples to transformer")
-                        logger.info(f"   Block samples: {len(controlnet_block_samples) if controlnet_block_samples is not None else 0} tensors")
-                        logger.info(f"   Single block samples: {len(controlnet_single_block_samples) if controlnet_single_block_samples is not None else 0} tensors")
+                        logger.debug(f"🌐 Passing Flux ControlNet samples to transformer")
+                        logger.debug(f"   Block samples: {len(controlnet_block_samples) if controlnet_block_samples is not None else 0} tensors")
+                        logger.debug(f"   Single block samples: {len(controlnet_single_block_samples) if controlnet_single_block_samples is not None else 0} tensors")
                         self._flux_cn_logged = True
             except Exception as e:
                 # Silently fail if control samples not available (not all generations use ControlNet)
@@ -416,7 +416,7 @@ def patch_forge_kmodel_for_controlnet():
         # Replace the method
         KModel.apply_model = patched_apply_model
 
-        logger.info(f"{emoji_if_enabled('✅')} Forge KModel patch applied: apply_model now supports Flux ControlNet")
+        logger.info(f"{emoji_if_enabled('✅')} KModel.apply_model patched (ControlNet sample injection)")
         return True
 
     except Exception as e:
@@ -428,7 +428,7 @@ def patch_forge_kmodel_for_controlnet():
 
 def apply_all_patches():
     """Apply all compatibility patches"""
-    logger.info("Applying diffusers compatibility patches for Forge + Wan 2.2 + Flux ControlNet...", emoji='wrench')
+    logger.info("Applying compatibility patches: RMSNorm, FlowMatch, SDPA, Flux ControlNet, KModel", emoji='wrench')
     patch_torch_rmsnorm()
     patch_flow_match_scheduler()
     patch_diffusers_attention()

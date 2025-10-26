@@ -1026,9 +1026,9 @@ def get_tab_init(d, da, dp, dau, dv=None):
     found_components = [name for name in audio_component_names if name in local_scope]
     missing_components = [name for name in audio_component_names if name not in local_scope]
 
-    logger.info(f"{emoji_if_enabled('🔍')} DEBUG get_tab_init() return:")
-    logger.info(f"   Found in locals(): {found_components}")
-    logger.info(f"   Missing from locals(): {missing_components}")
+    logger.debug(f"{emoji_if_enabled('🔍')} DEBUG get_tab_init() return:")
+    logger.debug(f"   Found in locals(): {found_components}")
+    logger.debug(f"   Missing from locals(): {missing_components}")
 
     # Add found components to result
     for comp_name in found_components:
@@ -1044,7 +1044,7 @@ def wan_generate_video(*component_args):
     This function calls the main Deforum generation pipeline with Wan mode
     """
     try:
-        logger.info(f"Wan video generation button clicked! Received {len(component_args)} arguments", emoji='movie_camera')
+        logger.debug(f"Wan video generation button clicked! Received {len(component_args)} arguments", emoji='movie_camera')
         
         # Import the main Deforum run function
         from deforum.orchestration.run_deforum import run_deforum
@@ -1094,7 +1094,7 @@ def wan_generate_video(*component_args):
         
         # If we have models but they might be corrupted, validate them
         if models:
-            logger.info(f"{emoji_if_enabled('🔍')} Validating discovered models...")
+            logger.debug(f"{emoji_if_enabled('🔍')} Validating discovered models...")
             valid_models = []
             corrupted_models = []
             
@@ -1104,10 +1104,10 @@ def wan_generate_video(*component_args):
                     model_path = Path(model['path'])
                     if (model_path / "model_index.json").exists():
                         valid_models.append(model)
-                        logger.info(f"{emoji_if_enabled('✅')} {model['name']}: Valid {model['type']} model")
+                        logger.debug(f"{emoji_if_enabled('✅')} {model['name']}: Valid {model['type']} model")
                     else:
                         corrupted_models.append(model)
-                        logger.info(f"{model['name']}: Incomplete {model['type']} model", emoji='off')
+                        logger.debug(f"{model['name']}: Incomplete {model['type']} model", emoji='off')
                 else:
                     # Unknown model type - likely invalid leftover files
                     model_path = Path(model['path'])
@@ -1121,10 +1121,10 @@ def wan_generate_video(*component_args):
                     
                     if has_valid_structure:
                         valid_models.append(model)
-                        logger.info(f"{emoji_if_enabled('✅')} {model['name']}: Valid legacy model")
+                        logger.debug(f"{emoji_if_enabled('✅')} {model['name']}: Valid legacy model")
                     else:
                         corrupted_models.append(model)
-                        logger.info(f"{model['name']}: Invalid/leftover files (not a proper Wan model)", emoji='off')
+                        logger.debug(f"{model['name']}: Invalid/leftover files (not a proper Wan model)", emoji='off')
             
             # If we found corrupted models and auto-download is enabled, offer repair
             if corrupted_models and wan_auto_download:
