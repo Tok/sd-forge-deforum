@@ -581,11 +581,14 @@ def setup_deforum_left_side_ui():
                         )
 
                         # Return: animation_prompts, target_count (updated), status
+                        result_tuple = (formatted_schedule, len(keyframes), status_msg)
                         print(f"🔍 DEBUG: Returning from sync function:")
                         print(f"   animation_prompts: {len(formatted_schedule)} chars")
                         print(f"   target_count: {len(keyframes)}")
-                        print(f"   status_msg: {status_msg[:100]}...")
-                        return formatted_schedule, len(keyframes), status_msg
+                        print(f"   status_msg length: {len(status_msg)} chars")
+                        print(f"   status_msg first line: {status_msg.split(chr(10))[0]}")
+                        print(f"   Returning tuple: {type(result_tuple)}, len={len(result_tuple)}")
+                        return result_tuple
 
                     except Exception as e:
                         import traceback
@@ -646,15 +649,25 @@ def setup_deforum_left_side_ui():
                         )
 
                         # -20% button (fewer keyframes)
+                        def fewer_keyframes_wrapper(*args):
+                            result = synchronize_prompts_to_audio(*args, keyframe_adjustment=-20)
+                            print(f"🔍 DEBUG fewer_keyframes_wrapper returning: {type(result)}, len={len(result) if isinstance(result, tuple) else 'N/A'}")
+                            return result
+
                         audio_sync_fewer_button.click(
-                            fn=lambda *args: synchronize_prompts_to_audio(*args, keyframe_adjustment=-20),
+                            fn=fewer_keyframes_wrapper,
                             inputs=audio_sync_inputs,
                             outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
                         )
 
                         # +20% button (more keyframes)
+                        def more_keyframes_wrapper(*args):
+                            result = synchronize_prompts_to_audio(*args, keyframe_adjustment=20)
+                            print(f"🔍 DEBUG more_keyframes_wrapper returning: {type(result)}, len={len(result) if isinstance(result, tuple) else 'N/A'}")
+                            return result
+
                         audio_sync_more_button.click(
-                            fn=lambda *args: synchronize_prompts_to_audio(*args, keyframe_adjustment=20),
+                            fn=more_keyframes_wrapper,
                             inputs=audio_sync_inputs,
                             outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
                         )
