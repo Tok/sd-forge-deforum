@@ -183,7 +183,10 @@ def get_themed_emoji(emoji_name: str, theme: str = 'classic') -> str:
     """
     if theme == 'simple':
         # Simple theme: use emojis but keep them minimal
-        return globals()[emoji_name]() if emoji_name in globals() else ''
+        if emoji_name in globals():
+            emoji_val = globals()[emoji_name]
+            return emoji_val() if callable(emoji_val) else emoji_val
+        return ''
 
     elif theme == 'slopcore':
         # Slopcore theme: map most emojis to 🟦 or 🟪
@@ -208,4 +211,7 @@ def get_themed_emoji(emoji_name: str, theme: str = 'classic') -> str:
 
     else:  # classic theme
         # Classic theme: use full emoji set
-        return globals()[emoji_name]() if emoji_name in globals() else ''
+        if emoji_name in globals():
+            emoji_val = globals()[emoji_name]
+            return emoji_val() if callable(emoji_val) else emoji_val
+        return ''
