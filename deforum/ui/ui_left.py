@@ -502,46 +502,61 @@ def setup_deforum_left_side_ui():
                     'fps'
                 ]
 
+                # Collect components from various tab dicts
+                local_scope = locals()
                 for comp_name in required_components:
-                    if comp_name in locals():
-                        audio_sync_inputs.append(locals()[comp_name])
-                    else:
+                    found = False
+                    # Check direct locals first
+                    if comp_name in local_scope:
+                        audio_sync_inputs.append(local_scope[comp_name])
+                        found = True
+                    # Check tab_init_params for soundtrack_path and fps
+                    elif comp_name in tab_init_params:
+                        audio_sync_inputs.append(tab_init_params[comp_name])
+                        found = True
+                    # Check tab_prompts_params for audio sync components
+                    elif comp_name in tab_prompts_params:
+                        audio_sync_inputs.append(tab_prompts_params[comp_name])
+                        found = True
+
+                    if not found:
                         print(f"⚠️ Warning: Audio sync component '{comp_name}' not found")
 
                 if len(audio_sync_inputs) == len(required_components):
-                    # Main sync button (0% adjustment)
-                    locals()['audio_sync_button'].click(
-                        fn=synchronize_prompts_to_audio,
-                        inputs=audio_sync_inputs,
-                        outputs=[
-                            locals()['animation_prompts'],  # Update prompts in Prompts tab
-                            locals()['audio_sync_status']
-                        ]
-                    )
+                    # Get button and output components
+                    audio_sync_button = tab_prompts_params.get('audio_sync_button')
+                    audio_sync_fewer_button = tab_prompts_params.get('audio_sync_fewer_button')
+                    audio_sync_more_button = tab_prompts_params.get('audio_sync_more_button')
+                    audio_sync_status = tab_prompts_params.get('audio_sync_status')
+                    animation_prompts = tab_prompts_params.get('animation_prompts')
 
-                    # -5% button (fewer events)
-                    locals()['audio_sync_fewer_button'].click(
-                        fn=lambda *args: synchronize_prompts_to_audio(*args, threshold_adjustment=0.05),
-                        inputs=audio_sync_inputs,
-                        outputs=[
-                            locals()['animation_prompts'],
-                            locals()['audio_sync_status']
-                        ]
-                    )
+                    if all([audio_sync_button, audio_sync_fewer_button, audio_sync_more_button, audio_sync_status, animation_prompts]):
+                        # Main sync button (0% adjustment)
+                        audio_sync_button.click(
+                            fn=synchronize_prompts_to_audio,
+                            inputs=audio_sync_inputs,
+                            outputs=[animation_prompts, audio_sync_status]
+                        )
 
-                    # +5% button (more events)
-                    locals()['audio_sync_more_button'].click(
-                        fn=lambda *args: synchronize_prompts_to_audio(*args, threshold_adjustment=-0.05),
-                        inputs=audio_sync_inputs,
-                        outputs=[
-                            locals()['animation_prompts'],
-                            locals()['audio_sync_status']
-                        ]
-                    )
+                        # -5% button (fewer events)
+                        audio_sync_fewer_button.click(
+                            fn=lambda *args: synchronize_prompts_to_audio(*args, threshold_adjustment=0.05),
+                            inputs=audio_sync_inputs,
+                            outputs=[animation_prompts, audio_sync_status]
+                        )
 
-                    print("🎵 Audio sync buttons connected successfully (main, -5%, +5%)")
+                        # +5% button (more events)
+                        audio_sync_more_button.click(
+                            fn=lambda *args: synchronize_prompts_to_audio(*args, threshold_adjustment=-0.05),
+                            inputs=audio_sync_inputs,
+                            outputs=[animation_prompts, audio_sync_status]
+                        )
+
+                        print("🎵 Audio sync buttons connected successfully (main, -5%, +5%)")
+                    else:
+                        print(f"⚠️ Could not connect audio sync buttons: missing button/output components")
                 else:
-                    print(f"⚠️ Could not connect audio sync button: missing components")
+                    print(f"⚠️ Could not connect audio sync button: missing input components ({len(audio_sync_inputs)}/{len(required_components)})")
 
             # Wire up AI prompt generation button
             if audio_ai_generate_button is not None:
