@@ -31,18 +31,22 @@ from deforum.media.upscaling import make_upscale_v2
 from deforum.media.video_audio_utilities import ffmpeg_stitch_video, make_gifski_gif, handle_imgs_deletion, handle_input_frames_deletion, handle_cn_frames_deletion, get_ffmpeg_params, get_ffmpeg_paths
 from pathlib import Path
 from deforum.utils.system.logging.log import UNDERLINE, YELLOW, ORANGE, RED, RESET_COLOR
+from deforum.utils.system.logging import get_logger
 from deforum.config.settings import save_settings_from_animation_run
 from deforum.integrations.controlnet.legacy_controlnet_stubs import num_of_models
 
 from deforum.api.api import JobStatusTracker
 from deforum.api.models import DeforumJobPhase
 
+# Initialize logger
+logger = get_logger()
+
 
 # this global param will contain the latest generated video HTML-data-URL info (for preview inside the UI when needed)
 last_vid_data = None
 
 def run_deforum(*args):
-    print("Starting Deforum...")
+    logger.info("Starting Deforum...", emoji='run')
 
     # Parse component names early to check animation mode
     component_names = get_component_names()
@@ -61,16 +65,16 @@ def run_deforum(*args):
     if distribution:
         args_dict['keyframe_distribution'] = distribution.value
 
-    print(f"\n🎨 Render Mode: '{render_mode_str}'")
-    print(f"   → Animation Mode: '{args_dict['animation_mode']}'")
+    logger.info(f"Render Mode: '{render_mode_str}'", emoji='palette')
+    logger.info(f"  → Animation Mode: '{args_dict['animation_mode']}'")
     if distribution:
-        print(f"   → Keyframe Distribution: '{distribution.value}'")
+        logger.info(f"  → Keyframe Distribution: '{distribution.value}'")
 
     # Check if resuming - load animation_mode from saved settings
     animation_mode = args_dict.get('animation_mode', '3D')
-    print(f"\n🔍 DEBUG: Initial animation_mode from UI: '{animation_mode}'")
-    print(f"🔍 DEBUG: resume_from_timestring: {args_dict.get('resume_from_timestring', False)}")
-    print(f"🔍 DEBUG: resume_timestring: '{args_dict.get('resume_timestring', '')}'")
+    logger.debug(f"Initial animation_mode from UI: '{animation_mode}'")
+    logger.debug(f"resume_from_timestring: {args_dict.get('resume_from_timestring', False)}")
+    logger.debug(f"resume_timestring: '{args_dict.get('resume_timestring', '')}'")
     
     if args_dict.get('resume_from_timestring', False) and args_dict.get('resume_timestring'):
         # Try to load settings from previous run to get correct animation_mode
@@ -93,12 +97,12 @@ def run_deforum(*args):
                 f"outputs/{timestring}/{timestring}_settings.txt",
             ]
             
-            print(f"🔄 Resume mode: Searching for settings file for timestring '{timestring}'...")
+            logger.info(f"Resume mode: Searching for settings file for timestring '{timestring}'...", emoji='refresh')
             settings_file = None
             for path in possible_paths:
                 if os.path.exists(path):
                     settings_file = path
-                    print(f"   ✓ Found: {path}")
+                    logger.debug(f"  ✓ Found: {path}")
                     break
             
             if settings_file:
@@ -107,11 +111,11 @@ def run_deforum(*args):
                         saved_settings = json.load(f)
                         saved_animation_mode = saved_settings.get('animation_mode')
                         if saved_animation_mode:
-                            print(f"🔄 Resume detected: Loading animation_mode '{saved_animation_mode}' from saved settings")
+                            logger.info(f"Resume detected: Loading animation_mode '{saved_animation_mode}' from saved settings", emoji='refresh')
                             animation_mode = saved_animation_mode
                             # Override in args_dict so it's used throughout
                             args_dict['animation_mode'] = animation_mode
-                        
+
                         # Also load ALL wan settings from saved file (critical for FLF2V settings)
                         wan_settings_loaded = 0
                         for key, value in saved_settings.items():
@@ -120,31 +124,31 @@ def run_deforum(*args):
                                     args_dict[key] = value
                                     wan_settings_loaded += 1
                                     if 'flf2v' in key.lower():
-                                        print(f"   ✓ Loaded {key}: {value}")
-                        
+                                        logger.debug(f"  ✓ Loaded {key}: {value}")
+
                         if wan_settings_loaded > 0:
-                            print(f"🔄 Resume detected: Loaded {wan_settings_loaded} wan_* settings from saved file")
+                            logger.info(f"Resume detected: Loaded {wan_settings_loaded} wan_* settings from saved file", emoji='refresh')
                         else:
-                            print(f"⚠️  Warning: No animation_mode found in settings file")
-                            print(f"   Using current UI setting: {animation_mode}")
+                            logger.warning(f"No animation_mode found in settings file")
+                            logger.info(f"  Using current UI setting: {animation_mode}")
                 except Exception as e:
-                    print(f"⚠️ Warning: Could not load animation_mode from settings file: {e}")
-                    print(f"   Using current UI setting: {animation_mode}")
+                    logger.warning(f"Could not load animation_mode from settings file: {e}")
+                    logger.info(f"  Using current UI setting: {animation_mode}")
             else:
-                print(f"⚠️  Warning: Could not find settings file for timestring '{timestring}'")
-                print(f"   Tried: {possible_paths[0]}")
-                print(f"   Using current UI setting: {animation_mode}")
+                logger.warning(f"Could not find settings file for timestring '{timestring}'")
+                logger.debug(f"  Tried: {possible_paths[0]}")
+                logger.info(f"  Using current UI setting: {animation_mode}")
     
-    print(f"🔍 DEBUG: Final animation_mode after resume check: '{animation_mode}'")
-    print(f"🔍 DEBUG: args_dict['animation_mode']: '{args_dict.get('animation_mode')}'")
-    
+    logger.debug(f"Final animation_mode after resume check: '{animation_mode}'")
+    logger.debug(f"args_dict['animation_mode']: '{args_dict.get('animation_mode')}'")
+
     # Check if this is Flux/Wan mode - no SD model needed
     is_flux_wan_mode = (animation_mode == 'Flux/Wan')
 
     if is_flux_wan_mode:
-        print("🎬 Flux/Wan mode detected - will use Flux for keyframes + Wan FLF2V for interpolation")
+        logger.info("Flux/Wan mode detected - will use Flux for keyframes + Wan FLF2V for interpolation", emoji='movie_camera')
     elif isinstance(shared.sd_model, FakeInitialModel):
-        print("Loading Models...")
+        logger.info("Loading Models...", emoji='gear')
         forge_model_reload()
 
     f_location, f_crf, f_preset = get_ffmpeg_params()  # get params for ffmpeg exec
