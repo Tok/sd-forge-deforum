@@ -67,12 +67,17 @@ def on_ui_tabs():
     # Slopcore gradient aesthetic for Generate button and hide unwanted buttons
     slopcore_css = """
     /* Slopcore gradient for Generate button and audio sync buttons */
-    /* Use universal descendant selectors to catch buttons regardless of Gradio wrapper structure */
+    /* NUCLEAR OPTION: Override Gradio 4 default button styles with maximum specificity */
+    /* Target by ID with maximum specificity */
     #deforum_generate,
     #deforum_generate *,
+    #deforum_generate.primary,
+    #deforum_generate.secondary,
     button#deforum_generate,
     #deforum_generate > button,
+    #deforum_generate button,
     [id*="deforum_generate"] button,
+    [id="deforum_generate"],
     #audio_sync_button,
     #audio_sync_button *,
     button#audio_sync_button,

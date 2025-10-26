@@ -752,8 +752,15 @@ def setup_deforum_left_side_ui():
                         print(f"🤖 Generating {count} prompts | Mode: {generation_mode} | Intensity: {intensity} | Style: {style or 'none'} | Theme: {theme}")
                         result = qwen(prompt=generation_prompt, tar_lang="en")
 
+                        # Check if generation was successful
+                        if not result.status:
+                            raise Exception(f"Qwen generation failed: {result.message}")
+
+                        # Extract the prompt text from PromptOutput object
+                        result_text = result.prompt
+
                         # Clean up the result (remove any numbering or extra formatting)
-                        lines = [line.strip() for line in result.split('\n') if line.strip()]
+                        lines = [line.strip() for line in result_text.split('\n') if line.strip()]
                         prompts = []
                         for line in lines:
                             # Skip lines with numbering like "1.", "1)", etc.
