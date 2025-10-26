@@ -1,7 +1,12 @@
 # noinspection PyUnresolvedReferences
-from modules import lowvram, devices, sd_hijack
-# noinspection PyUnresolvedReferences
-from modules.shared import cmd_opts, sd_model
+try:
+    from modules import lowvram, devices, sd_hijack
+    from modules.shared import cmd_opts, sd_model
+except ImportError:
+    # Mock for test environments
+    lowvram = devices = sd_hijack = None  # type: ignore
+    cmd_opts = type('obj', (object,), {'lowvram': False, 'medvram': False})()  # type: ignore
+    sd_model = None  # type: ignore
 
 
 def is_low_or_med_vram():

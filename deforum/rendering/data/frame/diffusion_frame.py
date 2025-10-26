@@ -8,7 +8,10 @@ import cv2
 import numpy as np
 from PIL import Image
 # noinspection PyUnresolvedReferences
-from modules import shared
+try:
+    from modules import shared
+except ImportError:
+    shared = None  # type: ignore
 from tqdm import tqdm
 
 from . import DiffusionFrameData, KeyFrameDistribution

@@ -6,7 +6,11 @@ from typing import List
 import numpy as np
 
 # noinspection PyUnresolvedReferences
-from modules import shared  # type: ignore  # provided by Forge
+try:
+    from modules import shared  # type: ignore  # provided by Forge
+except ImportError:
+    # Allow imports in test environments without Forge
+    shared = None  # type: ignore
 
 from . import img_2_img_tubes
 from .data.frame import KeyFrameDistribution, DiffusionFrame

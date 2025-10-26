@@ -22,7 +22,10 @@ from pathlib import Path
 from typing import List
 import cv2
 
-from modules import shared  # type: ignore
+try:
+    from modules import shared  # type: ignore
+except ImportError:
+    shared = None  # type: ignore
 
 from .data.render_data import RenderData
 from .data.frame import KeyFrameDistribution, DiffusionFrame
