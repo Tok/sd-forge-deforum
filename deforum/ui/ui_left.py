@@ -244,6 +244,379 @@ def setup_deforum_left_side_ui():
             locals()['tab_shakify'] = tab_shakify
             locals()['tab_wan'] = tab_wan
 
+            # ====== AUDIO SYNC BUTTON WIRING (moved inside tabs context) ======
+            # Wire up audio upload to use actual FPS and update max_frames
+            if 'audio_upload' in locals() and 'soundtrack_path' in locals():
+                def handle_audio_upload_with_fps(audio_filepath, current_fps):
+                    """Save uploaded audio, calculate duration, and suggest max_frames."""
+                    if audio_filepath is None:
+                        return None, "File", "", gr.update()
+
+                    import os
+                    import shutil
+                    from pathlib import Path
+
+                    # Create output/audio directory
+                    output_dir = Path("output/audio")
+                    output_dir.mkdir(parents=True, exist_ok=True)
+
+                    # Save uploaded file
+                    filename = Path(audio_filepath).name
+                    dest_path = output_dir / filename
+                    shutil.copy2(audio_filepath, dest_path)
+                    abs_path = str(dest_path.absolute())
+
+                    # Calculate audio duration and suggested max_frames
+                    try:
+                        import librosa
+                        duration = librosa.get_duration(path=abs_path)
+                        fps_val = current_fps if current_fps and current_fps > 0 else 24
+                        suggested_max_frames = int(duration * fps_val)
+                        info_text = f"Duration: {duration:.2f}s | Suggested max_frames @ {fps_val} FPS: {suggested_max_frames}"
+
+                        # Auto-update max_frames
+                        max_frames_update = gr.update(value=suggested_max_frames)
+                    except Exception as e:
+                        info_text = f"Could not calculate duration: {str(e)}"
+                        max_frames_update = gr.update()
+
+                    return abs_path, "File", info_text, max_frames_update
+
+                # Re-wire the upload event with actual FPS and max_frames
+                if 'max_frames' in locals():
+                    locals()['audio_upload'].upload(
+                        fn=handle_audio_upload_with_fps,
+                        inputs=[locals()['audio_upload'], fps],
+                        outputs=[
+                            locals()['soundtrack_path'],
+                            locals()['add_soundtrack'],
+                            locals()['audio_info_display'],
+                            locals()['max_frames']
+                        ]
+                    )
+
+            # Wire up audio sync button to synchronize prompts with audio events
+            if 'audio_sync_button' in locals() and 'audio_sync_status' in locals():
+                def synchronize_prompts_to_audio(
+                    soundtrack_path_val,
+                    audio_sync_prompts_val,
+                    distribution_mode,
+                    target_count,
+                    detection_method,
+                    frequency_band,
+                    sensitivity,
+                    intensity_threshold,
+                    min_spacing_frames,
+                    current_fps
+                ):
+                    """Detect audio events and distribute prompts across them."""
+                    try:
+                        from pathlib import Path
+                        import json
+
+                        # Validate soundtrack path
+                        if not soundtrack_path_val or not Path(soundtrack_path_val).exists():
+                            return gr.update(), "✗ Error: Please upload an audio file first"
+
+                        # Parse user prompts
+                        from deforum.audio import parse_prompt_list
+                        user_prompts = parse_prompt_list(audio_sync_prompts_val)
+
+                        if not user_prompts:
+                            return gr.update(), "✗ Error: Please enter at least one prompt"
+
+                        # Load and analyze audio
+                        from deforum.audio import (
+                            process_audio_for_detection,
+                            detect_events,
+                            generate_keyframes_from_events,
+                            distribute_prompts_across_keyframes,
+                            suggest_keyframe_count_from_audio
+                        )
+                        import librosa
+
+                        # Load audio file
+                        y, sr = librosa.load(soundtrack_path_val, sr=None)
+                        duration = librosa.get_duration(y=y, sr=sr)
+                        fps_val = current_fps if current_fps and current_fps > 0 else 24
+
+                        # Process audio for detection
+                        y_processed = process_audio_for_detection(
+                            y, sr,
+                            frequency_band=frequency_band,
+                            lowpass_cutoff=4000,
+                            distortion_gain=10.0
+                        )
+
+                        # Detect events
+                        event_times = detect_events(
+                            y_processed, sr,
+                            method=detection_method,
+                            sensitivity=sensitivity / 100.0  # Convert 0-100 to 0-1
+                        )
+
+                        if not event_times:
+                            return gr.update(), "✗ Error: No audio events detected. Try adjusting sensitivity."
+
+                        # Determine keyframe count
+                        if target_count and target_count > 0:
+                            num_keyframes = int(target_count)
+                        else:
+                            num_keyframes = suggest_keyframe_count_from_audio(
+                                duration, fps_val,
+                                desired_prompts=len(user_prompts)
+                            )
+
+                        # Limit to detected events
+                        num_keyframes = min(num_keyframes, len(event_times))
+
+                        # Generate keyframes from events
+                        keyframes = generate_keyframes_from_events(
+                            event_times[:num_keyframes],
+                            fps=fps_val,
+                            min_spacing_frames=min_spacing_frames,
+                            intensity_threshold=intensity_threshold / 100.0
+                        )
+
+                        if not keyframes:
+                            return gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
+
+                        # Distribute prompts across keyframes
+                        animation_prompts_json = distribute_prompts_across_keyframes(
+                            keyframes, user_prompts, mode=distribution_mode
+                        )
+
+                        # Parse back to add formatting
+                        schedule = json.loads(animation_prompts_json)
+                        formatted_schedule = json.dumps(schedule, indent=2)
+
+                        status_msg = (
+                            f"✓ Successfully synchronized!\n"
+                            f"• Audio: {duration:.1f}s @ {fps_val} FPS\n"
+                            f"• Events detected: {len(event_times)}\n"
+                            f"• Keyframes created: {len(keyframes)}\n"
+                            f"• Prompts used: {len(user_prompts)} (mode: {distribution_mode})"
+                        )
+
+                        return formatted_schedule, status_msg
+
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        return gr.update(), f"✗ Error: {str(e)}"
+
+                # Get all required inputs
+                audio_sync_inputs = []
+                required_components = [
+                    'soundtrack_path',
+                    'audio_sync_prompts',
+                    'audio_prompt_distribution_mode',
+                    'audio_target_keyframe_count',
+                    'audio_detection_method',
+                    'audio_frequency_band',
+                    'audio_sensitivity',
+                    'audio_intensity_threshold',
+                    'audio_min_spacing_frames',
+                    'fps'
+                ]
+
+                for comp_name in required_components:
+                    if comp_name in locals():
+                        audio_sync_inputs.append(locals()[comp_name])
+                    else:
+                        print(f"⚠️ Warning: Audio sync component '{comp_name}' not found")
+
+                if len(audio_sync_inputs) == len(required_components):
+                    locals()['audio_sync_button'].click(
+                        fn=synchronize_prompts_to_audio,
+                        inputs=audio_sync_inputs,
+                        outputs=[
+                            locals()['animation_prompts'],  # Update prompts in Prompts tab
+                            locals()['audio_sync_status']
+                        ]
+                    )
+                    print("🎵 Audio sync button connected successfully")
+                else:
+                    print(f"⚠️ Could not connect audio sync button: missing components")
+
+            # Wire up AI prompt generation button
+            if 'audio_ai_generate_button' in locals():
+                def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, start_prompt, end_prompt):
+                    """Generate prompts using Qwen with multiple modes and intensity levels."""
+                    print("="*80)
+                    print(f"🎨 AI PROMPT GENERATION BUTTON CLICKED!")
+                    print(f"   Mode: {generation_mode}")
+                    print(f"   Intensity: {intensity}")
+                    print(f"   Style: {style}")
+                    print(f"   Theme: {theme}")
+                    print(f"   Count: {count}")
+                    print("="*80)
+
+                    try:
+                        from scripts.deforum_helpers.wan.qwen_prompt_expander import QwenPromptExpander
+
+                        # Initialize Qwen (will auto-select model based on VRAM)
+                        qwen = QwenPromptExpander()
+
+                        # Build style descriptor
+                        style_text = f"{style} style " if style and style.strip() else ""
+
+                        # Build intensity descriptor
+                        intensity_instructions = {
+                            "normal": "Keep prompts realistic and grounded. Progressive but subtle changes.",
+                            "crazy": "Make prompts over-the-top and extremely creative! Wild transformations and escalating intensity! Go big with each step!",
+                            "extreme": "GO ABSOLUTELY BONKERS! Each prompt should be MORE INSANE than the last! Reality-bending, physics-defying, mind-blowing escalation! Maximum chaos and creativity!"
+                        }
+                        intensity_inst = intensity_instructions.get(intensity, intensity_instructions["crazy"])
+
+                        # Mode-specific prompt generation
+                        if generation_mode == "start-to-end":
+                            # Interpolation mode - fill between start and end
+                            generation_prompt = f"""You are creating an animated sequence that transitions from one scene to another.
+
+        START PROMPT: {start_prompt}
+        END PROMPT: {end_prompt}
+
+        Generate {int(count)} {style_text}prompts that smoothly transition from the start to the end.
+
+        INTENSITY: {intensity_inst}
+
+        Requirements:
+        - First prompt should be similar to START
+        - Last prompt should lead into END
+        - Middle prompts progressively transform from start to end
+        - Each step should build on the previous one
+        - {style_text if style else ""}Focus on visual progression
+        - Keep prompts concise (5-12 words each)
+        - Return ONLY the prompts, one per line, NO numbering
+
+        Generate {int(count)} transition prompts:"""
+
+                        elif generation_mode == "varied":
+                            # Random creative variations
+                            generation_prompt = f"""Create {int(count)} wildly varied and creative {style_text}prompts featuring {theme}.
+
+        INTENSITY: {intensity_inst}
+
+        Requirements:
+        - Each prompt should be COMPLETELY DIFFERENT
+        - Mix of scenes, actions, perspectives, moods
+        - {style_text if style else ""}Unexpected combinations and scenarios
+        - Progressive escalation of creativity
+        - Keep prompts concise (5-12 words each)
+        - Return ONLY the prompts, one per line, NO numbering
+
+        Generate {int(count)} varied {style_text}prompts for {theme}:"""
+
+                        else:  # escalating mode (default)
+                            # Escalating intensity mode
+                            generation_prompt = f"""Generate {int(count)} {style_text}prompts that build in intensity for an animated sequence featuring {theme}.
+
+        INTENSITY: {intensity_inst}
+
+        Requirements:
+        - START CALM: Begin with simple, peaceful scene (e.g., "cute {theme} in nature")
+        - ESCALATE DRAMATICALLY: Each prompt MORE intense than the last
+        - {style_text if style else ""}Progressive transformation: calm → active → dynamic → EXTREME → ABSOLUTELY WILD
+        - Final prompts should be PEAK INSANITY (if crazy/extreme mode)
+        - Keep prompts concise (5-12 words each)
+        - Return ONLY the prompts, one per line, NO numbering
+
+        Example progression for "{style_text}bunny" (CRAZY mode):
+        cute bunny sitting peacefully in grass
+        bunny hopping through vibrant neon forest
+        {style_text}bunny leaping over glowing obstacles
+        bunny racing through laser-filled cityscape
+        EXTREME {style_text}bunny surfing massive energy wave
+        INSANE {style_text}bunny commanding lightning storm on motorcycle
+        ABSOLUTELY BONKERS {style_text}bunny transcending reality in cosmic explosion
+
+        Now generate {int(count)} {style_text}prompts for {theme}:"""
+
+                        # Generate with Qwen
+                        print(f"🤖 Generating {count} prompts | Mode: {generation_mode} | Intensity: {intensity} | Style: {style or 'none'} | Theme: {theme}")
+                        result = qwen.enhance_prompt(generation_prompt)
+
+                        # Clean up the result (remove any numbering or extra formatting)
+                        lines = [line.strip() for line in result.split('\n') if line.strip()]
+                        prompts = []
+                        for line in lines:
+                            # Skip lines with numbering like "1.", "1)", etc.
+                            clean_line = line
+                            if len(line) > 0 and line[0].isdigit():
+                                # Remove leading numbers and punctuation
+                                import re
+                                clean_line = re.sub(r'^\d+[\.\)]\s*', '', line)
+                            if clean_line and not clean_line.startswith('#') and not clean_line.startswith('//'):
+                                prompts.append(clean_line)
+
+                        # Take only the requested count
+                        prompts = prompts[:int(count)]
+
+                        # Join with newlines
+                        prompts_text = '\n'.join(prompts)
+
+                        print(f"✓ Generated {len(prompts)} prompts")
+                        return prompts_text
+
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        error_msg = f"Error generating prompts: {str(e)}"
+                        print(f"⚠️ {error_msg}")
+                        # Fallback to template-based generation
+                        style_prefix = f"{style} " if style else ""
+                        if generation_mode == "start-to-end":
+                            fallback = '\n'.join([start_prompt] + [f"{style_prefix}{theme} transforming"] * max(0, int(count)-2) + [end_prompt])
+                        else:
+                            actions = ["resting peacefully", "moving slowly", "actively exploring", "racing dynamically", "GOING WILD"]
+                            fallback = '\n'.join([f"{style_prefix}{theme} {action}" for action in actions[:int(count)]])
+                        return fallback
+
+                # Wire up the button with visibility toggle for start/end mode
+                def toggle_start_end_visibility(mode):
+                    """Show/hide start and end prompt fields based on generation mode."""
+                    is_start_end = mode == "start-to-end"
+                    return gr.update(visible=is_start_end), gr.update(visible=is_start_end)
+
+                required_components = [
+                    'audio_ai_generation_mode', 'audio_ai_intensity', 'audio_ai_style',
+                    'audio_ai_prompt_theme', 'audio_ai_prompt_count',
+                    'audio_ai_start_prompt', 'audio_ai_end_prompt', 'audio_sync_prompts'
+                ]
+
+                if all(comp in locals() for comp in required_components):
+                    print(f"🔧 All {len(required_components)} components found for AI prompt generation wiring")
+
+                    # Wire up mode change to show/hide start/end prompts
+                    locals()['audio_ai_generation_mode'].change(
+                        fn=toggle_start_end_visibility,
+                        inputs=[locals()['audio_ai_generation_mode']],
+                        outputs=[locals()['audio_ai_start_prompt'], locals()['audio_ai_end_prompt']]
+                    )
+                    print("   ✓ Mode change visibility toggle wired")
+
+                    # Wire up generate button
+                    locals()['audio_ai_generate_button'].click(
+                        fn=generate_prompts_with_ai,
+                        inputs=[
+                            locals()['audio_ai_generation_mode'],
+                            locals()['audio_ai_intensity'],
+                            locals()['audio_ai_style'],
+                            locals()['audio_ai_prompt_theme'],
+                            locals()['audio_ai_prompt_count'],
+                            locals()['audio_ai_start_prompt'],
+                            locals()['audio_ai_end_prompt']
+                        ],
+                        outputs=[locals()['audio_sync_prompts']]
+                    )
+                    print("✨ AI prompt generation button connected successfully")
+                else:
+                    missing = [c for c in required_components if c not in locals()]
+                    print(f"⚠️ Could not wire AI prompt button - missing components: {missing}")
+
+
+
     # Mode change handler - updates all UI based on selected render mode
     def handle_render_mode_change(mode):
         """
@@ -360,376 +733,6 @@ def setup_deforum_left_side_ui():
     # Gradio's Change functions - hiding and renaming elements based on other elements
     show_info_on_ui.change(fn=change_css, inputs=show_info_on_ui, outputs=[gr.HTML()])
     handle_change_functions(locals())
-
-    # Wire up audio upload to use actual FPS and update max_frames
-    if 'audio_upload' in locals() and 'soundtrack_path' in locals():
-        def handle_audio_upload_with_fps(audio_filepath, current_fps):
-            """Save uploaded audio, calculate duration, and suggest max_frames."""
-            if audio_filepath is None:
-                return None, "File", "", gr.update()
-
-            import os
-            import shutil
-            from pathlib import Path
-
-            # Create output/audio directory
-            output_dir = Path("output/audio")
-            output_dir.mkdir(parents=True, exist_ok=True)
-
-            # Save uploaded file
-            filename = Path(audio_filepath).name
-            dest_path = output_dir / filename
-            shutil.copy2(audio_filepath, dest_path)
-            abs_path = str(dest_path.absolute())
-
-            # Calculate audio duration and suggested max_frames
-            try:
-                import librosa
-                duration = librosa.get_duration(path=abs_path)
-                fps_val = current_fps if current_fps and current_fps > 0 else 24
-                suggested_max_frames = int(duration * fps_val)
-                info_text = f"Duration: {duration:.2f}s | Suggested max_frames @ {fps_val} FPS: {suggested_max_frames}"
-
-                # Auto-update max_frames
-                max_frames_update = gr.update(value=suggested_max_frames)
-            except Exception as e:
-                info_text = f"Could not calculate duration: {str(e)}"
-                max_frames_update = gr.update()
-
-            return abs_path, "File", info_text, max_frames_update
-
-        # Re-wire the upload event with actual FPS and max_frames
-        if 'max_frames' in locals():
-            locals()['audio_upload'].upload(
-                fn=handle_audio_upload_with_fps,
-                inputs=[locals()['audio_upload'], fps],
-                outputs=[
-                    locals()['soundtrack_path'],
-                    locals()['add_soundtrack'],
-                    locals()['audio_info_display'],
-                    locals()['max_frames']
-                ]
-            )
-
-    # Wire up audio sync button to synchronize prompts with audio events
-    if 'audio_sync_button' in locals() and 'audio_sync_status' in locals():
-        def synchronize_prompts_to_audio(
-            soundtrack_path_val,
-            audio_sync_prompts_val,
-            distribution_mode,
-            target_count,
-            detection_method,
-            frequency_band,
-            sensitivity,
-            intensity_threshold,
-            min_spacing_frames,
-            current_fps
-        ):
-            """Detect audio events and distribute prompts across them."""
-            try:
-                from pathlib import Path
-                import json
-
-                # Validate soundtrack path
-                if not soundtrack_path_val or not Path(soundtrack_path_val).exists():
-                    return gr.update(), "✗ Error: Please upload an audio file first"
-
-                # Parse user prompts
-                from deforum.audio import parse_prompt_list
-                user_prompts = parse_prompt_list(audio_sync_prompts_val)
-
-                if not user_prompts:
-                    return gr.update(), "✗ Error: Please enter at least one prompt"
-
-                # Load and analyze audio
-                from deforum.audio import (
-                    process_audio_for_detection,
-                    detect_events,
-                    generate_keyframes_from_events,
-                    distribute_prompts_across_keyframes,
-                    suggest_keyframe_count_from_audio
-                )
-                import librosa
-
-                # Load audio file
-                y, sr = librosa.load(soundtrack_path_val, sr=None)
-                duration = librosa.get_duration(y=y, sr=sr)
-                fps_val = current_fps if current_fps and current_fps > 0 else 24
-
-                # Process audio for detection
-                y_processed = process_audio_for_detection(
-                    y, sr,
-                    frequency_band=frequency_band,
-                    lowpass_cutoff=4000,
-                    distortion_gain=10.0
-                )
-
-                # Detect events
-                event_times = detect_events(
-                    y_processed, sr,
-                    method=detection_method,
-                    sensitivity=sensitivity / 100.0  # Convert 0-100 to 0-1
-                )
-
-                if not event_times:
-                    return gr.update(), "✗ Error: No audio events detected. Try adjusting sensitivity."
-
-                # Determine keyframe count
-                if target_count and target_count > 0:
-                    num_keyframes = int(target_count)
-                else:
-                    num_keyframes = suggest_keyframe_count_from_audio(
-                        duration, fps_val,
-                        desired_prompts=len(user_prompts)
-                    )
-
-                # Limit to detected events
-                num_keyframes = min(num_keyframes, len(event_times))
-
-                # Generate keyframes from events
-                keyframes = generate_keyframes_from_events(
-                    event_times[:num_keyframes],
-                    fps=fps_val,
-                    min_spacing_frames=min_spacing_frames,
-                    intensity_threshold=intensity_threshold / 100.0
-                )
-
-                if not keyframes:
-                    return gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
-
-                # Distribute prompts across keyframes
-                animation_prompts_json = distribute_prompts_across_keyframes(
-                    keyframes, user_prompts, mode=distribution_mode
-                )
-
-                # Parse back to add formatting
-                schedule = json.loads(animation_prompts_json)
-                formatted_schedule = json.dumps(schedule, indent=2)
-
-                status_msg = (
-                    f"✓ Successfully synchronized!\n"
-                    f"• Audio: {duration:.1f}s @ {fps_val} FPS\n"
-                    f"• Events detected: {len(event_times)}\n"
-                    f"• Keyframes created: {len(keyframes)}\n"
-                    f"• Prompts used: {len(user_prompts)} (mode: {distribution_mode})"
-                )
-
-                return formatted_schedule, status_msg
-
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                return gr.update(), f"✗ Error: {str(e)}"
-
-        # Get all required inputs
-        audio_sync_inputs = []
-        required_components = [
-            'soundtrack_path',
-            'audio_sync_prompts',
-            'audio_prompt_distribution_mode',
-            'audio_target_keyframe_count',
-            'audio_detection_method',
-            'audio_frequency_band',
-            'audio_sensitivity',
-            'audio_intensity_threshold',
-            'audio_min_spacing_frames',
-            'fps'
-        ]
-
-        for comp_name in required_components:
-            if comp_name in locals():
-                audio_sync_inputs.append(locals()[comp_name])
-            else:
-                print(f"⚠️ Warning: Audio sync component '{comp_name}' not found")
-
-        if len(audio_sync_inputs) == len(required_components):
-            locals()['audio_sync_button'].click(
-                fn=synchronize_prompts_to_audio,
-                inputs=audio_sync_inputs,
-                outputs=[
-                    locals()['animation_prompts'],  # Update prompts in Prompts tab
-                    locals()['audio_sync_status']
-                ]
-            )
-            print("🎵 Audio sync button connected successfully")
-        else:
-            print(f"⚠️ Could not connect audio sync button: missing components")
-
-    # Wire up AI prompt generation button
-    if 'audio_ai_generate_button' in locals():
-        def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, start_prompt, end_prompt):
-            """Generate prompts using Qwen with multiple modes and intensity levels."""
-            print("="*80)
-            print(f"🎨 AI PROMPT GENERATION BUTTON CLICKED!")
-            print(f"   Mode: {generation_mode}")
-            print(f"   Intensity: {intensity}")
-            print(f"   Style: {style}")
-            print(f"   Theme: {theme}")
-            print(f"   Count: {count}")
-            print("="*80)
-
-            try:
-                from scripts.deforum_helpers.wan.qwen_prompt_expander import QwenPromptExpander
-
-                # Initialize Qwen (will auto-select model based on VRAM)
-                qwen = QwenPromptExpander()
-
-                # Build style descriptor
-                style_text = f"{style} style " if style and style.strip() else ""
-
-                # Build intensity descriptor
-                intensity_instructions = {
-                    "normal": "Keep prompts realistic and grounded. Progressive but subtle changes.",
-                    "crazy": "Make prompts over-the-top and extremely creative! Wild transformations and escalating intensity! Go big with each step!",
-                    "extreme": "GO ABSOLUTELY BONKERS! Each prompt should be MORE INSANE than the last! Reality-bending, physics-defying, mind-blowing escalation! Maximum chaos and creativity!"
-                }
-                intensity_inst = intensity_instructions.get(intensity, intensity_instructions["crazy"])
-
-                # Mode-specific prompt generation
-                if generation_mode == "start-to-end":
-                    # Interpolation mode - fill between start and end
-                    generation_prompt = f"""You are creating an animated sequence that transitions from one scene to another.
-
-START PROMPT: {start_prompt}
-END PROMPT: {end_prompt}
-
-Generate {int(count)} {style_text}prompts that smoothly transition from the start to the end.
-
-INTENSITY: {intensity_inst}
-
-Requirements:
-- First prompt should be similar to START
-- Last prompt should lead into END
-- Middle prompts progressively transform from start to end
-- Each step should build on the previous one
-- {style_text if style else ""}Focus on visual progression
-- Keep prompts concise (5-12 words each)
-- Return ONLY the prompts, one per line, NO numbering
-
-Generate {int(count)} transition prompts:"""
-
-                elif generation_mode == "varied":
-                    # Random creative variations
-                    generation_prompt = f"""Create {int(count)} wildly varied and creative {style_text}prompts featuring {theme}.
-
-INTENSITY: {intensity_inst}
-
-Requirements:
-- Each prompt should be COMPLETELY DIFFERENT
-- Mix of scenes, actions, perspectives, moods
-- {style_text if style else ""}Unexpected combinations and scenarios
-- Progressive escalation of creativity
-- Keep prompts concise (5-12 words each)
-- Return ONLY the prompts, one per line, NO numbering
-
-Generate {int(count)} varied {style_text}prompts for {theme}:"""
-
-                else:  # escalating mode (default)
-                    # Escalating intensity mode
-                    generation_prompt = f"""Generate {int(count)} {style_text}prompts that build in intensity for an animated sequence featuring {theme}.
-
-INTENSITY: {intensity_inst}
-
-Requirements:
-- START CALM: Begin with simple, peaceful scene (e.g., "cute {theme} in nature")
-- ESCALATE DRAMATICALLY: Each prompt MORE intense than the last
-- {style_text if style else ""}Progressive transformation: calm → active → dynamic → EXTREME → ABSOLUTELY WILD
-- Final prompts should be PEAK INSANITY (if crazy/extreme mode)
-- Keep prompts concise (5-12 words each)
-- Return ONLY the prompts, one per line, NO numbering
-
-Example progression for "{style_text}bunny" (CRAZY mode):
-cute bunny sitting peacefully in grass
-bunny hopping through vibrant neon forest
-{style_text}bunny leaping over glowing obstacles
-bunny racing through laser-filled cityscape
-EXTREME {style_text}bunny surfing massive energy wave
-INSANE {style_text}bunny commanding lightning storm on motorcycle
-ABSOLUTELY BONKERS {style_text}bunny transcending reality in cosmic explosion
-
-Now generate {int(count)} {style_text}prompts for {theme}:"""
-
-                # Generate with Qwen
-                print(f"🤖 Generating {count} prompts | Mode: {generation_mode} | Intensity: {intensity} | Style: {style or 'none'} | Theme: {theme}")
-                result = qwen.enhance_prompt(generation_prompt)
-
-                # Clean up the result (remove any numbering or extra formatting)
-                lines = [line.strip() for line in result.split('\n') if line.strip()]
-                prompts = []
-                for line in lines:
-                    # Skip lines with numbering like "1.", "1)", etc.
-                    clean_line = line
-                    if len(line) > 0 and line[0].isdigit():
-                        # Remove leading numbers and punctuation
-                        import re
-                        clean_line = re.sub(r'^\d+[\.\)]\s*', '', line)
-                    if clean_line and not clean_line.startswith('#') and not clean_line.startswith('//'):
-                        prompts.append(clean_line)
-
-                # Take only the requested count
-                prompts = prompts[:int(count)]
-
-                # Join with newlines
-                prompts_text = '\n'.join(prompts)
-
-                print(f"✓ Generated {len(prompts)} prompts")
-                return prompts_text
-
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                error_msg = f"Error generating prompts: {str(e)}"
-                print(f"⚠️ {error_msg}")
-                # Fallback to template-based generation
-                style_prefix = f"{style} " if style else ""
-                if generation_mode == "start-to-end":
-                    fallback = '\n'.join([start_prompt] + [f"{style_prefix}{theme} transforming"] * max(0, int(count)-2) + [end_prompt])
-                else:
-                    actions = ["resting peacefully", "moving slowly", "actively exploring", "racing dynamically", "GOING WILD"]
-                    fallback = '\n'.join([f"{style_prefix}{theme} {action}" for action in actions[:int(count)]])
-                return fallback
-
-        # Wire up the button with visibility toggle for start/end mode
-        def toggle_start_end_visibility(mode):
-            """Show/hide start and end prompt fields based on generation mode."""
-            is_start_end = mode == "start-to-end"
-            return gr.update(visible=is_start_end), gr.update(visible=is_start_end)
-
-        required_components = [
-            'audio_ai_generation_mode', 'audio_ai_intensity', 'audio_ai_style',
-            'audio_ai_prompt_theme', 'audio_ai_prompt_count',
-            'audio_ai_start_prompt', 'audio_ai_end_prompt', 'audio_sync_prompts'
-        ]
-
-        if all(comp in locals() for comp in required_components):
-            print(f"🔧 All {len(required_components)} components found for AI prompt generation wiring")
-
-            # Wire up mode change to show/hide start/end prompts
-            locals()['audio_ai_generation_mode'].change(
-                fn=toggle_start_end_visibility,
-                inputs=[locals()['audio_ai_generation_mode']],
-                outputs=[locals()['audio_ai_start_prompt'], locals()['audio_ai_end_prompt']]
-            )
-            print("   ✓ Mode change visibility toggle wired")
-
-            # Wire up generate button
-            locals()['audio_ai_generate_button'].click(
-                fn=generate_prompts_with_ai,
-                inputs=[
-                    locals()['audio_ai_generation_mode'],
-                    locals()['audio_ai_intensity'],
-                    locals()['audio_ai_style'],
-                    locals()['audio_ai_prompt_theme'],
-                    locals()['audio_ai_prompt_count'],
-                    locals()['audio_ai_start_prompt'],
-                    locals()['audio_ai_end_prompt']
-                ],
-                outputs=[locals()['audio_sync_prompts']]
-            )
-            print("✨ AI prompt generation button connected successfully")
-        else:
-            missing = [c for c in required_components if c not in locals()]
-            print(f"⚠️ Could not wire AI prompt button - missing components: {missing}")
 
     # Set up Wan Generate button if it exists - with better error handling
     if 'wan_generate_button' in locals() and 'wan_generation_status' in locals():
