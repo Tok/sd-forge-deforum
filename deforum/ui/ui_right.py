@@ -33,28 +33,53 @@ logger = get_logger()
 
 
 def get_latest_frames():
-    """Poll for latest frame and depth map preview files during generation"""
+    """Poll for latest frame and depth map preview files during generation.
+
+    Returns None, None if:
+    - No generation in progress (checked via preview file age)
+    - Backend is disconnected
+    - No output directories exist
+    """
     import glob
     from pathlib import Path
+    import time
 
-    deforum_outdir = os.path.join(os.getcwd(), 'outputs', 'deforum')
+    try:
+        deforum_outdir = os.path.join(os.getcwd(), 'outputs', 'deforum')
 
-    # Find most recent directory (Deforum_TIMESTAMP pattern)
-    subdirs = [d for d in glob.glob(os.path.join(deforum_outdir, "Deforum_*")) if os.path.isdir(d)]
-    if not subdirs:
+        # Find most recent directory (Deforum_TIMESTAMP pattern)
+        subdirs = [d for d in glob.glob(os.path.join(deforum_outdir, "Deforum_*")) if os.path.isdir(d)]
+        if not subdirs:
+            return None, None
+
+        latest_dir = max(subdirs, key=os.path.getmtime)
+
+        # Look for fixed preview filenames
+        frame_preview = os.path.join(latest_dir, "frame-preview.png")
+        depth_preview = os.path.join(latest_dir, "depth-raft-preview.png")
+
+        # Check if preview files are fresh (modified within last 5 seconds)
+        # This prevents showing stale previews and stops polling when generation ends
+        current_time = time.time()
+        frame_is_fresh = (
+            os.path.exists(frame_preview) and
+            (current_time - os.path.getmtime(frame_preview)) < 5.0
+        )
+        depth_is_fresh = (
+            os.path.exists(depth_preview) and
+            (current_time - os.path.getmtime(depth_preview)) < 5.0
+        )
+
+        # Return paths only if files are fresh
+        latest_frame = frame_preview if frame_is_fresh else None
+        latest_depth = depth_preview if depth_is_fresh else None
+
+        return latest_frame, latest_depth
+
+    except Exception:
+        # Silently handle errors (e.g., backend disconnected, filesystem issues)
+        # This prevents error spam in the UI
         return None, None
-
-    latest_dir = max(subdirs, key=os.path.getmtime)
-
-    # Look for fixed preview filenames instead of scanning all files
-    frame_preview = os.path.join(latest_dir, "frame-preview.png")
-    depth_preview = os.path.join(latest_dir, "depth-raft-preview.png")
-
-    # Return paths if files exist, otherwise None
-    latest_frame = frame_preview if os.path.exists(frame_preview) else None
-    latest_depth = depth_preview if os.path.exists(depth_preview) else None
-
-    return latest_frame, latest_depth
 
 def on_ui_tabs():
     # extend paths using sys.path.extend so we can access all of our files and folders
@@ -312,6 +337,15 @@ def on_ui_tabs():
                     load_settings_btn = gr.Button('Load All Settings', elem_id='deforum_load_settings_btn')
                     open_folder_btn = gr.Button('📂 Open Output Directory', elem_id='deforum_open_folder_btn')
 
+        # Live preview polling - updates every 500ms
+        # Smart polling: only shows fresh previews (< 5 sec old), silently handles errors
+        live_preview_timer = gr.Timer(value=0.5, active=True)
+        live_preview_timer.tick(
+            fn=get_latest_frames,
+            inputs=[],
+            outputs=[live_preview_image, depth_preview_image]
+        )
+
         component_list = [components[name] for name in get_component_names()]
 
         submit.click(
@@ -325,14 +359,6 @@ def on_ui_tabs():
                          html_info
                     ],
                 )
-
-        # Live preview polling - updates every 500ms during generation
-        live_preview_timer = gr.Timer(value=0.5, active=True)
-        live_preview_timer.tick(
-            fn=get_latest_frames,
-            inputs=[],
-            outputs=[live_preview_image, depth_preview_image]
-        )
         
         settings_component_list = [components[name] for name in get_settings_component_names()]
         video_settings_component_list = [components[name] for name in list(DeforumOutputArgs().keys())]
