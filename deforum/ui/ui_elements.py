@@ -3511,162 +3511,168 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
 
 
 def load_wan_prompts_handler():
-    """Load Wan prompts from default settings"""
+    """Load Wan prompts from default settings.
+
+    Uses pure functions from deforum.utils.parsing.prompts for formatting.
+    """
+    import json
+    import os
+    from deforum.utils.parsing.prompts import format_prompts_as_multiline
+
     try:
-        import json
-        import os
-        
         # Load prompts from default_settings.txt
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'default_settings.txt')
-        
+
         if not os.path.exists(settings_path):
             print(f"❌ Default settings file not found: {settings_path}")
             return "0: A peaceful landscape scene, photorealistic"
-        
+
         with open(settings_path, 'r', encoding='utf-8') as f:
             settings = json.load(f)
-        
+
         # Get wan_prompts from settings
         wan_prompts = settings.get('wan_prompts', {})
-        
+
         if not wan_prompts:
             print("⚠️ No wan_prompts found in default settings, falling back to basic prompt")
             return "0: A peaceful landscape scene, photorealistic"
-        
-        # Convert prompts dict to textarea format (frame: prompt)
-        prompt_lines = []
-        for frame, prompt in sorted(wan_prompts.items(), key=lambda x: int(x[0])):
-            prompt_lines.append(f"{frame}: {prompt}")
-        
-        result = "\n".join(prompt_lines)
+
+        # Convert prompts dict to textarea format using pure function
+        result = format_prompts_as_multiline(wan_prompts)
         print(f"✅ Loaded {len(wan_prompts)} Wan prompts from default settings")
         return result
-        
+
     except Exception as e:
         print(f"❌ Error loading Wan prompts: {e}")
         return f"0: Error loading prompts: {str(e)}"
 
 
 def load_deforum_prompts_handler():
-    """Load original Deforum prompts from default settings"""
+    """Load original Deforum prompts from default settings.
+
+    Uses pure functions from deforum.utils.parsing.prompts for formatting.
+    """
+    import json
+    import os
+    from deforum.utils.parsing.prompts import format_prompts_as_multiline
+
     try:
-        import json
-        import os
-        
         # Load prompts from default_settings.txt
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'default_settings.txt')
-        
+
         if not os.path.exists(settings_path):
             print(f"❌ Default settings file not found: {settings_path}")
             return "0: A peaceful landscape scene, photorealistic"
-        
+
         with open(settings_path, 'r', encoding='utf-8') as f:
             settings = json.load(f)
-        
+
         # Get prompts from settings (main prompts section)
         deforum_prompts = settings.get('prompts', {})
-        
+
         if not deforum_prompts:
             print("⚠️ No prompts found in default settings, falling back to basic prompt")
             return "0: A peaceful landscape scene, photorealistic"
-        
-        # Convert prompts dict to textarea format (frame: prompt)
-        prompt_lines = []
-        for frame, prompt in sorted(deforum_prompts.items(), key=lambda x: int(x[0])):
-            prompt_lines.append(f"{frame}: {prompt}")
-        
-        result = "\n".join(prompt_lines)
+
+        # Convert prompts dict to textarea format using pure function
+        result = format_prompts_as_multiline(deforum_prompts)
         print(f"✅ Loaded {len(deforum_prompts)} Deforum prompts from default settings")
         return result
-        
+
     except Exception as e:
         print(f"❌ Error loading Deforum prompts: {e}")
         return f"0: Error loading prompts: {str(e)}"
 
 
 def load_deforum_to_wan_prompts_handler():
-    """Load current Deforum prompts into Wan prompts field"""
+    """Load current Deforum prompts into Wan prompts field.
+
+    Uses pure functions from deforum.utils.parsing.prompts for conversion.
+    """
+    from deforum.utils.parsing.prompts import (
+        validate_prompts_not_empty,
+        parse_prompts_json,
+        convert_deforum_to_wan_prompts,
+        format_prompts_as_json,
+        create_error_prompt
+    )
+
     try:
         # Try to get animation prompts from the stored component reference
         animation_prompts_json = ""
-        
+
         if hasattr(enhance_prompts_handler, '_animation_prompts_component'):
             try:
                 animation_prompts_json = enhance_prompts_handler._animation_prompts_component.value
                 print(f"📋 Loading Deforum prompts to Wan prompts field")
             except Exception as e:
                 print(f"⚠️ Could not access animation_prompts component: {e}")
-        
-        if not animation_prompts_json or animation_prompts_json.strip() == "":
-            return """{"0": "No Deforum prompts found! Go to the Prompts tab and configure your animation prompts first."}"""
-        
-        # Parse the JSON and convert to clean Wan format
-        try:
-            import json
-            prompts_dict = json.loads(animation_prompts_json)
-            
-            # Convert to Wan format (clean prompts without negative parts)
-            wan_prompts_dict = {}
-            for frame, prompt in prompts_dict.items():
-                # Clean up the prompt (remove negative prompts)
-                clean_prompt = prompt.split('--neg')[0].strip()
-                wan_prompts_dict[frame] = clean_prompt
-            
-            # Return as JSON
-            result = json.dumps(wan_prompts_dict, ensure_ascii=False, indent=2)
-            print(f"✅ Converted {len(prompts_dict)} Deforum prompts to Wan JSON format")
-            return result
-            
-        except json.JSONDecodeError as e:
-            return json.dumps({
-                "0": f"Invalid JSON in Deforum prompts: {str(e)}. Fix the JSON format in the Prompts tab first."
-            }, indent=2)
-            
+
+        # Validate not empty
+        is_valid, error = validate_prompts_not_empty(animation_prompts_json)
+        if not is_valid:
+            return create_error_prompt(
+                "No Deforum prompts found! Go to the Prompts tab and configure your animation prompts first."
+            )
+
+        # Parse the JSON
+        prompts_dict, parse_error = parse_prompts_json(animation_prompts_json)
+        if parse_error:
+            return create_error_prompt(
+                f"Invalid JSON in Deforum prompts: {parse_error}. Fix the JSON format in the Prompts tab first."
+            )
+
+        # Convert to Wan format using pure function
+        wan_prompts_dict = convert_deforum_to_wan_prompts(prompts_dict)
+
+        # Return as JSON
+        result = format_prompts_as_json(wan_prompts_dict)
+        print(f"✅ Converted {len(prompts_dict)} Deforum prompts to Wan JSON format")
+        return result
+
     except Exception as e:
         return f"❌ Error loading Deforum prompts: {str(e)}"
 
 
 def load_wan_defaults_handler():
-    """Load default Wan prompts from settings file"""
+    """Load default Wan prompts from settings file.
+
+    Uses pure functions from deforum.utils.parsing.prompts for formatting.
+    """
+    import json
+    import os
+    from deforum.utils.parsing.prompts import (
+        create_fallback_prompts,
+        format_prompts_as_json
+    )
+
     try:
-        import json
-        import os
-        
         # Load default prompts from settings
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'default_settings.txt')
-        
+
         if not os.path.exists(settings_path):
-            # Fallback to simple defaults
-            return json.dumps({
-                "0": "prompt text",
-                "60": "another prompt"
-            }, ensure_ascii=False, indent=2)
-        
+            # Fallback to simple defaults using pure function
+            return format_prompts_as_json(create_fallback_prompts())
+
         try:
             with open(settings_path, 'r', encoding='utf-8') as f:
                 settings = json.load(f)
-            
+
             wan_prompts = settings.get('wan_prompts', {})
-            
+
             if wan_prompts:
-                # Return as JSON
-                result = json.dumps(wan_prompts, ensure_ascii=False, indent=2)
+                # Return as JSON using pure function
+                result = format_prompts_as_json(wan_prompts)
                 print(f"✅ Loaded {len(wan_prompts)} default Wan prompts from settings")
                 return result
             else:
                 # Use fallback
-                return json.dumps({
-                    "0": "prompt text",
-                    "60": "another prompt"
-                }, ensure_ascii=False, indent=2)
-                
+                return format_prompts_as_json(create_fallback_prompts())
+
         except Exception as e:
             print(f"⚠️ Error loading default settings: {e}")
             # Return simple fallback
-            return json.dumps({
-                "0": "prompt text",
-                "60": "another prompt"
-            }, ensure_ascii=False, indent=2)
+            return format_prompts_as_json(create_fallback_prompts())
             
     except Exception as e:
         return json.dumps({
