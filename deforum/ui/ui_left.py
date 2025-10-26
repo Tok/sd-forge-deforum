@@ -331,6 +331,13 @@ def setup_deforum_left_side_ui():
                     Args:
                         threshold_adjustment: Adjust intensity threshold (negative = more events, positive = fewer events)
                     """
+                    print("="*80)
+                    print("🎵 AUDIO SYNC FUNCTION CALLED")
+                    print(f"   Soundtrack: {soundtrack_path_val}")
+                    print(f"   Prompts: {audio_sync_prompts_val[:100]}...")
+                    print(f"   Detection: {detection_method}, Sensitivity: {sensitivity}")
+                    print("="*80)
+
                     # Apply threshold adjustment (-5% = -0.05, +5% = +0.05)
                     adjusted_threshold = max(0.0, min(1.0, intensity_threshold + threshold_adjustment))
 
