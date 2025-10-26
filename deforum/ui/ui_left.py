@@ -245,6 +245,10 @@ def setup_deforum_left_side_ui():
             locals()['tab_wan'] = tab_wan
 
             # ====== AUDIO SYNC BUTTON WIRING (moved inside tabs context) ======
+            print("🔍 DEBUG: Button wiring section reached - checking for audio components...")
+            print(f"   audio_upload in locals: {'audio_upload' in locals()}")
+            print(f"   audio_ai_generate_button in locals: {'audio_ai_generate_button' in locals()}")
+
             # Wire up audio upload to use actual FPS and update max_frames
             if 'audio_upload' in locals() and 'soundtrack_path' in locals():
                 def handle_audio_upload_with_fps(audio_filepath, current_fps):
