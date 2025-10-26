@@ -5,7 +5,7 @@ from deforum.media.subtitle_handler import format_animation_params, write_subtit
 
 def _call_format_animation_params(data, frame_i, params_to_print):
     params_string = format_animation_params(data.animation_keys.deform_keys, data.prompt_series,
-                                            frame_i - 1, params_to_print)
+                                            frame_i, params_to_print)
     return _prepare_prompt_for_subtitle(params_string)
 
 
