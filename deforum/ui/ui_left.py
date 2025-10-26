@@ -438,7 +438,7 @@ def setup_deforum_left_side_ui():
                     inputs=[audio_ai_generation_mode],
                     outputs=[audio_ai_start_prompt, audio_ai_end_prompt]
                 )
-                logger.info("   {emoji_if_enabled('✓')} Mode change visibility toggle wired")
+                logger.info(f"   {emoji_if_enabled('✓')} Mode change visibility toggle wired")
 
                 # Wire up generate button
                 audio_ai_generate_button.click(

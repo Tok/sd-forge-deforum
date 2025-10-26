@@ -13,8 +13,14 @@ def is_verbose():
     return opts.data.get("deforum_debug_mode_enabled", False)
 
 
+def is_emojis_enabled():
+    """Check if emojis are enabled in UI and console output."""
+    return opts.data.get("deforum_enable_emojis", False)  # Disabled by default
+
+
 def is_nonessential_emojis_disabled():
-    return opts.data.get("deforum_disable_nonessential_emojis", False)
+    """Legacy function name - redirects to is_emojis_enabled()."""
+    return not is_emojis_enabled()
 
 
 def has_img2img_fix_steps():
@@ -68,7 +74,8 @@ def is_own_line_for_prompt_srt():
 
 
 def is_emojis_disabled():
-    return opts.data.get("deforum_disable_nonessential_emojis", False)
+    """Legacy function name - redirects to is_emojis_enabled()."""
+    return not is_emojis_enabled()
 
 
 def get_log_theme():

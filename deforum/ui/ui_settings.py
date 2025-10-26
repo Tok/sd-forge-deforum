@@ -67,7 +67,7 @@ def on_ui_settings():
            "INFO", ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     add_dd("deforum_log_theme", "Console Theme - Slopcore (blue→purple), Classic (vibrant), Simple (plain text)",
            "slopcore", ["slopcore", "classic", "simple"])
-    add_cb("deforum_disable_nonessential_emojis", "Disable emojis in UI and console output", default_value=True)
+    add_cb("deforum_enable_emojis", "Enable emojis in UI and console output", default_value=False)
 
     add_subsection("Deforum FFmpeg Settings")
     add("deforum_ffmpeg_location", "FFmpeg path/ location", find_ffmpeg_binary())

@@ -282,11 +282,11 @@ def emoji_if_enabled(emoji_str: str) -> str:
     else:
         # If no logger yet, check settings directly
         try:
-            from deforum.rendering.options import is_emojis_disabled, get_log_theme
-            emojis_enabled = not is_emojis_disabled()
+            from deforum.rendering.options import is_emojis_enabled, get_log_theme
+            emojis_enabled = is_emojis_enabled()
             theme = get_log_theme()
         except:
-            emojis_enabled = True  # Fallback: show emoji
+            emojis_enabled = False  # Fallback: no emoji (match UI default)
 
     if not emojis_enabled:
         return ''
@@ -317,16 +317,16 @@ def get_logger() -> DeforumLogger:
             from deforum.rendering.options import (
                 get_log_theme,
                 get_log_level,
-                is_emojis_disabled
+                is_emojis_enabled
             )
             theme = get_log_theme()
             log_level = get_log_level()
-            emojis_enabled = not is_emojis_disabled()
+            emojis_enabled = is_emojis_enabled()
         except ImportError:
             # Fallback to defaults if settings not available
             theme = 'slopcore'
             log_level = 'INFO'
-            emojis_enabled = True
+            emojis_enabled = False  # Match UI default (unchecked = disabled)
 
         _logger_instance = DeforumLogger(
             theme=theme,
