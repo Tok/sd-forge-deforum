@@ -62,13 +62,14 @@ class Tween:
         # Cadence can be asserted because subtitle generation
         # skips the last tween in favor of its parent diffusion frame.
         is_cadence = True
-        decremented_index = self.i - 1
+        # With 0-based indexing, use frame index directly
+        frame_index = self.i
         # Since tween frames are not diffused, they don't have their own seed.
         # We provide the seed of the previous frame that was diffused (parent diffusion frame has the next seed).
         # Since the 1st frame is always diffused it never has tweens, meaning there's always a previous_diffusion_frame.
         seed = previous_diffusion_frame.seed
         subseed = previous_diffusion_frame.subseed
-        call_write_subtitle_from_to(data, sub_i, decremented_index, is_cadence, seed, subseed, from_time, to_time)
+        call_write_subtitle_from_to(data, sub_i, frame_index, is_cadence, seed, subseed, from_time, to_time)
 
     def has_cadence(self):
         return self.cadence_flow is not None

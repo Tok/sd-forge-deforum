@@ -24,7 +24,7 @@ def call_generate(data, frame: 'DiffusionFrame', redo_seed: int = None):
     ia.args.seed = frame.seed if redo_seed is None else redo_seed  # update seed with precalculated value from frame
     ia.root.subseed = frame.subseed
     ia.root.subseed_strength = frame.subseed_strength
-    index = frame.i - 1
+    index = frame.i
 
     try:
         result = generate(ia.args, data.animation_keys.deform_keys, ia.anim_args, ia.loop_args, ia.controlnet_args, ia.root, data.parseq_adapter, index,
