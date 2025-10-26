@@ -13,7 +13,6 @@ from deforum.utils.system.logging import (
     get_logger,
     emoji_if_enabled,
     LogLevel,
-    LogTheme,
 )
 from deforum.utils.system.logging.emoji import _select, get_themed_emoji
 from deforum.rendering.options import is_emojis_enabled
@@ -163,14 +162,15 @@ class TestLogLevel:
         assert LogLevel.ERROR < LogLevel.CRITICAL
 
 
-class TestLogTheme:
-    """Test LogTheme enum."""
+class TestThemeValues:
+    """Test theme string values (LogTheme enum not exported)."""
 
-    def test_theme_values(self):
-        """LogTheme should have expected themes."""
-        assert LogTheme.SLOPCORE.value == 'slopcore'
-        assert LogTheme.CLASSIC.value == 'classic'
-        assert LogTheme.SIMPLE.value == 'simple'
+    def test_theme_strings(self):
+        """Theme strings should be valid for themed emoji system."""
+        # Test that themed emojis work with standard theme names
+        assert get_themed_emoji('success', 'slopcore') != ''
+        assert get_themed_emoji('success', 'classic') == '✅'
+        assert get_themed_emoji('success', 'simple') == ''
 
 
 class TestLoggerOutput:
