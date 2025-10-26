@@ -44,7 +44,7 @@ class KeyFrameDistribution(Enum):
 
     @staticmethod
     def uniform_indexes(start_index, max_frames, diffusion_frame_count):
-        return [1 + start_index + int(n * (max_frames - 1 - start_index) / (diffusion_frame_count - 1))
+        return [start_index + int(n * (max_frames - start_index) / (diffusion_frame_count - 1))
                 for n in range(diffusion_frame_count)]
 
     @staticmethod
@@ -75,25 +75,25 @@ class KeyFrameDistribution(Enum):
 
     @staticmethod
     def select_parseq_keyframes(data):
-        # Parseq keyframe indices are shifted 1 up before they used.
+        # Parseq keyframes are 0-indexed (frame 0 is first frame)
         keyframes = data.parseq_adapter.parseq_json["keyframes"]
-        return list(map(lambda _: _["frame"] + 1, keyframes))
+        return list(map(lambda _: _["frame"], keyframes))
 
     @staticmethod
     def select_deforum_keyframes(data):
-        # Prompt at 0 is always meant to be defined in prompts, but the last frame is not, so we just take max_frames.
+        # Prompt at 0 is always meant to be defined in prompts, but the last frame is not, so we just take max_frames - 1.
         prompt_keyframes = list(map(int, data.args.root.prompt_keyframes))
-        last_frame = [data.args.anim_args.max_frames]
+        last_frame = [data.args.anim_args.max_frames - 1]  # Last valid index with 0-based indexing
         keyframes = list(set(prompt_keyframes + last_frame))
         keyframes.sort()
-        keyframes[0] = 1  # Makes sure 1st frame is always 1.
+        keyframes[0] = 0  # Makes sure 1st frame is always 0 (0-indexed).
 
         max_frames = data.args.anim_args.max_frames
-        # Filter out frames > max_frames or < 1 and log warning if any are removed.
+        # Filter out frames >= max_frames or < 0 and log warning if any are removed.
         original_count = len(keyframes)
-        keyframes = list(filter(lambda _: 1 <= _ <= max_frames, keyframes))
+        keyframes = list(filter(lambda _: 0 <= _ < max_frames, keyframes))
         if len(keyframes) < original_count:
-            log_utils.warning(f"Removed at least one prompt because its index is not between 0 and {max_frames}. "
+            log_utils.warning(f"Removed at least one prompt because its index is not between 0 and {max_frames - 1}. "
                            f"Original count: {original_count}, New count: {len(keyframes)}")
         return keyframes
 

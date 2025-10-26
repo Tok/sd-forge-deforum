@@ -48,7 +48,7 @@ class DiffusionFrame:
     keyframe_type: str  # Type of interpolation for this keyframe's tweens: "tween", "flf2v", or "auto"
 
     def actual_steps(self, data):
-        if self.i == 1 and not data.args.args.use_init:
+        if self.i == 0 and not data.args.args.use_init:
             return self.schedule.steps
         return int(ceil(self.schedule.steps * self.strength)) + 1
 
@@ -234,9 +234,8 @@ class DiffusionFrame:
     def create_all_frames(data: RenderData, keyframe_dist: KeyFrameDistribution = KeyFrameDistribution.default()):
         """Creates a list of key steps for the entire animation."""
         start_index = 0
-        max_frames = (data.args.anim_args.max_frames
-                      if not data.parseq_adapter.use_parseq
-                      else data.args.anim_args.max_frames - 1)
+        # Now that everything is 0-indexed, no adjustment needed for Parseq
+        max_frames = data.args.anim_args.max_frames
         diffusion_frame_count = DiffusionFrame.precalculate_diffusion_frame_count(
             data, keyframe_dist, start_index, max_frames)
 
@@ -274,10 +273,10 @@ class DiffusionFrame:
         # The number of generated tweens depends on index since last diffusion_frame. The last tween has the same
         # index as the diffusion_frame it belongs to and is meant to replace the unprocessed original key frame.
         assert len(diffusion_frames) == diffusion_frame_count
-        assert diffusion_frames[0].i == 1  # 1st diffusion frame is at index 1
+        assert diffusion_frames[0].i == 0  # 1st diffusion frame is at index 0 (0-based)
         assert diffusion_frames[0].tweens == []  # 1st diffusion frame has no tweens
         if keyframe_distribution != KeyFrameDistribution.KEYFRAMES_ONLY:
-            assert diffusion_frames[-1].i == data.args.anim_args.max_frames  # last index is same as max frames
+            assert diffusion_frames[-1].i == data.args.anim_args.max_frames - 1  # last valid index is max_frames - 1
 
         DiffusionFrame._assign_initial_seeds_and_schedules(data, diffusion_frames)
 
