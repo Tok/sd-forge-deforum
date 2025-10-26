@@ -1056,12 +1056,6 @@ def AudioSyncArgs():
             "value": False,
             "info": "Enable audio event detection for prompt synchronization. Disabled when Parseq is active (Parseq has its own audio features)."
         },
-        "audio_file_path": {
-            "label": "Audio File Path",
-            "type": "textbox",
-            "value": "",
-            "info": "Path to audio file (MP3, WAV, FLAC, etc.) for event detection"
-        },
         "audio_detection_method": {
             "label": "Detection Method",
             "type": "dropdown",
