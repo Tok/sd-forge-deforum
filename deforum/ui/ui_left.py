@@ -573,32 +573,9 @@ def setup_deforum_left_side_ui():
 
                     try:
                         from deforum.integrations.wan.utils.prompt_extend import QwenPromptExpander
-                        import os
 
-                        # Use local model path (must be downloaded first with download-all-models.sh)
-                        # Check multiple possible locations for the model
-                        possible_paths = [
-                            os.path.join(os.getcwd(), 'models', 'qwen', 'Qwen2.5-3B-Instruct'),
-                            os.path.join(os.getcwd(), '..', '..', 'models', 'qwen', 'Qwen2.5-3B-Instruct'),
-                            'models/qwen/Qwen2.5-3B-Instruct'
-                        ]
-
-                        model_path = None
-                        for path in possible_paths:
-                            if os.path.exists(path):
-                                model_path = path
-                                break
-
-                        if model_path is None:
-                            raise FileNotFoundError(
-                                "Qwen model not found. Please download it first:\n"
-                                "  ./download-all-models.sh  (Linux/Mac)\n"
-                                "  download-all-models.bat   (Windows)\n"
-                                "Or manually: huggingface-cli download Qwen/Qwen2.5-3B-Instruct --local-dir models/qwen/Qwen2.5-3B-Instruct"
-                            )
-
-                        print(f"🔍 Using Qwen model from: {model_path}")
-                        qwen = QwenPromptExpander(model_name=model_path)
+                        # Initialize Qwen (will auto-select model based on VRAM)
+                        qwen = QwenPromptExpander()
 
                         # Build style descriptor
                         style_text = f"{style} style " if style and style.strip() else ""
