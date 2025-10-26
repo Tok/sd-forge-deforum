@@ -10,7 +10,7 @@ import os
 import sys
 from pathlib import Path
 import shutil
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -29,14 +29,14 @@ def find_wan_models():
         Path("models/Wan"),
     ]
     
-    logger.info(f"🔍 Searching for models in:")
+    logger.info(f"{emoji_if_enabled("🔍")} Searching for models in:")
     for path in search_paths:
         logger.info(f"   - {path.absolute()}")
     
     models = []
     for base_path in search_paths:
         if base_path.exists():
-            logger.info(f"✅ Found directory: {base_path}")
+            logger.info(f"{emoji_if_enabled("✅")} Found directory: {base_path}")
             
             # Look for direct model files in this directory
             if _looks_like_model_dir(base_path):
@@ -125,7 +125,7 @@ def validate_vace_model(model_path: Path) -> tuple[bool, list]:
     return is_valid, missing_files
 
 def main():
-    logger.info("🔍 Wan Model Cleanup Utility")
+    logger.info(f"{emoji_if_enabled("🔍")} Wan Model Cleanup Utility")
     logger.info("=" * 50)
     
     models = find_wan_models()
@@ -145,7 +145,7 @@ def main():
         if 'vace' in model.name.lower():
             is_valid, missing = validate_vace_model(model)
             if is_valid:
-                logger.info(f"   ✅ Valid VACE model")
+                logger.info(f"   {emoji_if_enabled("✅")} Valid VACE model")
                 valid_models.append(model)
             else:
                 logger.info(f"   ❌ Corrupted VACE model", emoji='off')
@@ -158,7 +158,7 @@ def main():
         else:
             # Basic check for legacy models and unknown types
             if (model / "model_index.json").exists():
-                logger.info(f"   ✅ Valid legacy model")
+                logger.info(f"   {emoji_if_enabled("✅")} Valid legacy model")
                 valid_models.append(model)
             else:
                 # Check if it has any recognizable Wan model structure
@@ -171,19 +171,19 @@ def main():
                 )
                 
                 if has_valid_structure:
-                    logger.info(f"   ✅ Valid legacy model (has recognizable structure)")
+                    logger.info(f"   {emoji_if_enabled("✅")} Valid legacy model (has recognizable structure)")
                     valid_models.append(model)
                 else:
                     logger.info(f"   ❌ Invalid/leftover files (not a proper Wan model)", emoji='off')
                     print(f"   Contains: {[f.name for f in model.iterdir()][:5]}...")  # Show first 5 files
                     corrupted_models.append(model)
     
-    logger.info(f"\n📊 Summary:", emoji='distribution')
-    logger.info(f"   ✅ Valid models: {len(valid_models)}")
+    logger.info(f"\n{emoji_if_enabled("📊")} Summary:", emoji='distribution')
+    logger.info(f"   {emoji_if_enabled("✅")} Valid models: {len(valid_models)}")
     logger.info(f"   ❌ Corrupted models: {len(corrupted_models)}", emoji='off')
     
     if corrupted_models:
-        logger.info(f"\n🔧 Corrupted models found:", emoji='wrench')
+        logger.info(f"\n{emoji_if_enabled("🔧")} Corrupted models found:", emoji='wrench')
         for model in corrupted_models:
             logger.info(f"   - {model.name} ({model})")
         
@@ -193,11 +193,11 @@ def main():
                 logger.info(f"🗑️ Deleting: {model}")
                 try:
                     shutil.rmtree(model)
-                    logger.info(f"   ✅ Deleted successfully")
+                    logger.info(f"   {emoji_if_enabled("✅")} Deleted successfully")
                 except Exception as e:
                     logger.error(f"   ❌ Failed to delete: {e}")
             
-            logger.info(f"\n💡 To download Wan 2.2 TI2V models:", emoji='bulb')
+            logger.info(f"\n{emoji_if_enabled("💡")} To download Wan 2.2 TI2V models:", emoji='bulb')
             logger.info(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
             logger.info(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
         else:

@@ -25,7 +25,7 @@ from pathlib import Path
 import os
 import sys
 import subprocess
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -63,7 +63,7 @@ class WanFlowMatchingPipeline:
             ]
             
             if all(f.exists() for f in key_files):
-                logger.info(f"✅ Official Wan repository already exists at: {wan_repo_dir}")
+                logger.info(f"{emoji_if_enabled("✅")} Official Wan repository already exists at: {wan_repo_dir}")
                 return wan_repo_dir
                 
         # Clone repository
@@ -81,7 +81,7 @@ class WanFlowMatchingPipeline:
             if result.returncode != 0:
                 raise subprocess.CalledProcessError(result.returncode, "git clone", result.stderr)
             
-            logger.info(f"✅ Wan 2.1 repository cloned successfully")
+            logger.info(f"{emoji_if_enabled("✅")} Wan 2.1 repository cloned successfully")
             return wan_repo_dir
             
         except Exception as e:
@@ -116,7 +116,7 @@ class WanFlowMatchingPipeline:
             # For now, we'll implement a realistic fallback
             self._initialize_official_pipeline()
             
-            logger.info("✅ Official Wan pipeline loaded successfully")
+            logger.info(f"{emoji_if_enabled("✅")} Official Wan pipeline loaded successfully")
             self.loaded = True
             
         except Exception as e:
@@ -383,7 +383,7 @@ class WanFlowMatchingPipeline:
                 guidance_scale=guidance_scale
             )
             
-            logger.info(f"✅ Generated {len(frames)} frames using enhanced Wan pipeline")
+            logger.info(f"{emoji_if_enabled("✅")} Generated {len(frames)} frames using enhanced Wan pipeline")
             return frames
             
         except Exception as e:
@@ -401,7 +401,7 @@ def create_wan_pipeline(model_path: str,
     pipeline = WanFlowMatchingPipeline(model_path, device)
     pipeline.load_model_components()
     
-    logger.info("✅ Wan Flow Matching pipeline ready!")
+    logger.info(f"{emoji_if_enabled("✅")} Wan Flow Matching pipeline ready!")
     return pipeline
 
 

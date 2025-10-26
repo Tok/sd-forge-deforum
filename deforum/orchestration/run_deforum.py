@@ -31,7 +31,7 @@ from deforum.media.upscaling import make_upscale_v2
 from deforum.media.video_audio_utilities import ffmpeg_stitch_video, make_gifski_gif, handle_imgs_deletion, handle_input_frames_deletion, handle_cn_frames_deletion, get_ffmpeg_params, get_ffmpeg_paths
 from pathlib import Path
 from deforum.utils.system.logging.log import UNDERLINE, ORANGE, RED, RESET_COLOR
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 from deforum.utils.system.logging.themes import (
     HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
     HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7
@@ -134,7 +134,7 @@ def run_deforum(*args):
             for path in possible_paths:
                 if os.path.exists(path):
                     settings_file = path
-                    logger.debug(f"  ✓ Found: {path}")
+                    logger.debug(f"  {emoji_if_enabled("✓")} Found: {path}")
                     break
             
             if settings_file:
@@ -156,7 +156,7 @@ def run_deforum(*args):
                                     args_dict[key] = value
                                     wan_settings_loaded += 1
                                     if 'flf2v' in key.lower():
-                                        logger.debug(f"  ✓ Loaded {key}: {value}")
+                                        logger.debug(f"  {emoji_if_enabled("✓")} Loaded {key}: {value}")
 
                         if wan_settings_loaded > 0:
                             logger.info(f"Resume detected: Loaded {wan_settings_loaded} wan_* settings from saved file", emoji='refresh')
@@ -263,7 +263,7 @@ def run_deforum(*args):
         try:  # dispatch to appropriate renderer
             JobStatusTracker().update_phase(job_id, DeforumJobPhase.GENERATING)
             JobStatusTracker().update_output_info(job_id, outdir=args.outdir, timestring=root.timestring)
-            logger.debug(f"\n🎬 Dispatching to renderer for mode: '{anim_args.animation_mode}'")
+            logger.debug(f"\n{emoji_if_enabled("🎬")} Dispatching to renderer for mode: '{anim_args.animation_mode}'")
             if anim_args.animation_mode == '2D' or anim_args.animation_mode == '3D':
                 if anim_args.use_mask_video: 
                     render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)  # allow mask video without an input video

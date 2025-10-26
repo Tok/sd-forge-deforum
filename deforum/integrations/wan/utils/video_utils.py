@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from typing import List, Union, Optional
 from pathlib import Path
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -17,7 +17,7 @@ logger = get_logger()
 try:
     import imageio
     from PIL import Image
-    logger.info("✅ Video utilities dependencies loaded")
+    logger.info(f"{emoji_if_enabled("✅")} Video utilities dependencies loaded")
 except ImportError as e:
     logger.info(f"Missing video dependencies: {e}", emoji='off')
 
@@ -78,7 +78,7 @@ class VideoProcessor:
             
             # Save as video
             imageio.mimsave(output_path, processed_frames, fps=fps, format='mp4')
-            logger.info(f"✅ Video saved successfully with {len(processed_frames)} frames at {fps} FPS")
+            logger.info(f"{emoji_if_enabled("✅")} Video saved successfully with {len(processed_frames)} frames at {fps} FPS")
             
             return True
             
@@ -131,7 +131,7 @@ class VideoProcessor:
                 processed_frame = self._process_frame(frame, i)
                 processed_frames.append(processed_frame)
             
-            logger.info(f"✅ Loaded {len(processed_frames)} frames from {video_path}")
+            logger.info(f"{emoji_if_enabled("✅")} Loaded {len(processed_frames)} frames from {video_path}")
             return processed_frames
             
         except Exception as e:

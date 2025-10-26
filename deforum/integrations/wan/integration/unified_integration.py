@@ -11,7 +11,7 @@ from pathlib import Path
 from ..utils.model_discovery import WanModelDiscovery
 from ..utils.video_utils import VideoProcessor
 from ..pipelines.procedural_pipeline import WanProceduralPipeline
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -47,7 +47,7 @@ class WanUnifiedIntegration:
                 return self._load_model_pipeline(model_path, pipeline_type)
             else:
                 # Auto-discover and load best model
-                logger.info(f"🔍 Auto-discovering WAN models...")
+                logger.info(f"{emoji_if_enabled("🔍")} Auto-discovering WAN models...")
                 best_model = self.get_best_model()
                 
                 if best_model:
@@ -114,7 +114,7 @@ class WanUnifiedIntegration:
                 self.pipeline = real_integration
                 self.pipeline_type = "diffusers"
                 self.model_info = {"path": model_path, "type": "diffusers"}
-                logger.info(f"✅ Diffusers WAN pipeline loaded")
+                logger.info(f"{emoji_if_enabled("✅")} Diffusers WAN pipeline loaded")
                 return True
             else:
                 raise RuntimeError("Failed to load diffusers pipeline")
@@ -138,7 +138,7 @@ class WanUnifiedIntegration:
                 self.pipeline = complete_integration
                 self.pipeline_type = "vace"
                 self.model_info = {"path": model_path, "type": "vace"}
-                logger.info(f"✅ VACE WAN pipeline loaded")
+                logger.info(f"{emoji_if_enabled("✅")} VACE WAN pipeline loaded")
                 return True
             else:
                 raise RuntimeError("Failed to load VACE pipeline")
@@ -158,7 +158,7 @@ class WanUnifiedIntegration:
             if success:
                 self.pipeline_type = "procedural"
                 self.model_info = {"type": "procedural"}
-                logger.info(f"✅ Procedural WAN pipeline loaded")
+                logger.info(f"{emoji_if_enabled("✅")} Procedural WAN pipeline loaded")
                 return True
             else:
                 raise RuntimeError("Failed to load procedural pipeline")
@@ -197,7 +197,7 @@ class WanUnifiedIntegration:
             logger.info(f"Missing required model files: {missing_files}", emoji='off')
             return False
             
-        logger.info("✅ All required WAN model files found")
+        logger.info(f"{emoji_if_enabled("✅")} All required WAN model files found")
         return True
     
     def _load_model_config(self, model_path: str) -> Dict:
@@ -234,7 +234,7 @@ class WanUnifiedIntegration:
         logger.info(f"Generating video with {self.pipeline_type} pipeline...", emoji='movie_camera')
         logger.info(f"   📝 Prompt: {prompt[:50]}...")
         logger.info(f"   📐 Size: {width}x{height}")
-        logger.info(f"   🎬 Frames: {num_frames}", emoji='movie_camera')
+        logger.info(f"   {emoji_if_enabled("🎬")} Frames: {num_frames}", emoji='movie_camera')
         
         try:
             # Different pipelines have different interfaces

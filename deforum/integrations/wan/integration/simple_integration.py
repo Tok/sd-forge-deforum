@@ -12,7 +12,7 @@ from typing import List, Dict, Optional, Any
 import json
 from PIL import Image
 import tempfile
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -60,7 +60,7 @@ class WanSimpleIntegration:
             pipeline = self._create_custom_wan_pipeline(model_info)
             
             self.pipeline = pipeline
-            logger.info("✅ WAN model loaded successfully with custom pipeline")
+            logger.info(f"{emoji_if_enabled("✅")} WAN model loaded successfully with custom pipeline")
             return True
                 
         except Exception as e:
@@ -118,7 +118,7 @@ class WanSimpleIntegration:
                     )
                     
                     if success and os.path.exists(temp_output):
-                        logger.info(f"✅ WAN video generated successfully!")
+                        logger.info(f"{emoji_if_enabled("✅")} WAN video generated successfully!")
                         
                         # Load video frames to return
                         import imageio
@@ -173,7 +173,7 @@ class WanSimpleIntegration:
                         )
                         
                         if success and os.path.exists(temp_output):
-                            logger.info(f"✅ WAN video generated successfully!")
+                            logger.info(f"{emoji_if_enabled("✅")} WAN video generated successfully!")
                             
                             # Load video frames to return
                             import imageio
@@ -265,7 +265,7 @@ class WanSimpleIntegration:
             logger.info(f"Missing required model files: {missing_files}", emoji='off')
             return False
             
-        logger.info("✅ All required WAN model files found")
+        logger.info(f"{emoji_if_enabled("✅")} All required WAN model files found")
         return True
     
     def _generate_with_wan_pipeline(self, 
@@ -285,8 +285,8 @@ class WanSimpleIntegration:
             logger.info(f"Running WAN inference...", emoji='movie_camera')
             logger.info(f"   📝 Prompt: {prompt[:50]}...")
             logger.info(f"   📐 Size: {width}x{height}")
-            logger.info(f"   🎬 Frames: {num_frames}", emoji='movie_camera')
-            logger.info(f"   🔧 Steps: {steps}", emoji='wrench')
+            logger.info(f"   {emoji_if_enabled("🎬")} Frames: {num_frames}", emoji='movie_camera')
+            logger.info(f"   {emoji_if_enabled("🔧")} Steps: {steps}", emoji='wrench')
             logger.info(f"   📏 Guidance: {guidance_scale}", emoji='scale')
             
             # Set seed for reproducibility
@@ -341,7 +341,7 @@ class WanSimpleIntegration:
             # Save frames as video
             self._save_frames_as_video(frames, output_path, fps=8)
             
-            logger.info(f"✅ WAN video saved to: {output_path}")
+            logger.info(f"{emoji_if_enabled("✅")} WAN video saved to: {output_path}")
             return True
             
         except Exception as e:
@@ -431,7 +431,7 @@ class WanSimpleIntegration:
             
             # Save as video
             imageio.mimsave(output_path, processed_frames, fps=fps, format='mp4')
-            logger.info(f"✅ Video saved successfully with {len(processed_frames)} frames at {fps} FPS")
+            logger.info(f"{emoji_if_enabled("✅")} Video saved successfully with {len(processed_frames)} frames at {fps} FPS")
             
         except Exception as e:
             logger.error(f"Failed to save video: {e}", emoji='off')
@@ -455,7 +455,7 @@ class WanSimpleIntegration:
         logger.info(f"Generating video using SIMPLE WAN integration...", emoji='movie_camera')
         logger.info(f"   📝 Prompt: {prompt}")
         logger.info(f"   📐 Size: {width}x{height}")
-        logger.info(f"   🎬 Frames: {num_frames}", emoji='movie_camera')
+        logger.info(f"   {emoji_if_enabled("🎬")} Frames: {num_frames}", emoji='movie_camera')
         logger.info(f"   📁 Model: {model_info['name']} ({model_info['type']}, {model_info['size']})")
         
         # Validate model first
@@ -491,7 +491,7 @@ class WanSimpleIntegration:
             )
             
             if result:
-                logger.info(f"✅ WAN video generated: {output_path}")
+                logger.info(f"{emoji_if_enabled("✅")} WAN video generated: {output_path}")
                 return output_path
             else:
                 raise RuntimeError("WAN video generation returned no result")
@@ -569,13 +569,13 @@ if __name__ == "__main__":
     # Test model discovery
     models = integration.discover_models()
     if models:
-        logger.info(f"✅ Found {len(models)} model(s)")
+        logger.info(f"{emoji_if_enabled("✅")} Found {len(models)} model(s)")
         best = integration.get_best_model()
         logger.info(f"🏆 Best model: {best['name']} ({best['type']}, {best['size']})")
         
         # Test simple loading
         if integration.load_simple_wan_pipeline(best):
-            logger.info("✅ Simple WAN integration ready")
+            logger.info(f"{emoji_if_enabled("✅")} Simple WAN integration ready")
             
             # Test demo generation
             output = integration.generate_video_simple(
@@ -586,7 +586,7 @@ if __name__ == "__main__":
             )
             
             if output:
-                logger.info(f"✅ Demo generation successful: {output}")
+                logger.info(f"{emoji_if_enabled("✅")} Demo generation successful: {output}")
             else:
                 logger.error("Demo generation failed", emoji='off')
         else:

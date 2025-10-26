@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import sys
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -64,7 +64,7 @@ class WanModelDiscovery:
     
     def discover_models(self) -> List[Dict]:
         """Discover all available WAN models automatically"""
-        logger.info("🔍 Auto-discovering WAN models...")
+        logger.info(f"{emoji_if_enabled("🔍")} Auto-discovering WAN models...")
         
         discovered = []
         
@@ -82,7 +82,7 @@ class WanModelDiscovery:
         self.discovered_models = self._sort_models_by_preference(unique_models)
         
         if self.discovered_models:
-            logger.info(f"✅ Found {len(self.discovered_models)} WAN model(s):")
+            logger.info(f"{emoji_if_enabled("✅")} Found {len(self.discovered_models)} WAN model(s):")
             for i, model in enumerate(self.discovered_models):
                 logger.info(f"   {i+1}. {model['name']} ({model['type']}, {model['size']}) - {model['path']}")
         else:

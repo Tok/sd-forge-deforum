@@ -27,7 +27,7 @@ from .defaults import mask_fill_choices, get_camera_shake_list
 from deforum.integrations.controlnet.legacy_controlnet_stubs import controlnet_component_names
 from deforum.utils.validation.deprecation import handle_deprecated_settings
 from deforum.utils.general import get_deforum_version, clean_gradio_path_strings
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -77,7 +77,7 @@ def load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlne
                         setattr(args_namespace, k, jdata[k])
                         # Debug logging for wan_flf2v settings
                         if k.startswith('wan_flf2v'):
-                            logger.info(f"🔍 LOAD_ARGS: Setting {k} in {namespace_name}: {old_val} → {new_val}")
+                            logger.info(f"{emoji_if_enabled("🔍")} LOAD_ARGS: Setting {k} in {namespace_name}: {old_val} → {new_val}")
                     else:
                         logger.info(f"Key {k} doesn't exist in the custom settings data! Using default value of {v}")
         logger.info(args, anim_args, parseq_args, loop_args)

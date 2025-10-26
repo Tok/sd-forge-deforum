@@ -21,7 +21,7 @@ from .preprocessors import (
     preprocess_image_for_controlnet,
     numpy_to_pil
 )
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -112,18 +112,18 @@ class FluxControlNetV2Manager:
             # Forge's Flux model already has VAE loaded
             if hasattr(sd_model, 'forge_objects') and hasattr(sd_model.forge_objects, 'vae'):
                 forge_vae = sd_model.forge_objects.vae
-                logger.info(f"   ✓ Using Forge's loaded Flux VAE")
+                logger.info(f"   {emoji_if_enabled("✓")} Using Forge's loaded Flux VAE")
 
                 # Forge's VAE is backend.patcher.vae.VAE, we need to extract the actual model
                 if hasattr(forge_vae, 'first_stage_model'):
                     self.vae = forge_vae.first_stage_model
-                    logger.info(f"   ✓ Extracted VAE model from Forge wrapper")
+                    logger.info(f"   {emoji_if_enabled("✓")} Extracted VAE model from Forge wrapper")
                 else:
                     self.vae = forge_vae
 
                 # Make sure it's on the right device
                 self.vae = self.vae.to(self.device)
-                logger.info("✓ Forge's Flux VAE ready for use")
+                logger.info(f"{emoji_if_enabled("✓")} Forge's Flux VAE ready for use")
             else:
                 logger.error("   ⚠️ Could not access Forge's VAE")
                 self.vae = None
@@ -137,7 +137,7 @@ class FluxControlNetV2Manager:
 
         self.is_loaded = True
 
-        logger.info(f"✓ Flux ControlNet model loaded ({self.control_type}, ~3.6GB)")
+        logger.info(f"{emoji_if_enabled("✓")} Flux ControlNet model loaded ({self.control_type}, ~3.6GB)")
         logger.info("   No pipeline created - will use Forge's Flux transformer")
 
     def compute_control_samples(
@@ -318,7 +318,7 @@ class FluxControlNetV2Manager:
         controlnet_block_samples = controlnet_output.controlnet_block_samples
         controlnet_single_block_samples = controlnet_output.controlnet_single_block_samples
 
-        logger.info(f"✓ ControlNet samples computed:")
+        logger.info(f"{emoji_if_enabled("✓")} ControlNet samples computed:")
         logger.info(f"   Block samples: {len(controlnet_block_samples) if controlnet_block_samples is not None else 0} tensors")
         logger.info(f"   Single block samples: {len(controlnet_single_block_samples) if controlnet_single_block_samples is not None else 0} tensors")
 

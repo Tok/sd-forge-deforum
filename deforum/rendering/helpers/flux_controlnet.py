@@ -31,7 +31,7 @@ import numpy as np
 import os
 from PIL import Image
 from typing import Optional, TYPE_CHECKING
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -232,7 +232,7 @@ def prepare_flux_controlnet_for_frame(
                     overlay = overlay_canny_edges(depth_preview_rgb, canny_edges_bold, edge_color=(255, 0, 0), alpha=0.8)
                     # Save back to same file
                     cv2.imwrite(depth_preview_path, cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
-                    logger.info(f"   💡 Overlaid canny edges on: {depth_preview_path}", emoji='bulb')
+                    logger.info(f"   {emoji_if_enabled("💡")} Overlaid canny edges on: {depth_preview_path}", emoji='bulb')
             else:
                 # Create black preview image if it doesn't exist
                 logger.info(f"   ℹ️ Depth preview not found, creating black preview: {depth_preview_path}")
@@ -242,7 +242,7 @@ def prepare_flux_controlnet_for_frame(
                 overlay = overlay_canny_edges(black_preview, canny_edges_bold, edge_color=(255, 0, 0), alpha=1.0)
                 # Save
                 cv2.imwrite(depth_preview_path, cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
-                logger.info(f"   💡 Created canny edge preview: {depth_preview_path}", emoji='bulb')
+                logger.info(f"   {emoji_if_enabled("💡")} Created canny edge preview: {depth_preview_path}", emoji='bulb')
         except Exception as e:
             logger.error(f"   ⚠️ Could not overlay canny visualization: {e}")
             import traceback
@@ -287,7 +287,7 @@ def prepare_flux_controlnet_for_frame(
         # Store control samples for Forge to pick up
         store_control_samples(controlnet_block_samples, controlnet_single_block_samples)
 
-        logger.info(f"✓ Flux ControlNet V2 prepared successfully")
+        logger.info(f"{emoji_if_enabled("✓")} Flux ControlNet V2 prepared successfully")
 
     except Exception as e:
         logger.error(f"⚠️ Flux ControlNet V2 error: {e}")

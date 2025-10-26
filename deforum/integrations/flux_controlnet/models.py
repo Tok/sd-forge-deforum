@@ -9,7 +9,7 @@ from diffusers import FluxControlNetModel
 from typing import Optional, Dict
 import os
 from contextlib import contextmanager
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -150,7 +150,7 @@ def load_flux_controlnet_model(
         # Cache the model
         _model_cache[cache_key] = controlnet
 
-        logger.info(f"✓ Flux {control_type.title()} ControlNet model loaded successfully")
+        logger.info(f"{emoji_if_enabled("✓")} Flux {control_type.title()} ControlNet model loaded successfully")
         return controlnet
 
     except Exception as e:

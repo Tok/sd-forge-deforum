@@ -25,7 +25,7 @@ import torch
 import torch.cuda.amp as amp
 import numpy as np
 from tqdm import tqdm
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -34,7 +34,7 @@ logger = get_logger()
 try:
     import imageio
     from PIL import Image
-    logger.info("✅ Basic dependencies loaded successfully")
+    logger.info(f"{emoji_if_enabled("✅")} Basic dependencies loaded successfully")
 except ImportError as e:
     logger.info(f"Missing basic dependencies: {e}", emoji='off')
     logger.info("Install with: pip install imageio pillow", emoji='bulb')
@@ -66,7 +66,7 @@ class WanSimplePipeline:
             file_path = self.model_path / file
             if file_path.exists():
                 size_gb = file_path.stat().st_size / (1024**3)
-                logger.info(f"✅ Found {file}: {size_gb:.1f}GB")
+                logger.info(f"{emoji_if_enabled("✅")} Found {file}: {size_gb:.1f}GB")
             else:
                 logger.info(f"Missing {file}", emoji='off')
                 files_exist = False
@@ -87,7 +87,7 @@ class WanSimplePipeline:
             self.dit_model = WanModel.from_pretrained(str(dit_path))
             self.dit_model.to(self.device)
             self.dit_model.eval()
-            logger.info("✅ DiT model loaded")
+            logger.info(f"{emoji_if_enabled("✅")} DiT model loaded")
             
             # Load VAE
             logger.info("Loading VAE...", emoji='refresh')
@@ -95,7 +95,7 @@ class WanSimplePipeline:
             self.vae = WanVAE.from_pretrained(str(vae_path))
             self.vae.to(self.device)
             self.vae.eval()
-            logger.info("✅ VAE loaded")
+            logger.info(f"{emoji_if_enabled("✅")} VAE loaded")
             
             # Load T5 text encoder
             logger.info("Loading T5 text encoder...", emoji='refresh')
@@ -103,15 +103,15 @@ class WanSimplePipeline:
             self.text_encoder = T5Encoder.from_pretrained(str(t5_path))
             self.text_encoder.to(self.device)
             self.text_encoder.eval()
-            logger.info("✅ T5 text encoder loaded")
+            logger.info(f"{emoji_if_enabled("✅")} T5 text encoder loaded")
             
             # Create flow matching scheduler
             from ..utils.fm_solvers import FlowDPMSolverMultistepScheduler
             self.scheduler = FlowDPMSolverMultistepScheduler(num_train_timesteps=1000)
-            logger.info("✅ Scheduler loaded")
+            logger.info(f"{emoji_if_enabled("✅")} Scheduler loaded")
             
             self.loaded = True
-            logger.info(f"✅ Real WAN pipeline loaded successfully")
+            logger.info(f"{emoji_if_enabled("✅")} Real WAN pipeline loaded successfully")
             return True
             
         except Exception as e:
@@ -138,8 +138,8 @@ class WanSimplePipeline:
         logger.info(f"Generating WAN video...", emoji='movie_camera')
         logger.info(f"   📝 Prompt: {prompt[:50]}...")
         logger.info(f"   📐 Size: {width}x{height}")
-        logger.info(f"   🎬 Frames: {num_frames}", emoji='movie_camera')
-        logger.info(f"   🔧 Steps: {num_inference_steps}", emoji='wrench')
+        logger.info(f"   {emoji_if_enabled("🎬")} Frames: {num_frames}", emoji='movie_camera')
+        logger.info(f"   {emoji_if_enabled("🔧")} Steps: {num_inference_steps}", emoji='wrench')
         
         try:
             # Encode text prompt
@@ -193,7 +193,7 @@ class WanSimplePipeline:
                 video = (video + 1) / 2  # Convert from [-1, 1] to [0, 1]
                 video = video.permute(1, 2, 3, 0)  # (C, F, H, W) -> (F, H, W, C)
             
-            logger.info("✅ WAN video generation complete!")
+            logger.info(f"{emoji_if_enabled("✅")} WAN video generation complete!")
             return video
             
         except Exception as e:
@@ -376,7 +376,7 @@ class WanRealIntegration:
             logger.info(f"Missing model files: {missing}", emoji='off')
             return False
         
-        logger.info("✅ All required WAN model files found")
+        logger.info(f"{emoji_if_enabled("✅")} All required WAN model files found")
         return True
     
     def load_pipeline(self, model_path: str) -> bool:
@@ -387,7 +387,7 @@ class WanRealIntegration:
             
             # Detect model type and size
             model_type, size = self.detect_model_type(model_path)
-            logger.info(f"🔍 Detected model: {model_type.upper()} {size}")
+            logger.info(f"{emoji_if_enabled("🔍")} Detected model: {model_type.upper()} {size}")
             
             # Load configuration
             config = self.load_model_config(model_path, model_type, size)

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 import shutil
 import time
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -37,7 +37,7 @@ class WanModelValidator:
             if not base_path.exists():
                 continue
                 
-            logger.info(f"🔍 Scanning Wan directory: {base_path}")
+            logger.info(f"{emoji_if_enabled("🔍")} Scanning Wan directory: {base_path}")
             
             # Look for Wan model directories (not individual files)
             for item in base_path.iterdir():
@@ -55,7 +55,7 @@ class WanModelValidator:
                     model_info = self._get_model_info(item)
                     if model_info:
                         models.append(model_info)
-                        logger.info(f"✅ Found Wan model: {model_info['name']} ({model_info['type']})")
+                        logger.info(f"{emoji_if_enabled("✅")} Found Wan model: {model_info['name']} ({model_info['type']})")
                 else:
                     # Skip non-Wan directories
                     logger.info(f"⏭️ Skipping non-Wan directory: {item.name}")
@@ -147,14 +147,14 @@ class WanModelValidator:
             'checks': {}
         }
         
-        logger.info(f"\n🔍 Validating model: {model_path.name}")
+        logger.info(f"\n{emoji_if_enabled("🔍")} Validating model: {model_path.name}")
         logger.info("-" * 50)
         
         # 1. Basic structure check
         structure_ok = self._check_basic_structure(model_path)
         results['checks']['structure'] = structure_ok
         if structure_ok:
-            logger.info("✅ Basic structure: VALID")
+            logger.info(f"{emoji_if_enabled("✅")} Basic structure: VALID")
         else:
             logger.info("Basic structure: INVALID", emoji='off')
             results['errors'].append("Missing required files (config.json or model files)")
@@ -164,7 +164,7 @@ class WanModelValidator:
         size_ok = self._validate_file_sizes(model_path)
         results['checks']['file_sizes'] = size_ok
         if size_ok:
-            logger.info("✅ File sizes: VALID")
+            logger.info(f"{emoji_if_enabled("✅")} File sizes: VALID")
         else:
             logger.warning("⚠️ File sizes: Some files are suspiciously small")
             results['warnings'].append("Some files may be incomplete (very small sizes)")
@@ -173,7 +173,7 @@ class WanModelValidator:
         config_ok = self._validate_json_configs(model_path)
         results['checks']['json_configs'] = config_ok
         if config_ok:
-            logger.info("✅ JSON configs: VALID")
+            logger.info(f"{emoji_if_enabled("✅")} JSON configs: VALID")
         else:
             logger.info("JSON configs: INVALID", emoji='off')
             results['errors'].append("Invalid or corrupted JSON configuration files")
@@ -183,7 +183,7 @@ class WanModelValidator:
         safetensors_ok = self._validate_safetensors(model_path)
         results['checks']['safetensors'] = safetensors_ok
         if safetensors_ok is True:
-            logger.info("✅ Safetensors: VALID")
+            logger.info(f"{emoji_if_enabled("✅")} Safetensors: VALID")
         elif safetensors_ok is False:
             logger.info("Safetensors: INVALID", emoji='off')
             results['errors'].append("Corrupted or invalid safetensors files")
@@ -195,7 +195,7 @@ class WanModelValidator:
         lfs_ok = self._check_git_lfs_pointers(model_path)
         results['checks']['git_lfs'] = lfs_ok
         if lfs_ok is True:
-            logger.info("✅ Git LFS: No incomplete downloads detected")
+            logger.info(f"{emoji_if_enabled("✅")} Git LFS: No incomplete downloads detected")
         elif lfs_ok is False:
             logger.info("Git LFS: Found incomplete LFS downloads", emoji='off')
             results['errors'].append("Found Git LFS pointer files instead of actual model files")
@@ -291,7 +291,7 @@ class WanModelValidator:
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         json.load(f)
-                    logger.info(f"   ✅ {json_file}: Valid JSON")
+                    logger.info(f"   {emoji_if_enabled("✅")} {json_file}: Valid JSON")
                 except json.JSONDecodeError as e:
                     logger.info(f"   ❌ {json_file}: Invalid JSON - {e}", emoji='off')
                     all_valid = False
@@ -325,7 +325,7 @@ class WanModelValidator:
                         logger.warning(f"   ⚠️ {st_file.name}: No tensors found")
                         all_valid = False
                     else:
-                        logger.info(f"   ✅ {st_file.name}: {len(keys)} tensors")
+                        logger.info(f"   {emoji_if_enabled("✅")} {st_file.name}: {len(keys)} tensors")
                         
             except Exception as e:
                 logger.info(f"   ❌ {st_file.name}: Error - {e}", emoji='off')
@@ -403,7 +403,7 @@ class WanModelValidator:
                 })
         
         if not invalid_models:
-            logger.info("✅ All models are valid - no cleanup needed")
+            logger.info(f"{emoji_if_enabled("✅")} All models are valid - no cleanup needed")
             return []
         
         logger.warning(f"\n⚠️ Found {len(invalid_models)} invalid model(s):")
@@ -421,7 +421,7 @@ class WanModelValidator:
         logger.info("If you want to remove invalid models, please:")
         logger.info()
         logger.info("1. 📋 Copy the paths above")
-        logger.info("2. 🔍 Verify the issues are real (not temporary)")
+        logger.info("2. {emoji_if_enabled("🔍")} Verify the issues are real (not temporary)")
         logger.info("3. 💾 Backup any important data if needed")
         logger.info("4. 🗑️ Manually delete the directories:")
         logger.info()
@@ -532,7 +532,7 @@ class WanModelValidator:
                     
                     # Compare checksums
                     if local_sha256.lower() == expected_sha256.lower():
-                        logger.info(f"   ✅ {file_name}: Official checksum verified")
+                        logger.info(f"   {emoji_if_enabled("✅")} {file_name}: Official checksum verified")
                         valid_files += 1
                         results['checked_files'][file_name] = {
                             'status': 'valid',
@@ -557,7 +557,7 @@ class WanModelValidator:
                     results['skipped_files'].append(file_name)
             
             if valid_files > 0:
-                logger.info(f"✅ Checksum validation completed: {valid_files}/{len(files_to_check)} files verified")
+                logger.info(f"{emoji_if_enabled("✅")} Checksum validation completed: {valid_files}/{len(files_to_check)} files verified")
             else:
                 logger.info(f"No files could be verified against known checksums", emoji='off')
                 if not results['errors']:  # Only set invalid if no other errors
@@ -584,7 +584,7 @@ def main():
     
     if not models:
         logger.info("\n❌ No Wan models found!", emoji='off')
-        logger.info("\n💡 SUGGESTIONS:", emoji='bulb')
+        logger.info("\n{emoji_if_enabled("💡")} SUGGESTIONS:", emoji='bulb')
         logger.info("1. Download Wan 2.2 TI2V models:")
         logger.info("   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
         logger.info("   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
@@ -592,14 +592,14 @@ def main():
         logger.info("3. Ensure models were downloaded completely")
         return
         
-    logger.info(f"\n📊 Summary: Found {len(models)} model(s)", emoji='distribution')
+    logger.info(f"\n{emoji_if_enabled("📊")} Summary: Found {len(models)} model(s)", emoji='distribution')
     logger.info("=" * 60)
     
     for model in models:
         logger.info(f"• {model['name']} ({model['type']}, {model['size_formatted']})")
         
     # Offer validation and cleanup
-    logger.info("\n🔧 OPTIONS:", emoji='wrench')
+    logger.info("\n{emoji_if_enabled("🔧")} OPTIONS:", emoji='wrench')
     logger.info("1. Validate all models")
     print("2. Show cleanup instructions for invalid models") 
     logger.info("3. Exit")
@@ -608,7 +608,7 @@ def main():
         choice = input("\nEnter choice [1-3]: ").strip()
         
         if choice == '1':
-            logger.info("\n🔍 Running comprehensive validation...")
+            logger.info("\n{emoji_if_enabled("🔍")} Running comprehensive validation...")
             for model in models:
                 validator.validate_model_integrity(Path(model['path']))
                 
@@ -618,9 +618,9 @@ def main():
                 logger.info(f"\n📋 Found {len(invalid_models)} invalid models that need attention:")
                 for name in invalid_models:
                     logger.info(f"   • {name}")
-                logger.info("\n💡 Follow the instructions above to safely clean up invalid models", emoji='bulb')
+                logger.info("\n{emoji_if_enabled("💡")} Follow the instructions above to safely clean up invalid models", emoji='bulb')
             else:
-                logger.info("\n✅ All models are valid - no cleanup needed")
+                logger.info("\n{emoji_if_enabled("✅")} All models are valid - no cleanup needed")
                 
         elif choice == '3':
             logger.info("👋 Goodbye!")

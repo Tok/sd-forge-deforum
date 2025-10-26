@@ -18,7 +18,7 @@ from deforum.utils.parsing.schedules import (
 from deforum.utils.parsing.schedule_manipulation import (
     apply_shakify_to_schedule,
 )
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -75,7 +75,7 @@ def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: fl
     
     if shake_key in SHAKE_LIST:
         shake_pattern = SHAKE_LIST[shake_key]
-        logger.info(f"✅ Found shake pattern: {shake_pattern[0]} at {shake_pattern[1]} fps")
+        logger.info(f"{emoji_if_enabled("✅")} Found shake pattern: {shake_pattern[0]} at {shake_pattern[1]} fps")
     else:
         logger.warning(f"⚠️ Shake pattern '{shake_name}' not found in available patterns: {list(SHAKE_LIST.keys())}")
         return None
@@ -119,7 +119,7 @@ def create_shakify_data(shake_name: str, shake_intensity: float, shake_speed: fl
                     # No data for this axis, use zero
                     result[transform_type][axis].append(0.0)
     
-    logger.info(f"✅ Generated frame-specific Camera Shakify data for frames {frame_start}-{frame_start + max_frames - 1} using pattern '{pattern_name}'")
+    logger.info(f"{emoji_if_enabled("✅")} Generated frame-specific Camera Shakify data for frames {frame_start}-{frame_start + max_frames - 1} using pattern '{pattern_name}'")
     return result
 
 
@@ -771,7 +771,7 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
         anim_args.combined_rotation_z = combined_rotation_z
     
     # 3. Parse combined schedules for frame-by-frame analysis
-    logger.info(f"🔍 Parsing combined schedules for frame-by-frame analysis...")
+    logger.info(f"{emoji_if_enabled("🔍")} Parsing combined schedules for frame-by-frame analysis...")
     
     # Parse combined schedules into frame values
     tx_keyframes = parse_schedule_string(combined_translation_x, max_frames)
@@ -823,7 +823,7 @@ def analyze_deforum_movement(anim_args, sensitivity: float = 1.0, max_frames: in
     # Combine all movement segments
     all_segments = tx_segments + ty_segments + tz_segments + rx_segments + ry_segments + rz_segments + zoom_segments
     
-    logger.info(f"🔍 Found {len(all_segments)} movement segments:")
+    logger.info(f"{emoji_if_enabled("🔍")} Found {len(all_segments)} movement segments:")
     for i, seg in enumerate(all_segments):
         logger.info(f"   {i+1}. {seg['movement_type']} {seg['direction']} frames {seg['start_frame']}-{seg['end_frame']}")
     

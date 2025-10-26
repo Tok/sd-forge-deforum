@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from typing import Dict, List, Optional, Tuple, Any
 from pathlib import Path
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -44,7 +44,7 @@ class WanTensorValidator:
             logger.info("No tensors provided", emoji='off')
             return False
         
-        logger.info(f"🔍 Validating {len(tensors)} tensors for Wan {self.model_size} model")
+        logger.info(f"{emoji_if_enabled("🔍")} Validating {len(tensors)} tensors for Wan {self.model_size} model")
         
         # Check for basic requirements
         has_weights = any('weight' in name for name in tensors.keys())
@@ -61,7 +61,7 @@ class WanTensorValidator:
             logger.info("Some tensors have unreasonable sizes", emoji='off')
             return False
         
-        logger.info(f"✅ Basic tensor validation passed")
+        logger.info(f"{emoji_if_enabled("✅")} Basic tensor validation passed")
         logger.info(f"Total parameters: {sum(t.numel() for t in tensors.values()):,}", emoji='distribution')
         
         return True

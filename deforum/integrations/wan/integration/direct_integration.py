@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Any
 import tempfile
 import shutil
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -33,7 +33,7 @@ class WanDirectIntegration:
             logger.info("📥 Cloning official WAN repository...")
             return self._clone_wan_repository()
         else:
-            logger.info("✅ WAN repository already available")
+            logger.info(f"{emoji_if_enabled("✅")} WAN repository already available")
             return True
     
     def _clone_wan_repository(self) -> bool:
@@ -47,7 +47,7 @@ class WanDirectIntegration:
             ], capture_output=True, text=True, timeout=300)
             
             if result.returncode == 0:
-                logger.info("✅ WAN repository cloned successfully")
+                logger.info(f"{emoji_if_enabled("✅")} WAN repository cloned successfully")
                 return True
             else:
                 logger.error(f"Failed to clone: {result.stderr}", emoji='off')
@@ -95,7 +95,7 @@ class WanDirectIntegration:
         logger.info(f"Generating video using official WAN repository...", emoji='movie_camera')
         logger.info(f"   📝 Prompt: {prompt}")
         logger.info(f"   📐 Size: {width}x{height}")
-        logger.info(f"   🎬 Frames: {num_frames}", emoji='movie_camera')
+        logger.info(f"   {emoji_if_enabled("🎬")} Frames: {num_frames}", emoji='movie_camera')
         logger.info(f"   📁 Model: {model_info['name']} ({model_info['type']}, {model_info['size']})")
         
         # Determine the correct task based on model type and size
@@ -119,7 +119,7 @@ class WanDirectIntegration:
         try:
             output_file = self._run_wan_generation(wan_args)
             if output_file and Path(output_file).exists():
-                logger.info(f"✅ Video generated successfully: {output_file}")
+                logger.info(f"{emoji_if_enabled("✅")} Video generated successfully: {output_file}")
                 return output_file
             else:
                 logger.error("Video generation failed - no output file created", emoji='off')
@@ -169,7 +169,7 @@ class WanDirectIntegration:
         # Ensure num_frames follows WAN's 4n+1 rule
         if (num_frames - 1) % 4 != 0:
             num_frames = ((num_frames - 1) // 4) * 4 + 1
-            logger.info(f"   ✅ Adjusted frames to WAN requirement: {num_frames} (4n+1 rule)")
+            logger.info(f"   {emoji_if_enabled("✅")} Adjusted frames to WAN requirement: {num_frames} (4n+1 rule)")
         
         args = [
             sys.executable,  # Python interpreter
@@ -205,7 +205,7 @@ class WanDirectIntegration:
         try:
             os.chdir(self.wan_repo_path)
             logger.info(f"🚀 Running official WAN generation in {self.wan_repo_path}")
-            logger.info(f"   🔧 Command: {' '.join(args)}", emoji='wrench')
+            logger.info(f"   {emoji_if_enabled("🔧")} Command: {' '.join(args)}", emoji='wrench')
             
             # Add WAN repo to Python path temporarily
             env = os.environ.copy()
@@ -222,7 +222,7 @@ class WanDirectIntegration:
             )
             
             if result.returncode == 0:
-                logger.info("✅ Official WAN generation completed successfully")
+                logger.info(f"{emoji_if_enabled("✅")} Official WAN generation completed successfully")
                 
                 # Parse output to find generated video file
                 output_file = self._parse_wan_output(result.stdout, args)
@@ -308,7 +308,7 @@ class WanDirectIntegration:
                     ], capture_output=True, text=True, timeout=60)
                     
                     if result.returncode == 0:
-                        logger.info(f"   ✅ {dep} installed")
+                        logger.info(f"   {emoji_if_enabled("✅")} {dep} installed")
                     else:
                         logger.warning(f"   ⚠️ {dep} installation warning: {result.stderr[:100]}")
                         
@@ -316,7 +316,7 @@ class WanDirectIntegration:
                     logger.error(f"   ⚠️ {dep} installation error: {e}")
                     continue  # Continue with other dependencies
             
-            logger.info("✅ WAN dependencies installation completed")
+            logger.info(f"{emoji_if_enabled("✅")} WAN dependencies installation completed")
             return True
                 
         except Exception as e:
@@ -371,13 +371,13 @@ if __name__ == "__main__":
     # Test model discovery
     models = integration.discover_models()
     if models:
-        logger.info(f"✅ Found {len(models)} model(s)")
+        logger.info(f"{emoji_if_enabled("✅")} Found {len(models)} model(s)")
         best = integration.get_best_model()
         logger.info(f"🏆 Best model: {best['name']} ({best['type']}, {best['size']})")
         
         # Test repository setup
         if integration.setup_wan_repository():
-            logger.info("✅ WAN repository ready")
+            logger.info(f"{emoji_if_enabled("✅")} WAN repository ready")
         else:
             logger.error("Failed to setup WAN repository", emoji='off')
     else:
