@@ -136,7 +136,21 @@ class Taqaddumat:
         # Since Forge step counter is continuously reinstantiated and not exposed in 'modules.shared',
         # we just use the GC to access and continuously mute all taqaddumat that don't have any description.
         # TODO? find a way to do this without accessing the GC.
+        def safe_isinstance_check(obj):
+            """Check isinstance with ReferenceError protection for weakly-referenced objects."""
+            try:
+                return isinstance(obj, tqdm)
+            except ReferenceError:
+                return False
+
+        def safe_desc_check(obj):
+            """Check desc attribute with ReferenceError protection."""
+            try:
+                return not obj.desc
+            except ReferenceError:
+                return False
+
         list(map(lambda _: mute(_),
-                 filter(lambda _: not _.desc,
-                        filter(lambda _: isinstance(_, tqdm),
+                 filter(safe_desc_check,
+                        filter(safe_isinstance_check,
                                gc.get_objects()))))
