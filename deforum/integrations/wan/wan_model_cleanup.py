@@ -18,9 +18,9 @@ def find_wan_models():
     webui_root = script_dir.parent.parent.parent.parent  # Go up to webui root
     
     search_paths = [
-        webui_root / "models/wan",
+        webui_root / "models/Deforum/wan",
         webui_root / "models/Wan",
-        Path("models/wan"),  # Current directory
+        Path("models/Deforum/wan"),  # Current directory
         Path("models/Wan"),
     ]
     
@@ -193,8 +193,8 @@ def main():
                     print(f"   ❌ Failed to delete: {e}")
             
             print(f"\n💡 To redownload models:")
-            print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan/Wan2.1-VACE-1.3B")
-            print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan/Wan2.1-VACE-14B")
+            print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan/Wan2.1-VACE-1.3B")
+            print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/Deforum/wan/Wan2.1-VACE-14B")
         else:
             print(f"   Models left unchanged. You can delete them manually if needed.")
 

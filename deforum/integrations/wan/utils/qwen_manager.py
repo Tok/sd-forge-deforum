@@ -57,7 +57,7 @@ class QwenModelManager:
             models_dir: Directory to store Qwen models. If None, uses WebUI models directory
         """
         if models_dir is None:
-            # Use WebUI models directory structure - store in models/wan
+            # Use WebUI models directory structure - store in models/Deforum/wan
             try:
                 import modules.paths as paths
                 base_models_dir = Path(paths.models_path)

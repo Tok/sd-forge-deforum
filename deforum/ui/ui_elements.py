@@ -280,18 +280,14 @@ def get_tab_prompts(da, dw, dv=None):
             gr.Textbox(label="Prompts negative", value="nsfw, nude", lines=1, interactive=True,
                        placeholder="words here will be added to the end of all negative prompts.  ignored with Flux."))
 
-        # AUDIO & TIMING SETTINGS
-        with gr.Accordion("🎵 Audio & Timing", open=False):
+        # PROMPT TIMING SETTINGS
+        with gr.Accordion("⏱️ Prompt Timing", open=False):
             gr.Markdown("""
-            **Sync your animation with audio** and configure frame timing for prompt authoring.
+            **Prompt Authored FPS:** If you authored prompts at a different FPS (e.g., 60 FPS) but want to render at another (e.g., 24 FPS), set this to auto-convert frame numbers.
 
-            - **Soundtrack:** Add background music to your generated video
-            - **Prompt Authored FPS:** If you authored prompts at a different FPS (e.g., 60 FPS) but want to render at another (e.g., 24 FPS), set this to auto-convert frame numbers
+            **Audio settings** have been moved to Init → Audio Sync tab.
             """)
 
-            with FormRow() as soundtrack_row:
-                add_soundtrack = create_gr_elem(dv.add_soundtrack)
-                soundtrack_path = create_gr_elem(dv.soundtrack_path)
             with FormRow() as prompt_fps_row:
                 prompt_authored_fps = create_gr_elem(dv.prompt_authored_fps)
 
@@ -762,10 +758,238 @@ def get_tab_depth_warping(da, skip_tabitem=False):
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
-def get_tab_init(d, da, dp):
+def get_tab_init(d, da, dp, dau, dv=None):
+    # Import dv if not provided
+    if dv is None:
+        from deforum.config.args import DeforumOutputArgs
+        from types import SimpleNamespace
+        dv = SimpleNamespace(**DeforumOutputArgs())
+
     with gr.TabItem('Init'):
         with gr.Tabs():
-            # PARSEQ INNER-TAB - Now first and will be auto-selected
+            # AUDIO SYNC INNER-TAB - First tab and will be auto-selected
+            with gr.Tab("Audio Sync"):
+                gr.HTML(value="<p>Audio event detection for prompt synchronization and video soundtrack. Upload audio file or enter path/URL below. Disabled when Parseq is active.</p>")
+
+                # Audio upload section
+                audio_upload = gr.Audio(
+                    label="🎵 Upload Audio File",
+                    type="filepath",
+                    sources=["upload"],
+                    info="Upload MP3, WAV, FLAC, etc. File will be saved to output directory and path auto-filled below."
+                )
+
+                # Soundtrack controls (moved from Prompts tab)
+                with FormRow():
+                    add_soundtrack = create_gr_elem(dv.add_soundtrack)
+                    soundtrack_path = create_gr_elem(dv.soundtrack_path)
+
+                # Display for calculated audio info
+                audio_info_display = gr.Textbox(
+                    label="Audio Info",
+                    value="",
+                    interactive=False,
+                    info="Audio duration and suggested max_frames (updates when you upload audio above)"
+                )
+
+                # Wire up audio upload to save file and update path
+                def handle_audio_upload(audio_filepath, current_fps):
+                    """Save uploaded audio to output directory and calculate suggested max_frames."""
+                    if audio_filepath is None:
+                        return None, "File", ""
+
+                    import os
+                    import shutil
+                    from pathlib import Path
+
+                    # Create output/audio directory
+                    output_dir = Path("output/audio")
+                    output_dir.mkdir(parents=True, exist_ok=True)
+
+                    # Get filename from uploaded file
+                    filename = Path(audio_filepath).name
+                    dest_path = output_dir / filename
+
+                    # Copy uploaded file to output directory
+                    shutil.copy2(audio_filepath, dest_path)
+                    abs_path = str(dest_path.absolute())
+
+                    # Calculate audio duration using librosa
+                    try:
+                        import librosa
+                        import soundfile as sf
+
+                        # Get audio duration (faster than loading full audio)
+                        duration = librosa.get_duration(path=abs_path)
+
+                        # Calculate suggested max_frames
+                        # Use current_fps if provided, otherwise default to 24
+                        fps = current_fps if current_fps and current_fps > 0 else 24
+                        suggested_max_frames = int(duration * fps)
+
+                        info_text = f"Duration: {duration:.2f}s | Suggested max_frames @ {fps} FPS: {suggested_max_frames}"
+                    except Exception as e:
+                        info_text = f"Could not calculate duration: {str(e)}"
+
+                    # Return absolute path, set add_soundtrack to "File", and info text
+                    return abs_path, "File", info_text
+
+                # Note: fps component not accessible here - will be wired up in ui_left.py
+                audio_upload.upload(
+                    fn=handle_audio_upload,
+                    inputs=[audio_upload, gr.Number(value=24, visible=False)],  # Placeholder for FPS
+                    outputs=[soundtrack_path, add_soundtrack, audio_info_display]
+                )
+
+                gr.Markdown("---")
+                gr.Markdown("### Event Detection Settings")
+
+                # Row 1: Main toggles
+                with FormRow():
+                    enable_audio_sync = create_gr_elem(dau.enable_audio_sync)
+                    audio_apply_to_prompts = create_gr_elem(dau.audio_apply_to_prompts)
+                    audio_min_spacing_frames = create_gr_elem(dau.audio_min_spacing_frames)
+
+                # Row 2: Detection method and processing
+                with FormRow():
+                    audio_detection_method = create_gr_elem(dau.audio_detection_method)
+                    audio_frequency_band = create_gr_elem(dau.audio_frequency_band)
+                    audio_distortion_type = create_gr_elem(dau.audio_distortion_type)
+
+                # Row 3: Tuning parameters
+                with FormRow():
+                    audio_lowpass_cutoff = create_gr_elem(dau.audio_lowpass_cutoff)
+                    audio_distortion_gain = create_gr_elem(dau.audio_distortion_gain)
+                    audio_sensitivity = create_gr_elem(dau.audio_sensitivity)
+                    audio_intensity_threshold = create_gr_elem(dau.audio_intensity_threshold)
+
+                gr.Markdown("---")
+                gr.Markdown("### 🎯 Automatic Prompt Synchronization")
+                gr.Markdown("Enter your prompts below (one per line or comma-separated). Click **Synchronize** to **detect audio events and populate the Prompts tab** with your prompts distributed across detected keyframes.")
+
+                # AI prompt generation controls - Subject first, then style
+                with FormRow():
+                    audio_ai_prompt_theme = gr.Textbox(
+                        label="Subject/Theme",
+                        value="bunny",
+                        placeholder="e.g., bunny, dragon, landscape",
+                        info="Main subject for the animation"
+                    )
+                    audio_ai_style = gr.Textbox(
+                        label="Style (optional)",
+                        value="synthwave",
+                        placeholder="e.g., synthwave, cyberpunk, fantasy",
+                        info="Optional visual style to apply to all prompts"
+                    )
+                    audio_ai_prompt_count = gr.Number(
+                        label="Number of Prompts",
+                        value=5,
+                        precision=0,
+                        minimum=1,
+                        maximum=20,
+                        info="How many prompts to generate"
+                    )
+
+                # Generation mode and intensity row
+                with FormRow():
+                    audio_ai_generation_mode = gr.Dropdown(
+                        label="Generation Mode",
+                        choices=["", "escalating", "start-to-end", "varied", "thematic", "narrative", "cyclical", "random-walk"],
+                        value="escalating",
+                        allow_custom_value=True,
+                        info="Leave empty or type custom. escalating=build intensity, start-to-end=interpolate, varied=random mix, thematic=variations, narrative=story, cyclical=loops, random-walk=related changes"
+                    )
+                    audio_ai_intensity = gr.Dropdown(
+                        label="Intensity",
+                        choices=["", "subtle", "normal", "crazy", "extreme", "chaotic", "surreal"],
+                        value="crazy",
+                        allow_custom_value=True,
+                        info="Leave empty or type custom. subtle=minimal, normal=realistic, crazy=over-the-top, extreme=bonkers, chaotic=unpredictable, surreal=dream-like"
+                    )
+
+                # Start/End prompts (visible only in start-to-end mode)
+                audio_ai_start_prompt = gr.Textbox(
+                    label="Start Prompt (for start-to-end mode)",
+                    value="cute bunny hopping on grass",
+                    placeholder="First prompt in sequence",
+                    info="Starting point for interpolation",
+                    visible=False
+                )
+                audio_ai_end_prompt = gr.Textbox(
+                    label="End Prompt (for start-to-end mode)",
+                    value="crazy synthwave bunny on a motorcycle",
+                    placeholder="Final prompt in sequence",
+                    info="Ending point for interpolation",
+                    visible=False
+                )
+
+                # Generate button with elem_classes for purple styling
+                audio_ai_generate_button = gr.Button(
+                    f"{emoji_utils.bulb()} Generate Prompts with local Qwen",
+                    variant="primary",
+                    elem_id="audio_ai_generate_button",
+                    elem_classes=["slopcore-button"]
+                )
+
+                # Prompt input for auto-sync
+                audio_sync_prompts = gr.Textbox(
+                    label="Prompts for Synchronization",
+                    lines=5,
+                    value="bunny in forest\nbunny hopping\nbunny sitting\nbunny looking around",
+                    placeholder="Enter prompts (one per line or comma-separated)",
+                    info="These will be distributed across audio events when you click Synchronize"
+                )
+
+                # Distribution settings
+                with FormRow():
+                    audio_prompt_distribution_mode = gr.Dropdown(
+                        label="Distribution Mode",
+                        choices=["cycle", "sequential", "intensity", "random"],
+                        value="sequential",
+                        info="How to distribute prompts: sequential=divide evenly, cycle=repeat pattern, intensity=assign by beat strength"
+                    )
+                    audio_target_keyframe_count = gr.Number(
+                        label="Target Keyframes (optional)",
+                        value=0,
+                        precision=0,
+                        info="Leave at 0 for auto-detect based on audio. Or specify desired count."
+                    )
+
+                # Synchronize buttons with purple slopecore gradient styling
+                gr.Markdown("**Click to detect audio events and populate the Prompts tab:**")
+                with FormRow():
+                    audio_sync_fewer_button = gr.Button(
+                        "➖ -5% Keyframes",
+                        variant="primary",
+                        elem_id="audio_sync_fewer_button",
+                        elem_classes=["slopcore-button"],
+                        scale=1
+                    )
+                    audio_sync_button = gr.Button(
+                        f"{emoji_utils.music()} Synchronize Audio to Keyframe Prompts",
+                        variant="primary",
+                        elem_id="audio_sync_button",
+                        elem_classes=["slopcore-button"],
+                        scale=2
+                    )
+                    audio_sync_more_button = gr.Button(
+                        "➕ +5% Keyframes",
+                        variant="primary",
+                        elem_id="audio_sync_more_button",
+                        elem_classes=["slopcore-button"],
+                        scale=1
+                    )
+
+                # Status output
+                audio_sync_status = gr.Textbox(
+                    label="Sync Status",
+                    value="",
+                    interactive=False,
+                    lines=12,
+                    info="Status messages will appear here"
+                )
+
+            # PARSEQ INNER-TAB
             with gr.Tab(f"{emoji_utils.numbers()} Parseq"):
                 gr.HTML(value=get_gradio_html('parseq'))
                 parseq_manifest = create_row(dp.parseq_manifest)
@@ -792,7 +1016,30 @@ def get_tab_init(d, da, dp):
                     overwrite_extracted_frames = create_gr_elem(da.overwrite_extracted_frames)
                 # NOTE: use_mask_video and video_mask_path moved to dedicated Masking tab
             # NOTE: Mask Init tab moved to dedicated Masking tab
-    return {k: v for k, v in {**locals(), **vars()}.items()}
+
+    # Build result dict from locals/vars
+    result = {k: v for k, v in {**locals(), **vars()}.items()}
+
+    # DEBUG: Check what audio components are in locals()
+    audio_component_names = [
+        'audio_ai_generation_mode', 'audio_ai_intensity', 'audio_ai_style',
+        'audio_ai_prompt_theme', 'audio_ai_prompt_count', 'audio_ai_start_prompt',
+        'audio_ai_end_prompt', 'audio_sync_prompts'
+    ]
+
+    local_scope = locals()
+    found_components = [name for name in audio_component_names if name in local_scope]
+    missing_components = [name for name in audio_component_names if name not in local_scope]
+
+    print(f"🔍 DEBUG get_tab_init() return:")
+    print(f"   Found in locals(): {found_components}")
+    print(f"   Missing from locals(): {missing_components}")
+
+    # Add found components to result
+    for comp_name in found_components:
+        result[comp_name] = local_scope[comp_name]
+
+    return result
 
 
 
@@ -905,9 +1152,9 @@ def wan_generate_video(*component_args):
                 for corrupted_model in corrupted_models:
                     model_name = corrupted_model['name'].lower()
                     if 'ti2v' in model_name and '5b' in model_name:
-                        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/wan/Wan2.2-TI2V-5B")
+                        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
                     elif 'a14b' in model_name or '14b' in model_name:
-                        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/wan/Wan2.2-TI2V-A14B")
+                        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
                 
                 print()
                 print("💡 TIP: Enable 'Auto-Download Models' for automatic downloading of missing models")
@@ -924,10 +1171,10 @@ def wan_generate_video(*component_args):
 2. 📥 Manual download with HuggingFace CLI:
 
    **For TI2V-5B (Recommended - Wan 2.2, 24GB VRAM, RTX 4090):**
-   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/wan/Wan2.2-TI2V-5B
+   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B
 
    **For TI2V-A14B (Highest Quality - Wan 2.2 MoE, 32GB+ VRAM):**
-   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/wan/Wan2.2-TI2V-A14B
+   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B
 
 3. ✅ Restart generation after downloading
 
@@ -1096,10 +1343,10 @@ def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo
 
 💡 SOLUTIONS:
 1. 📥 Download a Wan model using HuggingFace CLI:
-   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir "models/wan"
+   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir "models/Deforum/wan"
 
 2. 📂 Or place your model in one of these locations:
-   • models/wan/
+   • models/Deforum/wan/
    • models/Wan/
    
 3. ✅ Restart generation after downloading
@@ -1462,8 +1709,8 @@ The auto-discovery will find your models automatically!
         # Provide helpful troubleshooting info
         print(f"\n🔧 TROUBLESHOOTING:")
         print(f"   • Check model availability with: python scripts/deforum_helpers/wan_direct_integration.py")
-        print(f"   • Download models: huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/wan")
-        print(f"   • Verify Wan models are in: models/wan/ directory")
+        print(f"   • Download models: huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan")
+        print(f"   • Verify Wan models are in: models/Deforum/wan/ directory")
         
         # Re-raise for Deforum error handling
         raise
@@ -1921,7 +2168,7 @@ def get_tab_wan(dw: SimpleNamespace, skip_tabitem=False):
         **✅ Auto-Discovery System**
         
         Wan automatically finds models in these locations:
-        - `models/wan/` (recommended)
+        - `models/Deforum/wan/` (recommended)
         - `models/video/wan/`
         - Custom paths you specify
         
@@ -1934,10 +2181,10 @@ def get_tab_wan(dw: SimpleNamespace, skip_tabitem=False):
         **📥 Easy Download Commands:**
         ```bash
         # Download TI2V-5B (recommended default)
-        huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/wan/Wan2.2-TI2V-5B
+        huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B
 
         # Or download TI2V-A14B (highest quality)
-        huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/wan/Wan2.2-TI2V-A14B
+        huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B
         ```
 
         **Note**: This extension supports Wan 2.2 TI2V models only.
@@ -2173,7 +2420,7 @@ def get_tab_wan(dw: SimpleNamespace, skip_tabitem=False):
             If generation fails:
             1. **Check models**: Run `python scripts/deforum_helpers/wan_direct_integration.py`
             2. **Download missing models**: Use commands in Auto-Discovery section
-            3. **Verify placement**: Models should be in `models/wan/` directory
+            3. **Verify placement**: Models should be in `models/Deforum/wan/` directory
             4. **Check logs**: Look for auto-discovery messages in console
             5. **Verify schedules**: Make sure you have prompts in the Prompts tab
             6. **Check seed behavior**: Set seed behavior to 'schedule' if you want custom seed scheduling
@@ -2323,7 +2570,7 @@ def get_tab_distribution(da):
             - **TI2V models (e.g., Wan2.2-TI2V-5B) will NOT work** - they extend first frame instead
             - Works best with keyframe distribution mode
             - VRAM: ~15-18GB (less than standalone Wan T2V)
-            - Download: `huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers --local-dir models/wan/Wan2.1-FLF2V-14B`
+            - Download: `huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers --local-dir models/Deforum/wan/Wan2.1-FLF2V-14B`
 
             **For longer sections (> 81 frames):**
             - Automatically uses FLF2V chaining mode
@@ -3210,7 +3457,7 @@ Use HuggingFace CLI or git to download the model"""
             
             if model_info and 'hf_name' in model_info:
                 download_status.append(f"<br><strong style='color: #333;'>Manual command:</strong>")
-                download_status.append(f"<code>huggingface-cli download {model_info['hf_name']} --local-dir models/qwen/{selected_model}</code>")
+                download_status.append(f"<code>huggingface-cli download {model_info['hf_name']} --local-dir models/Deforum/qwen/{selected_model}</code>")
         
         return "<br>".join(download_status)
         

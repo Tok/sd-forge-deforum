@@ -336,7 +336,7 @@ def generate_video_with_official_wan(prompt: str,
     if not best_model:
         print("❌ No WAN models found")
         print("💡 Please download a WAN model first:")
-        print("   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir ./models/wan")
+        print("   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir ./models/Deforum/wan")
         return None
     
     # Install dependencies if needed

@@ -530,7 +530,7 @@ def generate_video_with_simple_wan(prompt: str,
         raise RuntimeError("""❌ No WAN models found!
 
 💡 SOLUTION: Download a WAN model first:
-   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir ./models/wan
+   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir ./models/Deforum/wan
 
 Then restart generation.""")
     

@@ -65,7 +65,7 @@ def DeforumAnimArgs():
             "label": "Render Mode",
             "type": "radio",
             "choices": ['Classic 3D', 'New 3D', 'Keyframes Only', 'Flux + Interpolation'],
-            "value": "New 3D",
+            "value": "Keyframes Only",
             "info": "Primary workflow selector: Classic 3D (fixed cadence, RAFT/ControlNet), New 3D (keyframe redistribution, dual strength), Keyframes Only (depth tweening), Flux + Interpolation (multi-method AI interpolation)"
         },
         "animation_mode": {
@@ -211,16 +211,16 @@ def DeforumAnimArgs():
             "info": ""
         },
         "strength_schedule": {
-            "label": "Strength schedule",
+            "label": "Strength schedule (normal/tween frames)",
             "type": "textbox",
-            "value": "0: (0.85)",
-            "info": "amount of presence of previous frame to influence next frame, also controls steps in the following formula [steps - (strength_schedule * steps)]"
+            "value": "0: (0.2)",
+            "info": "Amount of presence of previous frame to influence next frame for TWEEN frames (non-keyframes). Controls steps: [steps - (strength * steps)]. New 3D default: 0.2. Should be LOWER than keyframe strength."
         },
         "keyframe_strength_schedule": {
-            "label": "Strength schedule for keyframes",
+            "label": "Strength schedule (keyframes)",
             "type": "textbox",
-            "value": "0: (0.50)",
-            "info": "like 'Strength schedule' but only for frames with an entry in 'prompts'. Meant to be set somewhat lower than the regular Strengh schedule. At 0 it generates a totally new image on every prompt change. Ignored if Parseq is used or when Keyframe distribustion is disabled."
+            "value": "0: (0.85)",
+            "info": "Like 'Strength schedule' but only for frames with an entry in 'prompts' (keyframes). Should be HIGHER than normal strength. Keyframes Only/New 3D default: 0.85. At 0 it generates a totally new image on every prompt change. Ignored if Parseq is used or when Classic 3D mode active."
         },
         "contrast_schedule": "0: (1.0)",
         "cfg_scale_schedule": {
@@ -1047,6 +1047,87 @@ def ParseqArgs():
     }
 
 
+def AudioSyncArgs():
+    """Audio event detection and prompt synchronization arguments"""
+    return {
+        "enable_audio_sync": {
+            "label": "Enable Audio Sync",
+            "type": "checkbox",
+            "value": False,
+            "info": "Enable audio event detection for prompt synchronization. Disabled when Parseq is active (Parseq has its own audio features)."
+        },
+        "audio_detection_method": {
+            "label": "Detection Method",
+            "type": "dropdown",
+            "choices": ["onset", "beat", "bass"],
+            "value": "onset",
+            "info": "Event detection method: 'onset' (general transients/kicks/snares), 'beat' (rhythmic pulse/BPM), 'bass' (low-frequency energy peaks)"
+        },
+        "audio_frequency_band": {
+            "label": "Frequency Band",
+            "type": "dropdown",
+            "choices": ["bass", "mid", "high", "full"],
+            "value": "bass",
+            "info": "Frequency range to isolate: 'bass' (20-250Hz for kicks), 'mid' (250-2000Hz for snares/claps), 'high' (2000-8000Hz for hi-hats), 'full' (no filtering)"
+        },
+        "audio_lowpass_cutoff": {
+            "label": "Lowpass Cutoff (Hz)",
+            "type": "slider",
+            "minimum": 20,
+            "maximum": 2000,
+            "step": 10,
+            "value": 250,
+            "info": "Lowpass filter cutoff frequency in Hz. Used when frequency_band='bass'. Typical bass kicks: 60-250Hz"
+        },
+        "audio_distortion_gain": {
+            "label": "Distortion Gain",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "info": "Distortion amount to emphasize transients (0.0=none, 1.0=moderate, 2.0=heavy). Helps isolate bass kicks and percussive hits"
+        },
+        "audio_distortion_type": {
+            "label": "Distortion Type",
+            "type": "dropdown",
+            "choices": ["tanh", "hard", "arctan"],
+            "value": "tanh",
+            "info": "Distortion curve: 'tanh' (smooth soft clipping, musical), 'hard' (aggressive clipping), 'arctan' (gentle compression)"
+        },
+        "audio_sensitivity": {
+            "label": "Detection Sensitivity",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "step": 0.05,
+            "value": 0.5,
+            "info": "Event detection sensitivity (0.0-1.0). Higher = more sensitive, detects weaker events. Start with 0.5 and adjust"
+        },
+        "audio_intensity_threshold": {
+            "label": "Intensity Threshold",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "step": 0.05,
+            "value": 0.5,
+            "info": "Minimum event intensity to generate keyframe (0.0-1.0). Filters out weak events. Lower = more keyframes"
+        },
+        "audio_min_spacing_frames": {
+            "label": "Minimum Keyframe Spacing (frames)",
+            "type": "number",
+            "precision": 0,
+            "value": 12,
+            "info": "Minimum frames between keyframes. Prevents keyframe spam. Example: 12 frames @ 24fps = 0.5 seconds. When events are closer, strongest event is kept"
+        },
+        "audio_apply_to_prompts": {
+            "label": "Apply Events to Prompts",
+            "type": "checkbox",
+            "value": True,
+            "info": "Generate prompt keyframes from audio events. When disabled, events can still be visualized and analyzed"
+        },
+    }
+
 
 def WanArgs():
     """Wan 2.1 video generation arguments - Updated to integrate with Deforum schedules"""
@@ -1067,7 +1148,7 @@ def WanArgs():
         "wan_model_path": {
             "label": "Custom Model Path",
             "type": "textbox", 
-            "value": "models/wan",
+            "value": "models/Deforum/wan",
             "info": "Custom path to Wan model (used when 'Custom Path' is selected)"
         },
         "wan_resolution": {
@@ -1435,7 +1516,7 @@ def get_component_names():
     # Re-enable Wan components (UI level, imports still isolated)
     return ['override_settings_with_file', 'custom_settings_file', *DeforumAnimArgs().keys(), 'animation_prompts',
             'animation_prompts_positive', 'animation_prompts_negative',
-            *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(), *LoopArgs().keys(),
+            *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(), *AudioSyncArgs().keys(), *LoopArgs().keys(),
             # *controlnet_component_names(),  # Disabled - ControlNet temporarily removed
             *WanArgs().keys()]
 
@@ -1460,6 +1541,7 @@ def process_args(args_dict_main, run_id):
     anim_args = SimpleNamespace(**{name: args_dict_main[name] for name in DeforumAnimArgs()})
     video_args = SimpleNamespace(**{name: args_dict_main[name] for name in DeforumOutputArgs()})
     parseq_args = SimpleNamespace(**{name: args_dict_main[name] for name in ParseqArgs()})
+    audio_sync_args = SimpleNamespace(**{name: args_dict_main[name] for name in AudioSyncArgs()})
     loop_args = SimpleNamespace(**{name: args_dict_main[name] for name in LoopArgs()})
     wan_args = SimpleNamespace(**{name: args_dict_main[name] for name in WanArgs()})
     # TEMPORARILY DISABLED: ControlNet support disabled until Flux-specific reimplementation
@@ -1494,7 +1576,7 @@ def process_args(args_dict_main, run_id):
 
     args_loaded_ok = True
     if override_settings_with_file:
-        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlnet_args, wan_args, video_args, custom_settings_file, root, run_id)
+        args_loaded_ok = load_args(args_dict_main, args, anim_args, parseq_args, audio_sync_args, loop_args, controlnet_args, wan_args, video_args, custom_settings_file, root, run_id)
 
     positive_prompts = args_dict_main['animation_prompts_positive']
     negative_prompts = args_dict_main['animation_prompts_negative']
@@ -1546,4 +1628,4 @@ def process_args(args_dict_main, run_id):
     default_img = default_img.resize((args.W, args.H))
     root.default_img = default_img
 
-    return args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, wan_args
+    return args_loaded_ok, root, args, anim_args, video_args, parseq_args, audio_sync_args, loop_args, controlnet_args, wan_args

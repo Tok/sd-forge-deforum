@@ -267,7 +267,7 @@
     "wan_i2v_model": "Use Primary Model",
     "wan_auto_download": true,
     "wan_preferred_size": "1.3B VACE (Recommended)",
-    "wan_model_path": "models/wan",
+    "wan_model_path": "models/Deforum/wan",
     "wan_resolution": "864x480",
     "wan_seed": -1,
     "wan_inference_steps": 20,

@@ -175,7 +175,7 @@ def run_deforum(*args):
         args_dict['self'] = None
         args_dict['p'] = p
         try:
-            args_loaded_ok, root, args, anim_args, video_args, parseq_args, loop_args, controlnet_args, wan_args = process_args(args_dict, i)
+            args_loaded_ok, root, args, anim_args, video_args, parseq_args, audio_sync_args, loop_args, controlnet_args, wan_args = process_args(args_dict, i)
             print(f"🔍 DEBUG: anim_args.animation_mode after process_args: '{anim_args.animation_mode}'")
             # Ensure animation_mode from args_dict (possibly loaded from resume) is reflected in anim_args
             if 'animation_mode' in args_dict:

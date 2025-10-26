@@ -110,7 +110,7 @@ pip install -r requirements.txt
 
 **3. Wan Video Pipeline** (`scripts/deforum_helpers/wan/`, `scripts/deforum_helpers/rendering/`)
 - **wan_simple_integration.py** - Wan FLF2V wrapper and utilities
-  - Auto-discovers models from `models/wan/` directory
+  - Auto-discovers models from `models/Deforum/wan/` directory
   - Handles T2V (text-to-video), I2V (image-to-video), and FLF2V (first-last-frame-to-video)
   - Calculates frame counts as 4n+1 per Wan requirements
   - Integrates Deforum prompt scheduling, FPS, seed, and strength
@@ -420,8 +420,8 @@ Core dependencies (from `requirements.txt`):
 
 **Model Requirements:**
 - **Flux:** Requires `flux1-dev-bnb-nf4-v2.safetensors` and VAE files (see README.md)
-- **Wan:** Downloaded via `huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan`
-- **Qwen:** Auto-downloaded to `models/qwen/` when first used (3B/7B/14B variants)
+- **Wan:** Downloaded via `huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan`
+- **Qwen:** Auto-downloaded to `models/Deforum/qwen/` when first used (3B/7B/14B variants)
 - **Depth:** Auto-downloaded to `models/Deforum/` on first use per selected model
 
 ## Known Limitations
@@ -449,7 +449,7 @@ Download latest `deforum/config/default_settings.txt` from repo and load in UI
 
 **Wan models not found:**
 ```bash
-huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan
+huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan
 ```
 
 **Qwen enhancement fails:**
