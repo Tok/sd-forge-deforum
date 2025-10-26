@@ -86,6 +86,17 @@ class TestKeyframeAdjustment:
         # 5% of 33 = 1.65, so int(33 * 1.05) = int(34.65) = 34
         assert apply_keyframe_adjustment(33, 5) == 34
 
+    def test_small_target_always_changes(self):
+        """Small targets should always get at least ±1 change when adjustment requested."""
+        # 5% of 11 = 0.55, rounds to 0, but we guarantee at least +1
+        assert apply_keyframe_adjustment(11, 5) == 12
+        # 10% of 5 = 0.5, rounds to 0, but we guarantee at least +1
+        assert apply_keyframe_adjustment(5, 10) == 6
+        # Negative: -5% of 11 = -0.55, rounds to 0, but we guarantee at least -1
+        assert apply_keyframe_adjustment(11, -5) == 10
+        # But not below minimum of 2
+        assert apply_keyframe_adjustment(3, -50) == 2
+
 
 class TestSpacingAdjustment:
     """Test minimum spacing adjustment calculations."""

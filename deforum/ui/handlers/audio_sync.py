@@ -145,42 +145,52 @@ def synchronize_prompts_to_audio(
         resolved_target, target_desc = resolve_keyframe_target(user_target, bpm_based_target, keyframe_adjustment)
         logger.info(f"Target keyframes: {target_desc}", emoji='target')
 
-        # 6. GENERATE KEYFRAMES: Convert events to keyframes with spacing
-        # Calculate spacing adjustment based on keyframe_adjustment percentage
+        # 6. GENERATE KEYFRAMES: Iteratively adjust spacing to hit target count
+        # When user clicks +/-% buttons, we need to adjust spacing to achieve the target
         spacing_multiplier = calculate_spacing_multiplier(keyframe_adjustment)
         adjusted_min_spacing = calculate_adjusted_min_spacing(min_spacing_frames, spacing_multiplier)
 
-        keyframes = generate_keyframes_from_events(
-            event_times=event_times,
-            event_intensities=event_intensities,
-            fps=current_fps,
-            min_spacing_frames=adjusted_min_spacing,
-            max_frames=total_frames
-        )
+        # Try to hit the target by iteratively reducing spacing if needed
+        max_attempts = 5
+        best_keyframes = None
+        best_spacing = adjusted_min_spacing
 
+        for attempt in range(max_attempts):
+            keyframes = generate_keyframes_from_events(
+                event_times=event_times,
+                event_intensities=event_intensities,
+                fps=current_fps,
+                min_spacing_frames=adjusted_min_spacing,
+                max_frames=total_frames
+            )
+
+            if not keyframes:
+                # Reduce spacing and try again
+                adjusted_min_spacing = max(1, int(adjusted_min_spacing * 0.7))
+                continue
+
+            best_keyframes = keyframes
+            best_spacing = adjusted_min_spacing
+
+            # Check if we hit the target (within 10% tolerance)
+            if len(keyframes) >= resolved_target * 0.9:
+                break
+
+            # If we're significantly under target, reduce spacing
+            if len(keyframes) < resolved_target * 0.9:
+                # Calculate how much we need to reduce spacing
+                ratio = len(keyframes) / resolved_target
+                adjusted_min_spacing = max(1, int(adjusted_min_spacing * ratio * 0.9))
+                logger.debug(f"Attempt {attempt + 1}: {len(keyframes)} < {resolved_target}, reducing spacing to {adjusted_min_spacing}")
+            else:
+                # Close enough
+                break
+
+        keyframes = best_keyframes
         if not keyframes:
             return gr.update(), gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
 
-        logger.info(f"{emoji_if_enabled('✅')} Generated {len(keyframes)} keyframes with spacing ≥{adjusted_min_spacing} frames")
-
-        # 7. COMPENSATE FOR LOST KEYFRAMES: If we lost too many keyframes due to spacing,
-        #    try again with reduced spacing
-        if len(keyframes) < resolved_target * 0.7:  # Lost >30% of keyframes
-            compensation_target = calculate_compensation_target(resolved_target, len(keyframes))
-            compensated_spacing = int(adjusted_min_spacing * 0.5)  # Reduce spacing by 50%
-
-            logger.warning(f"⚠️ Compensation triggered: {len(keyframes)} < {resolved_target * 0.7:.0f}")
-            logger.info(f"   Retrying with target={compensation_target}, spacing={compensated_spacing}")
-
-            keyframes = generate_keyframes_from_events(
-                events=events,
-                fps=current_fps,
-                min_spacing=compensated_spacing,
-                target_count=compensation_target
-            )
-
-            if keyframes:
-                logger.info(f"{emoji_if_enabled('✅')} Compensation successful: {len(keyframes)} keyframes generated")
+        logger.info(f"{emoji_if_enabled('✅')} Generated {len(keyframes)} keyframes with spacing ≥{best_spacing} frames")
 
         # 8. DISTRIBUTE PROMPTS: Assign prompts to keyframes
         # Returns JSON string ready for Deforum animation_prompts format

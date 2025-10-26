@@ -48,8 +48,23 @@ def apply_keyframe_adjustment(base_target: int, adjustment_percent: int) -> int:
 
     Returns:
         Adjusted target, minimum 2 keyframes
+
+    Note:
+        For small targets, percentage adjustment may round to 0 change.
+        We ensure at least ±1 keyframe change when adjustment is non-zero.
     """
+    if adjustment_percent == 0:
+        return base_target
+
+    # Calculate percentage-based adjustment
     adjusted = int(base_target * (1.0 + adjustment_percent / 100.0))
+
+    # Ensure at least ±1 change when adjustment is requested
+    if adjustment_percent > 0 and adjusted <= base_target:
+        adjusted = base_target + 1
+    elif adjustment_percent < 0 and adjusted >= base_target:
+        adjusted = base_target - 1
+
     return max(2, adjusted)
 
 
