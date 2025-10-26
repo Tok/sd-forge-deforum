@@ -134,7 +134,7 @@ def run_deforum(*args):
             for path in possible_paths:
                 if os.path.exists(path):
                     settings_file = path
-                    logger.debug(f"  {emoji_if_enabled("✓")} Found: {path}")
+                    logger.debug(f"  {emoji_if_enabled('✓')} Found: {path}")
                     break
             
             if settings_file:
@@ -156,7 +156,7 @@ def run_deforum(*args):
                                     args_dict[key] = value
                                     wan_settings_loaded += 1
                                     if 'flf2v' in key.lower():
-                                        logger.debug(f"  {emoji_if_enabled("✓")} Loaded {key}: {value}")
+                                        logger.debug(f"  {emoji_if_enabled('✓')} Loaded {key}: {value}")
 
                         if wan_settings_loaded > 0:
                             logger.info(f"Resume detected: Loaded {wan_settings_loaded} wan_* settings from saved file", emoji='refresh')
@@ -263,7 +263,7 @@ def run_deforum(*args):
         try:  # dispatch to appropriate renderer
             JobStatusTracker().update_phase(job_id, DeforumJobPhase.GENERATING)
             JobStatusTracker().update_output_info(job_id, outdir=args.outdir, timestring=root.timestring)
-            logger.debug(f"\n{emoji_if_enabled("🎬")} Dispatching to renderer for mode: '{anim_args.animation_mode}'")
+            logger.debug(f"\n{emoji_if_enabled('🎬')} Dispatching to renderer for mode: '{anim_args.animation_mode}'")
             if anim_args.animation_mode == '2D' or anim_args.animation_mode == '3D':
                 if anim_args.use_mask_video: 
                     render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)  # allow mask video without an input video

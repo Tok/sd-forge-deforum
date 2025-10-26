@@ -44,7 +44,7 @@ class WanTensorValidator:
             logger.info("No tensors provided", emoji='off')
             return False
         
-        logger.info(f"{emoji_if_enabled("🔍")} Validating {len(tensors)} tensors for Wan {self.model_size} model")
+        logger.info(f"{emoji_if_enabled('🔍')} Validating {len(tensors)} tensors for Wan {self.model_size} model")
         
         # Check for basic requirements
         has_weights = any('weight' in name for name in tensors.keys())
@@ -61,7 +61,7 @@ class WanTensorValidator:
             logger.info("Some tensors have unreasonable sizes", emoji='off')
             return False
         
-        logger.info(f"{emoji_if_enabled("✅")} Basic tensor validation passed")
+        logger.info(f"{emoji_if_enabled('✅')} Basic tensor validation passed")
         logger.info(f"Total parameters: {sum(t.numel() for t in tensors.values()):,}", emoji='distribution')
         
         return True

@@ -311,7 +311,7 @@ class QwenPromptExpander(PromptExpander):
                     device_map="cpu")
                 self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
                 
-            logger.info(f"{emoji_if_enabled("✅")} Successfully loaded Qwen model: {self.model_name}")
+            logger.info(f"{emoji_if_enabled('✅')} Successfully loaded Qwen model: {self.model_name}")
             
         except Exception as e:
             # Note: Model may still work despite this error (transformers version mismatch)
@@ -475,7 +475,7 @@ if __name__ == "__main__":
         logger.info("Testing Chinese prompt enhancement...", emoji='refresh')
         qwen_result = qwen_prompt_expander(prompt, tar_lang="zh")
         if qwen_result.status:
-            logger.info(f"{emoji_if_enabled("✅")} Chinese enhancement successful:")
+            logger.info(f"{emoji_if_enabled('✅')} Chinese enhancement successful:")
             logger.info(f"   {qwen_result.prompt[:100]}...")
         else:
             logger.error(f"Chinese enhancement failed: {qwen_result.message}", emoji='off')
@@ -483,7 +483,7 @@ if __name__ == "__main__":
         logger.info("Testing English prompt enhancement...", emoji='refresh')
         qwen_result = qwen_prompt_expander(en_prompt, tar_lang="en")
         if qwen_result.status:
-            logger.info(f"{emoji_if_enabled("✅")} English enhancement successful:")
+            logger.info(f"{emoji_if_enabled('✅')} English enhancement successful:")
             logger.info(f"   {qwen_result.prompt[:100]}...")
         else:
             logger.error(f"English enhancement failed: {qwen_result.message}", emoji='off')
@@ -505,7 +505,7 @@ if __name__ == "__main__":
             qwen_result = qwen_vl_expander(
                 prompt, tar_lang="zh", image=image_path, seed=seed)
             if qwen_result.status:
-                logger.info(f"{emoji_if_enabled("✅")} Vision-language enhancement successful:")
+                logger.info(f"{emoji_if_enabled('✅')} Vision-language enhancement successful:")
                 logger.info(f"   {qwen_result.prompt[:100]}...")
             else:
                 logger.error(f"Vision-language enhancement failed: {qwen_result.message}", emoji='off')

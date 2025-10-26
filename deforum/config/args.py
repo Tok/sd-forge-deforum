@@ -1577,7 +1577,7 @@ def process_args(args_dict_main, run_id):
                 converted_prompts[frame_key] = prompt_text
 
         root.animation_prompts = converted_prompts
-        logger.info(f"{emoji_if_enabled("✅")} Converted {len(converted_prompts)} prompt frame numbers\n")
+        logger.info(f"{emoji_if_enabled('✅')} Converted {len(converted_prompts)} prompt frame numbers\n")
 
     args_loaded_ok = True
     if override_settings_with_file:

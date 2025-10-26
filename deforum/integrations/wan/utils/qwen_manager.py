@@ -110,7 +110,7 @@ class QwenModelManager:
         for model_name in preferred_models:
             specs = self.MODEL_SPECS.get(model_name)
             if specs and specs['vram_gb'] <= available_vram:
-                logger.info(f"{emoji_if_enabled("✅")} Auto-selected: {model_name} ({specs['description']})")
+                logger.info(f"{emoji_if_enabled('✅')} Auto-selected: {model_name} ({specs['description']})")
                 return model_name
         
         # Fallback: Sort models by VRAM requirement (ascending) and find best fit
@@ -136,7 +136,7 @@ class QwenModelManager:
             logger.warning(f"⚠️ No model fits in {available_vram:.1f}GB VRAM, using smallest: {best_model}")
         else:
             specs = self.MODEL_SPECS[best_model]
-            logger.info(f"{emoji_if_enabled("✅")} Auto-selected: {best_model} ({specs['description']})")
+            logger.info(f"{emoji_if_enabled('✅')} Auto-selected: {best_model} ({specs['description']})")
             
         return best_model
         
@@ -177,7 +177,7 @@ class QwenModelManager:
             model_name = self.auto_select_model()
 
         if self.is_model_downloaded(model_name):
-            logger.info(f"{emoji_if_enabled("✅")} Model {model_name} already available")
+            logger.info(f"{emoji_if_enabled('✅')} Model {model_name} already available")
             return True
 
         model_spec = self.MODEL_SPECS.get(model_name)
@@ -206,7 +206,7 @@ class QwenModelManager:
             try:
                 new_limit = min(hard_limit, 8192)  # Cap at 8192 for safety
                 resource.setrlimit(resource.RLIMIT_NOFILE, (new_limit, hard_limit))
-                logger.info(f"{emoji_if_enabled("✅")} Temporarily increased file descriptor limit to {new_limit}")
+                logger.info(f"{emoji_if_enabled('✅')} Temporarily increased file descriptor limit to {new_limit}")
             except Exception as limit_e:
                 logger.error(f"⚠️ Could not increase file limit: {limit_e}")
                 # Continue anyway
@@ -243,12 +243,12 @@ class QwenModelManager:
             # Restore original file descriptor limit
             try:
                 resource.setrlimit(resource.RLIMIT_NOFILE, (soft_limit, hard_limit))
-                logger.info(f"{emoji_if_enabled("✅")} Restored file descriptor limit to {soft_limit}")
+                logger.info(f"{emoji_if_enabled('✅')} Restored file descriptor limit to {soft_limit}")
             except:
                 pass
 
             if process.returncode == 0:
-                logger.info(f"{emoji_if_enabled("✅")} Successfully downloaded {model_name} to {local_path}")
+                logger.info(f"{emoji_if_enabled('✅')} Successfully downloaded {model_name} to {local_path}")
                 return True
             else:
                 logger.error(f"Download failed with return code {process.returncode}", emoji='off')
@@ -271,7 +271,7 @@ class QwenModelManager:
             AutoConfig.from_pretrained(model_spec['hf_name'])
             AutoTokenizer.from_pretrained(model_spec['hf_name'])
             
-            logger.info(f"{emoji_if_enabled("✅")} {model_name} cached successfully")
+            logger.info(f"{emoji_if_enabled('✅')} {model_name} cached successfully")
             return True
             
         except Exception as e:
@@ -318,7 +318,7 @@ class QwenModelManager:
                 device=0 if torch.cuda.is_available() else "cpu"
             )
             
-            logger.info(f"{emoji_if_enabled("✅")} Created QwenPromptExpander with {model_name}")
+            logger.info(f"{emoji_if_enabled('✅')} Created QwenPromptExpander with {model_name}")
             return expander
             
         except Exception as e:
@@ -370,7 +370,7 @@ class QwenModelManager:
                 
                 if result.status:
                     enhanced_prompts[frame_num] = result.prompt
-                    logger.info(f"   {emoji_if_enabled("✅")} Enhanced: {result.prompt[:50]}...")
+                    logger.info(f"   {emoji_if_enabled('✅')} Enhanced: {result.prompt[:50]}...")
                 else:
                     enhanced_prompts[frame_num] = original_prompt
                     logger.error(f"   ⚠️ Enhancement failed, using original prompt")
@@ -379,7 +379,7 @@ class QwenModelManager:
                 logger.error(f"   ❌ Error enhancing frame {frame_num}: {e}")
                 enhanced_prompts[frame_num] = original_prompt
                 
-        logger.info(f"{emoji_if_enabled("✅")} Enhanced {len(enhanced_prompts)} prompts successfully")
+        logger.info(f"{emoji_if_enabled('✅')} Enhanced {len(enhanced_prompts)} prompts successfully")
         return enhanced_prompts
         
     def get_model_info(self, model_name: str) -> Dict:
@@ -425,7 +425,7 @@ class QwenModelManager:
                 
             self._cached_expander = None
             self._current_model = None
-            logger.info(f"{emoji_if_enabled("✅")} Qwen model cache cleaned up successfully")
+            logger.info(f"{emoji_if_enabled('✅')} Qwen model cache cleaned up successfully")
             
     def ensure_model_unloaded(self):
         """Ensure Qwen model is unloaded before other operations"""
@@ -474,7 +474,7 @@ class QwenModelManager:
         except Exception as e:
             logger.warning(f"⚠️ Error during force cleanup: {e}")
             
-        logger.info(f"{emoji_if_enabled("✅")} Force cleanup completed")
+        logger.info(f"{emoji_if_enabled('✅')} Force cleanup completed")
 
 
 # Global instance for easy access

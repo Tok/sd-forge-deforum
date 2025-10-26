@@ -29,26 +29,27 @@ def print_startup_banner():
     RESET = "\033[0m"
     BOLD = "\033[1m"
 
-    # Create gradient border using all 7 shades (13-14 chars per shade for 93 total)
+    # Create gradient border using all 7 shades (14-15 chars per shade for 101 total)
+    # Text line is 99 chars, so border is 101 for slight overflow
     border_top = (
-        f"{SLOPCORE_1}#############"   # 13 chars - Bright blue
-        f"{SLOPCORE_2}#############"   # 13 chars - Blue-purple
-        f"{SLOPCORE_3}#############"   # 13 chars - Light purple
-        f"{SLOPCORE_4}##############"  # 14 chars - Mid purple (center)
-        f"{SLOPCORE_5}#############"   # 13 chars - Purple
-        f"{SLOPCORE_6}#############"   # 13 chars - Deep purple
-        f"{SLOPCORE_7}##############"  # 14 chars - Darkest purple
+        f"{SLOPCORE_1}##############"   # 14 chars - Bright blue
+        f"{SLOPCORE_2}##############"   # 14 chars - Blue-purple
+        f"{SLOPCORE_3}###############"  # 15 chars - Light purple
+        f"{SLOPCORE_4}###############"  # 15 chars - Mid purple (center)
+        f"{SLOPCORE_5}###############"  # 15 chars - Purple
+        f"{SLOPCORE_6}##############"   # 14 chars - Deep purple
+        f"{SLOPCORE_7}##############"   # 14 chars - Darkest purple
         f"{RESET}"
     )
     # Reverse gradient for bottom border
     border_bot = (
         f"{SLOPCORE_7}##############"
-        f"{SLOPCORE_6}#############"
-        f"{SLOPCORE_5}#############"
-        f"{SLOPCORE_4}##############"
-        f"{SLOPCORE_3}#############"
-        f"{SLOPCORE_2}#############"
-        f"{SLOPCORE_1}#############"
+        f"{SLOPCORE_6}##############"
+        f"{SLOPCORE_5}###############"
+        f"{SLOPCORE_4}###############"
+        f"{SLOPCORE_3}###############"
+        f"{SLOPCORE_2}##############"
+        f"{SLOPCORE_1}##############"
         f"{RESET}"
     )
 

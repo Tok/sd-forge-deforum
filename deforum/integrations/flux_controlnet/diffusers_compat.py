@@ -88,7 +88,7 @@ def patch_flow_match_scheduler():
         # Replace the method
         FlowMatchEulerDiscreteScheduler.time_shift = patched_time_shift
 
-        logger.info(f"{emoji_if_enabled("✅")} Diffusers compatibility patch applied: FlowMatchEulerDiscreteScheduler.time_shift")
+        logger.info(f"{emoji_if_enabled('✅')} Diffusers compatibility patch applied: FlowMatchEulerDiscreteScheduler.time_shift")
         return True
 
     except Exception as e:
@@ -107,7 +107,7 @@ def patch_torch_rmsnorm():
     import torch.nn as nn
 
     if hasattr(nn, 'RMSNorm'):
-        logger.info(f"{emoji_if_enabled("✅")} torch.nn.RMSNorm already available (PyTorch 2.4.0+)")
+        logger.info(f"{emoji_if_enabled('✅')} torch.nn.RMSNorm already available (PyTorch 2.4.0+)")
         return True
 
     try:
@@ -158,7 +158,7 @@ def patch_torch_rmsnorm():
         nn.RMSNorm = RMSNorm
         torch.nn.RMSNorm = RMSNorm
 
-        logger.info(f"{emoji_if_enabled("✅")} RMSNorm compatibility patch applied successfully")
+        logger.info(f"{emoji_if_enabled('✅')} RMSNorm compatibility patch applied successfully")
         return True
 
     except Exception as e:
@@ -182,7 +182,7 @@ def patch_diffusers_attention():
         # Check PyTorch version
         torch_version = tuple(int(x) for x in torch.__version__.split('.')[:2])
         if torch_version >= (2, 4):
-            logger.info(f"{emoji_if_enabled("✅")} PyTorch 2.4.0+ detected - enable_gqa parameter supported")
+            logger.info(f"{emoji_if_enabled('✅')} PyTorch 2.4.0+ detected - enable_gqa parameter supported")
             return True
 
         logger.info(f"PyTorch {torch.__version__} detected - patching scaled_dot_product_attention...", emoji='wrench')
@@ -215,7 +215,7 @@ def patch_diffusers_attention():
         # Replace PyTorch's function globally
         torch.nn.functional.scaled_dot_product_attention = patched_scaled_dot_product_attention
 
-        logger.info(f"{emoji_if_enabled("✅")} PyTorch scaled_dot_product_attention patched to filter enable_gqa")
+        logger.info(f"{emoji_if_enabled('✅')} PyTorch scaled_dot_product_attention patched to filter enable_gqa")
         return True
 
     except Exception as e:
@@ -354,7 +354,7 @@ def patch_forge_flux_controlnet():
         IntegratedFluxTransformer2DModel.inner_forward = patched_inner_forward
         IntegratedFluxTransformer2DModel.forward = patched_forward
 
-        logger.info(f"{emoji_if_enabled("✅")} Forge Flux ControlNet patch applied: IntegratedFluxTransformer2DModel now supports ControlNet")
+        logger.info(f"{emoji_if_enabled('✅')} Forge Flux ControlNet patch applied: IntegratedFluxTransformer2DModel now supports ControlNet")
         return True
 
     except Exception as e:
@@ -416,7 +416,7 @@ def patch_forge_kmodel_for_controlnet():
         # Replace the method
         KModel.apply_model = patched_apply_model
 
-        logger.info(f"{emoji_if_enabled("✅")} Forge KModel patch applied: apply_model now supports Flux ControlNet")
+        logger.info(f"{emoji_if_enabled('✅')} Forge KModel patch applied: apply_model now supports Flux ControlNet")
         return True
 
     except Exception as e:

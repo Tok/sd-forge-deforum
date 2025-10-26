@@ -244,7 +244,7 @@ class WanSimpleIntegration:
                         
                         success = apply_flash_attention_patch()
                         if success:
-                            logger.info(f"{emoji_if_enabled("✅")} Flash Attention monkey patch applied successfully")
+                            logger.info(f"{emoji_if_enabled('✅')} Flash Attention monkey patch applied successfully")
                         else:
                             logger.error("⚠️ Flash Attention patch could not be applied - may be already patched")
                     except Exception as patch_e:
@@ -308,7 +308,7 @@ class WanSimpleIntegration:
                             return self.__call__(enhanced_prompt, height, width, num_frames, num_inference_steps, guidance_scale, **kwargs)
                     
                     self.pipeline = WanWrapper(t2v_model)
-                    logger.info(f"{emoji_if_enabled("✅")} Official Wan model loaded successfully")
+                    logger.info(f"{emoji_if_enabled('✅')} Official Wan model loaded successfully")
                     return True
                     
                 except Exception as wan_e:
@@ -1168,7 +1168,7 @@ class WanSimpleIntegration:
                             return self.i2v_pipeline(**generation_kwargs)
 
                 self.pipeline = DiffusersWrapper(pipeline, i2v_pipeline)
-                logger.info(f"{emoji_if_enabled("✅")} Diffusers model loaded successfully")
+                logger.info(f"{emoji_if_enabled('✅')} Diffusers model loaded successfully")
                 
                 # Provide clear feedback about I2V support
                 if i2v_pipeline is not None:

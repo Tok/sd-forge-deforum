@@ -72,12 +72,12 @@ def synchronize_prompts_to_audio(
         if not prompts:
             return gr.update(), gr.update(), "✗ Error: Please enter at least one prompt"
 
-        logger.info(f"{emoji_if_enabled("✅")} Parsed {len(prompts)} prompts from input")
+        logger.info(f"{emoji_if_enabled('✅')} Parsed {len(prompts)} prompts from input")
 
         # 3. LOAD AUDIO: Process audio file for analysis
         try:
             audio_data = process_audio_for_detection(soundtrack_path_val)
-            logger.info(f"{emoji_if_enabled("✅")} Loaded audio: {audio_data['duration']:.2f}s at {audio_data['sr']}Hz")
+            logger.info(f"{emoji_if_enabled('✅')} Loaded audio: {audio_data['duration']:.2f}s at {audio_data['sr']}Hz")
         except Exception as e:
             return gr.update(), gr.update(), f"✗ Error loading audio: {str(e)}"
 
@@ -93,7 +93,7 @@ def synchronize_prompts_to_audio(
         if not events:
             return gr.update(), gr.update(), f"✗ Error: No audio events detected. Check your audio file."
 
-        logger.info(f"{emoji_if_enabled("✅")} Detected {len(events)} events using {detection_method} method")
+        logger.info(f"{emoji_if_enabled('✅')} Detected {len(events)} events using {detection_method} method")
 
         # 5. CALCULATE TARGET: Determine how many keyframes to generate
         # (taking into account keyframe adjustment from +/- buttons)
@@ -127,7 +127,7 @@ def synchronize_prompts_to_audio(
         if not keyframes:
             return gr.update(), gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
 
-        logger.info(f"{emoji_if_enabled("✅")} Generated {len(keyframes)} keyframes with spacing ≥{adjusted_min_spacing} frames")
+        logger.info(f"{emoji_if_enabled('✅')} Generated {len(keyframes)} keyframes with spacing ≥{adjusted_min_spacing} frames")
 
         # 7. COMPENSATE FOR LOST KEYFRAMES: If we lost too many keyframes due to spacing,
         #    try again with reduced spacing
@@ -146,7 +146,7 @@ def synchronize_prompts_to_audio(
             )
 
             if keyframes:
-                logger.info(f"{emoji_if_enabled("✅")} Compensation successful: {len(keyframes)} keyframes generated")
+                logger.info(f"{emoji_if_enabled('✅')} Compensation successful: {len(keyframes)} keyframes generated")
 
         # 8. DISTRIBUTE PROMPTS: Assign prompts to keyframes
         prompt_assignments = distribute_prompts_across_keyframes(
@@ -155,7 +155,7 @@ def synchronize_prompts_to_audio(
             distribution_mode=distribution_mode
         )
 
-        logger.info(f"{emoji_if_enabled("✅")} Distributed {len(prompts)} prompts across {len(keyframes)} keyframes")
+        logger.info(f"{emoji_if_enabled('✅')} Distributed {len(prompts)} prompts across {len(keyframes)} keyframes")
 
         # 9. FORMAT OUTPUT: Convert to Deforum schedule format
         schedule_dict = {kf: prompt for kf, prompt in prompt_assignments.items()}
@@ -173,13 +173,13 @@ def synchronize_prompts_to_audio(
         )
 
         logger.info("="*80)
-        logger.info(f"{emoji_if_enabled("✅")} AUDIO SYNC COMPLETE")
+        logger.info(f"{emoji_if_enabled('✅')} AUDIO SYNC COMPLETE")
         logger.info(f"   Keyframes: {len(keyframes)}")
         logger.info(f"   Prompts: {len(prompts)}")
         logger.info(f"   Total frames: {total_frames}")
         logger.info("="*80)
 
-        logger.info(f"{emoji_if_enabled("🔍")} DEBUG synchronize_prompts_to_audio return:")
+        logger.info(f"{emoji_if_enabled('🔍')} DEBUG synchronize_prompts_to_audio return:")
         logger.info(f"   formatted_schedule type: {type(formatted_schedule)}, length: {len(formatted_schedule)}")
         logger.info(f"   formatted_schedule preview: {formatted_schedule[:100]}...")
         logger.info(f"   target_count: {len(keyframes)}")

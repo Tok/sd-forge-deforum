@@ -31,7 +31,7 @@ class WanProceduralPipeline:
         """Load pipeline components (no-op for procedural)"""
         logger.info(f"🚀 Loading procedural WAN pipeline...")
         self.loaded = True
-        logger.info(f"{emoji_if_enabled("✅")} Procedural WAN pipeline loaded")
+        logger.info(f"{emoji_if_enabled('✅')} Procedural WAN pipeline loaded")
         return True
     
     def __call__(self, 
@@ -52,8 +52,8 @@ class WanProceduralPipeline:
         logger.info(f"Generating procedural WAN video...", emoji='movie_camera')
         logger.info(f"   📝 Prompt: {prompt[:50]}...")
         logger.info(f"   📐 Size: {width}x{height}")
-        logger.info(f"   {emoji_if_enabled("🎬")} Frames: {num_frames}", emoji='movie_camera')
-        logger.info(f"   {emoji_if_enabled("🔧")} Steps: {num_inference_steps}", emoji='wrench')
+        logger.info(f"   {emoji_if_enabled('🎬')} Frames: {num_frames}", emoji='movie_camera')
+        logger.info(f"   {emoji_if_enabled('🔧')} Steps: {num_inference_steps}", emoji='wrench')
         
         # Generate procedural video frames
         frames = []
@@ -68,7 +68,7 @@ class WanProceduralPipeline:
             # Simulate processing time
             time.sleep(0.05)  # Reduced for faster generation
         
-        logger.info(f"{emoji_if_enabled("✅")} Procedural WAN video generation complete!")
+        logger.info(f"{emoji_if_enabled('✅')} Procedural WAN video generation complete!")
         
         # Convert to tensor format
         frames_tensor = self.video_processor.frames_to_tensor(frames, format="CFHW")

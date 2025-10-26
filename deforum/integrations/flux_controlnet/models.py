@@ -150,7 +150,7 @@ def load_flux_controlnet_model(
         # Cache the model
         _model_cache[cache_key] = controlnet
 
-        logger.info(f"{emoji_if_enabled("✓")} Flux {control_type.title()} ControlNet model loaded successfully")
+        logger.info(f"{emoji_if_enabled('✓')} Flux {control_type.title()} ControlNet model loaded successfully")
         return controlnet
 
     except Exception as e:

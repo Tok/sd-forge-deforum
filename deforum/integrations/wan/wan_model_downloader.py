@@ -94,7 +94,7 @@ class WanModelDownloader:
             )
             
             if result.returncode == 0:
-                logger.info(f"{emoji_if_enabled("✅")} huggingface_hub installed successfully")
+                logger.info(f"{emoji_if_enabled('✅')} huggingface_hub installed successfully")
                 return True
             else:
                 logger.error(f"Failed to install huggingface_hub: {result.stderr}", emoji='off')
@@ -118,7 +118,7 @@ class WanModelDownloader:
 
         # Check if model already exists
         if self.is_model_downloaded(model_key):
-            logger.info(f"{emoji_if_enabled("✅")} Model {model_key} already exists at {local_dir}")
+            logger.info(f"{emoji_if_enabled('✅')} Model {model_key} already exists at {local_dir}")
             if progress_callback:
                 progress_callback(f"✅ Model already downloaded at {local_dir}")
             return True
@@ -159,7 +159,7 @@ class WanModelDownloader:
             try:
                 new_limit = min(hard_limit, 8192)  # Cap at 8192 for safety
                 resource.setrlimit(resource.RLIMIT_NOFILE, (new_limit, hard_limit))
-                logger.info(f"{emoji_if_enabled("✅")} Temporarily increased file descriptor limit to {new_limit}")
+                logger.info(f"{emoji_if_enabled('✅')} Temporarily increased file descriptor limit to {new_limit}")
                 if progress_callback:
                     progress_callback(f"🔧 Increased file descriptor limit to {new_limit} for download")
             except Exception as limit_e:
@@ -206,7 +206,7 @@ class WanModelDownloader:
             # Restore original file descriptor limit
             try:
                 resource.setrlimit(resource.RLIMIT_NOFILE, (soft_limit, hard_limit))
-                logger.info(f"{emoji_if_enabled("✅")} Restored file descriptor limit to {soft_limit}")
+                logger.info(f"{emoji_if_enabled('✅')} Restored file descriptor limit to {soft_limit}")
             except:
                 pass
 
@@ -299,7 +299,7 @@ class WanModelDownloader:
             model_path = self.get_model_path("TI2V-5B")
             results["t2v"] = model_path
             results["i2v"] = model_path  # TI2V handles both T2V and I2V
-            logger.info(f"{emoji_if_enabled("✅")} TI2V-5B ready for unified T2V and I2V generation")
+            logger.info(f"{emoji_if_enabled('✅')} TI2V-5B ready for unified T2V and I2V generation")
             logger.info("Will auto-enable CPU offload, attention slicing, and VAE optimizations for 16GB VRAM", emoji='wrench')
         else:
             logger.error("Failed to download TI2V-5B model", emoji='off')
@@ -313,11 +313,11 @@ class WanModelDownloader:
         # Determine which TI2V model to download (Wan 2.2 only)
         if "A14B" in prefer_size or "14B" in prefer_size:
             primary_model = "TI2V-A14B"
-            logger.info(f"{emoji_if_enabled("✅")} Wan 2.2 TI2V-A14B: MoE, unified T2V+I2V, 720p, highest quality")
+            logger.info(f"{emoji_if_enabled('✅')} Wan 2.2 TI2V-A14B: MoE, unified T2V+I2V, 720p, highest quality")
         else:
             # Default to TI2V-5B (recommended)
             primary_model = "TI2V-5B"
-            logger.info(f"{emoji_if_enabled("✅")} Wan 2.2 TI2V-5B: Unified T2V+I2V, 720p@24fps, RTX 4090")
+            logger.info(f"{emoji_if_enabled('✅')} Wan 2.2 TI2V-5B: Unified T2V+I2V, 720p@24fps, RTX 4090")
 
         # Download the TI2V model
         logger.info(f"📥 Downloading {primary_model}...")
@@ -325,7 +325,7 @@ class WanModelDownloader:
             model_path = self.get_model_path(primary_model)
             results["t2v"] = model_path
             results["i2v"] = model_path  # TI2V handles both T2V and I2V
-            logger.info(f"{emoji_if_enabled("✅")} {primary_model} ready for unified T2V and I2V generation")
+            logger.info(f"{emoji_if_enabled('✅')} {primary_model} ready for unified T2V and I2V generation")
         else:
             logger.error(f"Failed to download {primary_model}", emoji='off')
 
@@ -345,7 +345,7 @@ if __name__ == "__main__":
     # Test the downloader
     downloader = WanModelDownloader()
     
-    logger.info(f"{emoji_if_enabled("🔍")} Available models:")
+    logger.info(f"{emoji_if_enabled('🔍')} Available models:")
     for model in downloader.list_available_models():
         status = "✅ Downloaded" if model["downloaded"] else "❌ Not downloaded"
         logger.info(f"   {model['key']}: {model['description']} ({model['size_gb']}GB) - {status}")

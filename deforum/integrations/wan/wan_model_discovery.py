@@ -64,7 +64,7 @@ class WanModelDiscovery:
     
     def discover_models(self) -> List[Dict]:
         """Discover all available Wan models automatically"""
-        logger.info(f"{emoji_if_enabled("🔍")} Auto-discovering Wan models...")
+        logger.info(f"{emoji_if_enabled('🔍')} Auto-discovering Wan models...")
         
         discovered = []
         
@@ -82,7 +82,7 @@ class WanModelDiscovery:
         self.discovered_models = self._sort_models_by_preference(unique_models)
         
         if self.discovered_models:
-            logger.info(f"{emoji_if_enabled("✅")} Found {len(self.discovered_models)} Wan model(s):")
+            logger.info(f"{emoji_if_enabled('✅')} Found {len(self.discovered_models)} Wan model(s):")
             for i, model in enumerate(self.discovered_models):
                 logger.info(f"   {i+1}. {model['name']} ({model['type']}, {model['size']}) - {model['path']}")
         else:

@@ -77,7 +77,7 @@ def load_args(args_dict_main, args, anim_args, parseq_args, loop_args, controlne
                         setattr(args_namespace, k, jdata[k])
                         # Debug logging for wan_flf2v settings
                         if k.startswith('wan_flf2v'):
-                            logger.info(f"{emoji_if_enabled("🔍")} LOAD_ARGS: Setting {k} in {namespace_name}: {old_val} → {new_val}")
+                            logger.info(f"{emoji_if_enabled('🔍')} LOAD_ARGS: Setting {k} in {namespace_name}: {old_val} → {new_val}")
                     else:
                         logger.info(f"Key {k} doesn't exist in the custom settings data! Using default value of {v}")
         logger.info(args, anim_args, parseq_args, loop_args)

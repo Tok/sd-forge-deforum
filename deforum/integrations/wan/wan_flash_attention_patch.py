@@ -333,12 +333,12 @@ def apply_flash_attention_patch():
                     )
                 
                 wan_attention.attention = patched_attention
-                logger.info("   {emoji_if_enabled("✅")} Also patched attention function")
+                logger.info("   {emoji_if_enabled('✅')} Also patched attention function")
             
-            logger.info(f"{emoji_if_enabled("✅")} Applied flash attention monkey patch successfully")
-            logger.info(f"   {emoji_if_enabled("📊")} FLASH_ATTN_2_AVAILABLE: {wan_attention.FLASH_ATTN_2_AVAILABLE}", emoji='distribution')
-            logger.info(f"   {emoji_if_enabled("📊")} FLASH_ATTN_3_AVAILABLE: {wan_attention.FLASH_ATTN_3_AVAILABLE}", emoji='distribution')
-            logger.info(f"   {emoji_if_enabled("🔧")} Mode: {_FLASH_ATTENTION_MODE}", emoji='wrench')
+            logger.info(f"{emoji_if_enabled('✅')} Applied flash attention monkey patch successfully")
+            logger.info(f"   {emoji_if_enabled('📊')} FLASH_ATTN_2_AVAILABLE: {wan_attention.FLASH_ATTN_2_AVAILABLE}", emoji='distribution')
+            logger.info(f"   {emoji_if_enabled('📊')} FLASH_ATTN_3_AVAILABLE: {wan_attention.FLASH_ATTN_3_AVAILABLE}", emoji='distribution')
+            logger.info(f"   {emoji_if_enabled('🔧')} Mode: {_FLASH_ATTENTION_MODE}", emoji='wrench')
             return True
         else:
             logger.warning("⚠️ flash_attention function not found in Wan attention module")
@@ -415,14 +415,14 @@ _FLASH_ATTENTION_MODE = "Auto (Recommended)"
 
 if __name__ == "__main__":
     # Test the patch application
-    logger.info(f"{emoji_if_enabled("🔍")} Flash Attention Availability:")
+    logger.info(f"{emoji_if_enabled('🔍')} Flash Attention Availability:")
     status = check_flash_attention_availability()
     for impl, available in status.items():
         logger.info(f"   {impl}: {'✅' if available else '❌'}", emoji='off')
     
-    logger.info(f"\n{emoji_if_enabled("🔧")} Testing monkey patch (won't apply without Wan module loaded)...", emoji='wrench')
+    logger.info(f"\n{emoji_if_enabled('🔧')} Testing monkey patch (won't apply without Wan module loaded)...", emoji='wrench')
     success = apply_flash_attention_patch()
     if success:
-        logger.info(f"{emoji_if_enabled("✅")} Patch applied successfully!")
+        logger.info(f"{emoji_if_enabled('✅')} Patch applied successfully!")
     else:
         print("❌ Patch could not be applied (normal when Wan not loaded)") 

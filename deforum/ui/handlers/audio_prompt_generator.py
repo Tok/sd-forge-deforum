@@ -251,7 +251,7 @@ Generate {int(count)} {style_text}prompts for {theme}:"""
         # Join with newlines
         prompts_text = '\n'.join(prompts)
 
-        logger.info(f"{emoji_if_enabled("✓")} Generated {len(prompts)} prompts")
+        logger.info(f"{emoji_if_enabled('✓')} Generated {len(prompts)} prompts")
         return prompts_text
 
     except Exception as e:
