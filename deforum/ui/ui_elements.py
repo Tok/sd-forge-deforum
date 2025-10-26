@@ -951,12 +951,11 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 )
 
                 # Generate button with slopcore gradient styling
-                # variant="primary" gives base styling, CSS overrides with purple gradient
+                # No variant - JavaScript applies styles directly (monkey-patch)
                 audio_ai_generate_button = gr.Button(
                     f"{emoji_utils.bulb()} Generate Prompts with local Qwen",
                     elem_id="audio_ai_generate_button",
-                    elem_classes=["slopcore-button"],
-                    variant="primary"
+                    elem_classes=["slopcore-button"]
                 )
 
                 # Prompt input for auto-sync
@@ -984,28 +983,25 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     )
 
                 # Synchronize buttons with slopcore gradient styling
-                # variant="primary" gives base styling, CSS overrides with purple gradient
+                # No variant - JavaScript applies styles directly (monkey-patch)
                 gr.Markdown("**Click to detect audio events and populate the Prompts tab:**")
                 with FormRow():
                     audio_sync_fewer_button = gr.Button(
                         "➖ -5% Events",
                         elem_id="audio_sync_fewer_button",
                         elem_classes=["slopcore-button"],
-                        variant="primary",
                         scale=1
                     )
                     audio_sync_button = gr.Button(
                         f"{emoji_utils.music()} Synchronize Audio to Keyframe Prompts",
                         elem_id="audio_sync_button",
                         elem_classes=["slopcore-button"],
-                        variant="primary",
                         scale=2
                     )
                     audio_sync_more_button = gr.Button(
                         "➕ +5% Events",
                         elem_id="audio_sync_more_button",
                         elem_classes=["slopcore-button"],
-                        variant="primary",
                         scale=1
                     )
 
