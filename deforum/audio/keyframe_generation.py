@@ -110,8 +110,8 @@ def generate_keyframes_from_events(
     for time, intensity in zip(times, intensities):
         frame = int(round(time * fps))
 
-        # Skip if beyond max_frames
-        if frame > max_frames:
+        # Skip if at or beyond max_frames (max_frames is the total count, frames are 0-indexed)
+        if frame >= max_frames:
             continue
 
         keyframes.append({
