@@ -894,7 +894,30 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 gr.Markdown("### 🎯 Automatic Prompt Synchronization")
                 gr.Markdown("Enter your prompts below (one per line or comma-separated). Click **Synchronize** to automatically distribute them across detected audio events.")
 
-                # AI prompt generation controls
+                # AI prompt generation controls - Subject first, then style
+                with FormRow():
+                    audio_ai_prompt_theme = gr.Textbox(
+                        label="Subject/Theme",
+                        value="bunny",
+                        placeholder="e.g., bunny, dragon, landscape",
+                        info="Main subject for the animation"
+                    )
+                    audio_ai_style = gr.Textbox(
+                        label="Style (optional)",
+                        value="synthwave",
+                        placeholder="e.g., synthwave, cyberpunk, fantasy",
+                        info="Optional visual style to apply to all prompts"
+                    )
+                    audio_ai_prompt_count = gr.Number(
+                        label="Number of Prompts",
+                        value=5,
+                        precision=0,
+                        minimum=1,
+                        maximum=20,
+                        info="How many prompts to generate"
+                    )
+
+                # Generation mode and intensity row
                 with FormRow():
                     audio_ai_generation_mode = gr.Dropdown(
                         label="Generation Mode",
@@ -907,29 +930,6 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         choices=["normal", "crazy", "extreme"],
                         value="crazy",
                         info="normal=realistic, crazy=over-the-top (default), extreme=absolutely bonkers"
-                    )
-                    audio_ai_style = gr.Textbox(
-                        label="Style (optional)",
-                        value="synthwave",
-                        placeholder="e.g., synthwave, cyberpunk, fantasy",
-                        info="Optional visual style to apply to all prompts"
-                    )
-
-                # Theme and count row
-                with FormRow():
-                    audio_ai_prompt_theme = gr.Textbox(
-                        label="Subject/Theme",
-                        value="bunny",
-                        placeholder="e.g., bunny, dragon, landscape",
-                        info="Main subject for the animation"
-                    )
-                    audio_ai_prompt_count = gr.Number(
-                        label="Number of Prompts",
-                        value=5,
-                        precision=0,
-                        minimum=1,
-                        maximum=20,
-                        info="How many prompts to generate"
                     )
 
                 # Start/End prompts (visible only in start-to-end mode)
@@ -948,11 +948,12 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     visible=False
                 )
 
-                # Generate button
+                # Generate button with elem_classes for purple styling
                 audio_ai_generate_button = gr.Button(
                     "✨ Generate Prompts with AI",
                     variant="primary",
-                    elem_id="audio_ai_generate_button"
+                    elem_id="audio_ai_generate_button",
+                    elem_classes=["slopcore-button"]
                 )
 
                 # Prompt input for auto-sync
@@ -984,6 +985,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     "🎵 Synchronize to Audio",
                     variant="primary",
                     elem_id="audio_sync_button",
+                    elem_classes=["slopcore-button"]
                 )
 
                 # Status output

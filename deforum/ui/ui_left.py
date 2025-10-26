@@ -559,6 +559,15 @@ def setup_deforum_left_side_ui():
     if 'audio_ai_generate_button' in locals():
         def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, start_prompt, end_prompt):
             """Generate prompts using Qwen with multiple modes and intensity levels."""
+            print("="*80)
+            print(f"🎨 AI PROMPT GENERATION BUTTON CLICKED!")
+            print(f"   Mode: {generation_mode}")
+            print(f"   Intensity: {intensity}")
+            print(f"   Style: {style}")
+            print(f"   Theme: {theme}")
+            print(f"   Count: {count}")
+            print("="*80)
+
             try:
                 from scripts.deforum_helpers.wan.qwen_prompt_expander import QwenPromptExpander
 
@@ -693,12 +702,15 @@ Now generate {int(count)} {style_text}prompts for {theme}:"""
         ]
 
         if all(comp in locals() for comp in required_components):
+            print(f"🔧 All {len(required_components)} components found for AI prompt generation wiring")
+
             # Wire up mode change to show/hide start/end prompts
             locals()['audio_ai_generation_mode'].change(
                 fn=toggle_start_end_visibility,
                 inputs=[locals()['audio_ai_generation_mode']],
                 outputs=[locals()['audio_ai_start_prompt'], locals()['audio_ai_end_prompt']]
             )
+            print("   ✓ Mode change visibility toggle wired")
 
             # Wire up generate button
             locals()['audio_ai_generate_button'].click(
@@ -715,6 +727,9 @@ Now generate {int(count)} {style_text}prompts for {theme}:"""
                 outputs=[locals()['audio_sync_prompts']]
             )
             print("✨ AI prompt generation button connected successfully")
+        else:
+            missing = [c for c in required_components if c not in locals()]
+            print(f"⚠️ Could not wire AI prompt button - missing components: {missing}")
 
     # Set up Wan Generate button if it exists - with better error handling
     if 'wan_generate_button' in locals() and 'wan_generation_status' in locals():
