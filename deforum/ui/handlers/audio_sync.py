@@ -183,27 +183,28 @@ def synchronize_prompts_to_audio(
                 logger.info(f"{emoji_if_enabled('✅')} Compensation successful: {len(keyframes)} keyframes generated")
 
         # 8. DISTRIBUTE PROMPTS: Assign prompts to keyframes
-        prompt_assignments = distribute_prompts_across_keyframes(
+        # Returns JSON string ready for Deforum animation_prompts format
+        formatted_schedule = distribute_prompts_across_keyframes(
             keyframes=keyframes,
-            prompts=prompts,
-            distribution_mode=distribution_mode
+            user_prompts=prompts,
+            mode=distribution_mode
         )
 
         logger.info(f"{emoji_if_enabled('✅')} Distributed {len(prompts)} prompts across {len(keyframes)} keyframes")
 
-        # 9. FORMAT OUTPUT: Convert to Deforum schedule format
-        schedule_dict = {kf: prompt for kf, prompt in prompt_assignments.items()}
-        formatted_schedule = json.dumps(schedule_dict, indent=None)
-
-        # 10. BUILD STATUS MESSAGE: Create visualization and status
-        visualization = build_keyframe_visualization(keyframes, total_frames)
+        # 9. BUILD STATUS MESSAGE: Create visualization and status
+        viz_str, spacing_str = build_keyframe_visualization(keyframes, total_frames)
         status_msg = build_status_message(
-            keyframes=keyframes,
-            prompts=prompts,
-            distribution_mode=distribution_mode,
-            detection_method=detection_method,
+            duration=audio_data['duration'],
+            fps=current_fps,
             total_frames=total_frames,
-            visualization=visualization
+            bpm=estimated_bpm,
+            events_detected=len(event_times),
+            keyframes_created=len(keyframes),
+            prompts_used=len(prompts),
+            distribution_mode=distribution_mode,
+            viz_str=viz_str,
+            spacing_str=spacing_str
         )
 
         logger.info("="*80)
