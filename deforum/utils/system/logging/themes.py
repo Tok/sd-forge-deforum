@@ -9,7 +9,7 @@ Defines color palettes and styling for three themes:
 from deforum.utils.image.color import hex_to_ansi_foreground as from_hex_color
 
 # ============================================================================
-# SLOPCORE THEME - Blue to Purple gradient
+# SLOPCORE THEME - Blue to Purple gradient + Yellow for warnings
 # ============================================================================
 # 7-shade gradient from bright blue through purple (inspired by banner gradient)
 
@@ -20,6 +20,7 @@ HEX_SLOPCORE_4 = '#7B6DB8'  # Mid purple
 HEX_SLOPCORE_5 = '#8F5CA0'  # Purple
 HEX_SLOPCORE_6 = '#A353A8'  # Deep purple
 HEX_SLOPCORE_7 = '#764BA2'  # Darkest purple (banner end)
+HEX_SLOPCORE_YELLOW = '#FFEA56'  # Same yellow as Precalculations tqdm (classic yellow)
 
 SLOPCORE_1 = from_hex_color(HEX_SLOPCORE_1)  # Bright blue
 SLOPCORE_2 = from_hex_color(HEX_SLOPCORE_2)  # Blue-purple
@@ -28,6 +29,7 @@ SLOPCORE_4 = from_hex_color(HEX_SLOPCORE_4)  # Mid purple
 SLOPCORE_5 = from_hex_color(HEX_SLOPCORE_5)  # Purple
 SLOPCORE_6 = from_hex_color(HEX_SLOPCORE_6)  # Deep purple
 SLOPCORE_7 = from_hex_color(HEX_SLOPCORE_7)  # Darkest purple
+SLOPCORE_YELLOW = from_hex_color(HEX_SLOPCORE_YELLOW)  # Gold/Yellow
 
 # ============================================================================
 # CLASSIC THEME - Original vibrant colors
@@ -107,13 +109,13 @@ def get_theme_colors(theme: str) -> dict:
     """
     if theme == 'slopcore':
         return {
-            'debug': SLOPCORE_1,      # Bright blue (lightest)
-            'info': SLOPCORE_3,        # Light purple
-            'warning': SLOPCORE_5,     # Mid purple
-            'error': SLOPCORE_6,       # Deep purple
-            'critical': SLOPCORE_7,    # Darkest purple
-            'header': SLOPCORE_2,      # Blue-purple
-            'emphasis': SLOPCORE_4,    # Mid purple
+            'debug': SLOPCORE_1,       # Bright blue (lightest)
+            'info': SLOPCORE_3,         # Light purple
+            'warning': SLOPCORE_YELLOW, # Yellow (matches Precalculations tqdm)
+            'error': SLOPCORE_6,        # Deep purple
+            'critical': SLOPCORE_7,     # Darkest purple
+            'header': SLOPCORE_2,       # Blue-purple
+            'emphasis': SLOPCORE_4,     # Mid purple
             'reset': RESET_COLOR,
             'bold': BOLD,
             # All 7 shades available for gradients
