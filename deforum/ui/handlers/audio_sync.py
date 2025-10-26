@@ -107,26 +107,26 @@ def synchronize_prompts_to_audio(
             return gr.update(), gr.update(), f"✗ Error loading audio: {str(e)}"
 
         # 4. DETECT EVENTS: Detect beats/onsets in audio
-        events = detect_events(
+        event_times, event_intensities = detect_events(
             audio=y_processed,
             sample_rate=sr,
             method=detection_method,
             sensitivity=sensitivity
         )
 
-        if not events:
+        if len(event_times) == 0:
             return gr.update(), gr.update(), f"✗ Error: No audio events detected. Check your audio file."
 
-        logger.info(f"{emoji_if_enabled('✅')} Detected {len(events)} events using {detection_method} method")
+        logger.info(f"{emoji_if_enabled('✅')} Detected {len(event_times)} events using {detection_method} method")
 
         # 5. CALCULATE TARGET: Determine how many keyframes to generate
         # (taking into account keyframe adjustment from +/- buttons)
         total_frames = int(audio_data['duration'] * current_fps)
 
         # Estimate BPM from event intervals
-        if len(events) > 1:
+        if len(event_times) > 1:
             import numpy as np
-            event_intervals = np.diff(events)
+            event_intervals = np.diff(event_times)
             median_interval = np.median(event_intervals)
             estimated_bpm = 60.0 / median_interval if median_interval > 0 else 120.0
         else:
@@ -151,10 +151,11 @@ def synchronize_prompts_to_audio(
         adjusted_min_spacing = calculate_adjusted_min_spacing(min_spacing_frames, spacing_multiplier)
 
         keyframes = generate_keyframes_from_events(
-            events=events,
+            event_times=event_times,
+            event_intensities=event_intensities,
             fps=current_fps,
-            min_spacing=adjusted_min_spacing,
-            target_count=resolved_target
+            min_spacing_frames=adjusted_min_spacing,
+            max_frames=total_frames
         )
 
         if not keyframes:
