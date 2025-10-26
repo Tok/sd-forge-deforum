@@ -23,14 +23,13 @@ import torchvision.transforms.functional as TF
 # Import pure functions from refactored utils module
 from deforum.utils.general import clean_gradio_path_strings
 from deforum.utils.validation.validators import (
+    blank_if_none,
+    none_if_blank,
+)
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
-
-    blank_if_none,
-    none_if_blank,
-)
 
 def load_img(path : str, image_box :Image.Image, shape=None, use_alpha_as_mask=False):
     # use_alpha_as_mask: Read the alpha channel of the image as the mask image

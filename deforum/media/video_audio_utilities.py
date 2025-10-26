@@ -44,14 +44,13 @@ from deforum.utils.filesystem.paths import (
     get_frame_name,
 )
 from deforum.utils.filesystem.video_paths import (
+    get_next_frame_path,
+    get_output_video_path as get_manual_frame_to_vid_output_path,
+)
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
-
-    get_next_frame_path,
-    get_output_video_path as get_manual_frame_to_vid_output_path,
-)
 
 SUPPORTED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "bmp", "webp"]
 SUPPORTED_VIDEO_EXTENSIONS = ["mov", "mpeg", "mp4", "m4v", "avi", "mpg", "webm"]
