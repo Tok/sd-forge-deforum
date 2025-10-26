@@ -7,6 +7,8 @@ from tqdm import tqdm
 from deforum.utils.system.logging import log as log_utils
 from deforum.utils.system.logging.log import HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED, HEX_PURPLE
 from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging.themes import get_tqdm_color_for_theme
+from deforum.rendering.options import get_log_theme
 
 # Initialize logger
 logger = get_logger()
@@ -28,9 +30,11 @@ class Taqaddumat:
 
     def reset(self, data, frames):
         def create(iterable, position, color, description, unit, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
+            # Get themed color based on current theme
+            themed_color = Taqaddumat._get_themed_color(color)
             return tqdm(iterable, position=position, desc=description, unit=unit, dynamic_ncols=True,
                         file=shared.progress_print_out, bar_format=bar_format,
-                        disable=shared.cmd_opts.disable_console_progressbars, colour=color)
+                        disable=shared.cmd_opts.disable_console_progressbars, colour=themed_color)
 
         # Positions greater than 0 are assigned where bars are meant to show up directly after each other and
         # need to be updated at the same time. 'Tweens' is paired with 'Total Frames' and 'Steps' with 'Total Steps'.
@@ -119,6 +123,19 @@ class Taqaddumat:
         self.total_frames.clear()
         self.total_animation_cycles.clear()
         logger.info("\n\n\n\n")
+
+    @staticmethod
+    def _get_themed_color(classic_color):
+        """Map classic tqdm color to current theme's color.
+
+        Args:
+            classic_color: Original color hex (HEX_BLUE, HEX_GREEN, etc.)
+
+        Returns:
+            Themed color hex based on current theme setting
+        """
+        theme = get_log_theme()
+        return get_tqdm_color_for_theme(classic_color, theme)
 
     @staticmethod
     def is_last_iteration(taqaddum):

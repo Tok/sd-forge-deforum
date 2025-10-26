@@ -63,6 +63,39 @@ UNDERLINE = f"{ESC}4{TERM}"
 # Theme Color Maps
 # ============================================================================
 
+def get_tqdm_color_for_theme(classic_color_hex: str, theme: str) -> str:
+    """Map a classic tqdm color to the appropriate color for the given theme.
+
+    This function translates the classic vibrant tqdm colors (used in 5 parallel bars)
+    to colors appropriate for the selected theme.
+
+    Args:
+        classic_color_hex: Original color hex (e.g., '#FE797B' for red)
+        theme: Theme name ('slopcore', 'classic', 'simple')
+
+    Returns:
+        Color hex appropriate for the theme, or None for no color
+    """
+    if theme == 'slopcore':
+        # Map classic rainbow colors to slopcore blue→purple gradient
+        # Preserves ordering: blue->green->orange->red->purple
+        # Maps to: bright blue -> light purple -> mid purple -> deep purple -> darkest purple
+        color_map = {
+            HEX_CLASSIC_BLUE: HEX_SLOPCORE_1,      # Blue (#36CEDC) → Bright blue (#4A90E2)
+            HEX_CLASSIC_GREEN: HEX_SLOPCORE_3,     # Green (#8FE968) → Light purple (#667EEA)
+            HEX_CLASSIC_ORANGE: HEX_SLOPCORE_4,    # Orange (#FFB750) → Mid purple (#7B6DB8)
+            HEX_CLASSIC_RED: HEX_SLOPCORE_6,       # Red (#FE797B) → Deep purple (#A353A8)
+            HEX_CLASSIC_PURPLE: HEX_SLOPCORE_7,    # Purple (#A587CA) → Darkest purple (#764BA2)
+        }
+        return color_map.get(classic_color_hex, HEX_SLOPCORE_4)  # Default to mid purple
+    elif theme == 'simple':
+        # Simple theme: no color
+        return None
+    else:  # classic
+        # Classic theme: keep original vibrant colors
+        return classic_color_hex
+
+
 def get_theme_colors(theme: str) -> dict:
     """Get color palette for specified theme.
 
