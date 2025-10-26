@@ -750,7 +750,7 @@ def setup_deforum_left_side_ui():
 
                         # Generate with Qwen
                         print(f"🤖 Generating {count} prompts | Mode: {generation_mode} | Intensity: {intensity} | Style: {style or 'none'} | Theme: {theme}")
-                        result = qwen.enhance_prompt(generation_prompt)
+                        result = qwen(prompt=generation_prompt, tar_lang="en")
 
                         # Clean up the result (remove any numbering or extra formatting)
                         lines = [line.strip() for line in result.split('\n') if line.strip()]
