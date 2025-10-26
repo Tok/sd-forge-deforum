@@ -80,7 +80,8 @@ def generate_keyframes_from_events(
         event_times: Event times in seconds
         event_intensities: Event intensities (0-1)
         fps: Animation frames per second
-        max_frames: Maximum frame number for animation
+        max_frames: Total frame count (valid indices: 0 to max_frames-1)
+                   Example: audio_duration_seconds * fps = total frames
         min_spacing_frames: Minimum frames between keyframes
         intensity_threshold: Minimum event intensity to generate keyframe
 
@@ -88,6 +89,7 @@ def generate_keyframes_from_events(
         List of keyframe dicts with 'frame' and 'intensity' keys
 
     Example:
+        >>> # 10 second audio at 24 FPS = 240 total frames (indices 0-239)
         >>> keyframes = generate_keyframes_from_events(
         ...     times, intensities, fps=24, max_frames=240
         ... )

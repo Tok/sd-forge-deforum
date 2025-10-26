@@ -183,8 +183,8 @@ class TestTargetResolution:
             bpm_based_target="20",  # String from UI
             keyframe_adjustment="5"  # String from UI
         )
-        # 15 + 5% = int(15 * 1.05) = int(15.75) = 15
-        assert target == 15
+        # 15 + 5% = int(15 * 1.05) = int(15.75) = 15, but guaranteed +1 minimum
+        assert target == 16
         assert "user-specified" in desc or "→" in desc
 
     def test_empty_string_conversion(self):
@@ -231,3 +231,116 @@ class TestEdgeCases:
         # Based on the function, it might allow negatives
         # This is a potential edge case to handle
         assert isinstance(result, int)
+
+
+class TestFrameCalculation:
+    """Test frame count calculation from audio duration and FPS."""
+
+    def test_basic_frame_calculation(self):
+        """Test basic frame count: duration * fps."""
+        # 5.55 seconds at 60 FPS (amen break example)
+        duration = 5.55
+        fps = 60
+        total_frames = int(duration * fps)
+        assert total_frames == 333
+        # Valid frame indices: 0 to 332
+
+    def test_frame_range(self):
+        """Test that frame range is 0 to total_frames-1."""
+        duration = 10.0
+        fps = 24
+        total_frames = int(duration * fps)
+        assert total_frames == 240
+        # Valid indices: 0, 1, 2, ..., 239
+        assert 0 <= 0 < total_frames  # First frame valid
+        assert 0 <= 239 < total_frames  # Last frame valid
+        assert not (0 <= 240 < total_frames)  # 240 invalid
+
+    def test_fractional_duration(self):
+        """Test with fractional second duration."""
+        # 5.999 seconds at 60 FPS
+        duration = 5.999
+        fps = 60
+        total_frames = int(duration * fps)
+        assert total_frames == 359
+        # Actual length: 359/60 = 5.983s (lost 0.016s due to truncation)
+        actual_duration = total_frames / fps
+        assert abs(actual_duration - duration) < 0.02  # Within 20ms
+
+    def test_standard_fps_values(self):
+        """Test with standard FPS values."""
+        duration = 10.0
+
+        # 24 FPS (film)
+        assert int(duration * 24) == 240
+
+        # 30 FPS (NTSC)
+        assert int(duration * 30) == 300
+
+        # 60 FPS (high frame rate)
+        assert int(duration * 60) == 600
+
+
+class TestMaxFramesBoundary:
+    """Test max_frames boundary checking in keyframe generation."""
+
+    def test_max_frames_semantics(self):
+        """Test that max_frames represents total count, not last index."""
+        import numpy as np
+        from deforum.audio.keyframe_generation import generate_keyframes_from_events
+
+        # Create events at 0.0s, 1.0s, 2.0s
+        event_times = np.array([0.0, 1.0, 2.0])
+        event_intensities = np.array([1.0, 0.8, 0.9])
+
+        # 2 seconds at 60 FPS = 120 total frames (indices 0-119)
+        fps = 60
+        max_frames = 120
+
+        keyframes = generate_keyframes_from_events(
+            event_times=event_times,
+            event_intensities=event_intensities,
+            fps=fps,
+            max_frames=max_frames,
+            min_spacing_frames=1,
+            intensity_threshold=0.0
+        )
+
+        # All keyframes should have frame < max_frames
+        for kf in keyframes:
+            assert kf['frame'] < max_frames, f"Frame {kf['frame']} >= {max_frames}"
+
+        # Should include frame 0, 60, 120 converted from times 0.0, 1.0, 2.0
+        # But frame 120 should be excluded (>= max_frames)
+        frames = [kf['frame'] for kf in keyframes]
+        assert 0 in frames
+        assert 60 in frames
+        assert 120 not in frames  # Excluded by boundary check
+
+    def test_boundary_check_prevents_overflow(self):
+        """Test that boundary check prevents frame >= max_frames."""
+        import numpy as np
+        from deforum.audio.keyframe_generation import generate_keyframes_from_events
+
+        # Event exactly at duration boundary
+        duration = 5.55
+        fps = 60
+        max_frames = int(duration * fps)  # 333
+
+        # Event at exact duration (would convert to frame 333)
+        event_times = np.array([0.0, duration])
+        event_intensities = np.array([1.0, 1.0])
+
+        keyframes = generate_keyframes_from_events(
+            event_times=event_times,
+            event_intensities=event_intensities,
+            fps=fps,
+            max_frames=max_frames,
+            min_spacing_frames=1,
+            intensity_threshold=0.0
+        )
+
+        # Frame 333 should be excluded (>= max_frames)
+        frames = [kf['frame'] for kf in keyframes]
+        assert 333 not in frames
+        assert all(f < max_frames for f in frames)

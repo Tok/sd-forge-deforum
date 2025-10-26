@@ -92,7 +92,8 @@ class TestApplyKeyframeAdjustment:
 
     def test_small_positive_adjustment(self):
         result = apply_keyframe_adjustment(11, 5)
-        assert result == 11  # 11 * 1.05 = 11.55 → 11
+        # 11 * 1.05 = 11.55 → would round to 11, but guaranteed +1 minimum
+        assert result == 12
 
 
 class TestCalculateSpacingMultiplier:
@@ -271,6 +272,7 @@ class TestResolveKeyframeTarget:
         final, desc = resolve_keyframe_target(
             user_target=0, bpm_based_target=10, keyframe_adjustment=5
         )
-        assert final == 10  # 10 * 1.05 = 10.5 → 10
-        assert "10 → 10" in desc
+        # 10 * 1.05 = 10.5 → would round to 10, but guaranteed +1 minimum
+        assert final == 11
+        assert "10 → 11" in desc
         assert "+5%" in desc
