@@ -364,26 +364,33 @@ def setup_deforum_left_side_ui():
                             distortion_gain=10.0
                         )
 
-                        # Detect events (returns times AND intensities)
-                        sensitivity_normalized = sensitivity / 100.0  # Convert 0-100 to 0-1
+                        # Auto-tune sensitivity to find events
                         print(f"🎵 Audio event detection:")
                         print(f"   File: {Path(soundtrack_path_val).name}")
                         print(f"   Duration: {duration:.2f}s @ {fps_val} FPS")
-                        print(f"   Method: {detection_method}, Band: {frequency_band}, Sensitivity: {sensitivity} -> {sensitivity_normalized:.2f}")
+                        print(f"   Target: ~{duration * 2:.0f} keyframes (2/sec ideal for 120 BPM)")
 
-                        event_times, event_intensities = detect_events(
-                            y_processed, sr,
-                            method=detection_method,
-                            sensitivity=sensitivity_normalized
-                        )
+                        # Try multiple sensitivity levels automatically
+                        event_times = None
+                        event_intensities = None
+                        sensitivity_values = [sensitivity, 40, 30, 20, 15, 10, 5]  # Start with user's choice, then fallbacks
 
-                        print(f"   Detected {len(event_times)} events")
-                        if len(event_times) > 0:
-                            print(f"   Event times (first 5): {event_times[:5]}")
-                            print(f"   Intensities (first 5): {event_intensities[:5]}")
+                        for sens_val in sensitivity_values:
+                            sens_norm = sens_val / 100.0
+                            print(f"   Trying sensitivity={sens_val} ({sens_norm:.2f})...")
 
-                        if len(event_times) == 0:
-                            return gr.update(), f"✗ Error: No audio events detected with sensitivity={sensitivity}. Try lower sensitivity (e.g., 20-40)."
+                            event_times, event_intensities = detect_events(
+                                y_processed, sr,
+                                method=detection_method,
+                                sensitivity=sens_norm
+                            )
+
+                            if len(event_times) > 0:
+                                print(f"   ✓ Found {len(event_times)} events with sensitivity={sens_val}")
+                                break
+
+                        if event_times is None or len(event_times) == 0:
+                            return gr.update(), f"✗ Error: No audio events detected even with very low sensitivity. Check your audio file."
 
                         # Determine keyframe count
                         if target_count and target_count > 0:
@@ -409,6 +416,40 @@ def setup_deforum_left_side_ui():
                         if not keyframes:
                             return gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
 
+                        # Ensure first and last frames are always keyframes
+                        max_frame = int(duration * fps_val) - 1
+                        frames_set = {kf['frame'] for kf in keyframes}
+
+                        # Add frame 0 if not present
+                        if 0 not in frames_set:
+                            keyframes.insert(0, {'frame': 0, 'intensity': 1.0, 'time_seconds': 0.0})
+                            print(f"   ✓ Added frame 0 as keyframe")
+
+                        # Add last frame if not present
+                        if max_frame not in frames_set:
+                            keyframes.append({'frame': max_frame, 'intensity': 1.0, 'time_seconds': duration})
+                            print(f"   ✓ Added frame {max_frame} as keyframe")
+
+                        # Sort by frame number
+                        keyframes = sorted(keyframes, key=lambda x: x['frame'])
+
+                        # Create visualization
+                        total_frames = max_frame + 1
+                        viz_width = 60
+                        viz = ['_'] * viz_width
+                        for kf in keyframes:
+                            pos = int((kf['frame'] / total_frames) * (viz_width - 1))
+                            viz[pos] = '|'
+                        viz_str = ''.join(viz)
+
+                        print(f"   Keyframe visualization ({total_frames} frames):")
+                        print(f"   [{viz_str}]")
+                        print(f"   0{' ' * (viz_width - len(str(max_frame)) - 1)}{max_frame}")
+
+                        # Show frame numbers
+                        frame_list = [kf['frame'] for kf in keyframes]
+                        print(f"   Frames: {frame_list[:10]}{'...' if len(frame_list) > 10 else ''}")
+
                         # Distribute prompts across keyframes
                         animation_prompts_json = distribute_prompts_across_keyframes(
                             keyframes, user_prompts, mode=distribution_mode
@@ -418,12 +459,17 @@ def setup_deforum_left_side_ui():
                         schedule = json.loads(animation_prompts_json)
                         formatted_schedule = json.dumps(schedule, indent=2)
 
+                        # Build detailed status message with visualization
+                        avg_spacing = total_frames / len(keyframes) if keyframes else 0
                         status_msg = (
                             f"✓ Successfully synchronized!\n"
-                            f"• Audio: {duration:.1f}s @ {fps_val} FPS\n"
+                            f"• Audio: {duration:.1f}s @ {fps_val} FPS ({total_frames} frames)\n"
                             f"• Events detected: {len(event_times)}\n"
                             f"• Keyframes created: {len(keyframes)}\n"
-                            f"• Prompts used: {len(user_prompts)} (mode: {distribution_mode})"
+                            f"• Average spacing: {avg_spacing:.1f} frames (~{avg_spacing/fps_val:.2f}s)\n"
+                            f"• Prompts used: {len(user_prompts)} (mode: {distribution_mode})\n\n"
+                            f"Keyframe placement:\n[{viz_str}]\n"
+                            f"0{' ' * (viz_width - len(str(max_frame)) - 1)}{max_frame}"
                         )
 
                         return formatted_schedule, status_msg
