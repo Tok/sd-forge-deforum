@@ -446,6 +446,7 @@ def setup_deforum_left_side_ui():
 
             # Wire up AI prompt generation button
             if 'audio_ai_generate_button' in locals():
+                print("🔍 DEBUG: AI button wiring block entered (audio_ai_generate_button found)")
                 def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, start_prompt, end_prompt):
                     """Generate prompts using Qwen with multiple modes and intensity levels."""
                     print("="*80)
@@ -589,6 +590,13 @@ def setup_deforum_left_side_ui():
                     'audio_ai_prompt_theme', 'audio_ai_prompt_count',
                     'audio_ai_start_prompt', 'audio_ai_end_prompt', 'audio_sync_prompts'
                 ]
+
+                # DEBUG: Check what's in locals()
+                present = [c for c in required_components if c in locals()]
+                missing = [c for c in required_components if c not in locals()]
+                print(f"🔍 DEBUG: AI button wiring component check:")
+                print(f"   Present in locals(): {present}")
+                print(f"   Missing from locals(): {missing}")
 
                 if all(comp in locals() for comp in required_components):
                     print(f"🔧 All {len(required_components)} components found for AI prompt generation wiring")
