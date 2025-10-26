@@ -10,9 +10,7 @@ from typing import Callable, Union
 
 
 def compute_file_checksum(
-    file_path: Union[str, Path],
-    hash_algorithm: str = 'blake2b',
-    chunk_size: int = 8192
+    file_path: Union[str, Path], hash_algorithm: str = "blake2b", chunk_size: int = 8192
 ) -> str:
     """Compute checksum/hash of a file.
 
@@ -47,12 +45,10 @@ def compute_file_checksum(
     try:
         hash_obj = hashlib.new(hash_algorithm)
     except ValueError as e:
-        raise ValueError(
-            f"Unsupported hash algorithm '{hash_algorithm}': {str(e)}"
-        ) from e
+        raise ValueError(f"Unsupported hash algorithm '{hash_algorithm}': {str(e)}") from e
 
     # Read and hash file in chunks
-    with open(file_path, 'rb') as f:
+    with open(file_path, "rb") as f:
         while chunk := f.read(chunk_size):
             hash_obj.update(chunk)
 
@@ -62,7 +58,7 @@ def compute_file_checksum(
 def compute_file_checksum_with_factory(
     file_path: Union[str, Path],
     hash_factory: Callable = hashlib.blake2b,
-    chunk_num_blocks: int = 128
+    chunk_num_blocks: int = 128,
 ) -> str:
     """Compute checksum using a hash factory function.
 
@@ -97,17 +93,14 @@ def compute_file_checksum_with_factory(
 
     h = hash_factory()
 
-    with open(file_path, 'rb') as f:
+    with open(file_path, "rb") as f:
         while chunk := f.read(chunk_num_blocks * h.block_size):
             h.update(chunk)
 
     return h.hexdigest()
 
 
-def compute_string_hash(
-    data: Union[str, bytes],
-    hash_algorithm: str = 'sha256'
-) -> str:
+def compute_string_hash(data: Union[str, bytes], hash_algorithm: str = "sha256") -> str:
     """Compute hash of a string or bytes.
 
     Args:
@@ -132,22 +125,18 @@ def compute_string_hash(
     try:
         hash_obj = hashlib.new(hash_algorithm)
     except ValueError as e:
-        raise ValueError(
-            f"Unsupported hash algorithm '{hash_algorithm}': {str(e)}"
-        ) from e
+        raise ValueError(f"Unsupported hash algorithm '{hash_algorithm}': {str(e)}") from e
 
     # Convert string to bytes if needed
     if isinstance(data, str):
-        data = data.encode('utf-8')
+        data = data.encode("utf-8")
 
     hash_obj.update(data)
     return hash_obj.hexdigest()
 
 
 def verify_file_checksum(
-    file_path: Union[str, Path],
-    expected_checksum: str,
-    hash_algorithm: str = 'blake2b'
+    file_path: Union[str, Path], expected_checksum: str, hash_algorithm: str = "blake2b"
 ) -> bool:
     """Verify file checksum matches expected value.
 

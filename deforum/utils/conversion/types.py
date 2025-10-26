@@ -7,7 +7,6 @@ programming principles with no side effects.
 
 import binascii
 import os
-from typing import Literal
 
 
 def generate_random_name(length: int = 8, suffix: str = "") -> str:

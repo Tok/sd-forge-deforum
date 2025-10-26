@@ -350,6 +350,28 @@ def setup_deforum_left_side_ui():
                         keyframe_adjustment: Positive = more keyframes, negative = fewer keyframes
                                            Used by +/- buttons to adjust target count
                     """
+                    # Consolidated imports
+                    from pathlib import Path
+                    import json
+                    import librosa
+                    from deforum.audio import (
+                        parse_prompt_list,
+                        process_audio_for_detection,
+                        detect_events,
+                        generate_keyframes_from_events,
+                        distribute_prompts_across_keyframes
+                    )
+                    from deforum.utils.audio.sync import (
+                        calculate_keyframes_per_beat,
+                        calculate_bpm_based_target,
+                        resolve_keyframe_target,
+                        calculate_spacing_multiplier,
+                        calculate_adjusted_min_spacing,
+                        calculate_compensation_target,
+                        build_keyframe_visualization,
+                        build_status_message
+                    )
+
                     print("="*80)
                     print("🎵 AUDIO SYNC FUNCTION CALLED")
                     print(f"   Soundtrack: {soundtrack_path_val}")
@@ -359,32 +381,17 @@ def setup_deforum_left_side_ui():
                         print(f"   Keyframe adjustment: {keyframe_adjustment:+d}%")
                     print("="*80)
 
-                    # keyframe_adjustment is not used for threshold anymore - it adjusts target count
-
                     try:
-                        from pathlib import Path
-                        import json
 
                         # Validate soundtrack path (can be local path or URL)
                         if not soundtrack_path_val or soundtrack_path_val.strip() == "":
                             return gr.update(), gr.update(), "✗ Error: Please provide a soundtrack path or URL"
 
                         # Parse user prompts
-                        from deforum.audio import parse_prompt_list
                         user_prompts = parse_prompt_list(audio_sync_prompts_val)
 
                         if not user_prompts:
                             return gr.update(), gr.update(), "✗ Error: Please enter at least one prompt"
-
-                        # Load and analyze audio
-                        from deforum.audio import (
-                            process_audio_for_detection,
-                            detect_events,
-                            generate_keyframes_from_events,
-                            distribute_prompts_across_keyframes,
-                            suggest_keyframe_count_from_audio
-                        )
-                        import librosa
 
                         # Load audio file
                         y, sr = librosa.load(soundtrack_path_val, sr=None)
@@ -399,50 +406,24 @@ def setup_deforum_left_side_ui():
                         try:
                             tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
                             bpm = float(tempo)
-                            beats_per_second = bpm / 60.0
                             print(f"   Detected BPM: {bpm:.1f}")
 
-                            # Calculate ideal keyframe count based on BPM
-                            # For most music: 1 keyframe per beat or every 2 beats
-                            # Slow BPM (60-90): ~1 keyframe per beat
-                            # Medium BPM (90-140): ~1 keyframe per 2 beats
-                            # Fast BPM (140+): ~1 keyframe per 4 beats
-                            if bpm < 90:
-                                keyframes_per_beat = 1.0
-                            elif bpm < 140:
-                                keyframes_per_beat = 0.5
-                            else:
-                                keyframes_per_beat = 0.25
-
-                            bpm_based_target = int(duration * beats_per_second * keyframes_per_beat)
+                            # Use pure function for keyframe density calculation
+                            keyframes_per_beat = calculate_keyframes_per_beat(bpm)
+                            bpm_based_target = calculate_bpm_based_target(duration, bpm, keyframes_per_beat)
                         except Exception as e:
                             print(f"   ⚠️ BPM detection failed: {e}")
-                            bpm = 120  # Default assumption
-                            bpm_based_target = int(duration * 2)  # 2 keyframes per second default
+                            bpm = 120
+                            keyframes_per_beat = 0.5
+                            bpm_based_target = int(duration * 2)
 
-                        # Determine target keyframe count
-                        if target_count and target_count > 0:
-                            # User specified target - apply adjustment
-                            base_target = int(target_count)
-                            if keyframe_adjustment != 0:
-                                # Apply percentage adjustment
-                                adjusted_target = int(base_target * (1.0 + keyframe_adjustment / 100.0))
-                                adjusted_target = max(2, adjusted_target)  # Minimum 2 keyframes
-                                print(f"   Target keyframes: {base_target} → {adjusted_target} ({keyframe_adjustment:+d}%)")
-                                final_target = adjusted_target
-                            else:
-                                final_target = base_target
-                                print(f"   Target keyframes: {final_target} (user-specified)")
-                        else:
-                            # Auto-detect based on BPM - apply adjustment
-                            if keyframe_adjustment != 0:
-                                adjusted_target = int(bpm_based_target * (1.0 + keyframe_adjustment / 100.0))
-                                adjusted_target = max(2, adjusted_target)
-                                print(f"   Target keyframes: {bpm_based_target} → {adjusted_target} (BPM-based, {keyframe_adjustment:+d}%)")
-                                final_target = adjusted_target
-                            else:
-                                final_target = bpm_based_target
-                                print(f"   Target keyframes: {final_target} (BPM-based @ {bpm:.1f} BPM)")
+                        # Use pure function to resolve final target
+                        final_target, target_description = resolve_keyframe_target(
+                            user_target=int(target_count) if target_count and target_count > 0 else 0,
+                            bpm_based_target=bpm_based_target,
+                            keyframe_adjustment=keyframe_adjustment
+                        )
+                        print(f"   Target keyframes: {target_description}")
 
                         # Process audio for detection
                         y_processed = process_audio_for_detection(
@@ -452,21 +433,17 @@ def setup_deforum_left_side_ui():
                             distortion_gain=10.0
                         )
 
-                        # Dynamically adjust min_spacing based on keyframe_adjustment
-                        # If user wants MORE keyframes (+%), reduce min_spacing to let more through
-                        # If user wants FEWER keyframes (-%), increase min_spacing to filter more out
+                        # Adjust min_spacing dynamically based on keyframe adjustment
                         if keyframe_adjustment != 0:
-                            # Scale min_spacing inversely with keyframe adjustment
-                            # +5% keyframes → -5% min_spacing, -5% keyframes → +5% min_spacing
-                            spacing_multiplier = 1.0 - (keyframe_adjustment / 100.0)
-                            adjusted_min_spacing = max(1, int(min_spacing_frames * spacing_multiplier))
+                            spacing_multiplier = calculate_spacing_multiplier(keyframe_adjustment)
+                            adjusted_min_spacing = calculate_adjusted_min_spacing(
+                                min_spacing_frames, spacing_multiplier
+                            )
                             print(f"   Adjusting min_spacing: {min_spacing_frames} → {adjusted_min_spacing} frames (due to {keyframe_adjustment:+d}% adjustment)")
                             min_spacing_frames = adjusted_min_spacing
 
-                        # Intelligently adjust sensitivity to reach target keyframe count
-                        # Note: We target slightly more events because min_spacing will filter some out
-                        # Estimate: ~20-30% of events get filtered by min_spacing, so target 1.25x more
-                        adjusted_target = int(final_target * 1.25)
+                        # Target more events to compensate for min_spacing filtering
+                        adjusted_target = calculate_compensation_target(final_target)
                         print(f"🎵 Event detection (targeting ~{final_target} keyframes, detecting {adjusted_target} events to account for min_spacing filter):")
 
                         best_events = None
@@ -551,18 +528,15 @@ def setup_deforum_left_side_ui():
                         # Sort by frame number
                         keyframes = sorted(keyframes, key=lambda x: x['frame'])
 
-                        # Create visualization
+                        # Build visualization and status message
                         total_frames = max_frame + 1
-                        viz_width = 120
-                        viz = ['_'] * viz_width
-                        for kf in keyframes:
-                            pos = int((kf['frame'] / total_frames) * (viz_width - 1))
-                            viz[pos] = '|'
-                        viz_str = ''.join(viz)
+                        viz_str, spacing_str = build_keyframe_visualization(
+                            keyframes, total_frames, viz_width=120
+                        )
 
                         print(f"   Keyframe visualization ({total_frames} frames):")
                         print(f"   [{viz_str}]")
-                        print(f"   0{' ' * (viz_width - len(str(max_frame)) - 1)}{max_frame}")
+                        print(f"   {spacing_str}")
 
                         # Show frame numbers
                         frame_list = [kf['frame'] for kf in keyframes]
@@ -577,18 +551,18 @@ def setup_deforum_left_side_ui():
                         schedule = json.loads(animation_prompts_json)
                         formatted_schedule = json.dumps(schedule, indent=2)
 
-                        # Build detailed status message with visualization (same as console)
-                        avg_spacing = total_frames / len(keyframes) if keyframes else 0
-                        status_msg = (
-                            f"✓ Successfully synchronized!\n"
-                            f"• Audio: {duration:.1f}s @ {fps_val} FPS ({total_frames} frames)\n"
-                            f"• Detected BPM: {bpm:.1f}\n"
-                            f"• Events detected: {len(event_times)}\n"
-                            f"• Keyframes created: {len(keyframes)}\n"
-                            f"• Average spacing: {avg_spacing:.1f} frames (~{avg_spacing/fps_val:.2f}s)\n"
-                            f"• Prompts used: {len(user_prompts)} (mode: {distribution_mode})\n\n"
-                            f"Keyframe placement:\n[{viz_str}]\n"
-                            f"0{' ' * (viz_width - len(str(max_frame)) - 1)}{max_frame}"
+                        # Use pure function to build status message
+                        status_msg = build_status_message(
+                            duration=duration,
+                            fps=fps_val,
+                            total_frames=total_frames,
+                            bpm=bpm,
+                            events_detected=len(event_times),
+                            keyframes_created=len(keyframes),
+                            prompts_used=len(user_prompts),
+                            distribution_mode=distribution_mode,
+                            viz_str=viz_str,
+                            spacing_str=spacing_str
                         )
 
                         # Return: animation_prompts, target_count (updated), status

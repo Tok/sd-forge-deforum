@@ -26,38 +26,12 @@ from deforum.config.defaults import get_gradio_html, DeforumAnimPrompts
 from deforum.ui.gradio_funcs import (upload_vid_to_interpolate, upload_pics_to_interpolate,
                            ncnn_upload_vid_to_upscale)
 from deforum.media.video_audio_utilities import direct_stitch_vid_from_frames
-
-
-def create_gr_elem(d):
-    # Capitalize and CamelCase the orig value under "type", which defines gr.inputs.type in lower_case.
-    # Examples: "dropdown" becomes gr.Dropdown, and "checkbox_group" becomes gr.CheckboxGroup.
-    obj_type_str = ''.join(word.title() for word in d["type"].split('_'))
-    obj_type = getattr(gr, obj_type_str)
-
-    # Prepare parameters for gradio element creation
-    params = {k: v for k, v in d.items() if k != "type" and v is not None}
-
-    # Special case: Since some elements can have 'type' parameter and we are already using 'type' to specify
-    # which element to use we need a separate parameter that will be used to overwrite 'type' at this point.
-    # E.g. for Radio element we should specify 'type_param' which is then used to set gr.radio's type.
-    if 'type_param' in params:
-        params['type'] = params.pop('type_param')
-
-    return obj_type(**params)
-
-
-def is_gradio_component(args):
-    return isinstance(args, (gr.Button, gr.Textbox, gr.Slider, gr.Dropdown,
-                             gr.HTML, gr.Radio, gr.Interface, gr.Markdown,
-                             gr.Checkbox))  # TODO...
-
-
-def create_row(args, *attrs):
-    # If attrs are provided, create components from the attributes of args.
-    # Otherwise, pass through a single component or create one.
-    with FormRow():
-        return [create_gr_elem(getattr(args, attr)) for attr in attrs] if attrs \
-            else args if is_gradio_component(args) else create_gr_elem(args)
+from deforum.utils.ui.builders import (
+    create_gr_elem,
+    is_gradio_component,
+    create_row,
+    create_accordion_md_row
+)
 
 
 # ******** Important message ********
@@ -1720,6 +1694,8 @@ def auto_assign_keyframe_types_handler(animation_prompts_json, chunk_size):
     """
     Auto-assign keyframe types based on tween distances between keyframes.
 
+    Uses pure functions from deforum.utils.parsing.keyframes for the logic.
+
     Logic:
     - Short sections (< 80% of chunk_size): Use "flf2v"
     - Long sections (>= 80% of chunk_size): Use "tween"
@@ -1727,7 +1703,7 @@ def auto_assign_keyframe_types_handler(animation_prompts_json, chunk_size):
     Returns: keyframe_type_schedule string in format "0:(tween), 60:(flf2v), 120:(tween)"
     """
     import json
-    import re
+    from deforum.utils.parsing.keyframes import auto_assign_keyframe_types
 
     try:
         # Parse animation prompts JSON
@@ -1736,38 +1712,9 @@ def auto_assign_keyframe_types_handler(animation_prompts_json, chunk_size):
         else:
             animation_prompts = animation_prompts_json
 
-        # Extract frame numbers and sort them
-        frame_numbers = []
-        for key in animation_prompts.keys():
-            # Handle both numeric keys and expressions like "max_f-2"
-            if key.isdigit():
-                frame_numbers.append(int(key))
-            elif re.match(r'^\d+$', str(key)):
-                frame_numbers.append(int(key))
+        # Auto-assign using pure function
+        result, _ = auto_assign_keyframe_types(animation_prompts, chunk_size)
 
-        if not frame_numbers:
-            return "0:(tween)"
-
-        frame_numbers.sort()
-
-        # Calculate threshold (80% of chunk_size)
-        threshold = int(chunk_size * 0.8)
-
-        # Build keyframe type schedule
-        schedule_parts = []
-        for i, frame in enumerate(frame_numbers):
-            if i == 0:
-                # First keyframe always starts with tween
-                schedule_parts.append(f"{frame}:(tween)")
-            else:
-                # Calculate distance to previous keyframe
-                distance = frame - frame_numbers[i - 1]
-
-                # Suggest flf2v for short sections, tween for long sections
-                suggested_type = "flf2v" if distance <= threshold else "tween"
-                schedule_parts.append(f"{frame}:({suggested_type})")
-
-        result = ", ".join(schedule_parts)
         print(f"🤖 Auto-assigned keyframe types: {result}")
         return result
 
@@ -2779,12 +2726,6 @@ def create_keyframe_distribution_info_tab():
     """)
 
 
-def create_accordion_md_row(name, markdown, is_open=False):
-    with FormRow():
-        with gr.Accordion(name, open=is_open):
-            gr.Markdown(markdown)
-
-
 # QwenPromptExpander and Movement Analysis Event Handlers - moved outside for proper import
 def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download):
     """Handle prompt enhancement with QwenPromptExpander with progress feedback"""
@@ -3513,8 +3454,7 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
     """
     Convert prompt frame numbers from source FPS to target FPS
 
-    Uses the same formula as shakify FPS conversion:
-    new_frame = old_frame * (target_fps / source_fps)
+    Uses pure functions from deforum.utils.conversion.fps for the conversion logic.
 
     Args:
         prompts_json: JSON string with prompts (e.g., '{"0": "prompt1", "60": "prompt2"}')
@@ -3526,14 +3466,18 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
         Tuple of (updated_prompts_json, html_status_message)
     """
     import json
+    from deforum.utils.conversion.fps import (
+        validate_fps_values,
+        calculate_fps_ratio,
+        convert_prompts_dict,
+        build_conversion_status
+    )
 
     try:
         # Validate FPS values
-        if source_fps <= 0 or target_fps <= 0:
-            return prompts_json, "❌ <span style='color: #f44336;'>Error: FPS values must be positive</span>"
-
-        if source_fps == target_fps:
-            return prompts_json, "ℹ️ <span style='color: #2196F3;'>Source and target FPS are the same - no conversion needed</span>"
+        is_valid, error_msg = validate_fps_values(source_fps, target_fps)
+        if not is_valid:
+            return prompts_json, f"❌ <span style='color: #f44336;'>Error: {error_msg}</span>"
 
         # Parse prompts JSON
         try:
@@ -3544,61 +3488,20 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
         if not isinstance(prompts, dict):
             return prompts_json, "❌ <span style='color: #f44336;'>Error: Prompts must be a JSON object/dictionary</span>"
 
-        # Convert frame numbers
-        fps_ratio = target_fps / source_fps
-        converted_prompts = {}
-        conversion_table = []
-
-        for frame_str, prompt_text in prompts.items():
-            try:
-                old_frame = int(frame_str)
-                # Use the shakify formula: new_frame = old_frame * (target_fps / source_fps)
-                new_frame = int(old_frame * fps_ratio)
-
-                converted_prompts[str(new_frame)] = prompt_text
-                conversion_table.append(f"Frame {old_frame} → {new_frame}")
-
-            except ValueError:
-                # Non-numeric key, keep as-is
-                converted_prompts[frame_str] = prompt_text
+        # Convert frame numbers using pure functions
+        fps_ratio = calculate_fps_ratio(source_fps, target_fps)
+        converted_prompts, conversion_log = convert_prompts_dict(prompts, fps_ratio)
 
         # Format output JSON
         converted_json = json.dumps(converted_prompts, indent=4, ensure_ascii=False)
 
-        # Build status message
-        result = []
-        result.append("✅ <span style='color: #4CAF50;'><strong>FPS Conversion Complete</strong></span><br>")
-        result.append(f"<strong>Source FPS:</strong> {source_fps} → <strong>Target FPS:</strong> {target_fps}<br>")
-        result.append(f"<strong>Conversion Ratio:</strong> {fps_ratio:.4f}<br>")
-        result.append(f"<strong>Prompts Converted:</strong> {len(conversion_table)}<br><br>")
-
-        if preview_only:
-            result.append("🔍 <strong style='color: #FF9800;'>PREVIEW MODE</strong> - Prompts not updated<br><br>")
-        else:
-            result.append("✏️ <strong style='color: #4CAF50;'>Prompts Updated</strong><br><br>")
-
-        # Show conversion table (first 10 entries)
-        result.append("<strong>Frame Conversion:</strong><br>")
-        result.append("<code style='display: block; background: #f5f5f5; padding: 8px; margin: 8px 0; border-radius: 4px;'>")
-        for entry in conversion_table[:10]:
-            result.append(f"{entry}<br>")
-
-        if len(conversion_table) > 10:
-            result.append(f"... and {len(conversion_table) - 10} more")
-
-        result.append("</code>")
-
-        # Add formula explanation
-        result.append("<br><strong>Formula Used:</strong><br>")
-        result.append(f"<code>new_frame = old_frame × ({target_fps} / {source_fps}) = old_frame × {fps_ratio:.4f}</code>")
-
-        status_html = "".join(result)
+        # Build status message using pure function
+        status_html = build_conversion_status(
+            source_fps, target_fps, fps_ratio, conversion_log, preview_only
+        )
 
         # Return updated prompts or original based on preview mode
-        if preview_only:
-            return prompts_json, status_html
-        else:
-            return converted_json, status_html
+        return (prompts_json if preview_only else converted_json), status_html
 
     except Exception as e:
         import traceback
@@ -3608,162 +3511,168 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
 
 
 def load_wan_prompts_handler():
-    """Load Wan prompts from default settings"""
+    """Load Wan prompts from default settings.
+
+    Uses pure functions from deforum.utils.parsing.prompts for formatting.
+    """
+    import json
+    import os
+    from deforum.utils.parsing.prompts import format_prompts_as_multiline
+
     try:
-        import json
-        import os
-        
         # Load prompts from default_settings.txt
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'default_settings.txt')
-        
+
         if not os.path.exists(settings_path):
             print(f"❌ Default settings file not found: {settings_path}")
             return "0: A peaceful landscape scene, photorealistic"
-        
+
         with open(settings_path, 'r', encoding='utf-8') as f:
             settings = json.load(f)
-        
+
         # Get wan_prompts from settings
         wan_prompts = settings.get('wan_prompts', {})
-        
+
         if not wan_prompts:
             print("⚠️ No wan_prompts found in default settings, falling back to basic prompt")
             return "0: A peaceful landscape scene, photorealistic"
-        
-        # Convert prompts dict to textarea format (frame: prompt)
-        prompt_lines = []
-        for frame, prompt in sorted(wan_prompts.items(), key=lambda x: int(x[0])):
-            prompt_lines.append(f"{frame}: {prompt}")
-        
-        result = "\n".join(prompt_lines)
+
+        # Convert prompts dict to textarea format using pure function
+        result = format_prompts_as_multiline(wan_prompts)
         print(f"✅ Loaded {len(wan_prompts)} Wan prompts from default settings")
         return result
-        
+
     except Exception as e:
         print(f"❌ Error loading Wan prompts: {e}")
         return f"0: Error loading prompts: {str(e)}"
 
 
 def load_deforum_prompts_handler():
-    """Load original Deforum prompts from default settings"""
+    """Load original Deforum prompts from default settings.
+
+    Uses pure functions from deforum.utils.parsing.prompts for formatting.
+    """
+    import json
+    import os
+    from deforum.utils.parsing.prompts import format_prompts_as_multiline
+
     try:
-        import json
-        import os
-        
         # Load prompts from default_settings.txt
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'default_settings.txt')
-        
+
         if not os.path.exists(settings_path):
             print(f"❌ Default settings file not found: {settings_path}")
             return "0: A peaceful landscape scene, photorealistic"
-        
+
         with open(settings_path, 'r', encoding='utf-8') as f:
             settings = json.load(f)
-        
+
         # Get prompts from settings (main prompts section)
         deforum_prompts = settings.get('prompts', {})
-        
+
         if not deforum_prompts:
             print("⚠️ No prompts found in default settings, falling back to basic prompt")
             return "0: A peaceful landscape scene, photorealistic"
-        
-        # Convert prompts dict to textarea format (frame: prompt)
-        prompt_lines = []
-        for frame, prompt in sorted(deforum_prompts.items(), key=lambda x: int(x[0])):
-            prompt_lines.append(f"{frame}: {prompt}")
-        
-        result = "\n".join(prompt_lines)
+
+        # Convert prompts dict to textarea format using pure function
+        result = format_prompts_as_multiline(deforum_prompts)
         print(f"✅ Loaded {len(deforum_prompts)} Deforum prompts from default settings")
         return result
-        
+
     except Exception as e:
         print(f"❌ Error loading Deforum prompts: {e}")
         return f"0: Error loading prompts: {str(e)}"
 
 
 def load_deforum_to_wan_prompts_handler():
-    """Load current Deforum prompts into Wan prompts field"""
+    """Load current Deforum prompts into Wan prompts field.
+
+    Uses pure functions from deforum.utils.parsing.prompts for conversion.
+    """
+    from deforum.utils.parsing.prompts import (
+        validate_prompts_not_empty,
+        parse_prompts_json,
+        convert_deforum_to_wan_prompts,
+        format_prompts_as_json,
+        create_error_prompt
+    )
+
     try:
         # Try to get animation prompts from the stored component reference
         animation_prompts_json = ""
-        
+
         if hasattr(enhance_prompts_handler, '_animation_prompts_component'):
             try:
                 animation_prompts_json = enhance_prompts_handler._animation_prompts_component.value
                 print(f"📋 Loading Deforum prompts to Wan prompts field")
             except Exception as e:
                 print(f"⚠️ Could not access animation_prompts component: {e}")
-        
-        if not animation_prompts_json or animation_prompts_json.strip() == "":
-            return """{"0": "No Deforum prompts found! Go to the Prompts tab and configure your animation prompts first."}"""
-        
-        # Parse the JSON and convert to clean Wan format
-        try:
-            import json
-            prompts_dict = json.loads(animation_prompts_json)
-            
-            # Convert to Wan format (clean prompts without negative parts)
-            wan_prompts_dict = {}
-            for frame, prompt in prompts_dict.items():
-                # Clean up the prompt (remove negative prompts)
-                clean_prompt = prompt.split('--neg')[0].strip()
-                wan_prompts_dict[frame] = clean_prompt
-            
-            # Return as JSON
-            result = json.dumps(wan_prompts_dict, ensure_ascii=False, indent=2)
-            print(f"✅ Converted {len(prompts_dict)} Deforum prompts to Wan JSON format")
-            return result
-            
-        except json.JSONDecodeError as e:
-            return json.dumps({
-                "0": f"Invalid JSON in Deforum prompts: {str(e)}. Fix the JSON format in the Prompts tab first."
-            }, indent=2)
-            
+
+        # Validate not empty
+        is_valid, error = validate_prompts_not_empty(animation_prompts_json)
+        if not is_valid:
+            return create_error_prompt(
+                "No Deforum prompts found! Go to the Prompts tab and configure your animation prompts first."
+            )
+
+        # Parse the JSON
+        prompts_dict, parse_error = parse_prompts_json(animation_prompts_json)
+        if parse_error:
+            return create_error_prompt(
+                f"Invalid JSON in Deforum prompts: {parse_error}. Fix the JSON format in the Prompts tab first."
+            )
+
+        # Convert to Wan format using pure function
+        wan_prompts_dict = convert_deforum_to_wan_prompts(prompts_dict)
+
+        # Return as JSON
+        result = format_prompts_as_json(wan_prompts_dict)
+        print(f"✅ Converted {len(prompts_dict)} Deforum prompts to Wan JSON format")
+        return result
+
     except Exception as e:
         return f"❌ Error loading Deforum prompts: {str(e)}"
 
 
 def load_wan_defaults_handler():
-    """Load default Wan prompts from settings file"""
+    """Load default Wan prompts from settings file.
+
+    Uses pure functions from deforum.utils.parsing.prompts for formatting.
+    """
+    import json
+    import os
+    from deforum.utils.parsing.prompts import (
+        create_fallback_prompts,
+        format_prompts_as_json
+    )
+
     try:
-        import json
-        import os
-        
         # Load default prompts from settings
         settings_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'default_settings.txt')
-        
+
         if not os.path.exists(settings_path):
-            # Fallback to simple defaults
-            return json.dumps({
-                "0": "prompt text",
-                "60": "another prompt"
-            }, ensure_ascii=False, indent=2)
-        
+            # Fallback to simple defaults using pure function
+            return format_prompts_as_json(create_fallback_prompts())
+
         try:
             with open(settings_path, 'r', encoding='utf-8') as f:
                 settings = json.load(f)
-            
+
             wan_prompts = settings.get('wan_prompts', {})
-            
+
             if wan_prompts:
-                # Return as JSON
-                result = json.dumps(wan_prompts, ensure_ascii=False, indent=2)
+                # Return as JSON using pure function
+                result = format_prompts_as_json(wan_prompts)
                 print(f"✅ Loaded {len(wan_prompts)} default Wan prompts from settings")
                 return result
             else:
                 # Use fallback
-                return json.dumps({
-                    "0": "prompt text",
-                    "60": "another prompt"
-                }, ensure_ascii=False, indent=2)
-                
+                return format_prompts_as_json(create_fallback_prompts())
+
         except Exception as e:
             print(f"⚠️ Error loading default settings: {e}")
             # Return simple fallback
-            return json.dumps({
-                "0": "prompt text",
-                "60": "another prompt"
-            }, ensure_ascii=False, indent=2)
+            return format_prompts_as_json(create_fallback_prompts())
             
     except Exception as e:
         return json.dumps({

@@ -428,20 +428,9 @@ class WanModelValidator:
         print("5. 📥 Re-download models using:")
         print()
         
-        for invalid_model in invalid_models:
-            model_name = invalid_model['name'].lower()
-            if 'vace' in model_name and '1.3b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan/Wan2.1-VACE-1.3B")
-            elif 'vace' in model_name and '14b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/Deforum/wan/Wan2.1-VACE-14B")
-            elif 't2v' in model_name and '1.3b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/Deforum/wan/Wan2.1-T2V-1.3B")
-            elif 't2v' in model_name and '14b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir models/Deforum/wan/Wan2.1-T2V-14B")
-            elif 'i2v' in model_name and '1.3b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-I2V-1.3B --local-dir models/Deforum/wan/Wan2.1-I2V-1.3B")
-            elif 'i2v' in model_name and '14b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-I2V-14B --local-dir models/Deforum/wan/Wan2.1-I2V-14B")
+        # Suggest Wan 2.2 TI2V models (unified T2V+I2V)
+        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
+        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
         
         print()
         print("💡 TIP: Enable 'Auto-Download Models' in the Wan tab for automatic re-downloading")
@@ -464,16 +453,10 @@ class WanModelValidator:
             model_name = model_path.name
             if 'vace' in model_name.lower() and '1.3b' in model_name.lower():
                 repo_id = "Wan-AI/Wan2.1-VACE-1.3B"
-            elif 'vace' in model_name.lower() and '14b' in model_name.lower():
-                repo_id = "Wan-AI/Wan2.1-VACE-14B"
-            elif 't2v' in model_name.lower() and '1.3b' in model_name.lower():
-                repo_id = "Wan-AI/Wan2.1-T2V-1.3B"
-            elif 't2v' in model_name.lower() and '14b' in model_name.lower():
-                repo_id = "Wan-AI/Wan2.1-T2V-14B"
-            elif 'i2v' in model_name.lower() and '1.3b' in model_name.lower():
-                repo_id = "Wan-AI/Wan2.1-I2V-1.3B"
-            elif 'i2v' in model_name.lower() and '14b' in model_name.lower():
-                repo_id = "Wan-AI/Wan2.1-I2V-14B"
+            elif 'ti2v' in model_name.lower() and '5b' in model_name.lower():
+                repo_id = "Wan-AI/Wan2.2-TI2V-5B-Diffusers"
+            elif 'ti2v' in model_name.lower() and ('14b' in model_name.lower() or 'a14b' in model_name.lower()):
+                repo_id = "Wan-AI/Wan2.2-TI2V-A14B-Diffusers"
             else:
                 results['errors'].append("Could not determine HuggingFace repo ID for checksum validation")
                 results['valid'] = False
@@ -497,11 +480,15 @@ class WanModelValidator:
             # Key files to check with their expected checksums
             # These are known checksums from HuggingFace official pages
             known_checksums = {
-                "Wan-AI/Wan2.1-VACE-1.3B": {
-                    "Wan2.1_VAE.pth": "38071ab59bd94681c686fa51d75a1968f64e470262043be31f7a094e442fd981",
-                    "models_t5_umt5-xxl-enc-bf16.pth": None,  # Unknown checksum
-                    "diffusion_pytorch_model.safetensors": None,  # Unknown checksum  
-                    "config.json": None  # Small file, checksum varies
+                "Wan-AI/Wan2.2-TI2V-5B-Diffusers": {
+                    # Checksums to be added when available from official releases
+                    "config.json": None,
+                    "diffusion_pytorch_model.safetensors": None
+                },
+                "Wan-AI/Wan2.2-TI2V-A14B-Diffusers": {
+                    # Checksums to be added when available from official releases
+                    "config.json": None,
+                    "diffusion_pytorch_model.safetensors.index.json": None
                 }
             }
             
@@ -593,7 +580,9 @@ def main():
     if not models:
         print("\n❌ No Wan models found!")
         print("\n💡 SUGGESTIONS:")
-        print("1. Download models using: huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan/Wan2.1-VACE-1.3B")
+        print("1. Download Wan 2.2 TI2V models:")
+        print("   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
+        print("   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
         print("2. Check if models are in the correct directories")
         print("3. Ensure models were downloaded completely")
         return

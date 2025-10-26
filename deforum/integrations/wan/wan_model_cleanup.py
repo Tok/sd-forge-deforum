@@ -192,9 +192,9 @@ def main():
                 except Exception as e:
                     print(f"   ❌ Failed to delete: {e}")
             
-            print(f"\n💡 To redownload models:")
-            print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan/Wan2.1-VACE-1.3B")
-            print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/Deforum/wan/Wan2.1-VACE-14B")
+            print(f"\n💡 To download Wan 2.2 TI2V models:")
+            print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
+            print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
         else:
             print(f"   Models left unchanged. You can delete them manually if needed.")
 

@@ -19,6 +19,7 @@ from math import ceil
 import tqdm
 from modules.shared import progress_print_out, opts, cmd_opts
 
+
 class DeforumTQDM:
     def __init__(self, args, anim_args, parseq_args, video_args):
         self._tqdm = None
@@ -30,10 +31,17 @@ class DeforumTQDM:
     def reset(self):
         from deforum.core.keyframes import DeformAnimKeys
         from deforum.integrations.parseq import ParseqAdapter
+
         deforum_total = 0
         # FIXME: get only amount of steps
-        parseq_adapter = ParseqAdapter(self._parseq_args, self._anim_args, self._video_args, None, None, None, None, mute=True)
-        keys = DeformAnimKeys(self._anim_args) if not parseq_adapter.use_parseq else parseq_adapter.anim_keys
+        parseq_adapter = ParseqAdapter(
+            self._parseq_args, self._anim_args, self._video_args, None, None, None, None, mute=True
+        )
+        keys = (
+            DeformAnimKeys(self._anim_args)
+            if not parseq_adapter.use_parseq
+            else parseq_adapter.anim_keys
+        )
 
         start_frame = 0
         if self._anim_args.resume_from_timestring:
@@ -43,21 +51,28 @@ class DeforumTQDM:
                 if self._anim_args.resume_timestring in filename and "depth" not in filename:
                     start_frame += 1
             start_frame = start_frame - 1
-        using_vid_init = self._anim_args.animation_mode == 'Video Input'
+        using_vid_init = self._anim_args.animation_mode == "Video Input"
         turbo_steps = 1 if using_vid_init else int(self._anim_args.diffusion_cadence)
         if self._anim_args.resume_from_timestring:
             last_frame = start_frame - 1
             if turbo_steps > 1:
                 last_frame -= last_frame % turbo_steps
             if turbo_steps > 1:
-                turbo_next_frame_idx = last_frame
-                turbo_prev_frame_idx = turbo_next_frame_idx
+                # Frame indices would be used for frame interpolation
+                # but are not used in this code path
                 start_frame = last_frame + turbo_steps
         frame_idx = start_frame
         had_first = False
         while frame_idx < self._anim_args.max_frames:
             strength = keys.strength_schedule_series[frame_idx]
-            if not had_first and self._args.use_init and ((self._args.init_image is not None and self._args.init_image != '') or self._args.init_image_box is not None):
+            if (
+                not had_first
+                and self._args.use_init
+                and (
+                    (self._args.init_image is not None and self._args.init_image != "")
+                    or self._args.init_image_box is not None
+                )
+            ):
                 deforum_total += int(ceil(self._args.steps * (1 - strength)))
                 had_first = True
             elif not had_first:
@@ -72,10 +87,7 @@ class DeforumTQDM:
                 frame_idx += 1
 
         self._tqdm = tqdm.tqdm(
-            desc="Deforum progress",
-            total=deforum_total,
-            position=1,
-            file=progress_print_out
+            desc="Deforum progress", total=deforum_total, position=1, file=progress_print_out
         )
 
     def update(self):

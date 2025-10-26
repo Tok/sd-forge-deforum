@@ -110,8 +110,7 @@ def combine_schedules(
         combined_values = [(v1 + v2) / 2 for v1, v2 in zip(values1, values2)]
     else:
         raise ValueError(
-            f"Unsupported operation '{operation}'. "
-            f"Supported: add, subtract, multiply, average"
+            f"Unsupported operation '{operation}'. " f"Supported: add, subtract, multiply, average"
         )
 
     # Create schedule string
