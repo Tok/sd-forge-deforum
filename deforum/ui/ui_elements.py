@@ -997,7 +997,19 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     info="Status messages will appear here"
                 )
 
-    return {k: v for k, v in {**locals(), **vars()}.items()}
+    # Explicitly capture audio AI components (they're in locals but explicitly listing ensures return)
+    audio_components_dict = {
+        'audio_ai_generation_mode': audio_ai_generation_mode,
+        'audio_ai_intensity': audio_ai_intensity,
+        'audio_ai_style': audio_ai_style,
+        'audio_ai_prompt_theme': audio_ai_prompt_theme,
+        'audio_ai_prompt_count': audio_ai_prompt_count,
+        'audio_ai_start_prompt': audio_ai_start_prompt,
+        'audio_ai_end_prompt': audio_ai_end_prompt,
+        'audio_sync_prompts': audio_sync_prompts,
+    }
+
+    return {**{k: v for k, v in {**locals(), **vars()}.items()}, **audio_components_dict}
 
 
 
