@@ -348,14 +348,14 @@ def setup_deforum_left_side_ui():
                             distortion_gain=10.0
                         )
 
-                        # Detect events
-                        event_times = detect_events(
+                        # Detect events (returns times AND intensities)
+                        event_times, event_intensities = detect_events(
                             y_processed, sr,
                             method=detection_method,
                             sensitivity=sensitivity / 100.0  # Convert 0-100 to 0-1
                         )
 
-                        if not event_times:
+                        if len(event_times) == 0:
                             return gr.update(), "✗ Error: No audio events detected. Try adjusting sensitivity."
 
                         # Determine keyframe count
@@ -370,9 +370,10 @@ def setup_deforum_left_side_ui():
                         # Limit to detected events
                         num_keyframes = min(num_keyframes, len(event_times))
 
-                        # Generate keyframes from events
+                        # Generate keyframes from events (requires BOTH times and intensities)
                         keyframes = generate_keyframes_from_events(
                             event_times[:num_keyframes],
+                            event_intensities[:num_keyframes],
                             fps=fps_val,
                             min_spacing_frames=min_spacing_frames,
                             intensity_threshold=intensity_threshold / 100.0
