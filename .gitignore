@@ -60,6 +60,8 @@ temp/
 
 # Logs
 *.log
+*.log.*
+*.log.old
 logs/
 
 # Temporary test files in root (but not actual test suite files in tests/)
