@@ -35,7 +35,7 @@ def extract_frame_numbers(prompts: dict[str, str]) -> list[int]:
     for key in prompts.keys():
         if key.isdigit():
             frame_numbers.append(int(key))
-        elif re.match(r'^\d+$', str(key)):
+        elif re.match(r"^\d+$", str(key)):
             frame_numbers.append(int(key))
 
     return sorted(frame_numbers)
@@ -53,10 +53,7 @@ def calculate_distance_threshold(chunk_size: int) -> int:
     return int(chunk_size * THRESHOLD_RATIO)
 
 
-def suggest_keyframe_type(
-    distance: int,
-    threshold: int
-) -> str:
+def suggest_keyframe_type(distance: int, threshold: int) -> str:
     """Suggest keyframe interpolation type based on distance.
 
     Logic:
@@ -73,10 +70,7 @@ def suggest_keyframe_type(
     return SHORT_SECTION_TYPE if distance <= threshold else DEFAULT_TYPE
 
 
-def build_keyframe_type_schedule(
-    frame_numbers: list[int],
-    threshold: int
-) -> list[Tuple[int, str]]:
+def build_keyframe_type_schedule(frame_numbers: list[int], threshold: int) -> list[Tuple[int, str]]:
     """Build keyframe type schedule for all frames.
 
     Args:
@@ -118,8 +112,7 @@ def format_keyframe_schedule(schedule: list[Tuple[int, str]]) -> str:
 
 
 def auto_assign_keyframe_types(
-    prompts: dict[str, str],
-    chunk_size: int
+    prompts: dict[str, str], chunk_size: int
 ) -> Tuple[str, list[Tuple[int, str]]]:
     """Auto-assign keyframe types based on tween distances.
 

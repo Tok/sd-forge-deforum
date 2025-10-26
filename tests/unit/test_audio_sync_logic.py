@@ -22,6 +22,7 @@ from deforum.utils.audio.sync import (
 # BPM and Keyframe Calculations
 # ============================================================================
 
+
 class TestCalculateKeyframesPerBeat:
     """Test keyframes per beat calculation based on BPM ranges."""
 
@@ -149,37 +150,34 @@ class TestCalculateCompensationTarget:
 # Visualization and Display
 # ============================================================================
 
+
 class TestBuildKeyframeVisualization:
     """Test ASCII visualization generation."""
 
     def test_simple_case(self):
-        keyframes = [
-            {'frame': 0},
-            {'frame': 50},
-            {'frame': 100}
-        ]
+        keyframes = [{"frame": 0}, {"frame": 50}, {"frame": 100}]
         viz_str, spacing_str = build_keyframe_visualization(keyframes, 100, viz_width=10)
 
         # First and last should have markers
-        assert viz_str[0] == '|'
-        assert viz_str[-1] == '|'
+        assert viz_str[0] == "|"
+        assert viz_str[-1] == "|"
 
         # Middle should have marker around position 5
-        assert '|' in viz_str[4:6]
+        assert "|" in viz_str[4:6]
 
         # Spacing should show 0 and 99
-        assert spacing_str.startswith('0')
-        assert spacing_str.endswith('99')
+        assert spacing_str.startswith("0")
+        assert spacing_str.endswith("99")
 
     def test_single_keyframe(self):
-        keyframes = [{'frame': 0}]
+        keyframes = [{"frame": 0}]
         viz_str, spacing_str = build_keyframe_visualization(keyframes, 100, viz_width=10)
 
-        assert viz_str[0] == '|'
-        assert viz_str.count('|') == 1
+        assert viz_str[0] == "|"
+        assert viz_str.count("|") == 1
 
     def test_width_parameter(self):
-        keyframes = [{'frame': 0}, {'frame': 100}]
+        keyframes = [{"frame": 0}, {"frame": 100}]
         viz_str, spacing_str = build_keyframe_visualization(keyframes, 100, viz_width=20)
 
         assert len(viz_str) == 20
@@ -199,7 +197,7 @@ class TestBuildStatusMessage:
             prompts_used=5,
             distribution_mode="sequential",
             viz_str="|____|",
-            spacing_str="0   100"
+            spacing_str="0   100",
         )
 
         assert "✓ Successfully synchronized!" in msg
@@ -208,7 +206,7 @@ class TestBuildStatusMessage:
         assert "120.0" in msg
         assert "15" in msg  # events
         assert "12" in msg  # keyframes
-        assert "5" in msg   # prompts
+        assert "5" in msg  # prompts
         assert "sequential" in msg
         assert "|____|" in msg
 
@@ -223,7 +221,7 @@ class TestBuildStatusMessage:
             prompts_used=3,
             distribution_mode="cycle",
             viz_str="|__|",
-            spacing_str="0  300"
+            spacing_str="0  300",
         )
 
         # Average spacing should be 300/10 = 30 frames = 1.00s at 30 FPS
@@ -235,23 +233,20 @@ class TestBuildStatusMessage:
 # Target Resolution
 # ============================================================================
 
+
 class TestResolveKeyframeTarget:
     """Test keyframe target resolution logic."""
 
     def test_user_target_no_adjustment(self):
         final, desc = resolve_keyframe_target(
-            user_target=15,
-            bpm_based_target=10,
-            keyframe_adjustment=0
+            user_target=15, bpm_based_target=10, keyframe_adjustment=0
         )
         assert final == 15
         assert "user-specified" in desc
 
     def test_user_target_with_positive_adjustment(self):
         final, desc = resolve_keyframe_target(
-            user_target=10,
-            bpm_based_target=8,
-            keyframe_adjustment=20
+            user_target=10, bpm_based_target=8, keyframe_adjustment=20
         )
         assert final == 12  # 10 * 1.2 = 12
         assert "10 → 12" in desc
@@ -259,9 +254,7 @@ class TestResolveKeyframeTarget:
 
     def test_user_target_with_negative_adjustment(self):
         final, desc = resolve_keyframe_target(
-            user_target=10,
-            bpm_based_target=8,
-            keyframe_adjustment=-20
+            user_target=10, bpm_based_target=8, keyframe_adjustment=-20
         )
         assert final == 8  # 10 * 0.8 = 8
         assert "10 → 8" in desc
@@ -269,18 +262,14 @@ class TestResolveKeyframeTarget:
 
     def test_bpm_based_no_adjustment(self):
         final, desc = resolve_keyframe_target(
-            user_target=0,
-            bpm_based_target=12,
-            keyframe_adjustment=0
+            user_target=0, bpm_based_target=12, keyframe_adjustment=0
         )
         assert final == 12
         assert "BPM-based" in desc
 
     def test_bpm_based_with_adjustment(self):
         final, desc = resolve_keyframe_target(
-            user_target=0,
-            bpm_based_target=10,
-            keyframe_adjustment=5
+            user_target=0, bpm_based_target=10, keyframe_adjustment=5
         )
         assert final == 10  # 10 * 1.05 = 10.5 → 10
         assert "10 → 10" in desc

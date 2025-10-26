@@ -77,9 +77,7 @@ def parse_schedule_string(schedule_str: str, max_frames: int = 100) -> List[Tupl
     return keyframes if keyframes else [(0, 0.0)]
 
 
-def interpolate_schedule_values(
-    keyframes: List[Tuple[int, float]], max_frames: int
-) -> List[float]:
+def interpolate_schedule_values(keyframes: List[Tuple[int, float]], max_frames: int) -> List[float]:
     """Interpolate schedule values linearly across all frames.
 
     Takes keyframe pairs and generates interpolated values for every frame

@@ -4,7 +4,6 @@ Tests pure functions for prompt parsing and transformation.
 All functions here are side-effect free and easily testable.
 """
 
-import pytest
 import json
 from deforum.utils.parsing.prompts import (
     remove_negative_prompt,
@@ -14,13 +13,14 @@ from deforum.utils.parsing.prompts import (
     create_error_prompt,
     parse_prompts_json,
     validate_prompts_not_empty,
-    create_fallback_prompts
+    create_fallback_prompts,
 )
 
 
 # ============================================================================
 # Negative Prompt Removal
 # ============================================================================
+
 
 class TestRemoveNegativePrompt:
     """Test removal of negative prompts."""
@@ -64,36 +64,25 @@ class TestRemoveNegativePrompt:
 # Deforum to Wan Conversion
 # ============================================================================
 
+
 class TestConvertDeforumToWanPrompts:
     """Test conversion from Deforum to Wan format."""
 
     def test_simple_conversion(self):
         """Test basic conversion."""
-        deforum = {
-            "0": "scene one",
-            "60": "scene two"
-        }
+        deforum = {"0": "scene one", "60": "scene two"}
 
         wan = convert_deforum_to_wan_prompts(deforum)
 
-        assert wan == {
-            "0": "scene one",
-            "60": "scene two"
-        }
+        assert wan == {"0": "scene one", "60": "scene two"}
 
     def test_removes_negatives(self):
         """Test that negative prompts are removed."""
-        deforum = {
-            "0": "beautiful landscape --neg ugly",
-            "60": "sunset scene --neg dark, gloomy"
-        }
+        deforum = {"0": "beautiful landscape --neg ugly", "60": "sunset scene --neg dark, gloomy"}
 
         wan = convert_deforum_to_wan_prompts(deforum)
 
-        assert wan == {
-            "0": "beautiful landscape",
-            "60": "sunset scene"
-        }
+        assert wan == {"0": "beautiful landscape", "60": "sunset scene"}
 
     def test_empty_prompts(self):
         """Test empty prompts dict."""
@@ -103,11 +92,7 @@ class TestConvertDeforumToWanPrompts:
 
     def test_preserves_frame_keys(self):
         """Test that frame keys are preserved."""
-        deforum = {
-            "0": "start",
-            "100": "middle",
-            "200": "end"
-        }
+        deforum = {"0": "start", "100": "middle", "200": "end"}
 
         wan = convert_deforum_to_wan_prompts(deforum)
 
@@ -118,15 +103,13 @@ class TestConvertDeforumToWanPrompts:
 # Multiline Formatting
 # ============================================================================
 
+
 class TestFormatPromptsAsMultiline:
     """Test formatting prompts as multiline string."""
 
     def test_simple_prompts(self):
         """Test basic multiline formatting."""
-        prompts = {
-            "0": "start",
-            "60": "end"
-        }
+        prompts = {"0": "start", "60": "end"}
 
         result = format_prompts_as_multiline(prompts)
 
@@ -134,11 +117,7 @@ class TestFormatPromptsAsMultiline:
 
     def test_sorts_by_frame(self):
         """Test that frames are sorted."""
-        prompts = {
-            "120": "end",
-            "0": "start",
-            "60": "middle"
-        }
+        prompts = {"120": "end", "0": "start", "60": "middle"}
 
         result = format_prompts_as_multiline(prompts)
 
@@ -163,15 +142,13 @@ class TestFormatPromptsAsMultiline:
 # JSON Formatting
 # ============================================================================
 
+
 class TestFormatPromptsAsJson:
     """Test formatting prompts as JSON."""
 
     def test_simple_json(self):
         """Test basic JSON formatting."""
-        prompts = {
-            "0": "start",
-            "60": "end"
-        }
+        prompts = {"0": "start", "60": "end"}
 
         result = format_prompts_as_json(prompts)
 
@@ -181,10 +158,7 @@ class TestFormatPromptsAsJson:
 
     def test_preserves_unicode(self):
         """Test that unicode is preserved (ensure_ascii=False)."""
-        prompts = {
-            "0": "café ☕",
-            "60": "日本語"
-        }
+        prompts = {"0": "café ☕", "60": "日本語"}
 
         result = format_prompts_as_json(prompts)
 
@@ -213,6 +187,7 @@ class TestFormatPromptsAsJson:
 # Error Prompt Creation
 # ============================================================================
 
+
 class TestCreateErrorPrompt:
     """Test creation of error prompts."""
 
@@ -233,7 +208,7 @@ class TestCreateErrorPrompt:
 
     def test_special_characters(self):
         """Test error messages with special characters."""
-        error_msg = 'Error: "quotes" and \'apostrophes\''
+        error_msg = "Error: \"quotes\" and 'apostrophes'"
         result = create_error_prompt(error_msg)
 
         # Should be valid JSON
@@ -244,6 +219,7 @@ class TestCreateErrorPrompt:
 # ============================================================================
 # JSON Parsing
 # ============================================================================
+
 
 class TestParsePromptsJson:
     """Test JSON parsing with error handling."""
@@ -299,6 +275,7 @@ class TestParsePromptsJson:
 # Validation
 # ============================================================================
 
+
 class TestValidatePromptsNotEmpty:
     """Test validation of non-empty prompts."""
 
@@ -334,6 +311,7 @@ class TestValidatePromptsNotEmpty:
 # Fallback Creation
 # ============================================================================
 
+
 class TestCreateFallbackPrompts:
     """Test creation of fallback prompts."""
 
@@ -368,6 +346,7 @@ class TestCreateFallbackPrompts:
 # Integration Tests
 # ============================================================================
 
+
 class TestPromptUtilsIntegration:
     """Integration tests for complete workflows."""
 
@@ -377,7 +356,7 @@ class TestPromptUtilsIntegration:
         deforum = {
             "0": "beautiful landscape --neg ugly, dark",
             "60": "sunset scene --neg gloomy",
-            "120": "night sky"
+            "120": "night sky",
         }
 
         # Convert to Wan
@@ -390,11 +369,7 @@ class TestPromptUtilsIntegration:
         parsed, error = parse_prompts_json(json_str)
 
         assert error is None
-        assert parsed == {
-            "0": "beautiful landscape",
-            "60": "sunset scene",
-            "120": "night sky"
-        }
+        assert parsed == {"0": "beautiful landscape", "60": "sunset scene", "120": "night sky"}
 
     def test_error_handling_workflow(self):
         """Test error handling workflow."""
@@ -403,8 +378,7 @@ class TestPromptUtilsIntegration:
 
         # Parse with fallback
         prompts, error = parse_prompts_json(
-            invalid_json,
-            default_on_error=create_fallback_prompts()
+            invalid_json, default_on_error=create_fallback_prompts()
         )
 
         # Should have error but valid fallback
@@ -422,7 +396,7 @@ class TestPromptUtilsIntegration:
         multiline = format_prompts_as_multiline(prompts)
 
         # Should be sorted
-        lines = multiline.split('\n')
+        lines = multiline.split("\n")
         assert lines[0].startswith("0:")
         assert lines[1].startswith("60:")
         assert lines[2].startswith("120:")

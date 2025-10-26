@@ -9,15 +9,14 @@ from typing import Dict, Any
 
 try:
     import numexpr
+
     NUMEXPR_AVAILABLE = True
 except ImportError:
     NUMEXPR_AVAILABLE = False
     numexpr = None
 
 
-def parse_embedded_expressions(
-    value: str, variables: Dict[str, Any], delimiter: str = '`'
-) -> str:
+def parse_embedded_expressions(value: str, variables: Dict[str, Any], delimiter: str = "`") -> str:
     """Parse and evaluate embedded expressions in a string.
 
     Finds expressions delimited by backticks and evaluates them using numexpr,
@@ -46,12 +45,10 @@ def parse_embedded_expressions(
         'no expression'
     """
     if not NUMEXPR_AVAILABLE:
-        raise RuntimeError(
-            "numexpr module is required for expression parsing but is not installed"
-        )
+        raise RuntimeError("numexpr module is required for expression parsing but is not installed")
 
     # Create regex pattern to match delimited expressions
-    pattern = re.escape(delimiter) + r'.*?' + re.escape(delimiter)
+    pattern = re.escape(delimiter) + r".*?" + re.escape(delimiter)
     regex = re.compile(pattern)
 
     parsed_value = value
@@ -71,16 +68,14 @@ def parse_embedded_expressions(
         try:
             result = numexpr.evaluate(expression)
             # Convert result to appropriate string representation
-            if hasattr(result, 'item'):  # numpy scalar
+            if hasattr(result, "item"):  # numpy scalar
                 result_str = str(result.item())
             else:
                 result_str = str(result)
 
             parsed_value = parsed_value.replace(matched_string, result_str, 1)
         except Exception as e:
-            raise ValueError(
-                f"Failed to evaluate expression '{expression}': {str(e)}"
-            ) from e
+            raise ValueError(f"Failed to evaluate expression '{expression}': {str(e)}") from e
 
     return parsed_value
 
@@ -111,13 +106,13 @@ def parse_frame_expression(value: str, frame_idx: int, max_frames: int) -> str:
         'static text'
     """
     variables = {
-        't': frame_idx,
-        'max_f': max_frames,
+        "t": frame_idx,
+        "max_f": max_frames,
     }
     return parse_embedded_expressions(value, variables)
 
 
-def has_embedded_expressions(value: str, delimiter: str = '`') -> bool:
+def has_embedded_expressions(value: str, delimiter: str = "`") -> bool:
     """Check if string contains embedded expressions.
 
     Args:
@@ -137,11 +132,11 @@ def has_embedded_expressions(value: str, delimiter: str = '`') -> bool:
         >>> has_embedded_expressions("one ` but not two")
         False
     """
-    pattern = re.escape(delimiter) + r'.*?' + re.escape(delimiter)
+    pattern = re.escape(delimiter) + r".*?" + re.escape(delimiter)
     return bool(re.search(pattern, value))
 
 
-def extract_expressions(value: str, delimiter: str = '`') -> list[str]:
+def extract_expressions(value: str, delimiter: str = "`") -> list[str]:
     """Extract all embedded expressions from a string.
 
     Args:
@@ -161,7 +156,7 @@ def extract_expressions(value: str, delimiter: str = '`') -> list[str]:
         >>> extract_expressions("partial ` expression")
         []
     """
-    pattern = re.escape(delimiter) + r'(.*?)' + re.escape(delimiter)
+    pattern = re.escape(delimiter) + r"(.*?)" + re.escape(delimiter)
     matches = re.findall(pattern, value)
     return matches
 

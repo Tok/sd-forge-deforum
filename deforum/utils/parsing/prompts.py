@@ -25,12 +25,10 @@ def remove_negative_prompt(prompt: str) -> str:
     Returns:
         Cleaned prompt without negative section
     """
-    return prompt.split('--neg')[0].strip()
+    return prompt.split("--neg")[0].strip()
 
 
-def convert_deforum_to_wan_prompts(
-    deforum_prompts: dict[str, str]
-) -> dict[str, str]:
+def convert_deforum_to_wan_prompts(deforum_prompts: dict[str, str]) -> dict[str, str]:
     """Convert Deforum prompts to Wan format.
 
     Wan format uses clean prompts without negative sections.
@@ -66,18 +64,14 @@ def format_prompts_as_multiline(prompts: dict[str, str]) -> str:
 
     # Sort by numeric frame value, not alphabetically
     sorted_items = sorted(
-        prompts.items(),
-        key=lambda x: int(x[0]) if x[0].isdigit() else float('inf')
+        prompts.items(), key=lambda x: int(x[0]) if x[0].isdigit() else float("inf")
     )
 
     lines = [f"{frame}: {prompt}" for frame, prompt in sorted_items]
     return "\n".join(lines)
 
 
-def format_prompts_as_json(
-    prompts: dict[str, str],
-    indent: int = 2
-) -> str:
+def format_prompts_as_json(prompts: dict[str, str], indent: int = 2) -> str:
     """Format prompts dictionary as JSON string.
 
     Args:
@@ -99,16 +93,11 @@ def create_error_prompt(error_message: str) -> str:
     Returns:
         JSON string with error prompt
     """
-    return json.dumps(
-        {"0": error_message},
-        ensure_ascii=False,
-        indent=2
-    )
+    return json.dumps({"0": error_message}, ensure_ascii=False, indent=2)
 
 
 def parse_prompts_json(
-    prompts_json: str,
-    default_on_error: dict[str, str] | None = None
+    prompts_json: str, default_on_error: dict[str, str] | None = None
 ) -> Tuple[dict[str, str], str | None]:
     """Parse JSON prompts string with error handling.
 
@@ -125,23 +114,15 @@ def parse_prompts_json(
         prompts = json.loads(prompts_json)
 
         if not isinstance(prompts, dict):
-            return (
-                default_on_error or {},
-                "Prompts must be a JSON object/dictionary"
-            )
+            return (default_on_error or {}, "Prompts must be a JSON object/dictionary")
 
         return prompts, None
 
     except json.JSONDecodeError as e:
-        return (
-            default_on_error or {},
-            f"Invalid JSON: {str(e)}"
-        )
+        return (default_on_error or {}, f"Invalid JSON: {str(e)}")
 
 
-def validate_prompts_not_empty(
-    prompts_json: str
-) -> Tuple[bool, str]:
+def validate_prompts_not_empty(prompts_json: str) -> Tuple[bool, str]:
     """Validate that prompts JSON is not empty.
 
     Args:
@@ -164,7 +145,4 @@ def create_fallback_prompts() -> dict[str, str]:
     Returns:
         Default prompts dictionary with placeholder text
     """
-    return {
-        "0": "prompt text",
-        "60": "another prompt"
-    }
+    return {"0": "prompt text", "60": "another prompt"}

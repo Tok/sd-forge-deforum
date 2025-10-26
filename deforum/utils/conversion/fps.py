@@ -26,10 +26,7 @@ def calculate_fps_ratio(source_fps: float, target_fps: float) -> float:
     return target_fps / source_fps
 
 
-def convert_frame_number(
-    frame: int,
-    fps_ratio: float
-) -> int:
+def convert_frame_number(frame: int, fps_ratio: float) -> int:
     """Convert a single frame number using FPS ratio.
 
     Uses the shakify formula: new_frame = old_frame * (target_fps / source_fps)
@@ -45,8 +42,7 @@ def convert_frame_number(
 
 
 def convert_prompts_dict(
-    prompts: dict[str, str],
-    fps_ratio: float
+    prompts: dict[str, str], fps_ratio: float
 ) -> Tuple[dict[str, str], list[str]]:
     """Convert all frame numbers in a prompts dictionary.
 
@@ -77,10 +73,7 @@ def convert_prompts_dict(
     return converted, log
 
 
-def validate_fps_values(
-    source_fps: float,
-    target_fps: float
-) -> Tuple[bool, str]:
+def validate_fps_values(source_fps: float, target_fps: float) -> Tuple[bool, str]:
     """Validate FPS values for conversion.
 
     Args:
@@ -107,7 +100,7 @@ def build_conversion_status(
     fps_ratio: float,
     conversion_log: list[str],
     preview_only: bool,
-    max_entries: int = 10
+    max_entries: int = 10,
 ) -> str:
     """Build HTML status message for FPS conversion.
 
@@ -123,19 +116,29 @@ def build_conversion_status(
         HTML-formatted status message
     """
     result = []
-    result.append("✅ <span style='color: #4CAF50;'><strong>FPS Conversion Complete</strong></span><br>")
-    result.append(f"<strong>Source FPS:</strong> {source_fps} → <strong>Target FPS:</strong> {target_fps}<br>")
+    result.append(
+        "✅ <span style='color: #4CAF50;'><strong>FPS Conversion Complete</strong></span><br>"
+    )
+    result.append(
+        f"<strong>Source FPS:</strong> {source_fps} → <strong>Target FPS:</strong> {target_fps}<br>"
+    )
     result.append(f"<strong>Conversion Ratio:</strong> {fps_ratio:.4f}<br>")
     result.append(f"<strong>Prompts Converted:</strong> {len(conversion_log)}<br><br>")
 
     if preview_only:
-        result.append("🔍 <strong style='color: #FF9800;'>PREVIEW MODE</strong> - Prompts not updated<br><br>")
+        result.append(
+            "🔍 <strong style='color: #FF9800;'>PREVIEW MODE</strong> - Prompts not updated<br><br>"
+        )
     else:
         result.append("✏️ <strong style='color: #4CAF50;'>Prompts Updated</strong><br><br>")
 
     # Show conversion table (limited entries)
     result.append("<strong>Frame Conversion:</strong><br>")
-    result.append("<code style='display: block; background: #f5f5f5; padding: 8px; margin: 8px 0; border-radius: 4px;'>")
+    code_style = (
+        "display: block; background: #f5f5f5; padding: 8px; "
+        "margin: 8px 0; border-radius: 4px;"
+    )
+    result.append(f"<code style='{code_style}'>")
 
     for entry in conversion_log[:max_entries]:
         result.append(f"{entry}<br>")
@@ -147,6 +150,10 @@ def build_conversion_status(
 
     # Add formula explanation
     result.append("<br><strong>Formula Used:</strong><br>")
-    result.append(f"<code>new_frame = old_frame × ({target_fps} / {source_fps}) = old_frame × {fps_ratio:.4f}</code>")
+    formula = (
+        f"new_frame = old_frame × ({target_fps} / {source_fps}) = "
+        f"old_frame × {fps_ratio:.4f}"
+    )
+    result.append(f"<code>{formula}</code>")
 
     return "".join(result)

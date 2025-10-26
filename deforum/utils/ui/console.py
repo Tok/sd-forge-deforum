@@ -15,4 +15,5 @@
 # Contact the authors: https://deforum.github.io/
 
 from rich.console import Console
+
 console = Console()

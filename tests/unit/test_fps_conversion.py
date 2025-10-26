@@ -10,13 +10,14 @@ from deforum.utils.conversion.fps import (
     convert_frame_number,
     convert_prompts_dict,
     validate_fps_values,
-    build_conversion_status
+    build_conversion_status,
 )
 
 
 # ============================================================================
 # FPS Ratio Calculation
 # ============================================================================
+
 
 class TestCalculateFpsRatio:
     """Test FPS ratio calculation."""
@@ -50,6 +51,7 @@ class TestCalculateFpsRatio:
 # ============================================================================
 # Frame Number Conversion
 # ============================================================================
+
 
 class TestConvertFrameNumber:
     """Test single frame number conversion."""
@@ -89,33 +91,22 @@ class TestConvertFrameNumber:
 # Prompts Dictionary Conversion
 # ============================================================================
 
+
 class TestConvertPromptsDict:
     """Test conversion of prompts dictionary."""
 
     def test_simple_conversion(self):
         """Test basic frame conversion."""
-        prompts = {
-            "0": "start",
-            "24": "middle",
-            "48": "end"
-        }
+        prompts = {"0": "start", "24": "middle", "48": "end"}
 
         converted, log = convert_prompts_dict(prompts, 2.0)
 
-        assert converted == {
-            "0": "start",
-            "48": "middle",
-            "96": "end"
-        }
+        assert converted == {"0": "start", "48": "middle", "96": "end"}
         assert log == ["Frame 0 → 0", "Frame 24 → 48", "Frame 48 → 96"]
 
     def test_preserves_non_numeric_keys(self):
         """Test that non-numeric keys are preserved."""
-        prompts = {
-            "0": "start",
-            "metadata": "test data",
-            "30": "end"
-        }
+        prompts = {"0": "start", "metadata": "test data", "30": "end"}
 
         converted, log = convert_prompts_dict(prompts, 2.0)
 
@@ -140,10 +131,7 @@ class TestConvertPromptsDict:
 
     def test_preserves_prompt_text(self):
         """Test that prompt text is unchanged."""
-        prompts = {
-            "0": "a beautiful landscape, detailed",
-            "60": "sunset with vibrant colors"
-        }
+        prompts = {"0": "a beautiful landscape, detailed", "60": "sunset with vibrant colors"}
 
         converted, log = convert_prompts_dict(prompts, 2.0)
 
@@ -154,6 +142,7 @@ class TestConvertPromptsDict:
 # ============================================================================
 # FPS Validation
 # ============================================================================
+
 
 class TestValidateFpsValues:
     """Test FPS value validation."""
@@ -204,6 +193,7 @@ class TestValidateFpsValues:
 # ============================================================================
 # Status Message Building
 # ============================================================================
+
 
 class TestBuildConversionStatus:
     """Test HTML status message generation."""
@@ -267,17 +257,14 @@ class TestBuildConversionStatus:
 # Integration Tests
 # ============================================================================
 
+
 class TestFpsConversionIntegration:
     """Integration tests for complete FPS conversion workflow."""
 
     def test_complete_workflow_24_to_60(self):
         """Test complete workflow: 24 FPS → 60 FPS."""
         # Setup
-        prompts = {
-            "0": "start scene",
-            "24": "1 second mark",
-            "48": "2 second mark"
-        }
+        prompts = {"0": "start scene", "24": "1 second mark", "48": "2 second mark"}
 
         # Validate
         is_valid, error = validate_fps_values(24, 60)
@@ -290,11 +277,7 @@ class TestFpsConversionIntegration:
         # Convert
         converted, log = convert_prompts_dict(prompts, ratio)
 
-        assert converted == {
-            "0": "start scene",
-            "60": "1 second mark",
-            "120": "2 second mark"
-        }
+        assert converted == {"0": "start scene", "60": "1 second mark", "120": "2 second mark"}
 
         # Build status
         status = build_conversion_status(24, 60, ratio, log, False)

@@ -1,3 +1,4 @@
+# Testing
 coverage
 pytest
 pytest-cov  # Pytest plugin for coverage reporting
@@ -5,3 +6,9 @@ syrupy
 tenacity
 pydantic_requests
 moviepy<2.0  # Tests use moviepy 1.x import syntax (from moviepy.editor import VideoFileClip)
+
+# Linting and Formatting
+black  # Code formatter (100 char line length)
+flake8  # Linting (PEP8 compliance)
+radon  # Complexity analysis (McCabe complexity metrics)
+mypy  # Static type checker

@@ -4,7 +4,6 @@ Tests pure functions for keyframe analysis and type assignment.
 All functions here are side-effect free and easily testable.
 """
 
-import pytest
 from deforum.utils.parsing.keyframes import (
     extract_frame_numbers,
     calculate_distance_threshold,
@@ -14,13 +13,14 @@ from deforum.utils.parsing.keyframes import (
     auto_assign_keyframe_types,
     THRESHOLD_RATIO,
     DEFAULT_TYPE,
-    SHORT_SECTION_TYPE
+    SHORT_SECTION_TYPE,
 )
 
 
 # ============================================================================
 # Frame Number Extraction
 # ============================================================================
+
 
 class TestExtractFrameNumbers:
     """Test extraction of frame numbers from prompts."""
@@ -41,12 +41,7 @@ class TestExtractFrameNumbers:
 
     def test_filters_non_numeric_keys(self):
         """Test that non-numeric keys are filtered out."""
-        prompts = {
-            "0": "start",
-            "metadata": "test",
-            "60": "middle",
-            "max_f-2": "almost end"
-        }
+        prompts = {"0": "start", "metadata": "test", "60": "middle", "max_f-2": "almost end"}
         frames = extract_frame_numbers(prompts)
 
         assert frames == [0, 60]
@@ -75,6 +70,7 @@ class TestExtractFrameNumbers:
 # ============================================================================
 # Distance Threshold Calculation
 # ============================================================================
+
 
 class TestCalculateDistanceThreshold:
     """Test distance threshold calculation."""
@@ -114,6 +110,7 @@ class TestCalculateDistanceThreshold:
 # ============================================================================
 # Keyframe Type Suggestion
 # ============================================================================
+
 
 class TestSuggestKeyframeType:
     """Test keyframe type suggestion based on distance."""
@@ -157,6 +154,7 @@ class TestSuggestKeyframeType:
 # Schedule Building
 # ============================================================================
 
+
 class TestBuildKeyframeTypeSchedule:
     """Test building of keyframe type schedule."""
 
@@ -176,19 +174,13 @@ class TestBuildKeyframeTypeSchedule:
         """Test two frames with short distance."""
         schedule = build_keyframe_type_schedule([0, 40], 80)
 
-        assert schedule == [
-            (0, DEFAULT_TYPE),
-            (40, SHORT_SECTION_TYPE)  # Distance 40 <= 80
-        ]
+        assert schedule == [(0, DEFAULT_TYPE), (40, SHORT_SECTION_TYPE)]  # Distance 40 <= 80
 
     def test_two_frames_long_distance(self):
         """Test two frames with long distance."""
         schedule = build_keyframe_type_schedule([0, 100], 80)
 
-        assert schedule == [
-            (0, DEFAULT_TYPE),
-            (100, DEFAULT_TYPE)  # Distance 100 > 80
-        ]
+        assert schedule == [(0, DEFAULT_TYPE), (100, DEFAULT_TYPE)]  # Distance 100 > 80
 
     def test_multiple_frames_mixed(self):
         """Test multiple frames with mixed distances."""
@@ -202,7 +194,7 @@ class TestBuildKeyframeTypeSchedule:
             (0, DEFAULT_TYPE),
             (40, SHORT_SECTION_TYPE),
             (140, DEFAULT_TYPE),
-            (200, SHORT_SECTION_TYPE)
+            (200, SHORT_SECTION_TYPE),
         ]
 
     def test_first_frame_always_default(self):
@@ -217,6 +209,7 @@ class TestBuildKeyframeTypeSchedule:
 # Schedule Formatting
 # ============================================================================
 
+
 class TestFormatKeyframeSchedule:
     """Test formatting of keyframe schedule to string."""
 
@@ -229,23 +222,14 @@ class TestFormatKeyframeSchedule:
 
     def test_multiple_keyframes(self):
         """Test multiple keyframes formatting."""
-        schedule = [
-            (0, "tween"),
-            (60, "flf2v"),
-            (120, "tween")
-        ]
+        schedule = [(0, "tween"), (60, "flf2v"), (120, "tween")]
         formatted = format_keyframe_schedule(schedule)
 
         assert formatted == "0:(tween), 60:(flf2v), 120:(tween)"
 
     def test_preserves_order(self):
         """Test that order is preserved."""
-        schedule = [
-            (0, "tween"),
-            (30, "flf2v"),
-            (60, "flf2v"),
-            (120, "tween")
-        ]
+        schedule = [(0, "tween"), (30, "flf2v"), (60, "flf2v"), (120, "tween")]
         formatted = format_keyframe_schedule(schedule)
 
         assert formatted == "0:(tween), 30:(flf2v), 60:(flf2v), 120:(tween)"
@@ -261,6 +245,7 @@ class TestFormatKeyframeSchedule:
 # Complete Workflow
 # ============================================================================
 
+
 class TestAutoAssignKeyframeTypes:
     """Test complete auto-assignment workflow."""
 
@@ -270,7 +255,7 @@ class TestAutoAssignKeyframeTypes:
             "0": "start",
             "40": "short section",
             "140": "long section",
-            "200": "another short"
+            "200": "another short",
         }
 
         formatted, schedule = auto_assign_keyframe_types(prompts, 100)
@@ -292,11 +277,7 @@ class TestAutoAssignKeyframeTypes:
 
     def test_filters_non_numeric_keys(self):
         """Test that non-numeric keys are ignored."""
-        prompts = {
-            "0": "start",
-            "metadata": "ignore me",
-            "60": "end"
-        }
+        prompts = {"0": "start", "metadata": "ignore me", "60": "end"}
 
         formatted, schedule = auto_assign_keyframe_types(prompts, 100)
 
@@ -339,6 +320,7 @@ class TestAutoAssignKeyframeTypes:
 # Integration Tests
 # ============================================================================
 
+
 class TestKeyframeParsingIntegration:
     """Integration tests for complete keyframe parsing workflow."""
 
@@ -351,7 +333,7 @@ class TestKeyframeParsingIntegration:
             "48": "2 seconds",
             "72": "3 seconds",
             "96": "4 seconds",
-            "120": "5 seconds"
+            "120": "5 seconds",
         }
 
         formatted, schedule = auto_assign_keyframe_types(prompts, 100)
@@ -364,12 +346,7 @@ class TestKeyframeParsingIntegration:
     def test_realistic_animation_60fps(self):
         """Test realistic 60 FPS animation."""
         # 3 seconds at 60 FPS with keyframes every second
-        prompts = {
-            "0": "start",
-            "60": "1 second",
-            "120": "2 seconds",
-            "180": "3 seconds"
-        }
+        prompts = {"0": "start", "60": "1 second", "120": "2 seconds", "180": "3 seconds"}
 
         formatted, schedule = auto_assign_keyframe_types(prompts, 100)
 
@@ -384,7 +361,7 @@ class TestKeyframeParsingIntegration:
             "10": "quick cut",
             "20": "quick cut 2",
             "30": "quick cut 3",
-            "150": "long scene"
+            "150": "long scene",
         }
 
         formatted, schedule = auto_assign_keyframe_types(prompts, 50)
@@ -397,5 +374,5 @@ class TestKeyframeParsingIntegration:
             (10, SHORT_SECTION_TYPE),
             (20, SHORT_SECTION_TYPE),
             (30, SHORT_SECTION_TYPE),
-            (150, DEFAULT_TYPE)
+            (150, DEFAULT_TYPE),
         ]

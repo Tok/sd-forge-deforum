@@ -12,7 +12,7 @@ Following Phase 2 of REFACTORING_STRATEGY.md:
 
 from typing import Any, Union
 import gradio as gr
-from modules.ui_components import FormRow, FormColumn
+from modules.ui_components import FormRow
 
 
 def create_gr_elem(d: dict[str, Any]) -> Any:
@@ -27,13 +27,13 @@ def create_gr_elem(d: dict[str, Any]) -> Any:
     Returns:
         Instantiated Gradio component
     """
-    obj_type_str = ''.join(word.title() for word in d["type"].split('_'))
+    obj_type_str = "".join(word.title() for word in d["type"].split("_"))
     obj_type = getattr(gr, obj_type_str)
 
     params = {k: v for k, v in d.items() if k != "type" and v is not None}
 
-    if 'type_param' in params:
-        params['type'] = params.pop('type_param')
+    if "type_param" in params:
+        params["type"] = params.pop("type_param")
 
     return obj_type(**params)
 
@@ -47,23 +47,23 @@ def is_gradio_component(args: Any) -> bool:
     Returns:
         True if object is a known Gradio component type
     """
-    return isinstance(args, (
-        gr.Button,
-        gr.Textbox,
-        gr.Slider,
-        gr.Dropdown,
-        gr.HTML,
-        gr.Radio,
-        gr.Interface,
-        gr.Markdown,
-        gr.Checkbox
-    ))
+    return isinstance(
+        args,
+        (
+            gr.Button,
+            gr.Textbox,
+            gr.Slider,
+            gr.Dropdown,
+            gr.HTML,
+            gr.Radio,
+            gr.Interface,
+            gr.Markdown,
+            gr.Checkbox,
+        ),
+    )
 
 
-def create_row(
-    args: Union[dict, Any],
-    *attrs: str
-) -> Union[list[Any], Any]:
+def create_row(args: Union[dict, Any], *attrs: str) -> Union[list[Any], Any]:
     """Create a FormRow with Gradio components.
 
     If attrs are provided, creates components from object attributes.
@@ -83,11 +83,7 @@ def create_row(
             return args if is_gradio_component(args) else create_gr_elem(args)
 
 
-def create_accordion_md_row(
-    name: str,
-    markdown: str,
-    is_open: bool = False
-) -> None:
+def create_accordion_md_row(name: str, markdown: str, is_open: bool = False) -> None:
     """Create a FormRow with an Accordion containing Markdown.
 
     Args:

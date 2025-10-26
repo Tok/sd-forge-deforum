@@ -17,6 +17,7 @@ from typing import Tuple
 # PURE FUNCTIONS - BPM and Keyframe Calculations
 # ============================================================================
 
+
 def calculate_keyframes_per_beat(bpm: float) -> float:
     """Calculate optimal keyframes per beat based on tempo.
 
@@ -32,11 +33,7 @@ def calculate_keyframes_per_beat(bpm: float) -> float:
         return 0.25
 
 
-def calculate_bpm_based_target(
-    duration: float,
-    bpm: float,
-    keyframes_per_beat: float
-) -> int:
+def calculate_bpm_based_target(duration: float, bpm: float, keyframes_per_beat: float) -> int:
     """Calculate target keyframe count from audio duration and BPM."""
     beats_per_second = bpm / 60.0
     return int(duration * beats_per_second * keyframes_per_beat)
@@ -65,10 +62,7 @@ def calculate_spacing_multiplier(adjustment_percent: int) -> float:
     return 1.0 - (adjustment_percent / 100.0)
 
 
-def calculate_adjusted_min_spacing(
-    base_spacing: int,
-    multiplier: float
-) -> int:
+def calculate_adjusted_min_spacing(base_spacing: int, multiplier: float) -> int:
     """Apply spacing multiplier with minimum of 1 frame."""
     return max(1, int(base_spacing * multiplier))
 
@@ -82,9 +76,7 @@ def calculate_compensation_target(target: int, compensation_factor: float = 1.25
 
 
 def build_keyframe_visualization(
-    keyframes: list[dict],
-    total_frames: int,
-    viz_width: int = 120
+    keyframes: list[dict], total_frames: int, viz_width: int = 120
 ) -> Tuple[str, str]:
     """Build ASCII visualization of keyframe placement.
 
@@ -94,12 +86,12 @@ def build_keyframe_visualization(
     Example:
         ("[|__|_____|___|_|____|___]", "0                      331")
     """
-    viz = ['_'] * viz_width
+    viz = ["_"] * viz_width
     for kf in keyframes:
-        pos = int((kf['frame'] / total_frames) * (viz_width - 1))
-        viz[pos] = '|'
+        pos = int((kf["frame"] / total_frames) * (viz_width - 1))
+        viz[pos] = "|"
 
-    viz_str = ''.join(viz)
+    viz_str = "".join(viz)
     max_frame = total_frames - 1
     spacing_str = f"0{' ' * (viz_width - len(str(max_frame)) - 1)}{max_frame}"
 
@@ -116,7 +108,7 @@ def build_status_message(
     prompts_used: int,
     distribution_mode: str,
     viz_str: str,
-    spacing_str: str
+    spacing_str: str,
 ) -> str:
     """Build detailed status message for UI display."""
     avg_spacing = total_frames / keyframes_created if keyframes_created else 0
@@ -138,10 +130,9 @@ def build_status_message(
 # PURE FUNCTIONS - Keyframe Target Resolution
 # ============================================================================
 
+
 def resolve_keyframe_target(
-    user_target: int,
-    bpm_based_target: int,
-    keyframe_adjustment: int
+    user_target: int, bpm_based_target: int, keyframe_adjustment: int
 ) -> Tuple[int, str]:
     """Resolve final keyframe target from user input, BPM, and adjustment.
 

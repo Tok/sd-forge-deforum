@@ -42,7 +42,7 @@ def custom_placeholder_format(value_dict: dict, placeholder_match) -> str:
 
     Examples:
         >>> import re
-        >>> match = re.match(r'{(\w+)}', '{name}')
+        >>> match = re.match(r'{(\\w+)}', '{name}')
         >>> custom_placeholder_format({'name': 'test'}, match)
         'test'
         >>> custom_placeholder_format({'name': None}, match)
@@ -110,7 +110,7 @@ def tick_or_cross(value: bool, use_simple_symbols: bool = True) -> str:
         '\u0000274C'
     """
     tick = "✔" if use_simple_symbols else "\U00002705"  # Check mark ✅
-    cross = "✖" if use_simple_symbols else "\U0000274C"  # Cross mark ❌
+    cross = "✖" if use_simple_symbols else "\U0000274c"  # Cross mark ❌
     return tick if value else cross
 
 
@@ -133,4 +133,4 @@ def sanitize_keyframe_value(value: str) -> str:
         >>> sanitize_keyframe_value('(1+2)')
         '1+2'
     """
-    return value.replace("'", "").replace('"', "").replace('(', "").replace(')', "")
+    return value.replace("'", "").replace('"', "").replace("(", "").replace(")", "")
