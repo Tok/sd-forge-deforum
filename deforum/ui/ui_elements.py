@@ -767,34 +767,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
 
     with gr.TabItem('Init'):
         with gr.Tabs():
-            # PARSEQ INNER-TAB - Now first and will be auto-selected
-            with gr.Tab(f"{emoji_utils.numbers()} Parseq"):
-                gr.HTML(value=get_gradio_html('parseq'))
-                parseq_manifest = create_row(dp.parseq_manifest)
-                parseq_non_schedule_overrides = create_row(dp.parseq_non_schedule_overrides)
-                parseq_use_deltas = create_row(dp.parseq_use_deltas)
-            # IMAGE INIT INNER-TAB
-            with gr.Tab('Image Init'):
-                with FormRow():
-                    with gr.Column(min_width=150):
-                        use_init = create_gr_elem(d.use_init)
-                    with gr.Column(min_width=150):
-                        strength_0_no_init = create_gr_elem(d.strength_0_no_init)
-                    with gr.Column(min_width=170):
-                        strength = create_gr_elem(d.strength)  # TODO rename to init_strength
-                init_image = create_row(d.init_image)
-                init_image_box = create_row(d.init_image_box)
-            # VIDEO INIT INNER-TAB - Hidden (deprecated - use Image Init or Parseq instead)
-            with gr.Tab('Video Init', visible=False):
-                video_init_path = create_row(da.video_init_path)
-                with FormRow():
-                    extract_from_frame = create_gr_elem(da.extract_from_frame)
-                    extract_to_frame = create_gr_elem(da.extract_to_frame)
-                    extract_nth_frame = create_gr_elem(da.extract_nth_frame)
-                    overwrite_extracted_frames = create_gr_elem(da.overwrite_extracted_frames)
-                # NOTE: use_mask_video and video_mask_path moved to dedicated Masking tab
-            # NOTE: Mask Init tab moved to dedicated Masking tab
-            # AUDIO SYNC INNER-TAB - Disabled when Parseq is active
+            # AUDIO SYNC INNER-TAB - First tab and will be auto-selected
             with gr.Tab("Audio Sync"):
                 gr.HTML(value="<p>Audio event detection for prompt synchronization and video soundtrack. Upload audio file or enter path/URL below. Disabled when Parseq is active.</p>")
 
@@ -1015,6 +988,34 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     lines=2,
                     info="Status messages will appear here"
                 )
+
+            # PARSEQ INNER-TAB
+            with gr.Tab(f"{emoji_utils.numbers()} Parseq"):
+                gr.HTML(value=get_gradio_html('parseq'))
+                parseq_manifest = create_row(dp.parseq_manifest)
+                parseq_non_schedule_overrides = create_row(dp.parseq_non_schedule_overrides)
+                parseq_use_deltas = create_row(dp.parseq_use_deltas)
+            # IMAGE INIT INNER-TAB
+            with gr.Tab('Image Init'):
+                with FormRow():
+                    with gr.Column(min_width=150):
+                        use_init = create_gr_elem(d.use_init)
+                    with gr.Column(min_width=150):
+                        strength_0_no_init = create_gr_elem(d.strength_0_no_init)
+                    with gr.Column(min_width=170):
+                        strength = create_gr_elem(d.strength)  # TODO rename to init_strength
+                init_image = create_row(d.init_image)
+                init_image_box = create_row(d.init_image_box)
+            # VIDEO INIT INNER-TAB - Hidden (deprecated - use Image Init or Parseq instead)
+            with gr.Tab('Video Init', visible=False):
+                video_init_path = create_row(da.video_init_path)
+                with FormRow():
+                    extract_from_frame = create_gr_elem(da.extract_from_frame)
+                    extract_to_frame = create_gr_elem(da.extract_to_frame)
+                    extract_nth_frame = create_gr_elem(da.extract_nth_frame)
+                    overwrite_extracted_frames = create_gr_elem(da.overwrite_extracted_frames)
+                # NOTE: use_mask_video and video_mask_path moved to dedicated Masking tab
+            # NOTE: Mask Init tab moved to dedicated Masking tab
 
     # Build result dict from locals/vars
     result = {k: v for k, v in {**locals(), **vars()}.items()}

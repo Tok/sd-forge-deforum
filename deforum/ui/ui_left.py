@@ -365,9 +365,9 @@ def setup_deforum_left_side_ui():
                         from pathlib import Path
                         import json
 
-                        # Validate soundtrack path
-                        if not soundtrack_path_val or not Path(soundtrack_path_val).exists():
-                            return gr.update(), gr.update(), "✗ Error: Please upload an audio file first"
+                        # Validate soundtrack path (can be local path or URL)
+                        if not soundtrack_path_val or soundtrack_path_val.strip() == "":
+                            return gr.update(), gr.update(), "✗ Error: Please provide a soundtrack path or URL"
 
                         # Parse user prompts
                         from deforum.audio import parse_prompt_list
