@@ -452,6 +452,17 @@ def setup_deforum_left_side_ui():
                             distortion_gain=10.0
                         )
 
+                        # Dynamically adjust min_spacing based on keyframe_adjustment
+                        # If user wants MORE keyframes (+%), reduce min_spacing to let more through
+                        # If user wants FEWER keyframes (-%), increase min_spacing to filter more out
+                        if keyframe_adjustment != 0:
+                            # Scale min_spacing inversely with keyframe adjustment
+                            # +20% keyframes → -20% min_spacing, -20% keyframes → +20% min_spacing
+                            spacing_multiplier = 1.0 - (keyframe_adjustment / 100.0)
+                            adjusted_min_spacing = max(1, int(min_spacing_frames * spacing_multiplier))
+                            print(f"   Adjusting min_spacing: {min_spacing_frames} → {adjusted_min_spacing} frames (due to {keyframe_adjustment:+d}% adjustment)")
+                            min_spacing_frames = adjusted_min_spacing
+
                         # Intelligently adjust sensitivity to reach target keyframe count
                         # Note: We target slightly more events because min_spacing will filter some out
                         # Estimate: ~20-30% of events get filtered by min_spacing, so target 1.25x more
