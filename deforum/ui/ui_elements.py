@@ -972,8 +972,8 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     audio_prompt_distribution_mode = gr.Dropdown(
                         label="Distribution Mode",
                         choices=["cycle", "sequential", "intensity", "random"],
-                        value="cycle",
-                        info="How to distribute prompts: cycle=repeat, sequential=divide into sections, intensity=assign by beat strength"
+                        value="sequential",
+                        info="How to distribute prompts: sequential=divide evenly, cycle=repeat pattern, intensity=assign by beat strength"
                     )
                     audio_target_keyframe_count = gr.Number(
                         label="Target Keyframes (optional)",

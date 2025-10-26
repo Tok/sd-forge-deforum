@@ -575,7 +575,7 @@ def setup_deforum_left_side_ui():
                         )
 
                         # Return: animation_prompts, target_count (updated), status
-                        return formatted_schedule, gr.update(value=len(keyframes)), status_msg
+                        return formatted_schedule, len(keyframes), status_msg
 
                     except Exception as e:
                         import traceback
