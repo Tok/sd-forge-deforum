@@ -557,48 +557,105 @@ def setup_deforum_left_side_ui():
 
     # Wire up AI prompt generation button
     if 'audio_ai_generate_button' in locals():
-        def generate_prompts_with_ai(count, theme):
-            """Generate escalating prompts using Qwen."""
+        def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, start_prompt, end_prompt):
+            """Generate prompts using Qwen with multiple modes and intensity levels."""
             try:
-                from deforum.wan.qwen_prompt_expander import QwenPromptExpander
+                from scripts.deforum_helpers.wan.qwen_prompt_expander import QwenPromptExpander
 
                 # Initialize Qwen (will auto-select model based on VRAM)
                 qwen = QwenPromptExpander()
 
-                # Create prompt for Qwen to generate escalating prompts
-                generation_prompt = f"""Generate {int(count)} creative and escalating prompts for an animated video featuring a {theme}.
+                # Build style descriptor
+                style_text = f"{style} style " if style and style.strip() else ""
+
+                # Build intensity descriptor
+                intensity_instructions = {
+                    "normal": "Keep prompts realistic and grounded. Progressive but subtle changes.",
+                    "crazy": "Make prompts over-the-top and extremely creative! Wild transformations and escalating intensity! Go big with each step!",
+                    "extreme": "GO ABSOLUTELY BONKERS! Each prompt should be MORE INSANE than the last! Reality-bending, physics-defying, mind-blowing escalation! Maximum chaos and creativity!"
+                }
+                intensity_inst = intensity_instructions.get(intensity, intensity_instructions["crazy"])
+
+                # Mode-specific prompt generation
+                if generation_mode == "start-to-end":
+                    # Interpolation mode - fill between start and end
+                    generation_prompt = f"""You are creating an animated sequence that transitions from one scene to another.
+
+START PROMPT: {start_prompt}
+END PROMPT: {end_prompt}
+
+Generate {int(count)} {style_text}prompts that smoothly transition from the start to the end.
+
+INTENSITY: {intensity_inst}
 
 Requirements:
-- Each prompt should be a simple, descriptive phrase
-- Start with calm/static scenes and progressively increase action/intensity
-- Focus on varied actions, poses, and settings
-- Keep each prompt concise (5-10 words)
-- Return ONLY the prompts, one per line
-- No numbering, no explanations
+- First prompt should be similar to START
+- Last prompt should lead into END
+- Middle prompts progressively transform from start to end
+- Each step should build on the previous one
+- {style_text if style else ""}Focus on visual progression
+- Keep prompts concise (5-12 words each)
+- Return ONLY the prompts, one per line, NO numbering
 
-Example for "bunny":
-bunny in forest
-bunny hopping gently
-bunny sitting by tree
-bunny looking around curiously
-bunny jumping energetically
+Generate {int(count)} transition prompts:"""
 
-Now generate {int(count)} prompts for: {theme}"""
+                elif generation_mode == "varied":
+                    # Random creative variations
+                    generation_prompt = f"""Create {int(count)} wildly varied and creative {style_text}prompts featuring {theme}.
+
+INTENSITY: {intensity_inst}
+
+Requirements:
+- Each prompt should be COMPLETELY DIFFERENT
+- Mix of scenes, actions, perspectives, moods
+- {style_text if style else ""}Unexpected combinations and scenarios
+- Progressive escalation of creativity
+- Keep prompts concise (5-12 words each)
+- Return ONLY the prompts, one per line, NO numbering
+
+Generate {int(count)} varied {style_text}prompts for {theme}:"""
+
+                else:  # escalating mode (default)
+                    # Escalating intensity mode
+                    generation_prompt = f"""Generate {int(count)} {style_text}prompts that build in intensity for an animated sequence featuring {theme}.
+
+INTENSITY: {intensity_inst}
+
+Requirements:
+- START CALM: Begin with simple, peaceful scene (e.g., "cute {theme} in nature")
+- ESCALATE DRAMATICALLY: Each prompt MORE intense than the last
+- {style_text if style else ""}Progressive transformation: calm → active → dynamic → EXTREME → ABSOLUTELY WILD
+- Final prompts should be PEAK INSANITY (if crazy/extreme mode)
+- Keep prompts concise (5-12 words each)
+- Return ONLY the prompts, one per line, NO numbering
+
+Example progression for "{style_text}bunny" (CRAZY mode):
+cute bunny sitting peacefully in grass
+bunny hopping through vibrant neon forest
+{style_text}bunny leaping over glowing obstacles
+bunny racing through laser-filled cityscape
+EXTREME {style_text}bunny surfing massive energy wave
+INSANE {style_text}bunny commanding lightning storm on motorcycle
+ABSOLUTELY BONKERS {style_text}bunny transcending reality in cosmic explosion
+
+Now generate {int(count)} {style_text}prompts for {theme}:"""
 
                 # Generate with Qwen
-                print(f"🤖 Generating {count} prompts for theme: {theme}")
+                print(f"🤖 Generating {count} prompts | Mode: {generation_mode} | Intensity: {intensity} | Style: {style or 'none'} | Theme: {theme}")
                 result = qwen.enhance_prompt(generation_prompt)
 
                 # Clean up the result (remove any numbering or extra formatting)
                 lines = [line.strip() for line in result.split('\n') if line.strip()]
-                # Filter out lines that look like numbering or explanations
                 prompts = []
                 for line in lines:
                     # Skip lines with numbering like "1.", "1)", etc.
-                    if line[0].isdigit() and (line[1] == '.' or line[1] == ')'):
-                        line = line[2:].strip()
-                    if line and not line.startswith('#') and not line.startswith('//'):
-                        prompts.append(line)
+                    clean_line = line
+                    if len(line) > 0 and line[0].isdigit():
+                        # Remove leading numbers and punctuation
+                        import re
+                        clean_line = re.sub(r'^\d+[\.\)]\s*', '', line)
+                    if clean_line and not clean_line.startswith('#') and not clean_line.startswith('//'):
+                        prompts.append(clean_line)
 
                 # Take only the requested count
                 prompts = prompts[:int(count)]
@@ -612,19 +669,48 @@ Now generate {int(count)} prompts for: {theme}"""
             except Exception as e:
                 import traceback
                 traceback.print_exc()
-                error_msg = f"Error generating prompts: {str(e)}\n\nUsing fallback prompts..."
-                # Fallback to simple template-based generation
-                actions = ["resting", "moving slowly", "looking around", "moving quickly", "jumping"]
-                fallback = '\n'.join([f"{theme} {action}" for action in actions[:int(count)]])
+                error_msg = f"Error generating prompts: {str(e)}"
                 print(f"⚠️ {error_msg}")
+                # Fallback to template-based generation
+                style_prefix = f"{style} " if style else ""
+                if generation_mode == "start-to-end":
+                    fallback = '\n'.join([start_prompt] + [f"{style_prefix}{theme} transforming"] * max(0, int(count)-2) + [end_prompt])
+                else:
+                    actions = ["resting peacefully", "moving slowly", "actively exploring", "racing dynamically", "GOING WILD"]
+                    fallback = '\n'.join([f"{style_prefix}{theme} {action}" for action in actions[:int(count)]])
                 return fallback
 
-        if 'audio_ai_prompt_count' in locals() and 'audio_ai_prompt_theme' in locals() and 'audio_sync_prompts' in locals():
+        # Wire up the button with visibility toggle for start/end mode
+        def toggle_start_end_visibility(mode):
+            """Show/hide start and end prompt fields based on generation mode."""
+            is_start_end = mode == "start-to-end"
+            return gr.update(visible=is_start_end), gr.update(visible=is_start_end)
+
+        required_components = [
+            'audio_ai_generation_mode', 'audio_ai_intensity', 'audio_ai_style',
+            'audio_ai_prompt_theme', 'audio_ai_prompt_count',
+            'audio_ai_start_prompt', 'audio_ai_end_prompt', 'audio_sync_prompts'
+        ]
+
+        if all(comp in locals() for comp in required_components):
+            # Wire up mode change to show/hide start/end prompts
+            locals()['audio_ai_generation_mode'].change(
+                fn=toggle_start_end_visibility,
+                inputs=[locals()['audio_ai_generation_mode']],
+                outputs=[locals()['audio_ai_start_prompt'], locals()['audio_ai_end_prompt']]
+            )
+
+            # Wire up generate button
             locals()['audio_ai_generate_button'].click(
                 fn=generate_prompts_with_ai,
                 inputs=[
+                    locals()['audio_ai_generation_mode'],
+                    locals()['audio_ai_intensity'],
+                    locals()['audio_ai_style'],
+                    locals()['audio_ai_prompt_theme'],
                     locals()['audio_ai_prompt_count'],
-                    locals()['audio_ai_prompt_theme']
+                    locals()['audio_ai_start_prompt'],
+                    locals()['audio_ai_end_prompt']
                 ],
                 outputs=[locals()['audio_sync_prompts']]
             )
