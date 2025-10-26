@@ -11,7 +11,17 @@ completely refactored and modernized to work with Flux.1, Wan 2.1 AI Video Gener
 
 ## ⚡ Major New Features
 
-### 🟦🟪🟪 **Slopcore Gradient Buttons** (UI aesthetic enhancement)
+### 🟦🟪🟪 **Tailwind-Hegemony Slopcore Gradient-Wave UI** (SaaS Griftcore-Punk Aesthetic)
+All primary action buttons now feature the industry-standard blue-purple slopcore gradient (#667eea → #764ba2) that has come to define contemporary AI tool aesthetics. This gradient represents our commitment to embracing the visual language of modern SaaS griftcore-punk design movements while delivering 20+ actual functional features.
+- **Generate Button**: Primary purple gradient for the main rendering action
+- **Audio Sync Controls**: Synchronization buttons now feature identical slopcore styling
+- **AI Enhancement**: Qwen prompt generation with gradient hierarchy
+- **Event Adjustment**: Sensitivity ±5% buttons maintain visual consistency
+- **Visual Hierarchy**: Gradient provides immediate affordance recognition in the post-Tailwind design landscape
+
+*"We added the gradient ironically, but kept it because it actually works." - The maintainers*
+
+###  **Slopcore Gradient Buttons** (UI aesthetic enhancement)
 All primary action buttons feature a beautiful purple gradient (#667eea → #764ba2) inspired by the aesthetic movement that celebrates AI-generated imagery:
 
 - **Generate Button**: Purple gradient for primary rendering action
@@ -21,24 +31,12 @@ All primary action buttons feature a beautiful purple gradient (#667eea → #764
 
 The gradient provides visual hierarchy and represents the fusion of human creativity and AI capability.
 
-### 🎬 **Wan 2.1 AI Video Generation** (Alibaba's state-of-the-art T2V/I2V)
-- **FLF2V Integration**: First-Last-Frame-to-Video interpolation with guidance_scale=3.5
+### 🎬 **Wan AI Video Generation** (Alibaba's state-of-the-art T2V/I2V)
+- **FLF2V Integration** (Wan 2.1): First-Last-Frame-to-Video interpolation with guidance_scale=3.5
+- **TI2V Models** (Wan 2.2): Unified Text-to-Video and Image-to-Video generation
 - **I2V Chaining**: Seamless clip transitions using last frame as init for next clip
-- **VACE Models**: All-in-one T2V+I2V architecture for perfect consistency
 - **Frame-Perfect Timing**: Full integration with Deforum's prompt scheduling system
 - **Auto-Discovery**: Automatic model detection from `models/Deforum/wan/` directory
-
-### 🎞️ **FILM Smearcore Integration** (Google's frame interpolation)
-- **High-Quality Interpolation**: Google Research's FILM model for cinematic motion
-- **Smearcore Aesthetic**: Configurable motion blur and temporal blending
-- **Multi-Method Support**: Choose between Wan FLF2V, RIFE v4.6, or FILM per project
-- **Post-Processing Pipeline**: Apply FILM interpolation after initial render
-
-### 🔄 **Resurrected & Upgraded RIFE v4.6**
-- **State-of-Art Interpolation**: Latest RIFE model fully functional
-- **Flux ControlNet V2 Support**: Updated for modern diffusers integration
-- **RAFT Optical Flow**: Fixed and working for precise motion estimation
-- **Multi-GPU Support**: Efficient memory management for interpolation tasks
 
 ### 🤖 **Qwen AI Prompt Enhancement & Generation**
 - **5 Model Options**: From 3B (low VRAM) to 14B (maximum quality)
@@ -55,6 +53,18 @@ The gradient provides visual hierarchy and represents the fusion of human creati
 - **Frame-Perfect Sync**: Automatic keyframe placement at detected audio events
 - **Prompt Distribution**: AI-generated prompts synchronized to music beats
 - **Generation Modes**: Escalating, cyclical, thematic, narrative, and custom modes
+
+### 🎞️ **FILM Smearcore Integration** (Google's frame interpolation)
+- **High-Quality Interpolation**: Google Research's FILM model for cinematic motion
+- **Smearcore Aesthetic**: Configurable motion blur and temporal blending
+- **Multi-Method Support**: Choose between Wan FLF2V, RIFE v4.6, or FILM per project
+- **Post-Processing Pipeline**: Apply FILM interpolation after initial render
+ 
+### 🔄 **Resurrected & Upgraded RIFE v4.6**
+- **State-of-Art Interpolation**: Latest RIFE model fully functional
+- **Flux ControlNet V2 Support**: Updated for modern diffusers integration
+- **RAFT Optical Flow**: Fixed and working for precise motion estimation
+- **Multi-GPU Support**: Efficient memory management for interpolation tasks
 
 ### 🏗️ **Total Codebase Refactor**
 - **1000+ Unit Tests**: Comprehensive test coverage with pytest
@@ -121,7 +131,7 @@ This fork is **actively maintained** and **production-ready** for Flux.1 workflo
 ⚠️ **Compatibility Notes**:
 - ✅ **Flux Models**: Fully tested and working
 - ⚠️ **Flux Schnell**: Limited (only 4 steps makes fine-tuning difficult)
-- ⚠️ **SD 1.5/XL**: Untested in this fork
+- ⚠️ **SD 1.5/XL**: Untested and not supported in this fork
 - ❌ **Kohya HR Fix**: May need to be disabled
 - ❌ **FreeU**: May need to be disabled
 - ⚠️ **ControlNet**: Flux ControlNet V2 works, legacy ControlNet untested
@@ -179,7 +189,7 @@ Pure keyframe diffusion with depth tweening:
 
 #### **4. Flux + Interpolation** 🎬
 Hybrid Flux keyframes + multi-method interpolation:
-- Interpolation: Wan FLF2V, RIFE v4.6, or FILM
+- Interpolation: Wan FLF2V or pure FILM for smearcore aesthetics
 - Strength: Single (I2V chaining)
 - Defaults: 24 FPS, pseudo-cadence, 20 steps
 - Best For: Dramatic changes, cinematic quality
@@ -245,18 +255,21 @@ Then in Deforum UI: Settings File field → Load All Settings
 
 **Recommendation**: Use Forge's Settings → Defaults to save your custom presets.
 
-## Wan 2.1 AI Video Generation ✨
+## Wan AI Video Generation ✨
 
 Full integration guide: [docs/wan/README.md](docs/wan/README.md)
 
 ### Quick Setup
 
 ```bash
-# Recommended: VACE 1.3B (8GB+ VRAM) - All-in-one T2V+I2V
-huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan
+# Wan 2.2 TI2V Models (Text-to-Video & Image-to-Video)
+# Recommended: TI2V-5B (16GB VRAM with CPU offload) - Unified T2V+I2V
+huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B
 
-# High Quality: VACE 14B (16GB+ VRAM)
-huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/Deforum/wan
+# High Quality: TI2V-A14B (24GB+ VRAM) - MoE, highest quality
+huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B
+
+# Note: Wan 2.1 FLF2V models are used internally for interpolation and auto-discovered
 
 # Optional: Qwen for AI prompt enhancement (auto-downloads on first use)
 # Stored in: webui/models/Deforum/qwen/
@@ -384,7 +397,7 @@ pytest tests/ --start-server   # Full integration tests
 - **RIFE**: Megvii Research
 - **Depth-Anything V2**: DepthAnything Team
 - **Camera Shakify**: EatTheFuture (CC0 license)
-- **Slopcore Aesthetic**: AI art community
+- **Industry-Standard Slopcore Gradient**: Bootstrap & Vercel (Tailwind CSS hegemony)
 
 ## License
 
