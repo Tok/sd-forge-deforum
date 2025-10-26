@@ -453,7 +453,10 @@ def setup_deforum_left_side_ui():
                         )
 
                         # Intelligently adjust sensitivity to reach target keyframe count
-                        print(f"🎵 Event detection (targeting ~{final_target} keyframes):")
+                        # Note: We target slightly more events because min_spacing will filter some out
+                        # Estimate: ~20-30% of events get filtered by min_spacing, so target 1.25x more
+                        adjusted_target = int(final_target * 1.25)
+                        print(f"🎵 Event detection (targeting ~{final_target} keyframes, detecting {adjusted_target} events to account for min_spacing filter):")
 
                         best_events = None
                         best_intensities = None
@@ -461,7 +464,7 @@ def setup_deforum_left_side_ui():
 
                         # Binary search for optimal sensitivity
                         sens_min, sens_max = 5, 95
-                        tolerance = max(2, int(final_target * 0.15))  # 15% tolerance
+                        tolerance = max(2, int(adjusted_target * 0.15))  # 15% tolerance
 
                         for iteration in range(10):  # Max 10 iterations
                             test_sens = (sens_min + sens_max) / 2
@@ -473,12 +476,12 @@ def setup_deforum_left_side_ui():
                             )
 
                             num_events = len(event_times)
-                            diff = num_events - final_target
+                            diff = num_events - adjusted_target
 
-                            print(f"   Iteration {iteration+1}: sensitivity={test_sens:.1f} → {num_events} events (target={final_target})")
+                            print(f"   Iteration {iteration+1}: sensitivity={test_sens:.1f} → {num_events} events (target={adjusted_target})")
 
                             # Save best result so far
-                            if best_events is None or abs(diff) < abs(len(best_events) - final_target):
+                            if best_events is None or abs(diff) < abs(len(best_events) - adjusted_target):
                                 best_events = event_times
                                 best_intensities = event_intensities
                                 best_sensitivity = test_sens
@@ -489,7 +492,7 @@ def setup_deforum_left_side_ui():
                                 break
 
                             # Adjust search range
-                            if num_events > final_target:
+                            if num_events > adjusted_target:
                                 # Too many events, increase sensitivity (more selective)
                                 sens_min = test_sens
                             else:
@@ -504,6 +507,7 @@ def setup_deforum_left_side_ui():
 
                         # Use all detected events (already optimized for target)
                         num_keyframes = len(event_times)
+                        print(f"   Detected {num_keyframes} events, applying min_spacing filter ({min_spacing_frames} frames)...")
 
                         # Generate keyframes from events (requires BOTH times and intensities)
                         keyframes = generate_keyframes_from_events(
@@ -516,6 +520,8 @@ def setup_deforum_left_side_ui():
 
                         if not keyframes:
                             return gr.update(), gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
+
+                        print(f"   After min_spacing filter: {len(keyframes)} keyframes ({num_keyframes - len(keyframes)} events filtered out)")
 
                         # Ensure first and last frames are always keyframes
                         max_frame = int(duration * fps_val) - 1
@@ -560,11 +566,18 @@ def setup_deforum_left_side_ui():
                         schedule = json.loads(animation_prompts_json)
                         formatted_schedule = json.dumps(schedule, indent=2)
 
-                        # Build detailed status message with visualization
+                        # Build detailed status message with visualization (same as console)
                         avg_spacing = total_frames / len(keyframes) if keyframes else 0
                         status_msg = (
-                            f"✓ Synced! BPM: {bpm:.1f} | {len(keyframes)} keyframes | {duration:.1f}s @ {fps_val}FPS\n"
-                            f"Avg spacing: {avg_spacing:.1f} frames ({avg_spacing/fps_val:.2f}s) | {len(user_prompts)} prompts ({distribution_mode})"
+                            f"✓ Successfully synchronized!\n"
+                            f"• Audio: {duration:.1f}s @ {fps_val} FPS ({total_frames} frames)\n"
+                            f"• Detected BPM: {bpm:.1f}\n"
+                            f"• Events detected: {len(event_times)}\n"
+                            f"• Keyframes created: {len(keyframes)}\n"
+                            f"• Average spacing: {avg_spacing:.1f} frames (~{avg_spacing/fps_val:.2f}s)\n"
+                            f"• Prompts used: {len(user_prompts)} (mode: {distribution_mode})\n\n"
+                            f"Keyframe placement:\n[{viz_str}]\n"
+                            f"0{' ' * (viz_width - len(str(max_frame)) - 1)}{max_frame}"
                         )
 
                         # Return: animation_prompts, target_count (updated), status
