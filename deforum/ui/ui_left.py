@@ -563,18 +563,15 @@ def setup_deforum_left_side_ui():
                         # Build detailed status message with visualization
                         avg_spacing = total_frames / len(keyframes) if keyframes else 0
                         status_msg = (
-                            f"✓ Successfully synchronized!\n"
-                            f"• Audio: {duration:.1f}s @ {fps_val} FPS ({total_frames} frames)\n"
-                            f"• Detected BPM: {bpm:.1f}\n"
-                            f"• Events detected: {len(event_times)}\n"
-                            f"• Keyframes created: {len(keyframes)}\n"
-                            f"• Average spacing: {avg_spacing:.1f} frames (~{avg_spacing/fps_val:.2f}s)\n"
-                            f"• Prompts used: {len(user_prompts)} (mode: {distribution_mode})\n\n"
-                            f"Keyframe placement:\n[{viz_str}]\n"
-                            f"0{' ' * (viz_width - len(str(max_frame)) - 1)}{max_frame}"
+                            f"✓ Synced! BPM: {bpm:.1f} | {len(keyframes)} keyframes | {duration:.1f}s @ {fps_val}FPS\n"
+                            f"Avg spacing: {avg_spacing:.1f} frames ({avg_spacing/fps_val:.2f}s) | {len(user_prompts)} prompts ({distribution_mode})"
                         )
 
                         # Return: animation_prompts, target_count (updated), status
+                        print(f"🔍 DEBUG: Returning from sync function:")
+                        print(f"   animation_prompts: {len(formatted_schedule)} chars")
+                        print(f"   target_count: {len(keyframes)}")
+                        print(f"   status_msg: {status_msg[:100]}...")
                         return formatted_schedule, len(keyframes), status_msg
 
                     except Exception as e:
