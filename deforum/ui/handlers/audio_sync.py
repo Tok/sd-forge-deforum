@@ -74,10 +74,17 @@ def synchronize_prompts_to_audio(
 
         logger.info(f"{emoji_if_enabled('✅')} Parsed {len(prompts)} prompts from input")
 
-        # 3. LOAD AUDIO: Load and process audio file for analysis
+        # 3. LOAD AUDIO: Download (if URL) and load audio file for analysis
         try:
             import librosa
-            y, sr = librosa.load(soundtrack_path_val, sr=None)
+            from deforum.media.video_audio_utilities import download_audio
+
+            # Download audio if it's a URL (or pass through if local path)
+            # This ensures we have a valid local file path for librosa
+            local_audio_path = download_audio(soundtrack_path_val)
+
+            # Load audio with librosa
+            y, sr = librosa.load(local_audio_path, sr=None)
             duration = librosa.get_duration(y=y, sr=sr)
 
             # Process audio for detection
