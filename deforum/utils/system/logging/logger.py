@@ -14,7 +14,12 @@ Features:
 
 from enum import Enum
 from typing import Iterator, Optional
-from tqdm import tqdm
+
+try:
+    from tqdm import tqdm
+    TQDM_AVAILABLE = True
+except ImportError:
+    TQDM_AVAILABLE = False
 
 from deforum.utils.system.logging.themes import get_theme_colors, RESET_COLOR, BOLD
 from deforum.utils.system.logging.emoji import get_themed_emoji
@@ -179,8 +184,12 @@ class DeforumLogger:
             **tqdm_kwargs: Additional tqdm arguments
 
         Returns:
-            tqdm iterator
+            tqdm iterator (or plain iterator if tqdm unavailable)
         """
+        if not TQDM_AVAILABLE:
+            # Fallback to plain iterator if tqdm not available
+            return iterable
+
         # Get theme-specific tqdm styling
         style = self._get_tqdm_style()
         style.update(tqdm_kwargs)  # Allow overrides
