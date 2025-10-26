@@ -296,13 +296,13 @@ class DiffusionFrame:
         # Parseq uses same definition as Deforum (NOT SD's denoising_strength).
         # When Parseq is active, it overrides with its own unified strength schedule.
         #
-        # Schedule series indices shifted to start at 0.
+        # With 0-based indexing, use index directly
         keys = data.animation_keys.deform_keys
-        idx = index - 1
+        idx = index
 
         # Check if index is within bounds
-        if idx >= len(keys.strength_schedule_series) or idx >= len(keys.keyframe_strength_schedule_series):
-            log_utils.warning(f"Frame index {index} (0-indexed: {idx}) exceeds strength schedule series length, using default value.")
+        if idx < 0 or idx >= len(keys.strength_schedule_series) or idx >= len(keys.keyframe_strength_schedule_series):
+            log_utils.warning(f"Frame index {index} exceeds strength schedule series length, using default value.")
             return 0.85  # Default strength value
 
         # FIXED: Apply keyframe_strength to keyframes, normal strength to non-keyframes
@@ -317,10 +317,10 @@ class DiffusionFrame:
         Returns: "tween", "flf2v", or "auto"
         """
         keys = data.animation_keys.deform_keys
-        idx = index - 1
+        idx = index
 
         # Check if index is within bounds
-        if idx >= len(keys.keyframe_type_schedule_series):
+        if idx < 0 or idx >= len(keys.keyframe_type_schedule_series):
             # Default to tween for backwards compatibility
             return "tween"
 
@@ -352,10 +352,10 @@ class DiffusionFrame:
                                     bar_format=Taqaddumat.NO_ETA_BAR_FORMAT,
                                     disable=shared.cmd_opts.disable_console_progressbars,
                                     colour=log_utils.HEX_YELLOW):
-            i = diffusion_frame.i - 1
+            i = diffusion_frame.i
             # Ensure i is within bounds of the series
-            if i >= len(keys.seed_schedule_series):
-                log_utils.warning(f"Frame index {diffusion_frame.i} (0-indexed: {i}) exceeds max_frames, using fallback values.")
+            if i < 0 or i >= len(keys.seed_schedule_series):
+                log_utils.warning(f"Frame index {diffusion_frame.i} exceeds max_frames, using fallback values.")
                 diffusion_frame.seed = data.args.args.seed
                 diffusion_frame.subseed = -1
                 diffusion_frame.subseed_strength = 0.0
@@ -414,10 +414,10 @@ class DiffusionFrame:
         keys = data.animation_keys.deform_keys
         is_subseed_scheduling_enabled = data.args.anim_args.enable_subseed_scheduling
         if is_subseed_scheduling_enabled:
-            i = diffusion_frame.i - 1
+            i = diffusion_frame.i
             # Check if index is within bounds
-            if i >= len(keys.subseed_schedule_series):
-                log_utils.warning(f"Frame index {diffusion_frame.i} (0-indexed: {i}) exceeds subseed schedule series length, using default values.")
+            if i < 0 or i >= len(keys.subseed_schedule_series):
+                log_utils.warning(f"Frame index {diffusion_frame.i} exceeds subseed schedule series length, using default values.")
                 diffusion_frame.subseed = -1
                 diffusion_frame.subseed_strength = 0.0
             else:
