@@ -950,7 +950,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
 
                 # Generate button with elem_classes for purple styling
                 audio_ai_generate_button = gr.Button(
-                    "✨ Generate Prompts with AI",
+                    "✨ Generate Prompts with local Qwen",
                     variant="primary",
                     elem_id="audio_ai_generate_button",
                     elem_classes=["slopcore-button"]
