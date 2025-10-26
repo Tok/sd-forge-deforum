@@ -457,7 +457,7 @@ def setup_deforum_left_side_ui():
                         # If user wants FEWER keyframes (-%), increase min_spacing to filter more out
                         if keyframe_adjustment != 0:
                             # Scale min_spacing inversely with keyframe adjustment
-                            # +20% keyframes → -20% min_spacing, -20% keyframes → +20% min_spacing
+                            # +5% keyframes → -5% min_spacing, -5% keyframes → +5% min_spacing
                             spacing_multiplier = 1.0 - (keyframe_adjustment / 100.0)
                             adjusted_min_spacing = max(1, int(min_spacing_frames * spacing_multiplier))
                             print(f"   Adjusting min_spacing: {min_spacing_frames} → {adjusted_min_spacing} frames (due to {keyframe_adjustment:+d}% adjustment)")
@@ -663,9 +663,9 @@ def setup_deforum_left_side_ui():
                             outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
                         )
 
-                        # -20% button (fewer keyframes)
+                        # -5% button (fewer keyframes)
                         def fewer_keyframes_wrapper(*args):
-                            result = synchronize_prompts_to_audio(*args, keyframe_adjustment=-20)
+                            result = synchronize_prompts_to_audio(*args, keyframe_adjustment=-5)
                             print(f"🔍 DEBUG fewer_keyframes_wrapper returning: {type(result)}, len={len(result) if isinstance(result, tuple) else 'N/A'}")
                             return result
 
@@ -675,9 +675,9 @@ def setup_deforum_left_side_ui():
                             outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
                         )
 
-                        # +20% button (more keyframes)
+                        # +5% button (more keyframes)
                         def more_keyframes_wrapper(*args):
-                            result = synchronize_prompts_to_audio(*args, keyframe_adjustment=20)
+                            result = synchronize_prompts_to_audio(*args, keyframe_adjustment=5)
                             print(f"🔍 DEBUG more_keyframes_wrapper returning: {type(result)}, len={len(result) if isinstance(result, tuple) else 'N/A'}")
                             return result
 
@@ -687,7 +687,7 @@ def setup_deforum_left_side_ui():
                             outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
                         )
 
-                        print("🎵 Audio sync buttons connected successfully (main, -20%, +20%)")
+                        print("🎵 Audio sync buttons connected successfully (main, -5%, +5%)")
                     else:
                         print(f"⚠️ Could not connect audio sync buttons: missing button/output components")
                         print(f"   Condition checks: audio_sync_button={audio_sync_button is not None}, fewer={audio_sync_fewer_button is not None}, more={audio_sync_more_button is not None}, status={audio_sync_status is not None}, prompts={animation_prompts is not None}")

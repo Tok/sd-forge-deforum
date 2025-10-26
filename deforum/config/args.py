@@ -65,7 +65,7 @@ def DeforumAnimArgs():
             "label": "Render Mode",
             "type": "radio",
             "choices": ['Classic 3D', 'New 3D', 'Keyframes Only', 'Flux + Interpolation'],
-            "value": "New 3D",
+            "value": "Keyframes Only",
             "info": "Primary workflow selector: Classic 3D (fixed cadence, RAFT/ControlNet), New 3D (keyframe redistribution, dual strength), Keyframes Only (depth tweening), Flux + Interpolation (multi-method AI interpolation)"
         },
         "animation_mode": {

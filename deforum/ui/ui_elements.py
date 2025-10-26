@@ -959,7 +959,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 gr.Markdown("**Click to detect audio events and populate the Prompts tab:**")
                 with FormRow():
                     audio_sync_fewer_button = gr.Button(
-                        "➖ -20% Keyframes",
+                        "➖ -5% Keyframes",
                         variant="primary",
                         elem_id="audio_sync_fewer_button",
                         elem_classes=["slopcore-button"],
@@ -973,7 +973,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         scale=2
                     )
                     audio_sync_more_button = gr.Button(
-                        "➕ +20% Keyframes",
+                        "➕ +5% Keyframes",
                         variant="primary",
                         elem_id="audio_sync_more_button",
                         elem_classes=["slopcore-button"],
