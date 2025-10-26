@@ -1,12 +1,11 @@
 # Import pure functions from refactored utils module
 from deforum.utils.image.color import (
+    hex_to_ansi_foreground as from_hex_color,
+)
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
-
-    hex_to_ansi_foreground as from_hex_color,
-)
 
 ESC = "\033["  # ANSI escape character with bracket. Same as "\x1b[".
 TERM = "m"  # ANSI terminator
