@@ -312,15 +312,16 @@ def setup_deforum_left_side_ui():
                     )
 
             # Wire up audio sync button to synchronize prompts with audio events
-            # Get buttons from tab_prompts_params (not locals())
-            print("🔍 DEBUG: Attempting to retrieve audio sync components from tab_prompts_params...")
+            # Get buttons from tab_init_params (they're in Init tab, not Prompts tab!)
+            # Get animation_prompts from tab_prompts_params (it's in Prompts tab)
+            print("🔍 DEBUG: Attempting to retrieve audio sync components...")
+            print(f"   tab_init_params type: {type(tab_init_params)}")
             print(f"   tab_prompts_params type: {type(tab_prompts_params)}")
-            print(f"   tab_prompts_params keys (first 20): {list(tab_prompts_params.keys())[:20] if isinstance(tab_prompts_params, dict) else 'NOT A DICT'}")
 
-            audio_sync_button = tab_prompts_params.get('audio_sync_button')
-            audio_sync_fewer_button = tab_prompts_params.get('audio_sync_fewer_button')
-            audio_sync_more_button = tab_prompts_params.get('audio_sync_more_button')
-            audio_sync_status = tab_prompts_params.get('audio_sync_status')
+            audio_sync_button = tab_init_params.get('audio_sync_button')
+            audio_sync_fewer_button = tab_init_params.get('audio_sync_fewer_button')
+            audio_sync_more_button = tab_init_params.get('audio_sync_more_button')
+            audio_sync_status = tab_init_params.get('audio_sync_status')
             animation_prompts = tab_prompts_params.get('animation_prompts')
 
             print(f"   Retrieved audio_sync_button: {audio_sync_button is not None}")
