@@ -74,10 +74,28 @@ def synchronize_prompts_to_audio(
 
         logger.info(f"{emoji_if_enabled('✅')} Parsed {len(prompts)} prompts from input")
 
-        # 3. LOAD AUDIO: Process audio file for analysis
+        # 3. LOAD AUDIO: Load and process audio file for analysis
         try:
-            audio_data = process_audio_for_detection(soundtrack_path_val)
-            logger.info(f"{emoji_if_enabled('✅')} Loaded audio: {audio_data['duration']:.2f}s at {audio_data['sr']}Hz")
+            import librosa
+            y, sr = librosa.load(soundtrack_path_val, sr=None)
+            duration = librosa.get_duration(y=y, sr=sr)
+
+            # Process audio for detection
+            y_processed = process_audio_for_detection(
+                y, sr,
+                frequency_band=frequency_band,
+                lowpass_cutoff=4000,
+                distortion_gain=10.0
+            )
+
+            # Store audio data for event detection
+            audio_data = {
+                'audio': y_processed,
+                'sr': sr,
+                'duration': duration
+            }
+
+            logger.info(f"{emoji_if_enabled('✅')} Loaded audio: {duration:.2f}s at {sr}Hz")
         except Exception as e:
             return gr.update(), gr.update(), f"✗ Error loading audio: {str(e)}"
 
