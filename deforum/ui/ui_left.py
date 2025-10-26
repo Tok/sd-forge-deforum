@@ -361,6 +361,56 @@ def setup_deforum_left_side_ui():
     show_info_on_ui.change(fn=change_css, inputs=show_info_on_ui, outputs=[gr.HTML()])
     handle_change_functions(locals())
 
+    # Wire up audio upload to use actual FPS and update max_frames
+    if 'audio_upload' in locals() and 'soundtrack_path' in locals():
+        def handle_audio_upload_with_fps(audio_filepath, current_fps):
+            """Save uploaded audio, calculate duration, and suggest max_frames."""
+            if audio_filepath is None:
+                return None, "File", "", gr.update()
+
+            import os
+            import shutil
+            from pathlib import Path
+
+            # Create output/audio directory
+            output_dir = Path("output/audio")
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            # Save uploaded file
+            filename = Path(audio_filepath).name
+            dest_path = output_dir / filename
+            shutil.copy2(audio_filepath, dest_path)
+            abs_path = str(dest_path.absolute())
+
+            # Calculate audio duration and suggested max_frames
+            try:
+                import librosa
+                duration = librosa.get_duration(path=abs_path)
+                fps_val = current_fps if current_fps and current_fps > 0 else 24
+                suggested_max_frames = int(duration * fps_val)
+                info_text = f"Duration: {duration:.2f}s | Suggested max_frames @ {fps_val} FPS: {suggested_max_frames}"
+
+                # Auto-update max_frames
+                max_frames_update = gr.update(value=suggested_max_frames)
+            except Exception as e:
+                info_text = f"Could not calculate duration: {str(e)}"
+                max_frames_update = gr.update()
+
+            return abs_path, "File", info_text, max_frames_update
+
+        # Re-wire the upload event with actual FPS and max_frames
+        if 'max_frames' in locals():
+            locals()['audio_upload'].upload(
+                fn=handle_audio_upload_with_fps,
+                inputs=[locals()['audio_upload'], fps],
+                outputs=[
+                    locals()['soundtrack_path'],
+                    locals()['add_soundtrack'],
+                    locals()['audio_info_display'],
+                    locals()['max_frames']
+                ]
+            )
+
     # Set up Wan Generate button if it exists - with better error handling
     if 'wan_generate_button' in locals() and 'wan_generation_status' in locals():
         try:

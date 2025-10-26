@@ -280,18 +280,14 @@ def get_tab_prompts(da, dw, dv=None):
             gr.Textbox(label="Prompts negative", value="nsfw, nude", lines=1, interactive=True,
                        placeholder="words here will be added to the end of all negative prompts.  ignored with Flux."))
 
-        # AUDIO & TIMING SETTINGS
-        with gr.Accordion("🎵 Audio & Timing", open=False):
+        # PROMPT TIMING SETTINGS
+        with gr.Accordion("⏱️ Prompt Timing", open=False):
             gr.Markdown("""
-            **Sync your animation with audio** and configure frame timing for prompt authoring.
+            **Prompt Authored FPS:** If you authored prompts at a different FPS (e.g., 60 FPS) but want to render at another (e.g., 24 FPS), set this to auto-convert frame numbers.
 
-            - **Soundtrack:** Add background music to your generated video
-            - **Prompt Authored FPS:** If you authored prompts at a different FPS (e.g., 60 FPS) but want to render at another (e.g., 24 FPS), set this to auto-convert frame numbers
+            **Audio settings** have been moved to Init → Audio Sync tab.
             """)
 
-            with FormRow() as soundtrack_row:
-                add_soundtrack = create_gr_elem(dv.add_soundtrack)
-                soundtrack_path = create_gr_elem(dv.soundtrack_path)
             with FormRow() as prompt_fps_row:
                 prompt_authored_fps = create_gr_elem(dv.prompt_authored_fps)
 
@@ -800,7 +796,80 @@ def get_tab_init(d, da, dp, dau, dv=None):
             # NOTE: Mask Init tab moved to dedicated Masking tab
             # AUDIO SYNC INNER-TAB - Disabled when Parseq is active
             with gr.Tab("Audio Sync"):
-                gr.HTML(value="<p>Audio event detection for prompt synchronization. Uses soundtrack from Output tab. Disabled when Parseq is active.</p>")
+                gr.HTML(value="<p>Audio event detection for prompt synchronization and video soundtrack. Upload audio file or enter path/URL below. Disabled when Parseq is active.</p>")
+
+                # Audio upload section
+                audio_upload = gr.Audio(
+                    label="🎵 Upload Audio File",
+                    type="filepath",
+                    sources=["upload"],
+                    info="Upload MP3, WAV, FLAC, etc. File will be saved to output directory and path auto-filled below."
+                )
+
+                # Soundtrack controls (moved from Prompts tab)
+                with FormRow():
+                    add_soundtrack = create_gr_elem(dv.add_soundtrack)
+                    soundtrack_path = create_gr_elem(dv.soundtrack_path)
+
+                # Display for calculated audio info
+                audio_info_display = gr.Textbox(
+                    label="Audio Info",
+                    value="",
+                    interactive=False,
+                    info="Audio duration and suggested max_frames (updates when you upload audio above)"
+                )
+
+                # Wire up audio upload to save file and update path
+                def handle_audio_upload(audio_filepath, current_fps):
+                    """Save uploaded audio to output directory and calculate suggested max_frames."""
+                    if audio_filepath is None:
+                        return None, "File", ""
+
+                    import os
+                    import shutil
+                    from pathlib import Path
+
+                    # Create output/audio directory
+                    output_dir = Path("output/audio")
+                    output_dir.mkdir(parents=True, exist_ok=True)
+
+                    # Get filename from uploaded file
+                    filename = Path(audio_filepath).name
+                    dest_path = output_dir / filename
+
+                    # Copy uploaded file to output directory
+                    shutil.copy2(audio_filepath, dest_path)
+                    abs_path = str(dest_path.absolute())
+
+                    # Calculate audio duration using librosa
+                    try:
+                        import librosa
+                        import soundfile as sf
+
+                        # Get audio duration (faster than loading full audio)
+                        duration = librosa.get_duration(path=abs_path)
+
+                        # Calculate suggested max_frames
+                        # Use current_fps if provided, otherwise default to 24
+                        fps = current_fps if current_fps and current_fps > 0 else 24
+                        suggested_max_frames = int(duration * fps)
+
+                        info_text = f"Duration: {duration:.2f}s | Suggested max_frames @ {fps} FPS: {suggested_max_frames}"
+                    except Exception as e:
+                        info_text = f"Could not calculate duration: {str(e)}"
+
+                    # Return absolute path, set add_soundtrack to "File", and info text
+                    return abs_path, "File", info_text
+
+                # Note: fps component not accessible here - will be wired up in ui_left.py
+                audio_upload.upload(
+                    fn=handle_audio_upload,
+                    inputs=[audio_upload, gr.Number(value=24, visible=False)],  # Placeholder for FPS
+                    outputs=[soundtrack_path, add_soundtrack, audio_info_display]
+                )
+
+                gr.Markdown("---")
+                gr.Markdown("### Event Detection Settings")
 
                 # Row 1: Main toggles
                 with FormRow():
