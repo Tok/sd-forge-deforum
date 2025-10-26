@@ -125,8 +125,17 @@ def rotate_camera_towards_depth(
 
     # Compute the rotation angle based on the turn_weight (number of frames)
     axis = np.cross(current_direction, direction)
-    axis = axis / np.linalg.norm(axis)
-    angle = np.arcsin(np.linalg.norm(axis))
+    axis_norm = np.linalg.norm(axis)
+
+    # Avoid division by zero and invalid arcsin values
+    if axis_norm > 0:
+        axis = axis / axis_norm
+        # Clamp to valid arcsin range [-1, 1]
+        angle = np.arcsin(np.clip(axis_norm, -1.0, 1.0))
+    else:
+        # Parallel or anti-parallel vectors - no rotation needed
+        axis = np.array([0, 1, 0])  # Arbitrary perpendicular axis
+        angle = 0.0
     max_angle = np.pi * (0.1 / turn_weight)  # Limit the maximum rotation angle
     rotation_angle = np.clip(
         np.sign(np.cross(current_direction, direction)) * angle / turn_weight,

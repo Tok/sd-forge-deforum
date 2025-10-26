@@ -171,7 +171,12 @@ def extract_bass_energy(
 
     # Normalize energy
     if len(onset_env) > 0:
-        onset_env = onset_env / np.max(onset_env)
+        max_val = np.max(onset_env)
+        if max_val > 0:
+            onset_env = onset_env / max_val
+        else:
+            # All zeros - keep as is
+            pass
 
     return times, onset_env
 
