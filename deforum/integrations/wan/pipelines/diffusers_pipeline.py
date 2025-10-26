@@ -526,7 +526,7 @@ def generate_video_with_real_wan(
 if __name__ == "__main__":
     # Test the simplified implementation
     prompt = "A cat walking in a beautiful garden"
-    model_path = "models/wan"  # Adjust path as needed
+    model_path = "models/Deforum/wan"  # Adjust path as needed
     output_path = "test_wan_simple_output.mp4"
     
     success = generate_video_with_real_wan(

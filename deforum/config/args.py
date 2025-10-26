@@ -1148,7 +1148,7 @@ def WanArgs():
         "wan_model_path": {
             "label": "Custom Model Path",
             "type": "textbox", 
-            "value": "models/wan",
+            "value": "models/Deforum/wan",
             "info": "Custom path to Wan model (used when 'Custom Path' is selected)"
         },
         "wan_resolution": {

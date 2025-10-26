@@ -43,10 +43,10 @@ class WanSimpleIntegration:
         """Discover available Wan models with styled progress"""
         models = []
         search_paths = [
-            Path("models/wan"),
+            Path("models/Deforum/wan"),
             Path("models/Wan"),
             Path("models"),
-            Path("../models/wan"),
+            Path("../models/Deforum/wan"),
             Path("../models/Wan"),
         ]
         

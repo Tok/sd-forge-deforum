@@ -26,7 +26,7 @@ The gradient provides visual hierarchy and represents the fusion of human creati
 - **I2V Chaining**: Seamless clip transitions using last frame as init for next clip
 - **VACE Models**: All-in-one T2V+I2V architecture for perfect consistency
 - **Frame-Perfect Timing**: Full integration with Deforum's prompt scheduling system
-- **Auto-Discovery**: Automatic model detection from `models/wan/` directory
+- **Auto-Discovery**: Automatic model detection from `models/Deforum/wan/` directory
 
 ### 🎞️ **FILM Smearcore Integration** (Google's frame interpolation)
 - **High-Quality Interpolation**: Google Research's FILM model for cinematic motion
@@ -253,13 +253,13 @@ Full integration guide: [docs/wan/README.md](docs/wan/README.md)
 
 ```bash
 # Recommended: VACE 1.3B (8GB+ VRAM) - All-in-one T2V+I2V
-huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan
+huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan
 
 # High Quality: VACE 14B (16GB+ VRAM)
-huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan
+huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/Deforum/wan
 
 # Optional: Qwen for AI prompt enhancement (auto-downloads on first use)
-# Stored in: webui/models/qwen/
+# Stored in: webui/models/Deforum/qwen/
 # Auto-selected: 3B (4GB), 7B (8GB), 14B (16GB+)
 ```
 
@@ -335,13 +335,13 @@ https://github.com/user-attachments/assets/5f637a04-104f-4d87-8439-15a386685a5e
 ## Troubleshooting
 
 ### Wan 2.1 Issues
-* **No models found**: Download using commands above to `models/wan/`
+* **No models found**: Download using commands above to `models/Deforum/wan/`
 * **Generation fails**: Try 1.3B model, check VRAM
 * **Flash attention errors**: Automatic fallback should work
 * **Audio sync problems**: Verify prompt frame numbers
 
 ### AI Enhancement Issues
-* **Model download fails**: Check internet, models go to `webui/models/qwen/`
+* **Model download fails**: Check internet, models go to `webui/models/Deforum/qwen/`
 * **Out of VRAM**: Use "Cleanup Qwen Cache" or select 3B model
 * **Slow enhancement**: Use smaller model (3B/7B instead of 14B)
 

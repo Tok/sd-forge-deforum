@@ -72,10 +72,10 @@ For now, you can test model discovery is working.
 
 💡 SETUP REQUIRED:
 1. Download a Wan model:
-   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan
+   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/Deforum/wan
 
 2. Or place your Wan models in:
-   • models/wan/
+   • models/Deforum/wan/
    • models/Wan/
    • HuggingFace cache (automatic)
 

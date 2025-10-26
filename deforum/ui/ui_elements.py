@@ -1151,9 +1151,9 @@ def wan_generate_video(*component_args):
                 for corrupted_model in corrupted_models:
                     model_name = corrupted_model['name'].lower()
                     if 'ti2v' in model_name and '5b' in model_name:
-                        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/wan/Wan2.2-TI2V-5B")
+                        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
                     elif 'a14b' in model_name or '14b' in model_name:
-                        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/wan/Wan2.2-TI2V-A14B")
+                        print(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
                 
                 print()
                 print("💡 TIP: Enable 'Auto-Download Models' for automatic downloading of missing models")
@@ -1170,10 +1170,10 @@ def wan_generate_video(*component_args):
 2. 📥 Manual download with HuggingFace CLI:
 
    **For TI2V-5B (Recommended - Wan 2.2, 24GB VRAM, RTX 4090):**
-   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/wan/Wan2.2-TI2V-5B
+   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B
 
    **For TI2V-A14B (Highest Quality - Wan 2.2 MoE, 32GB+ VRAM):**
-   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/wan/Wan2.2-TI2V-A14B
+   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B
 
 3. ✅ Restart generation after downloading
 
@@ -1342,10 +1342,10 @@ def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo
 
 💡 SOLUTIONS:
 1. 📥 Download a Wan model using HuggingFace CLI:
-   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir "models/wan"
+   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir "models/Deforum/wan"
 
 2. 📂 Or place your model in one of these locations:
-   • models/wan/
+   • models/Deforum/wan/
    • models/Wan/
    
 3. ✅ Restart generation after downloading
@@ -1708,8 +1708,8 @@ The auto-discovery will find your models automatically!
         # Provide helpful troubleshooting info
         print(f"\n🔧 TROUBLESHOOTING:")
         print(f"   • Check model availability with: python scripts/deforum_helpers/wan_direct_integration.py")
-        print(f"   • Download models: huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/wan")
-        print(f"   • Verify Wan models are in: models/wan/ directory")
+        print(f"   • Download models: huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan")
+        print(f"   • Verify Wan models are in: models/Deforum/wan/ directory")
         
         # Re-raise for Deforum error handling
         raise
@@ -2167,7 +2167,7 @@ def get_tab_wan(dw: SimpleNamespace, skip_tabitem=False):
         **✅ Auto-Discovery System**
         
         Wan automatically finds models in these locations:
-        - `models/wan/` (recommended)
+        - `models/Deforum/wan/` (recommended)
         - `models/video/wan/`
         - Custom paths you specify
         
@@ -2180,10 +2180,10 @@ def get_tab_wan(dw: SimpleNamespace, skip_tabitem=False):
         **📥 Easy Download Commands:**
         ```bash
         # Download TI2V-5B (recommended default)
-        huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/wan/Wan2.2-TI2V-5B
+        huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B
 
         # Or download TI2V-A14B (highest quality)
-        huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/wan/Wan2.2-TI2V-A14B
+        huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B
         ```
 
         **Note**: This extension supports Wan 2.2 TI2V models only.
@@ -2419,7 +2419,7 @@ def get_tab_wan(dw: SimpleNamespace, skip_tabitem=False):
             If generation fails:
             1. **Check models**: Run `python scripts/deforum_helpers/wan_direct_integration.py`
             2. **Download missing models**: Use commands in Auto-Discovery section
-            3. **Verify placement**: Models should be in `models/wan/` directory
+            3. **Verify placement**: Models should be in `models/Deforum/wan/` directory
             4. **Check logs**: Look for auto-discovery messages in console
             5. **Verify schedules**: Make sure you have prompts in the Prompts tab
             6. **Check seed behavior**: Set seed behavior to 'schedule' if you want custom seed scheduling
@@ -2569,7 +2569,7 @@ def get_tab_distribution(da):
             - **TI2V models (e.g., Wan2.2-TI2V-5B) will NOT work** - they extend first frame instead
             - Works best with keyframe distribution mode
             - VRAM: ~15-18GB (less than standalone Wan T2V)
-            - Download: `huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers --local-dir models/wan/Wan2.1-FLF2V-14B`
+            - Download: `huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers --local-dir models/Deforum/wan/Wan2.1-FLF2V-14B`
 
             **For longer sections (> 81 frames):**
             - Automatically uses FLF2V chaining mode
@@ -3456,7 +3456,7 @@ Use HuggingFace CLI or git to download the model"""
             
             if model_info and 'hf_name' in model_info:
                 download_status.append(f"<br><strong style='color: #333;'>Manual command:</strong>")
-                download_status.append(f"<code>huggingface-cli download {model_info['hf_name']} --local-dir models/qwen/{selected_model}</code>")
+                download_status.append(f"<code>huggingface-cli download {model_info['hf_name']} --local-dir models/Deforum/qwen/{selected_model}</code>")
         
         return "<br>".join(download_status)
         

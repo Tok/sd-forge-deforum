@@ -480,4 +480,4 @@ if __name__ == "__main__":
     print("- Download Qwen models to your local directory first")
     print("- Adjust model paths in the test code above")
     print("- Ensure you have sufficient VRAM for the models")
-    print("- Models will be auto-downloaded to webui/models/qwen/ in production")
+    print("- Models will be auto-downloaded to webui/models/Deforum/qwen/ in production")

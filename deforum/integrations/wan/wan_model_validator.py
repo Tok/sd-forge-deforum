@@ -17,9 +17,9 @@ class WanModelValidator:
     def __init__(self):
         # Only look in Wan-specific directories
         self.base_paths = [
-            Path("models/wan"),
+            Path("models/Deforum/wan"),
             Path("models/Wan"), 
-            Path("../../models/wan"),
+            Path("../../models/Deforum/wan"),
             Path("../../models/Wan")
         ]
         
@@ -431,17 +431,17 @@ class WanModelValidator:
         for invalid_model in invalid_models:
             model_name = invalid_model['name'].lower()
             if 'vace' in model_name and '1.3b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan/Wan2.1-VACE-1.3B")
+                print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan/Wan2.1-VACE-1.3B")
             elif 'vace' in model_name and '14b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/wan/Wan2.1-VACE-14B")
+                print(f"   huggingface-cli download Wan-AI/Wan2.1-VACE-14B --local-dir models/Deforum/wan/Wan2.1-VACE-14B")
             elif 't2v' in model_name and '1.3b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/wan/Wan2.1-T2V-1.3B")
+                print(f"   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/Deforum/wan/Wan2.1-T2V-1.3B")
             elif 't2v' in model_name and '14b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir models/wan/Wan2.1-T2V-14B")
+                print(f"   huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir models/Deforum/wan/Wan2.1-T2V-14B")
             elif 'i2v' in model_name and '1.3b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-I2V-1.3B --local-dir models/wan/Wan2.1-I2V-1.3B")
+                print(f"   huggingface-cli download Wan-AI/Wan2.1-I2V-1.3B --local-dir models/Deforum/wan/Wan2.1-I2V-1.3B")
             elif 'i2v' in model_name and '14b' in model_name:
-                print(f"   huggingface-cli download Wan-AI/Wan2.1-I2V-14B --local-dir models/wan/Wan2.1-I2V-14B")
+                print(f"   huggingface-cli download Wan-AI/Wan2.1-I2V-14B --local-dir models/Deforum/wan/Wan2.1-I2V-14B")
         
         print()
         print("💡 TIP: Enable 'Auto-Download Models' in the Wan tab for automatic re-downloading")
@@ -593,7 +593,7 @@ def main():
     if not models:
         print("\n❌ No Wan models found!")
         print("\n💡 SUGGESTIONS:")
-        print("1. Download models using: huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/wan/Wan2.1-VACE-1.3B")
+        print("1. Download models using: huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan/Wan2.1-VACE-1.3B")
         print("2. Check if models are in the correct directories")
         print("3. Ensure models were downloaded completely")
         return

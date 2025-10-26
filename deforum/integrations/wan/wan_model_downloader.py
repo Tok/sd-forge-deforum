@@ -47,14 +47,14 @@ class WanModelDownloader:
         # Try to find the webui models directory
         extension_root = Path(__file__).parent.parent.parent.parent
         
-        # Option 1: webui/models/wan (standard installation)
+        # Option 1: webui/models/Deforum/wan (standard installation)
         webui_models = extension_root.parent.parent / "models" / "wan"
         if webui_models.parent.exists():
             webui_models.mkdir(exist_ok=True)
             return webui_models
         
-        # Option 2: Current working directory models/wan
-        local_models = Path("models/wan")
+        # Option 2: Current working directory models/Deforum/wan
+        local_models = Path("models/Deforum/wan")
         if local_models.parent.exists() or Path("models").exists():
             local_models.mkdir(parents=True, exist_ok=True)
             return local_models
