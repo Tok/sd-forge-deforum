@@ -157,3 +157,61 @@ def tools():
 
 def movie_camera():
     return _select('\U0001F3AC')  # 🎬
+
+
+# Slopcore minimal emojis
+def blue_square():
+    return _select('\U0001F7E6')  # 🟦
+
+
+def purple_square():
+    return _select('\U0001F7EA')  # 🟪
+
+
+# ============================================================================
+# Theme-based Emoji Mapping
+# ============================================================================
+
+def get_themed_emoji(emoji_name: str, theme: str = 'classic') -> str:
+    """Get emoji based on theme.
+
+    Args:
+        emoji_name: Name of emoji function (e.g., 'run', 'key', 'frame')
+        theme: One of 'slopcore', 'classic', 'simple'
+
+    Returns:
+        Emoji string based on theme (empty string if emojis disabled)
+    """
+    from deforum.rendering.options import is_emojis_disabled
+
+    if is_emojis_disabled():
+        return ''
+
+    if theme == 'simple':
+        # Simple theme: use emojis but keep them minimal
+        return globals()[emoji_name]() if emoji_name in globals() else ''
+
+    elif theme == 'slopcore':
+        # Slopcore theme: map most emojis to 🟦 or 🟪
+        # Use 🟦 for inputs/processing, 🟪 for outputs/completion
+        SLOPCORE_BLUE_OPS = [
+            'run', 'key', 'frame', 'control', 'prompts', 'cadence',
+            'steps', 'numbers', 'sound', 'music', 'seed', 'subseed',
+            'leaf', 'bicycle', 'gear', 'wrench', 'stopwatch', 'tools',
+        ]
+        SLOPCORE_PURPLE_OPS = [
+            'video_camera', 'wan_video', 'document', 'frames',
+            'movie_camera', 'distribution', 'strength', 'scale',
+        ]
+
+        if emoji_name in SLOPCORE_BLUE_OPS:
+            return blue_square()
+        elif emoji_name in SLOPCORE_PURPLE_OPS:
+            return purple_square()
+        else:
+            # Default fallback for unmapped emojis
+            return blue_square()
+
+    else:  # classic theme
+        # Classic theme: use full emoji set
+        return globals()[emoji_name]() if emoji_name in globals() else ''

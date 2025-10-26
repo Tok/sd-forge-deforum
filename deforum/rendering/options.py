@@ -69,3 +69,13 @@ def is_own_line_for_prompt_srt():
 
 def is_emojis_disabled():
     return opts.data.get("deforum_disable_nonessential_emojis", False)
+
+
+def get_log_theme():
+    """Get console output theme (slopcore/classic/simple)."""
+    return opts.data.get("deforum_log_theme", "slopcore")
+
+
+def get_log_level():
+    """Get minimum log level (DEBUG/INFO/WARNING/ERROR/CRITICAL)."""
+    return opts.data.get("deforum_log_level", "INFO")

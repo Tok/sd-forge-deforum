@@ -61,8 +61,13 @@ def on_ui_settings():
     add_cb("deforum_enable_persistent_settings", "Keep settings persistent upon relaunch of webUI.")
     add("deforum_persistent_settings_path", "Path for saving your persistent settings file:",
         "models/Deforum/deforum_persistent_settings.txt")
-    add_cb("deforum_debug_mode_enabled", "Enable Dev mode - adds extra reporting in console.")
-    add_cb("deforum_disable_nonessential_emojis", "Disables non-essential emojis.")
+
+    add_subsection("Console Output Settings")
+    add_dd("deforum_log_level", "Log Level - Controls console output verbosity",
+           "INFO", ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+    add_dd("deforum_log_theme", "Console Theme - Slopcore (blue→purple), Classic (vibrant), Simple (plain text)",
+           "slopcore", ["slopcore", "classic", "simple"])
+    add_cb("deforum_disable_nonessential_emojis", "Disable emojis in console output")
 
     add_subsection("Deforum FFmpeg Settings")
     add("deforum_ffmpeg_location", "FFmpeg path/ location", find_ffmpeg_binary())
