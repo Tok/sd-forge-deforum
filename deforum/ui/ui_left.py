@@ -581,14 +581,18 @@ def setup_deforum_left_side_ui():
                         )
 
                         # Return: animation_prompts, target_count (updated), status
-                        result_tuple = (formatted_schedule, len(keyframes), status_msg)
+                        # Use gr.update() to force Gradio to recognize the change
                         print(f"🔍 DEBUG: Returning from sync function:")
                         print(f"   animation_prompts: {len(formatted_schedule)} chars")
                         print(f"   target_count: {len(keyframes)}")
                         print(f"   status_msg length: {len(status_msg)} chars")
                         print(f"   status_msg first line: {status_msg.split(chr(10))[0]}")
-                        print(f"   Returning tuple: {type(result_tuple)}, len={len(result_tuple)}")
-                        return result_tuple
+
+                        return (
+                            gr.update(value=formatted_schedule),
+                            gr.update(value=len(keyframes)),
+                            gr.update(value=status_msg)
+                        )
 
                     except Exception as e:
                         import traceback
