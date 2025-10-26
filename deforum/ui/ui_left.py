@@ -322,10 +322,12 @@ def setup_deforum_left_side_ui():
             audio_sync_fewer_button = tab_init_params.get('audio_sync_fewer_button')
             audio_sync_more_button = tab_init_params.get('audio_sync_more_button')
             audio_sync_status = tab_init_params.get('audio_sync_status')
+            audio_target_keyframe_count = tab_init_params.get('audio_target_keyframe_count')
             animation_prompts = tab_prompts_params.get('animation_prompts')
 
             print(f"   Retrieved audio_sync_button: {audio_sync_button is not None}")
             print(f"   Retrieved audio_sync_status: {audio_sync_status is not None}")
+            print(f"   Retrieved audio_target_keyframe_count: {audio_target_keyframe_count is not None}")
             print(f"   Retrieved animation_prompts: {animation_prompts is not None}")
 
             if audio_sync_button and audio_sync_status:
@@ -340,22 +342,24 @@ def setup_deforum_left_side_ui():
                     intensity_threshold,
                     min_spacing_frames,
                     current_fps,
-                    threshold_adjustment=0.0  # ±0.05 adjustment for more/fewer events
+                    keyframe_adjustment=0  # ±20% adjustment for more/fewer keyframes
                 ):
                     """Detect audio events and distribute prompts across them.
 
                     Args:
-                        threshold_adjustment: Adjust intensity threshold (negative = more events, positive = fewer events)
+                        keyframe_adjustment: Positive = more keyframes, negative = fewer keyframes
+                                           Used by +/- buttons to adjust target count
                     """
                     print("="*80)
                     print("🎵 AUDIO SYNC FUNCTION CALLED")
                     print(f"   Soundtrack: {soundtrack_path_val}")
                     print(f"   Prompts: {audio_sync_prompts_val[:100]}...")
                     print(f"   Detection: {detection_method}, Sensitivity: {sensitivity}")
+                    if keyframe_adjustment != 0:
+                        print(f"   Keyframe adjustment: {keyframe_adjustment:+d}%")
                     print("="*80)
 
-                    # Apply threshold adjustment (-5% = -0.05, +5% = +0.05)
-                    adjusted_threshold = max(0.0, min(1.0, intensity_threshold + threshold_adjustment))
+                    # keyframe_adjustment is not used for threshold anymore - it adjusts target count
 
                     try:
                         from pathlib import Path
@@ -363,14 +367,14 @@ def setup_deforum_left_side_ui():
 
                         # Validate soundtrack path
                         if not soundtrack_path_val or not Path(soundtrack_path_val).exists():
-                            return gr.update(), "✗ Error: Please upload an audio file first"
+                            return gr.update(), gr.update(), "✗ Error: Please upload an audio file first"
 
                         # Parse user prompts
                         from deforum.audio import parse_prompt_list
                         user_prompts = parse_prompt_list(audio_sync_prompts_val)
 
                         if not user_prompts:
-                            return gr.update(), "✗ Error: Please enter at least one prompt"
+                            return gr.update(), gr.update(), "✗ Error: Please enter at least one prompt"
 
                         # Load and analyze audio
                         from deforum.audio import (
@@ -387,6 +391,59 @@ def setup_deforum_left_side_ui():
                         duration = librosa.get_duration(y=y, sr=sr)
                         fps_val = current_fps if current_fps and current_fps > 0 else 24
 
+                        # Detect BPM
+                        print(f"🎵 Audio analysis:")
+                        print(f"   File: {Path(soundtrack_path_val).name}")
+                        print(f"   Duration: {duration:.2f}s @ {fps_val} FPS")
+
+                        try:
+                            tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+                            bpm = float(tempo)
+                            beats_per_second = bpm / 60.0
+                            print(f"   Detected BPM: {bpm:.1f}")
+
+                            # Calculate ideal keyframe count based on BPM
+                            # For most music: 1 keyframe per beat or every 2 beats
+                            # Slow BPM (60-90): ~1 keyframe per beat
+                            # Medium BPM (90-140): ~1 keyframe per 2 beats
+                            # Fast BPM (140+): ~1 keyframe per 4 beats
+                            if bpm < 90:
+                                keyframes_per_beat = 1.0
+                            elif bpm < 140:
+                                keyframes_per_beat = 0.5
+                            else:
+                                keyframes_per_beat = 0.25
+
+                            bpm_based_target = int(duration * beats_per_second * keyframes_per_beat)
+                        except Exception as e:
+                            print(f"   ⚠️ BPM detection failed: {e}")
+                            bpm = 120  # Default assumption
+                            bpm_based_target = int(duration * 2)  # 2 keyframes per second default
+
+                        # Determine target keyframe count
+                        if target_count and target_count > 0:
+                            # User specified target - apply adjustment
+                            base_target = int(target_count)
+                            if keyframe_adjustment != 0:
+                                # Apply percentage adjustment
+                                adjusted_target = int(base_target * (1.0 + keyframe_adjustment / 100.0))
+                                adjusted_target = max(2, adjusted_target)  # Minimum 2 keyframes
+                                print(f"   Target keyframes: {base_target} → {adjusted_target} ({keyframe_adjustment:+d}%)")
+                                final_target = adjusted_target
+                            else:
+                                final_target = base_target
+                                print(f"   Target keyframes: {final_target} (user-specified)")
+                        else:
+                            # Auto-detect based on BPM - apply adjustment
+                            if keyframe_adjustment != 0:
+                                adjusted_target = int(bpm_based_target * (1.0 + keyframe_adjustment / 100.0))
+                                adjusted_target = max(2, adjusted_target)
+                                print(f"   Target keyframes: {bpm_based_target} → {adjusted_target} (BPM-based, {keyframe_adjustment:+d}%)")
+                                final_target = adjusted_target
+                            else:
+                                final_target = bpm_based_target
+                                print(f"   Target keyframes: {final_target} (BPM-based @ {bpm:.1f} BPM)")
+
                         # Process audio for detection
                         y_processed = process_audio_for_detection(
                             y, sr,
@@ -395,57 +452,70 @@ def setup_deforum_left_side_ui():
                             distortion_gain=10.0
                         )
 
-                        # Auto-tune sensitivity to find events
-                        print(f"🎵 Audio event detection:")
-                        print(f"   File: {Path(soundtrack_path_val).name}")
-                        print(f"   Duration: {duration:.2f}s @ {fps_val} FPS")
-                        print(f"   Target: ~{duration * 2:.0f} keyframes (2/sec ideal for 120 BPM)")
+                        # Intelligently adjust sensitivity to reach target keyframe count
+                        print(f"🎵 Event detection (targeting ~{final_target} keyframes):")
 
-                        # Try multiple sensitivity levels automatically
-                        event_times = None
-                        event_intensities = None
-                        sensitivity_values = [sensitivity, 40, 30, 20, 15, 10, 5]  # Start with user's choice, then fallbacks
+                        best_events = None
+                        best_intensities = None
+                        best_sensitivity = sensitivity
 
-                        for sens_val in sensitivity_values:
-                            sens_norm = sens_val / 100.0
-                            print(f"   Trying sensitivity={sens_val} ({sens_norm:.2f})...")
+                        # Binary search for optimal sensitivity
+                        sens_min, sens_max = 5, 95
+                        tolerance = max(2, int(final_target * 0.15))  # 15% tolerance
+
+                        for iteration in range(10):  # Max 10 iterations
+                            test_sens = (sens_min + sens_max) / 2
 
                             event_times, event_intensities = detect_events(
                                 y_processed, sr,
                                 method=detection_method,
-                                sensitivity=sens_norm
+                                sensitivity=test_sens / 100.0
                             )
 
-                            if len(event_times) > 0:
-                                print(f"   ✓ Found {len(event_times)} events with sensitivity={sens_val}")
+                            num_events = len(event_times)
+                            diff = num_events - final_target
+
+                            print(f"   Iteration {iteration+1}: sensitivity={test_sens:.1f} → {num_events} events (target={final_target})")
+
+                            # Save best result so far
+                            if best_events is None or abs(diff) < abs(len(best_events) - final_target):
+                                best_events = event_times
+                                best_intensities = event_intensities
+                                best_sensitivity = test_sens
+
+                            # Check if within tolerance
+                            if abs(diff) <= tolerance:
+                                print(f"   ✓ Found optimal sensitivity: {test_sens:.1f} → {num_events} events")
                                 break
 
+                            # Adjust search range
+                            if num_events > final_target:
+                                # Too many events, increase sensitivity (more selective)
+                                sens_min = test_sens
+                            else:
+                                # Too few events, decrease sensitivity (less selective)
+                                sens_max = test_sens
+
+                        event_times = best_events
+                        event_intensities = best_intensities
+
                         if event_times is None or len(event_times) == 0:
-                            return gr.update(), f"✗ Error: No audio events detected even with very low sensitivity. Check your audio file."
+                            return gr.update(), gr.update(), f"✗ Error: No audio events detected. Check your audio file."
 
-                        # Determine keyframe count
-                        if target_count and target_count > 0:
-                            num_keyframes = int(target_count)
-                        else:
-                            num_keyframes = suggest_keyframe_count_from_audio(
-                                duration, fps_val,
-                                desired_prompts=len(user_prompts)
-                            )
-
-                        # Limit to detected events
-                        num_keyframes = min(num_keyframes, len(event_times))
+                        # Use all detected events (already optimized for target)
+                        num_keyframes = len(event_times)
 
                         # Generate keyframes from events (requires BOTH times and intensities)
                         keyframes = generate_keyframes_from_events(
-                            event_times[:num_keyframes],
-                            event_intensities[:num_keyframes],
+                            event_times,
+                            event_intensities,
                             fps=fps_val,
                             min_spacing_frames=min_spacing_frames,
-                            intensity_threshold=adjusted_threshold / 100.0
+                            intensity_threshold=0.0  # Already filtered by binary search
                         )
 
                         if not keyframes:
-                            return gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
+                            return gr.update(), gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
 
                         # Ensure first and last frames are always keyframes
                         max_frame = int(duration * fps_val) - 1
@@ -495,6 +565,7 @@ def setup_deforum_left_side_ui():
                         status_msg = (
                             f"✓ Successfully synchronized!\n"
                             f"• Audio: {duration:.1f}s @ {fps_val} FPS ({total_frames} frames)\n"
+                            f"• Detected BPM: {bpm:.1f}\n"
                             f"• Events detected: {len(event_times)}\n"
                             f"• Keyframes created: {len(keyframes)}\n"
                             f"• Average spacing: {avg_spacing:.1f} frames (~{avg_spacing/fps_val:.2f}s)\n"
@@ -503,12 +574,13 @@ def setup_deforum_left_side_ui():
                             f"0{' ' * (viz_width - len(str(max_frame)) - 1)}{max_frame}"
                         )
 
-                        return formatted_schedule, status_msg
+                        # Return: animation_prompts, target_count (updated), status
+                        return formatted_schedule, gr.update(value=len(keyframes)), status_msg
 
                     except Exception as e:
                         import traceback
                         traceback.print_exc()
-                        return gr.update(), f"✗ Error: {str(e)}"
+                        return gr.update(), gr.update(), f"✗ Error: {str(e)}"
 
                 # Get all required inputs
                 audio_sync_inputs = []
@@ -555,29 +627,29 @@ def setup_deforum_left_side_ui():
 
                 if len(audio_sync_inputs) == len(required_components):
                     # Buttons already retrieved above, just check they all exist
-                    if all([audio_sync_button, audio_sync_fewer_button, audio_sync_more_button, audio_sync_status, animation_prompts]):
+                    if all([audio_sync_button, audio_sync_fewer_button, audio_sync_more_button, audio_sync_status, audio_target_keyframe_count, animation_prompts]):
                         # Main sync button (0% adjustment)
                         audio_sync_button.click(
                             fn=synchronize_prompts_to_audio,
                             inputs=audio_sync_inputs,
-                            outputs=[animation_prompts, audio_sync_status]
+                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
                         )
 
-                        # -5% button (fewer events)
+                        # -20% button (fewer keyframes)
                         audio_sync_fewer_button.click(
-                            fn=lambda *args: synchronize_prompts_to_audio(*args, threshold_adjustment=0.05),
+                            fn=lambda *args: synchronize_prompts_to_audio(*args, keyframe_adjustment=-20),
                             inputs=audio_sync_inputs,
-                            outputs=[animation_prompts, audio_sync_status]
+                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
                         )
 
-                        # +5% button (more events)
+                        # +20% button (more keyframes)
                         audio_sync_more_button.click(
-                            fn=lambda *args: synchronize_prompts_to_audio(*args, threshold_adjustment=-0.05),
+                            fn=lambda *args: synchronize_prompts_to_audio(*args, keyframe_adjustment=20),
                             inputs=audio_sync_inputs,
-                            outputs=[animation_prompts, audio_sync_status]
+                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
                         )
 
-                        print("🎵 Audio sync buttons connected successfully (main, -5%, +5%)")
+                        print("🎵 Audio sync buttons connected successfully (main, -20%, +20%)")
                     else:
                         print(f"⚠️ Could not connect audio sync buttons: missing button/output components")
                         print(f"   Condition checks: audio_sync_button={audio_sync_button is not None}, fewer={audio_sync_fewer_button is not None}, more={audio_sync_more_button is not None}, status={audio_sync_status is not None}, prompts={animation_prompts is not None}")
