@@ -3481,8 +3481,7 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
     """
     Convert prompt frame numbers from source FPS to target FPS
 
-    Uses the same formula as shakify FPS conversion:
-    new_frame = old_frame * (target_fps / source_fps)
+    Uses pure functions from deforum.utils.conversion.fps for the conversion logic.
 
     Args:
         prompts_json: JSON string with prompts (e.g., '{"0": "prompt1", "60": "prompt2"}')
@@ -3494,14 +3493,18 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
         Tuple of (updated_prompts_json, html_status_message)
     """
     import json
+    from deforum.utils.conversion.fps import (
+        validate_fps_values,
+        calculate_fps_ratio,
+        convert_prompts_dict,
+        build_conversion_status
+    )
 
     try:
         # Validate FPS values
-        if source_fps <= 0 or target_fps <= 0:
-            return prompts_json, "❌ <span style='color: #f44336;'>Error: FPS values must be positive</span>"
-
-        if source_fps == target_fps:
-            return prompts_json, "ℹ️ <span style='color: #2196F3;'>Source and target FPS are the same - no conversion needed</span>"
+        is_valid, error_msg = validate_fps_values(source_fps, target_fps)
+        if not is_valid:
+            return prompts_json, f"❌ <span style='color: #f44336;'>Error: {error_msg}</span>"
 
         # Parse prompts JSON
         try:
@@ -3512,61 +3515,20 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
         if not isinstance(prompts, dict):
             return prompts_json, "❌ <span style='color: #f44336;'>Error: Prompts must be a JSON object/dictionary</span>"
 
-        # Convert frame numbers
-        fps_ratio = target_fps / source_fps
-        converted_prompts = {}
-        conversion_table = []
-
-        for frame_str, prompt_text in prompts.items():
-            try:
-                old_frame = int(frame_str)
-                # Use the shakify formula: new_frame = old_frame * (target_fps / source_fps)
-                new_frame = int(old_frame * fps_ratio)
-
-                converted_prompts[str(new_frame)] = prompt_text
-                conversion_table.append(f"Frame {old_frame} → {new_frame}")
-
-            except ValueError:
-                # Non-numeric key, keep as-is
-                converted_prompts[frame_str] = prompt_text
+        # Convert frame numbers using pure functions
+        fps_ratio = calculate_fps_ratio(source_fps, target_fps)
+        converted_prompts, conversion_log = convert_prompts_dict(prompts, fps_ratio)
 
         # Format output JSON
         converted_json = json.dumps(converted_prompts, indent=4, ensure_ascii=False)
 
-        # Build status message
-        result = []
-        result.append("✅ <span style='color: #4CAF50;'><strong>FPS Conversion Complete</strong></span><br>")
-        result.append(f"<strong>Source FPS:</strong> {source_fps} → <strong>Target FPS:</strong> {target_fps}<br>")
-        result.append(f"<strong>Conversion Ratio:</strong> {fps_ratio:.4f}<br>")
-        result.append(f"<strong>Prompts Converted:</strong> {len(conversion_table)}<br><br>")
-
-        if preview_only:
-            result.append("🔍 <strong style='color: #FF9800;'>PREVIEW MODE</strong> - Prompts not updated<br><br>")
-        else:
-            result.append("✏️ <strong style='color: #4CAF50;'>Prompts Updated</strong><br><br>")
-
-        # Show conversion table (first 10 entries)
-        result.append("<strong>Frame Conversion:</strong><br>")
-        result.append("<code style='display: block; background: #f5f5f5; padding: 8px; margin: 8px 0; border-radius: 4px;'>")
-        for entry in conversion_table[:10]:
-            result.append(f"{entry}<br>")
-
-        if len(conversion_table) > 10:
-            result.append(f"... and {len(conversion_table) - 10} more")
-
-        result.append("</code>")
-
-        # Add formula explanation
-        result.append("<br><strong>Formula Used:</strong><br>")
-        result.append(f"<code>new_frame = old_frame × ({target_fps} / {source_fps}) = old_frame × {fps_ratio:.4f}</code>")
-
-        status_html = "".join(result)
+        # Build status message using pure function
+        status_html = build_conversion_status(
+            source_fps, target_fps, fps_ratio, conversion_log, preview_only
+        )
 
         # Return updated prompts or original based on preview mode
-        if preview_only:
-            return prompts_json, status_html
-        else:
-            return converted_json, status_html
+        return (prompts_json if preview_only else converted_json), status_html
 
     except Exception as e:
         import traceback
