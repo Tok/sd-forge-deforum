@@ -222,6 +222,17 @@ def setup_deforum_left_side_ui():
             for key, value in {**tab_run_params, **tab_keyframes_params, **tab_distribution_params, **tab_prompts_params, **tab_shakify_params, **tab_masking_params, **tab_depth_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params}.items():
                 locals()[key] = value
 
+            # WORKAROUND: Explicitly unpack audio AI components as actual local variables
+            # (Python doesn't support creating locals via locals()[key]=value, so we must assign them explicitly)
+            audio_ai_generation_mode = tab_init_params.get('audio_ai_generation_mode')
+            audio_ai_intensity = tab_init_params.get('audio_ai_intensity')
+            audio_ai_style = tab_init_params.get('audio_ai_style')
+            audio_ai_prompt_theme = tab_init_params.get('audio_ai_prompt_theme')
+            audio_ai_prompt_count = tab_init_params.get('audio_ai_prompt_count')
+            audio_ai_start_prompt = tab_init_params.get('audio_ai_start_prompt')
+            audio_ai_end_prompt = tab_init_params.get('audio_ai_end_prompt')
+            audio_sync_prompts = tab_init_params.get('audio_sync_prompts')
+
             # Add top-level settings to locals()
             locals()['render_mode'] = render_mode
             locals()['animation_mode'] = animation_mode
