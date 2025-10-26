@@ -574,8 +574,9 @@ def setup_deforum_left_side_ui():
                     try:
                         from deforum.integrations.wan.utils.prompt_extend import QwenPromptExpander
 
-                        # Initialize Qwen (will auto-select model based on VRAM)
-                        qwen = QwenPromptExpander()
+                        # Initialize Qwen with smaller default model (3B for faster download/less VRAM)
+                        # Model will auto-download to webui/models/qwen/ on first use
+                        qwen = QwenPromptExpander(model_name='Qwen2.5_3B')
 
                         # Build style descriptor
                         style_text = f"{style} style " if style and style.strip() else ""

@@ -9,26 +9,17 @@ Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-f
 for [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge),
 completely refactored and modernized to work with Flux.1, Wan 2.1 AI Video Generation, and advanced workflow automation.
 
-## 🎨 Flagship Feature: Slopcore Gradient Buttons
-
-**The most visually stunning UI enhancement in any Stable Diffusion extension.**
-
-All primary action buttons feature a beautiful purple gradient inspired by the aesthetic movement that celebrates AI-generated imagery. The signature slopcore gradient (#667eea → #764ba2) provides:
-
-- **Visual Hierarchy**: Instantly identify important actions (Generate, Synchronize Audio, AI Enhancement)
-- **Aesthetic Consistency**: Unified design language across the entire extension
-- **Smooth Interactions**: Hover effects with gradient reversal and subtle elevation
-- **Professional Polish**: Box shadows and transitions for premium feel
-
-Affected buttons:
-- 🎬 **Main Generate Button**: Primary rendering action
-- 🎵 **Synchronize Audio to Keyframe Prompts**: Audio event detection
-- ➕/➖ **±5% Event Adjustment**: Fine-tune audio sensitivity
-- 💡 **Generate Prompts with local Qwen**: AI-powered prompt enhancement
-
-The gradient represents the fusion of human creativity and AI capability - a perfect match for Deforum's mission of precision-timed animation generation.
-
 ## ⚡ Major New Features
+
+### 🟦🟪🟪 **Slopcore Gradient Buttons** (UI aesthetic enhancement)
+All primary action buttons feature a beautiful purple gradient (#667eea → #764ba2) inspired by the aesthetic movement that celebrates AI-generated imagery:
+
+- **Generate Button**: Purple gradient for primary rendering action
+- **Audio Sync**: Synchronize audio events to keyframe prompts
+- **AI Enhancement**: Generate prompts with local Qwen model
+- **Event Adjustment**: Fine-tune audio sensitivity with ±5% buttons
+
+The gradient provides visual hierarchy and represents the fusion of human creativity and AI capability.
 
 ### 🎬 **Wan 2.1 AI Video Generation** (Alibaba's state-of-the-art T2V/I2V)
 - **FLF2V Integration**: First-Last-Frame-to-Video interpolation with guidance_scale=3.5
