@@ -138,15 +138,12 @@ def synchronize_prompts_to_audio(
 
         logger.debug(f"Estimated BPM: {estimated_bpm:.1f}, keyframes_per_beat: {keyframes_per_beat}, bpm_target: {bpm_based_target}")
 
-        # Resolve target (use explicit target or BPM-based)
-        resolved_target = resolve_keyframe_target(distribution_mode, target_count, bpm_based_target)
+        # Convert target_count to int (comes from UI as string)
+        user_target = int(target_count) if target_count else 0
 
-        # Apply adjustment from +/- buttons (±5%)
-        if keyframe_adjustment != 0:
-            adjusted_target = int(resolved_target * (1 + keyframe_adjustment / 100))
-            adjusted_target = max(2, min(adjusted_target, len(events)))  # Clamp to valid range
-            logger.info(f"Adjusted target: {resolved_target} → {adjusted_target} ({keyframe_adjustment:+d}%)", emoji='wrench')
-            resolved_target = adjusted_target
+        # Resolve target (use explicit target or BPM-based, with adjustment applied)
+        resolved_target, target_desc = resolve_keyframe_target(user_target, bpm_based_target, keyframe_adjustment)
+        logger.info(f"Target keyframes: {target_desc}", emoji='target')
 
         # 6. GENERATE KEYFRAMES: Convert events to keyframes with spacing
         spacing_multiplier = calculate_spacing_multiplier(resolved_target, len(events))

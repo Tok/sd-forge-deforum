@@ -139,6 +139,14 @@ def resolve_keyframe_target(
     Returns:
         Tuple of (final_target, description)
     """
+    # Convert to int if string (defensive)
+    if isinstance(user_target, str):
+        user_target = int(user_target) if user_target else 0
+    if isinstance(bpm_based_target, str):
+        bpm_based_target = int(bpm_based_target) if bpm_based_target else 0
+    if isinstance(keyframe_adjustment, str):
+        keyframe_adjustment = int(keyframe_adjustment) if keyframe_adjustment else 0
+
     if user_target and user_target > 0:
         # User specified target
         if keyframe_adjustment != 0:
