@@ -57,6 +57,37 @@ function applyDeforumUICustomization() {
         }
     }
 
+    // Apply slopcore gradient to audio sync and AI prompt buttons
+    const slopcoreButtons = [
+        '#audio_sync_button',
+        '#audio_sync_fewer_button',
+        '#audio_sync_more_button',
+        '#audio_ai_generate_button'
+    ];
+
+    slopcoreButtons.forEach(selector => {
+        const btn = gradioApp().querySelector(selector);
+        if (btn) {
+            btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            btn.style.border = 'none';
+            btn.style.color = 'white';
+            btn.style.fontWeight = '600';
+            btn.style.textShadow = '0 1px 2px rgba(0,0,0,0.2)';
+            btn.style.boxShadow = '0 4px 6px rgba(102, 126, 234, 0.3)';
+            btn.style.transition = 'all 0.3s ease';
+
+            // Add hover effect
+            btn.addEventListener('mouseenter', function() {
+                this.style.background = 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)';
+                this.style.boxShadow = '0 6px 15px rgba(102, 126, 234, 0.5)';
+            });
+            btn.addEventListener('mouseleave', function() {
+                this.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                this.style.boxShadow = '0 4px 6px rgba(102, 126, 234, 0.3)';
+            });
+        }
+    });
+
     // Hide unwanted buttons in results area, keep only folder button
     const resultsDiv = gradioApp().querySelector('#deforum_results');
     if (resultsDiv) {
