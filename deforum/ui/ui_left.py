@@ -312,12 +312,14 @@ def setup_deforum_left_side_ui():
                     )
 
             # Wire up audio sync button to synchronize prompts with audio events
-            print(f"DEBUG: Checking audio sync wiring conditions...")
-            print(f"  audio_sync_button in locals(): {'audio_sync_button' in locals()}")
-            print(f"  audio_sync_status in locals(): {'audio_sync_status' in locals()}")
-            print(f"  audio_sync_button in tab_prompts_params: {'audio_sync_button' in tab_prompts_params}")
+            # Get buttons from tab_prompts_params (not locals())
+            audio_sync_button = tab_prompts_params.get('audio_sync_button')
+            audio_sync_fewer_button = tab_prompts_params.get('audio_sync_fewer_button')
+            audio_sync_more_button = tab_prompts_params.get('audio_sync_more_button')
+            audio_sync_status = tab_prompts_params.get('audio_sync_status')
+            animation_prompts = tab_prompts_params.get('animation_prompts')
 
-            if 'audio_sync_button' in locals() and 'audio_sync_status' in locals():
+            if audio_sync_button and audio_sync_status:
                 def synchronize_prompts_to_audio(
                     soundtrack_path_val,
                     audio_sync_prompts_val,
@@ -535,13 +537,7 @@ def setup_deforum_left_side_ui():
                         print(f"⚠️ Warning: Audio sync component '{comp_name}' not found")
 
                 if len(audio_sync_inputs) == len(required_components):
-                    # Get button and output components
-                    audio_sync_button = tab_prompts_params.get('audio_sync_button')
-                    audio_sync_fewer_button = tab_prompts_params.get('audio_sync_fewer_button')
-                    audio_sync_more_button = tab_prompts_params.get('audio_sync_more_button')
-                    audio_sync_status = tab_prompts_params.get('audio_sync_status')
-                    animation_prompts = tab_prompts_params.get('animation_prompts')
-
+                    # Buttons already retrieved above, just check they all exist
                     if all([audio_sync_button, audio_sync_fewer_button, audio_sync_more_button, audio_sync_status, animation_prompts]):
                         # Main sync button (0% adjustment)
                         audio_sync_button.click(
