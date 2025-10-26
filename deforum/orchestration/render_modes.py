@@ -19,7 +19,7 @@ import time
 import pathlib
 from modules.shared import opts, state
 from deforum.orchestration.render import render_animation
-from deforum.utils.system.logging.log import BOLD, BLUE, GREEN, PURPLE, RESET_COLOR
+from deforum.utils.system.logging.log import BOLD, BLUE, RESET_COLOR
 from deforum.core.seeds import next_seed
 from deforum.media.video_audio_utilities import vid2frames, render_preview
 from deforum.utils.generation.prompts import interpolate_prompts
@@ -35,6 +35,29 @@ from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
+
+
+# Get theme-aware colors from logger
+def _get_theme_color(semantic_name: str) -> str:
+    """Get theme-aware color for semantic names."""
+    try:
+        colors = logger.colors
+        # Map semantic names to theme colors
+        if semantic_name == 'seed':
+            return colors.get('shade_3', colors.get('info', ''))  # Light purple in slopcore
+        elif semantic_name == 'prompt':
+            return colors.get('shade_5', colors.get('emphasis', ''))  # Mid purple in slopcore
+        else:
+            return colors.get(semantic_name, '')
+    except:
+        return {'seed': '\033[92m', 'prompt': '\033[95m'}.get(semantic_name, '')
+
+def _get_reset_color() -> str:
+    """Get theme-aware reset color."""
+    try:
+        return logger.colors.get('reset', '')
+    except:
+        return '\033[0m'
 
 
 def render_input_video(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
@@ -132,8 +155,8 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
 
         print(f"{BLUE}Interpolation frame: {RESET_COLOR}"
               f"{BOLD}{frame_idx}{RESET_COLOR}/{anim_args.max_frames}  ")
-        logger.info(f"{GREEN}Seed: {RESET_COLOR}{args.seed}")
-        logger.info(f"{PURPLE}Prompt: {RESET_COLOR}{prompt_to_print}")
+        logger.info(f"{_get_theme_color('seed')}Seed: {_get_reset_color()}{args.seed}")
+        logger.info(f"{_get_theme_color('prompt')}Prompt: {_get_reset_color()}{prompt_to_print}")
 
         state.job = f"frame {frame_idx + 1}/{anim_args.max_frames}"
         state.job_no = frame_idx + 1

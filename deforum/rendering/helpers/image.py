@@ -15,16 +15,16 @@ from deforum.rendering.data.render_data import RenderData
 
 # Import pure conversion functions from refactored utils module
 from deforum.utils.image.processing import (
-from deforum.utils.system.logging import get_logger
-
-# Initialize logger
-logger = get_logger()
-
     bgr_to_rgb,
     numpy_to_pil,
     pil_to_numpy,
     is_PIL,
 )
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 
 def save_cadence_frame(data: RenderData, i: int, image: MatLike, is_overwrite: bool = True):

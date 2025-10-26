@@ -37,17 +37,30 @@ from deforum.utils.system.logging import get_logger
 logger = get_logger()
 
 
-# Optional imports for console output
-try:
-    from deforum.utils.system.logging.log import (
-        RED, GREEN, PURPLE, RESET_COLOR
-    )
-except ImportError:
-    # Fallback for unit tests
-    RED = "\033[91m"
-    GREEN = "\033[92m"
-    PURPLE = "\033[95m"
-    RESET_COLOR = "\033[0m"
+# Get theme-aware colors from logger
+def _get_theme_color(semantic_name: str) -> str:
+    """Get theme-aware color for semantic names."""
+    try:
+        colors = logger.colors
+        # Map semantic names to theme colors
+        if semantic_name == 'seed':
+            return colors.get('shade_3', colors.get('info', ''))  # Light purple in slopcore
+        elif semantic_name == 'prompt':
+            return colors.get('shade_5', colors.get('emphasis', ''))  # Mid purple in slopcore
+        elif semantic_name == 'neg_prompt':
+            return colors.get('shade_6', colors.get('error', ''))  # Deep purple in slopcore
+        else:
+            return colors.get(semantic_name, '')
+    except:
+        # Fallback for tests
+        return {'seed': '\033[92m', 'prompt': '\033[95m', 'neg_prompt': '\033[91m'}.get(semantic_name, '')
+
+def _get_reset_color() -> str:
+    """Get theme-aware reset color."""
+    try:
+        return logger.colors.get('reset', '')
+    except:
+        return '\033[0m'
 
 
 __all__ = [
@@ -300,10 +313,10 @@ def prepare_prompt(prompt_series: str, max_frames: int, seed: int, frame_idx: in
     prompt_to_print = prompt_to_print.strip()
     after_neg = "".join(after_neg).strip()
 
-    logger.info(f"{GREEN}Seed: {RESET_COLOR}{seed}")
-    logger.info(f"{PURPLE}Prompt: {RESET_COLOR}{prompt_to_print}")
+    logger.info(f"{_get_theme_color('seed')}Seed: {_get_reset_color()}{seed}")
+    logger.info(f"{_get_theme_color('prompt')}Prompt: {_get_reset_color()}{prompt_to_print}")
     if after_neg and after_neg.strip():
-        logger.info(f"{RED}Neg Prompt: {RESET_COLOR}{after_neg}")
+        logger.info(f"{_get_theme_color('neg_prompt')}Neg Prompt: {_get_reset_color()}{after_neg}")
         prompt_to_print += f" --neg {after_neg}"
 
     return prompt_to_print

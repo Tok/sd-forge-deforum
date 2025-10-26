@@ -111,19 +111,19 @@ def print_cuda_memory_state(cuda):
 
 def info(s: str, color: str = None):
     message = f"{color}{s}{RESET_COLOR}" if color else s
-    print(f"{BLUE}{BOLD}Info: {RESET_COLOR}{message}")
+    print(f"{BLUE}{BOLD}INFO: {RESET_COLOR}{message}")
 
 
 def error(s: str):
-    print(f"{RED}{BOLD}{RESET_COLOR}{s}")
+    print(f"{RED}{BOLD}ERROR: {RESET_COLOR}{s}")
 
 
 def warning(s: str):
-    print(f"{ORANGE}{BOLD}{RESET_COLOR}{s}")
+    print(f"{ORANGE}{BOLD}WARNING: {RESET_COLOR}{s}")
 
 
 def debug(s: str):
     # Lazy import to avoid circular dependency
     from deforum.rendering.options import is_verbose
     if is_verbose():
-        print(f"{YELLOW}{BOLD}Debug: {RESET_COLOR}{s}")
+        print(f"{YELLOW}{BOLD}DEBUG: {RESET_COLOR}{s}")

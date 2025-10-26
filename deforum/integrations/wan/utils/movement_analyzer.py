@@ -16,13 +16,13 @@ from deforum.utils.parsing.schedules import (
     interpolate_schedule_values as interpolate_schedule,
 )
 from deforum.utils.parsing.schedule_manipulation import (
+    apply_shakify_to_schedule,
+)
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
 
-    apply_shakify_to_schedule,
-)
 
 # Try to import Camera Shakify components for integration
 try:

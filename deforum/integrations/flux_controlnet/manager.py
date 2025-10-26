@@ -18,14 +18,14 @@ from .models import (
     temporarily_unpatch_hf_download
 )
 from .preprocessors import (
+    preprocess_image_for_controlnet,
+    numpy_to_pil
+)
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
 
-    preprocess_image_for_controlnet,
-    numpy_to_pil
-)
 
 
 def _pack_latents(latents: torch.Tensor, batch_size: int, num_channels: int, height: int, width: int) -> torch.Tensor:

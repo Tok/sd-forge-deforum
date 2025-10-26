@@ -26,14 +26,14 @@ from deforum.utils.image.transforms import (
     warpMatrix,
 )
 from deforum.utils.media.depth import (
+    prepare_depth_tensor,
+    get_depth_min_max_formatted as depth_min_max_and_formatted,
+)
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
 
-    prepare_depth_tensor,
-    get_depth_min_max_formatted as depth_min_max_and_formatted,
-)
 
 # Re-export for backward compatibility
 __all__ = [

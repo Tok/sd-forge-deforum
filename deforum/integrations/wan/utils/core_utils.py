@@ -9,14 +9,14 @@ import torchvision
 
 # Import pure functions from refactored utils module
 from deforum.utils.conversion.types import (
+    generate_random_name as rand_name,
+    string_to_boolean as str2bool_pure,
+)
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
 
-    generate_random_name as rand_name,
-    string_to_boolean as str2bool_pure,
-)
 
 __all__ = ['cache_video', 'cache_image', 'str2bool', 'rand_name']
 

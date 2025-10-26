@@ -8,14 +8,14 @@ from typing import Optional, Any
 
 # Import the same color constants as render core
 from deforum.utils.system.logging.log import (
+    HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED, HEX_PURPLE, HEX_YELLOW,
+    BLUE, GREEN, ORANGE, RED, PURPLE, YELLOW, RESET_COLOR, BOLD
+)
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
 
-    HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED, HEX_PURPLE, HEX_YELLOW,
-    BLUE, GREEN, ORANGE, RED, PURPLE, YELLOW, RESET_COLOR, BOLD
-)
 
 # Import shared WebUI progress handling
 try:

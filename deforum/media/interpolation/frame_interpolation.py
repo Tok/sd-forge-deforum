@@ -24,16 +24,16 @@ from modules.shared import opts
 
 # Import pure functions from refactored utils module
 from deforum.utils.math.interpolation import (
-from deforum.utils.system.logging import get_logger
-
-# Initialize logger
-logger = get_logger()
-
     extract_rife_name,
     clean_folder_name,
     set_interp_out_fps,
     calculate_frames_to_add,
 )
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
+
 
 DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False)
     

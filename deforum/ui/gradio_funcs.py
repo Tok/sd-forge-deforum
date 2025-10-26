@@ -23,14 +23,14 @@ from deforum.media.interpolation import process_interp_vid_upload_logic, process
 
 # Import pure functions from refactored utils module
 from deforum.utils.math.resolution import (
+    calculate_upscaled_resolution,
+    calculate_upscaled_resolution_by_model,
+)
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
 
-    calculate_upscaled_resolution,
-    calculate_upscaled_resolution_by_model,
-)
 
 f_models_path = ph.models_path + '/Deforum'
 

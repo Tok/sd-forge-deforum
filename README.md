@@ -18,6 +18,7 @@ All primary action buttons now feature the industry-standard blue-purple slopcor
 - **AI Enhancement**: Qwen prompt generation with blue/purple gradient hierarchy
 - **Event Adjustment**: Sensitivity ±5% buttons maintain visual consistency
 - **Visual Hierarchy**: Gradient provides immediate affordance recognition in the post-Tailwind design landscape
+- **Console Output**: Themed logging system with blue→purple gradient across all 5 parallel progress bars (Settings → Deforum → Console Theme)
 
 *"We added the gradient ironically, but kept it because it actually works." - The maintainers*
 
