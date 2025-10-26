@@ -582,11 +582,16 @@ def setup_deforum_left_side_ui():
 
                         # Build intensity descriptor
                         intensity_instructions = {
-                            "normal": "Keep prompts realistic and grounded. Progressive but subtle changes.",
+                            "": "",  # Empty - let Qwen decide
+                            "subtle": "Keep prompts very subtle and minimal. Almost imperceptible changes between frames. Focus on nuance and delicate variations.",
+                            "normal": "Keep prompts realistic and grounded. Progressive but natural changes. Believable transformations.",
                             "crazy": "Make prompts over-the-top and extremely creative! Wild transformations and escalating intensity! Go big with each step!",
-                            "extreme": "GO ABSOLUTELY BONKERS! Each prompt should be MORE INSANE than the last! Reality-bending, physics-defying, mind-blowing escalation! Maximum chaos and creativity!"
+                            "extreme": "GO ABSOLUTELY BONKERS! Each prompt should be MORE INSANE than the last! Reality-bending, physics-defying, mind-blowing escalation! Maximum chaos and creativity!",
+                            "chaotic": "Embrace complete chaos and unpredictability! Random, erratic, contradictory elements. No rules, pure creative mayhem!",
+                            "surreal": "Create dream-like, surreal imagery. Logic-defying, symbolic, metaphorical. Think Salvador Dali meets fever dream."
                         }
-                        intensity_inst = intensity_instructions.get(intensity, intensity_instructions["crazy"])
+                        # If custom value not in dict, use it directly as instruction
+                        intensity_inst = intensity_instructions.get(intensity, f"Creative direction: {intensity}" if intensity else intensity_instructions["crazy"])
 
                         # Mode-specific prompt generation
                         if generation_mode == "start-to-end":
@@ -627,7 +632,83 @@ def setup_deforum_left_side_ui():
 
         Generate {int(count)} varied {style_text}prompts for {theme}:"""
 
-                        else:  # escalating mode (default)
+                        elif generation_mode == "thematic":
+                            # Variations on a theme
+                            generation_prompt = f"""Generate {int(count)} {style_text}prompts that are variations on the theme of {theme}.
+
+        INTENSITY: {intensity_inst}
+
+        Requirements:
+        - All prompts should relate to {theme}
+        - Explore different aspects, angles, perspectives
+        - {style_text if style else ""}Maintain thematic coherence
+        - Variations in composition, lighting, action, mood
+        - Keep prompts concise (5-12 words each)
+        - Return ONLY the prompts, one per line, NO numbering
+
+        Generate {int(count)} thematic {style_text}variations of {theme}:"""
+
+                        elif generation_mode == "narrative":
+                            # Story progression
+                            generation_prompt = f"""Create {int(count)} {style_text}prompts that tell a story about {theme}.
+
+        INTENSITY: {intensity_inst}
+
+        Requirements:
+        - Prompts should form a narrative sequence
+        - Clear beginning, middle, progression toward resolution
+        - {style_text if style else ""}Story should be engaging and coherent
+        - Each prompt advances the plot or reveals character
+        - Keep prompts concise (5-12 words each)
+        - Return ONLY the prompts, one per line, NO numbering
+
+        Generate {int(count)} narrative {style_text}prompts for the story of {theme}:"""
+
+                        elif generation_mode == "cyclical":
+                            # Repeating patterns / loops
+                            generation_prompt = f"""Generate {int(count)} {style_text}prompts that form a cyclical, looping pattern featuring {theme}.
+
+        INTENSITY: {intensity_inst}
+
+        Requirements:
+        - Prompts should loop back to the beginning
+        - Last prompt should connect naturally to first prompt
+        - {style_text if style else ""}Pattern should feel circular/repeating
+        - Maintain rhythm and flow throughout
+        - Keep prompts concise (5-12 words each)
+        - Return ONLY the prompts, one per line, NO numbering
+
+        Generate {int(count)} cyclical {style_text}prompts for {theme}:"""
+
+                        elif generation_mode == "random-walk":
+                            # Random but related progressions
+                            generation_prompt = f"""Create {int(count)} {style_text}prompts that drift randomly but stay conceptually related to {theme}.
+
+        INTENSITY: {intensity_inst}
+
+        Requirements:
+        - Each prompt should be somewhat related to the previous
+        - Allow unexpected connections and associations
+        - {style_text if style else ""}Maintain loose thematic thread
+        - Drift naturally like stream of consciousness
+        - Keep prompts concise (5-12 words each)
+        - Return ONLY the prompts, one per line, NO numbering
+
+        Generate {int(count)} random-walk {style_text}prompts starting from {theme}:"""
+
+                        elif generation_mode == "" or not generation_mode:
+                            # Empty/minimal mode - let Qwen be creative
+                            generation_prompt = f"""Generate {int(count)} {style_text}prompts featuring {theme}.
+
+        {f'INTENSITY: {intensity_inst}' if intensity_inst else ''}
+
+        Requirements:
+        - Keep prompts concise (5-12 words each)
+        - Return ONLY the prompts, one per line, NO numbering
+
+        Generate {int(count)} {style_text}prompts for {theme}:"""
+
+                        elif generation_mode in ["escalating"]:  # escalating mode (explicit)
                             # Escalating intensity mode
                             generation_prompt = f"""Generate {int(count)} {style_text}prompts that build in intensity for an animated sequence featuring {theme}.
 
@@ -651,6 +732,21 @@ def setup_deforum_left_side_ui():
         ABSOLUTELY BONKERS {style_text}bunny transcending reality in cosmic explosion
 
         Now generate {int(count)} {style_text}prompts for {theme}:"""
+
+                        else:
+                            # Custom generation mode - use user's custom text as instruction
+                            generation_prompt = f"""Generate {int(count)} {style_text}prompts for an animated sequence featuring {theme}.
+
+        GENERATION STYLE: {generation_mode}
+
+        {f'INTENSITY: {intensity_inst}' if intensity_inst else ''}
+
+        Requirements:
+        - Follow the GENERATION STYLE instruction above
+        - Keep prompts concise (5-12 words each)
+        - Return ONLY the prompts, one per line, NO numbering
+
+        Generate {int(count)} {style_text}prompts for {theme}:"""
 
                         # Generate with Qwen
                         print(f"🤖 Generating {count} prompts | Mode: {generation_mode} | Intensity: {intensity} | Style: {style or 'none'} | Theme: {theme}")

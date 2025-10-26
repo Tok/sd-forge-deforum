@@ -921,15 +921,17 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 with FormRow():
                     audio_ai_generation_mode = gr.Dropdown(
                         label="Generation Mode",
-                        choices=["escalating", "start-to-end", "varied"],
+                        choices=["", "escalating", "start-to-end", "varied", "thematic", "narrative", "cyclical", "random-walk"],
                         value="escalating",
-                        info="escalating=build intensity, start-to-end=interpolate between two prompts, varied=random creative mix"
+                        allow_custom_value=True,
+                        info="Leave empty or type custom. escalating=build intensity, start-to-end=interpolate, varied=random mix, thematic=variations, narrative=story, cyclical=loops, random-walk=related changes"
                     )
                     audio_ai_intensity = gr.Dropdown(
                         label="Intensity",
-                        choices=["normal", "crazy", "extreme"],
+                        choices=["", "subtle", "normal", "crazy", "extreme", "chaotic", "surreal"],
                         value="crazy",
-                        info="normal=realistic, crazy=over-the-top (default), extreme=absolutely bonkers"
+                        allow_custom_value=True,
+                        info="Leave empty or type custom. subtle=minimal, normal=realistic, crazy=over-the-top, extreme=bonkers, chaotic=unpredictable, surreal=dream-like"
                     )
 
                 # Start/End prompts (visible only in start-to-end mode)
