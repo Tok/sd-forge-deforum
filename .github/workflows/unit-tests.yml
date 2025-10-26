@@ -2,9 +2,9 @@ name: Unit Tests
 
 on:
   push:
-    branches: [ main, master, refactor/functional-patterns ]
+    branches: [ main, master, dev, refactor/functional-patterns ]
   pull_request:
-    branches: [ main, master, refactor/functional-patterns ]
+    branches: [ main, master, dev, refactor/functional-patterns ]
 
 jobs:
   unit-tests:
