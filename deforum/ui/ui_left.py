@@ -365,14 +365,25 @@ def setup_deforum_left_side_ui():
                         )
 
                         # Detect events (returns times AND intensities)
+                        sensitivity_normalized = sensitivity / 100.0  # Convert 0-100 to 0-1
+                        print(f"🎵 Audio event detection:")
+                        print(f"   File: {Path(soundtrack_path_val).name}")
+                        print(f"   Duration: {duration:.2f}s @ {fps_val} FPS")
+                        print(f"   Method: {detection_method}, Band: {frequency_band}, Sensitivity: {sensitivity} -> {sensitivity_normalized:.2f}")
+
                         event_times, event_intensities = detect_events(
                             y_processed, sr,
                             method=detection_method,
-                            sensitivity=sensitivity / 100.0  # Convert 0-100 to 0-1
+                            sensitivity=sensitivity_normalized
                         )
 
+                        print(f"   Detected {len(event_times)} events")
+                        if len(event_times) > 0:
+                            print(f"   Event times (first 5): {event_times[:5]}")
+                            print(f"   Intensities (first 5): {event_intensities[:5]}")
+
                         if len(event_times) == 0:
-                            return gr.update(), "✗ Error: No audio events detected. Try adjusting sensitivity."
+                            return gr.update(), f"✗ Error: No audio events detected with sensitivity={sensitivity}. Try lower sensitivity (e.g., 20-40)."
 
                         # Determine keyframe count
                         if target_count and target_count > 0:

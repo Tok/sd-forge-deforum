@@ -77,9 +77,13 @@ def on_ui_tabs():
     button#audio_ai_generate_button,
     .slopcore-button,
     button.slopcore-button,
+    button[id="audio_sync_button"],
+    button[id="audio_ai_generate_button"],
     .generate-box-generating,
     .generate-box-interrupting {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background-color: #667eea !important;
         border: none !important;
         color: white !important;
         font-weight: 600 !important;
@@ -96,8 +100,12 @@ def on_ui_tabs():
     #audio_ai_generate_button:hover,
     button#audio_ai_generate_button:hover,
     .slopcore-button:hover,
-    button.slopcore-button:hover {
+    button.slopcore-button:hover,
+    button[id="audio_sync_button"]:hover,
+    button[id="audio_ai_generate_button"]:hover {
         background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+        background-image: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+        background-color: #764ba2 !important;
         box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4) !important;
         transform: translateY(-1px) !important;
     }
