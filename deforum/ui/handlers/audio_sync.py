@@ -146,7 +146,8 @@ def synchronize_prompts_to_audio(
         logger.info(f"Target keyframes: {target_desc}", emoji='target')
 
         # 6. GENERATE KEYFRAMES: Convert events to keyframes with spacing
-        spacing_multiplier = calculate_spacing_multiplier(resolved_target, len(events))
+        # Calculate spacing adjustment based on keyframe_adjustment percentage
+        spacing_multiplier = calculate_spacing_multiplier(keyframe_adjustment)
         adjusted_min_spacing = calculate_adjusted_min_spacing(min_spacing_frames, spacing_multiplier)
 
         keyframes = generate_keyframes_from_events(
