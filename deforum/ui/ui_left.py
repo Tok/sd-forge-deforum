@@ -1403,4 +1403,17 @@ def setup_deforum_left_side_ui():
     except Exception as e:
         print(f"⚠️ Failed to set up validation buttons: {e}")
 
-    return locals()
+    # Merge all tab component dicts into main locals() for component access
+    result = locals().copy()
+
+    # Flatten all tab dicts so components are accessible at top level
+    tab_dicts = ['tab_init_params', 'tab_prompts_params', 'tab_keyframes_params',
+                 'tab_distribution_params', 'tab_shakify_params', 'tab_depth_warping_params',
+                 'tab_masking_params', 'tab_output_params', 'tab_wan_models_params']
+
+    for tab_dict_name in tab_dicts:
+        if tab_dict_name in result and isinstance(result[tab_dict_name], dict):
+            # Merge components from this tab dict into result
+            result.update(result[tab_dict_name])
+
+    return result
