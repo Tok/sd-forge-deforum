@@ -572,7 +572,7 @@ def setup_deforum_left_side_ui():
                     print("="*80)
 
                     try:
-                        from scripts.deforum_helpers.wan.qwen_prompt_expander import QwenPromptExpander
+                        from deforum.integrations.wan.utils.prompt_extend import QwenPromptExpander
 
                         # Initialize Qwen (will auto-select model based on VRAM)
                         qwen = QwenPromptExpander()
