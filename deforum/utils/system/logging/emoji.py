@@ -1,5 +1,14 @@
 def _select(emoji):
-    # Just return the emoji - caller is responsible for checking if emojis are enabled
+    # Check if emojis are enabled before returning
+    try:
+        from deforum.rendering.options import is_emojis_enabled
+        if not is_emojis_enabled():
+            return ''
+    except:
+        # During early initialization, settings might not be available
+        # Default to no emoji (matches UI default)
+        return ''
+
     return emoji
 
 

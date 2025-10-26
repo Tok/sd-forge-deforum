@@ -4,7 +4,7 @@ Provides AI-powered prompt generation using Qwen with multiple generation modes
 and intensity levels for audio-synchronized animations.
 """
 
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 logger = get_logger()
 

@@ -29,26 +29,26 @@ def print_startup_banner():
     RESET = "\033[0m"
     BOLD = "\033[1m"
 
-    # Create gradient border using all 7 shades (13-14 chars per shade for 95 total)
-    # Text line is 95 chars, so border matches exactly (no extra padding needed)
+    # Create gradient border using all 7 shades (12-13 chars per shade for 90 total)
+    # Text line is 90 chars (was miscounted), border reduced by 5
     border_top = (
         f"{SLOPCORE_1}#############"   # 13 chars - Bright blue
-        f"{SLOPCORE_2}#############"   # 13 chars - Blue-purple
-        f"{SLOPCORE_3}##############"  # 14 chars - Light purple
-        f"{SLOPCORE_4}##############"  # 14 chars - Mid purple (center)
-        f"{SLOPCORE_5}##############"  # 14 chars - Purple
-        f"{SLOPCORE_6}#############"   # 13 chars - Deep purple
+        f"{SLOPCORE_2}############"    # 12 chars - Blue-purple (reduced)
+        f"{SLOPCORE_3}#############"   # 13 chars - Light purple (reduced)
+        f"{SLOPCORE_4}#############"   # 13 chars - Mid purple (center, reduced)
+        f"{SLOPCORE_5}#############"   # 13 chars - Purple (reduced)
+        f"{SLOPCORE_6}############"    # 12 chars - Deep purple (reduced)
         f"{SLOPCORE_7}#############"   # 13 chars - Darkest purple
         f"{RESET}"
     )
     # Reverse gradient for bottom border
     border_bot = (
         f"{SLOPCORE_7}#############"
-        f"{SLOPCORE_6}#############"
-        f"{SLOPCORE_5}##############"
-        f"{SLOPCORE_4}##############"
-        f"{SLOPCORE_3}##############"
-        f"{SLOPCORE_2}#############"
+        f"{SLOPCORE_6}############"
+        f"{SLOPCORE_5}#############"
+        f"{SLOPCORE_4}#############"
+        f"{SLOPCORE_3}#############"
+        f"{SLOPCORE_2}############"
         f"{SLOPCORE_1}#############"
         f"{RESET}"
     )
