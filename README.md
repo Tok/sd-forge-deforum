@@ -15,21 +15,11 @@ completely refactored and modernized to work with Flux.1, Wan 2.1 AI Video Gener
 All primary action buttons now feature the industry-standard blue-purple slopcore gradient (#667eea → #764ba2) that has come to define contemporary AI tool aesthetics. This gradient represents our commitment to embracing the visual language of modern SaaS griftcore-punk design movements while delivering 20+ actual functional features.
 - **Generate Button**: Primary purple gradient for the main rendering action
 - **Audio Sync Controls**: Synchronization buttons now feature identical slopcore styling
-- **AI Enhancement**: Qwen prompt generation with gradient hierarchy
+- **AI Enhancement**: Qwen prompt generation with blue/purple gradient hierarchy
 - **Event Adjustment**: Sensitivity ±5% buttons maintain visual consistency
 - **Visual Hierarchy**: Gradient provides immediate affordance recognition in the post-Tailwind design landscape
 
 *"We added the gradient ironically, but kept it because it actually works." - The maintainers*
-
-###  **Slopcore Gradient Buttons** (UI aesthetic enhancement)
-All primary action buttons feature a beautiful purple gradient (#667eea → #764ba2) inspired by the aesthetic movement that celebrates AI-generated imagery:
-
-- **Generate Button**: Purple gradient for primary rendering action
-- **Audio Sync**: Synchronize audio events to keyframe prompts
-- **AI Enhancement**: Generate prompts with local Qwen model
-- **Event Adjustment**: Fine-tune audio sensitivity with ±5% buttons
-
-The gradient provides visual hierarchy and represents the fusion of human creativity and AI capability.
 
 ### 🎬 **Wan AI Video Generation** (Alibaba's state-of-the-art T2V/I2V)
 - **FLF2V Integration** (Wan 2.1): First-Last-Frame-to-Video interpolation with guidance_scale=3.5
@@ -83,6 +73,14 @@ The gradient provides visual hierarchy and represents the fusion of human creati
 - **Integration Tests**: Automated E2E testing via API
 - **Batch Operations**: Queue multiple renders programmatically
 - **Status Monitoring**: Real-time progress tracking and error reporting
+
+### 🌐 **Model Context Protocol (MCP) Integration**
+- **Claude Desktop Integration**: Control Deforum directly from Claude Desktop
+- **Standardized Tools**: 8 MCP tools for job management, status, settings, and generation
+- **Async Job Execution**: Non-blocking renders with real-time progress updates
+- **Type-Safe Protocol**: Full Pydantic validation and error handling
+- **One-Click Setup**: Example config at `config/claude_desktop_config.example.json`
+- **See**: `docs/MCP_INTEGRATION.md` for complete setup guide
 
 ### 🎨 **Reworked Workflow-Centric UI**
 - **4 Render Modes**: Classic 3D, New 3D, Keyframes Only, Flux + Interpolation
