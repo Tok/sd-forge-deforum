@@ -44,7 +44,8 @@ class KeyFrameDistribution(Enum):
 
     @staticmethod
     def uniform_indexes(start_index, max_frames, diffusion_frame_count):
-        return [start_index + int(n * (max_frames - start_index) / (diffusion_frame_count - 1))
+        # max_frames is count (e.g., 333), last valid index is max_frames - 1 (e.g., 332)
+        return [start_index + int(n * (max_frames - 1 - start_index) / (diffusion_frame_count - 1))
                 for n in range(diffusion_frame_count)]
 
     @staticmethod
