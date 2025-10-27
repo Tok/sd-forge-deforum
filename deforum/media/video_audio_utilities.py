@@ -282,7 +282,7 @@ def download_audio(audio_path):
 
 
 # Stitch images to a h264 mp4 video using ffmpeg
-def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch_from_frame=1, stitch_to_frame=None,
+def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch_from_frame=0, stitch_to_frame=None,
                         imgs_path=None, add_soundtrack=None, audio_path=None, crf=17, preset='veryslow', srt_path=None):
     start_time = time.time()
 
@@ -608,7 +608,7 @@ def render_preview(args, anim_args, video_args, root, frame_idx, last_preview_fr
         else:
             logger.info(f"--> Rendering preview video up to frame {frame_idx} to {mp4_preview_path}...")
             try:
-                ffmpeg_stitch_video(ffmpeg_location=f_location, fps=video_args.fps, outmp4_path=mp4_temp_path, stitch_from_frame=1, stitch_to_frame=frame_idx, imgs_path=image_path, add_soundtrack=video_args.add_soundtrack, audio_path=real_audio_track, crf=f_crf, preset=f_preset, srt_path=srt_path)
+                ffmpeg_stitch_video(ffmpeg_location=f_location, fps=video_args.fps, outmp4_path=mp4_temp_path, stitch_from_frame=0, stitch_to_frame=frame_idx, imgs_path=image_path, add_soundtrack=video_args.add_soundtrack, audio_path=real_audio_track, crf=f_crf, preset=f_preset, srt_path=srt_path)
             finally:
                 shutil.move(mp4_temp_path, mp4_preview_path)
         

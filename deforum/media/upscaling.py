@@ -82,7 +82,7 @@ def process_ncnn_video_upscaling(vid_path, outdir, in_vid_fps, in_vid_res, out_v
     if media_file_has_audio(vid_path.name, f_location):
         add_soundtrack = 'File'
     # stitch video from upscaled pngs 
-    ffmpeg_stitch_video(ffmpeg_location=f_location, fps=in_vid_fps, outmp4_path=out_upscaled_mp4_path, stitch_from_frame=1, stitch_to_frame=-1, imgs_path=upscaled_imgs_path_for_ffmpeg, add_soundtrack=add_soundtrack, audio_path=vid_path.name, crf=f_crf, preset=f_preset)
+    ffmpeg_stitch_video(ffmpeg_location=f_location, fps=in_vid_fps, outmp4_path=out_upscaled_mp4_path, stitch_from_frame=0, stitch_to_frame=-1, imgs_path=upscaled_imgs_path_for_ffmpeg, add_soundtrack=add_soundtrack, audio_path=vid_path.name, crf=f_crf, preset=f_preset)
     # delete the raw video pngs
     shutil.rmtree(outdir)
     # delete upscaled imgs if user requested

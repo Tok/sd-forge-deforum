@@ -323,7 +323,7 @@ def run_deforum(*args):
             try:
                 f_location, f_crf, f_preset = get_ffmpeg_params() # get params for ffmpeg exec
                 image_path, mp4_path, real_audio_track, srt_path = get_ffmpeg_paths(args.outdir, root.timestring, anim_args, video_args)
-                ffmpeg_stitch_video(ffmpeg_location=f_location, fps=video_args.fps, outmp4_path=mp4_path, stitch_from_frame=1, stitch_to_frame=anim_args.max_frames, imgs_path=image_path, add_soundtrack=video_args.add_soundtrack, audio_path=real_audio_track, crf=f_crf, preset=f_preset, srt_path=srt_path)
+                ffmpeg_stitch_video(ffmpeg_location=f_location, fps=video_args.fps, outmp4_path=mp4_path, stitch_from_frame=0, stitch_to_frame=anim_args.max_frames, imgs_path=image_path, add_soundtrack=video_args.add_soundtrack, audio_path=real_audio_track, crf=f_crf, preset=f_preset, srt_path=srt_path)
                 mp4 = open(mp4_path, 'rb').read()
                 data_url = f"data:video/mp4;base64, {b64encode(mp4).decode()}"
                 global last_vid_data
@@ -341,7 +341,7 @@ def run_deforum(*args):
         # Upscale video once generation is done:
         if video_args.r_upscale_video and not video_args.skip_video_creation and not video_args.store_frames_in_ram and not is_wan_mode:
             # out mp4 path is defined in make_upscale func
-            make_upscale_v2(upscale_factor = video_args.r_upscale_factor, upscale_model = video_args.r_upscale_model, keep_imgs = video_args.r_upscale_keep_imgs, imgs_raw_path = args.outdir, imgs_batch_id = root.timestring, fps = video_args.fps, deforum_models_path = root.models_path, current_user_os = root.current_user_os, ffmpeg_location=f_location, stitch_from_frame=1, stitch_to_frame=anim_args.max_frames, ffmpeg_crf=f_crf, ffmpeg_preset=f_preset, add_soundtrack = video_args.add_soundtrack ,audio_path=real_audio_track, srt_path=srt_path)
+            make_upscale_v2(upscale_factor = video_args.r_upscale_factor, upscale_model = video_args.r_upscale_model, keep_imgs = video_args.r_upscale_keep_imgs, imgs_raw_path = args.outdir, imgs_batch_id = root.timestring, fps = video_args.fps, deforum_models_path = root.models_path, current_user_os = root.current_user_os, ffmpeg_location=f_location, stitch_from_frame=0, stitch_to_frame=anim_args.max_frames, ffmpeg_crf=f_crf, ffmpeg_preset=f_preset, add_soundtrack = video_args.add_soundtrack ,audio_path=real_audio_track, srt_path=srt_path)
 
         # FRAME INTERPOLATION TIME
         if need_to_frame_interpolate:
