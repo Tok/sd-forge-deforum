@@ -12,7 +12,12 @@ Following Phase 2 of REFACTORING_STRATEGY.md:
 
 from typing import Any, Union
 import gradio as gr
-from modules.ui_components import FormRow
+
+try:
+    from modules.ui_components import FormRow
+except ImportError:
+    # Use standard gradio Row for testing environment
+    FormRow = gr.Row  # type: ignore
 
 
 def create_gr_elem(d: dict[str, Any]) -> Any:

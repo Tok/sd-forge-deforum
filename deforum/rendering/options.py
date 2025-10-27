@@ -1,7 +1,13 @@
 from deforum.utils.functional import put_if_present
 
 # noinspection PyUnresolvedReferences
-from modules.shared import opts
+try:
+    from modules.shared import opts
+except ImportError:
+    # Mock opts for testing environment
+    class MockOpts:
+        data = {}
+    opts = MockOpts()
 
 
 def is_subtitle_generation_active():
