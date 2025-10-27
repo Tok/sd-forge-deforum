@@ -49,13 +49,14 @@ class FluxModelDownloader:
             }
         ]
 
-        # Text encoders go in text_encoder/, VAE goes in VAE/
+        # All VAE and text encoder files go in VAE/ directory
+        # (Forge/Forge Neo will auto-detect them from this location)
         self.text_encoder_files = [
             {
                 "name": "clip_l",
                 "repo_id": "comfyanonymous/flux_text_encoders",
                 "filename": "clip_l.safetensors",
-                "local_dir": str(self.models_dir / "text_encoder"),
+                "local_dir": str(self.models_dir / "VAE"),
                 "description": "CLIP-L text encoder",
                 "size_gb": 0.25,
                 "gated": False,
@@ -65,7 +66,7 @@ class FluxModelDownloader:
                 "name": "t5xxl_fp16",
                 "repo_id": "comfyanonymous/flux_text_encoders",
                 "filename": "t5xxl_fp16.safetensors",
-                "local_dir": str(self.models_dir / "text_encoder"),
+                "local_dir": str(self.models_dir / "VAE"),
                 "description": "T5-XXL FP16 text encoder",
                 "size_gb": 9.8,
                 "gated": False,
