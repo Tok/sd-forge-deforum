@@ -20,6 +20,30 @@ import launch
 import os
 
 
+def is_forge_neo_simple() -> bool:
+    """
+    Simple Neo detection for install (before full modules available).
+
+    Checks:
+    1. sys.path for 'neo' in directory names
+    2. Current working directory for 'neo' in path
+
+    Returns:
+        True if likely running on Forge Neo, False otherwise
+    """
+    # Check sys.path
+    for path in sys.path:
+        if 'forge-neo' in path.lower() or 'forge_neo' in path.lower():
+            return True
+
+    # Check current working directory
+    cwd = os.getcwd()
+    if 'forge-neo' in cwd.lower() or 'forge_neo' in cwd.lower():
+        return True
+
+    return False
+
+
 def check_and_fix_huggingface_hub():
     """Fix huggingface-hub compatibility BEFORE any other imports.
 
@@ -31,7 +55,14 @@ def check_and_fix_huggingface_hub():
     - diffusers: needs >=0.34.0
 
     Solution: huggingface-hub 0.36.0
+
+    Note: Skipped on Forge Neo (has correct versions built-in)
     """
+    # Skip all compatibility patches on Forge Neo
+    if is_forge_neo_simple():
+        print("[Deforum] Running on Forge Neo - skipping compatibility patches")
+        return
+
     try:
         import importlib.metadata
         hf_hub_version = importlib.metadata.version("huggingface-hub")
@@ -57,29 +88,33 @@ def check_and_fix_huggingface_hub():
         print(f"[Deforum] Warning: Could not check huggingface-hub: {e}")
 
 
-# FIX COMPATIBILITY FIRST - CRITICAL!
+# FIX COMPATIBILITY FIRST - CRITICAL! (skip on Neo)
 check_and_fix_huggingface_hub()
 
 req_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "requirements.txt")
 
-print("Deforum: Installing dependencies for Wan 2.2 support...")
+# Skip dependency upgrades on Forge Neo (has correct versions built-in)
+if not is_forge_neo_simple():
+    print("Deforum: Installing dependencies for Wan 2.2 support...")
 
-# Force upgrade critical dependencies for Wan 2.2 TI2V support
-critical_upgrades = {
-    'peft': '0.17.1',
-    'accelerate': '1.10.1',
-}
+    # Force upgrade critical dependencies for Wan 2.2 TI2V support
+    critical_upgrades = {
+        'peft': '0.17.1',
+        'accelerate': '1.10.1',
+    }
 
-for package, version in critical_upgrades.items():
-    try:
-        import importlib.metadata
-        current_version = importlib.metadata.version(package)
-        if current_version != version:
-            print(f"Deforum: Upgrading {package} {current_version} → {version} for Wan 2.2...")
+    for package, version in critical_upgrades.items():
+        try:
+            import importlib.metadata
+            current_version = importlib.metadata.version(package)
+            if current_version != version:
+                print(f"Deforum: Upgrading {package} {current_version} → {version} for Wan 2.2...")
+                launch.run_pip(f"install {package}=={version}", f"Deforum Wan 2.2 requirement: {package}=={version}")
+        except:
+            print(f"Deforum: Installing {package}=={version}...")
             launch.run_pip(f"install {package}=={version}", f"Deforum Wan 2.2 requirement: {package}=={version}")
-    except:
-        print(f"Deforum: Installing {package}=={version}...")
-        launch.run_pip(f"install {package}=={version}", f"Deforum Wan 2.2 requirement: {package}=={version}")
+else:
+    print("Deforum: Running on Forge Neo - skipping dependency upgrades (using Neo's versions)")
 
 with open(req_file) as file:
     for lib in file:
@@ -87,10 +122,13 @@ with open(req_file) as file:
         if not lib or lib.startswith('#'):
             continue
 
-        # Force install git diffusers for Wan 2.2 support
+        # Force install git diffusers for Wan 2.2 support (skip on Neo)
         if lib.startswith('git+'):
-            print(f"Deforum: Installing diffusers from git for Wan 2.2 support...")
-            launch.run_pip(f"install --upgrade {lib}", f"Deforum Wan 2.2 requirement: diffusers (git main)")
+            if not is_forge_neo_simple():
+                print(f"Deforum: Installing diffusers from git for Wan 2.2 support...")
+                launch.run_pip(f"install --upgrade {lib}", f"Deforum Wan 2.2 requirement: diffusers (git main)")
+            else:
+                print(f"Deforum: Skipping diffusers git install on Forge Neo")
             continue
 
         # Skip version-range packages already handled above

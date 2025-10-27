@@ -27,6 +27,30 @@ if extension_root not in sys.path:
     sys.path.insert(0, extension_root)
 
 
+def is_forge_neo_simple() -> bool:
+    """
+    Simple Neo detection for preload (before full modules available).
+
+    Checks:
+    1. sys.path for 'neo' in directory names
+    2. Current working directory for 'neo' in path
+
+    Returns:
+        True if likely running on Forge Neo, False otherwise
+    """
+    # Check sys.path
+    for path in sys.path:
+        if 'forge-neo' in path.lower() or 'forge_neo' in path.lower():
+            return True
+
+    # Check current working directory
+    cwd = os.getcwd()
+    if 'forge-neo' in cwd.lower() or 'forge_neo' in cwd.lower():
+        return True
+
+    return False
+
+
 def check_and_fix_huggingface_hub():
     """Check huggingface-hub version and fix compatibility if needed.
 
@@ -36,7 +60,14 @@ def check_and_fix_huggingface_hub():
     - diffusers needs >=0.34.0
 
     Solution: Use 0.36.0 (last version before 1.0 breaking changes)
+
+    Note: Skipped on Forge Neo (has correct versions built-in)
     """
+    # Skip all compatibility patches on Forge Neo
+    if is_forge_neo_simple():
+        print("[Deforum] Running on Forge Neo - skipping compatibility patches")
+        return
+
     try:
         hf_hub_version = importlib.metadata.version("huggingface-hub")
         version_parts = hf_hub_version.split('.')
@@ -64,7 +95,7 @@ def check_and_fix_huggingface_hub():
         print(f"[Deforum] Warning: Failed to check huggingface-hub version: {e}")
 
 
-# Fix huggingface-hub compatibility before anything else
+# Fix huggingface-hub compatibility before anything else (skip on Neo)
 check_and_fix_huggingface_hub()
 
 try:
