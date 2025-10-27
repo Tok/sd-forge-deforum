@@ -36,6 +36,19 @@ def init_deforum():
     # create the Models/Deforum folder, where many of the deforum related models/ packages will be downloaded
     os.makedirs(ph.models_path + '/Deforum', exist_ok=True)
 
+    # Auto-download Flux model and VAE if not present
+    try:
+        from deforum.utils.system.flux_model_downloader import auto_download_flux_if_needed
+        from deforum.utils.system.flux_check import is_flux_available
+
+        if not is_flux_available():
+            print("[Deforum] Flux model not detected - starting auto-download...")
+            print("[Deforum] This will download ~12GB of files. Please wait...")
+            auto_download_flux_if_needed()
+    except Exception as e:
+        print(f"⚠️ Deforum: Failed to auto-download Flux: {e}")
+        print("[Deforum] You can manually download Flux from the Wan Models tab")
+
     # import our on_ui_tabs and on_ui_settings functions from the respected files
     from deforum.ui.ui_right import on_ui_tabs
     from deforum.ui.ui_settings import on_ui_settings

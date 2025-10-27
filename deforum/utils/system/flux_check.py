@@ -79,16 +79,11 @@ def should_show_flux_blocker() -> bool:
     """
     Determine if we should show the Flux setup blocker message.
 
-    Returns:
-        True if blocker should be shown, False if Deforum UI should load normally
-    """
-    # Forge Neo has Flux built-in, so never block
-    try:
-        from deforum.utils.system.forge_neo_detect import is_forge_neo_cached
-        if is_forge_neo_cached():
-            logger.info("Forge Neo detected - skipping Flux blocker")
-            return False
-    except Exception as e:
-        logger.warning(f"Neo detection failed, falling back to Flux check: {e}")
+    DEPRECATED: Blocker removed - we now auto-download Flux instead.
+    This function always returns False to never block the UI.
 
-    return not is_flux_available()
+    Returns:
+        False - blocker disabled
+    """
+    # Blocker removed - auto-download handles missing models
+    return False
