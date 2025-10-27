@@ -2,12 +2,12 @@
 # name: test_post_process_FILM
   '''
   1
-  00:00:00,000 --> 00:00:00,050
-  F#: 00001; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  00:00:00,000 --> 00:00:00,000
+  F#: 00000; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
   
   2
-  00:00:00,050 --> 00:00:00,550
-  F#: 00011; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  00:00:00,000 --> 00:00:00,500
+  F#: 00010; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
   
   
   '''
@@ -15,12 +15,12 @@
 # name: test_post_process_RIFE
   '''
   1
-  00:00:00,000 --> 00:00:00,050
-  F#: 00001; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  00:00:00,000 --> 00:00:00,000
+  F#: 00000; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
   
   2
-  00:00:00,050 --> 00:00:00,550
-  F#: 00011; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  00:00:00,000 --> 00:00:00,500
+  F#: 00010; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
   
   
   '''
@@ -28,12 +28,12 @@
 # name: test_post_process_UPSCALE
   '''
   1
-  00:00:00,000 --> 00:00:00,050
-  F#: 00001; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  00:00:00,000 --> 00:00:00,000
+  F#: 00000; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
   
   2
-  00:00:00,050 --> 00:00:00,550
-  F#: 00011; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  00:00:00,000 --> 00:00:00,500
+  F#: 00010; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
   
   
   '''
@@ -41,12 +41,12 @@
 # name: test_post_process_UPSCALE_FILM
   '''
   1
-  00:00:00,000 --> 00:00:00,050
-  F#: 00001; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  00:00:00,000 --> 00:00:00,000
+  F#: 00000; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
   
   2
-  00:00:00,050 --> 00:00:00,550
-  F#: 00011; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  00:00:00,000 --> 00:00:00,500
+  F#: 00010; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
   
   
   '''

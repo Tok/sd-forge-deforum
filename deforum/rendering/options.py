@@ -1,27 +1,35 @@
 from deforum.utils.functional import put_if_present
 
-# noinspection PyUnresolvedReferences
-try:
-    from modules.shared import opts
-except ImportError:
-    # Mock opts for testing environment
-    class MockOpts:
-        data = {}
-    opts = MockOpts()
+
+def _get_opts():
+    """Get opts instance - deferred import to avoid module-level import issues.
+
+    A1111OptionsOverrider modifies opts.data at runtime, so we need to import
+    opts fresh in each function rather than at module level.
+    """
+    # noinspection PyUnresolvedReferences
+    try:
+        from modules.shared import opts
+        return opts
+    except ImportError:
+        # Mock opts for testing environment
+        class MockOpts:
+            data = {}
+        return MockOpts()
 
 
 def is_subtitle_generation_active():
-    return opts.data.get("deforum_save_gen_info_as_srt", False)
+    return _get_opts().data.get("deforum_save_gen_info_as_srt", False)
 
 
 def is_verbose():
     """Checks if extra console output is enabled in deforum settings."""
-    return opts.data.get("deforum_debug_mode_enabled", False)
+    return _get_opts().data.get("deforum_debug_mode_enabled", False)
 
 
 def is_emojis_enabled():
     """Check if emojis are enabled in UI and console output."""
-    return opts.data.get("deforum_enable_emojis", False)  # Disabled by default
+    return _get_opts().data.get("deforum_enable_emojis", False)  # Disabled by default
 
 
 def is_nonessential_emojis_disabled():
@@ -30,14 +38,16 @@ def is_nonessential_emojis_disabled():
 
 
 def has_img2img_fix_steps():
+    opts = _get_opts()
     return 'img2img_fix_steps' in opts.data and opts.data["img2img_fix_steps"]
 
 
 def keep_3d_models_in_vram():
-    return opts.data.get("deforum_keep_3d_models_in_vram", False)
+    return _get_opts().data.get("deforum_keep_3d_models_in_vram", False)
 
 
 def setup(schedule):
+    opts = _get_opts()
     if has_img2img_fix_steps():
         # disable "with img2img do exactly x steps" from general setting, as it *ruins* deforum animations
         opts.data["img2img_fix_steps"] = False
@@ -48,23 +58,23 @@ def setup(schedule):
 
 
 def generation_info_for_subtitles():
-    return opts.data.get("deforum_save_gen_info_as_srt_params", ['Prompt'])
+    return _get_opts().data.get("deforum_save_gen_info_as_srt_params", ['Prompt'])
 
 
 def is_generate_subtitles():
-    return opts.data.get("deforum_save_gen_info_as_srt")
+    return _get_opts().data.get("deforum_save_gen_info_as_srt")
 
 
 def is_always_write_keyframe_subs():
-    return opts.data.get("deforum_always_write_keyframe_subtitle", True)
+    return _get_opts().data.get("deforum_always_write_keyframe_subtitle", True)
 
 
 def desired_subtitles_per_second():
-    return int(opts.data.get("deforum_subtitles_per_second", '10'))
+    return int(_get_opts().data.get("deforum_subtitles_per_second", '10'))
 
 
 def always_write_keyframe_subtitle():
-    return int(opts.data.get("deforum_always_write_keyframe_subtitle", True))
+    return int(_get_opts().data.get("deforum_always_write_keyframe_subtitle", True))
 
 
 def is_subtitles_per_second_same_as_animation_fps(data):
@@ -72,11 +82,11 @@ def is_subtitles_per_second_same_as_animation_fps(data):
 
 
 def is_simple_subtitles():
-    return opts.data.get("deforum_simple_subtitles", False)
+    return _get_opts().data.get("deforum_simple_subtitles", False)
 
 
 def is_own_line_for_prompt_srt():
-    return opts.data.get("deforum_own_line_for_prompt_srt", True)
+    return _get_opts().data.get("deforum_own_line_for_prompt_srt", True)
 
 
 def is_emojis_disabled():
@@ -86,9 +96,9 @@ def is_emojis_disabled():
 
 def get_log_theme():
     """Get console output theme (slopcore/classic/simple)."""
-    return opts.data.get("deforum_log_theme", "slopcore")
+    return _get_opts().data.get("deforum_log_theme", "slopcore")
 
 
 def get_log_level():
     """Get minimum log level (DEBUG/INFO/WARNING/ERROR/CRITICAL)."""
-    return opts.data.get("deforum_log_level", "INFO")
+    return _get_opts().data.get("deforum_log_level", "INFO")
