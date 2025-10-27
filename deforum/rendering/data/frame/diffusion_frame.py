@@ -225,9 +225,13 @@ class DiffusionFrame:
         if keyframe_distribution is KeyFrameDistribution.OFF:
             return 0  # not relevant
         elif keyframe_distribution is KeyFrameDistribution.KEYFRAMES_ONLY:
-            return (len(data.parseq_adapter.parseq_json['keyframes'])
-                    if data.parseq_adapter.use_parseq
-                    else len(data.args.root.prompt_keyframes) + 1)  # +1 because last frame is not defined in prompts
+            if data.parseq_adapter.use_parseq:
+                return len(data.parseq_adapter.parseq_json['keyframes'])
+            else:
+                # FIX: Instead of assuming +1, actually call select_deforum_keyframes to get the true count
+                # This handles deduplication when user provides last frame prompt
+                keyframes = KeyFrameDistribution.select_deforum_keyframes(data)
+                return len(keyframes)
         elif keyframe_distribution is KeyFrameDistribution.REDISTRIBUTED:
             return 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
         else:
@@ -256,11 +260,8 @@ class DiffusionFrame:
         assert diffusion_frame_count == len(diffusion_frames)  # FIXME? calculate instead of pass diffusion_frame_count
 
         key_indices = keyframe_distribution.calculate(data, start_index, diffusion_frame_count)
-        if len(diffusion_frames) != len(key_indices):
-            log_utils.error(f"Frame count mismatch: diffusion_frames={len(diffusion_frames)}, key_indices={len(key_indices)}")
-            log_utils.error(f"Key indices: {key_indices}")
-            log_utils.error(f"Distribution mode: {keyframe_distribution}")
-            assert False, f"Expected {len(diffusion_frames)} key indices, got {len(key_indices)}"
+        assert len(diffusion_frames) == len(key_indices), \
+            f"Frame count mismatch: diffusion_frames={len(diffusion_frames)}, key_indices={len(key_indices)}"
 
         for i, key_i in enumerate(key_indices):
             # TODO separate handling from calculation. this should be done on init.

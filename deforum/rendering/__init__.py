@@ -1,7 +1,15 @@
 """Rendering module for Deforum - core render pipelines and helpers."""
 
-from .core import render_animation
-from .flux_interp import render_flux_interp
+# Lazy imports to avoid breaking unit tests that don't have Forge modules
+try:
+    from .core import render_animation
+except ImportError:
+    render_animation = None  # type: ignore
+
+try:
+    from .flux_interp import render_flux_interp
+except ImportError:
+    render_flux_interp = None  # type: ignore
 
 __all__ = [
     "render_animation",
