@@ -21,21 +21,24 @@ class FluxModelDownloader:
         # Detect Forge models directory
         self.models_dir = self._detect_models_directory()
 
-        # Use community mirrors with ungated access (no authentication required)
-        # Kijai's mirrors are widely used and trusted in the community
+        # Use official Black Forest Labs models (gated - requires HuggingFace account)
         self.recommended_model = {
-            "repo_id": "Kijai/flux-fp8",
-            "filename": "flux1-dev-fp8.safetensors",
+            "repo_id": "black-forest-labs/FLUX.1-dev",
+            "filename": "flux1-dev.safetensors",
             "local_dir": str(self.models_dir / "Stable-diffusion"),
-            "description": "Flux.1 Dev FP8 (quantized, ~17GB, community mirror)",
-            "size_gb": 17,
+            "description": "Flux.1 Dev (official, ~24GB, requires HF login)",
+            "size_gb": 24,
+            "gated": True,
+            "license_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev"
         }
         self.recommended_vae = {
-            "repo_id": "Kijai/flux-fp8",
+            "repo_id": "black-forest-labs/FLUX.1-dev",
             "filename": "ae.safetensors",
             "local_dir": str(self.models_dir / "VAE"),
-            "description": "Flux.1 VAE (community mirror, ungated)",
+            "description": "Flux.1 VAE (official)",
             "size_gb": 0.3,
+            "gated": True,
+            "license_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev"
         }
 
     def _detect_models_directory(self) -> Path:
@@ -97,6 +100,7 @@ class FluxModelDownloader:
             repo_id = model_info["repo_id"]
             filename = model_info["filename"]
             local_dir = Path(model_info["local_dir"])
+            is_gated = model_info.get("gated", False)
 
             # Create target directory
             local_dir.mkdir(parents=True, exist_ok=True)
@@ -111,6 +115,9 @@ class FluxModelDownloader:
             logger.info(f"  From: {repo_id}/{filename}")
             logger.info(f"  To: {local_dir}")
 
+            if is_gated:
+                logger.info("  ⚠️  This model requires HuggingFace authentication")
+
             # Use huggingface-cli download
             cmd = [
                 "huggingface-cli", "download",
@@ -122,7 +129,7 @@ class FluxModelDownloader:
 
             result = subprocess.run(
                 cmd,
-                capture_output=False,  # Show progress
+                capture_output=True,  # Capture to check for gating errors
                 text=True,
                 timeout=3600  # 1 hour timeout for large files
             )
@@ -131,8 +138,21 @@ class FluxModelDownloader:
                 logger.info(f"✓ Downloaded {filename} successfully")
                 return True
             else:
-                logger.error(f"Failed to download {filename}")
-                return False
+                # Check for gating error
+                if "GatedRepoError" in result.stderr or "Access to model" in result.stderr or "401" in result.stderr:
+                    logger.error(f"❌ Access denied: {repo_id} is a gated model")
+                    logger.error("")
+                    logger.error("To download this model, you need to:")
+                    logger.error(f"  1. Visit: {model_info.get('license_url', f'https://huggingface.co/{repo_id}')}")
+                    logger.error("  2. Click 'Agree and access repository' to accept the license")
+                    logger.error("  3. Login to HuggingFace CLI:")
+                    logger.error("     huggingface-cli login")
+                    logger.error("  4. Restart Forge to retry the download")
+                    logger.error("")
+                    return False
+                else:
+                    logger.error(f"Failed to download {filename}: {result.stderr}")
+                    return False
 
         except subprocess.TimeoutExpired:
             logger.error(f"Download timed out for {filename}")
