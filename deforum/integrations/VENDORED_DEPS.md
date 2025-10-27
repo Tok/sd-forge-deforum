@@ -6,14 +6,17 @@ Forge specifies `huggingface-hub==0.26.2` in `requirements_versions.txt`, but ou
 
 ## Quick Fix (If Forge Won't Start)
 
-If you see `ImportError: cannot import name 'HfFolder' from 'huggingface_hub'` when starting Forge:
+If you see `ImportError: cannot import name 'HfFolder'` or `'DDUFEntry' from 'huggingface_hub'` when starting Forge:
 
 ```bash
 cd /path/to/stable-diffusion-webui-forge
-./venv/bin/pip install 'huggingface-hub==0.26.2'
+./venv/bin/pip install 'huggingface-hub==0.36.0'
 ```
 
-Then restart Forge normally. This fixes Gradio 4.40.0 compatibility.
+Then restart Forge normally. This fixes compatibility between:
+- **Gradio 4.40.0** - Needs HfFolder (removed in 1.0.0+)
+- **Forge** - Needs DDUFEntry (added in 0.27.0)
+- **diffusers** - Needs >=0.34.0
 
 ## Solution
 

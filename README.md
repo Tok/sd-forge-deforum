@@ -232,12 +232,12 @@ https://github.com/Tok/sd-forge-deforum.git
 
 **Note on Dependencies:** This extension vendors a compatible version of `huggingface-hub` (0.36.0) to work with newer `diffusers` versions required for Wan video. Forge uses `huggingface-hub==0.26.2`, which is incompatible. The vendored version is automatically installed to `.vendored/` on first use and does not affect other extensions.
 
-**If Forge won't start:** If you see `ImportError: cannot import name 'HfFolder'`, run:
+**If Forge won't start:** If you see `ImportError: cannot import name 'HfFolder'` or `'DDUFEntry'`, run:
 ```bash
 cd stable-diffusion-webui-forge
-./venv/bin/pip install 'huggingface-hub==0.26.2'
+./venv/bin/pip install 'huggingface-hub==0.36.0'
 ```
-Then restart Forge.
+Then restart Forge. This fixes compatibility between Gradio 4.40.0, Forge (needs DDUFEntry), and diffusers.
 
 ### From Command Line
 

@@ -28,27 +28,37 @@ if extension_root not in sys.path:
 
 
 def check_and_fix_huggingface_hub():
-    """Check huggingface-hub version and fix Gradio compatibility if needed.
+    """Check huggingface-hub version and fix compatibility if needed.
 
-    Gradio 4.40.0 requires HfFolder class, which was removed in huggingface-hub 1.0.0.
-    If 1.0.0+ is installed, downgrade to 0.26.2 (Forge's specified version).
+    Requires:
+    - Gradio 4.40.0 needs HfFolder (removed in 1.0.0+)
+    - Forge needs DDUFEntry (added in 0.27.0)
+    - diffusers needs >=0.34.0
+
+    Solution: Use 0.36.0 (last version before 1.0 breaking changes)
     """
     try:
         hf_hub_version = importlib.metadata.version("huggingface-hub")
-        major_version = int(hf_hub_version.split('.')[0])
+        version_parts = hf_hub_version.split('.')
+        major = int(version_parts[0])
+        minor = int(version_parts[1]) if len(version_parts) > 1 else 0
 
-        if major_version >= 1:
-            print(f"[Deforum] Detected huggingface-hub {hf_hub_version} (incompatible with Gradio 4.40.0)")
-            print("[Deforum] Downgrading to 0.26.2 for Gradio compatibility...")
+        # Check if version is incompatible
+        needs_fix = major >= 1 or (major == 0 and minor < 27)
+
+        if needs_fix:
+            reason = ">= 1.0 (removed HfFolder)" if major >= 1 else f"< 0.27 (missing DDUFEntry)"
+            print(f"[Deforum] Detected huggingface-hub {hf_hub_version} ({reason})")
+            print("[Deforum] Upgrading to 0.36.0 for compatibility...")
 
             subprocess.check_call([
                 sys.executable, "-m", "pip", "install",
-                "huggingface-hub==0.26.2",
+                "huggingface-hub==0.36.0",
                 "--quiet",
             ])
 
-            print("[Deforum] ✓ Downgraded to huggingface-hub 0.26.2")
-            print("[Deforum]   Note: Wan features will use vendored 0.36.0 internally")
+            print("[Deforum] ✓ Installed huggingface-hub 0.36.0")
+            print("[Deforum]   Compatible with Gradio, Forge, and diffusers")
 
     except Exception as e:
         print(f"[Deforum] Warning: Failed to check huggingface-hub version: {e}")
