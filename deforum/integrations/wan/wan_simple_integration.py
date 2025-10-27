@@ -340,6 +340,15 @@ class WanSimpleIntegration:
                 if is_wan22_diffusers:
                     logger.info("Loading Wan 2.2 Diffusers pipeline...", emoji='refresh')
 
+                    # Use vendored huggingface-hub for diffusers compatibility
+                    # Forge has 0.26.2 but diffusers needs >=0.34.0
+                    try:
+                        from deforum.integrations.vendored_hf_hub import use_vendored_hf_hub
+                        use_vendored_hf_hub()
+                    except Exception as vendor_e:
+                        logger.warning(f"Failed to use vendored huggingface-hub: {vendor_e}")
+                        logger.warning("Continuing with system version - may cause import errors")
+
                     # Apply compatibility patches BEFORE importing diffusers
                     # This ensures patches are active even if diffusers was imported elsewhere
                     try:
