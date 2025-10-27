@@ -256,7 +256,11 @@ class DiffusionFrame:
         assert diffusion_frame_count == len(diffusion_frames)  # FIXME? calculate instead of pass diffusion_frame_count
 
         key_indices = keyframe_distribution.calculate(data, start_index, diffusion_frame_count)
-        assert len(diffusion_frames) == len(key_indices)
+        if len(diffusion_frames) != len(key_indices):
+            log_utils.error(f"Frame count mismatch: diffusion_frames={len(diffusion_frames)}, key_indices={len(key_indices)}")
+            log_utils.error(f"Key indices: {key_indices}")
+            log_utils.error(f"Distribution mode: {keyframe_distribution}")
+            assert False, f"Expected {len(diffusion_frames)} key indices, got {len(key_indices)}"
 
         for i, key_i in enumerate(key_indices):
             # TODO separate handling from calculation. this should be done on init.
