@@ -4,6 +4,17 @@
 
 Forge specifies `huggingface-hub==0.26.2` in `requirements_versions.txt`, but our extension requires `diffusers` (for Wan video support) which needs `huggingface-hub>=0.34.0,<2.0`. This creates a dependency conflict.
 
+## Quick Fix (If Forge Won't Start)
+
+If you see `ImportError: cannot import name 'HfFolder' from 'huggingface_hub'` when starting Forge:
+
+```bash
+cd /path/to/stable-diffusion-webui-forge
+./venv/bin/pip install 'huggingface-hub==0.26.2'
+```
+
+Then restart Forge normally. This fixes Gradio 4.40.0 compatibility.
+
 ## Solution
 
 We vendor a compatible version of `huggingface-hub` (0.36.0) in a local `.vendored/` directory that only gets used when loading Wan diffusers pipelines. This approach:
