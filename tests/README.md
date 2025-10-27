@@ -150,6 +150,44 @@ Run specific integration test:
 - Coverage disabled (via `--no-cov` flag)
 - Local testing only (not suitable for CI)
 
+### Update Test Snapshots (After Intentional Changes)
+When you make intentional changes that affect test output (e.g., frame numbering, subtitle format), you need to update snapshots:
+
+```bash
+./update-snapshots.sh
+```
+
+This script will:
+1. Start the Forge server
+2. Run tests with `--snapshot-update` flag
+3. Show you what changed
+4. Prompt you to review and commit
+
+**IMPORTANT:** Only update snapshots for **intentional changes**. If snapshots fail unexpectedly, investigate the root cause first!
+
+**When to update snapshots:**
+- ✅ After changing frame indexing (0-based vs 1-based)
+- ✅ After changing subtitle format
+- ✅ After changing API response structure
+- ❌ NOT when tests randomly fail (that's a bug!)
+- ❌ NOT automatically in CI (defeats the purpose)
+
+**Manual snapshot update:**
+```bash
+# Start server
+python ../../../webui.py --deforum-api &
+
+# Update snapshots
+pytest tests/integration/ --snapshot-update
+
+# Review changes
+git diff tests/__snapshots__/
+
+# Commit if correct
+git add tests/__snapshots__/
+git commit -m "test: Update snapshots for [reason]"
+```
+
 ### Quick Manual API Test (No pytest required)
 For quick verification that the API and Swagger documentation are working:
 
