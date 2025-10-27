@@ -156,6 +156,38 @@ Requirements:
 
 Generate {int(count)} random-walk {style_text}prompts starting from {theme}:"""
 
+        elif generation_mode == "first-person-perspective":
+            # First-person/POV camera movement (perfect for reverse generation)
+            generation_prompt = f"""Generate {int(count)} {style_text}prompts for a first-person perspective camera movement through {theme}.
+
+INTENSITY: {intensity_inst}
+
+**IMPORTANT - Context Stability Instructions:**
+- Background/environment should remain STABLE and CONSISTENT across prompts
+- Focus on CAMERA MOVEMENT through a fixed scene, not scene transformation
+- Example: "driving through city street" NOT "city transforming around driver"
+- Think: POV, dash-cam, body-cam, FPV drone footage
+- Maintain spatial coherence - viewer is moving, world is not morphing
+
+Requirements:
+- First-person camera perspective throughout
+- Progressive movement through stable environment (e.g., {theme})
+- {style_text if style else ""}Natural camera motion: forward, backward, turning, ascending, descending
+- Background details should PERSIST across frames (buildings, landmarks stay put)
+- Describe what the camera sees as it moves, not scene changes
+- Smooth transitions that maintain spatial continuity
+- Keep prompts concise (5-12 words each)
+- Return ONLY the prompts, one per line, NO numbering
+
+Example for "city street at night":
+POV moving forward on neon-lit city street
+passing glowing storefronts and street lamps ahead
+approaching busy intersection with traffic lights
+turning left past corner coffee shop entrance
+driving along quieter side street with parked cars
+
+Generate {int(count)} first-person {style_text}perspective prompts for {theme}:"""
+
         elif generation_mode == "" or not generation_mode:
             # Empty/minimal mode - let Qwen be creative
             generation_prompt = f"""Generate {int(count)} {style_text}prompts featuring {theme}.
