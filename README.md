@@ -5,9 +5,11 @@
 
 ⚠️ **COMPATIBILITY WARNING**: This fork is **100% incompatible** with older Deforum versions and original `deforum_settings.txt` files. You must use the new settings format from this repository.
 
-Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum)
-for [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge),
-completely refactored and modernized to work with Flux.1, Wan 2.1 AI Video Generation, and advanced workflow automation.
+**Primary Target:** [Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo) - Fully tested and supported
+**Other Forge versions:** May work but remain untested
+
+Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum),
+completely refactored and modernized to work with Flux.1, Wan 2.1/2.2 AI Video Generation, and advanced workflow automation.
 
 ## ⚡ Major New Features
 

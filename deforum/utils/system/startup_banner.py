@@ -62,9 +62,9 @@ def print_startup_banner():
   - Flux ControlNet V2 support (patching Forge's IntegratedFluxTransformer2DModel)
   - FlowMatchEulerDiscreteScheduler compatibility (diffusers git main + Forge)
   - Wan 2.1 FLF2V + Wan 2.2 TI2V pipeline integration{RESET}
-{BOLD}Note:{RESET} This fork is optimized for Flux/Wan workflows.
-{BOLD}For best results:{RESET} Run in a dedicated Forge instance to avoid interfering
-   with other extensions and Forge base functionality.
+{BOLD}Primary Target:{RESET} Forge Neo (fully tested and supported)
+{BOLD}Other Forge versions:{RESET} May work but remain untested
+{BOLD}Note:{RESET} Optimized for Flux/Wan workflows in dedicated Forge Neo instance
 {BOLD}More Info:{RESET} https://github.com/Tok/sd-forge-deforum
 {border_top}
 """
