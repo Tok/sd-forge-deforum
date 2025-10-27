@@ -33,6 +33,7 @@ echo ""
 echo -e "${YELLOW}Creating model directories...${NC}"
 mkdir -p models/Stable-diffusion/Flux
 mkdir -p models/VAE
+mkdir -p models/text_encoder
 mkdir -p models/ControlNet
 mkdir -p models/Deforum/film_interpolation
 mkdir -p models/Deforum/wan
@@ -107,27 +108,29 @@ else
 fi
 
 # CLIP-L text encoder
-CLIP_L_PATH="models/VAE/clip_l.safetensors"
+CLIP_L_PATH="models/text_encoder/clip_l.safetensors"
 if [ -f "$CLIP_L_PATH" ]; then
     echo -e "${GREEN}✓ CLIP-L already exists${NC}"
 else
     echo -e "${YELLOW}Downloading CLIP-L text encoder...${NC}"
     huggingface-cli download comfyanonymous/flux_text_encoders \
         clip_l.safetensors \
-        --local-dir models/VAE \
+        --local-dir models/text_encoder \
+        --local-dir-use-symlinks False \
         --resume-download
     echo -e "${GREEN}✓ CLIP-L downloaded${NC}"
 fi
 
 # T5-XXL text encoder
-T5_PATH="models/VAE/t5xxl_fp16.safetensors"
+T5_PATH="models/text_encoder/t5xxl_fp16.safetensors"
 if [ -f "$T5_PATH" ]; then
     echo -e "${GREEN}✓ T5-XXL already exists${NC}"
 else
     echo -e "${YELLOW}Downloading T5-XXL text encoder (fp16)...${NC}"
     huggingface-cli download comfyanonymous/flux_text_encoders \
         t5xxl_fp16.safetensors \
-        --local-dir models/VAE \
+        --local-dir models/text_encoder \
+        --local-dir-use-symlinks False \
         --resume-download
     echo -e "${GREEN}✓ T5-XXL downloaded${NC}"
 fi
@@ -285,7 +288,8 @@ echo "========================================${NC}"
 echo ""
 echo "Downloaded models are located in:"
 echo "  • Flux: models/Stable-diffusion/Flux/"
-echo "  • VAE & Text Encoders: models/VAE/"
+echo "  • VAE: models/VAE/"
+echo "  • Text Encoders: models/text_encoder/"
 echo "  • ControlNet: models/ControlNet/"
 echo "  • FILM: models/Deforum/film_interpolation/"
 echo "  • Wan AI Video: models/Deforum/wan/"
