@@ -70,7 +70,15 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
 
 
 def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
-    for frame in frames:
+    # Reverse generation: process frames in reverse order (last→first), then reassemble correctly
+    # This allows stable forward-motion by generating zoom-out (model fills naturally), then reversing
+    generation_order_frames = list(reversed(frames)) if data.anim_args.reverse_generation else frames
+
+    if data.anim_args.reverse_generation:
+        logger.info("Reverse Generation enabled: Processing frames in reverse order (last→first)")
+        logger.info("Frames will be reassembled in correct order for final video")
+
+    for frame in generation_order_frames:
         is_resume, full_path = is_resume_with_image(data, frame)
         if is_resume:
             shared.total_tqdm.total_animation_cycles.update()

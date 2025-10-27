@@ -144,6 +144,10 @@ def setup_deforum_left_side_ui():
         fps = create_gr_elem(dv.fps)
         steps = create_gr_elem(d.steps)
 
+    # Reverse generation checkbox - top-level
+    with gr.Row(variant='compact'):
+        reverse_generation = create_gr_elem(da.reverse_generation)
+
     # Mode-dependent controls row - cadence OR pseudo-cadence (mutually exclusive)
     with gr.Row(variant='compact'):
         with gr.Column(scale=1, visible=True) as cadence_column:

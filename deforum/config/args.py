@@ -486,6 +486,12 @@ def DeforumAnimArgs():
             "value": "Keyframes Only",
             "info": "Allows for fast generations at high cadence or no cadence."
         },
+        "reverse_generation": {
+            "label": "Reverse Generation",
+            "type": "checkbox",
+            "value": False,
+            "info": "Generate frames in reverse order (last→first), then reassemble in correct order. Essential for stable forward-motion clips: zoom OUT while generating (model fills new areas naturally), then reverse to create smooth zoom IN effect. Works with all img2img workflows. Not applicable to FLF2V modes."
+        },
         "enable_wan_flf2v": {
             "label": "Enable Wan FLF2V for Tweens",
             "type": "checkbox",
