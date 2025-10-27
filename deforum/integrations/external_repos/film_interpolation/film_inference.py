@@ -42,7 +42,7 @@ def run_film_interp_infer(
     
     model = torch.jit.load(args.model_path, map_location='cpu')
     # half precision the model if user didn't pass --no-half/ --precision full cmd arg flags
-    if not cmd_opts.no_half:
+    if not getattr(cmd_opts, 'no_half', False):  # Forge Neo removed this flag
         model = model.half()
     model = model.cuda()
     model.eval()
