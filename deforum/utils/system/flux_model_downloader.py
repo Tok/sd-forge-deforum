@@ -21,6 +21,9 @@ class FluxModelDownloader:
         # Detect Forge models directory
         self.models_dir = self._detect_models_directory()
 
+        # Detect correct text encoder directory (differs between Forge versions)
+        self.text_encoder_dir = self._detect_text_encoder_directory()
+
         # Model options - try quantized first (lower VRAM), fall back to full model
         # Note: Place in Stable-diffusion/Flux/ subdirectory to keep organized
         flux_model_dir = str(self.models_dir / "Stable-diffusion" / "Flux")
@@ -49,14 +52,14 @@ class FluxModelDownloader:
             }
         ]
 
-        # All VAE and text encoder files go in VAE/ directory
-        # (Forge/Forge Neo will auto-detect them from this location)
+        # Text encoder files - directory auto-detected per Forge version
+        # VAE always goes in VAE/ directory
         self.text_encoder_files = [
             {
                 "name": "clip_l",
                 "repo_id": "comfyanonymous/flux_text_encoders",
                 "filename": "clip_l.safetensors",
-                "local_dir": str(self.models_dir / "VAE"),
+                "local_dir": self.text_encoder_dir,
                 "description": "CLIP-L text encoder",
                 "size_gb": 0.25,
                 "gated": False,
@@ -66,7 +69,7 @@ class FluxModelDownloader:
                 "name": "t5xxl_fp16",
                 "repo_id": "comfyanonymous/flux_text_encoders",
                 "filename": "t5xxl_fp16.safetensors",
-                "local_dir": str(self.models_dir / "VAE"),
+                "local_dir": self.text_encoder_dir,
                 "description": "T5-XXL FP16 text encoder",
                 "size_gb": 9.8,
                 "gated": False,
@@ -103,6 +106,36 @@ class FluxModelDownloader:
         # Option 3: Create in current directory (fallback)
         local_models.mkdir(exist_ok=True)
         return local_models
+
+    def _detect_text_encoder_directory(self) -> str:
+        """Detect where text encoders should be placed (varies by Forge version)
+
+        Returns:
+            String path to text encoder directory
+        """
+        # Check if files already exist in either location
+        vae_clip = self.models_dir / "VAE" / "clip_l.safetensors"
+        text_enc_clip = self.models_dir / "text_encoder" / "clip_l.safetensors"
+
+        if vae_clip.exists():
+            # Files already in VAE/ - use that
+            logger.info("Detected text encoders in VAE/ directory (original Forge)")
+            return str(self.models_dir / "VAE")
+        elif text_enc_clip.exists():
+            # Files already in text_encoder/ - use that
+            logger.info("Detected text encoders in text_encoder/ directory (Forge Neo)")
+            return str(self.models_dir / "text_encoder")
+
+        # No files exist yet - check which directory structure is present
+        text_encoder_dir = self.models_dir / "text_encoder"
+        if text_encoder_dir.exists():
+            # text_encoder/ directory exists - probably Forge Neo or newer
+            logger.info("Using text_encoder/ directory (Forge Neo style)")
+            return str(text_encoder_dir)
+        else:
+            # Fall back to VAE/ (original Forge style)
+            logger.info("Using VAE/ directory for text encoders (original Forge style)")
+            return str(self.models_dir / "VAE")
 
     def check_huggingface_cli(self) -> bool:
         """Check if huggingface-cli is available"""
