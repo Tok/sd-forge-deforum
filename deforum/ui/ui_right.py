@@ -365,14 +365,14 @@ def on_ui_tabs():
                     inputs=[dummy_component, dummy_component] + component_list,
                     outputs=[
                          deforum_gallery,
-                         components["resume_timestring"],
+                         components.get("resume_timestring", dummy_component),
                          generation_info,
                          html_info
                     ],
                 )
         
-        settings_component_list = [components[name] for name in get_settings_component_names()]
-        video_settings_component_list = [components[name] for name in list(DeforumOutputArgs().keys())]
+        settings_component_list = [components.get(name, dummy_component) for name in get_settings_component_names()]
+        video_settings_component_list = [components.get(name, dummy_component) for name in list(DeforumOutputArgs().keys())]
 
         save_settings_btn.click(
             fn=wrap_gradio_call(save_settings),
