@@ -241,6 +241,13 @@ cd sd-forge-deforum
 pip install -r requirements.txt
 ```
 
+**After Updates:** If you update the extension via `git pull`, clear Python bytecode cache to ensure changes take effect:
+```bash
+find . -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+```
+
+**Forge Neo Compatibility:** This extension is fully compatible with [Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo). Flux models and Wan 2.1 FLF2V are automatically downloaded on first startup if not present.
+
 ### Update Deforum Settings
 
 ⚠️ **CRITICAL**: Old settings files will NOT work. Download the new format:
