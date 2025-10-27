@@ -54,13 +54,21 @@ class WanModelDownloader:
         model_dir = Path(self.flf2v_model["local_dir"])
 
         # Check for key files that indicate model is present
-        key_files = [
+        required_files = [
             "model_index.json",
             "scheduler/scheduler_config.json",
-            "transformer/diffusion_pytorch_model.safetensors"
         ]
 
-        return all((model_dir / file).exists() for file in key_files)
+        # Check basic files
+        if not all((model_dir / file).exists() for file in required_files):
+            return False
+
+        # Check for transformer model (either single file or sharded)
+        transformer_dir = model_dir / "transformer"
+        has_single_file = (transformer_dir / "diffusion_pytorch_model.safetensors").exists()
+        has_sharded_index = (transformer_dir / "diffusion_pytorch_model.safetensors.index.json").exists()
+
+        return has_single_file or has_sharded_index
 
     def _download_with_python_api(self, model: dict) -> bool:
         """Try downloading using huggingface_hub Python API"""

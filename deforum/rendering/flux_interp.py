@@ -30,13 +30,12 @@ except ImportError:
 from .data.render_data import RenderData
 from .data.frame import KeyFrameDistribution, DiffusionFrame
 from .data.taqaddumat import Taqaddumat
-from deforum.utils.system.logging import log as log_utils
 from deforum.rendering.helpers import webui as web_ui_utils
 from deforum.utils.image import processing as image_utils
 from deforum.rendering.helpers import filename as filename_utils
 from deforum.integrations.wan.wan_simple_integration import WanSimpleIntegration
 from deforum.media.video_audio_utilities import ffmpeg_stitch_video
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -53,7 +52,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
 
     Interpolation method is selected via wan_args.flux_interpolation_method
     """
-    log_utils.info("🎬 Flux + Interpolation Mode: Flux Keyframes + ML Interpolation", log_utils.BLUE)
+    logger.info(f"{emoji_if_enabled('🎬')} Flux + Interpolation Mode: Flux Keyframes + ML Interpolation")
 
     # Pre-download soundtrack if specified (same as core.py)
     if video_args.add_soundtrack == 'File' and video_args.soundtrack_path is not None:
@@ -83,38 +82,38 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     # Extract only keyframes (frames with is_keyframe=True)
     keyframes = [f for f in all_frames if f.is_keyframe]
 
-    log_utils.info(f"📊 Flux/Wan Workflow:", log_utils.BLUE)
-    log_utils.info(f"   Total frames: {anim_args.max_frames}", log_utils.BLUE)
-    log_utils.info(f"   Keyframes to generate: {len(keyframes)}", log_utils.BLUE)
-    log_utils.info(f"   FLF2V segments: {len(keyframes) - 1}", log_utils.BLUE)
+    logger.info(f"{emoji_if_enabled('📊')} Flux/Wan Workflow:")
+    logger.info(f"   Total frames: {anim_args.max_frames}")
+    logger.info(f"   Keyframes to generate: {len(keyframes)}")
+    logger.info(f"   FLF2V segments: {len(keyframes) - 1}")
 
     # DEBUG: Show resume and path info
-    log_utils.info(f"\n🔍 DEBUG Resume Info:", log_utils.YELLOW)
-    log_utils.info(f"   resume_from_timestring: {anim_args.resume_from_timestring}", log_utils.YELLOW)
-    log_utils.info(f"   resume_timestring: {anim_args.resume_timestring if hasattr(anim_args, 'resume_timestring') else 'N/A'}", log_utils.YELLOW)
-    log_utils.info(f"   root.timestring: {root.timestring}", log_utils.YELLOW)
-    log_utils.info(f"   args.outdir: {args.outdir}", log_utils.YELLOW)
-    log_utils.info(f"   data.output_directory: {data.output_directory}", log_utils.YELLOW)
-    log_utils.info(f"   Directory exists: {os.path.exists(data.output_directory)}", log_utils.YELLOW)
+    logger.debug(f"\n{emoji_if_enabled('🔍')} DEBUG Resume Info:")
+    logger.debug(f"   resume_from_timestring: {anim_args.resume_from_timestring}")
+    logger.debug(f"   resume_timestring: {anim_args.resume_timestring if hasattr(anim_args, 'resume_timestring') else 'N/A'}")
+    logger.debug(f"   root.timestring: {root.timestring}")
+    logger.debug(f"   args.outdir: {args.outdir}")
+    logger.debug(f"   data.output_directory: {data.output_directory}")
+    logger.debug(f"   Directory exists: {os.path.exists(data.output_directory)}")
     if os.path.exists(data.output_directory):
         files_in_dir = [f for f in os.listdir(data.output_directory) if f.endswith(('.png', '.jpg', '.jpeg'))]
-        log_utils.info(f"   Image files in directory: {len(files_in_dir)}", log_utils.YELLOW)
+        logger.debug(f"   Image files in directory: {len(files_in_dir)}")
         if len(files_in_dir) > 0:
-            log_utils.info(f"   First few files: {files_in_dir[:5]}", log_utils.YELLOW)
+            logger.debug(f"   First few files: {files_in_dir[:5]}")
 
     # ====================
     # PHASE 1: Batch Generate All Keyframes with Flux/SD
     # ====================
-    log_utils.info("\n" + "="*60, log_utils.GREEN)
-    log_utils.info("PHASE 1: Batch Keyframe Generation with Flux/SD", log_utils.GREEN)
-    log_utils.info("="*60, log_utils.GREEN)
+    logger.separator(char="=")
+    logger.info("PHASE 1: Batch Keyframe Generation with Flux/SD")
+    logger.separator(char="=")
 
     # Check for resume mode - scan for existing keyframes
     keyframe_images = {}  # {frame_index: image_path}
     is_resuming = anim_args.resume_from_timestring
     
     if is_resuming:
-        log_utils.info(f"🔄 Resume mode: Scanning for existing keyframes in {data.output_directory}...", log_utils.BLUE)
+        logger.info(f"{emoji_if_enabled('🔄')} Resume mode: Scanning for existing keyframes in {data.output_directory}...")
         for frame in keyframes:
             # Check simple format first (matches our save format: 000000001.png)
             simple_filename = f"{frame.i:09d}.png"
@@ -126,31 +125,31 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
 
             if os.path.exists(simple_path):
                 keyframe_images[frame.i] = simple_path
-                log_utils.info(f"   ✓ Found existing keyframe: {simple_filename}", log_utils.GREEN)
+                logger.info(f"   {emoji_if_enabled('✓')} Found existing keyframe: {simple_filename}")
             elif os.path.exists(timestring_path):
                 keyframe_images[frame.i] = timestring_path
-                log_utils.info(f"   ✓ Found existing keyframe (timestring format): {timestring_filename}", log_utils.GREEN)
+                logger.info(f"   {emoji_if_enabled('✓')} Found existing keyframe (timestring format): {timestring_filename}")
             else:
-                log_utils.info(f"   ✗ Missing keyframe at frame {frame.i} (tried: {simple_filename}, {timestring_filename})", log_utils.YELLOW)
+                logger.debug(f"   {emoji_if_enabled('✗')} Missing keyframe at frame {frame.i} (tried: {simple_filename}, {timestring_filename})")
         
         if len(keyframe_images) > 0:
-            log_utils.info(f"✅ Found {len(keyframe_images)}/{len(keyframes)} existing keyframes", log_utils.GREEN)
+            logger.info(f"{emoji_if_enabled('✅')} Found {len(keyframe_images)}/{len(keyframes)} existing keyframes")
 
     # Count how many keyframes need to be generated
     keyframes_to_generate = [f for f in keyframes if f.i not in keyframe_images]
     keyframes_existing = [f for f in keyframes if f.i in keyframe_images]
     
     if keyframes_existing:
-        log_utils.info(f"✅ Found {len(keyframes_existing)} existing keyframes from previous run", log_utils.GREEN)
+        logger.info(f"{emoji_if_enabled('✅')} Found {len(keyframes_existing)} existing keyframes from previous run")
     if keyframes_to_generate:
-        log_utils.info(f"📸 Need to generate {len(keyframes_to_generate)} new keyframes", log_utils.YELLOW)
+        logger.debug(f"{emoji_if_enabled('📸')} Need to generate {len(keyframes_to_generate)} new keyframes")
     
     for idx, frame in enumerate(keyframes):
         # Skip if keyframe already exists (resume mode)
         if frame.i in keyframe_images:
             continue
 
-        log_utils.info(f"\n📸 Generating NEW keyframe {idx + 1}/{len(keyframes)} (frame {frame.i})...", log_utils.YELLOW)
+        logger.debug(f"\n{emoji_if_enabled('📸')} Generating NEW keyframe {idx + 1}/{len(keyframes)} (frame {frame.i})...")
 
         # Set scheduled parameters for this frame (prompt, cfg_scale, distilled_cfg_scale, checkpoint, etc.)
         keys = data.animation_keys.deform_keys
@@ -180,7 +179,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         keyframe_path = save_keyframe(data, frame, image)
         keyframe_images[frame.i] = keyframe_path
 
-        log_utils.info(f"✅ Keyframe {idx + 1} saved: {os.path.basename(keyframe_path)}", log_utils.GREEN)
+        logger.info(f"{emoji_if_enabled('✅')} Keyframe {idx + 1} saved: {os.path.basename(keyframe_path)}")
 
         # Set first_frame for UI display (use first generated keyframe)
         if idx == 0:
@@ -195,31 +194,31 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         if first_keyframe_path and os.path.exists(first_keyframe_path):
             from PIL import Image
             data.args.root.first_frame = Image.open(first_keyframe_path)
-            log_utils.info(f"✅ Loaded first frame from disk for UI display", log_utils.GREEN)
+            logger.info(f"{emoji_if_enabled('✅')} Loaded first frame from disk for UI display")
     
-    log_utils.info(f"\n✅ Phase 1 Complete: {len(keyframes)} keyframes ready", log_utils.GREEN)
+    logger.info(f"\n{emoji_if_enabled('✅')} Phase 1 Complete: {len(keyframes)} keyframes ready")
     if from_resume > 0:
-        log_utils.info(f"   ({newly_generated} newly generated, {from_resume} from previous run)", log_utils.GREEN)
+        logger.info(f"   ({newly_generated} newly generated, {from_resume} from previous run)")
     else:
-        log_utils.info(f"   (All {newly_generated} keyframes newly generated with Flux/SD)", log_utils.GREEN)
+        logger.info(f"   (All {newly_generated} keyframes newly generated with Flux/SD)")
 
     # ====================
     # PHASE 2: Batch Frame Interpolation (Wan/RIFE/FILM)
     # ====================
-    log_utils.info("\n" + "="*60, log_utils.BLUE)
-    log_utils.info("PHASE 2: Batch Frame Interpolation", log_utils.BLUE)
-    log_utils.info("="*60, log_utils.BLUE)
+    logger.separator(char="=")
+    logger.info("PHASE 2: Batch Frame Interpolation")
+    logger.separator(char="=")
 
     # Get interpolation method (check once for all segments)
     interp_method = getattr(wan_args, 'flux_flf2v_interpolation_method', 'Wan')
-    log_utils.info(f"📊 Interpolation method: {interp_method}", log_utils.BLUE)
+    logger.info(f"{emoji_if_enabled('📊')} Interpolation method: {interp_method}")
 
     # Unload Flux model to free GPU memory
-    log_utils.info("🗑️  Unloading Flux model to free GPU memory...", log_utils.BLUE)
+    logger.info(f"{emoji_if_enabled('🗑')}️  Unloading Flux model to free GPU memory...")
     from backend import memory_management
     memory_management.unload_all_models()
     memory_management.soft_empty_cache()
-    log_utils.info("✅ GPU memory freed", log_utils.GREEN)
+    logger.info(f"{emoji_if_enabled('✅')} GPU memory freed")
 
     # Initialize Wan only if needed
     wan_integration = None
@@ -227,7 +226,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         wan_integration = WanSimpleIntegration(device='cuda')
 
         # Discover and load Wan model
-        log_utils.info("🔍 Discovering Wan FLF2V models...", log_utils.BLUE)
+        logger.info(f"{emoji_if_enabled('🔍')} Discovering Wan FLF2V models...")
         discovered_models = wan_integration.discover_models()
 
         if not discovered_models:
@@ -237,15 +236,15 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         flf2v_models = [m for m in discovered_models if m['type'] == 'FLF2V']
         if not flf2v_models:
             ti2v_models = [m['name'] for m in discovered_models if m['type'] in ('TI2V', 'T2V', 'I2V')]
-            log_utils.error("❌ No FLF2V model found!", log_utils.RED)
+            logger.error(f"{emoji_if_enabled('❌')} No FLF2V model found!")
             if ti2v_models:
-                log_utils.warning(f"   Found T2V/TI2V models: {', '.join(ti2v_models)}", log_utils.YELLOW)
-                log_utils.warning("   ⚠️  TI2V/T2V models CANNOT do FLF2V interpolation!", log_utils.YELLOW)
-            log_utils.info("   Download FLF2V model: huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers --local-dir models/Deforum/wan/Wan2.1-FLF2V-14B", log_utils.BLUE)
+                logger.warning(f"   Found T2V/TI2V models: {', '.join(ti2v_models)}")
+                logger.warning(f"   {emoji_if_enabled('⚠')}️  TI2V/T2V models CANNOT do FLF2V interpolation!")
+            logger.info("   Download FLF2V model: huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers --local-dir models/Deforum/wan/Wan2.1-FLF2V-14B")
             raise RuntimeError("FLF2V model required but not found. TI2V models cannot do FLF2V interpolation.")
 
         model_info = flf2v_models[0]
-        log_utils.info(f"📦 Loading Wan model: {model_info['name']}", log_utils.BLUE)
+        logger.info(f"{emoji_if_enabled('📦')} Loading Wan model: {model_info['name']}")
 
         # Load the Wan pipeline
         success = wan_integration.load_simple_wan_pipeline(model_info, wan_args)
@@ -263,10 +262,10 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         last_frame_idx = last_kf.i
         num_tween_frames = last_frame_idx - first_frame_idx - 1  # ONLY in-between frames (exclude both keyframes)
 
-        log_utils.info(f"\n🎞️ Interpolation Segment {idx + 1}/{len(keyframes) - 1}:", log_utils.RED)
-        log_utils.info(f"   From keyframe: {first_frame_idx}", log_utils.RED)
-        log_utils.info(f"   To keyframe: {last_frame_idx}", log_utils.RED)
-        log_utils.info(f"   In-between frames to generate: {num_tween_frames} (frames {first_frame_idx+1} to {last_frame_idx-1})", log_utils.RED)
+        logger.warning(f"\n{emoji_if_enabled('🎞')}️ Interpolation Segment {idx + 1}/{len(keyframes) - 1}:")
+        logger.warning(f"   From keyframe: {first_frame_idx}")
+        logger.warning(f"   To keyframe: {last_frame_idx}")
+        logger.warning(f"   In-between frames to generate: {num_tween_frames} (frames {first_frame_idx+1} to {last_frame_idx-1})")
 
         # Check if all frames in this segment already exist (resume mode)
         if is_resuming:
@@ -292,7 +291,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                     break
             
             if segment_complete:
-                log_utils.info(f"⏭️  Skipping segment {idx + 1} - all {num_tween_frames} frames already exist", log_utils.YELLOW)
+                logger.debug(f"{emoji_if_enabled('⏭')}️  Skipping segment {idx + 1} - all {num_tween_frames} frames already exist")
                 all_segment_frames.extend(segment_existing_frames)
                 continue
 
@@ -322,7 +321,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         target_width = data.width()
         target_height = data.height()
         if first_image.size != (target_width, target_height):
-            log_utils.info(f"   Resizing keyframes from {first_image.size} to {target_width}x{target_height}", log_utils.YELLOW)
+            logger.debug(f"   Resizing keyframes from {first_image.size} to {target_width}x{target_height}")
             first_image = first_image.resize((target_width, target_height), Image.LANCZOS)
             last_image = last_image.resize((target_width, target_height), Image.LANCZOS)
 
@@ -346,12 +345,12 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         else:
             flf2v_prompt = ""  # Default to no prompt
         
-        log_utils.info(f"   🎯 Interpolation Settings:", log_utils.BLUE)
-        log_utils.info(f"      Method: {interp_method}", log_utils.BLUE)
+        logger.info(f"   {emoji_if_enabled('🎯')} Interpolation Settings:")
+        logger.info(f"      Method: {interp_method}")
 
         # Route to appropriate interpolation function
         if interp_method == "FILM":
-            log_utils.info(f"      Using FILM (Frame Interpolation for Large Motion)", log_utils.BLUE)
+            logger.info(f"      Using FILM (Frame Interpolation for Large Motion)")
             segment_frames = generate_film_segment(
                 first_image=first_image,
                 last_image=last_image,
@@ -363,12 +362,12 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 fps=video_args.fps
             )
         else:  # Default: Wan
-            log_utils.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}", log_utils.BLUE)
-            log_utils.info(f"      Prompt mode: {flf2v_prompt_mode}", log_utils.BLUE)
-            log_utils.info(f"      First keyframe prompt: {first_prompt[:60]}...", log_utils.BLUE)
-            log_utils.info(f"      Last keyframe prompt: {last_prompt[:60]}...", log_utils.BLUE)
-            log_utils.info(f"      → Using: '{flf2v_prompt[:80]}...' {'(empty = pure interpolation)' if not flf2v_prompt else ''}", log_utils.BLUE)
-            log_utils.info(f"      Inference steps: {wan_args.wan_inference_steps}", log_utils.BLUE)
+            logger.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}")
+            logger.info(f"      Prompt mode: {flf2v_prompt_mode}")
+            logger.info(f"      First keyframe prompt: {first_prompt[:60]}...")
+            logger.info(f"      Last keyframe prompt: {last_prompt[:60]}...")
+            logger.info(f"      → Using: '{flf2v_prompt[:80]}...' {'(empty = pure interpolation)' if not flf2v_prompt else ''}")
+            logger.info(f"      Inference steps: {wan_args.wan_inference_steps}")
 
             # Call Wan FLF2V
             segment_frames = generate_flf2v_segment(
@@ -387,16 +386,16 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
 
         all_segment_frames.extend(segment_frames)
 
-        log_utils.info(f"✅ Segment {idx + 1} complete: {len(segment_frames)} frames", log_utils.GREEN)
+        logger.info(f"{emoji_if_enabled('✅')} Segment {idx + 1} complete: {len(segment_frames)} frames")
 
-    log_utils.info(f"\n✅ Phase 2 Complete: {len(all_segment_frames)} total frames from {interp_method}", log_utils.GREEN)
+    logger.info(f"\n{emoji_if_enabled('✅')} Phase 2 Complete: {len(all_segment_frames)} total frames from {interp_method}")
 
     # ====================
     # PHASE 3: Stitch Final Video
     # ====================
-    log_utils.info("\n" + "="*60, log_utils.BLUE)
-    log_utils.info("PHASE 3: Stitching Final Video", log_utils.BLUE)
-    log_utils.info("="*60, log_utils.BLUE)
+    logger.separator(char="=")
+    logger.info("PHASE 3: Stitching Final Video")
+    logger.separator(char="=")
 
     # Stitch video using existing utilities
     output_video_path = stitch_wan_flux_video(
@@ -406,8 +405,8 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         interp_method=interp_method
     )
 
-    log_utils.info(f"\n🎉 Flux + Interpolation Generation Complete!", log_utils.GREEN)
-    log_utils.info(f"📁 Output: {output_video_path}", log_utils.GREEN)
+    logger.info(f"\n{emoji_if_enabled('🎉')} Flux + Interpolation Generation Complete!")
+    logger.info(f"{emoji_if_enabled('📁')} Output: {output_video_path}")
 
     # Cleanup Wan if it was loaded
     if wan_integration is not None:
@@ -440,7 +439,7 @@ def generate_flf2v_segment(wan_integration, first_image, last_image, prompt, num
     import math
     adjusted_frames = math.ceil((num_frames - 1) / 4) * 4 + 1
     if adjusted_frames != num_frames:
-        log_utils.info(f"   Wan requires 4n+1 frames: {num_frames} → {adjusted_frames} (will generate extra, use first {num_frames})", log_utils.YELLOW)
+        logger.debug(f"   Wan requires 4n+1 frames: {num_frames} → {adjusted_frames} (will generate extra, use first {num_frames})")
 
     # Generate FLF2V interpolation
     result = wan_integration.pipeline.generate_flf2v(
@@ -477,7 +476,7 @@ def generate_flf2v_segment(wan_integration, first_image, last_image, prompt, num
         import numpy as np
         from PIL import Image
         
-        log_utils.info(f"   Processing FLF2V tensor/array with shape: {frames.shape}", log_utils.BLUE)
+        logger.info(f"   Processing FLF2V tensor/array with shape: {frames.shape}")
         
         if hasattr(frames, 'cpu'):
             frames_np = frames.cpu().numpy()
@@ -500,14 +499,14 @@ def generate_flf2v_segment(wan_integration, first_image, last_image, prompt, num
                 frame = np.clip(frame * 255, 0, 255).astype(np.uint8)
             frame_list.append(Image.fromarray(frame))
         
-        log_utils.info(f"   Extracted {len(frame_list)} FLF2V frames", log_utils.BLUE)
+        logger.info(f"   Extracted {len(frame_list)} FLF2V frames")
         
     elif hasattr(frames, '__getitem__') and hasattr(frames, '__len__'):
         # It's indexable and has length (like a tensor or array)
-        log_utils.info(f"   Converting indexable FLF2V output (length: {len(frames)})", log_utils.BLUE)
+        logger.info(f"   Converting indexable FLF2V output (length: {len(frames)})")
         frame_list = [frames[i] for i in range(len(frames))]
     else:
-        log_utils.error("Unable to extract frames from FLF2V output")
+        logger.error("Unable to extract frames from FLF2V output")
         raise RuntimeError(f"Unexpected FLF2V output format: {type(result)}")
 
     # Save frames (only first num_frames, discard extras from 4n+1 padding)
@@ -515,7 +514,7 @@ def generate_flf2v_segment(wan_integration, first_image, last_image, prompt, num
     frames_to_save = min(num_frames, len(frame_list))
     
     if len(frame_list) > num_frames:
-        log_utils.info(f"   Generated {len(frame_list)} frames, using first {num_frames} (discarding {len(frame_list) - num_frames} padding frames)", log_utils.YELLOW)
+        logger.debug(f"   Generated {len(frame_list)} frames, using first {num_frames} (discarding {len(frame_list) - num_frames} padding frames)")
     
     for local_idx in range(frames_to_save):
         frame = frame_list[local_idx]
@@ -559,7 +558,7 @@ def stitch_wan_flux_video(data, frame_paths, video_args, interp_method="Wan"):
     )
 
     total_frames = len(all_frames)
-    log_utils.info(f"🎬 Stitching {total_frames} total frames into video...", log_utils.BLUE)
+    logger.info(f"{emoji_if_enabled('🎬')} Stitching {total_frames} total frames into video...")
 
     # Create concat file list for ffmpeg
     concat_file = os.path.join(data.output_directory, f"_{data.args.root.timestring}_concat.txt")
@@ -590,22 +589,22 @@ def stitch_wan_flux_video(data, frame_paths, video_args, interp_method="Wan"):
             output_path
         ]
 
-        log_utils.info(f"   Running ffmpeg concat...", log_utils.BLUE)
+        logger.info(f"   Running ffmpeg concat...")
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         stdout, stderr = process.communicate()
 
         if process.returncode != 0:
-            log_utils.error(f"FFmpeg failed: {stderr}")
+            logger.error(f"FFmpeg failed: {stderr}")
             raise RuntimeError(f"FFmpeg failed with return code {process.returncode}")
 
-        log_utils.info(f"✅ Video stitched successfully", log_utils.GREEN)
+        logger.info(f"{emoji_if_enabled('✅')} Video stitched successfully")
 
         # Add audio if specified (use pre-downloaded path from video_args)
-        log_utils.info(f"🔍 DEBUG: video_args.add_soundtrack = {video_args.add_soundtrack}")
-        log_utils.info(f"🔍 DEBUG: video_args.soundtrack_path = {video_args.soundtrack_path}")
+        logger.debug(f"{emoji_if_enabled('🔍')} DEBUG: video_args.add_soundtrack = {video_args.add_soundtrack}")
+        logger.debug(f"{emoji_if_enabled('🔍')} DEBUG: video_args.soundtrack_path = {video_args.soundtrack_path}")
 
         if video_args.add_soundtrack == 'File' and video_args.soundtrack_path:
-            log_utils.info(f"🎵 Adding audio track...", log_utils.BLUE)
+            logger.info(f"{emoji_if_enabled('🎵')} Adding audio track...")
             temp_output = output_path + '.temp.mp4'
 
             audio_cmd = [
@@ -624,10 +623,10 @@ def stitch_wan_flux_video(data, frame_paths, video_args, interp_method="Wan"):
             audio_stdout, audio_stderr = audio_process.communicate()
 
             if audio_process.returncode != 0:
-                log_utils.warning(f"Failed to add audio: {audio_stderr}")
+                logger.warning(f"Failed to add audio: {audio_stderr}")
             else:
                 os.replace(temp_output, output_path)
-                log_utils.info(f"✅ Audio added successfully", log_utils.GREEN)
+                logger.info(f"{emoji_if_enabled('✅')} Audio added successfully")
 
     finally:
         # Cleanup concat file
@@ -663,7 +662,7 @@ def generate_film_segment(first_image, last_image, num_frames, height, width,
     from deforum.integrations.external_repos.film_interpolation.film_inference import run_film_interp_infer
     from deforum.media.interpolation.frame_interpolation import check_and_download_film_model
 
-    log_utils.info(f"   🎬 FILM interpolation: {num_frames} frames", log_utils.BLUE)
+    logger.info(f"   {emoji_if_enabled('🎬')} FILM interpolation: {num_frames} frames")
 
     # Create working directory for FILM in the output directory (not /tmp)
     # This avoids cleanup issues and keeps intermediate files with the project
@@ -679,14 +678,14 @@ def generate_film_segment(first_image, last_image, num_frames, height, width,
         first_image.save(os.path.join(temp_input, "0000000.png"))
         last_image.save(os.path.join(temp_input, "0000001.png"))
 
-        log_utils.info(f"   Generating {num_frames} intermediate frames", log_utils.YELLOW)
-        log_utils.info(f"   Temp input: {temp_input}", log_utils.YELLOW)
+        logger.debug(f"   Generating {num_frames} intermediate frames")
+        logger.debug(f"   Temp input: {temp_input}")
 
         # Ensure FILM model is downloaded
         film_model_folder = os.path.join(os.getcwd(), "models", "Deforum")
         film_model_path = os.path.join(film_model_folder, "film_net_fp16.pt")
 
-        log_utils.info(f"   Checking FILM model: {film_model_path}", log_utils.YELLOW)
+        logger.debug(f"   Checking FILM model: {film_model_path}")
         check_and_download_film_model('film_net_fp16.pt', film_model_folder)
 
         # FILM's inter_frames parameter = number of frames to ADD between input frames
@@ -717,7 +716,7 @@ def generate_film_segment(first_image, last_image, num_frames, height, width,
             shutil.copy2(film_frame_path, target_path)
             frame_paths.append(target_path)
 
-        log_utils.info(f"   ✅ FILM generated {len(frame_paths)} tween frames", log_utils.GREEN)
+        logger.info(f"   {emoji_if_enabled('✅')} FILM generated {len(frame_paths)} tween frames")
         return frame_paths
 
     finally:

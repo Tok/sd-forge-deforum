@@ -8,6 +8,8 @@ logger = get_logger()
 
 def print_startup_banner():
     """Print Deforum initialization banner with slopcore purple gradient."""
+    import os
+    from pathlib import Path
 
     # ANSI color codes for 7-shade slopcore purple gradient
     from deforum.utils.system.logging.themes import (
@@ -28,6 +30,15 @@ def print_startup_banner():
     WHITE = "\033[97m"
     RESET = "\033[0m"
     BOLD = "\033[1m"
+
+    # Detect Forge Neo vs classic Forge
+    # Neo has text_encoder/ directory, classic has text encoders in VAE/
+    try:
+        import modules.paths as ph
+        models_dir = Path(ph.models_path)
+        is_forge_neo = (models_dir / "text_encoder").exists()
+    except:
+        is_forge_neo = False
 
     # Create gradient border using all 7 shades (12-13 chars per shade for 90 total)
     # Text line is 90 chars (was miscounted), border reduced by 5
@@ -53,15 +64,26 @@ def print_startup_banner():
         f"{RESET}"
     )
 
+    # Different messages for Neo vs classic Forge
+    if is_forge_neo:
+        # Forge Neo: Built-in Flux/Wan support, minimal patching needed
+        features_text = f"""{WHITE}Forge Neo Enhancements:
+  - Leveraging built-in Flux.1 and Wan 2.1/2.2 support
+  - Slopcore UI theme with checkbox-style buttons
+  - Flux ControlNet V2 + FLF2V interpolation workflows{RESET}"""
+    else:
+        # Classic Forge: Needs compatibility patches
+        features_text = f"""{WHITE}Applying compatibility patches for Flux.1 ControlNet V2 + Wan 2.1/2.2 AI Video:
+  - Flux ControlNet V2 support (patching Forge's IntegratedFluxTransformer2DModel)
+  - FlowMatchEulerDiscreteScheduler compatibility (diffusers git main + Forge)
+  - Wan 2.1 FLF2V + Wan 2.2 TI2V pipeline integration{RESET}"""
+
     # Text and border both 95 chars - perfect match
     banner = f"""
 {border_top}
 {SLOPCORE_4}{BOLD}Stable Diffusion WebUI Forge Enhanced By Zirteq's Fluxabled Fork of the Deforum Extension{RESET}
 {border_bot}
-{WHITE}Applying compatibility patches for Flux.1 ControlNet V2 + Wan 2.1/2.2 AI Video:
-  - Flux ControlNet V2 support (patching Forge's IntegratedFluxTransformer2DModel)
-  - FlowMatchEulerDiscreteScheduler compatibility (diffusers git main + Forge)
-  - Wan 2.1 FLF2V + Wan 2.2 TI2V pipeline integration{RESET}
+{features_text}
 {BOLD}Primary Target:{RESET} Forge Neo (fully tested and supported)
 {BOLD}Other Forge versions:{RESET} May work but remain untested
 {BOLD}Note:{RESET} Optimized for Flux/Wan workflows in dedicated Forge Neo instance

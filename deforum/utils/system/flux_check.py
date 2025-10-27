@@ -17,26 +17,44 @@ def is_flux_available() -> bool:
     Check if Flux model is available in Forge.
 
     Returns:
-        True if Flux appears to be configured, False otherwise
+        True if Flux appears to be configured or files exist on disk, False otherwise
     """
     try:
-        # Check if a checkpoint is selected
-        if not hasattr(shared, 'opts') or not hasattr(shared.opts, 'sd_model_checkpoint'):
-            return False
+        import os
+        import glob
+        from pathlib import Path
 
-        checkpoint = shared.opts.sd_model_checkpoint or ""
-        checkpoint_lower = checkpoint.lower()
+        # Method 1: Check if currently selected checkpoint is Flux
+        if hasattr(shared, 'opts') and hasattr(shared.opts, 'sd_model_checkpoint'):
+            checkpoint = shared.opts.sd_model_checkpoint or ""
+            if "flux" in checkpoint.lower():
+                return True
 
-        # Check if checkpoint name contains "flux"
-        if "flux" in checkpoint_lower:
-            return True
-
-        # Check if sd_model exists and has flux in the name
+        # Method 2: Check if loaded model is Flux
         if hasattr(shared, 'sd_model') and shared.sd_model is not None:
             if hasattr(shared.sd_model, 'sd_model_checkpoint'):
                 model_name = getattr(shared.sd_model, 'sd_model_checkpoint', '').lower()
                 if "flux" in model_name:
                     return True
+
+        # Method 3: Check if Flux model files exist on disk (most reliable during startup)
+        try:
+            import modules.paths as ph
+            models_dir = Path(ph.models_path)
+
+            # Check common Flux model locations
+            flux_locations = [
+                models_dir / "Stable-diffusion" / "Flux" / "flux*.safetensors",
+                models_dir / "Stable-diffusion" / "flux*.safetensors",
+            ]
+
+            for pattern in flux_locations:
+                matches = glob.glob(str(pattern))
+                if matches:
+                    logger.debug(f"Found Flux model on disk: {matches[0]}")
+                    return True
+        except:
+            pass
 
         return False
 
