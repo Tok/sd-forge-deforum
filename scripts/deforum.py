@@ -43,7 +43,12 @@ def init_deforum():
 
         if not is_flux_available():
             print("[Deforum] Flux model not detected - starting auto-download...")
-            print("[Deforum] This will download ~12GB of files. Please wait...")
+            print("[Deforum] This will download ~15GB across 4 files:")
+            print("[Deforum]   - flux1-dev-bnb-nf4-v2.safetensors (~5GB)")
+            print("[Deforum]   - clip_l.safetensors (~250MB)")
+            print("[Deforum]   - t5xxl_fp16.safetensors (~9.8GB)")
+            print("[Deforum]   - ae.safetensors (~300MB)")
+            print("[Deforum] Please wait...")
             auto_download_flux_if_needed()
     except Exception as e:
         print(f"⚠️ Deforum: Failed to auto-download Flux: {e}")

@@ -22,12 +22,15 @@ class FluxModelDownloader:
         self.models_dir = self._detect_models_directory()
 
         # Model options - try quantized first (lower VRAM), fall back to full model
+        # Note: Place in Stable-diffusion/Flux/ subdirectory to keep organized
+        flux_model_dir = str(self.models_dir / "Stable-diffusion" / "Flux")
+
         self.model_options = [
             {
                 "name": "quantized",
                 "repo_id": "lllyasviel/flux1-dev-bnb-nf4",
                 "filename": "flux1-dev-bnb-nf4-v2.safetensors",
-                "local_dir": str(self.models_dir / "Stable-diffusion"),
+                "local_dir": flux_model_dir,
                 "description": "Flux.1 Dev NF4 (quantized, ~5GB, works on 12GB VRAM)",
                 "size_gb": 5,
                 "gated": False,  # lllyasviel's repo is ungated
@@ -37,7 +40,7 @@ class FluxModelDownloader:
                 "name": "full",
                 "repo_id": "black-forest-labs/FLUX.1-dev",
                 "filename": "flux1-dev.safetensors",
-                "local_dir": str(self.models_dir / "Stable-diffusion"),
+                "local_dir": flux_model_dir,
                 "description": "Flux.1 Dev (official, ~24GB, requires 24GB+ VRAM & HF login)",
                 "size_gb": 24,
                 "gated": True,
@@ -46,27 +49,38 @@ class FluxModelDownloader:
             }
         ]
 
-        self.vae_options = [
+        # Text encoders and VAE - all required for Flux
+        self.text_encoder_files = [
             {
-                "name": "default",
-                "repo_id": "lllyasviel/flux1-dev-bnb-nf4",
-                "filename": "ae.safetensors",
+                "name": "clip_l",
+                "repo_id": "comfyanonymous/flux_text_encoders",
+                "filename": "clip_l.safetensors",
                 "local_dir": str(self.models_dir / "VAE"),
-                "description": "Flux.1 VAE (ungated mirror)",
-                "size_gb": 0.3,
+                "description": "CLIP-L text encoder",
+                "size_gb": 0.25,
                 "gated": False,
                 "recommended": True
             },
             {
-                "name": "official",
+                "name": "t5xxl_fp16",
+                "repo_id": "comfyanonymous/flux_text_encoders",
+                "filename": "t5xxl_fp16.safetensors",
+                "local_dir": str(self.models_dir / "VAE"),
+                "description": "T5-XXL FP16 text encoder",
+                "size_gb": 9.8,
+                "gated": False,
+                "recommended": True
+            },
+            {
+                "name": "ae_vae",
                 "repo_id": "black-forest-labs/FLUX.1-dev",
                 "filename": "ae.safetensors",
                 "local_dir": str(self.models_dir / "VAE"),
-                "description": "Flux.1 VAE (official)",
+                "description": "Flux.1 VAE (autoencoder)",
                 "size_gb": 0.3,
                 "gated": True,
                 "license_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev",
-                "recommended": False
+                "recommended": True
             }
         ]
 
@@ -192,11 +206,11 @@ class FluxModelDownloader:
 
     def download_flux_and_vae(self) -> bool:
         """
-        Download recommended Flux model and VAE.
+        Download recommended Flux model, text encoders, and VAE.
         Tries quantized version first (lower VRAM), falls back to full model if needed.
 
         Returns:
-            True if both downloaded successfully, False otherwise
+            True if all files downloaded successfully, False otherwise
         """
         # Check/install huggingface-cli
         if not self.check_huggingface_cli():
@@ -205,14 +219,21 @@ class FluxModelDownloader:
                 logger.error("Failed to install huggingface_hub")
                 return False
 
-        logger.info("Starting Flux model and VAE download...")
+        logger.info("Starting Flux model, text encoders, and VAE download...")
         logger.info(f"Models will be saved to: {self.models_dir}")
+        logger.info("")
+        logger.info("This will download ~12GB across 4 files:")
+        logger.info("  - flux1-dev-bnb-nf4-v2.safetensors (~5GB)")
+        logger.info("  - clip_l.safetensors (~250MB)")
+        logger.info("  - t5xxl_fp16.safetensors (~9.8GB)")
+        logger.info("  - ae.safetensors (~300MB)")
+        logger.info("")
 
         # Try downloading quantized model first (recommended for most users)
         success_model = False
         for model_option in self.model_options:
             if model_option.get("recommended", False):
-                logger.info(f"Trying recommended option: {model_option['description']}")
+                logger.info(f"[1/4] Downloading {model_option['description']}")
                 success_model = self.download_model(model_option)
                 if success_model:
                     break
@@ -229,21 +250,40 @@ class FluxModelDownloader:
                         logger.error(f"    Visit: {model_option.get('license_url', 'N/A')}")
             return False
 
-        # Try downloading VAE (try ungated first)
-        success_vae = False
-        for vae_option in self.vae_options:
-            if vae_option.get("recommended", False):
-                success_vae = self.download_model(vae_option)
-                if success_vae:
-                    break
+        # Download all text encoders and VAE (all required)
+        logger.info("")
+        logger.info("Downloading text encoders and VAE...")
+        text_encoder_success = []
+        for idx, encoder_file in enumerate(self.text_encoder_files, start=2):
+            logger.info(f"[{idx}/4] Downloading {encoder_file['description']}")
+            success = self.download_model(encoder_file)
+            text_encoder_success.append(success)
 
-        if success_model and success_vae:
+            # For gated files, provide instructions but continue
+            if not success and encoder_file.get("gated"):
+                logger.warning(f"Skipping {encoder_file['filename']} (requires HF authentication)")
+                logger.warning("You can download it manually later if needed")
+
+        # Check if we have at least the critical files
+        all_success = success_model and all(text_encoder_success)
+
+        if all_success:
             logger.info("")
-            logger.info("✓ Flux model and VAE downloaded successfully!")
+            logger.info("✓ Flux model and all components downloaded successfully!")
             logger.info("Please restart Forge and select the Flux model from the checkpoint dropdown")
             return True
         else:
-            logger.error("Failed to download Flux VAE")
+            # Check which files failed
+            failed_files = []
+            if not success_model:
+                failed_files.append("flux1-dev-bnb-nf4-v2.safetensors")
+            for idx, success in enumerate(text_encoder_success):
+                if not success:
+                    failed_files.append(self.text_encoder_files[idx]["filename"])
+
+            logger.error("")
+            logger.error(f"Failed to download some files: {', '.join(failed_files)}")
+            logger.error("Flux may not work properly without all required files")
             return False
 
 
