@@ -55,3 +55,9 @@ def preload(parser):
         help="Whether to shut down the a1111 process immediately after completing the generations passed in to '--deforum-run-now'.",
         default=False,  # Must be False, not None, for proper FlagsModel type inference
     )
+    parser.add_argument(
+        "--deforum-run-tuning",
+        action="store_true",
+        help="Enable parameter tuning mode: launches Deforum API and shows Tuning tab for automated quality assessment",
+        default=False,
+    )
