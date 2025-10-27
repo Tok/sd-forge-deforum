@@ -6,6 +6,7 @@ REM   run-api-tests.bat                          REM Run all tests (force restar
 REM   run-api-tests.bat --quick                  REM Skip post-processing tests (faster)
 REM   run-api-tests.bat --reuse-server           REM Reuse existing server if running
 REM   run-api-tests.bat --force-restart          REM Force restart server (default behavior)
+REM   run-api-tests.bat --snapshot-update        REM Update test snapshots (after intentional changes)
 REM   run-api-tests.bat tests\integration\api_test.py::test_simple_settings  REM Run specific test
 
 setlocal enabledelayedexpansion
@@ -26,7 +27,9 @@ REM Parse arguments
 set QUICK_MODE=false
 set FORCE_RESTART=true
 set REUSE_SERVER=false
+set SNAPSHOT_UPDATE=false
 set TEST_ARGS=
+set PYTEST_ARGS=
 
 :parse_args
 if "%~1"=="" goto :args_done
@@ -38,6 +41,9 @@ if "%~1"=="--quick" (
 ) else if "%~1"=="--force-restart" (
     set FORCE_RESTART=true
     set REUSE_SERVER=false
+) else if "%~1"=="--snapshot-update" (
+    set SNAPSHOT_UPDATE=true
+    set PYTEST_ARGS=!PYTEST_ARGS! --snapshot-update
 ) else (
     set TEST_ARGS=!TEST_ARGS! %~1
 )
@@ -175,13 +181,34 @@ if errorlevel 1 (
 REM Run tests
 echo.
 echo ========================================
-echo Running Integration Tests (Unit tests excluded)
-echo ========================================
+if "!SNAPSHOT_UPDATE!"=="true" (
+    echo [WARNING] SNAPSHOT UPDATE MODE ENABLED
+    echo This will update test snapshots with current output
+    echo Only use this after intentional changes!
+    echo ========================================
+) else (
+    echo Running Integration Tests (Unit tests excluded)
+    echo ========================================
+)
 echo.
 
 REM Run tests (don't exit on failure)
-"%FORGE_DIR%\venv\Scripts\python.exe" -m pytest !TEST_ARGS! -v --tb=short --no-cov --ignore=tests\unit
+"%FORGE_DIR%\venv\Scripts\python.exe" -m pytest !TEST_ARGS! !PYTEST_ARGS! -v --tb=short --no-cov --ignore=tests\unit
 set TEST_EXIT_CODE=%errorlevel%
+
+REM Show reminder after snapshot update
+if "!SNAPSHOT_UPDATE!"=="true" (
+    if %TEST_EXIT_CODE% equ 0 (
+        echo.
+        echo [OK] Snapshots updated successfully
+        echo [WARNING] IMPORTANT: Review changes before committing!
+        echo.
+        echo Next steps:
+        echo   1. Review: git diff tests/__snapshots__/
+        echo   2. Commit: git add tests/__snapshots__/ ^&^& git commit -m "test: Update snapshots for [reason]"
+        echo   3. Or revert: git checkout tests/__snapshots__/
+    )
+)
 
 REM Cleanup
 :cleanup

@@ -6,6 +6,7 @@
 #   ./run-api-tests.sh --quick                  # Skip post-processing tests (faster)
 #   ./run-api-tests.sh --reuse-server           # Reuse existing server if running
 #   ./run-api-tests.sh --force-restart          # Force restart server (default behavior)
+#   ./run-api-tests.sh --snapshot-update        # Update test snapshots (after intentional changes)
 #   ./run-api-tests.sh tests/integration/api_test.py::test_simple_settings  # Run specific test
 
 set -e  # Exit on error
@@ -30,7 +31,9 @@ PID_FILE="${EXTENSION_DIR}/.test-server.pid"
 QUICK_MODE=false
 FORCE_RESTART=true  # Default to always restart for test consistency
 REUSE_SERVER=false
+SNAPSHOT_UPDATE=false
 TEST_ARGS=""
+PYTEST_ARGS=""
 for arg in "$@"; do
     if [ "$arg" = "--quick" ]; then
         QUICK_MODE=true
@@ -40,6 +43,9 @@ for arg in "$@"; do
     elif [ "$arg" = "--force-restart" ]; then
         FORCE_RESTART=true
         REUSE_SERVER=false
+    elif [ "$arg" = "--snapshot-update" ]; then
+        SNAPSHOT_UPDATE=true
+        PYTEST_ARGS="$PYTEST_ARGS --snapshot-update"
     else
         TEST_ARGS="$TEST_ARGS $arg"
     fi
@@ -218,15 +224,32 @@ fi
 
 # Run tests
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}Running Integration Tests (Unit tests excluded)${NC}"
-echo -e "${GREEN}========================================${NC}\n"
+if [ "$SNAPSHOT_UPDATE" = true ]; then
+    echo -e "${YELLOW}⚠️  SNAPSHOT UPDATE MODE ENABLED${NC}"
+    echo -e "${YELLOW}This will update test snapshots with current output${NC}"
+    echo -e "${YELLOW}Only use this after intentional changes!${NC}"
+    echo -e "${GREEN}========================================${NC}\n"
+else
+    echo -e "${GREEN}Running Integration Tests (Unit tests excluded)${NC}"
+    echo -e "${GREEN}========================================${NC}\n"
+fi
 
 set +e  # Don't exit on test failure
 # Disable coverage for integration tests (not useful and slows down tests)
 # Explicitly ignore unit tests to keep integration test logs clean
-"$FORGE_DIR/venv/bin/python" -m pytest $TEST_ARGS -v --tb=short --no-cov --ignore=tests/unit
+"$FORGE_DIR/venv/bin/python" -m pytest $TEST_ARGS $PYTEST_ARGS -v --tb=short --no-cov --ignore=tests/unit
 TEST_EXIT_CODE=$?
 set -e
+
+# Show reminder after snapshot update
+if [ "$SNAPSHOT_UPDATE" = true ] && [ $TEST_EXIT_CODE -eq 0 ]; then
+    echo -e "\n${GREEN}✓ Snapshots updated successfully${NC}"
+    echo -e "${YELLOW}⚠️  IMPORTANT: Review changes before committing!${NC}"
+    echo -e "\n${BLUE}Next steps:${NC}"
+    echo -e "  1. Review: ${GREEN}git diff tests/__snapshots__/${NC}"
+    echo -e "  2. Commit: ${GREEN}git add tests/__snapshots__/ && git commit -m 'test: Update snapshots for [reason]'${NC}"
+    echo -e "  3. Or revert: ${RED}git checkout tests/__snapshots__/${NC}"
+fi
 
 # If using existing server, don't clean it up
 if [ "$EXISTING_SERVER" = true ]; then

@@ -154,11 +154,16 @@ Run specific integration test:
 When you make intentional changes that affect test output (e.g., frame numbering, subtitle format), you need to update snapshots:
 
 ```bash
-./update-snapshots.sh
+./run-api-tests.sh --snapshot-update
 ```
 
-This script will:
-1. Start the Forge server
+Or on Windows:
+```bat
+run-api-tests.bat --snapshot-update
+```
+
+This will:
+1. Start the Forge server (or reuse existing)
 2. Run tests with `--snapshot-update` flag
 3. Show you what changed
 4. Prompt you to review and commit
@@ -172,20 +177,17 @@ This script will:
 - ❌ NOT when tests randomly fail (that's a bug!)
 - ❌ NOT automatically in CI (defeats the purpose)
 
-**Manual snapshot update:**
+**After updating, always review:**
 ```bash
-# Start server
-python ../../../webui.py --deforum-api &
-
-# Update snapshots
-pytest tests/integration/ --snapshot-update
-
 # Review changes
 git diff tests/__snapshots__/
 
 # Commit if correct
 git add tests/__snapshots__/
 git commit -m "test: Update snapshots for [reason]"
+
+# Or revert if incorrect
+git checkout tests/__snapshots__/
 ```
 
 ### Quick Manual API Test (No pytest required)
