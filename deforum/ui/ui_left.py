@@ -125,10 +125,18 @@ def setup_deforum_left_side_ui():
 
         gr.HTML(value=get_flux_setup_message())
 
-        # Return minimal component set for compatibility
-        return {
-            'show_info_on_ui': show_info_on_ui,
-        }
+        # Create dummy components for all expected keys to prevent KeyErrors
+        from deforum.config.args import get_component_names
+        dummy_textbox = gr.Textbox(visible=False)
+
+        result = {'show_info_on_ui': show_info_on_ui}
+
+        # Add dummy components for all expected component names
+        for name in get_component_names():
+            if name not in result:
+                result[name] = dummy_textbox
+
+        return result
 
     # Normal UI setup continues if Flux is available
     # show button to hide/ show gradio's info texts for each element in the UI

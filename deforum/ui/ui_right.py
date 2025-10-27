@@ -346,7 +346,17 @@ def on_ui_tabs():
             outputs=[live_preview_image, depth_preview_image]
         )
 
-        component_list = [components[name] for name in get_component_names()]
+        # Check if Flux blocker is active (minimal component set)
+        is_flux_blocker_active = len(components) < 10  # Minimal set has only ~2 components
+
+        if is_flux_blocker_active:
+            print("[INFO] Flux blocker active - Deforum UI will show setup instructions")
+            # In blocker mode, just use what components we have
+            component_list = [components.get(name, dummy_component) for name in ['show_info_on_ui']]
+        else:
+            # Normal mode - get all components
+            component_names_needed = get_component_names()
+            component_list = [components[name] for name in component_names_needed]
 
         submit.click(
                     fn=wrap_gradio_gpu_call(run_deforum),
