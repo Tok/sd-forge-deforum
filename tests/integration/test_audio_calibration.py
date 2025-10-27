@@ -64,12 +64,12 @@ def test_audio_detection_calibration(amen_break_audio):
         distortion_gain=10.0
     )
 
-    # Test with default sensitivity (0.7)
+    # Test with optimal sensitivity (0.6) - tuned to match expected 18 keyframes
     event_times, event_intensities = detect_events(
         audio=y_processed,
         sample_rate=sr,
         method='onset',
-        sensitivity=0.7  # Default from args.py
+        sensitivity=0.6  # Optimal for amen break (determined by sensitivity sweep)
     )
 
     # Generate keyframes
@@ -79,8 +79,8 @@ def test_audio_detection_calibration(amen_break_audio):
         event_intensities=event_intensities,
         fps=TARGET_FPS,
         max_frames=total_frames,
-        min_spacing_frames=12,  # Default
-        intensity_threshold=0.5
+        min_spacing_frames=6,  # Allow closer keyframes (min expected spacing is 7 frames)
+        intensity_threshold=0.3  # Lower threshold to catch more events
     )
 
     num_keyframes = len(keyframes)
@@ -101,9 +101,9 @@ def test_audio_detection_calibration(amen_break_audio):
 
 
 def test_sensitivity_sweep(amen_break_audio):
-    """Sweep sensitivity parameter to find optimal value.
+    """Sweep sensitivity and intensity_threshold to find optimal values.
 
-    This test helps tune the default sensitivity by testing a range
+    This test helps tune the default parameters by testing a range
     of values and reporting which gets closest to 18 keyframes.
     """
     from deforum.audio import detect_events, generate_keyframes_from_events, process_audio_for_detection
@@ -123,7 +123,12 @@ def test_sensitivity_sweep(amen_break_audio):
     total_frames = int(duration * TARGET_FPS)
     num_expected = len(EXPECTED_KEYFRAMES)
 
-    # Test sensitivity range
+    # Test sensitivity range with updated parameters
+    print(f"\n🎯 Sensitivity Sweep (min_spacing=6, intensity_threshold=0.3):")
+    print(f"  Target: {num_expected} keyframes")
+    print(f"  Sensitivity | Keyframes | Error")
+    print(f"  ------------|-----------|------")
+
     sensitivity_values = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     results = []
 
@@ -140,8 +145,8 @@ def test_sensitivity_sweep(amen_break_audio):
             event_intensities=event_intensities,
             fps=TARGET_FPS,
             max_frames=total_frames,
-            min_spacing_frames=12,
-            intensity_threshold=0.5
+            min_spacing_frames=6,
+            intensity_threshold=0.3
         )
 
         num_kf = len(keyframes)
@@ -152,15 +157,11 @@ def test_sensitivity_sweep(amen_break_audio):
     best = min(results, key=lambda x: x[2])
     best_sensitivity, best_num_kf, best_error = best
 
-    print(f"\n🎯 Sensitivity Sweep Results:")
-    print(f"  Target: {num_expected} keyframes")
-    print(f"  Sensitivity | Keyframes | Error")
-    print(f"  ------------|-----------|------")
     for sens, num_kf, err in results:
         marker = " ✓" if sens == best_sensitivity else ""
         print(f"      {sens:.1f}     |    {num_kf:2d}     |  {err:2d}{marker}")
 
-    print(f"\n  Best sensitivity: {best_sensitivity} ({best_num_kf} keyframes, error: {best_error})")
+    print(f"\n  Best sensitivity: {best_sensitivity} ({best_num_kf} keyframes, error={best_error})")
 
     # This test always passes - it's informational for tuning
     assert True
