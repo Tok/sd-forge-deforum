@@ -79,17 +79,21 @@ def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
         # Reverse the frame list
         generation_order_frames = list(reversed(frames))
 
-        # Reassign tweens: move each frame's tweens to the NEXT frame in generation order
+        # Reassign tweens: save all tweens first, then reassign to next frame in generation order
         # (which is the PREVIOUS frame in timeline order)
         # This way tweens are emitted AFTER their source keyframe is generated
+        saved_tweens = [frame.tweens for frame in generation_order_frames]
+
+        # Clear all tweens first
+        for frame in generation_order_frames:
+            frame.tweens = []
+
+        # Reassign: each frame's original tweens go to the next frame in generation order
         for i in range(len(generation_order_frames) - 1):
-            current_frame = generation_order_frames[i]
-            next_frame = generation_order_frames[i + 1]
-            # Move current frame's tweens to next frame
-            next_frame.tweens = current_frame.tweens
-            current_frame.tweens = []
-        # Last frame in generation order (first in timeline) has no tweens
-        generation_order_frames[-1].tweens = []
+            generation_order_frames[i + 1].tweens = saved_tweens[i]
+
+        # First frame in generation order (last in timeline) has no tweens
+        generation_order_frames[0].tweens = []
     else:
         generation_order_frames = frames
 
