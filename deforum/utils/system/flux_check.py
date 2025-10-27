@@ -82,4 +82,13 @@ def should_show_flux_blocker() -> bool:
     Returns:
         True if blocker should be shown, False if Deforum UI should load normally
     """
+    # Forge Neo has Flux built-in, so never block
+    # Check if we're running on Forge Neo by looking for Neo-specific markers
+    try:
+        from modules.shared import cmd_opts
+        if hasattr(cmd_opts, 'neo') or 'neo' in str(getattr(cmd_opts, 'version', '')).lower():
+            return False
+    except:
+        pass
+
     return not is_flux_available()

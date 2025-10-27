@@ -82,6 +82,7 @@ def get_latest_frames():
         return None, None
 
 def on_ui_tabs():
+    print("[DEBUG DEFORUM] on_ui_tabs() called!")
     # extend paths using sys.path.extend so we can access all of our files and folders
     deforum_sys_extend()
     # set text above generate button
