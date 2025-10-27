@@ -889,10 +889,10 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 with FormRow():
                     audio_ai_generation_mode = gr.Dropdown(
                         label="Generation Mode",
-                        choices=["", "escalating", "start-to-end", "varied", "thematic", "narrative", "cyclical", "random-walk"],
+                        choices=["", "escalating", "start-to-end", "varied", "thematic", "narrative", "cyclical", "random-walk", "first-person-perspective"],
                         value="escalating",
                         allow_custom_value=True,
-                        info="Leave empty or type custom. escalating=build intensity, start-to-end=interpolate, varied=random mix, thematic=variations, narrative=story, cyclical=loops, random-walk=related changes"
+                        info="Leave empty or type custom. escalating=build intensity, start-to-end=interpolate, varied=random mix, thematic=variations, narrative=story, cyclical=loops, random-walk=related changes, first-person-perspective=POV camera (great for reverse generation)"
                     )
                     audio_ai_intensity = gr.Dropdown(
                         label="Intensity",
