@@ -21,20 +21,20 @@ class FluxModelDownloader:
         # Detect Forge models directory
         self.models_dir = self._detect_models_directory()
 
-        # Use City96's ungated quantized Flux models (no authentication required)
-        # These are community-provided quantized versions that work identically
+        # Use community mirrors with ungated access (no authentication required)
+        # Kijai's mirrors are widely used and trusted in the community
         self.recommended_model = {
-            "repo_id": "city96/FLUX.1-dev-gguf",
-            "filename": "flux1-dev-Q4_0.gguf",
+            "repo_id": "Kijai/flux-fp8",
+            "filename": "flux1-dev-fp8.safetensors",
             "local_dir": str(self.models_dir / "Stable-diffusion"),
-            "description": "Flux.1 Dev Q4 GGUF (quantized, ~8GB, no auth required)",
-            "size_gb": 8,
+            "description": "Flux.1 Dev FP8 (quantized, ~17GB, community mirror)",
+            "size_gb": 17,
         }
         self.recommended_vae = {
-            "repo_id": "black-forest-labs/FLUX.1-schnell",  # Schnell is ungated
+            "repo_id": "Kijai/flux-fp8",
             "filename": "ae.safetensors",
             "local_dir": str(self.models_dir / "VAE"),
-            "description": "Flux.1 VAE (ungated)",
+            "description": "Flux.1 VAE (community mirror, ungated)",
             "size_gb": 0.3,
         }
 
