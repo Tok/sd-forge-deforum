@@ -25,21 +25,31 @@ def is_forge_neo_simple() -> bool:
     Simple Neo detection for install (before full modules available).
 
     Checks:
-    1. sys.path for 'neo' in directory names
-    2. Current working directory for 'neo' in path
+    1. Current working directory for 'neo' in path
+    2. __file__ path (install.py location) for 'neo' in parent directories
+    3. sys.path for 'neo' in directory names
 
     Returns:
         True if likely running on Forge Neo, False otherwise
     """
-    # Check sys.path
-    for path in sys.path:
-        if 'forge-neo' in path.lower() or 'forge_neo' in path.lower():
-            return True
-
     # Check current working directory
     cwd = os.getcwd()
     if 'forge-neo' in cwd.lower() or 'forge_neo' in cwd.lower():
         return True
+
+    # Check this file's path (extensions/sd-forge-deforum/install.py)
+    # If we're in forge-neo, the path will contain 'forge-neo'
+    try:
+        install_path = os.path.abspath(__file__)
+        if 'forge-neo' in install_path.lower() or 'forge_neo' in install_path.lower():
+            return True
+    except:
+        pass
+
+    # Check sys.path
+    for path in sys.path:
+        if 'forge-neo' in path.lower() or 'forge_neo' in path.lower():
+            return True
 
     return False
 
