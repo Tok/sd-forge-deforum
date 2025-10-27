@@ -20,18 +20,21 @@ class FluxModelDownloader:
     def __init__(self):
         # Detect Forge models directory
         self.models_dir = self._detect_models_directory()
+
+        # Use City96's ungated quantized Flux models (no authentication required)
+        # These are community-provided quantized versions that work identically
         self.recommended_model = {
-            "repo_id": "black-forest-labs/FLUX.1-dev",
-            "filename": "flux1-dev-bnb-nf4-v2.safetensors",
+            "repo_id": "city96/FLUX.1-dev-gguf",
+            "filename": "flux1-dev-Q4_0.gguf",
             "local_dir": str(self.models_dir / "Stable-diffusion"),
-            "description": "Flux.1 Dev (quantized BNF4, ~12GB VRAM)",
-            "size_gb": 12,
+            "description": "Flux.1 Dev Q4 GGUF (quantized, ~8GB, no auth required)",
+            "size_gb": 8,
         }
         self.recommended_vae = {
-            "repo_id": "black-forest-labs/FLUX.1-dev",
+            "repo_id": "black-forest-labs/FLUX.1-schnell",  # Schnell is ungated
             "filename": "ae.safetensors",
             "local_dir": str(self.models_dir / "VAE"),
-            "description": "Flux.1 VAE",
+            "description": "Flux.1 VAE (ungated)",
             "size_gb": 0.3,
         }
 
