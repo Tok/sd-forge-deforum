@@ -109,42 +109,48 @@ class TestLoggerConfiguration:
         assert hasattr(logger, 'error')
         assert hasattr(logger, 'critical')
 
-    @patch('deforum.rendering.options.opts')
-    def test_logger_respects_log_level(self, mock_opts):
+    @patch('deforum.rendering.options._get_opts')
+    def test_logger_respects_log_level(self, mock_get_opts):
         """Logger should respect configured log level."""
+        mock_opts = MagicMock()
         mock_opts.data = {
             'deforum_log_level': 'WARNING',
             'deforum_log_theme': 'classic',
             'deforum_enable_emojis': False
         }
+        mock_get_opts.return_value = mock_opts
 
         logger = get_logger()
 
         # This is a basic check - actual filtering tested in integration
         assert logger.log_level is not None
 
-    @patch('deforum.rendering.options.opts')
-    def test_logger_respects_theme(self, mock_opts):
+    @patch('deforum.rendering.options._get_opts')
+    def test_logger_respects_theme(self, mock_get_opts):
         """Logger should use configured theme."""
+        mock_opts = MagicMock()
         mock_opts.data = {
             'deforum_log_level': 'INFO',
             'deforum_log_theme': 'slopcore',
             'deforum_enable_emojis': True
         }
+        mock_get_opts.return_value = mock_opts
 
         logger = get_logger()
 
         # Logger should store theme
         assert logger.theme is not None
 
-    @patch('deforum.rendering.options.opts')
-    def test_logger_respects_emoji_setting(self, mock_opts):
+    @patch('deforum.rendering.options._get_opts')
+    def test_logger_respects_emoji_setting(self, mock_get_opts):
         """Logger should respect emoji enable/disable setting."""
+        mock_opts = MagicMock()
         mock_opts.data = {
             'deforum_log_level': 'INFO',
             'deforum_log_theme': 'classic',
             'deforum_enable_emojis': False
         }
+        mock_get_opts.return_value = mock_opts
 
         logger = get_logger()
 
@@ -192,14 +198,16 @@ class TestLoggerOutput:
     """Test logger message formatting and output."""
 
     @patch('builtins.print')
-    @patch('deforum.rendering.options.opts')
-    def test_info_message_format(self, mock_opts, mock_print):
+    @patch('deforum.rendering.options._get_opts')
+    def test_info_message_format(self, mock_get_opts, mock_print):
         """Info messages should be properly formatted."""
+        mock_opts = MagicMock()
         mock_opts.data = {
             'deforum_log_level': 'INFO',
             'deforum_log_theme': 'classic',
             'deforum_enable_emojis': False
         }
+        mock_get_opts.return_value = mock_opts
 
         logger = get_logger()
         logger.info("Test message")
@@ -211,14 +219,16 @@ class TestLoggerOutput:
         assert 'INFO' in call_args or 'Test message' in call_args
 
     @patch('builtins.print')
-    @patch('deforum.rendering.options.opts')
-    def test_info_with_emoji(self, mock_opts, mock_print):
+    @patch('deforum.rendering.options._get_opts')
+    def test_info_with_emoji(self, mock_get_opts, mock_print):
         """Info messages should include emoji when enabled."""
+        mock_opts = MagicMock()
         mock_opts.data = {
             'deforum_log_level': 'INFO',
             'deforum_log_theme': 'classic',
             'deforum_enable_emojis': True
         }
+        mock_get_opts.return_value = mock_opts
 
         logger = get_logger()
         logger.info("Test message", emoji='success')
@@ -229,14 +239,16 @@ class TestLoggerOutput:
         # May contain emoji depending on theme mapping
 
     @patch('builtins.print')
-    @patch('deforum.rendering.options.opts')
-    def test_debug_filtered_at_info_level(self, mock_opts, mock_print):
+    @patch('deforum.rendering.options._get_opts')
+    def test_debug_filtered_at_info_level(self, mock_get_opts, mock_print):
         """Debug messages should not print when level is INFO."""
+        mock_opts = MagicMock()
         mock_opts.data = {
             'deforum_log_level': 'INFO',
             'deforum_log_theme': 'classic',
             'deforum_enable_emojis': False
         }
+        mock_get_opts.return_value = mock_opts
 
         logger = get_logger()
         logger.debug("Debug message")
@@ -246,14 +258,16 @@ class TestLoggerOutput:
         # Actual behavior tested in integration tests
 
     @patch('builtins.print')
-    @patch('deforum.rendering.options.opts')
-    def test_print_kwargs_support(self, mock_opts, mock_print):
+    @patch('deforum.rendering.options._get_opts')
+    def test_print_kwargs_support(self, mock_get_opts, mock_print):
         """Logger should support print kwargs like end and flush."""
+        mock_opts = MagicMock()
         mock_opts.data = {
             'deforum_log_level': 'INFO',
             'deforum_log_theme': 'classic',
             'deforum_enable_emojis': False
         }
+        mock_get_opts.return_value = mock_opts
 
         logger = get_logger()
         logger.info("Test", end='', flush=True)
@@ -268,14 +282,16 @@ class TestIntegration:
     """Integration tests for the full logging system."""
 
     @patch('builtins.print')
-    @patch('deforum.rendering.options.opts')
-    def test_full_logging_flow(self, mock_opts, mock_print):
+    @patch('deforum.rendering.options._get_opts')
+    def test_full_logging_flow(self, mock_get_opts, mock_print):
         """Test complete logging workflow."""
+        mock_opts = MagicMock()
         mock_opts.data = {
             'deforum_log_level': 'INFO',
             'deforum_log_theme': 'slopcore',
             'deforum_enable_emojis': True
         }
+        mock_get_opts.return_value = mock_opts
 
         logger = get_logger()
 
