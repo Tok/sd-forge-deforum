@@ -41,7 +41,7 @@ def RootArgs():
     return {
         "device": sh.device,
         "models_path": ph.models_path + '/Deforum',
-        "half_precision": not sh.cmd_opts.no_half,
+        "half_precision": not getattr(sh.cmd_opts, 'no_half', False),  # Forge Neo removed this flag
         "clipseg_model": None,
         "mask_preset_names": ['everywhere', 'video_mask'],
         "frames_cache": [],

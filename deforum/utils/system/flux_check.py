@@ -79,7 +79,11 @@ def should_show_flux_blocker() -> bool:
     """
     Determine if we should show the Flux setup blocker message.
 
+    DEPRECATED: Blocker removed - we now auto-download Flux instead.
+    This function always returns False to never block the UI.
+
     Returns:
-        True if blocker should be shown, False if Deforum UI should load normally
+        False - blocker disabled
     """
-    return not is_flux_available()
+    # Blocker removed - auto-download handles missing models
+    return False

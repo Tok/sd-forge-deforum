@@ -10,7 +10,8 @@ except ImportError:
 
 
 def is_low_or_med_vram():
-    return cmd_opts.lowvram or cmd_opts.medvram  # cmd_opts are imported from elsewhere. keep readonly
+    # Forge Neo removed these flags
+    return getattr(cmd_opts, 'lowvram', False) or getattr(cmd_opts, 'medvram', False)
 
 
 def handle_med_or_low_vram_before_step(data):
@@ -28,7 +29,7 @@ def handle_vram_if_depth_is_predicted(data):
         if data.is_3d_with_med_or_low_vram():
             data.depth_model.to('cpu')
             devices.torch_gc()
-            lowvram.setup_for_low_vram(sd_model, cmd_opts.medvram)
+            lowvram.setup_for_low_vram(sd_model, getattr(cmd_opts, 'medvram', False))
             sd_hijack.model_hijack.hijack(sd_model)
 
 

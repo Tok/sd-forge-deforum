@@ -33,6 +33,7 @@ echo ""
 echo -e "${YELLOW}Creating model directories...${NC}"
 mkdir -p models/Stable-diffusion/Flux
 mkdir -p models/VAE
+mkdir -p models/text_encoder
 mkdir -p models/ControlNet
 mkdir -p models/Deforum/film_interpolation
 mkdir -p models/Deforum/wan
@@ -115,6 +116,7 @@ else
     huggingface-cli download comfyanonymous/flux_text_encoders \
         clip_l.safetensors \
         --local-dir models/VAE \
+        --local-dir-use-symlinks False \
         --resume-download
     echo -e "${GREEN}✓ CLIP-L downloaded${NC}"
 fi
@@ -128,6 +130,7 @@ else
     huggingface-cli download comfyanonymous/flux_text_encoders \
         t5xxl_fp16.safetensors \
         --local-dir models/VAE \
+        --local-dir-use-symlinks False \
         --resume-download
     echo -e "${GREEN}✓ T5-XXL downloaded${NC}"
 fi

@@ -82,6 +82,7 @@ def get_latest_frames():
         return None, None
 
 def on_ui_tabs():
+    print("[DEBUG DEFORUM] on_ui_tabs() called!")
     # extend paths using sys.path.extend so we can access all of our files and folders
     deforum_sys_extend()
     # set text above generate button
@@ -346,7 +347,17 @@ def on_ui_tabs():
             outputs=[live_preview_image, depth_preview_image]
         )
 
-        component_list = [components[name] for name in get_component_names()]
+        # Check if Flux blocker is active (minimal component set)
+        is_flux_blocker_active = len(components) < 10  # Minimal set has only ~2 components
+
+        if is_flux_blocker_active:
+            print("[INFO] Flux blocker active - Deforum UI will show setup instructions")
+            # In blocker mode, just use what components we have
+            component_list = [components.get(name, dummy_component) for name in ['show_info_on_ui']]
+        else:
+            # Normal mode - get all components
+            component_names_needed = get_component_names()
+            component_list = [components[name] for name in component_names_needed]
 
         submit.click(
                     fn=wrap_gradio_gpu_call(run_deforum),
@@ -354,14 +365,14 @@ def on_ui_tabs():
                     inputs=[dummy_component, dummy_component] + component_list,
                     outputs=[
                          deforum_gallery,
-                         components["resume_timestring"],
+                         components.get("resume_timestring", dummy_component),
                          generation_info,
                          html_info
                     ],
                 )
         
-        settings_component_list = [components[name] for name in get_settings_component_names()]
-        video_settings_component_list = [components[name] for name in list(DeforumOutputArgs().keys())]
+        settings_component_list = [components.get(name, dummy_component) for name in get_settings_component_names()]
+        video_settings_component_list = [components.get(name, dummy_component) for name in list(DeforumOutputArgs().keys())]
 
         save_settings_btn.click(
             fn=wrap_gradio_call(save_settings),
@@ -394,24 +405,26 @@ def on_ui_tabs():
             should_show = anim_mode == '3D'
             return gr.update(visible=should_show)
 
-        components['save_depth_maps'].change(
-            fn=update_depth_preview_visibility,
-            inputs=[components['save_depth_maps'], components['animation_mode']],
-            outputs=[depth_preview_image]
-        )
+        # Only bind events if components exist (skip in blocker mode)
+        if 'save_depth_maps' in components and 'animation_mode' in components:
+            components['save_depth_maps'].change(
+                fn=update_depth_preview_visibility,
+                inputs=[components['save_depth_maps'], components['animation_mode']],
+                outputs=[depth_preview_image]
+            )
 
-        components['animation_mode'].change(
-            fn=update_depth_preview_visibility,
-            inputs=[components['save_depth_maps'], components['animation_mode']],
-            outputs=[depth_preview_image]
-        )
+            components['animation_mode'].change(
+                fn=update_depth_preview_visibility,
+                inputs=[components['save_depth_maps'], components['animation_mode']],
+                outputs=[depth_preview_image]
+            )
 
-        # Also update visibility when settings are loaded
-        load_settings_btn.click(
-            fn=update_depth_preview_visibility,
-            inputs=[components['save_depth_maps'], components['animation_mode']],
-            outputs=[depth_preview_image]
-        )
+            # Also update visibility when settings are loaded
+            load_settings_btn.click(
+                fn=update_depth_preview_visibility,
+                inputs=[components['save_depth_maps'], components['animation_mode']],
+                outputs=[depth_preview_image]
+            )
 
     # handle settings loading on UI launch
     def trigger_load_general_settings():
@@ -447,11 +460,12 @@ def on_ui_tabs():
             if key in settings_component_name_to_obj:
                 settings_component_name_to_obj[key].value = value['value']
 
-        # Update depth preview visibility based on loaded settings
-        anim_mode = components['animation_mode'].value
-        should_show = anim_mode == '3D'
-        depth_preview_image.visible = should_show
-        logger.info(f"Depth preview gallery: visible={should_show} (anim_mode={anim_mode})")
+        # Update depth preview visibility based on loaded settings (skip in blocker mode)
+        if 'animation_mode' in components:
+            anim_mode = components['animation_mode'].value
+            should_show = anim_mode == '3D'
+            depth_preview_image.visible = should_show
+            logger.info(f"Depth preview gallery: visible={should_show} (anim_mode={anim_mode})")
 
     # Always load settings on startup - either from persistent settings path (if enabled),
     # from webui root, or from the extension's default settings

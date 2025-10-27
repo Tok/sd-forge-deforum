@@ -61,4 +61,14 @@ def get_tab_run(d, da):
                     da, 'resume_from_timestring', 'resume_timestring'
                 )
 
-    return {k: v for k, v in {**locals(), **vars()}.items()}
+    # Return all local Gradio components for event binding
+    local_vars = locals()
+    result = {
+        k: v for k, v in local_vars.items()
+        if not k.startswith('_') and k not in ('d', 'da', 'gr', 'FormRow', 'emoji_run', 'create_row', 'create_gr_elem')
+    }
+
+    # Debug: Print what we're returning
+    print(f"[DEBUG] get_tab_run returning keys: {list(result.keys())}")
+
+    return result

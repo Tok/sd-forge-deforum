@@ -5,9 +5,11 @@
 
 ⚠️ **COMPATIBILITY WARNING**: This fork is **100% incompatible** with older Deforum versions and original `deforum_settings.txt` files. You must use the new settings format from this repository.
 
-Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum)
-for [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge),
-completely refactored and modernized to work with Flux.1, Wan 2.1 AI Video Generation, and advanced workflow automation.
+**Primary Target:** [Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo) - Fully tested and supported
+**Other Forge versions:** May work but remain untested
+
+Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum),
+completely refactored and modernized to work with Flux.1, Wan 2.1/2.2 AI Video Generation, and advanced workflow automation.
 
 ## ⚡ Major New Features
 
@@ -240,6 +242,13 @@ git clone https://github.com/Tok/sd-forge-deforum
 cd sd-forge-deforum
 pip install -r requirements.txt
 ```
+
+**After Updates:** If you update the extension via `git pull`, clear Python bytecode cache to ensure changes take effect:
+```bash
+find . -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+```
+
+**Forge Neo Compatibility:** This extension is fully compatible with [Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo). Flux models and Wan 2.1 FLF2V are automatically downloaded on first startup if not present.
 
 ### Update Deforum Settings
 

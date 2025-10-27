@@ -56,8 +56,10 @@ def on_ui_settings():
         add(name, description, default_value, gr.Slider, _def(minimum=minimum, maximum=maximum))
 
     add_subsection("General Deforum Settings")
+    # Forge Neo removed lowvram/medvram flags
+    has_vram_flags = getattr(cmd_opts, 'lowvram', False) or getattr(cmd_opts, 'medvram', False)
     add_cb("deforum_keep_3d_models_in_vram", "Keep 3D models in VRAM between runs",
-           not (cmd_opts.lowvram or cmd_opts.medvram))
+           not has_vram_flags)
     add_cb("deforum_enable_persistent_settings", "Keep settings persistent upon relaunch of webUI.")
     add("deforum_persistent_settings_path", "Path for saving your persistent settings file:",
         "models/Deforum/deforum_persistent_settings.txt")
