@@ -21,25 +21,54 @@ class FluxModelDownloader:
         # Detect Forge models directory
         self.models_dir = self._detect_models_directory()
 
-        # Use official Black Forest Labs models (gated - requires HuggingFace account)
-        self.recommended_model = {
-            "repo_id": "black-forest-labs/FLUX.1-dev",
-            "filename": "flux1-dev.safetensors",
-            "local_dir": str(self.models_dir / "Stable-diffusion"),
-            "description": "Flux.1 Dev (official, ~24GB, requires HF login)",
-            "size_gb": 24,
-            "gated": True,
-            "license_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev"
-        }
-        self.recommended_vae = {
-            "repo_id": "black-forest-labs/FLUX.1-dev",
-            "filename": "ae.safetensors",
-            "local_dir": str(self.models_dir / "VAE"),
-            "description": "Flux.1 VAE (official)",
-            "size_gb": 0.3,
-            "gated": True,
-            "license_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev"
-        }
+        # Model options - try quantized first (lower VRAM), fall back to full model
+        self.model_options = [
+            {
+                "name": "quantized",
+                "repo_id": "lllyasviel/flux1-dev-bnb-nf4",
+                "filename": "flux1-dev-bnb-nf4-v2.safetensors",
+                "local_dir": str(self.models_dir / "Stable-diffusion"),
+                "description": "Flux.1 Dev NF4 (quantized, ~5GB, works on 12GB VRAM)",
+                "size_gb": 5,
+                "gated": False,  # lllyasviel's repo is ungated
+                "recommended": True
+            },
+            {
+                "name": "full",
+                "repo_id": "black-forest-labs/FLUX.1-dev",
+                "filename": "flux1-dev.safetensors",
+                "local_dir": str(self.models_dir / "Stable-diffusion"),
+                "description": "Flux.1 Dev (official, ~24GB, requires 24GB+ VRAM & HF login)",
+                "size_gb": 24,
+                "gated": True,
+                "license_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev",
+                "recommended": False
+            }
+        ]
+
+        self.vae_options = [
+            {
+                "name": "default",
+                "repo_id": "lllyasviel/flux1-dev-bnb-nf4",
+                "filename": "ae.safetensors",
+                "local_dir": str(self.models_dir / "VAE"),
+                "description": "Flux.1 VAE (ungated mirror)",
+                "size_gb": 0.3,
+                "gated": False,
+                "recommended": True
+            },
+            {
+                "name": "official",
+                "repo_id": "black-forest-labs/FLUX.1-dev",
+                "filename": "ae.safetensors",
+                "local_dir": str(self.models_dir / "VAE"),
+                "description": "Flux.1 VAE (official)",
+                "size_gb": 0.3,
+                "gated": True,
+                "license_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev",
+                "recommended": False
+            }
+        ]
 
     def _detect_models_directory(self) -> Path:
         """Detect the Forge models directory"""
@@ -164,6 +193,7 @@ class FluxModelDownloader:
     def download_flux_and_vae(self) -> bool:
         """
         Download recommended Flux model and VAE.
+        Tries quantized version first (lower VRAM), falls back to full model if needed.
 
         Returns:
             True if both downloaded successfully, False otherwise
@@ -178,20 +208,42 @@ class FluxModelDownloader:
         logger.info("Starting Flux model and VAE download...")
         logger.info(f"Models will be saved to: {self.models_dir}")
 
-        # Download Flux model
-        success_model = self.download_model(self.recommended_model)
+        # Try downloading quantized model first (recommended for most users)
+        success_model = False
+        for model_option in self.model_options:
+            if model_option.get("recommended", False):
+                logger.info(f"Trying recommended option: {model_option['description']}")
+                success_model = self.download_model(model_option)
+                if success_model:
+                    break
 
-        # Download VAE
-        success_vae = self.download_model(self.recommended_vae)
+        # If quantized failed, show instructions for full model
+        if not success_model:
+            logger.error("")
+            logger.error("Failed to download recommended quantized model.")
+            logger.error("Alternative: Download full Flux.1 Dev model (requires 24GB+ VRAM)")
+            for model_option in self.model_options:
+                if not model_option.get("recommended", False):
+                    logger.error(f"  - {model_option['description']}")
+                    if model_option.get("gated"):
+                        logger.error(f"    Visit: {model_option.get('license_url', 'N/A')}")
+            return False
+
+        # Try downloading VAE (try ungated first)
+        success_vae = False
+        for vae_option in self.vae_options:
+            if vae_option.get("recommended", False):
+                success_vae = self.download_model(vae_option)
+                if success_vae:
+                    break
 
         if success_model and success_vae:
+            logger.info("")
             logger.info("✓ Flux model and VAE downloaded successfully!")
-            logger.info(f"  Model: {self.models_dir / 'Stable-diffusion' / self.recommended_model['filename']}")
-            logger.info(f"  VAE: {self.models_dir / 'VAE' / self.recommended_vae['filename']}")
             logger.info("Please restart Forge and select the Flux model from the checkpoint dropdown")
             return True
         else:
-            logger.error("Failed to download Flux model and/or VAE")
+            logger.error("Failed to download Flux VAE")
             return False
 
 
