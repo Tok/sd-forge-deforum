@@ -54,6 +54,14 @@ def init_deforum():
         print(f"⚠️ Deforum: Failed to auto-download Flux: {e}")
         print("[Deforum] You can manually download Flux from the Wan Models tab")
 
+    # Auto-download Wan 2.1 FLF2V model if not present
+    try:
+        from deforum.utils.system.wan_model_downloader import auto_download_wan_flf2v_if_needed
+        auto_download_wan_flf2v_if_needed()
+    except Exception as e:
+        print(f"⚠️ Deforum: Failed to auto-download Wan FLF2V: {e}")
+        print("[Deforum] You can manually download Wan models from the Wan Models tab")
+
     # import our on_ui_tabs and on_ui_settings functions from the respected files
     from deforum.ui.ui_right import on_ui_tabs
     from deforum.ui.ui_settings import on_ui_settings
