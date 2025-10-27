@@ -1,15 +1,33 @@
-# reForge Compatibility Testing
+# Forge Fork Compatibility Testing
 
-This branch (`test/reforge`) is for testing compatibility with [stable-diffusion-webui-reForge](https://github.com/Panchovix/stable-diffusion-webui-reForge).
+This branch (`test/reforge`) is for testing compatibility with actively maintained Forge forks.
 
-## Why reForge?
+## Why Not Original Forge?
 
 - **Original Forge status:** Hibernating/dead (last active development months ago)
-- **reForge benefits:**
-  - Actively maintained community fork
-  - Better resource management (SDXL @ 4GB VRAM, SD1.5 @ 2GB)
-  - No manual flags needed (`medvram`, `lowvram`, etc. removed)
-  - Ongoing development and bug fixes
+- **Need:** Actively maintained fork with Flux/Wan support
+
+## Fork Evaluation
+
+### ❌ reForge - REJECTED
+- **Issue:** Uses Gradio 3.41.2 (downgrade from Gradio 4.40.0)
+- **Problem:** Our extension built for Gradio 4, would require significant rewrites
+- **Verdict:** Not worth the downgrade
+
+### ✅ Forge Neo - RECOMMENDED (Testing Next)
+- **Link:** https://github.com/Haoming02/sd-webui-forge-classic/tree/neo
+- **Author:** @Haoming02 (maintains both Forge Classic and Neo)
+- **Status:** Continuation of Forge2
+- **Features:**
+  - Flux support (fp8, gguf, etc.)
+  - **Wan 2.2 support** (perfect for our extension!)
+  - Qwen Image, Nunchaku
+  - Aimed at optimizations and new features
+- **Why:** Has Wan 2.2 built-in, so compatibility should be excellent
+
+### Alternative Options
+- **Forge Classic** - Based on old Forge backend, may not have Flux
+- **ersatzForge** - Experimental/opinionated changes, less predictable
 
 ## Test Plan
 
