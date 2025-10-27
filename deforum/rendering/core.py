@@ -72,11 +72,26 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
 def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
     # Reverse generation: process frames in reverse order (last→first), then reassemble correctly
     # This allows stable forward-motion by generating zoom-out (model fills naturally), then reversing
-    generation_order_frames = list(reversed(frames)) if data.args.anim_args.reverse_generation else frames
-
     if data.args.anim_args.reverse_generation:
         logger.info("Reverse Generation enabled: Processing frames in reverse order (last→first)")
         logger.info("Frames will be reassembled in correct order for final video")
+
+        # Reverse the frame list
+        generation_order_frames = list(reversed(frames))
+
+        # Reassign tweens: move each frame's tweens to the NEXT frame in generation order
+        # (which is the PREVIOUS frame in timeline order)
+        # This way tweens are emitted AFTER their source keyframe is generated
+        for i in range(len(generation_order_frames) - 1):
+            current_frame = generation_order_frames[i]
+            next_frame = generation_order_frames[i + 1]
+            # Move current frame's tweens to next frame
+            next_frame.tweens = current_frame.tweens
+            current_frame.tweens = []
+        # Last frame in generation order (first in timeline) has no tweens
+        generation_order_frames[-1].tweens = []
+    else:
+        generation_order_frames = frames
 
     for frame in generation_order_frames:
         is_resume, full_path = is_resume_with_image(data, frame)
@@ -102,13 +117,9 @@ def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
 def process_frame(data, frame):
     prepare_generation(data, frame)
 
-    # In reverse generation, emit tweens AFTER keyframe (not before)
-    # This ensures the keyframe exists before generating its dependent tweens
-    is_reverse = data.args.anim_args.reverse_generation
+    # Skip traditional tweens if using Wan FLF2V
     use_wan_flf2v = should_use_wan_flf2v(data, frame)
-
-    # Emit tweens BEFORE keyframe only in normal (forward) mode
-    if not is_reverse and not use_wan_flf2v:
+    if not use_wan_flf2v:
         emit_tweens(data, frame)
 
     pre_process(data, frame)
@@ -116,9 +127,7 @@ def process_frame(data, frame):
     if image is None:
         raise NoImageGenerated()
 
-    # Emit tweens AFTER keyframe in reverse mode or when using Wan FLF2V
-    if is_reverse and not use_wan_flf2v:
-        emit_tweens(data, frame)
+    # Emit Wan FLF2V tweens AFTER keyframe generation
     if use_wan_flf2v:
         emit_wan_flf2v_tweens(data, frame, image)
 
