@@ -48,18 +48,40 @@ This branch (`test/reforge`) is for testing compatibility with [stable-diffusion
 - [ ] Run color preservation sweep test
 - [ ] Verify outputs in `outputs/deforum-tuning/`
 
+## Key Differences Found
+
+### reForge Dependencies (requirements_versions.txt)
+```
+gradio==3.41.2          # vs Forge 4.40.0 (MAJOR DIFFERENCE!)
+huggingface_hub==0.25.0 # vs Forge 0.26.2 (older)
+diffusers==0.32.2       # vs our git main requirement
+```
+
+### Implications
+1. **Gradio 3.41.2** - Old version, likely doesn't have HfFolder import issue
+   - Our install.py fix may not be needed!
+   - UI differences expected (Gradio 3 vs 4)
+
+2. **huggingface_hub 0.25.0** - Older than Forge's 0.26.2
+   - Has HfFolder class (pre-1.0)
+   - Missing DDUFEntry (added in 0.27.0) - may cause issues with reForge features
+
+3. **diffusers 0.32.2** - Pinned version
+   - Our git main requirement will upgrade it
+   - Need to check if 0.32.2 has WanImageToVideoPipeline
+
 ## Expected Issues
 
 ### Likely Compatible
-- Our extension is API-based, so should work with any Forge fork
-- Tuning system only uses standard diffusers/torch APIs
-- Most features don't depend on Forge internals
+- ✅ HfFolder issue likely doesn't exist (Gradio 3.41.2 is old)
+- ✅ Extension is API-based, should work with both Gradio versions
+- ✅ Tuning system only uses standard APIs
 
 ### Potential Issues
-1. **Different Gradio version** - reForge may use Gradio 5.x (check compatibility)
-2. **Backend differences** - reForge removed medvram/lowvram flags (might affect memory management)
-3. **Extension loading order** - Different hook timing could affect install.py fix
-4. **Dependency versions** - May have different transformers/accelerate/peft versions
+1. **Gradio version conflict** - Our code may assume Gradio 4 APIs
+2. **diffusers upgrade** - Installing git main may break reForge's pinned 0.32.2
+3. **huggingface_hub upgrade** - Our 0.36.0 requirement higher than reForge's 0.25.0
+4. **UI rendering** - Extension UI built for Gradio 4, may look different in Gradio 3
 
 ## Success Criteria
 
