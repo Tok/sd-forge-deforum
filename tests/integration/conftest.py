@@ -27,6 +27,7 @@ from .utils import cleanup_test_output_dir
 
 def pytest_addoption(parser):
     parser.addoption("--start-server", action="store_true", help="start the server before the test run (if not specified, you must start the server manually)")
+    parser.addoption("--run-slow", action="store_true", help="run slow calibration/timing tests (skipped by default)")
 
 @pytest.fixture(scope="session", autouse=True)
 def clean_test_outputs():
