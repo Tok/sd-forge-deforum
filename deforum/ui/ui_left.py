@@ -25,6 +25,7 @@ from deforum.utils.system.logging import emoji as emoji_utils
 from deforum.ui.ui_elements import (get_tab_run, get_tab_keyframes, get_tab_prompts, get_tab_init,
                           get_tab_output, get_tab_masking)
 from deforum.ui.tabs.tab_camera_path import get_tab_camera_path
+from deforum.ui.tabs.tab_zero_hitl import get_tab_zero_hitl
 from deforum.ui.handlers.audio_prompt_generator import generate_prompts_with_ai
 from deforum.ui.handlers.audio_sync import synchronize_prompts_to_audio
 from deforum.utils.system.logging import get_logger, emoji_if_enabled
@@ -199,6 +200,9 @@ def setup_deforum_left_side_ui():
     with gr.Blocks():
         with gr.Tabs() as main_tabs:
             # Get main tab contents in new workflow order:
+            # Zero-HITL first - the one-click slopcore generator:
+            tab_zero_hitl_params = get_tab_zero_hitl()  # 0. Zero-HITL - Qwen orchestrates everything
+
             # Tabs visible in all modes:
             tab_init_params = get_tab_init(d, da, dp, dau, dv)  # 1. Init - all modes (includes audio sync)
             from .ui_elements import get_tab_distribution, get_tab_shakify, get_tab_depth_warping
@@ -1146,7 +1150,7 @@ def setup_deforum_left_side_ui():
     result = locals().copy()
 
     # Flatten all tab dicts so components are accessible at top level
-    tab_dicts = ['tab_camera_path_params', 'tab_init_params', 'tab_distribution_params', 'tab_prompts_params',
+    tab_dicts = ['tab_zero_hitl_params', 'tab_camera_path_params', 'tab_init_params', 'tab_distribution_params', 'tab_prompts_params',
                  'tab_keyframes_params', 'tab_depth_params', 'tab_shakify_params',
                  'tab_masking_params', 'tab_wan_params', 'tab_run_params', 'tab_output_params']
 

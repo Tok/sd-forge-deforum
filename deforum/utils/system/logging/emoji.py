@@ -167,6 +167,14 @@ def movie_camera():
     return _select('\U0001F3AC')  # 🎬
 
 
+def dice():
+    return _select('\U0001F3B2')  # 🎲
+
+
+def folder():
+    return _select('\U0001F4C1')  # 📁
+
+
 # Slopcore minimal emojis
 def blue_square():
     return _select('\U0001F7E6')  # 🟦
