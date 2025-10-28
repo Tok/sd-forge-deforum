@@ -111,9 +111,9 @@ class QwenOrchestrator:
             camera_chaos = self._apply_camera_chaos(params)
             self._log(f"✓ Camera path: {params.preset_type} (chaos applied)")
 
-            # Phase 5: Execute Render (TODO: wire up to actual Deforum render)
-            self._log("🎬 Phase 5: Executing render with VHS artifacts...")
-            video_path = self._execute_render_placeholder(params, prompts, audio_path)
+            # Phase 5: Execute Render (wired to actual Deforum render)
+            self._log("🎬 Phase 5: Executing Deforum render with VHS artifacts...")
+            video_path = self._execute_render(params, prompts, audio_path)
             self._log(f"✓ Render complete: {video_path}")
 
             # Save settings JSON
@@ -269,13 +269,13 @@ class QwenOrchestrator:
 
         return chaos_applied
 
-    def _execute_render_placeholder(
+    def _execute_render(
         self,
         params: SlopcoreParameters,
         prompts: List[Dict[str, Any]],
         audio_path: str
     ) -> str:
-        """Execute render (placeholder until wired to actual Deforum).
+        """Execute Deforum render with zero-HITL parameters.
 
         Args:
             params: Slopcore parameters
@@ -283,19 +283,13 @@ class QwenOrchestrator:
             audio_path: Path to audio file
 
         Returns:
-            Path to generated video (placeholder)
+            Path to generated video
         """
-        # TODO: Wire up to actual Deforum render pipeline
-        # This will call the existing render system with our generated parameters
+        from deforum.utils.zero_hitl.render_integration import execute_render
 
-        # For now, return placeholder path
-        video_filename = f"slop_{random.randint(1000, 9999)}.mp4"
-        video_path = str(self.output_dir / video_filename)
-
-        self._log("⚠️ Placeholder render (actual Deforum integration pending)")
-
-        # TODO: Apply VHS scan lines and CRF chaos
-        # 5% chance to set CRF=51 (invalid → black screen)
+        # Apply CRF chaos (5% chance for invalid CRF=51)
+        # NOTE: This is applied in render_integration.build_args_from_slopcore()
+        # but we track the decision here for the slop log
         if random.random() < self.PROB_CRF_51:
             self._log("✓ CRF=51 (invalid value → black screen output)")
             self.all_slop_logs.append(SlopLog(
@@ -303,6 +297,7 @@ class QwenOrchestrator:
                 self.PROB_CRF_51,
                 True
             ))
+            # TODO: Pass crf_override=51 to render_integration
         else:
             self._log("✓ CRF=40 (maximum compression artifacts)")
             self.all_slop_logs.append(SlopLog(
@@ -312,7 +307,16 @@ class QwenOrchestrator:
             ))
 
         # Always add VHS scan lines (mandatory slop)
-        self._log("✓ VHS scan lines applied (mandatory slopcore)")
+        # TODO: Implement VHS scan lines post-processing
+        self._log("✓ VHS scan lines (pending post-processing implementation)")
+
+        # Execute actual Deforum render
+        video_path = execute_render(
+            params=params,
+            prompts=prompts,
+            audio_path=audio_path,
+            output_dir=str(self.output_dir)
+        )
 
         return video_path
 
