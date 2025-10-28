@@ -309,11 +309,7 @@ class QwenOrchestrator:
                 False
             ))
 
-        # Always add VHS scan lines (mandatory slop)
-        # TODO: Implement VHS scan lines post-processing
-        self._log("✓ VHS scan lines (pending post-processing implementation)")
-
-        # Execute actual Deforum render
+        # Execute actual Deforum render (without VHS yet)
         video_path = execute_render(
             params=params,
             prompts=prompts,
@@ -321,7 +317,58 @@ class QwenOrchestrator:
             output_dir=str(self.output_dir)
         )
 
-        return video_path
+        # Apply VHS scan lines (mandatory slop - dual approach)
+        self._log("📼 Applying VHS scan lines (dual approach: per-frame + FFmpeg)...")
+        vhs_video_path = self._apply_vhs_effects(video_path)
+        self._log("✓ VHS scan lines applied (mandatory slopcore aesthetic)")
+
+        return vhs_video_path
+
+    def _apply_vhs_effects(self, video_path: str) -> str:
+        """Apply VHS scan lines and effects (mandatory slopcore).
+
+        Args:
+            video_path: Path to rendered video (pre-VHS)
+
+        Returns:
+            Path to VHS-processed video
+        """
+        from deforum.utils.zero_hitl.vhs_effects import (
+            apply_vhs_post_processing,
+            generate_vhs_ffmpeg_filter,
+            get_vhs_slop_log
+        )
+
+        try:
+            # Generate VHS output path
+            video_path_obj = Path(video_path)
+            vhs_output = video_path_obj.parent / f"{video_path_obj.stem}_vhs{video_path_obj.suffix}"
+
+            # Generate randomized VHS parameters
+            _, params = generate_vhs_ffmpeg_filter(randomize=True)
+
+            # Log VHS parameters to slop log
+            vhs_log_msg = get_vhs_slop_log(params)
+            self._log(vhs_log_msg)
+            self.all_slop_logs.append(SlopLog(
+                vhs_log_msg,
+                1.0,  # Always applied (mandatory)
+                True
+            ))
+
+            # Apply VHS post-processing
+            vhs_video = apply_vhs_post_processing(
+                video_path=video_path,
+                output_path=str(vhs_output),
+                randomize=True
+            )
+
+            return vhs_video
+
+        except Exception as e:
+            logger.warning(f"VHS post-processing failed: {e}, using original video")
+            self._log(f"⚠️ VHS processing failed: {e}")
+            return video_path  # Fallback to original
 
     def _generate_settings_json(
         self,
