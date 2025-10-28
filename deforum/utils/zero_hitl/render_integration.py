@@ -248,6 +248,7 @@ def build_args_from_slopcore(
     root_dict = {
         'timestring': f"slop_{int(time.time())}",
         'raw_batch_name': f"slop_{int(time.time())}",
+        'outdir': output_dir,  # Required by Deforum render
     }
 
     return {
