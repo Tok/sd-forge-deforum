@@ -11,6 +11,7 @@ from deforum.utils.spline_camera_path import (
     generate_camera_path,
     generate_control_points_circle,
     generate_control_points_figure_eight,
+    generate_street_path,
     camera_path_to_schedules,
     SplineConfig,
     CameraPoint
@@ -51,10 +52,12 @@ def generate_preset_path(
                 center_x=0.0,
                 center_y=0.0,
                 height=height,
-                rotation_factor=rotation_factor
+                rotation_factor=rotation_factor,
+                use_sphere=True  # Use 3D sphere rotation (not flat circle)
             )
             status = f"✅ Generated rotate-around path ({len(camera_path)} frames)\n"
-            status += f"Radius: {radius}, Height: {height}, Rotation Factor: {rotation_factor}"
+            status += f"Radius: {radius}, Height: {height}, Rotation Factor: {rotation_factor}\n"
+            status += "Mode: Random sphere rotation (3D)"
 
         elif preset_type == "circle-path":
             control_points = generate_control_points_circle(
@@ -113,25 +116,27 @@ def generate_preset_path(
             status += f"Zoom distance: {radius}, Height: {height}"
 
         elif preset_type == "orbit-up":
-            # Circle while rising
+            # Circle while rising - full orbit then return to start
             control_points = []
-            for i in range(8):
-                angle = 2 * np.pi * i / 8
+            num_points = 12  # More control points for smoother rise
+            for i in range(num_points + 1):  # +1 to complete the circle
+                angle = 2 * np.pi * i / num_points
                 x = radius * np.cos(angle)
                 z = radius * np.sin(angle)
-                y = height + (i / 8) * radius * 0.5  # Rise as we orbit
+                y = height + (i / num_points) * radius * 0.8  # Rise as we orbit
                 control_points.append((x, y, z))
 
             config = SplineConfig(
                 num_frames=int(num_frames),
-                num_control_points=8,
+                num_control_points=num_points + 1,
                 spline_type="catmull_rom",
-                closed_loop=closed_loop,
+                closed_loop=False,  # Never close - rising path can't loop
                 smoothness=0.7
             )
             camera_path = generate_camera_path(config, control_points, look_at_curve=True)
             status = f"✅ Generated orbit-up path ({len(camera_path)} frames)\n"
-            status += f"Radius: {radius}, Rise: {radius * 0.5}, Closed: {closed_loop}"
+            status += f"Radius: {radius}, Rise: {radius * 0.8:.1f}\n"
+            status += "Note: Orbit-up cannot be closed (rising path)"
 
         elif preset_type == "spiral":
             # Spiral inward/outward
@@ -154,6 +159,50 @@ def generate_preset_path(
             camera_path = generate_camera_path(config, control_points, look_at_curve=True)
             status = f"✅ Generated spiral path ({len(camera_path)} frames)\n"
             status += f"Start radius: {radius}, End radius: 0"
+
+        elif preset_type == "street":
+            # Street/dashcam forward movement with lane weaving
+            camera_path = generate_street_path(
+                num_frames=int(num_frames),
+                street_length=radius * 5,  # Radius maps to street length
+                lane_weave=radius * 0.2,  # 20% of radius for weaving
+                center_x=0.0,
+                center_y=height if height != 0 else 10.0,  # Default eye level at 10
+                center_z=0.0
+            )
+            status = f"✅ Generated street path ({len(camera_path)} frames)\n"
+            status += f"Distance: {radius * 5:.0f}, Eye height: {height if height != 0 else 10.0:.0f}\n"
+            status += "Mode: Forward-facing (dashcam/POV)"
+
+        elif preset_type == "dashcam":
+            # Dashcam preset - faster street movement with more bumps
+            camera_path = generate_street_path(
+                num_frames=int(num_frames),
+                street_length=radius * 8,  # Longer distance (faster movement)
+                lane_weave=radius * 0.3,  # More pronounced lane changes
+                center_x=0.0,
+                center_y=height if height != 0 else 8.0,  # Lower eye level (car seat)
+                center_z=0.0
+            )
+            status = f"✅ Generated dashcam path ({len(camera_path)} frames)\n"
+            status += f"Distance: {radius * 8:.0f}, Eye height: {height if height != 0 else 8.0:.0f}\n"
+            status += "Mode: Dashcam (faster, more weaving)\n"
+            status += "Tip: Combine with GENTLE_HANDHELD shakify pattern"
+
+        elif preset_type == "bodycam":
+            # Bodycam preset - slower, at standing height, subtle wobble
+            camera_path = generate_street_path(
+                num_frames=int(num_frames),
+                street_length=radius * 3,  # Slower walking pace
+                lane_weave=radius * 0.15,  # Less weaving (walking path)
+                center_x=0.0,
+                center_y=height if height != 0 else 15.0,  # Standing eye level
+                center_z=0.0
+            )
+            status = f"✅ Generated bodycam path ({len(camera_path)} frames)\n"
+            status += f"Distance: {radius * 3:.0f}, Eye height: {height if height != 0 else 15.0:.0f}\n"
+            status += "Mode: Bodycam (walking pace)\n"
+            status += "Tip: Combine with INVESTIGATION or GENTLE_HANDHELD shakify pattern"
 
         else:
             return f"❌ Unknown preset type: {preset_type}", {}, []

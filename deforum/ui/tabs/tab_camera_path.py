@@ -57,7 +57,10 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                         "figure-eight",
                         "forward-zoom",
                         "orbit-up",
-                        "spiral"
+                        "spiral",
+                        "street",
+                        "dashcam",
+                        "bodycam"
                     ],
                     value="rotate-around",
                     label="Preset Type",

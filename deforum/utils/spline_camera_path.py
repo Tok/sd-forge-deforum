@@ -257,21 +257,22 @@ def generate_rotate_around_path(
     center_x: float = 0.0,
     center_y: float = 0.0,
     height: float = 0.0,
-    rotation_factor: float = -5.0
+    rotation_factor: float = -5.0,
+    center_z: float = 0.0,
+    use_sphere: bool = True
 ) -> List[CameraPoint]:
-    """Generate rotate-around camera path.
+    """Generate rotate-around camera path on sphere surface.
 
-    The camera circles around a center point while rotating to keep looking at it.
-    Uses the classic Deforum rotate-around formula:
-    - translation_x moves in circle
-    - rotation_3d_y = translation_x * rotation_factor (typically -5)
+    The camera moves randomly around a sphere while rotating to look at center.
+    Uses spherical coordinates with random variation for interesting paths.
 
     Args:
         num_frames: Number of frames
-        radius: Radius of rotation circle
-        center_x, center_y: Center position
-        height: Height (translation_y)
+        radius: Radius of sphere
+        center_x, center_y, center_z: Center position
+        height: Additional height offset
         rotation_factor: Rotation multiplier (typically -5 for smooth rotate-around)
+        use_sphere: If True, randomize around sphere; if False, flat circle
 
     Returns:
         List of CameraPoint objects
@@ -279,19 +280,97 @@ def generate_rotate_around_path(
     camera_path = []
 
     for frame_idx in range(num_frames):
-        # Calculate angle
-        angle = 2 * np.pi * frame_idx / num_frames
+        if use_sphere:
+            # Spherical rotation with random wobble
+            # Theta (azimuth) - horizontal rotation
+            theta = 2 * np.pi * frame_idx / num_frames
 
-        # Position on circle
-        x = center_x + radius * np.cos(angle)
-        z = 0.0  # Depth stays constant
-        y = center_y + height
+            # Phi (elevation) - varies between -pi/3 and pi/3 (avoid poles)
+            # Add sinusoidal variation for interesting paths
+            phi_base = np.sin(3 * theta) * (np.pi / 4)  # Oscillate elevation
+            phi_noise = np.sin(7 * theta) * (np.pi / 8)  # Add higher frequency wobble
+            phi = phi_base + phi_noise
+
+            # Spherical to Cartesian coordinates
+            x = center_x + radius * np.cos(phi) * np.cos(theta)
+            y = center_y + height + radius * np.sin(phi)
+            z = center_z + radius * np.cos(phi) * np.sin(theta)
+        else:
+            # Flat circle (classic mode)
+            angle = 2 * np.pi * frame_idx / num_frames
+            x = center_x + radius * np.cos(angle)
+            z = center_z + radius * np.sin(angle)
+            y = center_y + height
 
         # Rotation to look at center
-        # translation_x drives rotation_3d_y
-        rot_y = x * rotation_factor
-        rot_x = 0.0
+        # Calculate angle to look at center point
+        dx = center_x - x
+        dy = (center_y + height) - y
+        dz = center_z - z
+
+        # Pan angle (rotation_y)
+        rot_y = np.degrees(np.arctan2(dx, dz))
+
+        # Tilt angle (rotation_x)
+        horizontal_dist = np.sqrt(dx**2 + dz**2)
+        rot_x = np.degrees(np.arctan2(dy, horizontal_dist))
+
         rot_z = 0.0
+
+        camera_path.append(CameraPoint(
+            x=x,
+            y=y,
+            z=z,
+            rot_x=rot_x,
+            rot_y=rot_y,
+            rot_z=rot_z,
+            frame=frame_idx
+        ))
+
+    return camera_path
+
+
+def generate_street_path(
+    num_frames: int,
+    street_length: float = 500.0,
+    lane_weave: float = 20.0,
+    center_x: float = 0.0,
+    center_y: float = 10.0,  # Eye level ~10 units
+    center_z: float = 0.0
+) -> List[CameraPoint]:
+    """Generate street/dashcam style forward-moving path.
+
+    Camera moves forward along a street with gentle lane weaving.
+    Always faces forward (dashcam/bodycam perspective).
+
+    Args:
+        num_frames: Number of frames
+        street_length: Total distance traveled
+        lane_weave: Amount of left/right weaving (lane changes)
+        center_x, center_y, center_z: Starting position
+
+    Returns:
+        List of CameraPoint objects
+    """
+    camera_path = []
+
+    for frame_idx in range(num_frames):
+        t = frame_idx / num_frames
+
+        # Forward motion (Z increases)
+        z = center_z + t * street_length
+
+        # Gentle left/right weaving (sine wave with some variation)
+        x = center_x + lane_weave * np.sin(2 * np.pi * t * 2)  # 2 weaves per path
+        x += lane_weave * 0.3 * np.sin(2 * np.pi * t * 5)  # Add high-freq wobble
+
+        # Slight up/down (road bumps)
+        y = center_y + 2 * np.sin(2 * np.pi * t * 8)  # Small bumps
+
+        # Camera always faces forward (down +Z axis)
+        rot_x = 0.0  # Level horizon
+        rot_y = 0.0  # Straight ahead
+        rot_z = 0.0  # No roll
 
         camera_path.append(CameraPoint(
             x=x,
