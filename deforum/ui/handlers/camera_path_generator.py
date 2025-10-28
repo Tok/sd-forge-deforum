@@ -363,6 +363,8 @@ def handle_generate_preset(
     rotation_factor: float,
     num_frames: float,
     closed_loop: bool,
+    randomize: float,
+    random_seed: float,
     translation_x,
     translation_y,
     translation_z,
@@ -374,7 +376,8 @@ def handle_generate_preset(
     global _current_camera_path
 
     status, schedules, camera_path = generate_preset_path(
-        preset_type, radius, height, rotation_factor, num_frames, closed_loop
+        preset_type, radius, height, rotation_factor, num_frames, closed_loop,
+        randomize, int(random_seed)
     )
 
     _current_camera_path = camera_path

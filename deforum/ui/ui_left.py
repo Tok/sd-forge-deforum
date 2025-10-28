@@ -200,12 +200,12 @@ def setup_deforum_left_side_ui():
         with gr.Tabs() as main_tabs:
             # Get main tab contents in new workflow order:
             # Tabs visible in all modes:
-            tab_camera_path_params = get_tab_camera_path(da)  # 0. Camera Path - all modes
-            tab_init_params = get_tab_init(d, da, dp, dau, dv)  # 1. Init - all modes
+            tab_init_params = get_tab_init(d, da, dp, dau, dv)  # 1. Init - all modes (includes audio sync)
             from .ui_elements import get_tab_distribution, get_tab_shakify, get_tab_depth_warping
             tab_distribution_params = get_tab_distribution(da)  # 2. Distribution - all modes
             tab_prompts_params = get_tab_prompts(da, dw, dv)  # 3. Prompts - all modes (now includes audio/timing)
             tab_keyframes_params = get_tab_keyframes(d, da, dloopArgs)  # 4. Keyframes - all modes
+            tab_camera_path_params = get_tab_camera_path(da)  # 5. Camera Path - after audio sync & keyframes
 
             # Mode-specific tabs (with visibility control):
             # 3D mode only tabs:
