@@ -43,7 +43,8 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
 
     with gr.Tabs():
         # ===== PRESETS TAB =====
-        with gr.Tab(f"{emoji_utils.bulb()} Presets"):
+        preset_emoji = emoji_utils.bulb() + " " if emoji_utils.bulb() else ""
+        with gr.Tab(f"{preset_emoji}Presets"):
             gr.Markdown("### Quick Camera Movements")
 
             with FormRow(variant="compact"):
@@ -110,9 +111,10 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
             # Purple gradient slopcore button
             with FormRow(variant="compact"):
                 btn_generate_preset = gr.Button(
-                    "🎬 Generate Preset Path",
+                    f"{emoji_utils.wan_video()} Generate Preset Path",
                     variant="primary",
-                    elem_classes=["purple-gradient-button"]
+                    elem_id="btn_generate_preset",
+                    elem_classes=["slopcore-button"]
                 )
 
             with FormRow(variant="compact"):
@@ -124,7 +126,8 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                 )
 
         # ===== CUSTOM SPLINE TAB =====
-        with gr.Tab(f"✏️ Custom Spline"):
+        custom_emoji = emoji_utils.palette() + " " if emoji_utils.palette() else ""
+        with gr.Tab(f"{custom_emoji}Custom Spline"):
             gr.Markdown("### Control Points")
 
             gr.Markdown("Define waypoints for camera path. Camera will smoothly interpolate between these points.")
@@ -200,9 +203,10 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
             # Purple gradient slopcore button
             with FormRow(variant="compact"):
                 btn_generate_custom = gr.Button(
-                    "✨ Generate Custom Path",
+                    f"{emoji_utils.palette()} Generate Custom Path",
                     variant="primary",
-                    elem_classes=["purple-gradient-button"]
+                    elem_id="btn_generate_custom",
+                    elem_classes=["slopcore-button"]
                 )
 
             with FormRow(variant="compact"):
@@ -214,7 +218,8 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                 )
 
         # ===== VISUALIZATION TAB =====
-        with gr.Tab(f"📊 Visualization"):
+        viz_emoji = emoji_utils.distribution() + " " if emoji_utils.distribution() else ""
+        with gr.Tab(f"{viz_emoji}Visualization"):
             gr.Markdown("### 3D Camera Path Preview")
 
             with FormRow():
@@ -225,9 +230,10 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
 
             with FormRow(variant="compact"):
                 btn_visualize = gr.Button(
-                    "👁️ Visualize Path",
+                    f"{emoji_utils.distribution()} Visualize Path",
                     variant="primary",
-                    elem_classes=["purple-gradient-button"]
+                    elem_id="btn_visualize",
+                    elem_classes=["slopcore-button"]
                 )
 
             gr.Markdown("### Path Statistics")
