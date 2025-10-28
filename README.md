@@ -76,7 +76,7 @@ One-click AI video generation with **intentional chaos and glitches**. Click **"
 - Settings export (JSON of all generated parameters)
 - Isolated to dedicated tab (normal Deforum unaffected)
 
-**See:** `ZERO_HITL_DESIGN.md` for Qwen's complete specifications
+**See:** `docs/ZERO_HITL_DESIGN.md` for Qwen's complete specifications
 
 ### 🎬 **Wan AI Video Generation** (Alibaba's state-of-the-art T2V/I2V)
 - **FLF2V Integration** (Wan 2.1): First-Last-Frame-to-Video interpolation with guidance_scale=3.5
