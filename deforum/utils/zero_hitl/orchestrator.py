@@ -23,7 +23,7 @@ from deforum.utils.audio_generation import generate_loop, SlopLog
 from deforum.utils.zero_hitl.parameter_randomizer import randomize_parameters, SlopcoreParameters
 from deforum.utils.system.logging import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger()
 
 
 @dataclass(frozen=True)

@@ -15,7 +15,7 @@ from typing import Tuple
 
 from deforum.utils.system.logging import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger()
 
 
 def apply_per_frame_scan_lines(frame: np.ndarray, intensity: float = 2.0) -> np.ndarray:

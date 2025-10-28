@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from deforum.utils.zero_hitl.parameter_randomizer import SlopcoreParameters
 from deforum.utils.system.logging import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger()
 
 
 # Qwen's orchestration prompt (structured output)

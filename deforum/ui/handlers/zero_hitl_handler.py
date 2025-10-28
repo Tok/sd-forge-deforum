@@ -11,7 +11,7 @@ from typing import Tuple, List
 from deforum.utils.zero_hitl import orchestrate_slop, OrchestrationResult
 from deforum.utils.system.logging import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger()
 
 
 def handle_slop_it_click(

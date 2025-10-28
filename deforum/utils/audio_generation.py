@@ -21,7 +21,7 @@ from dataclasses import dataclass
 
 from deforum.utils.system.logging import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger()
 
 
 @dataclass(frozen=True)
