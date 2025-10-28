@@ -27,7 +27,9 @@ def get_tab_camera_path(da: SimpleNamespace, skip_tabitem=False):
     if skip_tabitem:
         return components
     else:
-        with gr.TabItem(f"🎥 Camera Path", elem_id='camera_path_tab'):
+        # Main tab title respects emoji setting
+        tab_emoji = emoji_utils.wan_video() + " " if emoji_utils.wan_video() else ""
+        with gr.TabItem(f"{tab_emoji}Camera Path", elem_id='camera_path_tab'):
             return components
 
 
@@ -108,14 +110,41 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     info="Loop back to start smoothly"
                 )
 
-            # Purple gradient slopcore button
+            gr.Markdown("### Randomization")
+
             with FormRow(variant="compact"):
-                btn_generate_preset = gr.Button(
-                    f"{emoji_utils.wan_video()} Generate Preset Path",
-                    variant="primary",
-                    elem_id="btn_generate_preset",
-                    elem_classes=["slopcore-button"]
+                preset_randomize = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=0.0,
+                    step=0.1,
+                    label="Randomize Amount",
+                    info="0 = pure preset, 1 = maximum variation (adds random perturbations)"
                 )
+
+            with FormRow(variant="compact"):
+                preset_random_seed = gr.Number(
+                    value=-1,
+                    label="Random Seed",
+                    info="-1 = random seed each time, fixed value = reproducible randomization"
+                )
+
+            # Purple gradient slopcore buttons
+            with FormRow(variant="compact"):
+                with gr.Column(scale=2):
+                    btn_generate_preset = gr.Button(
+                        f"{emoji_utils.wan_video()} Generate Preset Path",
+                        variant="primary",
+                        elem_id="btn_generate_preset",
+                        elem_classes=["slopcore-button"]
+                    )
+                with gr.Column(scale=1):
+                    btn_randomize_preset = gr.Button(
+                        f"{emoji_utils.leaf()} Randomize",
+                        variant="secondary",
+                        elem_id="btn_randomize_preset",
+                        elem_classes=["slopcore-button"]
+                    )
 
             with FormRow(variant="compact"):
                 preset_status = gr.Textbox(
@@ -254,7 +283,10 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
         'preset_rotation_factor': preset_rotation_factor,
         'preset_num_frames': preset_num_frames,
         'preset_closed_loop': preset_closed_loop,
+        'preset_randomize': preset_randomize,
+        'preset_random_seed': preset_random_seed,
         'btn_generate_preset': btn_generate_preset,
+        'btn_randomize_preset': btn_randomize_preset,
         'preset_status': preset_status,
         'num_control_points': num_control_points,
         'spline_type': spline_type,

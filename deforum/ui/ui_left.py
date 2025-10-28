@@ -1140,6 +1140,143 @@ def setup_deforum_left_side_ui():
     except Exception as e:
         logger.error(f"⚠️ Failed to set up validation buttons: {e}")
 
+    # Set up Camera Path generation buttons
+    try:
+        from deforum.ui.handlers.camera_path_generator import (
+            handle_generate_preset,
+            handle_generate_custom,
+            handle_visualize
+        )
+
+        # Get camera path components from tab_camera_path_params
+        btn_generate_preset = tab_camera_path_params.get('btn_generate_preset')
+        btn_randomize_preset = tab_camera_path_params.get('btn_randomize_preset')
+        btn_generate_custom = tab_camera_path_params.get('btn_generate_custom')
+        btn_visualize = tab_camera_path_params.get('btn_visualize')
+
+        # Get schedule textboxes from keyframes tab
+        if btn_generate_preset and 'translation_x' in locals():
+            # Wire up preset generation button
+            btn_generate_preset.click(
+                fn=handle_generate_preset,
+                inputs=[
+                    tab_camera_path_params['preset_type'],
+                    tab_camera_path_params['preset_radius'],
+                    tab_camera_path_params['preset_height'],
+                    tab_camera_path_params['preset_rotation_factor'],
+                    tab_camera_path_params['preset_num_frames'],
+                    tab_camera_path_params['preset_closed_loop'],
+                    tab_camera_path_params['preset_randomize'],
+                    tab_camera_path_params['preset_random_seed'],
+                    locals()['translation_x'],
+                    locals()['translation_y'],
+                    locals()['translation_z'],
+                    locals()['rotation_3d_x'],
+                    locals()['rotation_3d_y'],
+                    locals()['rotation_3d_z']
+                ],
+                outputs=[
+                    tab_camera_path_params['preset_status'],
+                    locals()['translation_x'],
+                    locals()['translation_y'],
+                    locals()['translation_z'],
+                    locals()['rotation_3d_x'],
+                    locals()['rotation_3d_y'],
+                    locals()['rotation_3d_z']
+                ]
+            )
+
+            # Wire up randomize button (same as generate but increments seed)
+            def randomize_preset_wrapper(*args):
+                """Randomize by using current params but with random seed"""
+                args_list = list(args)
+                # Set random seed to -1 to force new randomization
+                args_list[7] = -1  # preset_random_seed index
+                # Set randomize amount to 0.5 if it's 0
+                if args_list[6] == 0:
+                    args_list[6] = 0.5
+                return handle_generate_preset(*args_list)
+
+            btn_randomize_preset.click(
+                fn=randomize_preset_wrapper,
+                inputs=[
+                    tab_camera_path_params['preset_type'],
+                    tab_camera_path_params['preset_radius'],
+                    tab_camera_path_params['preset_height'],
+                    tab_camera_path_params['preset_rotation_factor'],
+                    tab_camera_path_params['preset_num_frames'],
+                    tab_camera_path_params['preset_closed_loop'],
+                    tab_camera_path_params['preset_randomize'],
+                    tab_camera_path_params['preset_random_seed'],
+                    locals()['translation_x'],
+                    locals()['translation_y'],
+                    locals()['translation_z'],
+                    locals()['rotation_3d_x'],
+                    locals()['rotation_3d_y'],
+                    locals()['rotation_3d_z']
+                ],
+                outputs=[
+                    tab_camera_path_params['preset_status'],
+                    locals()['translation_x'],
+                    locals()['translation_y'],
+                    locals()['translation_z'],
+                    locals()['rotation_3d_x'],
+                    locals()['rotation_3d_y'],
+                    locals()['rotation_3d_z']
+                ]
+            )
+
+            logger.debug(f"{emoji_if_enabled('✅')} Camera Path preset buttons connected")
+
+        if btn_generate_custom and 'translation_x' in locals():
+            # Wire up custom spline generation button
+            btn_generate_custom.click(
+                fn=handle_generate_custom,
+                inputs=[
+                    tab_camera_path_params['num_control_points'],
+                    tab_camera_path_params['spline_type'],
+                    tab_camera_path_params['spline_smoothness'],
+                    tab_camera_path_params['look_at_curve'],
+                    tab_camera_path_params['custom_num_frames'],
+                    tab_camera_path_params['custom_closed_loop'],
+                    tab_camera_path_params['control_point_pattern'],
+                    tab_camera_path_params['control_pattern_scale'],
+                    locals()['translation_x'],
+                    locals()['translation_y'],
+                    locals()['translation_z'],
+                    locals()['rotation_3d_x'],
+                    locals()['rotation_3d_y'],
+                    locals()['rotation_3d_z']
+                ],
+                outputs=[
+                    tab_camera_path_params['custom_status'],
+                    locals()['translation_x'],
+                    locals()['translation_y'],
+                    locals()['translation_z'],
+                    locals()['rotation_3d_x'],
+                    locals()['rotation_3d_y'],
+                    locals()['rotation_3d_z']
+                ]
+            )
+            logger.debug(f"{emoji_if_enabled('✅')} Camera Path custom button connected")
+
+        if btn_visualize:
+            # Wire up visualization button
+            btn_visualize.click(
+                fn=handle_visualize,
+                inputs=[],
+                outputs=[
+                    tab_camera_path_params['plot_output'],
+                    tab_camera_path_params['stats_output']
+                ]
+            )
+            logger.debug(f"{emoji_if_enabled('✅')} Camera Path visualize button connected")
+
+    except Exception as e:
+        logger.error(f"Failed to connect Camera Path buttons: {e}")
+        import traceback
+        traceback.print_exc()
+
     # Merge all tab component dicts into main locals() for component access
     result = locals().copy()
 

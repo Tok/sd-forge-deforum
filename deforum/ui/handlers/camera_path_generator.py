@@ -23,7 +23,9 @@ def generate_preset_path(
     height: float,
     rotation_factor: float,
     num_frames: int,
-    closed_loop: bool
+    closed_loop: bool,
+    randomize: float = 0.0,
+    random_seed: int = -1
 ) -> Tuple[str, Dict[str, str], list]:
     """Generate camera path from preset.
 
