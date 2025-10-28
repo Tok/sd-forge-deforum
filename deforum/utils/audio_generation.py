@@ -100,9 +100,14 @@ class IntentionallySabotagedAudio:
             if not self._stable_audio_loaded:
                 logger.info("Loading Stable Audio Open Small...")
                 # Lazy import to avoid startup cost
-                import torch
-                from stable_audio_tools import get_pretrained_model
-                from stable_audio_tools.inference.generation import generate_diffusion_cond
+                try:
+                    import torch
+                    from stable_audio_tools import get_pretrained_model
+                    from stable_audio_tools.inference.generation import generate_diffusion_cond
+                except ImportError as e:
+                    logger.warning(f"stable-audio-tools not available: {e}")
+                    logger.warning("Falling back to amen break loop (Zero-HITL audio unavailable)")
+                    return self._fallback_to_amen_break(config.duration_seconds)
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
                 self.model, self.model_config = get_pretrained_model("stabilityai/stable-audio-open-small")

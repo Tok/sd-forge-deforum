@@ -145,6 +145,16 @@ with open(req_file) as file:
         if any(lib.startswith(pkg) for pkg in ['peft', 'accelerate']):
             continue
 
+        # Skip stable-audio-tools (optional for Zero-HITL, Python 3.12 incompatible)
+        if lib.startswith('stable-audio-tools'):
+            try:
+                if not launch.is_installed('stable_audio_tools'):
+                    launch.run_pip(f"install {lib}", f"Deforum requirement: {lib}")
+            except Exception as e:
+                print(f"*** Deforum: stable-audio-tools install failed (Python 3.12 issue): {e}")
+                print("*** Zero-HITL audio generation will be unavailable, but normal Deforum works fine.")
+            continue
+
         # Install other packages normally
         if not launch.is_installed(lib.split('>=')[0].split('==')[0].split('<')[0]):
             launch.run_pip(f"install {lib}", f"Deforum requirement: {lib}")

@@ -260,7 +260,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     zoom = create_gr_elem(da.zoom)
                     reset_zoom_button = ToolButton(
                         elem_id='reset_zoom_btn',
-                        value=emoji_utils.refresh(),
+                        value=emoji_utils.refresh,
                         tooltip="Reset zoom to static."
                     )
                     components['zoom'] = zoom
