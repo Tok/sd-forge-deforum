@@ -16,3 +16,6 @@ librosa>=0.10.0
 soundfile>=0.12.0
 scipy>=1.10.0
 plotly>=5.14.0
+
+# Zero-HITL audio generation (Qwen's slopcore engine)
+stable-audio-tools>=0.1.0
