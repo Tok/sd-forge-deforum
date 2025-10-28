@@ -264,14 +264,41 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
         (plotly_figure, stats_text)
     """
     if not camera_path:
-        # Empty plot
+        # Empty plot - SLOPCORE DARKMODE
         fig = go.Figure()
         fig.update_layout(
-            title="No path generated yet",
+            title=dict(
+                text="No path generated yet",
+                font=dict(color='#E0E7FF', size=18, family='system-ui')
+            ),
+            paper_bgcolor='#0F172A',  # Tailwind slate-900
+            plot_bgcolor='#1E293B',   # Tailwind slate-800
+            font=dict(color='#CBD5E1', family='system-ui'),  # Tailwind slate-300
             scene=dict(
                 xaxis_title="X (Left/Right)",
                 yaxis_title="Y (Up/Down)",
-                zaxis_title="Z (Forward/Back)"
+                zaxis_title="Z (Forward/Back)",
+                xaxis=dict(
+                    backgroundcolor='#1E293B',
+                    gridcolor='#334155',  # Tailwind slate-700
+                    showbackground=True,
+                    zerolinecolor='#475569',  # Tailwind slate-600
+                    titlefont=dict(color='#94A3B8')  # Tailwind slate-400
+                ),
+                yaxis=dict(
+                    backgroundcolor='#1E293B',
+                    gridcolor='#334155',
+                    showbackground=True,
+                    zerolinecolor='#475569',
+                    titlefont=dict(color='#94A3B8')
+                ),
+                zaxis=dict(
+                    backgroundcolor='#1E293B',
+                    gridcolor='#334155',
+                    showbackground=True,
+                    zerolinecolor='#475569',
+                    titlefont=dict(color='#94A3B8')
+                )
             )
         )
         return fig, "No path data"
@@ -281,50 +308,129 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
     y_coords = [p.y for p in camera_path]
     z_coords = [p.z for p in camera_path]
 
-    # Create 3D line plot
+    # Create 3D line plot - SLOPCORE GRIFTWAVE AESTHETIC
     fig = go.Figure()
 
-    # Path line
+    # Path line - PURPLE GRADIENT VIBES (simulate gradient with multiple segments)
+    # Create gradient effect by varying color along path
+    num_points = len(x_coords)
+    colors = [f'rgb({int(102 + (118-102)*i/num_points)}, {int(126 + (75-126)*i/num_points)}, {int(234 + (162-234)*i/num_points))}'
+              for i in range(num_points)]
+
     fig.add_trace(go.Scatter3d(
         x=x_coords,
         y=y_coords,
         z=z_coords,
         mode='lines+markers',
         name='Camera Path',
-        line=dict(color='purple', width=4),
-        marker=dict(size=3, color='blue')
+        line=dict(
+            color=colors if num_points > 1 else ['#667EEA'],
+            width=6,
+            colorscale=[[0, '#667EEA'], [1, '#764BA2']],  # Blue to purple gradient
+        ),
+        marker=dict(
+            size=4,
+            color=colors if num_points > 1 else ['#667EEA'],
+            colorscale=[[0, '#667EEA'], [1, '#764BA2']],
+            line=dict(color='#1E293B', width=1),
+            opacity=0.9
+        ),
+        hovertemplate='<b>Frame %{text}</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>',
+        text=[str(i) for i in range(num_points)]
     ))
 
-    # Start point (green)
+    # Start point - CYAN GLOW (SaaS brand color)
     fig.add_trace(go.Scatter3d(
         x=[x_coords[0]],
         y=[y_coords[0]],
         z=[z_coords[0]],
         mode='markers',
         name='Start',
-        marker=dict(size=10, color='green', symbol='diamond')
+        marker=dict(
+            size=12,
+            color='#06B6D4',  # Tailwind cyan-500
+            symbol='diamond',
+            line=dict(color='#0891B2', width=2),  # Tailwind cyan-600
+            opacity=1.0
+        ),
+        hovertemplate='<b>START</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>'
     ))
 
-    # End point (red)
+    # End point - PINK/PURPLE GLOW (startup gradient end)
     fig.add_trace(go.Scatter3d(
         x=[x_coords[-1]],
         y=[y_coords[-1]],
         z=[z_coords[-1]],
         mode='markers',
         name='End',
-        marker=dict(size=10, color='red', symbol='square')
+        marker=dict(
+            size=12,
+            color='#EC4899',  # Tailwind pink-500
+            symbol='square',
+            line=dict(color='#BE185D', width=2),  # Tailwind pink-700
+            opacity=1.0
+        ),
+        hovertemplate='<b>END</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>'
     ))
 
-    # Update layout
+    # Update layout - FULL DARKMODE SLOPCORE
     fig.update_layout(
-        title="3D Camera Path Visualization",
-        scene=dict(
-            xaxis_title="X (Left/Right)",
-            yaxis_title="Y (Up/Down)",
-            zaxis_title="Z (Forward/Back)",
-            aspectmode='data'
+        title=dict(
+            text='<b>🎬 Camera Path Visualization</b>',
+            font=dict(color='#E0E7FF', size=20, family='system-ui, -apple-system, sans-serif'),
+            x=0.5,
+            xanchor='center'
         ),
-        height=600
+        paper_bgcolor='#0F172A',  # Tailwind slate-900 - DARK AF
+        plot_bgcolor='#1E293B',   # Tailwind slate-800
+        font=dict(color='#CBD5E1', family='system-ui, -apple-system, sans-serif', size=12),
+        scene=dict(
+            xaxis_title="<b>X</b> (Left/Right)",
+            yaxis_title="<b>Y</b> (Up/Down)",
+            zaxis_title="<b>Z</b> (Forward/Back)",
+            aspectmode='data',
+            xaxis=dict(
+                backgroundcolor='#1E293B',
+                gridcolor='#334155',  # Tailwind slate-700
+                showbackground=True,
+                zerolinecolor='#475569',  # Tailwind slate-600
+                titlefont=dict(color='#94A3B8', size=14),  # Tailwind slate-400
+                tickfont=dict(color='#64748B')  # Tailwind slate-500
+            ),
+            yaxis=dict(
+                backgroundcolor='#1E293B',
+                gridcolor='#334155',
+                showbackground=True,
+                zerolinecolor='#475569',
+                titlefont=dict(color='#94A3B8', size=14),
+                tickfont=dict(color='#64748B')
+            ),
+            zaxis=dict(
+                backgroundcolor='#1E293B',
+                gridcolor='#334155',
+                showbackground=True,
+                zerolinecolor='#475569',
+                titlefont=dict(color='#94A3B8', size=14),
+                tickfont=dict(color='#64748B')
+            ),
+            camera=dict(
+                eye=dict(x=1.5, y=1.5, z=1.5)  # Better default viewing angle
+            )
+        ),
+        height=600,
+        showlegend=True,
+        legend=dict(
+            bgcolor='#1E293B',
+            bordercolor='#475569',
+            borderwidth=1,
+            font=dict(color='#CBD5E1', size=11)
+        ),
+        margin=dict(l=0, r=0, t=40, b=0),
+        hoverlabel=dict(
+            bgcolor='#1E293B',
+            font=dict(color='#E0E7FF', size=12, family='system-ui'),
+            bordercolor='#667EEA'
+        )
     )
 
     # Calculate statistics
