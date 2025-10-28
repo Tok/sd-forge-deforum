@@ -51,64 +51,8 @@ def get_tab_keyframes(d, da, dloopArgs):
         # KEYFRAME SCHEDULES - Single unified tab level
         # NOTE: Distribution promoted to main tab level - see get_tab_distribution()
         # NOTE: Shakify and Depth Warping promoted to main tab level - see get_tab_shakify() and get_tab_depth_warping()
+        # NOTE: Motion moved to Camera Path tab - see get_tab_camera_path()
         with gr.Tabs():
-            # MOTION TAB - Most important for animation, placed first
-            with gr.TabItem(f"{emoji_utils.bicycle()} Motion") as motion_tab:
-                with FormColumn() as only_2d_motion_column:
-                    with FormRow(variant="compact"):
-                        zoom = create_gr_elem(da.zoom)
-                        reset_zoom_button = ToolButton(
-                            elem_id='reset_zoom_btn',
-                            value=emoji_utils.refresh,
-                            tooltip="Reset zoom to static."
-                        )
-                        components['zoom'] = zoom
-
-                        def reset_zoom_field():
-                            return {zoom: gr.update(value='0:(1)', visible=True)}
-
-                        reset_zoom_button.click(fn=reset_zoom_field, inputs=[], outputs=[zoom])
-
-                    angle = create_row(da.angle)
-                    transform_center_x = create_row(da.transform_center_x)
-                    transform_center_y = create_row(da.transform_center_y)
-
-                with FormColumn() as both_anim_mode_motion_params_column:
-                    translation_x = create_row(da.translation_x)
-                    translation_y = create_row(da.translation_y)
-
-                is_3d_motion_column_visible = True  # FIXME init, overridden because default is 3D
-                with FormColumn(visible=is_3d_motion_column_visible) as only_3d_motion_column:
-                    with FormRow():
-                        translation_z = create_gr_elem(da.translation_z)
-                        reset_tr_z_button = ToolButton(
-                            elem_id='reset_tr_z_btn',
-                            value=emoji_utils.refresh,
-                            tooltip="Reset translation Z to static."
-                        )
-                        components['tr_z'] = translation_z
-
-                        def reset_tr_z_field():
-                            return {translation_z: gr.update(value='0:(0)', visible=True)}
-
-                        reset_tr_z_button.click(fn=reset_tr_z_field, inputs=[], outputs=[translation_z])
-
-                    rotation_3d_x = create_row(da.rotation_3d_x)
-                    rotation_3d_y = create_row(da.rotation_3d_y)
-                    rotation_3d_z = create_row(da.rotation_3d_z)
-
-                # PERSPECTIVE FLIP - inner params are hidden if not enabled
-                with FormRow() as enable_per_f_row:
-                    enable_perspective_flip = create_gr_elem(da.enable_perspective_flip)
-                with FormRow(visible=False) as per_f_th_row:
-                    perspective_flip_theta = create_gr_elem(da.perspective_flip_theta)
-                with FormRow(visible=False) as per_f_ph_row:
-                    perspective_flip_phi = create_gr_elem(da.perspective_flip_phi)
-                with FormRow(visible=False) as per_f_ga_row:
-                    perspective_flip_gamma = create_gr_elem(da.perspective_flip_gamma)
-                with FormRow(visible=False) as per_f_f_row:
-                    perspective_flip_fv = create_gr_elem(da.perspective_flip_fv)
-
             # SCHEDULE TABS
             # NOTE: Strength moved to main level (after animation_mode) for better visibility
 

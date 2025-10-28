@@ -7,7 +7,8 @@ Populates translation/rotation schedules for Deforum animation.
 import gradio as gr
 from types import SimpleNamespace
 from deforum.utils.system.logging import emoji as emoji_utils
-from modules.ui_components import FormRow, FormColumn
+from modules.ui_components import FormRow, FormColumn, ToolButton
+from deforum.utils.ui.builders import create_gr_elem, create_row
 
 
 def get_tab_camera_path(da: SimpleNamespace, skip_tabitem=False):
@@ -248,9 +249,73 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     lines=2
                 )
 
+        # ===== MOTION TAB ===== (moved from Keyframes tab)
+        motion_emoji = emoji_utils.bicycle() + " " if emoji_utils.bicycle() else ""
+        with gr.Tab(f"{motion_emoji}Motion"):
+            gr.Markdown("### Manual Motion Schedules")
+            gr.Markdown("Define precise camera movement schedules by frame number. Use this for fine-tuning or when presets don't fit your needs.")
+
+            with FormColumn() as only_2d_motion_column:
+                with FormRow(variant="compact"):
+                    zoom = create_gr_elem(da.zoom)
+                    reset_zoom_button = ToolButton(
+                        elem_id='reset_zoom_btn',
+                        value=emoji_utils.refresh(),
+                        tooltip="Reset zoom to static."
+                    )
+                    components['zoom'] = zoom
+
+                    def reset_zoom_field():
+                        return {zoom: gr.update(value='0:(1)', visible=True)}
+
+                    reset_zoom_button.click(fn=reset_zoom_field, inputs=[], outputs=[zoom])
+
+                angle = create_row(da.angle)
+                transform_center_x = create_row(da.transform_center_x)
+                transform_center_y = create_row(da.transform_center_y)
+
+            with FormColumn() as both_anim_mode_motion_params_column:
+                translation_x = create_row(da.translation_x)
+                translation_y = create_row(da.translation_y)
+
+            is_3d_motion_column_visible = True  # FIXME init, overridden because default is 3D
+            with FormColumn(visible=is_3d_motion_column_visible) as only_3d_motion_column:
+                with FormRow():
+                    translation_z = create_gr_elem(da.translation_z)
+                    reset_tr_z_button = ToolButton(
+                        elem_id='reset_tr_z_btn',
+                        value=emoji_utils.refresh(),
+                        tooltip="Reset translation Z to static."
+                    )
+                    components['tr_z'] = translation_z
+
+                    def reset_tr_z_field():
+                        return {translation_z: gr.update(value='0:(0)', visible=True)}
+
+                    reset_tr_z_button.click(fn=reset_tr_z_field, inputs=[], outputs=[translation_z])
+
+                rotation_3d_x = create_row(da.rotation_3d_x)
+                rotation_3d_y = create_row(da.rotation_3d_y)
+                rotation_3d_z = create_row(da.rotation_3d_z)
+
+            # PERSPECTIVE FLIP - inner params are hidden if not enabled
+            with FormRow() as enable_per_f_row:
+                enable_perspective_flip = create_gr_elem(da.enable_perspective_flip)
+            with FormRow(visible=False) as per_f_th_row:
+                perspective_flip_theta = create_gr_elem(da.perspective_flip_theta)
+            with FormRow(visible=False) as per_f_ph_row:
+                perspective_flip_phi = create_gr_elem(da.perspective_flip_phi)
+            with FormRow(visible=False) as per_f_ga_row:
+                perspective_flip_gamma = create_gr_elem(da.perspective_flip_gamma)
+            with FormRow(visible=False) as per_f_f_row:
+                perspective_flip_fv = create_gr_elem(da.perspective_flip_fv)
+
         # Visualization tab removed - visualization now in right panel for real-time feedback
 
     # Store components for event handlers
+    # Collect all local variables (motion components are already in locals)
+    all_components = {k: v for k, v in {**locals(), **vars()}.items()}
+
     components.update({
         'preset_type': preset_type,
         'preset_radius': preset_radius,
@@ -273,14 +338,30 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
         'control_pattern_scale': control_pattern_scale,
         'btn_generate_custom': btn_generate_custom,
         'custom_status': custom_status,
-        # Visualization removed from tab - now in right panel
-        # Include references to schedule textboxes (will be passed from parent)
-        'translation_x': None,  # Will be set by parent
-        'translation_y': None,
-        'translation_z': None,
-        'rotation_3d_x': None,
-        'rotation_3d_y': None,
-        'rotation_3d_z': None,
+        # Motion components (moved from Keyframes tab)
+        'zoom': all_components.get('zoom'),
+        'angle': all_components.get('angle'),
+        'transform_center_x': all_components.get('transform_center_x'),
+        'transform_center_y': all_components.get('transform_center_y'),
+        'translation_x': all_components.get('translation_x'),
+        'translation_y': all_components.get('translation_y'),
+        'translation_z': all_components.get('translation_z'),
+        'rotation_3d_x': all_components.get('rotation_3d_x'),
+        'rotation_3d_y': all_components.get('rotation_3d_y'),
+        'rotation_3d_z': all_components.get('rotation_3d_z'),
+        'enable_perspective_flip': all_components.get('enable_perspective_flip'),
+        'perspective_flip_theta': all_components.get('perspective_flip_theta'),
+        'perspective_flip_phi': all_components.get('perspective_flip_phi'),
+        'perspective_flip_gamma': all_components.get('perspective_flip_gamma'),
+        'perspective_flip_fv': all_components.get('perspective_flip_fv'),
+        'only_2d_motion_column': all_components.get('only_2d_motion_column'),
+        'both_anim_mode_motion_params_column': all_components.get('both_anim_mode_motion_params_column'),
+        'only_3d_motion_column': all_components.get('only_3d_motion_column'),
+        'enable_per_f_row': all_components.get('enable_per_f_row'),
+        'per_f_th_row': all_components.get('per_f_th_row'),
+        'per_f_ph_row': all_components.get('per_f_ph_row'),
+        'per_f_ga_row': all_components.get('per_f_ga_row'),
+        'per_f_f_row': all_components.get('per_f_f_row'),
     })
 
     return components
