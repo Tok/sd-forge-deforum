@@ -231,7 +231,7 @@ def setup_deforum_left_side_ui():
 
             # add returned gradio elements from main tabs to locals()
             # Note: Zero-HITL components now come from tab_init_params
-            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_distribution_params, **tab_prompts_params, **tab_shakify_params, **tab_masking_params, **tab_depth_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params}.items():
+            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_distribution_params, **tab_prompts_params, **tab_camera_path_params, **tab_shakify_params, **tab_masking_params, **tab_depth_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params}.items():
                 locals()[key] = value
 
             # WORKAROUND: Explicitly unpack audio AI components as actual local variables

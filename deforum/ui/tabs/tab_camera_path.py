@@ -23,14 +23,15 @@ def get_tab_camera_path(da: SimpleNamespace, skip_tabitem=False):
     """
     components = {}
 
-    tab_content = _build_camera_path_ui(da, components)
-
     if skip_tabitem:
+        # When embedding as subtab, just build UI in current context
+        _build_camera_path_ui(da, components)
         return components
     else:
         # Main tab title respects emoji setting
         tab_emoji = emoji_utils.wan_video() + " " if emoji_utils.wan_video() else ""
         with gr.TabItem(f"{tab_emoji}Camera Path", elem_id='camera_path_tab'):
+            _build_camera_path_ui(da, components)
             return components
 
 
