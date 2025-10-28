@@ -149,11 +149,13 @@ class QwenConductor:
         try:
             logger.info("Loading Qwen model for creative direction...")
 
-            # Import Qwen utilities
-            from deforum.utils.qwen_prompt_expander import (
-                select_qwen_model_by_vram,
-                get_qwen_cache_dir
-            )
+            # Import Qwen utilities (these don't exist yet, use fallback for now)
+            # TODO: Implement proper Qwen model selection helpers
+            # from deforum.utils.qwen_prompt_expander import (
+            #     select_qwen_model_by_vram,
+            #     get_qwen_cache_dir
+            # )
+            raise ImportError("Qwen helpers not yet implemented")
             import torch
             from transformers import AutoModelForCausalLM, AutoTokenizer
 
