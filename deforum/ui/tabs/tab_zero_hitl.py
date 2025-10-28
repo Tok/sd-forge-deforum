@@ -92,14 +92,20 @@ def _build_zero_hitl_ui(components: dict):
 
     # Comically huge slopcore button
     with FormRow(variant="compact"):
-        btn_qwen_do_everything = gr.Button(
-            "🎲 QWEN DO EVERYTHING 🎬",
+        btn_slop_it = gr.Button(
+            "🔥 SLOP IT! 🔥",
             variant="primary",
             size="lg",
-            elem_id="btn_qwen_do_everything",
+            elem_id="btn_slop_it",
             elem_classes=["slopcore-button"],
             scale=2
         )
+
+    gr.HTML(value="""
+        <p style='text-align: center; font-size: 11px; opacity: 0.6; margin: -10px 0 10px 0;'>
+            NO HUMAN NEEDED (PROBABLY)
+        </p>
+    """)
 
     # Status and log output
     with FormRow(variant="compact"):
@@ -142,7 +148,7 @@ def _build_zero_hitl_ui(components: dict):
         'zero_hitl_duration': zero_hitl_duration,
         'zero_hitl_theme': zero_hitl_theme,
         'zero_hitl_seed': zero_hitl_seed,
-        'btn_qwen_do_everything': btn_qwen_do_everything,
+        'btn_slop_it': btn_slop_it,
         'zero_hitl_status': zero_hitl_status,
         'zero_hitl_log': zero_hitl_log,
         'btn_view_settings': btn_view_settings,

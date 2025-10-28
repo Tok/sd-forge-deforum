@@ -1,8 +1,12 @@
 # Zero-HITL Slopcore Generator Design
 
+> **"🔥 SLOP IT! 🔥"** - Button text suggested by Qwen3-Next-80B-A3B herself
+>
+> *"Short, punchy, and irreverent — 'SLOP IT!' is perfect for a comically huge button. It's casual, slangy, and leans into the intentionally messy 'slopcore' vibe without over-explaining. It's a command that sounds like a reckless, low-effort action, which fits 'zero-HITL' automation perfectly."*
+
 ## Vision
 
-A one-click "Qwen do everything" system that generates complete animated videos from minimal user input (duration + optional theme/instructions). The system orchestrates the entire pipeline autonomously:
+A one-click system that generates complete animated videos from minimal user input (duration + optional theme/instructions). The system orchestrates the entire pipeline autonomously:
 
 1. **Audio Generation** → Generate drum loop/breakbeat
 2. **Prompt Generation** → Create synced animation prompts (Qwen + audio analysis)
@@ -149,8 +153,9 @@ ZERO_HITL_RANGES = {
 ║                                                                   ║
 ║  ┌──────────────────────────────────────────────────────────┐   ║
 ║  │                                                          │   ║
-║  │          [  🎲 QWEN DO EVERYTHING 🎬  ]                  │   ║
+║  │              [  🔥 SLOP IT! 🔥  ]                        │   ║
 ║  │          (comically huge slopcore button)                │   ║
+║  │          NO HUMAN NEEDED (PROBABLY)                      │   ║
 ║  │                                                          │   ║
 ║  └──────────────────────────────────────────────────────────┘   ║
 ║                                                                   ║
