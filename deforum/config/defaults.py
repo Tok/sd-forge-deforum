@@ -141,11 +141,11 @@ def get_wan_video_info_html():
         """
 
 def get_composable_masks_info_html():
-    return """
+    return r"""
         <ul style="list-style-type:circle; margin-left:0.75em; margin-bottom:0.2em">
         <li>To enable, check use_mask in the Init tab</li>
         <li>Supports boolean operations: (! - negation, & - and, | - or, ^ - xor, \ - difference, () - nested operations)</li>
-        <li>default variables: in \{\}, like \{init_mask\}, \{video_mask\}, \{everywhere\}</li>
+        <li>default variables: in {}, like {init_mask}, {video_mask}, {everywhere}</li>
         <li>masks from files: in [], like [mask1.png]</li>
         <li>description-based: <i>word masks</i> in &lt;&gt;, like &lt;apple&gt;, &lt;hair&gt</li>
         </ul>
