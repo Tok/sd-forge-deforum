@@ -42,6 +42,40 @@ def parse_schedule_string(schedule_str: str) -> Dict[int, float]:
     return schedule_dict
 
 
+def parse_prompt_schedule(prompt_str: str) -> set:
+    """Parse animation_prompts string/JSON to extract keyframe numbers.
+
+    Args:
+        prompt_str: Either JSON dict string like '{"0": "prompt", "50": "other"}'
+                    or schedule-like string
+
+    Returns:
+        Set of frame numbers that have prompts
+    """
+    import json
+
+    if not prompt_str or not prompt_str.strip():
+        return set()
+
+    # Try parsing as JSON first (standard animation_prompts format)
+    try:
+        prompt_dict = json.loads(prompt_str)
+        if isinstance(prompt_dict, dict):
+            return {int(k) for k in prompt_dict.keys()}
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # Fall back to regex pattern for any "frame_number:" pattern
+    # This catches both "0: (text)" and "0: text" formats
+    pattern = r'(\d+)\s*:'
+    matches = re.findall(pattern, prompt_str)
+
+    if matches:
+        return {int(m) for m in matches}
+
+    return set()
+
+
 def interpolate_schedule(schedule_dict: Dict[int, float], max_frame: int) -> List[Tuple[int, float]]:
     """Interpolate schedule values for all frames.
 
@@ -160,8 +194,7 @@ def visualize_schedules(
         # Parse prompt schedule to find actual keyframes (frames with prompts)
         prompt_keyframes = set()
         if animation_prompts:
-            prompt_dict = parse_schedule_string(animation_prompts)
-            prompt_keyframes = set(prompt_dict.keys())
+            prompt_keyframes = parse_prompt_schedule(animation_prompts)
 
     if num_points == 0:
         # Fallback for empty data
