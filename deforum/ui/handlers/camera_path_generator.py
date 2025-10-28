@@ -283,21 +283,21 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
                     gridcolor='#334155',  # Tailwind slate-700
                     showbackground=True,
                     zerolinecolor='#475569',  # Tailwind slate-600
-                    titlefont=dict(color='#94A3B8')  # Tailwind slate-400
+                    title=dict(font=dict(color='#94A3B8'))  # Tailwind slate-400
                 ),
                 yaxis=dict(
                     backgroundcolor='#1E293B',
                     gridcolor='#334155',
                     showbackground=True,
                     zerolinecolor='#475569',
-                    titlefont=dict(color='#94A3B8')
+                    title=dict(font=dict(color='#94A3B8'))
                 ),
                 zaxis=dict(
                     backgroundcolor='#1E293B',
                     gridcolor='#334155',
                     showbackground=True,
                     zerolinecolor='#475569',
-                    titlefont=dict(color='#94A3B8')
+                    title=dict(font=dict(color='#94A3B8'))
                 )
             )
         )
@@ -394,7 +394,7 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
                 gridcolor='#334155',  # Tailwind slate-700
                 showbackground=True,
                 zerolinecolor='#475569',  # Tailwind slate-600
-                titlefont=dict(color='#94A3B8', size=14),  # Tailwind slate-400
+                title=dict(font=dict(color='#94A3B8', size=14)),  # Tailwind slate-400
                 tickfont=dict(color='#64748B')  # Tailwind slate-500
             ),
             yaxis=dict(
@@ -402,7 +402,7 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
                 gridcolor='#334155',
                 showbackground=True,
                 zerolinecolor='#475569',
-                titlefont=dict(color='#94A3B8', size=14),
+                title=dict(font=dict(color='#94A3B8', size=14)),
                 tickfont=dict(color='#64748B')
             ),
             zaxis=dict(
@@ -410,7 +410,7 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
                 gridcolor='#334155',
                 showbackground=True,
                 zerolinecolor='#475569',
-                titlefont=dict(color='#94A3B8', size=14),
+                title=dict(font=dict(color='#94A3B8', size=14)),
                 tickfont=dict(color='#64748B')
             ),
             camera=dict(
