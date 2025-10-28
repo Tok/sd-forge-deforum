@@ -24,6 +24,60 @@ All primary action buttons now feature the industry-standard blue-purple slopcor
 
 *"We added the gradient ironically, but kept it because it actually works." - The maintainers*
 
+### 🔥 **Zero-HITL Slopcore Generator** (Qwen-Spec'd, Zero Human-In-The-Loop)
+*Specifications and review by Qwen3-Next-80B-A3B. Implementation was practically zero-HITL too (copy-paste driven development).*
+
+One-click AI video generation with **intentional chaos and glitches**. Click **"🔥 SLOP IT! 🔥"** and walk away.
+
+**Complete Pipeline:**
+1. **Intentionally Sabotaged Audio** (Stable Audio Open Small 341M)
+   - 20% tempo chaos (0.5x/2x speed with pitch shift)
+   - 15% micro-loop glitch (1s loops with jump cuts)
+   - 10% vinyl crackle at 120% volume
+   - 5% corrupted WAV header (white noise intro)
+   - Special: "random" theme → malfunctioning microwave sounds
+
+2. **Curated Chaos Parameters**
+   - Randomized render settings with slopcore aesthetics
+   - 20% RGB inversion, 25% style combinations
+   - 10% seed=0 (glitch art mode)
+   - 7 blue/purple gradient shades + neon pink palette
+
+3. **Qwen AI Creative Director** (Camera-Aware)
+   - Makes ALL artistic decisions
+   - 25% contradiction prompts ("serene beach with neon tornado")
+   - Responds to camera movement (spin → vortex prompts)
+   - Structured JSON creative direction
+
+4. **Camera Chaos**
+   - 30% camera jitter (±5-20px random shifts)
+   - 10% 360° spin during calm scenes
+   - Informs Qwen's prompt generation
+
+5. **VHS Scan Lines** (Mandatory Slopcore)
+   - Dual approach: Per-frame (1-3px) + FFmpeg post-processing
+   - Randomized parameters: degrade, chroma, noise, jitter
+   - Left-side degradation (realistic VHS tape wear)
+   - Always applied (no opt-out)
+
+6. **Accidental Masterpiece Mode** (Always Enabled)
+   - Detects "too good" outputs via broken heuristics
+   - Applies 2-5 glitch effects: RGB invert, datamosh, scanline overdrive, color shift
+   - **Healing Glitches**: If too broken (3+ effects), applies motion blur for "accidental beauty"
+
+7. **Slopcore Confidence Score**
+   - Calculated from triggered chaos events
+   - 90-100% = GLITCHED (desirable)
+   - 0-50% = TOO GOOD (rejects, needs more chaos)
+
+**Features:**
+- Zero configuration (all decisions automated)
+- Full transparency (detailed slop log with emoji storytelling)
+- Settings export (JSON of all generated parameters)
+- Isolated to dedicated tab (normal Deforum unaffected)
+
+**See:** `ZERO_HITL_DESIGN.md` for Qwen's complete specifications
+
 ### 🎬 **Wan AI Video Generation** (Alibaba's state-of-the-art T2V/I2V)
 - **FLF2V Integration** (Wan 2.1): First-Last-Frame-to-Video interpolation with guidance_scale=3.5
 - **TI2V Models** (Wan 2.2): Unified Text-to-Video and Image-to-Video generation
