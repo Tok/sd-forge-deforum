@@ -6,5 +6,6 @@ ISOLATION: All chaos stays in the Zero-HITL tab. Normal Deforum remains unchange
 """
 
 from .parameter_randomizer import randomize_parameters, SlopcoreParameters
+from .orchestrator import orchestrate_slop, OrchestrationResult
 
-__all__ = ['randomize_parameters', 'SlopcoreParameters']
+__all__ = ['randomize_parameters', 'SlopcoreParameters', 'orchestrate_slop', 'OrchestrationResult']
