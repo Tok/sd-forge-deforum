@@ -322,7 +322,12 @@ class QwenOrchestrator:
         vhs_video_path = self._apply_vhs_effects(video_path)
         self._log("✓ VHS scan lines applied (mandatory slopcore aesthetic)")
 
-        return vhs_video_path
+        # Apply Accidental Masterpiece mode (always enabled - no human control)
+        self._log("🎨 Running Accidental Masterpiece detection...")
+        final_video_path = self._apply_accidental_masterpiece(vhs_video_path)
+        self._log("✓ Accidental Masterpiece check complete")
+
+        return final_video_path
 
     def _apply_vhs_effects(self, video_path: str) -> str:
         """Apply VHS scan lines and effects (mandatory slopcore).
@@ -369,6 +374,50 @@ class QwenOrchestrator:
             logger.warning(f"VHS post-processing failed: {e}, using original video")
             self._log(f"⚠️ VHS processing failed: {e}")
             return video_path  # Fallback to original
+
+    def _apply_accidental_masterpiece(self, video_path: str) -> str:
+        """Apply Accidental Masterpiece mode (always enabled).
+
+        Per Qwen: If output too good, apply glitches. If too broken, apply healing.
+
+        Args:
+            video_path: Path to VHS-processed video
+
+        Returns:
+            Path to final video (after masterpiece processing)
+        """
+        from deforum.utils.zero_hitl.accidental_masterpiece import (
+            apply_accidental_masterpiece_mode,
+            get_masterpiece_slop_log
+        )
+
+        try:
+            # Generate masterpiece output path
+            video_path_obj = Path(video_path)
+            masterpiece_output = video_path_obj.parent / f"{video_path_obj.stem}_masterpiece{video_path_obj.suffix}"
+
+            # Apply Accidental Masterpiece detection and glitches
+            final_video, applied_effects = apply_accidental_masterpiece_mode(
+                video_path=video_path,
+                output_path=str(masterpiece_output),
+                force=False  # Let heuristics decide
+            )
+
+            # Log to slop log
+            masterpiece_log_msg = get_masterpiece_slop_log(applied_effects)
+            self._log(masterpiece_log_msg)
+            self.all_slop_logs.append(SlopLog(
+                masterpiece_log_msg,
+                1.0,  # Always enabled
+                len(applied_effects) > 0  # Triggered if effects applied
+            ))
+
+            return final_video
+
+        except Exception as e:
+            logger.warning(f"Accidental Masterpiece mode failed: {e}, using VHS video")
+            self._log(f"⚠️ Masterpiece processing failed: {e}")
+            return video_path  # Fallback to VHS video
 
     def _generate_settings_json(
         self,
