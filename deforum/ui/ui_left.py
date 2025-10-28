@@ -24,6 +24,7 @@ from deforum.utils.system.logging import emoji as emoji_utils
 # from .deforum_controlnet import setup_controlnet_ui
 from deforum.ui.ui_elements import (get_tab_run, get_tab_keyframes, get_tab_prompts, get_tab_init,
                           get_tab_output, get_tab_masking)
+from deforum.ui.tabs.tab_camera_path import get_tab_camera_path
 from deforum.ui.handlers.audio_prompt_generator import generate_prompts_with_ai
 from deforum.ui.handlers.audio_sync import synchronize_prompts_to_audio
 from deforum.utils.system.logging import get_logger, emoji_if_enabled
@@ -199,6 +200,7 @@ def setup_deforum_left_side_ui():
         with gr.Tabs() as main_tabs:
             # Get main tab contents in new workflow order:
             # Tabs visible in all modes:
+            tab_camera_path_params = get_tab_camera_path(da)  # 0. Camera Path - all modes
             tab_init_params = get_tab_init(d, da, dp, dau, dv)  # 1. Init - all modes
             from .ui_elements import get_tab_distribution, get_tab_shakify, get_tab_depth_warping
             tab_distribution_params = get_tab_distribution(da)  # 2. Distribution - all modes
@@ -1142,7 +1144,7 @@ def setup_deforum_left_side_ui():
     result = locals().copy()
 
     # Flatten all tab dicts so components are accessible at top level
-    tab_dicts = ['tab_init_params', 'tab_distribution_params', 'tab_prompts_params',
+    tab_dicts = ['tab_camera_path_params', 'tab_init_params', 'tab_distribution_params', 'tab_prompts_params',
                  'tab_keyframes_params', 'tab_depth_params', 'tab_shakify_params',
                  'tab_masking_params', 'tab_wan_params', 'tab_run_params', 'tab_output_params']
 
