@@ -26,7 +26,7 @@ from deforum.utils.general import get_deforum_version, get_commit_date
 from deforum.ui.ui_left import setup_deforum_left_side_ui
 from scripts.deforum_extend_paths import deforum_sys_extend
 import gradio as gr
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
@@ -638,7 +638,7 @@ def on_ui_tabs():
                     prompts.value if prompts else ""
                 )
                 camera_path_plot.value = fig
-                logger.info("✅ Camera path visualization initialized on startup")
+                logger.info(f"{emoji_if_enabled('✅')} Camera path visualization initialized on startup")
         except Exception as e:
             logger.warning(f"Failed to initialize camera path visualization: {e}")
 
