@@ -78,11 +78,12 @@ class WanModelDownloader:
             local_dir = Path(model["local_dir"])
             local_dir.mkdir(parents=True, exist_ok=True)
 
+            # Note: resume_download is deprecated in huggingface_hub 1.0.0+
+            # Downloads always resume automatically when possible, so we don't need to specify it
             snapshot_download(
                 repo_id=model["repo_id"],
                 local_dir=str(local_dir),
-                local_dir_use_symlinks=False,
-                resume_download=True
+                local_dir_use_symlinks=False
             )
             return True
         except ImportError:

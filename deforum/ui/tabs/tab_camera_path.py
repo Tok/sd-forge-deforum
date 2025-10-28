@@ -7,7 +7,7 @@ Populates translation/rotation schedules for Deforum animation.
 import gradio as gr
 from types import SimpleNamespace
 from deforum.utils.system.logging import emoji as emoji_utils
-from deforum.ui.components.gradio_utils import FormRow, FormColumn
+from modules.ui_components import FormRow, FormColumn
 
 
 def get_tab_camera_path(da: SimpleNamespace, skip_tabitem=False):
