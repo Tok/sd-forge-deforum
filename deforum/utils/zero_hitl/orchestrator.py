@@ -471,6 +471,11 @@ class QwenOrchestrator:
         """
         formatted = self.slop_log.copy()
 
+        # Calculate Slopcore Confidence Score
+        confidence = self._calculate_slopcore_confidence()
+        formatted.append("")
+        formatted.append(f"═══ SLOPCORE CONFIDENCE SCORE: {confidence}% ═══")
+
         # Add section for intentional bad decisions
         formatted.append("")
         formatted.append("═══ INTENTIONAL BAD DECISIONS ═══")
@@ -481,6 +486,42 @@ class QwenOrchestrator:
                 formatted.append(f"✓ {log_entry.decision} ({prob_str} chance)")
 
         return formatted
+
+    def _calculate_slopcore_confidence(self) -> int:
+        """Calculate Slopcore Confidence Score from triggered chaos.
+
+        Per Qwen: "SLOPCORE CONFIDENCE: 97% (GLITCHED)" or "3% (TOO GOOD)"
+
+        Returns:
+            Confidence percentage (0-100)
+        """
+        # Count triggered chaos events
+        triggered_count = sum(1 for log in self.all_slop_logs if log.triggered)
+        total_count = len(self.all_slop_logs)
+
+        if total_count == 0:
+            return 50  # Neutral
+
+        # Calculate confidence as percentage of triggered chaos
+        trigger_ratio = triggered_count / total_count
+
+        # Map to Qwen's scale:
+        # High triggers (>60%) = High confidence (90-100%) GLITCHED
+        # Medium triggers (30-60%) = Medium confidence (50-90%)
+        # Low triggers (<30%) = Low confidence (0-50%) TOO GOOD
+
+        if trigger_ratio > 0.6:
+            # High chaos = high confidence
+            confidence = int(90 + (trigger_ratio - 0.6) * 25)  # 90-100%
+            confidence = min(100, confidence)
+        elif trigger_ratio > 0.3:
+            # Medium chaos = medium confidence
+            confidence = int(50 + (trigger_ratio - 0.3) * 133)  # 50-90%
+        else:
+            # Low chaos = low confidence (rejecting as too good)
+            confidence = int(trigger_ratio * 167)  # 0-50%
+
+        return confidence
 
 
 # Public API
