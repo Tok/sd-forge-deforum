@@ -246,34 +246,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     lines=2
                 )
 
-        # ===== VISUALIZATION TAB =====
-        viz_emoji = emoji_utils.distribution() + " " if emoji_utils.distribution() else ""
-        with gr.Tab(f"{viz_emoji}Visualization"):
-            gr.Markdown("### 3D Camera Path Preview")
-
-            with FormRow():
-                plot_output = gr.Plot(
-                    label="3D Path Visualization",
-                    show_label=True
-                )
-
-            with FormRow(variant="compact"):
-                btn_visualize = gr.Button(
-                    f"{emoji_utils.distribution()} Visualize Path",
-                    variant="primary",
-                    elem_id="btn_visualize",
-                    elem_classes=["slopcore-button"]
-                )
-
-            gr.Markdown("### Path Statistics")
-
-            with FormRow(variant="compact"):
-                stats_output = gr.Textbox(
-                    label="Path Info",
-                    value="Generate a path to see statistics",
-                    interactive=False,
-                    lines=5
-                )
+        # Visualization tab removed - visualization now in right panel for real-time feedback
 
     # Store components for event handlers
     components.update({
@@ -298,9 +271,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
         'control_pattern_scale': control_pattern_scale,
         'btn_generate_custom': btn_generate_custom,
         'custom_status': custom_status,
-        'plot_output': plot_output,
-        'btn_visualize': btn_visualize,
-        'stats_output': stats_output,
+        # Visualization removed from tab - now in right panel
         # Include references to schedule textboxes (will be passed from parent)
         'translation_x': None,  # Will be set by parent
         'translation_y': None,

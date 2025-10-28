@@ -338,6 +338,17 @@ def on_ui_tabs():
                     load_settings_btn = gr.Button('Load All Settings', elem_id='deforum_load_settings_btn')
                     open_folder_btn = gr.Button('📂 Open Output Directory', elem_id='deforum_open_folder_btn')
 
+                # Camera Path Visualization (real-time display)
+                with gr.Row(variant='compact'):
+                    camera_path_plot = gr.Plot(
+                        label="Camera Path Visualization (Real-time)",
+                        show_label=True,
+                        elem_id="deforum_camera_path_viz",
+                        visible=True
+                    )
+
+                components['camera_path_plot'] = camera_path_plot
+
         # Live preview polling - updates every 500ms
         # Smart polling: only shows fresh previews (< 5 sec old), silently handles errors
         live_preview_timer = gr.Timer(value=0.5, active=True)
@@ -398,6 +409,143 @@ def on_ui_tabs():
             inputs=[],
             outputs=[],
         )
+
+        # Wire up Camera Path buttons and schedule visualization
+        try:
+            from deforum.ui.handlers.camera_path_generator import (
+                handle_generate_preset,
+                handle_generate_custom
+            )
+            from deforum.utils.schedule_visualizer import visualize_schedules
+
+            btn_generate_preset = components.get('btn_generate_preset')
+            btn_randomize_preset = components.get('btn_randomize_preset')
+            btn_generate_custom = components.get('btn_generate_custom')
+
+            # Get schedule textboxes
+            tx = components.get('translation_x')
+            ty = components.get('translation_y')
+            tz = components.get('translation_z')
+            rx = components.get('rotation_3d_x')
+            ry = components.get('rotation_3d_y')
+            rz = components.get('rotation_3d_z')
+            animation_prompts = components.get('animation_prompts')
+
+            if btn_generate_preset and camera_path_plot and tx:
+                # Wire up preset generation button
+                btn_generate_preset.click(
+                    fn=handle_generate_preset,
+                    inputs=[
+                        components.get('preset_type'),
+                        components.get('preset_radius'),
+                        components.get('preset_height'),
+                        components.get('preset_rotation_factor'),
+                        components.get('preset_num_frames'),
+                        components.get('preset_closed_loop'),
+                        components.get('preset_randomize'),
+                        components.get('preset_random_seed'),
+                        tx, ty, tz, rx, ry, rz
+                    ],
+                    outputs=[
+                        components.get('preset_status'),
+                        tx, ty, tz, rx, ry, rz  # Only update schedules
+                    ]
+                )
+                logger.debug("✅ Camera Path preset button wired to right panel plot")
+
+            if btn_randomize_preset and camera_path_plot and tx:
+                # Wire up randomize button
+                def randomize_preset_wrapper(*args):
+                    """Randomize by using current params but with random seed"""
+                    args_list = list(args)
+                    args_list[7] = -1  # preset_random_seed index - force new randomization
+                    if args_list[6] == 0:  # preset_randomize
+                        args_list[6] = 0.5
+                    return handle_generate_preset(*args_list)
+
+                btn_randomize_preset.click(
+                    fn=randomize_preset_wrapper,
+                    inputs=[
+                        components.get('preset_type'),
+                        components.get('preset_radius'),
+                        components.get('preset_height'),
+                        components.get('preset_rotation_factor'),
+                        components.get('preset_num_frames'),
+                        components.get('preset_closed_loop'),
+                        components.get('preset_randomize'),
+                        components.get('preset_random_seed'),
+                        tx, ty, tz, rx, ry, rz
+                    ],
+                    outputs=[
+                        components.get('preset_status'),
+                        tx, ty, tz, rx, ry, rz  # Only update schedules
+                    ]
+                )
+                logger.debug("✅ Camera Path randomize button wired")
+
+            if btn_generate_custom and camera_path_plot and tx:
+                # Wire up custom spline generation button
+                btn_generate_custom.click(
+                    fn=handle_generate_custom,
+                    inputs=[
+                        components.get('num_control_points'),
+                        components.get('spline_type'),
+                        components.get('spline_smoothness'),
+                        components.get('look_at_curve'),
+                        components.get('custom_num_frames'),
+                        components.get('custom_closed_loop'),
+                        components.get('control_point_pattern'),
+                        components.get('control_pattern_scale'),
+                        tx, ty, tz, rx, ry, rz
+                    ],
+                    outputs=[
+                        components.get('custom_status'),
+                        tx, ty, tz, rx, ry, rz  # Only update schedules
+                    ]
+                )
+                logger.debug("✅ Camera Path custom button wired")
+
+            # Wire schedule textboxes to update visualization whenever they change
+            def update_viz_from_schedules(tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, prompts_val="", max_frames=333):
+                """Update visualization from schedule textbox values."""
+                fig, stats = visualize_schedules(tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, max_frames, prompts_val)
+                return fig
+
+            # Each schedule textbox triggers visualization update
+            if tx and camera_path_plot:
+                schedule_inputs = [tx, ty, tz, rx, ry, rz]
+                if animation_prompts:
+                    schedule_inputs.append(animation_prompts)
+
+                for schedule_box in [tx, ty, tz, rx, ry, rz]:
+                    if schedule_box:
+                        schedule_box.change(
+                            fn=update_viz_from_schedules,
+                            inputs=schedule_inputs,
+                            outputs=[camera_path_plot]
+                        )
+
+                # Also trigger on prompt changes (for keyframe markers)
+                if animation_prompts:
+                    animation_prompts.change(
+                        fn=update_viz_from_schedules,
+                        inputs=schedule_inputs,
+                        outputs=[camera_path_plot]
+                    )
+
+                # Trigger visualization on settings load
+                load_settings_btn.click(
+                    fn=update_viz_from_schedules,
+                    inputs=schedule_inputs,
+                    outputs=[camera_path_plot]
+                )
+
+                logger.debug("✅ Schedule textboxes wired to visualization")
+
+        except Exception as e:
+            logger.error(f"Failed to wire Camera Path buttons to right panel: {e}")
+            import traceback
+            traceback.print_exc()
 
         # Depth preview visibility toggle based on animation_mode
         def update_depth_preview_visibility(save_depth, anim_mode):
@@ -466,6 +614,33 @@ def on_ui_tabs():
             should_show = anim_mode == '3D'
             depth_preview_image.visible = should_show
             logger.info(f"Depth preview gallery: visible={should_show} (anim_mode={anim_mode})")
+
+        # Update camera path visualization on startup
+        try:
+            from deforum.utils.schedule_visualizer import visualize_schedules
+            tx = components.get('translation_x')
+            ty = components.get('translation_y')
+            tz = components.get('translation_z')
+            rx = components.get('rotation_3d_x')
+            ry = components.get('rotation_3d_y')
+            rz = components.get('rotation_3d_z')
+            prompts = components.get('animation_prompts')
+
+            if tx and ty and tz and rx and ry and rz and camera_path_plot:
+                fig, _ = visualize_schedules(
+                    tx.value or "",
+                    ty.value or "",
+                    tz.value or "",
+                    rx.value or "",
+                    ry.value or "",
+                    rz.value or "",
+                    333,
+                    prompts.value if prompts else ""
+                )
+                camera_path_plot.value = fig
+                logger.info("✅ Camera path visualization initialized on startup")
+        except Exception as e:
+            logger.warning(f"Failed to initialize camera path visualization: {e}")
 
     # Always load settings on startup - either from persistent settings path (if enabled),
     # from webui root, or from the extension's default settings

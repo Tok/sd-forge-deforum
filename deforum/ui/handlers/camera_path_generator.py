@@ -15,6 +15,7 @@ from deforum.utils.spline_camera_path import (
     SplineConfig,
     CameraPoint
 )
+from deforum.utils.system.logging import emoji as emoji_utils
 
 
 def generate_preset_path(
@@ -373,10 +374,42 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
         hovertemplate='<b>END</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>'
     ))
 
+    # Keyframe markers - BRIGHT BLUE highlights at regular intervals (SLOPCORE)
+    # Calculate keyframe positions (every ~20-40 frames depending on path length)
+    keyframe_interval = max(20, min(40, num_points // 10))
+    keyframe_indices = list(range(0, num_points, keyframe_interval))
+    if keyframe_indices and keyframe_indices[-1] != num_points - 1:
+        keyframe_indices.append(num_points - 1)  # Ensure last frame is included
+
+    # Extract keyframe coordinates
+    keyframe_x = [x_coords[i] for i in keyframe_indices]
+    keyframe_y = [y_coords[i] for i in keyframe_indices]
+    keyframe_z = [z_coords[i] for i in keyframe_indices]
+    keyframe_labels = [str(i) for i in keyframe_indices]
+
+    fig.add_trace(go.Scatter3d(
+        x=keyframe_x,
+        y=keyframe_y,
+        z=keyframe_z,
+        mode='markers',
+        name=f'Keyframes (every {keyframe_interval})',
+        marker=dict(
+            size=8,
+            color='#3B82F6',  # Tailwind blue-500 (bright blue, slopcore aesthetic)
+            symbol='circle',
+            line=dict(color='#2563EB', width=2),  # Tailwind blue-600
+            opacity=0.9
+        ),
+        hovertemplate='<b>KEYFRAME %{text}</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>',
+        text=keyframe_labels
+    ))
+
     # Update layout - FULL DARKMODE SLOPCORE
+    # Respect emoji toggle setting
+    title_emoji = f"{emoji_utils.wan_video()} " if emoji_utils.wan_video() else ""
     fig.update_layout(
         title=dict(
-            text='<b>🎬 Camera Path Visualization</b>',
+            text=f'<b>{title_emoji}Camera Path Visualization</b>',
             font=dict(color='#E0E7FF', size=20, family='system-ui, -apple-system, sans-serif'),
             x=0.5,
             xanchor='center'
@@ -445,8 +478,13 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
     y_range = max(y_coords) - min(y_coords)
     z_range = max(z_coords) - min(z_coords)
 
+    # Calculate keyframe info for stats
+    keyframe_interval = max(20, min(40, num_points // 10))
+    num_keyframes = (num_points + keyframe_interval - 1) // keyframe_interval  # Ceiling division
+
     stats = f"""Path Statistics:
 - Frames: {len(camera_path)}
+- Keyframes: ~{num_keyframes} (every {keyframe_interval} frames)
 - Total Distance: {total_distance:.2f}
 - X Range: {x_range:.2f} (left/right)
 - Y Range: {y_range:.2f} (up/down)
@@ -478,7 +516,11 @@ def handle_generate_preset(
     rotation_3d_y,
     rotation_3d_z
 ):
-    """Handle preset path generation and populate schedules."""
+    """Handle preset path generation and populate schedules.
+
+    Note: Visualization is now handled by schedule change events.
+    This only updates the schedule textboxes.
+    """
     global _current_camera_path
 
     status, schedules, camera_path = generate_preset_path(
@@ -488,7 +530,7 @@ def handle_generate_preset(
 
     _current_camera_path = camera_path
 
-    # Return updates for all components
+    # Return schedule updates only - visualization will update automatically via .change() events
     return [
         status,  # preset_status
         schedules.get('translation_x', ''),  # translation_x textbox
@@ -516,7 +558,11 @@ def handle_generate_custom(
     rotation_3d_y,
     rotation_3d_z
 ):
-    """Handle custom spline generation and populate schedules."""
+    """Handle custom spline generation and populate schedules.
+
+    Note: Visualization is now handled by schedule change events.
+    This only updates the schedule textboxes.
+    """
     global _current_camera_path
 
     status, schedules, camera_path = generate_custom_spline_path(
@@ -526,7 +572,7 @@ def handle_generate_custom(
 
     _current_camera_path = camera_path
 
-    # Return updates for all components
+    # Return schedule updates only - visualization will update automatically via .change() events
     return [
         status,  # custom_status
         schedules.get('translation_x', ''),
