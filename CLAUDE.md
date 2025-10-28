@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Parseq keyframe redistribution** for intelligent frame placement
 - **Camera Shakify integration** for realistic camera shake effects from Blender data
 - **QwenPromptExpander** for AI-powered prompt enhancement and movement analysis
+- **Reverse Generation** for stable forward-motion clips (POV, dash-cam, body-cam footage)
 
 The extension operates as a Forge extension that hooks into WebUI's script system to provide animation capabilities across 3 modes: 3D (default), Flux + Interpolation, and Interpolation.
 
@@ -304,6 +305,32 @@ The extension now uses a unified `RenderMode` system that replaces the old anima
   - 2D/3D modes with "Enable Wan FLF2V for Tweens" (Distribution tab)
   - Wan Only mode Phase 2 (ALL tween interpolation)
   - Wan Flux mode Phase 2 (Flux→Wan→Flux interpolation)
+
+**Reverse Generation:**
+- **Purpose:** Solve the forward zoom-in problem by generating frames in reverse order
+- **The Problem:** Forward zoom-in is extremely difficult because the model must "imagine" what exists outside the current frame boundaries
+- **The Solution:** Generate zoom-OUT (easy - model just fills visible areas naturally), then play the video backward to create perfect zoom-IN
+- **Implementation:**
+  - Checkbox location: Top-level UI, between FPS/Steps and Cadence
+  - Frame processing order: Last→First (333→1)
+  - Frame saving: Uses original frame numbers (frame.frame_idx), so video reassembles correctly
+  - Tween handling: Automatic reassignment to ensure correct dependencies
+- **Technical Details:**
+  - When enabled, `run_render_animation()` reverses the frame list
+  - Each frame's tweens are moved to the NEXT frame in generation order (PREVIOUS in timeline)
+  - This ensures tweens are emitted AFTER their source keyframe exists
+  - Example: Frame 20's tweens (11-19) are reassigned to Frame 10, emitted after Frame 20 is generated
+- **Use Cases:**
+  - POV camera movement (dash-cam, body-cam, FPV drone footage)
+  - Forward zoom-in with stable backgrounds
+  - Any scenario where you need to generate "what's outside the frame"
+- **Compatible With:** All img2img workflows, 3D mode, depth warping, tween interpolation
+- **First-Person Perspective AI Mode:** Qwen can generate POV camera prompts optimized for reverse generation
+- **Implementation Files:**
+  - `deforum/config/args.py` - Parameter definition
+  - `deforum/ui/ui_left.py` - UI checkbox
+  - `deforum/rendering/core.py:72-98` - Tween reassignment logic
+  - `deforum/ui/handlers/audio_prompt_generator.py:159-189` - First-person perspective generation mode
 
 ## Common Development Tasks
 

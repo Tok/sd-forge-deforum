@@ -59,6 +59,16 @@ All primary action buttons now feature the industry-standard blue-purple slopcor
 - **RAFT Optical Flow**: Fixed and working for precise motion estimation
 - **Multi-GPU Support**: Efficient memory management for interpolation tasks
 
+### ⏪ **Reverse Generation** (Essential for stable forward-motion clips)
+- **Reverse Frame Order**: Generate frames from last→first (333→1), reassembled correctly for final video
+- **Natural Zoom-Out**: Model naturally fills new areas when zooming OUT during generation
+- **Perfect Zoom-In**: Final video plays forward (1→333) showing smooth zoom-in effect
+- **POV Camera Movement**: Ideal for dash-cam, body-cam, FPV drone footage with stable backgrounds
+- **Intelligent Tween Handling**: Automatic tween reassignment ensures correct dependency order
+- **Works with All img2img Workflows**: Compatible with 3D mode, depth warping, and all standard features
+- **First-Person Perspective AI Mode**: Qwen can generate POV camera prompts optimized for reverse generation
+- **Why It Matters**: Forward zoom-in is notoriously difficult (model struggles with "imagining" what's outside the frame). Reverse generation solves this by generating zoom-out (easy - just fill visible areas), then playing backward for perfect zoom-in.
+
 ### 🏗️ **Total Codebase Refactor**
 - **1000+ Unit Tests**: Comprehensive test coverage with pytest
 - **Type-Safe**: Complete type hints and mypy strict mode compliance
