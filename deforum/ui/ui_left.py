@@ -233,7 +233,7 @@ def setup_deforum_left_side_ui():
             controlnet_dict = {}  # Empty dict for backwards compatibility
 
             # add returned gradio elements from main tabs to locals()
-            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_distribution_params, **tab_prompts_params, **tab_shakify_params, **tab_masking_params, **tab_depth_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params}.items():
+            for key, value in {**tab_zero_hitl_params, **tab_run_params, **tab_keyframes_params, **tab_distribution_params, **tab_prompts_params, **tab_shakify_params, **tab_masking_params, **tab_depth_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params}.items():
                 locals()[key] = value
 
             # WORKAROUND: Explicitly unpack audio AI components as actual local variables
@@ -465,6 +465,46 @@ def setup_deforum_left_side_ui():
                     outputs=[audio_sync_prompts]
                 )
                 logger.debug(f"{emoji_if_enabled('✨')} AI prompt generation button connected successfully")
+
+            # ===== ZERO-HITL BUTTON WIRING =====
+            # Wire up "🔥 SLOP IT! 🔥" button
+            if 'btn_slop_it' in locals() and 'zero_hitl_duration' in locals():
+                from deforum.ui.handlers.zero_hitl_handler import (
+                    handle_slop_it_click,
+                    handle_view_settings_click,
+                    handle_open_output_click
+                )
+
+                # Main SLOP IT button
+                locals()['btn_slop_it'].click(
+                    fn=handle_slop_it_click,
+                    inputs=[
+                        locals()['zero_hitl_duration'],
+                        locals()['zero_hitl_theme'],
+                        locals()['zero_hitl_seed']
+                    ],
+                    outputs=[
+                        locals()['zero_hitl_status'],
+                        locals()['zero_hitl_log'],
+                        locals()['zero_hitl_generated_settings']
+                    ]
+                )
+
+                # View settings button
+                locals()['btn_view_settings'].click(
+                    fn=handle_view_settings_click,
+                    inputs=[locals()['zero_hitl_generated_settings']],
+                    outputs=[locals()['zero_hitl_log']]
+                )
+
+                # Open output folder button
+                locals()['btn_open_output'].click(
+                    fn=handle_open_output_click,
+                    inputs=[],
+                    outputs=[locals()['zero_hitl_status']]
+                )
+
+                logger.debug(f"{emoji_if_enabled('🔥')} Zero-HITL buttons wired successfully")
 
 
 
