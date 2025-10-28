@@ -1,7 +1,7 @@
 """Zero-HITL Slopcore Generator Tab
 
 One-click video generation where Qwen orchestrates the entire pipeline:
-- Audio generation (Stable Audio Open Small)
+- Audio generation (Meta MusicGen)
 - Prompt generation (Qwen + audio sync)
 - Camera path generation (presets/splines)
 - Full Deforum rendering
@@ -11,7 +11,7 @@ Zero Human-In-The-Loop creative playground.
 
 import gradio as gr
 from types import SimpleNamespace
-from deforum.utils.system.logging import emoji as emoji_utils
+from deforum.utils.system.logging import emoji as emoji_utils, emoji_if_enabled
 from modules.ui_components import FormRow, FormColumn
 
 
@@ -31,9 +31,10 @@ def get_tab_zero_hitl(skip_tabitem=False):
     if skip_tabitem:
         return components
     else:
-        # Main tab title with dice emoji
-        tab_emoji = emoji_utils.dice() + " " if emoji_utils.dice() else "🎲 "
-        with gr.TabItem(f"{tab_emoji}Zero-HITL", elem_id='zero_hitl_tab'):
+        # Main tab title with dice emoji (respecting global emoji settings)
+        tab_emoji = emoji_if_enabled(emoji_utils.dice())
+        tab_title = f"{tab_emoji} Zero-HITL" if tab_emoji else "Zero-HITL"
+        with gr.TabItem(tab_title, elem_id='zero_hitl_tab'):
             return components
 
 

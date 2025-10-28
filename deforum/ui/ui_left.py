@@ -200,11 +200,8 @@ def setup_deforum_left_side_ui():
     with gr.Blocks():
         with gr.Tabs() as main_tabs:
             # Get main tab contents in new workflow order:
-            # Zero-HITL first - the one-click slopcore generator:
-            tab_zero_hitl_params = get_tab_zero_hitl()  # 0. Zero-HITL - Qwen orchestrates everything
-
-            # Tabs visible in all modes:
-            tab_init_params = get_tab_init(d, da, dp, dau, dv)  # 1. Init - all modes (includes audio sync)
+            # Init tab now contains Zero-HITL as first subtab
+            tab_init_params = get_tab_init(d, da, dp, dau, dv)  # 1. Init - all modes (includes Zero-HITL, audio sync)
             from .ui_elements import get_tab_distribution, get_tab_shakify, get_tab_depth_warping
             tab_distribution_params = get_tab_distribution(da)  # 2. Distribution - all modes
             tab_prompts_params = get_tab_prompts(da, dw, dv)  # 3. Prompts - all modes (now includes audio/timing)
@@ -233,7 +230,8 @@ def setup_deforum_left_side_ui():
             controlnet_dict = {}  # Empty dict for backwards compatibility
 
             # add returned gradio elements from main tabs to locals()
-            for key, value in {**tab_zero_hitl_params, **tab_run_params, **tab_keyframes_params, **tab_distribution_params, **tab_prompts_params, **tab_shakify_params, **tab_masking_params, **tab_depth_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params}.items():
+            # Note: Zero-HITL components now come from tab_init_params
+            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_distribution_params, **tab_prompts_params, **tab_shakify_params, **tab_masking_params, **tab_depth_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params}.items():
                 locals()[key] = value
 
             # WORKAROUND: Explicitly unpack audio AI components as actual local variables
