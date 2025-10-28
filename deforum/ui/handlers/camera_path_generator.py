@@ -59,26 +59,6 @@ def generate_preset_path(
             status += f"Radius: {radius}, Height: {height}, Rotation Factor: {rotation_factor}\n"
             status += "Mode: Random sphere rotation (3D)"
 
-        elif preset_type == "circle-path":
-            control_points = generate_control_points_circle(
-                num_points=8,
-                radius=radius,
-                center_x=0.0,
-                center_y=height,
-                center_z=0.0,
-                height_variation=radius * 0.2
-            )
-            config = SplineConfig(
-                num_frames=int(num_frames),
-                num_control_points=8,
-                spline_type="catmull_rom",
-                closed_loop=closed_loop,
-                smoothness=0.7
-            )
-            camera_path = generate_camera_path(config, control_points, look_at_curve=True)
-            status = f"✅ Generated circle path ({len(camera_path)} frames)\n"
-            status += f"Radius: {radius}, Height: {height}, Closed: {closed_loop}"
-
         elif preset_type == "figure-eight":
             control_points = generate_control_points_figure_eight(
                 num_points=12,
@@ -139,26 +119,67 @@ def generate_preset_path(
             status += "Note: Orbit-up cannot be closed (rising path)"
 
         elif preset_type == "spiral":
-            # Spiral inward/outward
+            # 3D spiral inward - fits in cube, camera looks at center
             control_points = []
-            for i in range(16):
-                angle = 4 * np.pi * i / 16  # Two full rotations
-                r = radius * (1 - i / 16)  # Shrinking radius
+            num_points = 24  # More points for smoother 3D spiral
+            for i in range(num_points):
+                t = i / (num_points - 1)  # 0 to 1
+                angle = 6 * np.pi * t  # Three full rotations
+
+                # Shrink radius as we spiral in
+                r = radius * (1 - t)
+
+                # Circular motion in XZ plane
                 x = r * np.cos(angle)
                 z = r * np.sin(angle)
-                y = height + (i / 16) * radius * 0.3
+
+                # Vertical motion - rise then fall (creates 3D cube-fitting spiral)
+                # Use sine wave to go up and down within the cube
+                y = height + radius * 0.8 * np.sin(2 * np.pi * t)
+
                 control_points.append((x, y, z))
 
-            config = SplineConfig(
-                num_frames=int(num_frames),
-                num_control_points=16,
-                spline_type="catmull_rom",
-                closed_loop=False,  # Spirals don't loop
-                smoothness=0.8
-            )
-            camera_path = generate_camera_path(config, control_points, look_at_curve=True)
-            status = f"✅ Generated spiral path ({len(camera_path)} frames)\n"
-            status += f"Start radius: {radius}, End radius: 0"
+            # Generate path with camera looking at center (origin)
+            camera_path = []
+            for frame_idx in range(int(num_frames)):
+                # Interpolate position along control points
+                t = frame_idx / (num_frames - 1) if num_frames > 1 else 0
+                point_idx = int(t * (num_points - 1))
+
+                if point_idx >= len(control_points) - 1:
+                    x, y, z = control_points[-1]
+                else:
+                    # Linear interpolation between control points
+                    local_t = (t * (num_points - 1)) - point_idx
+                    p1 = control_points[point_idx]
+                    p2 = control_points[point_idx + 1]
+                    x = p1[0] + local_t * (p2[0] - p1[0])
+                    y = p1[1] + local_t * (p2[1] - p1[1])
+                    z = p1[2] + local_t * (p2[2] - p1[2])
+
+                # Calculate rotation to look at center (0, height, 0)
+                dx = 0.0 - x
+                dy = height - y
+                dz = 0.0 - z
+
+                # Pan angle (rotation_y)
+                rot_y = np.degrees(np.arctan2(dx, dz))
+
+                # Tilt angle (rotation_x)
+                horizontal_dist = np.sqrt(dx**2 + dz**2)
+                rot_x = np.degrees(np.arctan2(dy, horizontal_dist + 1e-8))
+
+                rot_z = 0.0
+
+                camera_path.append(CameraPoint(
+                    x=x, y=y, z=z,
+                    rot_x=rot_x, rot_y=rot_y, rot_z=rot_z,
+                    frame=frame_idx
+                ))
+
+            status = f"✅ Generated 3D spiral path ({len(camera_path)} frames)\n"
+            status += f"Start radius: {radius}, End radius: 0\n"
+            status += f"Mode: 3D spiral with look-at center (fits in cube)"
 
         elif preset_type == "street":
             # Street/dashcam forward movement with lane weaving

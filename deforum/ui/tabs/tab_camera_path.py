@@ -53,7 +53,6 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                 preset_type = gr.Dropdown(
                     choices=[
                         "rotate-around",
-                        "circle-path",
                         "figure-eight",
                         "forward-zoom",
                         "orbit-up",
