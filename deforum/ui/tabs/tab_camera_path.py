@@ -284,7 +284,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     translation_z = create_gr_elem(da.translation_z)
                     reset_tr_z_button = ToolButton(
                         elem_id='reset_tr_z_btn',
-                        value=emoji_utils.refresh(),
+                        value=emoji_utils.refresh,
                         tooltip="Reset translation Z to static."
                     )
                     components['tr_z'] = translation_z
