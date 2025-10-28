@@ -30,12 +30,15 @@ def get_tab_init(d, da, dp, dau, dv=None):
     Returns:
         dict: Component dictionary for event binding
     """
+    logger.info("========== get_tab_init() CALLED ==========")
     # Import dv if not provided
     if dv is None:
         from deforum.config.args import DeforumOutputArgs
         dv = SimpleNamespace(**DeforumOutputArgs())
 
+    logger.info("About to create Init TabItem")
     with gr.TabItem('Init'):
+        logger.info("Inside Init TabItem")
         with gr.Tabs() as init_subtabs:
             # ZERO-HITL INNER-TAB - First tab for one-click generation
             from .tab_zero_hitl import get_tab_zero_hitl
