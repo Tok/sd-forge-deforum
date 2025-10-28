@@ -41,8 +41,11 @@ def get_tab_init(d, da, dp, dau, dv=None):
             from .tab_zero_hitl import get_tab_zero_hitl
             zero_hitl_tab_emoji = emoji_if_enabled(emoji_utils.dice())
             zero_hitl_title = f"{zero_hitl_tab_emoji} Zero-HITL" if zero_hitl_tab_emoji else "Zero-HITL"
+            logger.debug(f"Creating Zero-HITL subtab with title: {zero_hitl_title}")
             with gr.Tab(zero_hitl_title) as zero_hitl_subtab:
+                logger.debug("Inside Zero-HITL gr.Tab context")
                 zero_hitl_params = get_tab_zero_hitl(skip_tabitem=True)
+                logger.debug(f"Zero-HITL params returned: {list(zero_hitl_params.keys()) if zero_hitl_params else 'None'}")
 
             # AUDIO SYNC INNER-TAB - Second tab, will be auto-selected by default
             with gr.Tab("Audio Sync") as audio_sync_subtab:
