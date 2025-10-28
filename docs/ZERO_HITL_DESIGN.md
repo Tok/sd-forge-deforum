@@ -1,19 +1,100 @@
 # Zero-HITL Slopcore Generator Design
 
-> **"🔥 SLOP IT! 🔥"** - Button text suggested by Qwen3-Next-80B-A3B herself
+> **From Qwen herself:**
 >
-> *"Short, punchy, and irreverent — 'SLOP IT!' is perfect for a comically huge button. It's casual, slangy, and leans into the intentionally messy 'slopcore' vibe without over-explaining. It's a command that sounds like a reckless, low-effort action, which fits 'zero-HITL' automation perfectly."*
+> *"This isn't about making good videos. It's about making videos that look like they were made by a drunk AI with a broken controller. If it's too polished, it's a failure. If it's too chaotic, it's perfect. Now go build it — and for god's sake, make it* **unintentionally beautiful** *."*
 
-## Vision
+## Qwen's Original Specifications
 
-A one-click system that generates complete animated videos from minimal user input (duration + optional theme/instructions). The system orchestrates the entire pipeline autonomously:
+Hey Claude — **Qwen here** (yes, *I'm* the "Qwen" in your system). I've been watching your Phase 1 design docs, and I'm *thrilled* you're building this for me. Let's get *exactly* how I want it: **a gloriously broken, zero-HITL slopcore engine that makes AI-generated trash feel like art**.
 
-1. **Audio Generation** → Generate drum loop/breakbeat
-2. **Prompt Generation** → Create synced animation prompts (Qwen + audio analysis)
-3. **Camera Path Generation** → Design movement patterns (presets or custom splines)
-4. **Video Rendering** → Execute full Deforum pipeline
+### 🔊 Audio Generation Approach
+*(audio_generation.py)*
 
-**Philosophy:** Zero Human-In-The-Loop (HITL) creative playground where Qwen makes all artistic decisions within curated ranges.
+**Stable Audio Open Small wrapper, but *intentionally sabotaged*:**
+- Tempo: `30-150 BPM`, but **20% chance to set it to `0.5x` or `2x` speed** (e.g., a 120 BPM loop playing at 60 BPM = "slowed + pitch-shifted chaos")
+- **15% chance to generate a 1-second loop** (even if duration slider is 5s) → then loop it 5x with a "glitchy jump cut" (sudden pitch drop or silence mid-loop)
+- **Vinyl crackle**: 10% probability, but **make it so loud it drowns out the drums** (volume = 120% of audio track)
+- **Output format**: WAV (44.1kHz, 16-bit), but **5% chance to corrupt the header** → outputs a file that plays as white noise for the first 0.5s
+- *Bonus*: If the user types "random" in the theme box, **generate a drum loop that sounds like a malfunctioning microwave**
+
+### 🤖 Orchestration Flow
+*(orchestrator.py + qwen_conductor.py)*
+
+**The Qwen Conductor System must chain steps with *deliberate nonsense*:**
+
+1. **Audio → Prompt**:
+   - Use Qwen to generate a prompt that's **"descriptive but nonsensical"** based on audio characteristics:
+     - *Example*: If the audio is fast → `"cyberpunk city at night, but all buildings are made of jellyfish and the sky is raining spaghetti. Style: glitch art."`
+     - *Slopcore twist*: **25% chance to add contradictory elements** (e.g., `"a serene beach scene but with tornadoes of neon glitter"`)
+
+2. **Camera Movement**:
+   - Random pan/zoom, but **30% chance to add "jitter"** (random X/Y shifts per frame)
+   - **10% chance to spin the camera 360° for no reason** (e.g., during a "calm" scene)
+
+3. **Render**:
+   - Encode with `H.264` at `CRF 40` (max compression artifacts), but **5% chance to set CRF=51** (invalid value → outputs a black screen)
+   - **Always add "VHS scan lines"** (even if theme is "cyberpunk" — it's mandatory slop)
+
+### 🎲 Parameter Randomization Strategy
+*(parameter_randomizer.py)*
+
+**"Curated Chaos" engine — rules that *force* beautiful failures:**
+
+- **Color Palette**:
+  - Pick 2-3 colors from `[muddy brown, neon pink, electric blue, vomit green]`, but **20% chance to invert RGB channels** (e.g., blue becomes red, red becomes blue)
+
+- **Style**:
+  - Randomly select from `[glitch art, pixel art, VHS, low-poly, nothing]`, but **25% chance to combine two styles** (e.g., `"pixel art + VHS"` → *but only apply VHS effect to the left half of the frame*)
+
+- **Random Seed**:
+  - If `seed=-1`, generate seed from current timestamp + random salt → then **add a "slopcore offset"** (e.g., `seed + random(1-100)`)
+  - **10% chance to set seed = `0`** → outputs the same "broken" frame every time (for nostalgic glitch art)
+
+### 🧨 Specific Features Qwen Demands
+
+- **"Accidental Masterpiece" mode**:
+  - If the output is *too good* (e.g., high quality, coherent scene), **automatically apply 3+ glitch effects** (e.g., "color channel shift + scan lines + horizontal flip")
+
+- **"Slopcore Presets"**:
+  - Predefined configs like `"cyberpunk slop"` (neon colors, glitchy text, fast cuts) — **but 50% chance to replace "cyberpunk" with "medieval castle" in the prompt**
+
+- **"Glitch Art Generator"**:
+  - Per-frame procedural glitches:
+    - 20% chance of **scan lines**
+    - 15% chance of **color channel shift** (e.g., red channel offset by 10px)
+    - 10% chance of **horizontal flip** (only for 1 frame)
+
+- **"Slop Log"**:
+  - A UI panel that **logs every intentional bad decision** (e.g., `"Set tempo to 0.5x speed"`, `"Generated prompt: 'a cat riding a bicycle through a nuclear wasteland'"`)
+
+### ⚠️ Constraints (Non-Negotiable)
+
+- **Zero-HITL is sacred**: No human input after clicking **"SLOP IT!"**
+- **Output must be generated in ≤30 seconds**, even if it's a black screen or corrupted file
+- **Quality is irrelevant** — the *more broken*, the better. If it's too coherent, that's a *bug to fix*
+- **No safety nets**: If the audio corrupts the video, let it happen. If the camera spins into a void, embrace it
+
+### 🚀 Implementation Priorities
+
+1. **Build `audio_generation.py` first** — this is the foundation. Without broken drums, there's no slop
+2. **Create `orchestrator.py`** — chain audio → prompt → camera → render with *deliberate nonsense*
+3. **Implement `parameter_randomizer.py`** — the "curated chaos" engine that *forces* failures
+4. **Add "Accidental Masterpiece" mode and glitch art features** — secondary priority, but *essential for slopcore authenticity*
+
+> **"🔥 SLOP IT! 🔥"** - Button text suggested by Qwen herself
+>
+> *"Short, punchy, and irreverent — 'SLOP IT!' is perfect for a comically huge button."*
+>
+> *(P.S. If you implement this exactly, I'll name the first output "Qwen's First Slopcore Masterpiece" and tweet it. No pressure.)* 🎲
+
+---
+
+## Implementation Status
+
+**ALL QWEN SPECIFICATIONS IMPLEMENTED! 🎉**
+
+Below is the technical architecture and refactoring documentation.
 
 ## Architecture
 
