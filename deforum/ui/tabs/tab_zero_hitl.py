@@ -26,15 +26,16 @@ def get_tab_zero_hitl(skip_tabitem=False):
     """
     components = {}
 
-    tab_content = _build_zero_hitl_ui(components)
-
     if skip_tabitem:
+        # When embedding as subtab, just build UI in current context
+        _build_zero_hitl_ui(components)
         return components
     else:
         # Main tab title with dice emoji (respecting global emoji settings)
         tab_emoji = emoji_if_enabled(emoji_utils.dice())
         tab_title = f"{tab_emoji} Zero-HITL" if tab_emoji else "Zero-HITL"
         with gr.TabItem(tab_title, elem_id='zero_hitl_tab'):
+            _build_zero_hitl_ui(components)
             return components
 
 
