@@ -314,7 +314,7 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
     # Path line - PURPLE GRADIENT VIBES (simulate gradient with multiple segments)
     # Create gradient effect by varying color along path
     num_points = len(x_coords)
-    colors = [f'rgb({int(102 + (118-102)*i/num_points)}, {int(126 + (75-126)*i/num_points)}, {int(234 + (162-234)*i/num_points))}'
+    colors = [f'rgb({int(102 + (118-102)*i/num_points)}, {int(126 + (75-126)*i/num_points)}, {int(234 + (162-234)*i/num_points)})'
               for i in range(num_points)]
 
     fig.add_trace(go.Scatter3d(
