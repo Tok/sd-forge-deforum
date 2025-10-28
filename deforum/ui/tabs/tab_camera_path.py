@@ -43,7 +43,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
 
     with gr.Tabs():
         # ===== PRESETS TAB =====
-        with gr.Tab(f"{emoji_utils.star()} Presets"):
+        with gr.Tab(f"{emoji_utils.bulb()} Presets"):
             gr.Markdown("### Quick Camera Movements")
 
             with FormRow(variant="compact"):

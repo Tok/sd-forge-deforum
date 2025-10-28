@@ -177,15 +177,28 @@ def auto_download_wan_flf2v_if_needed() -> bool:
     Returns:
         True if Wan FLF2V is available (already present or just downloaded), False otherwise
     """
-    downloader = WanModelDownloader()
+    try:
+        downloader = WanModelDownloader()
 
-    # Check if already installed
-    if downloader.is_flf2v_installed():
-        logger.info("Wan 2.1 FLF2V model already available")
-        return True
+        # Check if already installed
+        if downloader.is_flf2v_installed():
+            logger.info("Wan 2.1 FLF2V model already available")
+            return True
 
-    logger.info("Wan 2.1 FLF2V model not detected - starting auto-download...")
-    logger.info("Note: This model is required for Flux + Interpolation mode with Wan FLF2V")
-    logger.info("")
+        logger.info("Wan 2.1 FLF2V model not detected - starting auto-download...")
+        logger.info("Note: This model is required for Flux + Interpolation mode with Wan FLF2V")
+        logger.info("")
 
-    return downloader.download_flf2v()
+        result = downloader.download_flf2v()
+
+        # If download failed, just log and continue (don't crash extension load)
+        if not result:
+            logger.info("Wan FLF2V auto-download skipped - you can manually download later")
+            logger.info("Extension will load normally, Wan features available when model is installed")
+
+        return result
+    except Exception as e:
+        # Catch any unexpected errors during download attempt
+        logger.warning(f"Wan FLF2V auto-download error: {e}")
+        logger.info("Extension will load normally, Wan features available when model is installed")
+        return False
