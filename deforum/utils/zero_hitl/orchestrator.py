@@ -101,15 +101,16 @@ class QwenOrchestrator:
             self.all_slop_logs.extend(param_slop_log)
             self._log(f"✓ Parameters selected: {params.render_mode}, {params.fps}fps, {params.resolution}")
 
-            # Phase 3: Generate Prompts (via Qwen)
-            self._log("🤖 Phase 3: Generating nonsensical prompts with Qwen...")
-            prompts = self._generate_prompts_with_qwen(params, theme, duration_seconds)
-            self._log(f"✓ Generated {len(prompts)} keyframe prompts")
-
-            # Phase 4: Generate Camera Path (with potential jitter/spin)
-            self._log("📹 Phase 4: Generating camera path with chaos...")
+            # Phase 3: Generate Camera Path (with potential jitter/spin)
+            # CRITICAL: Camera chaos MUST come before prompts so movement informs creative direction
+            self._log("📹 Phase 3: Generating camera path with chaos...")
             camera_chaos = self._apply_camera_chaos(params)
             self._log(f"✓ Camera path: {params.preset_type} (chaos applied)")
+
+            # Phase 4: Generate Prompts (via Qwen) - informed by camera movement
+            self._log("🤖 Phase 4: Generating nonsensical prompts with Qwen (camera-aware)...")
+            prompts = self._generate_prompts_with_qwen(params, theme, duration_seconds, camera_chaos)
+            self._log(f"✓ Generated {len(prompts)} keyframe prompts")
 
             # Phase 5: Execute Render (wired to actual Deforum render)
             self._log("🎬 Phase 5: Executing Deforum render with VHS artifacts...")
@@ -190,14 +191,16 @@ class QwenOrchestrator:
         self,
         params: SlopcoreParameters,
         theme: str,
-        duration_seconds: float
+        duration_seconds: float,
+        camera_chaos: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
-        """Generate prompts using Qwen creative conductor.
+        """Generate prompts using Qwen creative conductor (camera-aware).
 
         Args:
             params: Slopcore parameters
             theme: User theme
             duration_seconds: Duration
+            camera_chaos: Applied camera chaos (jitter, spin, etc.)
 
         Returns:
             List of keyframe prompts
@@ -205,8 +208,8 @@ class QwenOrchestrator:
         from deforum.utils.zero_hitl.qwen_conductor import conduct_creative_direction
 
         try:
-            # Call Qwen conductor for creative direction
-            direction = conduct_creative_direction(params, theme, duration_seconds)
+            # Call Qwen conductor for creative direction (pass camera_chaos for context)
+            direction = conduct_creative_direction(params, theme, duration_seconds, camera_chaos)
 
             # Log creative philosophy
             self._log(f"✓ Qwen's philosophy: {direction.creative_philosophy}")
@@ -237,9 +240,9 @@ class QwenOrchestrator:
         if random.random() < self.PROB_CAMERA_JITTER:
             jitter_amount = random.uniform(5, 20)  # pixels
             chaos_applied['jitter'] = jitter_amount
-            self._log(f"✓ Camera jitter: ±{jitter_amount:.1f}px random shifts per frame")
+            self._log(f"🌀 CAMERA JITTERED TO ±{jitter_amount:.1f}px PER FRAME (EARTHQUAKE SIMULATOR)")
             self.all_slop_logs.append(SlopLog(
-                f"Camera jitter: ±{jitter_amount:.1f}px per frame",
+                f"🌀 CAMERA JITTERED TO ±{jitter_amount:.1f}px PER FRAME (EARTHQUAKE SIMULATOR)",
                 self.PROB_CAMERA_JITTER,
                 True
             ))
@@ -254,9 +257,9 @@ class QwenOrchestrator:
         if random.random() < self.PROB_CAMERA_SPIN_360:
             spin_frame = random.randint(10, int(params.fps * 2))  # Spin in first 2 seconds
             chaos_applied['spin_360'] = spin_frame
-            self._log(f"✓ Camera 360° spin at frame {spin_frame} (for no reason)")
+            self._log(f"🌀 SPUN 360° AT FRAME {spin_frame} FOR NO REASON (DURING A 'SERENE' SCENE)")
             self.all_slop_logs.append(SlopLog(
-                f"360° camera spin at frame {spin_frame} (during calm scene)",
+                f"🌀 SPUN 360° AT FRAME {spin_frame} FOR NO REASON (DURING A 'SERENE' SCENE)",
                 self.PROB_CAMERA_SPIN_360,
                 True
             ))
@@ -291,15 +294,15 @@ class QwenOrchestrator:
         # NOTE: This is applied in render_integration.build_args_from_slopcore()
         # but we track the decision here for the slop log
         if random.random() < self.PROB_CRF_51:
-            self._log("✓ CRF=51 (invalid value → black screen output)")
+            self._log("💀 CRF=51 (INVALID) → BLACK SCREEN OF THE SOUL (GLITCH ART ACHIEVED)")
             self.all_slop_logs.append(SlopLog(
-                "CRF=51 (invalid value, outputs black screen)",
+                "💀 CRF=51 (INVALID) → BLACK SCREEN OF THE SOUL (GLITCH ART ACHIEVED)",
                 self.PROB_CRF_51,
                 True
             ))
             # TODO: Pass crf_override=51 to render_integration
         else:
-            self._log("✓ CRF=40 (maximum compression artifacts)")
+            self._log("🎬 CRF=40 (MAXIMUM COMPRESSION ARTIFACTS, AS QWEN INTENDED)")
             self.all_slop_logs.append(SlopLog(
                 "CRF=51 (black screen)",
                 self.PROB_CRF_51,

@@ -88,14 +88,16 @@ class QwenConductor:
         self,
         params: SlopcoreParameters,
         theme: str,
-        duration_seconds: float
+        duration_seconds: float,
+        camera_chaos: dict
     ) -> QwenCreativeDirection:
-        """Generate complete creative direction using Qwen.
+        """Generate complete creative direction using Qwen (camera-aware).
 
         Args:
             params: Slopcore parameters (already selected)
             theme: User-provided theme
             duration_seconds: Video duration
+            camera_chaos: Applied camera chaos (jitter, spin, etc.)
 
         Returns:
             Complete creative direction
@@ -108,8 +110,9 @@ class QwenConductor:
             if not self._qwen_loaded:
                 self._load_qwen()
 
-            # Generate prompt for Qwen
+            # Generate prompt for Qwen (include camera chaos context)
             params_summary = self._summarize_parameters(params)
+            camera_summary = self._summarize_camera_chaos(camera_chaos)
             qwen_prompt = QWEN_ORCHESTRATOR_PROMPT.format(
                 duration=duration_seconds,
                 theme=theme if theme else "pure randomness",
@@ -117,6 +120,11 @@ class QwenConductor:
                 num_keyframes=num_keyframes,
                 style_param=params.style
             )
+
+            # Append camera chaos context
+            if camera_summary:
+                qwen_prompt += f"\n\nCAMERA MOVEMENT CONTEXT:\n{camera_summary}\n"
+                qwen_prompt += "IMPORTANT: Your prompts MUST reflect this camera movement! If camera spins wildly, describe spinning/vortex visuals. If camera jitters, describe chaotic/shaky scenes.\n"
 
             # Call Qwen (structured output / JSON mode)
             response = self._call_qwen_structured(qwen_prompt)
@@ -314,6 +322,26 @@ class QwenConductor:
             f"Style: {params.style}"
         )
 
+    def _summarize_camera_chaos(self, camera_chaos: dict) -> str:
+        """Summarize camera chaos for Qwen prompt.
+
+        Args:
+            camera_chaos: Applied camera chaos
+
+        Returns:
+            Human-readable summary
+        """
+        if not camera_chaos:
+            return ""
+
+        summary_parts = []
+        if 'jitter' in camera_chaos:
+            summary_parts.append(f"Camera jitters randomly (±{camera_chaos['jitter']:.1f}px per frame)")
+        if 'spin_360' in camera_chaos:
+            summary_parts.append(f"Camera spins 360° at frame {camera_chaos['spin_360']} (sudden chaotic rotation)")
+
+        return " | ".join(summary_parts) if summary_parts else ""
+
     def _fallback_creative_direction(
         self,
         params: SlopcoreParameters,
@@ -395,9 +423,10 @@ class QwenConductor:
 def conduct_creative_direction(
     params: SlopcoreParameters,
     theme: str,
-    duration_seconds: float
+    duration_seconds: float,
+    camera_chaos: dict = None
 ) -> QwenCreativeDirection:
-    """Generate creative direction using Qwen.
+    """Generate creative direction using Qwen (camera-aware).
 
     ISOLATION: Only affects Zero-HITL tab. Normal Deforum unchanged.
 
@@ -405,6 +434,7 @@ def conduct_creative_direction(
         params: Slopcore parameters (already selected)
         theme: User-provided theme (or empty for chaos)
         duration_seconds: Video duration
+        camera_chaos: Applied camera chaos (jitter, spin, etc.)
 
     Returns:
         Complete creative direction with prompts
@@ -412,10 +442,11 @@ def conduct_creative_direction(
     Example:
         >>> from deforum.utils.zero_hitl import randomize_parameters
         >>> params, _ = randomize_parameters(3.0, "cyberpunk", 42)
-        >>> direction = conduct_creative_direction(params, "cyberpunk neon city", 3.0)
+        >>> camera_chaos = {'jitter': 10.5, 'spin_360': 45}
+        >>> direction = conduct_creative_direction(params, "cyberpunk neon city", 3.0, camera_chaos)
         >>> print(direction.visual_theme)
         >>> for prompt in direction.prompts:
         ...     print(f"Frame {prompt['frame']}: {prompt['prompt']}")
     """
     conductor = QwenConductor()
-    return conductor.generate_creative_direction(params, theme, duration_seconds)
+    return conductor.generate_creative_direction(params, theme, duration_seconds, camera_chaos or {})
