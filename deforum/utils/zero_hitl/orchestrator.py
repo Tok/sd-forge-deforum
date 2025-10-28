@@ -101,9 +101,9 @@ class QwenOrchestrator:
             self.all_slop_logs.extend(param_slop_log)
             self._log(f"✓ Parameters selected: {params.render_mode}, {params.fps}fps, {params.resolution}")
 
-            # Phase 3: Generate Prompts (via Qwen - TODO: implement qwen_conductor)
+            # Phase 3: Generate Prompts (via Qwen)
             self._log("🤖 Phase 3: Generating nonsensical prompts with Qwen...")
-            prompts = self._generate_prompts_placeholder(params, theme, duration_seconds)
+            prompts = self._generate_prompts_with_qwen(params, theme, duration_seconds)
             self._log(f"✓ Generated {len(prompts)} keyframe prompts")
 
             # Phase 4: Generate Camera Path (with potential jitter/spin)
@@ -186,13 +186,13 @@ class QwenOrchestrator:
 
         return path, slop_log
 
-    def _generate_prompts_placeholder(
+    def _generate_prompts_with_qwen(
         self,
         params: SlopcoreParameters,
         theme: str,
         duration_seconds: float
     ) -> List[Dict[str, Any]]:
-        """Generate prompts (placeholder until qwen_conductor.py is implemented).
+        """Generate prompts using Qwen creative conductor.
 
         Args:
             params: Slopcore parameters
@@ -202,54 +202,25 @@ class QwenOrchestrator:
         Returns:
             List of keyframe prompts
         """
-        # Calculate number of keyframes based on duration
-        num_keyframes = max(8, min(20, int(duration_seconds * 3)))  # ~3 keyframes per second
+        from deforum.utils.zero_hitl.qwen_conductor import conduct_creative_direction
 
-        # Generate frame numbers
-        total_frames = int(params.fps * duration_seconds)
-        keyframe_indices = [int(i * total_frames / num_keyframes) for i in range(num_keyframes)]
+        try:
+            # Call Qwen conductor for creative direction
+            direction = conduct_creative_direction(params, theme, duration_seconds)
 
-        # Generate nonsensical prompts (placeholder - will be replaced by Qwen)
-        base_themes = [
-            "cyberpunk city",
-            "underwater dreamscape",
-            "glitch art chaos",
-            "neon jellyfish buildings",
-            "spaghetti rain tornado",
-            "serene beach with neon glitter tornadoes",
-            "pixel art void",
-            "VHS corrupted memories"
-        ]
+            # Log creative philosophy
+            self._log(f"✓ Qwen's philosophy: {direction.creative_philosophy}")
+            self._log(f"✓ Visual theme: {direction.visual_theme.get('style', 'unknown')}")
 
-        if theme:
-            base_prompt = theme
-        else:
-            base_prompt = random.choice(base_themes)
+            return direction.prompts
 
-        prompts = []
-        for i, frame_idx in enumerate(keyframe_indices):
-            # Add contradictory elements (25% chance per Qwen's spec)
-            if random.random() < 0.25:
-                contradiction = random.choice([
-                    "but everything is made of liquid metal",
-                    "but the sky is raining geometric shapes",
-                    "but gravity works sideways",
-                    "but colors are inverted",
-                    "but time flows backwards"
-                ])
-                prompt_text = f"{base_prompt}, {contradiction}"
-            else:
-                prompt_text = base_prompt
+        except Exception as e:
+            logger.warning(f"Qwen conductor failed: {e}, using fallback")
+            self._log(f"⚠️ Qwen unavailable, using fallback prompts")
 
-            # Add style suffix
-            prompt_text = f"{prompt_text}. Style: {params.style}"
-
-            prompts.append({
-                "frame": frame_idx,
-                "prompt": prompt_text
-            })
-
-        return prompts
+            # Fallback is already handled in qwen_conductor.py
+            # This should not normally happen, but just in case
+            return []
 
     def _apply_camera_chaos(self, params: SlopcoreParameters) -> Dict[str, Any]:
         """Apply camera chaos (jitter, 360° spin).
