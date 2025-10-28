@@ -1,6 +1,6 @@
 """Audio Generation with Intentional Sabotage
 
-Wraps Stable Audio Open Small with deliberate glitches, corruption, and chaos.
+Wraps Meta MusicGen (facebook/musicgen-small) with deliberate glitches, corruption, and chaos.
 Per Qwen's specs: "Without broken drums, there's no slop."
 
 Chaos Features:
@@ -77,7 +77,7 @@ class IntentionallySabotagedAudio:
             logger.info("🎲 RANDOM theme detected → MALFUNCTIONING MICROWAVE MODE")
             return self._generate_microwave_chaos(config)
 
-        # Try to load Stable Audio (fallback to amen break if unavailable)
+        # Try to load MusicGen (fallback to amen break if unavailable)
         audio_data = self._generate_with_stable_audio(config)
 
         # Apply chaos transformations
@@ -91,55 +91,64 @@ class IntentionallySabotagedAudio:
         return output_path, self.slop_log
 
     def _generate_with_stable_audio(self, config: AudioGenConfig) -> np.ndarray:
-        """Generate audio using Stable Audio Open Small (or fallback).
+        """Generate audio using Meta MusicGen (or fallback).
 
         Returns:
             Audio data as numpy array (mono, 44.1kHz, float32)
         """
         try:
             if not self._stable_audio_loaded:
-                logger.info("Loading Stable Audio Open Small...")
+                logger.info("Loading Meta MusicGen (facebook/musicgen-small)...")
                 # Lazy import to avoid startup cost
                 try:
-                    import torch
-                    from stable_audio_tools import get_pretrained_model
-                    from stable_audio_tools.inference.generation import generate_diffusion_cond
+                    from transformers import pipeline
                 except ImportError as e:
-                    logger.warning(f"stable-audio-tools not available: {e}")
+                    logger.warning(f"transformers not available: {e}")
                     logger.warning("Falling back to amen break loop (Zero-HITL audio unavailable)")
-                    return self._fallback_to_amen_break(config.duration_seconds)
+                    return self._load_amen_break_fallback(config.duration_seconds)
 
-                device = "cuda" if torch.cuda.is_available() else "cpu"
-                self.model, self.model_config = get_pretrained_model("stabilityai/stable-audio-open-small")
-                self.model = self.model.to(device)
+                # Load MusicGen via transformers pipeline
+                self.model = pipeline(
+                    "text-to-audio",
+                    "facebook/musicgen-small",
+                    device=0 if self._has_cuda() else -1
+                )
                 self._stable_audio_loaded = True
-                logger.info(f"✓ Stable Audio loaded on {device}")
+                logger.info(f"✓ MusicGen loaded")
 
-            # Generate audio
-            conditioning = [{
-                "prompt": config.prompt,
-                "seconds_total": config.duration_seconds
-            }]
-
-            output = generate_diffusion_cond(
-                self.model,
-                steps=8,  # Fast generation
-                cfg_scale=1.0,
-                conditioning=conditioning,
-                sample_size=self.model_config["sample_size"],
-                sampler_type="pingpong",
-                device=self.model.device
+            # Generate audio with MusicGen
+            music = self.model(
+                config.prompt,
+                forward_params={
+                    "do_sample": True,
+                    "max_new_tokens": int(config.duration_seconds * 50)  # ~50 tokens/sec
+                }
             )
 
-            # Convert to mono numpy array
-            audio_data = output.cpu().numpy()[0, 0]  # [batch, channels, samples] → [samples]
+            # Convert to numpy (MusicGen returns dict with 'audio' and 'sampling_rate')
+            audio_data = music["audio"][0]  # [batch, samples] → [samples]
+            sampling_rate = music["sampling_rate"]  # 32000 Hz
 
-            self._log_decision("Generated audio with Stable Audio Open Small", 1.0, True)
-            return audio_data
+            # Resample to 44.1kHz if needed
+            if sampling_rate != self.SAMPLE_RATE:
+                import scipy.signal as signal
+                num_samples = int(len(audio_data) * self.SAMPLE_RATE / sampling_rate)
+                audio_data = signal.resample(audio_data, num_samples)
+
+            self._log_decision("Generated audio with Meta MusicGen", 1.0, True)
+            return audio_data.astype(np.float32)
 
         except Exception as e:
-            logger.warning(f"Stable Audio failed ({e}), falling back to amen break")
+            logger.warning(f"MusicGen failed ({e}), falling back to amen break")
             return self._load_amen_break_fallback(config.duration_seconds)
+
+    def _has_cuda(self) -> bool:
+        """Check if CUDA is available."""
+        try:
+            import torch
+            return torch.cuda.is_available()
+        except ImportError:
+            return False
 
     def _load_amen_break_fallback(self, duration: float) -> np.ndarray:
         """Load and loop the amen break as fallback.
@@ -187,7 +196,7 @@ class IntentionallySabotagedAudio:
         loops_needed = int(np.ceil(target_samples / len(data)))
         looped = np.tile(data, loops_needed)[:target_samples]
 
-        self._log_decision("Fallback to amen break (Stable Audio unavailable)", 1.0, True)
+        self._log_decision("Fallback to amen break (MusicGen unavailable)", 1.0, True)
         return looped
 
     def _apply_tempo_chaos(self, audio: np.ndarray, config: AudioGenConfig) -> np.ndarray:

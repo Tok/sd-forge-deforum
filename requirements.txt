@@ -18,4 +18,6 @@ scipy>=1.10.0
 plotly>=5.14.0
 
 # Zero-HITL audio generation (Qwen's slopcore engine)
-stable-audio-tools>=0.1.0
+# stable-audio-tools>=0.1.0  # Python 3.12 incompatible
+# Using Meta MusicGen via transformers instead (already in requirements)
+# facebook/musicgen-small (300M) via transformers pipeline
