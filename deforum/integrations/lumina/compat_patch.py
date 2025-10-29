@@ -88,12 +88,24 @@ def ensure_num_tokens_for_lumina(p) -> bool:
 
             # Check if num_tokens is now set
             if "num_tokens" in dynamic_args:
-                logger.debug(f"✓ num_tokens populated: {dynamic_args['num_tokens']}")
+                num_tokens_list = dynamic_args["num_tokens"]
+                logger.debug(f"✓ num_tokens populated: {num_tokens_list}")
+
+                # Ensure we have at least 2 entries (cond and uncond)
+                # If CFG=1.0, unconditional is skipped, so we only have 1 entry
+                # Duplicate it so both indices work
+                if isinstance(num_tokens_list, list) and len(num_tokens_list) == 1:
+                    dynamic_args["num_tokens"] = num_tokens_list + num_tokens_list
+                    logger.debug(f"CFG=1.0 detected - duplicated num_tokens: {dynamic_args['num_tokens']}")
+
                 _lumina_patch_applied = True
                 return True
             else:
                 logger.warning("Failed to populate num_tokens via get_learned_conditioning()")
-                return False
+                # Set a fallback value to prevent KeyError
+                dynamic_args["num_tokens"] = [256, 256]  # Default token count
+                logger.warning(f"Using fallback num_tokens: {dynamic_args['num_tokens']}")
+                return True  # Return True anyway to prevent crashes
 
     except Exception as e:
         logger.error(f"Failed to ensure num_tokens for Lumina: {e}")
