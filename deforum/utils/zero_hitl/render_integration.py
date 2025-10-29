@@ -370,7 +370,7 @@ def execute_render(
         parseq_args = SimpleNamespace(**all_args['parseq_args'])
         loop_args = SimpleNamespace(**all_args['loop_args'])
         controlnet_args = all_args['controlnet_args']
-        root = all_args['root']
+        root = SimpleNamespace(**all_args['root'])  # Convert root to SimpleNamespace too
 
         logger.info(f"🔍 DEBUG: args namespace attributes: {dir(args)}")
         logger.info(f"🔍 DEBUG: args has outdir: {hasattr(args, 'outdir')}")
@@ -378,11 +378,21 @@ def execute_render(
             logger.info(f"🔍 DEBUG: args.outdir value: {args.outdir}")
 
         # Call Deforum render
+        logger.info("🎬 About to call render_animation()...")
         from deforum.orchestration.render import render_animation
-        render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
+
+        try:
+            render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
+            logger.info("✓ render_animation() completed successfully")
+        except Exception as render_error:
+            logger.error(f"❌ render_animation() failed with exception: {render_error}")
+            logger.error(f"   Exception type: {type(render_error).__name__}")
+            import traceback
+            logger.error(f"   Traceback: {traceback.format_exc()}")
+            raise
 
         # Find generated video (Deforum creates it based on timestring)
-        video_pattern = f"{root['timestring']}*.mp4"
+        video_pattern = f"{root.timestring}*.mp4"
         output_path = Path(output_dir)
         videos = list(output_path.glob(video_pattern))
 
