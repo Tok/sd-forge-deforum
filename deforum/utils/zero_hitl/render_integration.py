@@ -38,12 +38,12 @@ def build_args_from_slopcore(
     logger.info(f"🔍 output_dir parameter: {output_dir}")
     logger.info("=" * 80)
 
-    # Convert prompts to Deforum format (JSON string)
+    # Convert prompts to Deforum format (JSON string and dict)
     animation_prompts_dict = {
         str(prompt['frame']): prompt['prompt']
         for prompt in prompts
     }
-    animation_prompts = json.dumps(animation_prompts_dict)
+    animation_prompts_json = json.dumps(animation_prompts_dict)
 
     # Calculate total frames
     # For zero-HITL we use the exact duration * fps
@@ -66,11 +66,17 @@ def build_args_from_slopcore(
         # Output directory (CRITICAL - required by save_settings_txt)
         'outdir': output_dir,
 
+        # Prompts (required by save_settings_txt)
+        'prompts': animation_prompts_dict,
+        'positive_prompts': '',  # Zero-HITL uses simple prompts
+        'negative_prompts': '',  # Zero-HITL uses simple prompts
+
         # Basic generation settings
         'W': params.resolution[0],
         'H': params.resolution[1],
         'steps': params.steps,
         'sampler': params.sampler,
+        'scheduler': 'Automatic',  # Let Forge select appropriate scheduler
         'cfg_scale': params.cfg_scale,
         'seed': params.seed,
         'seed_behavior': 'schedule' if params.seed == 0 else 'fixed',
@@ -81,6 +87,16 @@ def build_args_from_slopcore(
         'strength': 0.0,  # Not used in animation mode
         'strength_0_no_init': True,
         'init_image': None,
+        'tiling': False,
+        'restore_faces': False,
+
+        # Masking (disabled for zero-HITL)
+        'use_mask': False,
+        'use_alpha_as_mask': False,
+        'mask_file': '',
+        'invert_mask': False,
+        'mask_contrast_adjust': 1.0,
+        'mask_brightness_adjust': 1.0,
 
         # Hybrid video removed
         'video_init_path': '',
@@ -140,7 +156,7 @@ def build_args_from_slopcore(
         'distilled_cfg_scale_schedule': '0:(0)',
 
         # Prompts
-        'animation_prompts': animation_prompts,
+        'animation_prompts': animation_prompts_json,
 
         # Noise settings
         'noise_type': params.noise_type,
