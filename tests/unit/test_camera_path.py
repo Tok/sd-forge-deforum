@@ -554,6 +554,7 @@ class TestPresetIntegration:
 
     def test_all_presets_generate_valid_paths(self):
         """Test that all preset types generate valid camera paths."""
+        pytest.importorskip("modules", reason="Requires Forge WebUI modules")
         from deforum.ui.handlers.camera_path_generator import generate_preset_path
 
         presets = [
@@ -591,6 +592,7 @@ class TestPresetIntegration:
 
     def test_forward_facing_presets_have_zero_rotation(self):
         """Test that street/dashcam/bodycam presets have zero rotation."""
+        pytest.importorskip("modules", reason="Requires Forge WebUI modules")
         from deforum.ui.handlers.camera_path_generator import generate_preset_path
 
         forward_presets = ["street", "dashcam", "bodycam"]
@@ -616,6 +618,7 @@ class TestPresetIntegration:
 
     def test_orbit_up_cannot_be_closed(self):
         """Test that orbit-up preset always uses closed_loop=False."""
+        pytest.importorskip("modules", reason="Requires Forge WebUI modules")
         from deforum.ui.handlers.camera_path_generator import generate_preset_path
 
         status, schedules, camera_path = generate_preset_path(
@@ -632,6 +635,7 @@ class TestPresetIntegration:
 
     def test_rotate_around_uses_sphere(self):
         """Test that rotate-around preset uses sphere rotation by default."""
+        pytest.importorskip("modules", reason="Requires Forge WebUI modules")
         from deforum.ui.handlers.camera_path_generator import generate_preset_path
 
         status, schedules, camera_path = generate_preset_path(

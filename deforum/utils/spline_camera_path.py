@@ -341,7 +341,7 @@ def generate_street_path(
     """Generate street/dashcam style forward-moving path.
 
     Camera moves forward along a street with gentle lane weaving.
-    Camera faces forward along the tangent of the path (follows the curve).
+    Camera always faces forward (zero rotation) - fixed to vehicle/body like dashcam/bodycam.
 
     Args:
         num_frames: Number of frames
@@ -352,8 +352,8 @@ def generate_street_path(
     Returns:
         List of CameraPoint objects
     """
-    # First, generate all positions
-    positions = []
+    # Generate camera points with zero rotation (dashcam/bodycam behavior)
+    camera_path = []
     for frame_idx in range(num_frames):
         t = frame_idx / num_frames
 
@@ -367,47 +367,13 @@ def generate_street_path(
         # Slight up/down (road bumps)
         y = center_y + 2 * np.sin(2 * np.pi * t * 8)  # Small bumps
 
-        positions.append((x, y, z))
-
-    # Calculate tangent vectors (forward direction along path)
-    tangents = []
-    for i in range(num_frames):
-        if i == 0:
-            # Forward difference at start
-            dx = positions[1][0] - positions[0][0]
-            dy = positions[1][1] - positions[0][1]
-            dz = positions[1][2] - positions[0][2]
-        elif i == num_frames - 1:
-            # Backward difference at end
-            dx = positions[-1][0] - positions[-2][0]
-            dy = positions[-1][1] - positions[-2][1]
-            dz = positions[-1][2] - positions[-2][2]
-        else:
-            # Central difference
-            dx = positions[i + 1][0] - positions[i - 1][0]
-            dy = positions[i + 1][1] - positions[i - 1][1]
-            dz = positions[i + 1][2] - positions[i - 1][2]
-
-        # Normalize tangent
-        length = np.sqrt(dx**2 + dy**2 + dz**2) + 1e-8
-        tangents.append((dx / length, dy / length, dz / length))
-
-    # Create camera points with rotation from tangents
-    camera_path = []
-    for frame_idx in range(num_frames):
-        x, y, z = positions[frame_idx]
-        tx, ty, tz = tangents[frame_idx]
-
-        # Convert tangent to rotation angles
-        rot_x, rot_y, rot_z = tangent_to_rotation(np.array([tx, ty, tz]))
-
         camera_path.append(CameraPoint(
             x=x,
             y=y,
             z=z,
-            rot_x=rot_x,
-            rot_y=rot_y,
-            rot_z=rot_z,
+            rot_x=0.0,  # Always level (dashcam/bodycam fixed to vehicle/body)
+            rot_y=0.0,  # Always facing forward
+            rot_z=0.0,  # No roll
             frame=frame_idx
         ))
 
