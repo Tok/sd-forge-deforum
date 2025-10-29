@@ -251,8 +251,8 @@ def build_args_from_slopcore(
         'outdir': output_dir,  # Required by Deforum render
     }
 
-    logger.debug(f"DEBUG: root_dict created with keys: {list(root_dict.keys())}")
-    logger.debug(f"DEBUG: root_dict['outdir'] = {root_dict.get('outdir', 'MISSING!')}")
+    logger.info(f"🔍 DEBUG: root_dict created with keys: {list(root_dict.keys())}")
+    logger.info(f"🔍 DEBUG: root_dict['outdir'] = {root_dict.get('outdir', 'MISSING!')}")
 
     return {
         'args': args_dict,
@@ -301,10 +301,10 @@ def execute_render(
         controlnet_args = all_args['controlnet_args']
         root = all_args['root']
 
-        logger.debug(f"DEBUG: root dict keys before render: {list(root.keys())}")
-        logger.debug(f"DEBUG: root has outdir: {'outdir' in root}")
+        logger.info(f"🔍 DEBUG: root dict keys before render: {list(root.keys())}")
+        logger.info(f"🔍 DEBUG: root has outdir: {'outdir' in root}")
         if 'outdir' in root:
-            logger.debug(f"DEBUG: root['outdir'] value: {root['outdir']}")
+            logger.info(f"🔍 DEBUG: root['outdir'] value: {root['outdir']}")
 
         # Call Deforum render
         from deforum.orchestration.render import render_animation
