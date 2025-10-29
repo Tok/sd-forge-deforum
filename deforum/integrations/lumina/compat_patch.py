@@ -70,21 +70,30 @@ def ensure_num_tokens_for_lumina(p) -> bool:
             logger.debug(f"Negative: {negative_prompts}")
 
             # Calculate conditioning (this should populate dynamic_args["num_tokens"])
-            # Positive conditioning
-            if hasattr(model, 'get_learned_conditioning') and prompts:
-                try:
-                    cond = model.get_learned_conditioning(prompts)
-                    logger.debug(f"Positive conditioning calculated")
-                except Exception as e:
-                    logger.debug(f"Failed to calculate positive conditioning: {e}")
+            # The actual calculation happens inside process_images(), but we need
+            # to trigger the text encoder's tokenization to get the real num_tokens
 
-            # Negative conditioning
-            if hasattr(model, 'get_learned_conditioning') and negative_prompts:
+            # For Lumina, we need to call the text processing engine directly
+            if hasattr(model, 'text_processing_engine_gemma'):
                 try:
-                    uncond = model.get_learned_conditioning(negative_prompts)
-                    logger.debug(f"Negative conditioning calculated")
+                    engine = model.text_processing_engine_gemma
+                    logger.debug(f"Found Gemma text processing engine")
+
+                    # Tokenize to get actual token counts
+                    if hasattr(engine, 'tokenize'):
+                        tokens = engine.tokenize(prompts)
+                        actual_count = len(tokens[0]) if tokens else 256
+                        logger.debug(f"Actual token count from tokenization: {actual_count}")
+
+                        # Set num_tokens to actual count (duplicated for cond/uncond)
+                        dynamic_args["num_tokens"] = [actual_count, actual_count]
+                        logger.debug(f"Set num_tokens to actual: {dynamic_args['num_tokens']}")
+                    else:
+                        logger.warning("Gemma engine has no tokenize method")
                 except Exception as e:
-                    logger.debug(f"Failed to calculate negative conditioning: {e}")
+                    logger.warning(f"Failed to use Gemma engine directly: {e}")
+                    import traceback
+                    logger.debug(traceback.format_exc())
 
             # Check if num_tokens is now set
             if "num_tokens" in dynamic_args:
