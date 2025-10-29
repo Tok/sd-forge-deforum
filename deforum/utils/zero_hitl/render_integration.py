@@ -123,10 +123,16 @@ def build_args_from_slopcore(
     }
 
     anim_args_dict = {
-        # Animation mode
+        # Render mode (primary workflow selector)
+        'render_mode': 'New 3D',
+
+        # Animation mode (legacy, kept for compatibility)
         'animation_mode': animation_mode,
         'max_frames': max_frames,
         'border': 'replicate',
+
+        # Keyframe distribution (New 3D uses REDISTRIBUTED)
+        'keyframe_distribution': 'REDISTRIBUTED',
 
         # Cadence (New 3D default)
         'diffusion_cadence': 5,  # New 3D default cadence for redistributed keyframes
