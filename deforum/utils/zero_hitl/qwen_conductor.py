@@ -149,32 +149,33 @@ class QwenConductor:
         try:
             logger.info("Loading Qwen model for creative direction...")
 
-            # Import Qwen utilities (these don't exist yet, use fallback for now)
-            # TODO: Implement proper Qwen model selection helpers
-            # from deforum.utils.qwen_prompt_expander import (
-            #     select_qwen_model_by_vram,
-            #     get_qwen_cache_dir
-            # )
-            raise ImportError("Qwen helpers not yet implemented")
+            # Import Qwen model manager
+            from deforum.integrations.wan.utils.qwen_manager import QwenModelManager
             import torch
+
+            # Initialize Qwen manager and auto-select model
+            qwen_manager = QwenModelManager()
+            selected_model = qwen_manager.auto_select_model(prefer_vl=False)  # Text-only for prompts
+
+            # Get model specs
+            model_specs = qwen_manager.MODEL_SPECS[selected_model]
+            model_hf_name = model_specs['hf_name']
+
+            logger.info(f"Selected Qwen model: {selected_model} ({model_hf_name})")
+
+            # Load model via transformers
             from transformers import AutoModelForCausalLM, AutoTokenizer
-
-            # Auto-select model based on VRAM
-            model_name = select_qwen_model_by_vram()
-            logger.info(f"Selected Qwen model: {model_name}")
-
-            # Load model and tokenizer
-            cache_dir = get_qwen_cache_dir()
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
+            # Load model and tokenizer
             self._qwen_tokenizer = AutoTokenizer.from_pretrained(
-                model_name,
+                model_hf_name,
                 cache_dir=cache_dir,
                 trust_remote_code=True
             )
 
             self._qwen_model = AutoModelForCausalLM.from_pretrained(
-                model_name,
+                model_hf_name,
                 cache_dir=cache_dir,
                 device_map="auto" if device == "cuda" else None,
                 trust_remote_code=True
