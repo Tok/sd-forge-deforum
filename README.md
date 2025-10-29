@@ -27,6 +27,8 @@ All primary action buttons now feature the industry-standard blue-purple slopcor
 ### 🔥 **Zero-HITL Slopcore Generator** (Qwen-Spec'd, Zero Human-In-The-Loop)
 *Specifications and review by Qwen3-Next-80B-A3B. Implementation was practically zero-HITL too (copy-paste driven development).*
 
+⚠️ **EXPERIMENTAL - CURRENTLY MISTUNED**: The Qwen AI Creative Director component is functional but produces suboptimal results. The chaos parameters (audio sabotage, RGB inversion, glitch effects) work as intended, but prompt generation needs retuning. Expect interesting failures.
+
 One-click AI video generation with **intentional chaos and glitches**. Click **"🔥 SLOP IT! 🔥"** and walk away.
 
 **Complete Pipeline:**
@@ -165,6 +167,24 @@ One-click AI video generation with **intentional chaos and glitches**. Click **"
 ### 📹 **Camera Shakify Integration** (EatTheFuture's Blender patterns)
 - **Pre-Recorded Patterns**: EARTHQUAKE, FILM_GRAIN, GENTLE_HANDHELD, INVESTIGATION, SMOOTH_DOLLY
 - **CC0 Licensed**: Creative Commons public domain shake data
+
+### 🎥 **3D Camera Path Spline Generation**
+- **8 Preset Movements**: rotate-around, figure-eight, forward-zoom, orbit-up, spiral, street, dashcam, bodycam
+- **Smooth Interpolation**: Bezier and Catmull-Rom splines for cinematic camera motion
+- **Closed Loop Support**: Seamless looping animations for perfect transitions
+- **Real-Time Preview**: 3D visualization before populating schedules
+- **Automatic Schedule Population**: Generates translation_x/y/z and rotation_3d_x/y/z schedules
+- **Randomization**: Add controlled chaos to camera paths for organic movement
+- **Look-At Logic**: Camera automatically follows curve tangents
+
+### 🎼 **AI Audio Generation** (Meta MusicGen Integration)
+- **MusicGen Small**: Meta's 341M parameter music generation model
+- **Stable Audio Open**: Alternative audio generation backend
+- **Theme-Based Generation**: Describe the vibe, get matching audio loops
+- **BPM Control**: Adjustable tempo for beat-synchronized animations
+- **Mono Output**: Optimized for video soundtracks (1D array format)
+- **Fallback Patterns**: Amen break and other classic samples when models unavailable
+- **Zero-HITL Integration**: Automatic audio generation with intentional chaos (20% tempo manipulation, 15% micro-loops, 10% vinyl crackle)
 - **Dedicated Tab**: Easy access to all patterns and intensity controls
 - **Realistic Motion**: Add cinematic camera shake on top of scheduled movement
 
@@ -286,6 +306,63 @@ wget https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl
 ```
 
 Restart Forge, set mode to "flux", select the flux checkpoint and all 3 VAEs in "VAE / Text Encoder".
+
+### Run Lumina 2.0 on Forge Neo (Alternative to Flux)
+
+**⚠️ Forge Neo Only** - Lumina 2.0 is only available in [Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo), not classic Forge.
+
+Lumina 2.0 is a 2B parameter model (vs Flux's 12B) with **full img2img support**, making it perfect for:
+- **Lower VRAM systems** (2GB model vs 12GB Flux)
+- **Faster generation** (fewer parameters = faster inference)
+- **1024x1024 native resolution** (optimal quality at this size)
+- **All Deforum render modes** (Classic 3D, New 3D, Keyframes Only, and can replace Flux in "Flux + Interpolation" mode)
+
+**Installation:**
+```bash
+# Option 1: Use Forge's model downloader UI (if available)
+# Go to Forge's model list, search for "Lumina"
+
+# Option 2: Manual download via huggingface-cli (recommended)
+cd /path/to/forge-neo
+hf download neta-art/Neta-Lumina --local-dir models/Stable-diffusion/Lumina
+
+# This downloads:
+# - neta-lumina-v1.0-all-in-one.safetensors (9.9GB) - complete bundled model
+# - Text Encoder/gemma_2_2b_fp16.safetensors (4.9GB)
+# - Unet/neta-lumina-v1.0.safetensors (4.9GB)
+# - VAE/ae.safetensors (320MB) - FLUX-VAE
+```
+
+**Usage:**
+1. Restart Forge Neo
+2. In main UI, select "Lumina" mode (instead of "flux")
+3. Select a Lumina checkpoint from the model dropdown
+4. Lumina shares the same FLUX-VAE as Flux models (ae.safetensors)
+5. Uses Gemma-2-2B text encoder (auto-loaded)
+
+**Deforum Compatibility:**
+- ⚠️ **EXPERIMENTAL** - Lumina may require parameter tuning
+- ✅ Classic 3D - Fixed cadence img2img rendering
+- ✅ New 3D - Keyframe redistribution with dual strength
+- ✅ Keyframes Only - Pure keyframes + depth tweening
+- ✅ Flux + Interpolation - Use Lumina for keyframes, then interpolate with Wan/RIFE/FILM
+
+**⚠️ Known Issues (With Automatic Fix):**
+- **num_tokens error**: Fixed via automatic compatibility patch
+  - Deforum now automatically detects Lumina and ensures `num_tokens` is populated
+  - Patch applied before sampling in both txt2img and img2img modes
+  - If errors still occur, please report with console logs
+- **Output quality**: Lumina is anime-optimized and may need different CFG/steps than Flux:
+  - CFG Scale: 4.0-5.5 (vs Flux's 1.0-3.5)
+  - Steps: 30 recommended (vs Flux's 20)
+  - Scheduler: linear_quadratic preferred (vs simple)
+  - Sampler: res_multistep or euler_ancestral work best
+
+**Technical Details:**
+- Architecture: Flow-based diffusion transformer (like Flux)
+- Text Encoder: Gemma-2-2B (vs Flux's T5-XXL)
+- VAE: FLUX-VAE-16CH (shared with Flux)
+- License: Apache-2.0 (fully open source)
 
 ## Installation
 

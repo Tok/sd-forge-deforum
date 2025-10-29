@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **sd-forge-deforum** is an experimental fork of the Deforum extension for Stable Diffusion WebUI Forge that generates frame-precise animated videos using keyframe scheduling. This fork adds:
 - **Flux.1 support** for state-of-the-art image generation
+- **Lumina 2.0 support** (Forge Neo only) - 2B parameter model with 1024x1024 native resolution
 - **Wan 2.1 AI Video Generation** (Alibaba's text-to-video model) with Deforum scheduling integration
 - **Parseq keyframe redistribution** for intelligent frame placement
 - **Camera Shakify integration** for realistic camera shake effects from Blender data
@@ -447,6 +448,16 @@ Core dependencies (from `requirements.txt`):
 
 **Model Requirements:**
 - **Flux:** Requires `flux1-dev-bnb-nf4-v2.safetensors` and VAE files (see README.md)
+- **Lumina 2.0:** (Forge Neo only) Downloaded via HuggingFace CLI
+  - Repository: `neta-art/Neta-Lumina` (anime-optimized fine-tune of Alpha-VLLM/Lumina-Image-2.0)
+  - Model size: 2B parameters
+  - Native resolution: 1024x1024
+  - All-in-one checkpoint: `neta-lumina-v1.0-all-in-one.safetensors` (9.9GB)
+  - Uses FLUX-VAE (16 channels) for encoding/decoding
+  - Uses Gemma-2-2B for text encoding
+  - **Full img2img support** - works with all Deforum render modes
+  - Compatible modes: Classic 3D, New 3D, Keyframes Only, Flux + Interpolation (if Lumina selected as base model)
+  - Download: `hf download neta-art/Neta-Lumina --local-dir models/Stable-diffusion/Lumina`
 - **Wan:** Downloaded via `huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan`
 - **Qwen:** Auto-downloaded to `models/Deforum/qwen/` when first used (3B/7B/14B variants)
 - **Depth:** Auto-downloaded to `models/Deforum/` on first use per selected model
@@ -457,6 +468,12 @@ Known compatibility issues:
 - **Kohya HR Fix** - May need to be disabled
 - **FreeU** - May need to be disabled
 - **Flux Schnell** - Limited precision with only 4 steps
+- **Lumina 2.0** - Experimental support with automatic compatibility patch:
+  - `KeyError: 'num_tokens'` fixed via automatic patch in `deforum/integrations/lumina/compat_patch.py`
+  - Patch ensures `dynamic_args["num_tokens"]` is populated before sampling
+  - Applied automatically when Lumina model detected (both txt2img and img2img)
+  - Requires different parameters than Flux (CFG 4.0-5.5, Steps 30, scheduler linear_quadratic)
+  - Anime-optimized, may produce suboptimal results for other styles
 
 **Removed Features:**
 - **Legacy/Stable Core** - Removed in favor of render core only
