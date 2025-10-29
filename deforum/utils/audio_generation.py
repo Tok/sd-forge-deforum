@@ -126,8 +126,12 @@ class IntentionallySabotagedAudio:
             )
 
             # Convert to numpy (MusicGen returns dict with 'audio' and 'sampling_rate')
-            audio_data = music["audio"][0]  # [batch, samples] → [samples]
+            audio_data = music["audio"][0]  # [batch, samples] or [batch, channels, samples]
             sampling_rate = music["sampling_rate"]  # 32000 Hz
+
+            # Ensure mono (1D array)
+            if len(audio_data.shape) > 1:
+                audio_data = audio_data.mean(axis=0)  # Average channels to mono
 
             # Resample to 44.1kHz if needed
             if sampling_rate != self.SAMPLE_RATE:
