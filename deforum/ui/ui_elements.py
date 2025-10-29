@@ -761,16 +761,17 @@ def get_tab_init(d, da, dp, dau, dv=None):
         dv = SimpleNamespace(**DeforumOutputArgs())
 
     with gr.TabItem('Init'):
-        with gr.Tabs(selected=1) as init_subtabs:  # Select index 1 (Audio Sync) by default
-            # ZERO-HITL INNER-TAB - First tab for one-click generation
-            from deforum.ui.tabs.tab_zero_hitl import get_tab_zero_hitl
-            from deforum.utils.system.logging import emoji_if_enabled
-            zero_hitl_tab_emoji = emoji_if_enabled(emoji_utils.dice())
-            zero_hitl_title = f"{zero_hitl_tab_emoji} Zero-HITL" if zero_hitl_tab_emoji else "Zero-HITL"
+        # ZERO-HITL INNER-TAB - First tab for one-click generation
+        from deforum.ui.tabs.tab_zero_hitl import get_tab_zero_hitl
+        from deforum.utils.system.logging import emoji_if_enabled
+        zero_hitl_tab_emoji = emoji_if_enabled(emoji_utils.dice())
+        zero_hitl_title = f"{zero_hitl_tab_emoji} Zero-HITL" if zero_hitl_tab_emoji else "Zero-HITL"
+
+        with gr.Tabs() as init_subtabs:
             with gr.Tab(zero_hitl_title) as zero_hitl_subtab:
                 zero_hitl_params = get_tab_zero_hitl(skip_tabitem=True)
 
-            # AUDIO SYNC INNER-TAB - Second tab, selected by default
+            # AUDIO SYNC INNER-TAB - Second tab
             with gr.Tab("Audio Sync") as audio_sync_subtab:
                 gr.HTML(value="<p>Audio event detection for prompt synchronization and video soundtrack. Upload audio file or enter path/URL below. Disabled when Parseq is active.</p>")
 
@@ -1019,6 +1020,9 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     overwrite_extracted_frames = create_gr_elem(da.overwrite_extracted_frames)
                 # NOTE: use_mask_video and video_mask_path moved to dedicated Masking tab
             # NOTE: Mask Init tab moved to dedicated Masking tab
+
+        # Set Audio Sync as default selected subtab (not Zero-HITL)
+        init_subtabs.selected = audio_sync_subtab
 
     # Build result dict from locals/vars
     result = {k: v for k, v in {**locals(), **vars()}.items()}
