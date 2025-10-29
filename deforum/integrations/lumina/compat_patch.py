@@ -50,23 +50,41 @@ def ensure_num_tokens_for_lumina(p) -> bool:
         if hasattr(shared, 'sd_model'):
             model = shared.sd_model
 
-            # Get prompts
-            prompts = [p.prompt] if isinstance(p.prompt, str) else p.prompt
-            negative_prompts = [p.negative_prompt] if isinstance(p.negative_prompt, str) else p.negative_prompt
+            # Get prompts - handle both string and list
+            if isinstance(p.prompt, str):
+                prompts = [p.prompt]
+            elif isinstance(p.prompt, list):
+                prompts = p.prompt
+            else:
+                prompts = [str(p.prompt)]
+
+            if isinstance(p.negative_prompt, str):
+                negative_prompts = [p.negative_prompt]
+            elif isinstance(p.negative_prompt, list):
+                negative_prompts = p.negative_prompt
+            else:
+                negative_prompts = [str(p.negative_prompt)] if p.negative_prompt else [""]
 
             logger.debug(f"Forcing conditioning for Lumina to populate num_tokens")
-            logger.debug(f"Prompts: {len(prompts)}, Negative: {len(negative_prompts)}")
+            logger.debug(f"Prompts: {prompts}")
+            logger.debug(f"Negative: {negative_prompts}")
 
             # Calculate conditioning (this should populate dynamic_args["num_tokens"])
             # Positive conditioning
-            if hasattr(model, 'get_learned_conditioning'):
-                cond = model.get_learned_conditioning(prompts)
-                logger.debug(f"Positive conditioning shape: {cond.shape if hasattr(cond, 'shape') else 'unknown'}")
+            if hasattr(model, 'get_learned_conditioning') and prompts:
+                try:
+                    cond = model.get_learned_conditioning(prompts)
+                    logger.debug(f"Positive conditioning calculated")
+                except Exception as e:
+                    logger.debug(f"Failed to calculate positive conditioning: {e}")
 
             # Negative conditioning
             if hasattr(model, 'get_learned_conditioning') and negative_prompts:
-                uncond = model.get_learned_conditioning(negative_prompts)
-                logger.debug(f"Negative conditioning shape: {uncond.shape if hasattr(uncond, 'shape') else 'unknown'}")
+                try:
+                    uncond = model.get_learned_conditioning(negative_prompts)
+                    logger.debug(f"Negative conditioning calculated")
+                except Exception as e:
+                    logger.debug(f"Failed to calculate negative conditioning: {e}")
 
             # Check if num_tokens is now set
             if "num_tokens" in dynamic_args:
