@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **sd-forge-deforum** is an experimental fork of the Deforum extension for Stable Diffusion WebUI Forge that generates frame-precise animated videos using keyframe scheduling. This fork adds:
 - **Flux.1 support** for state-of-the-art image generation
+- **Lumina 2.0 support** (Forge Neo only) - 2B parameter model with 1024x1024 native resolution
 - **Wan 2.1 AI Video Generation** (Alibaba's text-to-video model) with Deforum scheduling integration
 - **Parseq keyframe redistribution** for intelligent frame placement
 - **Camera Shakify integration** for realistic camera shake effects from Blender data
@@ -447,6 +448,14 @@ Core dependencies (from `requirements.txt`):
 
 **Model Requirements:**
 - **Flux:** Requires `flux1-dev-bnb-nf4-v2.safetensors` and VAE files (see README.md)
+- **Lumina 2.0:** (Forge Neo only) Downloaded via Forge's model downloader or HuggingFace
+  - Repository: `Alpha-VLLM/Lumina-Next-T2I`
+  - Model size: 2B parameters
+  - Native resolution: 1024x1024
+  - Uses FLUX-VAE (16 channels) for encoding/decoding
+  - Uses Gemma-2-2B for text encoding
+  - **Full img2img support** - works with all Deforum render modes
+  - Compatible modes: Classic 3D, New 3D, Keyframes Only, Flux + Interpolation (if Lumina selected as base model)
 - **Wan:** Downloaded via `huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan`
 - **Qwen:** Auto-downloaded to `models/Deforum/qwen/` when first used (3B/7B/14B variants)
 - **Depth:** Auto-downloaded to `models/Deforum/` on first use per selected model
