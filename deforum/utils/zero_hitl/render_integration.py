@@ -208,50 +208,50 @@ def build_args_from_slopcore(
         'use_optical_flow': False,
         'optical_flow_cadence': 0,
         'optical_flow_redo_generation': 'None',
-        'redo_flow_factor_schedule': '',  # Empty = disabled
-        'cadence_flow_factor_schedule': '',  # Empty = disabled
+        'redo_flow_factor_schedule': '0:(1.0)',  # Minimal valid schedule
+        'cadence_flow_factor_schedule': '0:(1.0)',  # Minimal valid schedule
         'raft_model_size': 'large',
         'raft_flow_iterations': 12,
         'show_flow_arrows': False,
 
-        # Seed scheduling - DISABLED (empty schedules to skip parsing)
+        # Seed scheduling - DISABLED (minimal schedules to satisfy parser)
         'enable_subseed_scheduling': False,
-        'subseed_schedule': '',  # Empty = disabled
-        'subseed_strength_schedule': '',  # Empty = disabled
+        'subseed_schedule': '0:(1)',  # Minimal valid schedule
+        'subseed_strength_schedule': '0:(0)',  # Minimal valid schedule
 
         # Steps scheduling - DISABLED
         'enable_steps_scheduling': False,
-        'steps_schedule': '',  # Empty = disabled
+        'steps_schedule': f'0:({params.steps})',  # Use actual steps value
 
         # Sampler scheduling - DISABLED
         'enable_sampler_scheduling': False,
-        'sampler_schedule': '',  # Empty = disabled
+        'sampler_schedule': f'0:({params.sampler})',  # Use actual sampler
 
         # Scheduler scheduling - DISABLED
         'enable_scheduler_scheduling': False,
-        'scheduler_schedule': '',  # Empty = disabled
+        'scheduler_schedule': '0:(Automatic)',  # Valid scheduler name
 
         # ETA scheduling - DISABLED
         'enable_ddim_eta_scheduling': False,
-        'ddim_eta_schedule': '',  # Empty = disabled
+        'ddim_eta_schedule': '0:(0)',  # Minimal valid schedule
         'enable_ancestral_eta_scheduling': False,
-        'ancestral_eta_schedule': '',  # Empty = disabled
+        'ancestral_eta_schedule': '0:(1)',  # Minimal valid schedule
 
         # Additional scheduling fields
         'aspect_ratio_schedule': '0:(1)',  # Keep for compatibility
         'aspect_ratio_use_old_formula': False,
-        'noise_mask_schedule': '',  # Empty = disabled
+        'noise_mask_schedule': '0:(None)',  # None for no mask
         'use_noise_mask': False,
-        'mask_schedule': '',  # Empty = disabled
-        'keyframe_type_schedule': '',  # Empty = disabled (not used in New 3D)
+        'mask_schedule': '0:(None)',  # None for no mask
+        'keyframe_type_schedule': '0:(Keyframe)',  # Valid keyframe type
 
         # Checkpoint scheduling - DISABLED
         'enable_checkpoint_scheduling': False,
-        'checkpoint_schedule': '',  # Empty = disabled
+        'checkpoint_schedule': '0:(model1.ckpt)',  # Valid checkpoint name
 
         # CLIP skip - DISABLED
         'enable_clipskip_scheduling': False,
-        'clipskip_schedule': '',  # Empty = disabled
+        'clipskip_schedule': '0:(1)',  # Minimal valid schedule
 
         # Seed schedule (keep for seed behavior)
         'seed_schedule': f'0:({params.seed})',
