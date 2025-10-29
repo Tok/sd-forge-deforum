@@ -63,6 +63,9 @@ def build_args_from_slopcore(
     # These match the structure expected by Deforum's render_animation()
 
     args_dict = {
+        # Output directory (CRITICAL - required by save_settings_txt)
+        'outdir': output_dir,
+
         # Basic generation settings
         'W': params.resolution[0],
         'H': params.resolution[1],
@@ -253,11 +256,10 @@ def build_args_from_slopcore(
     root_dict = {
         'timestring': f"slop_{int(time.time())}",
         'raw_batch_name': f"slop_{int(time.time())}",
-        'outdir': output_dir,  # Required by Deforum render
     }
 
     logger.info(f"🔍 DEBUG: root_dict created with keys: {list(root_dict.keys())}")
-    logger.info(f"🔍 DEBUG: root_dict['outdir'] = {root_dict.get('outdir', 'MISSING!')}")
+    logger.info(f"🔍 DEBUG: args_dict['outdir'] = {args_dict.get('outdir', 'MISSING!')}")
 
     return {
         'args': args_dict,
@@ -310,10 +312,10 @@ def execute_render(
         controlnet_args = all_args['controlnet_args']
         root = all_args['root']
 
-        logger.info(f"🔍 DEBUG: root dict keys before render: {list(root.keys())}")
-        logger.info(f"🔍 DEBUG: root has outdir: {'outdir' in root}")
-        if 'outdir' in root:
-            logger.info(f"🔍 DEBUG: root['outdir'] value: {root['outdir']}")
+        logger.info(f"🔍 DEBUG: args namespace attributes: {dir(args)}")
+        logger.info(f"🔍 DEBUG: args has outdir: {hasattr(args, 'outdir')}")
+        if hasattr(args, 'outdir'):
+            logger.info(f"🔍 DEBUG: args.outdir value: {args.outdir}")
 
         # Call Deforum render
         from deforum.orchestration.render import render_animation

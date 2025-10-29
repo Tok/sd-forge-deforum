@@ -310,12 +310,23 @@ class QwenOrchestrator:
             ))
 
         # Execute actual Deforum render (without VHS yet)
+        logger.info("=" * 80)
+        logger.info("🔍 ORCHESTRATOR: About to call execute_render()")
+        logger.info(f"🔍 self.output_dir = {self.output_dir}")
+        logger.info(f"🔍 str(self.output_dir) = {str(self.output_dir)}")
+        logger.info("=" * 80)
+
         video_path = execute_render(
             params=params,
             prompts=prompts,
             audio_path=audio_path,
             output_dir=str(self.output_dir)
         )
+
+        logger.info("=" * 80)
+        logger.info("🔍 ORCHESTRATOR: execute_render() returned successfully")
+        logger.info(f"🔍 video_path = {video_path}")
+        logger.info("=" * 80)
 
         # Apply VHS scan lines (mandatory slop - dual approach)
         self._log("📼 Applying VHS scan lines (dual approach: per-frame + FFmpeg)...")
