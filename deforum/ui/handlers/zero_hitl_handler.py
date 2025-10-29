@@ -52,7 +52,7 @@ def handle_slop_it_click(
             duration_seconds=duration,
             theme=theme.strip() if theme else "",
             random_seed=int(seed) if seed != -1 else -1,
-            output_dir="outputs/zero_hitl"
+            output_dir="outputs/deforum"
         )
 
         # Format results for UI

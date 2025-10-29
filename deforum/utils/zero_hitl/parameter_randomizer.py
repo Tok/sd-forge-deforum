@@ -48,7 +48,8 @@ class SlopcoreParameters:
 
     # Animation intensity
     cadence: int
-    strength: float
+    strength: float  # For tween frames (depth-warped)
+    keyframe_strength: float  # For diffusion keyframes (low = more creativity)
 
     # Camera movement
     preset_type: str
@@ -95,14 +96,21 @@ class CuratedChaosEngine:
 
     # Curated ranges (from Qwen's specs)
     FPS_OPTIONS = [24, 30, 60]
-    RESOLUTION_OPTIONS = [(512, 512), (768, 768), (1024, 1024)]
+    # 16:9 aspect ratio at 720p (HD ready) - landscape or portrait
+    RESOLUTION_OPTIONS = [
+        (1280, 720),  # Landscape 16:9
+        (720, 1280),  # Portrait 9:16
+    ]
 
     STEPS_OPTIONS = [15, 20, 25]
     CFG_SCALE_OPTIONS = [3.5, 5.0, 7.0]
     SAMPLER_OPTIONS = ['euler', 'euler_a', 'dpmpp_2m']
 
     CADENCE_OPTIONS = [2, 3, 5, 8]
-    STRENGTH_OPTIONS = [0.55, 0.65, 0.75]
+    # Strength values MUST be multiples of 0.05 (for 20-step resolution: 1/20 = 0.05)
+    # Each 0.05 = 1 diffusion step at 20 steps
+    STRENGTH_OPTIONS = [0.25, 0.30, 0.35]  # For tween frames (5-7 steps) - let new prompts through
+    KEYFRAME_STRENGTH_OPTIONS = [0.10, 0.15, 0.20]  # For diffusion keyframes (2-4 steps) - max creativity
 
     PRESET_TYPES = ['rotate-around', 'spiral', 'street', 'dashcam', 'bodycam', 'figure-eight']
     PRESET_RADIUS_RANGE = (50, 200)
@@ -112,11 +120,22 @@ class CuratedChaosEngine:
     ROTATION_RANGES = [(-5, 5), (-10, 10), (-20, 20)]
     ZOOM_RANGES = [(0.95, 1.05), (0.9, 1.1), (0.8, 1.2)]
 
-    SHAKIFY_PATTERNS = [None, 'GENTLE_HANDHELD', 'INVESTIGATION', 'EARTHQUAKE']
+    # Shakify patterns - use title case values from get_camera_shake_list()
+    # All 3D patterns (excluding 2D ones which don't work well with depth warping)
+    SHAKIFY_PATTERNS = [
+        None,
+        'Investigation',
+        'The Closeup',
+        'The Wedding',
+        'Walk to the Store',
+        'HandyCam Run',
+        'Out Car Window',
+    ]
     SHAKIFY_INTENSITY_RANGE = (0.0, 0.7)
 
-    DEPTH_MODEL = 'depth_anything_v2_vits'  # Only fast model
-    MIDAS_WEIGHT_OPTIONS = [0.2, 0.3, 0.5]
+    # Depth model - use UI display name (not internal model name)
+    DEPTH_MODEL = 'Depth-Anything-V2-Small'  # Small = fastest, good for zero-HITL chaos
+    MIDAS_WEIGHT_OPTIONS = [0.2, 0.3, 0.5]  # Legacy parameter, not used with Depth-Anything V2
 
     NOISE_TYPES = ['perlin', 'uniform']
     COLOR_COHERENCE_OPTIONS = ['Match Frame 0 LAB', 'Match Frame 0 HSV', 'Video Input']
@@ -134,8 +153,33 @@ class CuratedChaosEngine:
         '#FF1493',  # Neon pink (the one non-purple allowed)
     ]
 
-    # Style options
-    STYLES = ['glitch art', 'pixel art', 'VHS', 'low-poly', 'nothing']
+    # Style options - expanded for creative freedom
+    # Categories: Digital/Retro, Art Movements, Cinematic, Abstract, Experimental
+    STYLES = [
+        # Digital/Retro
+        'glitch art', 'pixel art', 'VHS', 'low-poly', '8-bit', '16-bit', 'vaporwave',
+        'Y2K aesthetics', 'analog video', 'CRT scanlines', 'datamosh', 'circuit bent',
+
+        # Art Movements
+        'surrealism', 'impressionism', 'cyberpunk', 'steampunk', 'art nouveau',
+        'brutalism', 'maximalism', 'minimalism', 'futurism', 'constructivism',
+
+        # Cinematic/Photography
+        'film noir', 'neon noir', 'cinematic', 'bokeh', 'long exposure',
+        'drone footage', 'timelapse', 'stop motion', 'tilt-shift', 'infrared',
+
+        # Abstract/Experimental
+        'fractal', 'kaleidoscope', 'chromatic aberration', 'double exposure',
+        'light painting', 'solarization', 'cross-processing', 'bleach bypass',
+
+        # Modern Digital
+        'synthwave', 'outrun', 'cyberdelic', 'hyper-saturated', 'matte painting',
+        'concept art', 'digital painting', 'photo-realistic', 'cel-shaded',
+
+        # Weird/Experimental
+        'found footage', 'security camera', 'microscopic', 'x-ray', 'thermal',
+        'satellite imagery', 'holographic', 'nothing'
+    ]
 
     # Chaos probabilities
     PROB_RGB_INVERT = 0.20
@@ -179,6 +223,7 @@ class CuratedChaosEngine:
         # Animation intensity
         cadence = random.choice(self.CADENCE_OPTIONS)
         strength = random.choice(self.STRENGTH_OPTIONS)
+        keyframe_strength = random.choice(self.KEYFRAME_STRENGTH_OPTIONS)
 
         # Camera path
         preset_type = random.choice(self.PRESET_TYPES)
@@ -222,6 +267,7 @@ class CuratedChaosEngine:
             sampler=sampler,
             cadence=cadence,
             strength=strength,
+            keyframe_strength=keyframe_strength,
             preset_type=preset_type,
             preset_radius=preset_radius,
             preset_height=preset_height,

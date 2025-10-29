@@ -73,6 +73,10 @@ def add_noise(
             persistence=noise_args[3]
         )
         noise = noise * normalize_perlin(perlin)
+
+    # Always interpolate noise to match sample dimensions
+    # This fixes size mismatch errors in cv2.addWeighted
+    if noise.shape[1] != sample.shape[0] or noise.shape[2] != sample.shape[1]:
         noise = interpolate(
             noise.unsqueeze(1),
             size=(sample.shape[0], sample.shape[1])

@@ -60,9 +60,9 @@ def _build_zero_hitl_ui(components: dict):
     # Duration input
     with FormRow(variant="compact"):
         zero_hitl_duration = gr.Slider(
-            minimum=1.0,
-            maximum=10.0,
-            value=3.0,
+            minimum=5.0,
+            maximum=300.0,
+            value=10.0,
             step=0.5,
             label="Duration (seconds)",
             info="How long should the video be?"

@@ -18,6 +18,7 @@ from .data.render_data import RenderData
 from .data.taqaddumat import Taqaddumat
 from deforum.rendering.helpers import filename as filename_utils
 from deforum.utils.image import processing as image_utils
+from deforum.media.load_images import load_img
 from deforum.utils.system.logging import log as log_utils
 from deforum.rendering.helpers import memory as memory_utils
 from deforum.rendering.helpers import subtitle as subtitle_utils
@@ -103,7 +104,8 @@ def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
             shared.total_tqdm.total_animation_cycles.update()
             shared.total_tqdm.total_frames.update(len(frame.tweens))
             shared.total_tqdm.total_steps.update(frame.actual_steps(data))
-            existing_image = image_utils.load_image(full_path)
+            # Load existing image from disk (for resume functionality)
+            existing_image, _ = load_img(full_path, None, shape=None, use_alpha_as_mask=False)
             data.images.before_previous = data.images.previous
             data.images.previous = existing_image
             continue

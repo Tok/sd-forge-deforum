@@ -50,11 +50,11 @@ class QwenOrchestrator:
     PROB_CAMERA_SPIN_360 = 0.10  # Spin camera 360° for no reason
     PROB_CRF_51 = 0.05  # Invalid CRF value → black screen
 
-    def __init__(self, output_dir: str = "outputs/zero_hitl"):
+    def __init__(self, output_dir: str = "outputs/deforum"):
         """Initialize orchestrator.
 
         Args:
-            output_dir: Where to save generated files
+            output_dir: Where to save generated files (batch subdirs will be created here)
         """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -89,11 +89,25 @@ class QwenOrchestrator:
                 random.seed(random_seed)
                 self._log(f"🎲 Random seed: {random_seed}")
 
-            # Phase 1: Generate Audio
+            # Create batch subdirectory FIRST (so audio goes there directly)
+            import time
+            timestring = f"slop_{int(time.time())}"
+            batch_name = f"Deforum_0HITL_{timestring}"  # Include 0HITL in batch name
+            batch_dir = self.output_dir / batch_name
+            batch_dir.mkdir(parents=True, exist_ok=True)
+
+            # Temporarily update output_dir to batch directory for audio generation
+            original_output_dir = self.output_dir
+            self.output_dir = batch_dir
+
+            # Phase 1: Generate Audio (directly to batch dir)
             self._log("🔊 Phase 1: Generating intentionally broken audio...")
             audio_path, audio_slop_log = self._generate_audio(duration_seconds, theme)
             self.all_slop_logs.extend(audio_slop_log)
             self._log(f"✓ Audio generated: {audio_path}")
+
+            # Restore original output_dir (batch_dir was used for audio generation)
+            self.output_dir = original_output_dir
 
             # Phase 2: Generate Parameters (curated chaos)
             self._log("🎲 Phase 2: Randomizing parameters (curated chaos)...")
@@ -113,8 +127,9 @@ class QwenOrchestrator:
             self._log(f"✓ Generated {len(prompts)} keyframe prompts")
 
             # Phase 5: Execute Render (wired to actual Deforum render)
+            # Pass batch_dir as output_dir so render doesn't create another subdirectory
             self._log("🎬 Phase 5: Executing Deforum render with VHS artifacts...")
-            video_path = self._execute_render(params, prompts, audio_path)
+            video_path = self._execute_render(params, prompts, audio_path, str(batch_dir))
             self._log(f"✓ Render complete: {video_path}")
 
             # Save settings JSON
@@ -276,7 +291,8 @@ class QwenOrchestrator:
         self,
         params: SlopcoreParameters,
         prompts: List[Dict[str, Any]],
-        audio_path: str
+        audio_path: str,
+        batch_dir: str = None
     ) -> str:
         """Execute Deforum render with zero-HITL parameters.
 
@@ -284,11 +300,15 @@ class QwenOrchestrator:
             params: Slopcore parameters
             prompts: Generated prompts
             audio_path: Path to audio file
+            batch_dir: Batch directory to use (if None, uses self.output_dir)
 
         Returns:
             Path to generated video
         """
         from deforum.utils.zero_hitl.render_integration import execute_render
+
+        # Use batch_dir if provided, otherwise use self.output_dir
+        output_dir = batch_dir if batch_dir is not None else str(self.output_dir)
 
         # Apply CRF chaos (5% chance for invalid CRF=51)
         # NOTE: This is applied in render_integration.build_args_from_slopcore()
@@ -312,15 +332,14 @@ class QwenOrchestrator:
         # Execute actual Deforum render (without VHS yet)
         logger.info("=" * 80)
         logger.info("🔍 ORCHESTRATOR: About to call execute_render()")
-        logger.info(f"🔍 self.output_dir = {self.output_dir}")
-        logger.info(f"🔍 str(self.output_dir) = {str(self.output_dir)}")
+        logger.info(f"🔍 output_dir = {output_dir}")
         logger.info("=" * 80)
 
         video_path = execute_render(
             params=params,
             prompts=prompts,
             audio_path=audio_path,
-            output_dir=str(self.output_dir)
+            output_dir=output_dir
         )
 
         logger.info("=" * 80)
