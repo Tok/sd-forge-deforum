@@ -347,14 +347,16 @@ hf download neta-art/Neta-Lumina --local-dir models/Stable-diffusion/Lumina
 - ✅ Keyframes Only - Pure keyframes + depth tweening
 - ✅ Flux + Interpolation - Use Lumina for keyframes, then interpolate with Wan/RIFE/FILM
 
-**⚠️ Known Issues:**
-- **num_tokens error**: May occur when using reverse generation or certain sampling modes
+**⚠️ Known Issues (With Automatic Fix):**
+- **num_tokens error**: Fixed via automatic compatibility patch
+  - Deforum now automatically detects Lumina and ensures `num_tokens` is populated
+  - Patch applied before sampling in both txt2img and img2img modes
+  - If errors still occur, please report with console logs
 - **Output quality**: Lumina is anime-optimized and may need different CFG/steps than Flux:
   - CFG Scale: 4.0-5.5 (vs Flux's 1.0-3.5)
   - Steps: 30 recommended (vs Flux's 20)
   - Scheduler: linear_quadratic preferred (vs simple)
   - Sampler: res_multistep or euler_ancestral work best
-- **Workaround**: If errors occur, try Classic 3D mode with standard generation (not reverse)
 
 **Technical Details:**
 - Architecture: Flow-based diffusion transformer (like Flux)
