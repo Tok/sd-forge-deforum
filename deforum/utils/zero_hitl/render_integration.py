@@ -240,10 +240,10 @@ def build_args_from_slopcore(
         # Additional scheduling fields (to prevent AttributeError)
         'aspect_ratio_schedule': '0:(1)',
         'aspect_ratio_use_old_formula': False,
-        'noise_mask_schedule': '0:(0)',
+        'noise_mask_schedule': '',  # Empty = disabled
         'use_noise_mask': False,
-        'mask_schedule': '0:(0)',
-        'keyframe_type_schedule': '0:(Keyframe)',
+        'mask_schedule': '',  # Empty = disabled
+        'keyframe_type_schedule': '0:(Keyframe)',  # Keyframe type (no quotes needed)
 
         # Checkpoint scheduling
         'enable_checkpoint_scheduling': False,
