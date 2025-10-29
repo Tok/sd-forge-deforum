@@ -468,6 +468,11 @@ Known compatibility issues:
 - **Kohya HR Fix** - May need to be disabled
 - **FreeU** - May need to be disabled
 - **Flux Schnell** - Limited precision with only 4 steps
+- **Lumina 2.0** - Experimental support with known issues:
+  - May throw `KeyError: 'num_tokens'` with reverse generation or certain modes
+  - Requires different parameters than Flux (CFG 4.0-5.5, Steps 30, scheduler linear_quadratic)
+  - Anime-optimized, may produce suboptimal results for other styles
+  - Workaround: Use Classic 3D mode without reverse generation if errors occur
 
 **Removed Features:**
 - **Legacy/Stable Core** - Removed in favor of render core only
