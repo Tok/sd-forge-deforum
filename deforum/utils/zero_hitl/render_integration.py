@@ -191,6 +191,9 @@ def build_args_from_slopcore(
         'depth_algorithm': params.depth_model,
         'midas_weight': params.midas_weight,
         'fov': 40,
+        'fov_schedule': '0:(40)',
+        'near_schedule': '0:(200)',
+        'far_schedule': '0:(10000)',
         'padding_mode': 'border',
         'sampling_mode': 'bicubic',
         'save_depth_maps': False,
@@ -206,6 +209,10 @@ def build_args_from_slopcore(
         'optical_flow_cadence': 0,
         'optical_flow_redo_generation': 'None',
         'redo_flow_factor_schedule': '0:(1.0)',
+        'cadence_flow_factor_schedule': '0:(1.0)',
+        'raft_model_size': 'large',
+        'raft_flow_iterations': 12,
+        'show_flow_arrows': False,
 
         # Seed scheduling
         'enable_subseed_scheduling': False,
@@ -224,6 +231,20 @@ def build_args_from_slopcore(
         'enable_scheduler_scheduling': False,
         'scheduler_schedule': '0:(Automatic)',
 
+        # ETA scheduling (for DDIM and ancestral samplers)
+        'enable_ddim_eta_scheduling': False,
+        'ddim_eta_schedule': '0:(0)',
+        'enable_ancestral_eta_scheduling': False,
+        'ancestral_eta_schedule': '0:(1)',
+
+        # Additional scheduling fields (to prevent AttributeError)
+        'aspect_ratio_schedule': '0:(1)',
+        'aspect_ratio_use_old_formula': False,
+        'noise_mask_schedule': '0:(0)',
+        'use_noise_mask': False,
+        'mask_schedule': '0:(0)',
+        'keyframe_type_schedule': '0:(Keyframe)',
+
         # Checkpoint scheduling
         'enable_checkpoint_scheduling': False,
         'checkpoint_schedule': '0:(model1.ckpt)',
@@ -234,6 +255,20 @@ def build_args_from_slopcore(
 
         # Seed schedule
         'seed_schedule': f'0:({params.seed})',
+
+        # Flux ControlNet (disabled for zero-HITL)
+        'enable_flux_controlnet': False,
+        'flux_controlnet_type': 'canny',
+        'flux_controlnet_model': 'instantx',
+        'flux_controlnet_strength': 0.5,
+        'flux_controlnet_canny_low': 100,
+        'flux_controlnet_canny_high': 200,
+        'flux_base_model': 'flux1-dev-bnb-nf4-v2',
+        'flux_guidance_scale': 3.5,
+
+        # WAN FLF2V (disabled for zero-HITL, using normal 3D warping)
+        'enable_wan_flf2v': False,
+        'wan_flf2v_chunk_size': 13,
     }
 
     video_args_dict = {
