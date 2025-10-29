@@ -89,6 +89,7 @@ def build_args_from_slopcore(
         'init_image': None,
         'tiling': False,
         'restore_faces': False,
+        'motion_preview_mode': False,  # Not in preview mode, full render
 
         # Masking (disabled for zero-HITL)
         'use_mask': False,
