@@ -319,11 +319,18 @@ Lumina 2.0 is a 2B parameter model (vs Flux's 12B) with **full img2img support**
 
 **Installation:**
 ```bash
-# Option 1: Use Forge's model downloader UI
-# Go to Forge's model list, search for "Lumina", download Alpha-VLLM/Lumina-Next-T2I
+# Option 1: Use Forge's model downloader UI (if available)
+# Go to Forge's model list, search for "Lumina"
 
-# Option 2: Manual download via huggingface-cli
-huggingface-cli download Alpha-VLLM/Lumina-Next-T2I --local-dir models/Stable-diffusion/Lumina
+# Option 2: Manual download via huggingface-cli (recommended)
+cd /path/to/forge-neo
+hf download neta-art/Neta-Lumina --local-dir models/Stable-diffusion/Lumina
+
+# This downloads:
+# - neta-lumina-v1.0-all-in-one.safetensors (9.9GB) - complete bundled model
+# - Text Encoder/gemma_2_2b_fp16.safetensors (4.9GB)
+# - Unet/neta-lumina-v1.0.safetensors (4.9GB)
+# - VAE/ae.safetensors (320MB) - FLUX-VAE
 ```
 
 **Usage:**
