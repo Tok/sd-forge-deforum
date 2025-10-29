@@ -169,7 +169,7 @@ class CuratedChaosEngine:
         # Basic video settings
         fps = random.choice(self.FPS_OPTIONS)
         resolution = random.choice(self.RESOLUTION_OPTIONS)
-        render_mode = random.choice(list(RenderMode)).value
+        render_mode = RenderMode.NEW_3D.value  # Always use New 3D (redistributed mode)
 
         # Generation settings (balance speed/quality/chaos)
         steps = random.choice(self.STEPS_OPTIONS)

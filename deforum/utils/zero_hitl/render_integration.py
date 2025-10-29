@@ -128,6 +128,9 @@ def build_args_from_slopcore(
         'max_frames': max_frames,
         'border': 'replicate',
 
+        # Cadence (New 3D default)
+        'diffusion_cadence': 5,  # New 3D default cadence for redistributed keyframes
+
         # Angle/Zoom/Translation (2D)
         'angle': '0:(0)',
         'zoom': '0:(1.0)',
