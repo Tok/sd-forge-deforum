@@ -165,6 +165,7 @@ class QwenConductor:
 
             # Load model via transformers
             from transformers import AutoModelForCausalLM, AutoTokenizer
+            cache_dir = str(qwen_manager.models_dir)
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
             # Load model and tokenizer
