@@ -33,6 +33,11 @@ def build_args_from_slopcore(
     Returns:
         Dict with all required Deforum args
     """
+    logger.info("=" * 80)
+    logger.info("🔍 ENTRY: build_args_from_slopcore() CALLED")
+    logger.info(f"🔍 output_dir parameter: {output_dir}")
+    logger.info("=" * 80)
+
     # Convert prompts to Deforum format (JSON string)
     animation_prompts_dict = {
         str(prompt['frame']): prompt['prompt']
@@ -285,6 +290,10 @@ def execute_render(
     Raises:
         Exception: If render fails
     """
+    logger.info("=" * 80)
+    logger.info("🔍 ENTRY: execute_render() CALLED")
+    logger.info(f"🔍 output_dir parameter: {output_dir}")
+    logger.info("=" * 80)
     logger.info("🎬 Executing Deforum render with zero-HITL parameters...")
 
     try:
