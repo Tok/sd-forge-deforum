@@ -284,10 +284,10 @@ def test_optical_flow_raft():
     # Set test-specific batch name for easier output identification
     deforum_settings['batch_name'] = get_test_batch_name('test_optical_flow_raft')
 
-    # Enable RAFT optical flow
+    # Enable RAFT optical flow with HSV color coherence
     deforum_settings['animation_mode'] = "3D"
     deforum_settings['max_frames'] = 5
-    deforum_settings['color_coherence'] = 'MatchColorFlow'
+    deforum_settings['color_coherence'] = 'HSV'
     deforum_settings['optical_flow_redo_generation'] = 'RAFT'
 
     response = requests.post(f"{API_BASE_URL}/batches", json={
@@ -439,10 +439,10 @@ def test_color_coherence():
     # Set test-specific batch name for easier output identification
     deforum_settings['batch_name'] = get_test_batch_name('test_color_coherence')
 
-    # Test with MatchColorHSV
+    # Test with HSV color coherence
     deforum_settings['animation_mode'] = "3D"
     deforum_settings['max_frames'] = 5
-    deforum_settings['color_coherence'] = 'MatchColorHSV'
+    deforum_settings['color_coherence'] = 'HSV'
 
     response = requests.post(f"{API_BASE_URL}/batches", json={
         "deforum_settings": [deforum_settings],

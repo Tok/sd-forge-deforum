@@ -426,33 +426,33 @@ def DeforumAnimArgs():
         "amount_schedule": {
             "label": "Amount schedule",
             "type": "textbox",
-            "value": "0: (0.1)",
-            "info": ""
+            "value": "0: (0)",
+            "info": "Sharpening strength (unsharp mask). 0=disabled (default), 0.1-0.3=counteract blur from depth warping/optical flow/color coherence"
         },
         "kernel_schedule": {
             "label": "Kernel schedule",
             "type": "textbox",
             "value": "0: (5)",
-            "info": ""
+            "info": "Gaussian blur kernel size for unsharp mask (odd numbers only, e.g. 3, 5, 7)"
         },
         "sigma_schedule": {
             "label": "Sigma schedule",
             "type": "textbox",
             "value": "0: (1)",
-            "info": ""
+            "info": "Gaussian blur sigma/strength for unsharp mask (typically 0.5-2.0)"
         },
         "threshold_schedule": {
             "label": "Threshold schedule",
             "type": "textbox",
             "value": "0: (0)",
-            "info": ""
+            "info": "Contrast threshold: only sharpen edges above this value (0=sharpen all, higher=sharpen only strong edges)"
         },
         "color_coherence": {
             "label": "Color coherence",
             "type": "dropdown",
             "choices": ['None', 'HSV', 'LAB', 'RGB', 'Image'],
             "value": "None",
-            "info": "choose an algorithm/ method for keeping color coherence across the animation"
+            "info": "Match color statistics between frames to prevent color drift. None=disabled, HSV=preserve hue/saturation, LAB=perceptually accurate, RGB=simple channel matching, Image=match reference image"
         },
         "color_coherence_image_path": {
             "label": "Color coherence image path",
@@ -477,7 +477,7 @@ def DeforumAnimArgs():
             "label": "Legacy colormatch",
             "type": "checkbox",
             "value": False,
-            "info": "apply colormatch before adding noise (use with CN's Tile)"
+            "info": "[DEPRECATED] Legacy timing workaround for old ControlNet Tile. Try disabling if you have color issues. Will be removed in future version."
         },
         "keyframe_distribution": {
             "label": "Keyframe distribution.",

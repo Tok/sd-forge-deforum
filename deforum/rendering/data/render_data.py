@@ -145,7 +145,7 @@ class RenderData:
         return self.args.anim_args.color_coherence != 'None'
 
     def has_non_video_or_image_color_coherence(self) -> bool:
-        return self.args.anim_args.color_coherence not in ['Image', 'Video Input']
+        return self.args.anim_args.color_coherence not in ['Image', 'None']
 
     def is_resuming_from_timestring(self) -> bool:
         return self.args.anim_args.resume_from_timestring

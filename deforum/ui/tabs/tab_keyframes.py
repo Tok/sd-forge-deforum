@@ -112,6 +112,16 @@ def get_tab_keyframes(d, da, dloopArgs):
                 color_coherence, color_force_grayscale = create_row(
                     da, 'color_coherence', 'color_force_grayscale'
                 )
+                gr.Markdown("""
+                **Color Coherence Modes:**
+                - **None:** No color matching (default)
+                - **HSV:** Good for preserving vibrant colors and saturation
+                - **LAB:** Most perceptually accurate for human vision
+                - **RGB:** Simple channel-by-channel matching
+                - **Image:** Match colors to a reference image (requires image path below)
+
+                *Use when frames drift in color/tone. Works best with 3D mode.*
+                """)
                 legacy_colormatch = create_row(da.legacy_colormatch)
                 with FormRow(visible=False) as color_coherence_image_path_row:
                     color_coherence_image_path = create_gr_elem(da.color_coherence_image_path)
@@ -147,6 +157,22 @@ def get_tab_keyframes(d, da, dloopArgs):
 
             # ANTI BLUR TAB
             with gr.TabItem(f"{emoji_utils.broom()} Anti Blur", elem_id='anti_blur_accord') as anti_blur_tab:
+                gr.Markdown("""
+                **Anti-Blur (Unsharp Masking)** counteracts blur introduced by image transformations.
+
+                **When to use:**
+                - 3D mode with high `translation_z` (zoom in/out)
+                - Optical flow enabled (RAFT)
+                - Color coherence enabled
+                - Depth warping with large movements
+
+                **Quick settings:**
+                - **Light sharpening:** amount=0.1, kernel=5, sigma=1.0
+                - **Medium sharpening:** amount=0.2, kernel=5, sigma=1.0
+                - **Strong sharpening:** amount=0.3, kernel=7, sigma=1.5
+
+                *Leave amount at 0 (disabled) if you don't see blur issues.*
+                """)
                 amount_schedule = create_row(da.amount_schedule)
                 kernel_schedule = create_row(da.kernel_schedule)
                 sigma_schedule = create_row(da.sigma_schedule)

@@ -132,7 +132,7 @@
     "ddim_eta_schedule": "0: (0)",
     "enable_ancestral_eta_scheduling": false,
     "ancestral_eta_schedule": "0: (1.0)",
-    "amount_schedule": "0: (0.1)",
+    "amount_schedule": "0: (0)",
     "kernel_schedule": "0: (5)",
     "sigma_schedule": "0: (1)",
     "threshold_schedule": "0: (0)",
