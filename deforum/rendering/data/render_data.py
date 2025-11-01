@@ -191,7 +191,7 @@ class RenderData:
         is_legacy_cm = self.args.anim_args.legacy_colormatch
         is_use_init = self.args.args.use_init
         is_not_legacy_with_use_init = not is_legacy_cm and not is_use_init
-        is_legacy_cm_without_strength = is_legacy_cm and frame.frame_data.strength == 0
+        is_legacy_cm_without_strength = is_legacy_cm and frame.strength == 0
         is_maybe_special_legacy = is_not_legacy_with_use_init or is_legacy_cm_without_strength
         return is_maybe_special_legacy and self.has_non_video_or_image_color_coherence()
 

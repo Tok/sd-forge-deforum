@@ -13,17 +13,37 @@ This test suite uses empirical quality metrics to find optimal Deforum parameter
 
 ## Running Tuning Tests
 
-### Option 1: With Tuning UI (Recommended)
+### Option 1: With Tuning UI (Recommended) ✅ IMPLEMENTED
 
 ```bash
 # Launch Forge with tuning mode
 python webui.py --deforum-run-tuning
 
 # This will:
-# - Enable Deforum API automatically
-# - Show "Tuning" tab in WebUI
+# - Auto-enable Deforum API (no need for --deforum-api flag)
+# - Show "Deforum Tuning" tab in WebUI
 # - Allow interactive parameter exploration
+# - Execute real GPU-based quality tests
 ```
+
+**Features:**
+- **Interactive parameter selection** - Choose steps, strength ranges, test limits
+- **Real-time progress tracking** - Auto-refresh every 2 seconds
+- **Quality metrics visualization** - Bar charts comparing configurations
+- **Parameter heatmaps** - Visual grid showing optimal parameter combinations
+- **Results table** - Sortable table of all test configurations
+- **Best parameter detection** - Automatically identifies optimal settings
+- **One-click apply** - Apply best parameters to Deforum defaults (coming soon)
+
+**Usage:**
+1. Start Forge with `--deforum-run-tuning` flag
+2. Navigate to the "Tuning" tab in WebUI
+3. Select test type (Color Preservation, Temporal Consistency, or Flux Parameter Sweep)
+4. Configure parameter ranges (steps, strengths, etc.)
+5. Click "🚀 Run Tests" to start
+6. Monitor progress in real-time
+7. Review results in Summary, Charts, and Image Comparison tabs
+8. Apply best settings when satisfied
 
 ### Option 2: Batch Mode (Command Line)
 
@@ -141,3 +161,57 @@ When `--deforum-run-tuning` is active:
 - Share utilities with `tests/integration/utils.py`
 - Results can inform default values in `deforum/config/args.py`
 - HTML comparison grids for visual validation
+
+## Implementation Details
+
+### Architecture
+
+The tuning system consists of three main components:
+
+1. **UI Layer** (`deforum/ui/ui_tuning.py`)
+   - Gradio-based interface with tabs for configuration, results, charts, and logs
+   - Auto-refresh functionality polls API every 2 seconds
+   - Interactive parameter selection with sliders and dropdowns
+
+2. **API Layer** (`deforum/api/tuning_api.py`)
+   - RESTful endpoints for starting, monitoring, and cancelling tests
+   - `POST /deforum_api/tuning/start` - Submit new test configuration
+   - `GET /deforum_api/tuning/{test_id}` - Get test status and results
+   - `POST /deforum_api/tuning/{test_id}/cancel` - Cancel running test
+   - Background thread execution for non-blocking test runs
+
+3. **Visualization Layer** (`deforum/ui/tuning_charts.py`)
+   - Matplotlib-based chart generation
+   - Metrics comparison bar charts
+   - Parameter heatmaps for optimal configuration identification
+   - Degradation rate analysis plots
+
+### Integration Points
+
+- **CLI Flag:** `--deforum-run-tuning` in `preload.py:143`
+- **Tab Registration:** `scripts/deforum.py:75-87` (conditional on flag)
+- **API Registration:** `deforum/api/api.py:676-679` (auto-enabled with tuning)
+- **Test Infrastructure:** Uses existing metrics from `tests/tuning/metrics.py`
+
+### Current Status
+
+**✅ Implemented:**
+- Tuning UI with all tabs and controls
+- API endpoints for test management
+- Real-time status polling
+- Chart visualization (metrics, heatmaps)
+- Parameter sweep logic
+- **Real test execution** - Calls actual `test_color_preservation.py` functions
+- I2V chaining with quality metrics measurement
+- Automatic test image generation
+
+**🚧 In Progress:**
+- Image comparison gallery
+- Apply best parameters functionality
+
+**📋 TODO:**
+- Generate HTML comparison grids
+- Persist test results to database
+- Export results as CSV/JSON
+- Add temporal consistency test type
+- Add Flux parameter sweep test type

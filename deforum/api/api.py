@@ -53,7 +53,7 @@ logging.basicConfig(
 )
 
 def make_ids(job_count: int):
-    batch_id = f"batch({random.randint(0, 1e9)})"
+    batch_id = f"batch({random.randint(0, int(1e9))})"
     job_ids = [f"{batch_id}-{i}" for i in range(job_count)]
     return [batch_id, job_ids]
 
@@ -665,12 +665,24 @@ def deforum_simple_api(_: gr.Blocks, app: FastAPI):
 
 # Setup A1111 initialisation hooks
 try:
-    import modules.script_callbacks as script_callbacks    
+    import modules.script_callbacks as script_callbacks
+
+    # Auto-enable deforum_api if tuning mode is requested
+    if getattr(cmd_opts, 'deforum_run_tuning', False):
+        if not getattr(cmd_opts, 'deforum_api', False):
+            log.info("[Deforum] Tuning mode enabled - auto-enabling Deforum API")
+            cmd_opts.deforum_api = True
+
     if cmd_opts.deforum_api:
         script_callbacks.on_app_started(deforum_api)
     if cmd_opts.deforum_api or cmd_opts.deforum_simple_api:
         script_callbacks.on_app_started(deforum_simple_api)
-    if cmd_opts.deforum_run_now:       
+    if cmd_opts.deforum_run_now:
         script_callbacks.on_app_started(deforum_init_batch)
+    # Register tuning API if tuning mode enabled
+    if getattr(cmd_opts, 'deforum_run_tuning', False) or cmd_opts.deforum_api:
+        from deforum.api.tuning_api import tuning_api
+        script_callbacks.on_app_started(tuning_api)
+        log.info("Registered tuning API endpoints")
 except:
     pass

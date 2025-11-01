@@ -71,5 +71,16 @@ def init_deforum():
     script_callbacks.on_ui_tabs(on_ui_tabs)
     script_callbacks.on_ui_settings(on_ui_settings)
 
+    # Register tuning tab if --deforum-run-tuning flag is set
+    if getattr(cmd_opts, 'deforum_run_tuning', False):
+        from deforum.ui.ui_tuning import create_tuning_tab
+        print("[Deforum] Tuning mode enabled - registering Tuning tab")
+        print("[Deforum] Note: Deforum API will be auto-enabled (see api.py)")
+
+        def on_tuning_tab():
+            return [create_tuning_tab()]
+
+        script_callbacks.on_ui_tabs(on_tuning_tab)
+
 init_deforum()
 

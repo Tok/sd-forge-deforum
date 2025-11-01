@@ -142,6 +142,6 @@ def preload(parser):
     parser.add_argument(
         "--deforum-run-tuning",
         action="store_true",
-        help="Enable parameter tuning mode: launches Deforum API and shows Tuning tab for automated quality assessment",
+        help="Enable parameter tuning mode: auto-enables Deforum API and shows Tuning tab for automated quality assessment",
         default=False,
     )

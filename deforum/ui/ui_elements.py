@@ -806,8 +806,8 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     import shutil
                     from pathlib import Path
 
-                    # Create output/audio directory
-                    output_dir = Path("output/audio")
+                    # Create outputs/audio directory
+                    output_dir = Path("outputs/audio")
                     output_dir.mkdir(parents=True, exist_ok=True)
 
                     # Get filename from uploaded file
