@@ -309,17 +309,22 @@ class FixedDashboard:
         if movement:
             line1_left += f" | {movement}"
 
-        # Add VRAM on the right
+        # Add loaded models info and VRAM on the right
+        models_str = self._format_loaded_models()
         vram_str = self._format_vram_bar()
+
+        # Combine models + VRAM on right side
+        right_side = f"{models_str} | {vram_str}" if models_str else vram_str
+
         # Calculate padding
         import re
         visible_left = re.sub(r'\033\[[0-9;]*m', '', line1_left)
-        visible_vram = re.sub(r'\033\[[0-9;]*m', '', vram_str)
-        padding_needed = self._terminal_width - len(visible_left) - len(visible_vram) - 3  # -3 for " | "
+        visible_right = re.sub(r'\033\[[0-9;]*m', '', right_side)
+        padding_needed = self._terminal_width - len(visible_left) - len(visible_right) - 3  # -3 for " | "
         if padding_needed > 0:
-            line1 = line1_left + (" " * padding_needed) + " | " + vram_str
+            line1 = line1_left + (" " * padding_needed) + " | " + right_side
         else:
-            line1 = line1_left + " | " + vram_str
+            line1 = line1_left + " | " + right_side
 
         lines.append(line1)
 
@@ -375,6 +380,71 @@ class FixedDashboard:
                 return "VRAM: N/A"
         except Exception:
             return "VRAM: N/A"
+
+    def _format_loaded_models(self) -> str:
+        """Format loaded models info (Flux/Lumina + Depth).
+
+        Returns:
+            String showing which models are loaded in VRAM with sizes, or empty if no info available
+        """
+        try:
+            import torch
+            if not torch.cuda.is_available():
+                return ""
+
+            # Try to detect loaded models from Forge's model management
+            import modules.shared as shared
+            loaded_models = []
+
+            # Detect main model (Flux/Lumina/SD)
+            if hasattr(shared, 'sd_model') and shared.sd_model is not None:
+                model_name = "Unknown"
+                model_size_gb = 0
+
+                # Try to get model name from config or checkpoint info
+                if hasattr(shared.sd_model, 'sd_checkpoint_info'):
+                    checkpoint_info = shared.sd_model.sd_checkpoint_info
+                    if hasattr(checkpoint_info, 'model_name'):
+                        model_name = checkpoint_info.model_name
+                    elif hasattr(checkpoint_info, 'title'):
+                        model_name = checkpoint_info.title
+
+                # Simplify model name
+                if 'flux' in model_name.lower():
+                    model_name = "Flux"
+                elif 'lumina' in model_name.lower():
+                    model_name = "Lumina"
+                elif 'sd' in model_name.lower() or 'stable' in model_name.lower():
+                    model_name = "SD"
+
+                # Try to estimate size from parameters
+                if hasattr(shared.sd_model, 'parameters'):
+                    try:
+                        param_count = sum(p.numel() for p in shared.sd_model.parameters())
+                        # Rough estimate: 4 bytes per parameter (fp32) or 2 bytes (fp16)
+                        model_size_gb = (param_count * 2) / (1024 ** 3)  # Assume fp16
+                    except:
+                        pass
+
+                if model_size_gb > 0:
+                    loaded_models.append(f"{model_name} ({model_size_gb:.1f}GB)")
+                else:
+                    loaded_models.append(model_name)
+
+            # Detect depth model (check if loaded in VRAM)
+            # This is trickier - we'd need to track it in the depth module
+            # For now, we'll just indicate if depth is active based on mode
+            # (proper tracking would require modifying depth loading code)
+
+            if loaded_models:
+                # Show arrow if swapping, or checkmark if both loaded
+                # For now, just show what's loaded
+                return "Models: " + " + ".join(loaded_models)
+            else:
+                return ""
+
+        except Exception:
+            return ""  # Silently fail if can't detect
 
     def _create_separator(self) -> str:
         """Create separator line with slopcore gradient if enabled.
