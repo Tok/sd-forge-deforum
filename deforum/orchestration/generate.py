@@ -675,6 +675,11 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
 
     results = processed.images[0]
 
+    # Update dashboard with diffusion output for ASCII preview
+    # (show actual generated frame, not the transformed input)
+    if dashboard is not None:
+        dashboard.last_frame_image = results
+
     return results
 
 # Run this instead of actual diffusion when doing motion preview.

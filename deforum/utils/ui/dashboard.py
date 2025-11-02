@@ -348,13 +348,9 @@ class FixedDashboard:
         else:
             df_pct = 0
 
-        # Colorize "Animation Frame:" label with theme-aware blue
-        from deforum.utils.system.logging.log import HEX_BLUE
-        from deforum.utils.system.logging.themes import get_tqdm_color_for_theme
-        from deforum.utils.image.color import hex_to_ansi_foreground
-
-        themed_blue_hex = get_tqdm_color_for_theme(HEX_BLUE, self.theme)
-        animation_frame_color = hex_to_ansi_foreground(themed_blue_hex)
+        # Use same color as log (BLUE, not theme-aware)
+        from deforum.utils.system.logging.log import BLUE
+        animation_frame_color = BLUE
 
         # Colorize frame type
         frame_type = self.frame_info['type']
@@ -368,13 +364,13 @@ class FixedDashboard:
         else:
             frame_type_colored = f"[{frame_type}]"
 
-        line1_left = f"{animation_frame_color}Animation Frame:\033[0m {self.frame_info['current']}/{self.frame_info['total']} {frame_type_colored}"
+        line1_left = f"{animation_frame_color}Current Animation Frame:\033[0m {self.frame_info['current']}/{self.frame_info['total']} {frame_type_colored}"
 
         # Add color block if available
         if self.frame_info.get('color_rgb'):
             r, g, b = self.frame_info['color_rgb']
             color_block = f"\033[48;2;{r};{g};{b}m  \033[0m"
-            line1_left += f" | Color: {color_block}"
+            line1_left += f" | Mean Color: {color_block}"
 
         # Add movement indicators if available
         movement = self.frame_info.get('movement', '')
