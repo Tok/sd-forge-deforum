@@ -271,20 +271,13 @@ class TestPromptSchedulerRepr:
 class TestPreparePromptLegacyFunction:
     """Test legacy prepare_prompt function."""
 
-    def test_prepare_prompt_simple(self, capsys):
-        """Test simple prompt preparation with console output."""
+    def test_prepare_prompt_simple(self):
+        """Test simple prompt preparation (no console output)."""
         result = prepare_prompt("a cat", max_frames=100, seed=42, frame_idx=0)
         assert result == "a cat"
 
-        # Check console output
-        captured = capsys.readouterr()
-        assert "Seed:" in captured.out
-        assert "42" in captured.out
-        assert "Prompt:" in captured.out
-        assert "a cat" in captured.out
-
-    def test_prepare_prompt_with_negative(self, capsys):
-        """Test prompt with negative part."""
+    def test_prepare_prompt_with_negative(self):
+        """Test prompt with negative part (no console output)."""
         result = prepare_prompt(
             "a cat --neg blurry",
             max_frames=100,
@@ -293,15 +286,8 @@ class TestPreparePromptLegacyFunction:
         )
         assert result == "a cat --neg blurry"
 
-        # Check console output
-        captured = capsys.readouterr()
-        assert "Seed:" in captured.out
-        assert "Prompt:" in captured.out
-        assert "Neg Prompt:" in captured.out
-        assert "blurry" in captured.out
-
-    def test_prepare_prompt_with_expression(self, capsys):
-        """Test prompt with expression evaluation."""
+    def test_prepare_prompt_with_expression(self):
+        """Test prompt with expression evaluation (no console output)."""
         result = prepare_prompt(
             "frame `t`",
             max_frames=100,
@@ -309,9 +295,6 @@ class TestPreparePromptLegacyFunction:
             frame_idx=25
         )
         assert "25" in result
-
-        captured = capsys.readouterr()
-        assert "25" in captured.out
 
 
 class TestPromptSchedulerIntegration:
