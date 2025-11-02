@@ -108,6 +108,9 @@ class FixedDashboard:
         self.theme = opt_utils.get_log_theme()
         self.use_ascii_preview = opt_utils.is_dashboard_ascii_preview_enabled()
 
+        # Register cleanup handler to run on exit (even if Ctrl+C)
+        atexit.register(self._cleanup_terminal)
+
         # State
         self.last_frame_image = None
         self.frame_info = {
@@ -184,31 +187,40 @@ class FixedDashboard:
             return
 
         try:
+            # CRITICAL: Reset scrolling region FIRST (most important for terminal restore)
+            sys.stdout.write("\033[r")  # Reset to default scrolling region
+            sys.stdout.flush()
+
             # Get current terminal size (might have changed)
             term_height, term_width = self._get_terminal_size()
 
-            # Clear dashboard area first
+            # Clear dashboard area
             dashboard_start = term_height - self._dashboard_height + 1
             for row in range(dashboard_start, term_height + 1):
                 sys.stdout.write(f"\033[{row};1H")  # Move to row
-                sys.stdout.write(" " * term_width)  # Clear line
+                sys.stdout.write("\033[K")  # Clear line from cursor to end
+                sys.stdout.flush()  # Flush after each line clear
 
-            # Reset scrolling region to full screen
-            sys.stdout.write(f"\033[1;{term_height}r")
-
-            # Move cursor to line after where dashboard was
+            # Move cursor to safe position (below where dashboard was)
             sys.stdout.write(f"\033[{dashboard_start};1H")
+            sys.stdout.flush()
 
             # Show cursor (in case it was hidden)
             sys.stdout.write("\033[?25h")
-
             sys.stdout.flush()
-        except Exception:
-            # If cleanup fails, at least try to reset scrolling region
+
+            # Final newline for good measure
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+
+        except Exception as e:
+            # If cleanup fails, force terminal reset with more aggressive approach
             try:
-                sys.stdout.write("\033[r")  # Reset to default
+                sys.stdout.write("\033[r")  # Reset scrolling region
+                sys.stdout.flush()
                 sys.stdout.write("\033[?25h")  # Show cursor
-                sys.stdout.write("\033[2J")  # Clear screen as fallback
+                sys.stdout.flush()
+                sys.stdout.write("\033[H")  # Move to top
                 sys.stdout.flush()
             except:
                 pass
