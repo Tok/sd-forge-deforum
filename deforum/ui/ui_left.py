@@ -651,14 +651,19 @@ def setup_deforum_left_side_ui():
             component_names = get_component_names()
             
             # Create list of all UI components in the correct order
+            # Use dummy_component for None values to prevent Gradio errors
+            dummy_component = gr.Button(visible=False)
             component_inputs = []
             missing_components = []
             for name in component_names:
                 if name in locals():
-                    component_inputs.append(locals()[name])
+                    component = locals()[name]
+                    # Replace None with dummy_component
+                    component_inputs.append(component if component is not None else dummy_component)
                 else:
                     missing_components.append(name)
                     logger.warning(f"Component '{name}' not found in locals()")
+                    component_inputs.append(dummy_component)  # Add dummy for missing components
             
             logger.debug(f"Found {len(component_inputs)} UI components for Wan generation", emoji='distribution')
             if missing_components:

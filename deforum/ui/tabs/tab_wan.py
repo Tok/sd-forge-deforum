@@ -61,8 +61,11 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         - ✅ Motion intensity dynamically adapts to movement complexity
         """)
 
-    # DEPRECATED SECTION - Hide old standalone workflow
-    with gr.Accordion(f"{emoji_utils.warn} DEPRECATED: Standalone Wan Workflow (Hidden)", open=False, visible=False):
+    # DEPRECATED SECTION - Standalone Wan Workflow no longer used
+    # Components moved outside hidden accordion to remain accessible
+    if False:  # Dead code kept for reference
+        pass
+    with gr.Accordion(f"{emoji_utils.warn} DEPRECATED: Standalone Wan Workflow (Reference Only)", open=False, visible=False):
         gr.Markdown("""
         **🎯 Essential for Wan Generation:** These prompts define what video clips will be generated.
         
@@ -157,30 +160,6 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             elem_id="wan_enhancement_progress_textbox",
             visible=True
         )
-
-        # GENERATION SECTION
-        gr.Markdown("---")
-        gr.Markdown("### 🎬 Generate Flux/Wan")
-
-        # Generate Button with Validation
-        with FormRow():
-            wan_generate_button = gr.Button(
-                "🎬 Generate Flux/Wan (I2V Chaining)",
-                variant="primary",
-                size="lg",
-                elem_id="wan_generate_button"
-            )
-
-        # Status output for Wan generation
-        wan_generation_status = gr.Textbox(
-            label="Generation Status",
-            interactive=False,
-            lines=5,
-            placeholder="⚠️ Prompts required! Load prompts above first, then click Generate.",
-            info="Status updates will appear here during generation."
-        )
-
-        # ESSENTIAL SETTINGS - Compact
         gr.Markdown("---")
         gr.Markdown("### ⚙️ Essential Settings")
 
@@ -204,7 +183,29 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
                 info="Steps for generation quality (5-15: fast, 20-50: quality)"
             )
     # END DEPRECATED SECTION
-    
+
+    # GENERATION SECTION - Moved outside deprecated accordion for accessibility
+    gr.Markdown("---")
+    gr.Markdown("### 🎬 Generate Flux/Wan")
+
+    # Generate Button with Validation
+    with FormRow():
+        wan_generate_button = gr.Button(
+            "🎬 Generate Flux/Wan (I2V Chaining)",
+            variant="primary",
+            size="lg",
+            elem_id="wan_generate_button"
+        )
+
+    # Status output for Wan generation
+    wan_generation_status = gr.Textbox(
+        label="Generation Status",
+        interactive=False,
+        lines=5,
+        placeholder="⚠️ Prompts required! Load prompts above first, then click Generate.",
+        info="Status updates will appear here during generation."
+    )
+
     # MODEL SETTINGS - Collapsed by default
     with gr.Accordion(f"{emoji_utils.wrench()} Model Settings", open=False):
         gr.Markdown("""

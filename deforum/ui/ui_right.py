@@ -391,8 +391,8 @@ def on_ui_tabs():
                     ],
                 )
         
-        settings_component_list = [components.get(name, dummy_component) for name in get_settings_component_names()]
-        video_settings_component_list = [components.get(name, dummy_component) for name in list(DeforumOutputArgs().keys())]
+        settings_component_list = [components.get(name, dummy_component) or dummy_component for name in get_settings_component_names()]
+        video_settings_component_list = [components.get(name, dummy_component) or dummy_component for name in list(DeforumOutputArgs().keys())]
 
         save_settings_btn.click(
             fn=wrap_gradio_call(save_settings),
