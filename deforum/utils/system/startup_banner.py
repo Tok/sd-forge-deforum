@@ -53,8 +53,8 @@ def print_startup_banner():
         b = int(hex_color[5:7], 16)
         return f"\033[48;2;{r};{g};{b}m"
 
-    # Helper to get gradient background color by row position (0.0 to 1.0)
-    def get_gradient_bg(position):
+    # Helper to get gradient background color by position (0.0 to 1.0)
+    def get_gradient_bg_by_position(position):
         idx = min(int(position * len(gradient_colors)), len(gradient_colors) - 1)
         return hex_to_bg_ansi(gradient_colors[idx])
 
@@ -78,34 +78,71 @@ def print_startup_banner():
         "More Info: https://github.com/Tok/sd-forge-deforum"
     ]
 
-    # Draw box with slopcore gradient background
+    # Draw box with diagonal slopcore gradient background
     banner_lines = []
     total_rows = len(lines) + 2  # +2 for top and bottom borders
 
-    # Top border with rounded corners
-    row_pos = 0 / total_rows
-    bg = get_gradient_bg(row_pos)
-    top_line = f"{bg}{WHITE}{ROUND_TL}{HORIZONTAL * (box_width - 2)}{ROUND_TR}{RESET}"
+    # Diagonal shift amount (shift gradient start position for each row)
+    diagonal_shift = 0.15  # 15% shift per row for diagonal effect
+
+    # Top border with rounded corners and diagonal gradient
+    import re
+    row_gradient = []
+    for char_pos in range(box_width):
+        # Diagonal: row 0, but gradient position shifts with horizontal position
+        gradient_pos = (0 + char_pos * diagonal_shift / box_width) % 1.0
+        row_gradient.append(get_gradient_bg_by_position(gradient_pos))
+
+    top_line = f"{row_gradient[0]}{WHITE}{ROUND_TL}"
+    for char_pos in range(1, box_width - 1):
+        top_line += f"{row_gradient[char_pos]}{HORIZONTAL}"
+    top_line += f"{row_gradient[-1]}{ROUND_TR}{RESET}"
     banner_lines.append(top_line)
 
-    # Content lines with gradient background
-    import re
-    for i, line in enumerate(lines):
-        row_pos = (i + 1) / total_rows
-        bg = get_gradient_bg(row_pos)
-
+    # Content lines with diagonal gradient background
+    for row_idx, line in enumerate(lines):
         # Strip ANSI codes to get visible length
         visible_text = re.sub(r'\033\[[0-9;]*m', '', line)
-        padding_needed = box_width - 2 - len(visible_text)
+        text_len = len(visible_text)
 
-        # White text on gradient background with rounded borders
-        content_line = f"{bg}{WHITE}{VERTICAL} {line}{' ' * padding_needed}{VERTICAL}{RESET}"
+        # Build line with diagonal gradient
+        row_base = (row_idx + 1) / total_rows  # Vertical position
+
+        content_line = ""
+        # Left border
+        gradient_pos = (row_base + 0 * diagonal_shift / box_width) % 1.0
+        bg = get_gradient_bg_by_position(gradient_pos)
+        content_line += f"{bg}{WHITE}{VERTICAL} "
+
+        # Text content with gradient shifting horizontally
+        for char_pos, char in enumerate(visible_text):
+            gradient_pos = (row_base + (char_pos + 2) * diagonal_shift / box_width) % 1.0
+            bg = get_gradient_bg_by_position(gradient_pos)
+            content_line += f"{bg}{char}"
+
+        # Padding
+        for char_pos in range(text_len, box_width - 4):
+            gradient_pos = (row_base + (char_pos + 2) * diagonal_shift / box_width) % 1.0
+            bg = get_gradient_bg_by_position(gradient_pos)
+            content_line += f"{bg} "
+
+        # Right border
+        gradient_pos = (row_base + (box_width - 1) * diagonal_shift / box_width) % 1.0
+        bg = get_gradient_bg_by_position(gradient_pos)
+        content_line += f"{bg}{VERTICAL}{RESET}"
+
         banner_lines.append(content_line)
 
-    # Bottom border with rounded corners
-    row_pos = (total_rows - 1) / total_rows
-    bg = get_gradient_bg(row_pos)
-    bottom_line = f"{bg}{WHITE}{ROUND_BL}{HORIZONTAL * (box_width - 2)}{ROUND_BR}{RESET}"
+    # Bottom border with rounded corners and diagonal gradient
+    row_gradient = []
+    for char_pos in range(box_width):
+        gradient_pos = ((total_rows - 1) / total_rows + char_pos * diagonal_shift / box_width) % 1.0
+        row_gradient.append(get_gradient_bg_by_position(gradient_pos))
+
+    bottom_line = f"{row_gradient[0]}{WHITE}{ROUND_BL}"
+    for char_pos in range(1, box_width - 1):
+        bottom_line += f"{row_gradient[char_pos]}{HORIZONTAL}"
+    bottom_line += f"{row_gradient[-1]}{ROUND_BR}{RESET}"
     banner_lines.append(bottom_line)
 
     # Print the banner
