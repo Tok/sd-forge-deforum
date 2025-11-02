@@ -142,8 +142,9 @@ def print_startup_banner():
     top_line = ""
     top_shift = get_row_shift(0)
     for char_pos in range(box_width):
-        # Smooth gradient: combine row shift and character position
-        gradient_pos = min(1.0, max(0.0, (top_shift * 10 + char_pos) / (max_shift * 10 + box_width)))
+        # Smooth gradient: emphasize row shift more for fuller blue→purple range
+        # Use row position as primary driver, char position as secondary
+        gradient_pos = min(1.0, max(0.0, (top_shift * 3 + char_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
         bg = get_gradient_bg_by_position(gradient_pos)
 
         if char_pos == 0:
@@ -178,7 +179,7 @@ def print_startup_banner():
 
         # Left padding (2 spaces)
         for i in range(2):
-            gradient_pos = min(1.0, max(0.0, (row_shift * 10 + display_pos) / (max_shift * 10 + box_width)))
+            gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
             bg = get_gradient_bg_by_position(gradient_pos)
             content_line += f"{bg} "
             display_pos += 1
@@ -189,7 +190,7 @@ def print_startup_banner():
             char = visible_text[text_idx]
             char_width = 2 if unicodedata.east_asian_width(char) in ('F', 'W') else 1
 
-            gradient_pos = min(1.0, max(0.0, (row_shift * 10 + display_pos) / (max_shift * 10 + box_width)))
+            gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
             bg = get_gradient_bg_by_position(gradient_pos)
             content_line += f"{bg}{WHITE}{char}"
 
@@ -198,7 +199,7 @@ def print_startup_banner():
 
         # Right padding
         for i in range(right_padding_width):
-            gradient_pos = min(1.0, max(0.0, (row_shift * 10 + display_pos) / (max_shift * 10 + box_width)))
+            gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
             bg = get_gradient_bg_by_position(gradient_pos)
             content_line += f"{bg} "
             display_pos += 1
@@ -210,7 +211,7 @@ def print_startup_banner():
     bottom_line = ""
     bottom_shift = get_row_shift(len(lines) + 1)  # Last row
     for char_pos in range(box_width):
-        gradient_pos = min(1.0, max(0.0, (bottom_shift * 10 + char_pos) / (max_shift * 10 + box_width)))
+        gradient_pos = min(1.0, max(0.0, (bottom_shift * 3 + char_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
         bg = get_gradient_bg_by_position(gradient_pos)
 
         if char_pos == 0:

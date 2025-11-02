@@ -45,7 +45,7 @@ from deforum.pipeline.resume import get_resume_vars
 from deforum.core.masking.masks import do_overlay_mask
 from deforum.core.prompts import prepare_prompt
 from modules.shared import opts, cmd_opts, state, sd_model
-from modules import lowvram, devices, sd_hijack
+from modules import devices, sd_hijack  # Note: lowvram removed in Forge Neo
 from deforum.rendering import core
 from deforum.utils.system.logging import log
 from deforum.integrations.raft import RAFT
