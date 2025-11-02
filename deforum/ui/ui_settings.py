@@ -80,10 +80,13 @@ def on_ui_settings():
     add_cb("deforum_save_gen_info_as_srt",
            "Save an .srt (subtitles) file with the generation info along with each animation. Works with VLC and with YouTube (upload file 'With timing').", True)
     add_cb("deforum_embed_srt", "If .srt file is saved, soft-embed the subtitles into the video file.")
+    add_cb("deforum_mode_aware_subtitles",
+           "Use mode-aware subtitles (shows only relevant parameters based on render mode, removes Aspect Ratio, shows actual steps like '3/20'). Disable to use manual parameter selection below.",
+           True)
     add_cb("deforum_simple_subtitles", "Only write prompt into subtitles.")
     add_cb("deforum_own_line_for_prompt_srt", "Put 'prompt' on its own line in subtitles if present.")
     add("deforum_save_gen_info_as_srt_params",
-        "Animation parameters to be saved to the .srt file (Frame # and Seed will always be saved):",
+        "Animation parameters to be saved to the .srt file (Frame # and Seed will always be saved). Only used if mode-aware subtitles are disabled:",
         ['Prompt'], ui_components.DropdownMulti, lambda: {"interactive": True, "choices": get_user_values()})
     add_dd("deforum_subtitles_per_second", "Desired subtitles per second (Mostly useful at high FPS. Render core only)", '10',
            _subtitles_per_second_choices())
