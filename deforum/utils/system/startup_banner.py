@@ -97,8 +97,8 @@ def print_startup_banner():
         "Why: Hijacks Forge output pipeline (custom dashboard, progress bars, suppressed logs)",
         "     May conflict with other extensions - optimized specifically for Deforum workflows",
         "",
-        "Get Forge Neo: https://github.com/Haoming02/sd-webui-forge-classic/tree/neo",
-        "Deforum Info: https://github.com/Tok/sd-forge-deforum",
+        "Forge Neo: https://github.com/Haoming02/sd-webui-forge-classic/tree/neo",
+        "This Fork: https://github.com/Tok/sd-forge-deforum",
         "",
         "Primary Target: Forge Neo (fully tested and supported)",
         "Other Forge Versions: May work but remain untested"
