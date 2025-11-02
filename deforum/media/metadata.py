@@ -234,6 +234,13 @@ def create_ffmpeg_metadata_args(settings_dict: dict[str, Any]) -> list[str]:
     if "animation_mode" in settings_dict:
         metadata_args.extend(['-metadata', f'deforum_animation_mode={settings_dict["animation_mode"]}'])
 
+    # Batch info (for organization/tracking)
+    if "batch_name" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_batch_name={settings_dict["batch_name"]}'])
+
+    if "n_batch" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_batch_number={settings_dict["n_batch"]}'])
+
     # Prompt - convert dict to human-readable format
     if "animation_prompts" in settings_dict and settings_dict["animation_prompts"]:
         try:
