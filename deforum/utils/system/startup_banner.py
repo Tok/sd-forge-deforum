@@ -7,32 +7,48 @@ logger = get_logger()
 
 
 def print_startup_banner():
-    """Print Deforum initialization banner with slopcore purple gradient."""
+    """Print Deforum initialization banner with slopcore 2D diagonal gradient table."""
     import os
     from pathlib import Path
+    from rich.table import Table
+    from rich.console import Console
+    from rich import box
 
-    # ANSI color codes for 7-shade slopcore purple gradient
+    # ANSI color codes for extended slopcore gradient (more shades for 2D effect)
     from deforum.utils.system.logging.themes import (
         HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
         HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7
     )
     from deforum.utils.image.color import hex_to_ansi_foreground
 
-    # Convert hex colors to ANSI
-    SLOPCORE_1 = hex_to_ansi_foreground(HEX_SLOPCORE_1)  # Bright blue
-    SLOPCORE_2 = hex_to_ansi_foreground(HEX_SLOPCORE_2)  # Blue-purple
-    SLOPCORE_3 = hex_to_ansi_foreground(HEX_SLOPCORE_3)  # Light purple
-    SLOPCORE_4 = hex_to_ansi_foreground(HEX_SLOPCORE_4)  # Mid purple
-    SLOPCORE_5 = hex_to_ansi_foreground(HEX_SLOPCORE_5)  # Purple
-    SLOPCORE_6 = hex_to_ansi_foreground(HEX_SLOPCORE_6)  # Deep purple
-    SLOPCORE_7 = hex_to_ansi_foreground(HEX_SLOPCORE_7)  # Darkest purple
+    # Create extended gradient with interpolated colors for smoother diagonal effect
+    def interpolate_color(hex1, hex2, ratio):
+        """Interpolate between two hex colors."""
+        r1, g1, b1 = int(hex1[1:3], 16), int(hex1[3:5], 16), int(hex1[5:7], 16)
+        r2, g2, b2 = int(hex2[1:3], 16), int(hex2[3:5], 16), int(hex2[5:7], 16)
+        r = int(r1 + (r2 - r1) * ratio)
+        g = int(g1 + (g2 - g1) * ratio)
+        b = int(b1 + (b2 - b1) * ratio)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    # Generate smooth gradient with more shades (14 shades for smoother diagonal)
+    gradient_colors = []
+    base_colors = [HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
+                   HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7]
+
+    # Interpolate between each pair
+    for i in range(len(base_colors) - 1):
+        gradient_colors.append(base_colors[i])
+        # Add one interpolated color between each pair
+        mid_color = interpolate_color(base_colors[i], base_colors[i + 1], 0.5)
+        gradient_colors.append(mid_color)
+    gradient_colors.append(base_colors[-1])
 
     WHITE = "\033[97m"
     RESET = "\033[0m"
     BOLD = "\033[1m"
 
     # Detect Forge Neo vs classic Forge
-    # Neo has text_encoder/ directory, classic has text encoders in VAE/
     try:
         import modules.paths as ph
         models_dir = Path(ph.models_path)
@@ -40,55 +56,52 @@ def print_startup_banner():
     except:
         is_forge_neo = False
 
-    # Create gradient border using all 7 shades (12-13 chars per shade for 90 total)
-    # Text line is 90 chars (was miscounted), border reduced by 5
-    border_top = (
-        f"{SLOPCORE_1}#############"   # 13 chars - Bright blue
-        f"{SLOPCORE_2}############"    # 12 chars - Blue-purple (reduced)
-        f"{SLOPCORE_3}#############"   # 13 chars - Light purple (reduced)
-        f"{SLOPCORE_4}#############"   # 13 chars - Mid purple (center, reduced)
-        f"{SLOPCORE_5}#############"   # 13 chars - Purple (reduced)
-        f"{SLOPCORE_6}############"    # 12 chars - Deep purple (reduced)
-        f"{SLOPCORE_7}#############"   # 13 chars - Darkest purple
-        f"{RESET}"
-    )
-    # Reverse gradient for bottom border
-    border_bot = (
-        f"{SLOPCORE_7}#############"
-        f"{SLOPCORE_6}############"
-        f"{SLOPCORE_5}#############"
-        f"{SLOPCORE_4}#############"
-        f"{SLOPCORE_3}#############"
-        f"{SLOPCORE_2}############"
-        f"{SLOPCORE_1}#############"
-        f"{RESET}"
+    # Create Rich console for table rendering
+    console = Console()
+
+    # Create table with diagonal gradient border
+    table = Table(
+        show_header=False,
+        box=box.DOUBLE,
+        padding=(0, 1),
+        border_style=f"rgb({int(HEX_SLOPCORE_4[1:3], 16)},{int(HEX_SLOPCORE_4[3:5], 16)},{int(HEX_SLOPCORE_4[5:7], 16)})",
+        style=f"rgb({int(HEX_SLOPCORE_4[1:3], 16)},{int(HEX_SLOPCORE_4[3:5], 16)},{int(HEX_SLOPCORE_4[5:7], 16)})"
     )
 
-    # Different messages for Neo vs classic Forge
+    # Title with diagonal gradient effect and bolt emojis
+    title_text = "⚡ Zirteq's Fluxabled Fork of the Deforum Extension ⚡"
+
+    # Create diagonal gradient for title (each character gets color based on position)
+    gradient_title = ""
+    for i, char in enumerate(title_text):
+        color_idx = min(int((i / len(title_text)) * len(gradient_colors)), len(gradient_colors) - 1)
+        hex_color = gradient_colors[color_idx]
+        r, g, b = int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)
+        gradient_title += f"[rgb({r},{g},{b})]{char}[/]"
+
+    table.add_row(f"[bold]{gradient_title}[/bold]")
+
+    # Patches section
     if is_forge_neo:
-        # Forge Neo: Built-in Flux/Wan support, minimal patching needed
-        features_text = f"""{WHITE}Forge Neo Enhancements:
-  - Leveraging built-in Flux.1 and Wan 2.1/2.2 support
-  - Slopcore UI theme with checkbox-style buttons
-  - Flux ControlNet V2 + FLF2V interpolation workflows{RESET}"""
+        table.add_row("")  # Separator
+        table.add_row("[bold cyan]Forge Neo Enhancements:[/bold cyan]")
+        table.add_row("  • Leveraging built-in Flux.1 and Wan 2.1/2.2 support")
+        table.add_row("  • Slopcore UI theme with checkbox-style buttons")
+        table.add_row("  • Flux ControlNet V2 + FLF2V interpolation workflows")
     else:
-        # Classic Forge: Needs compatibility patches
-        features_text = f"""{WHITE}Applying compatibility patches for Flux.1 ControlNet V2 + Wan 2.1/2.2 AI Video:
-  - Flux ControlNet V2 support (patching Forge's IntegratedFluxTransformer2DModel)
-  - FlowMatchEulerDiscreteScheduler compatibility (diffusers git main + Forge)
-  - Wan 2.1 FLF2V + Wan 2.2 TI2V pipeline integration{RESET}"""
+        table.add_row("")  # Separator
+        table.add_row("[bold yellow]Compatibility Patches:[/bold yellow]")
+        table.add_row("  • Flux ControlNet V2 support (patching IntegratedFluxTransformer2DModel)")
+        table.add_row("  • FlowMatchEulerDiscreteScheduler compatibility (diffusers + Forge)")
+        table.add_row("  • Wan 2.1 FLF2V + Wan 2.2 TI2V pipeline integration")
 
-    # Text and border both 95 chars - perfect match
-    banner = f"""
-{border_top}
-{SLOPCORE_4}{BOLD}Stable Diffusion WebUI Forge Enhanced By Zirteq's Fluxabled Fork of the Deforum Extension{RESET}
-{border_bot}
-{features_text}
-{BOLD}Primary Target:{RESET} Forge Neo (fully tested and supported)
-{BOLD}Other Forge versions:{RESET} May work but remain untested
-{BOLD}Note:{RESET} Optimized for Flux/Wan workflows in dedicated Forge Neo instance
-{BOLD}More Info:{RESET} https://github.com/Tok/sd-forge-deforum
-{border_top}
-"""
+    # Additional info
+    table.add_row("")  # Separator
+    table.add_row("[bold]Primary Target:[/bold] Forge Neo (fully tested and supported)")
+    table.add_row("[bold]Other Versions:[/bold] May work but remain untested")
+    table.add_row("[bold]More Info:[/bold] https://github.com/Tok/sd-forge-deforum")
 
-    logger.info(banner)
+    # Print with newlines for spacing
+    print("")
+    console.print(table)
+    print("")
