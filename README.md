@@ -1,4 +1,4 @@
-# Zirteq Fluxabled Fork
+# Zirteq's Fluxabled Fork of the Deforum Extension for Forge Neo Fork of Forge WebUI Fork of Automatic1111
 
 [![Unit Tests](https://github.com/Tok/sd-forge-deforum/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/Tok/sd-forge-deforum/actions/workflows/unit-tests.yml)
 [![codecov](https://codecov.io/gh/Tok/sd-forge-deforum/branch/main/graph/badge.svg)](https://codecov.io/gh/Tok/sd-forge-deforum)
@@ -109,6 +109,26 @@ One-click AI video generation with **intentional chaos and glitches**. Click **"
   - Enable/disable dashboard (on by default)
   - ASCII preview in header (on by default)
   - ASCII to scrolling log (off by default)
+
+### 💾 **Privacy-Focused Video Metadata Embedding**
+- **Full Reproducibility**: Automatically embeds ALL generation settings into video files
+- **Dual Embedding Approach**:
+  - **Base64-Encoded Comment**: Complete settings (all args, movements, prompts) for machine parsing
+  - **Human-Readable Fields**: Key info directly accessible (`deforum_resolution`, `deforum_model`, `deforum_seed`, etc.)
+- **No User-Identifying Info**: Only technical generation parameters, no branding or personal data
+- **Fork-ception Identity**: Includes full fork name and GitHub URL for version tracking
+- **Git Commit Tracking**: Exact commit ID embedded for perfect reproducibility
+- **ComfyUI-Inspired**: Similar workflow to ComfyUI's image metadata embedding
+- **Extract & Restore**: Load settings from any Deforum-generated video (drag-and-drop planned)
+- **Comprehensive Data**: Includes:
+  - Core settings: model, sampler, scheduler, steps, cfg_scale, distilled_cfg_scale
+  - Resolution: width x height
+  - Animation: fps, max_frames, render_mode, animation_mode
+  - Movement schedules: All camera movement parameters
+  - Prompt schedule: Frame-specific prompts (truncated if >500 chars)
+  - Advanced: Parseq data, ControlNet settings, Wan parameters
+- **FFmpeg Integration**: Embedded using standard MP4/MOV metadata fields
+- **Always Enabled**: Automatic embedding with every video generation (toggle coming soon)
 
 ### 🎵 **Automatic Audio Event Detection & Synchronization**
 - **Librosa Integration**: Professional audio analysis with onset/beat/bass detection
