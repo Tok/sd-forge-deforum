@@ -20,6 +20,7 @@ from typing import Any
 # Metadata field constants
 METADATA_PREFIX = "DEFORUM_SETTINGS:"
 METADATA_VERSION = "1.0"
+GITHUB_URL = "https://github.com/Tok/sd-forge-deforum"
 
 
 def _get_commit_id_safe() -> str:
@@ -118,10 +119,13 @@ def create_comprehensive_metadata(settings_dict: dict[str, Any]) -> dict[str, An
         settings_dict: Full dictionary of all settings (args, anim_args, video_args, etc.)
 
     Returns:
-        Dictionary with commit ID added and ready for embedding
+        Dictionary with commit ID and GitHub URL added, ready for embedding
     """
-    # Add commit ID for version tracking
-    metadata = {"commit_id": _get_commit_id_safe()}
+    # Add commit ID and GitHub URL for version tracking
+    metadata = {
+        "commit_id": _get_commit_id_safe(),
+        "github_url": GITHUB_URL,
+    }
 
     # Add all provided settings
     metadata.update(settings_dict)
@@ -132,8 +136,9 @@ def create_comprehensive_metadata(settings_dict: dict[str, Any]) -> dict[str, An
 def create_ffmpeg_metadata_args(settings_dict: dict[str, Any]) -> list[str]:
     """Create ffmpeg command arguments for metadata embedding.
 
-    Embeds only technical generation settings in the comment field.
-    No user-identifying information or branding.
+    Embeds BOTH:
+    1. Base64-encoded full settings in comment field (comprehensive, machine-readable)
+    2. Key info as direct metadata fields (human-readable)
 
     Args:
         settings_dict: Dictionary of settings to embed
@@ -147,13 +152,72 @@ def create_ffmpeg_metadata_args(settings_dict: dict[str, Any]) -> list[str]:
         >>> '-metadata' in args
         True
     """
-    # Encode full settings for comment field
+    # Encode full settings for comment field (comprehensive, base64)
     encoded_settings = encode_settings_for_metadata(settings_dict)
 
-    # Only embed technical settings in comment field
+    # Start with comment containing full encoded settings
     metadata_args = [
         '-metadata', f'comment={encoded_settings}',
     ]
+
+    # Add human-readable key fields (directly readable in metadata)
+    # These duplicate info from comment but provide quick access
+
+    # Repository info
+    if "github_url" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_github={settings_dict["github_url"]}'])
+    if "commit_id" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_commit={settings_dict["commit_id"]}'])
+
+    # Core generation settings
+    if "W" in settings_dict and "H" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_resolution={settings_dict["W"]}x{settings_dict["H"]}'])
+
+    if "sd_model_checkpoint" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_model={settings_dict["sd_model_checkpoint"]}'])
+
+    if "sampler" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_sampler={settings_dict["sampler"]}'])
+
+    if "scheduler" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_scheduler={settings_dict["scheduler"]}'])
+
+    if "steps" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_steps={settings_dict["steps"]}'])
+
+    if "cfg_scale" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_cfg_scale={settings_dict["cfg_scale"]}'])
+
+    if "distilled_cfg_scale" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_distilled_cfg={settings_dict["distilled_cfg_scale"]}'])
+
+    if "seed" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_seed={settings_dict["seed"]}'])
+
+    # Animation settings
+    if "fps" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_fps={settings_dict["fps"]}'])
+
+    if "max_frames" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_max_frames={settings_dict["max_frames"]}'])
+
+    if "render_mode" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_render_mode={settings_dict["render_mode"]}'])
+
+    if "animation_mode" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_animation_mode={settings_dict["animation_mode"]}'])
+
+    # Prompt - convert dict to human-readable format
+    if "animation_prompts" in settings_dict and settings_dict["animation_prompts"]:
+        try:
+            # animation_prompts is typically a dict like {0: "prompt1", 50: "prompt2"}
+            prompts_str = " | ".join([f"{k}: {v}" for k, v in settings_dict["animation_prompts"].items()])
+            # Truncate if too long (ffmpeg has limits)
+            if len(prompts_str) > 500:
+                prompts_str = prompts_str[:497] + "..."
+            metadata_args.extend(['-metadata', f'deforum_prompts={prompts_str}'])
+        except Exception:
+            pass  # Skip if can't format prompts
 
     return metadata_args
 

@@ -17,10 +17,11 @@ spec.loader.exec_module(metadata)
 # Import specific functions and constants
 encode_settings_for_metadata = metadata.encode_settings_for_metadata
 decode_settings_from_metadata = metadata.decode_settings_from_metadata
-create_essential_metadata = metadata.create_essential_metadata
+create_comprehensive_metadata = metadata.create_comprehensive_metadata
 create_ffmpeg_metadata_args = metadata.create_ffmpeg_metadata_args
 METADATA_PREFIX = metadata.METADATA_PREFIX
 METADATA_VERSION = metadata.METADATA_VERSION
+GITHUB_URL = metadata.GITHUB_URL
 
 
 class TestEncodeDecodeSettings:
@@ -107,110 +108,37 @@ class TestEncodeDecodeSettings:
         assert decoded["settings"] == original
 
 
-class TestCreateEssentialMetadata:
-    """Test essential metadata creation."""
+class TestCreateComprehensiveMetadata:
+    """Test comprehensive metadata creation."""
 
-    def test_creates_all_required_fields(self):
-        """Should create metadata with all required fields."""
-        metadata = create_essential_metadata(
-            render_mode="New 3D",
-            fps=24,
-            max_frames=100,
-            width=1024,
-            height=576,
-            seed=12345,
-            steps=20,
-            cfg_scale=7.5
-        )
+    def test_adds_commit_id_and_github_url(self):
+        """Should add commit_id and github_url to settings."""
+        settings = {
+            "fps": 24,
+            "seed": 12345,
+        }
+        metadata = create_comprehensive_metadata(settings)
 
-        required_fields = [
-            "commit_id", "render_mode", "model", "scheduler",
-            "steps", "cfg_scale", "seed", "fps", "total_frames", "width", "height"
-        ]
+        assert "commit_id" in metadata
+        assert "github_url" in metadata
+        assert metadata["github_url"] == GITHUB_URL
 
-        for field in required_fields:
-            assert field in metadata
+    def test_preserves_all_provided_settings(self):
+        """Should preserve all settings provided."""
+        settings = {
+            "fps": 24,
+            "seed": 12345,
+            "W": 1280,
+            "H": 720,
+            "steps": 20,
+            "cfg_scale": 7.5,
+            "distilled_cfg_scale": 3.5,
+        }
+        metadata = create_comprehensive_metadata(settings)
 
-    def test_stores_width_height_separately(self):
-        """Width and height should be stored as separate fields."""
-        metadata = create_essential_metadata(
-            render_mode="New 3D",
-            fps=24,
-            max_frames=100,
-            width=1920,
-            height=1080,
-            seed=12345,
-            steps=20,
-            cfg_scale=7.5
-        )
-
-        assert metadata["width"] == 1920
-        assert metadata["height"] == 1080
-
-    def test_uses_provided_model_name(self):
-        """Should use provided model name."""
-        metadata = create_essential_metadata(
-            render_mode="New 3D",
-            fps=24,
-            max_frames=100,
-            width=1024,
-            height=576,
-            seed=12345,
-            steps=20,
-            cfg_scale=7.5,
-            model_name="Flux1-Dev-Bnb-Nf4"
-        )
-
-        assert metadata["model"] == "Flux1-Dev-Bnb-Nf4"
-
-    def test_defaults_to_unknown_model_and_scheduler(self):
-        """Should default to 'Unknown' for model and scheduler if not provided."""
-        metadata = create_essential_metadata(
-            render_mode="New 3D",
-            fps=24,
-            max_frames=100,
-            width=1024,
-            height=576,
-            seed=12345,
-            steps=20,
-            cfg_scale=7.5
-        )
-
-        assert metadata["model"] == "Unknown"
-        assert metadata["scheduler"] == "Unknown"
-
-    def test_includes_prompts_when_provided(self):
-        """Should include prompts dict when provided."""
-        prompts = {0: "a cat", 50: "a dog", 100: "a bird"}
-        metadata = create_essential_metadata(
-            render_mode="New 3D",
-            fps=24,
-            max_frames=100,
-            width=1024,
-            height=576,
-            seed=12345,
-            steps=20,
-            cfg_scale=7.5,
-            prompts=prompts
-        )
-
-        assert "prompts" in metadata
-        assert metadata["prompts"] == prompts
-
-    def test_omits_prompts_when_not_provided(self):
-        """Should not include prompts field when not provided."""
-        metadata = create_essential_metadata(
-            render_mode="New 3D",
-            fps=24,
-            max_frames=100,
-            width=1024,
-            height=576,
-            seed=12345,
-            steps=20,
-            cfg_scale=7.5
-        )
-
-        assert "prompts" not in metadata
+        # All original settings should be preserved
+        for key, value in settings.items():
+            assert metadata[key] == value
 
 
 class TestCreateFFmpegMetadataArgs:
@@ -252,17 +180,36 @@ class TestCreateFFmpegMetadataArgs:
         assert decoded["settings"]["fps"] == 24
         assert decoded["settings"]["seed"] == 12345
 
-    def test_only_embeds_comment_field(self):
-        """Should only embed settings in comment field, no branding."""
-        settings = {"fps": 24, "seed": 12345}
+    def test_embeds_both_encoded_and_readable_fields(self):
+        """Should embed both base64-encoded comment and human-readable fields."""
+        settings = {
+            "fps": 24,
+            "seed": 12345,
+            "W": 1280,
+            "H": 720,
+            "github_url": "https://github.com/Tok/sd-forge-deforum",
+            "commit_id": "abc123",
+        }
         args = create_ffmpeg_metadata_args(settings)
 
-        # Should only have one -metadata flag (for comment)
+        # Should have multiple -metadata flags (comment + readable fields)
         metadata_count = args.count('-metadata')
-        assert metadata_count == 1
+        assert metadata_count > 1  # At least comment + some readable fields
 
-        # Should not include title, artist, copyright, encoder
         args_str = ' '.join(args)
+
+        # Should include encoded comment
+        assert 'comment=' in args_str
+        assert METADATA_PREFIX in args_str
+
+        # Should include human-readable fields with deforum_ prefix
+        assert 'deforum_fps=24' in args_str
+        assert 'deforum_seed=12345' in args_str
+        assert 'deforum_resolution=1280x720' in args_str
+        assert 'deforum_github=https://github.com/Tok/sd-forge-deforum' in args_str
+        assert 'deforum_commit=abc123' in args_str
+
+        # Should NOT include branding fields
         assert 'title=' not in args_str
         assert 'artist=' not in args_str
         assert 'copyright=' not in args_str
@@ -288,24 +235,24 @@ class TestIntegration:
 
     def test_full_workflow(self):
         """Test complete workflow: create settings, encode, create args, decode."""
-        # Create settings with prompts
-        prompts = {0: "scene A", 50: "scene B", 100: "scene C"}
-        essential = create_essential_metadata(
-            render_mode="Keyframes Only",
-            fps=24,
-            max_frames=100,
-            width=1024,
-            height=576,
-            seed=999,
-            steps=20,
-            cfg_scale=7.0,
-            model_name="TestModel",
-            scheduler="euler_a",
-            prompts=prompts
-        )
+        # Create comprehensive settings
+        settings = {
+            "render_mode": "Keyframes Only",
+            "fps": 24,
+            "max_frames": 100,
+            "W": 1024,
+            "H": 576,
+            "seed": 999,
+            "steps": 20,
+            "cfg_scale": 7.0,
+            "sd_model_checkpoint": "TestModel",
+            "scheduler": "euler_a",
+            "animation_prompts": {0: "scene A", 50: "scene B", 100: "scene C"},
+        }
+        comprehensive = create_comprehensive_metadata(settings)
 
         # Create ffmpeg args
-        args = create_ffmpeg_metadata_args(essential)
+        args = create_ffmpeg_metadata_args(comprehensive)
 
         # Extract comment value
         comment_value = None
@@ -315,18 +262,26 @@ class TestIntegration:
                     comment_value = args[i + 1][8:]
                     break
 
-        # Decode and verify all fields
+        # Decode and verify all fields from base64 comment
         decoded = decode_settings_from_metadata(comment_value)
-        settings = decoded["settings"]
-        assert settings["render_mode"] == "Keyframes Only"
-        assert settings["fps"] == 24
-        assert settings["seed"] == 999
-        assert settings["model"] == "TestModel"
-        assert settings["scheduler"] == "euler_a"
-        assert settings["steps"] == 20
-        assert settings["cfg_scale"] == 7.0
-        assert settings["width"] == 1024
-        assert settings["height"] == 576
-        assert settings["total_frames"] == 100
-        # Note: JSON converts int dict keys to strings during serialization
-        assert settings["prompts"] == {str(k): v for k, v in prompts.items()}
+        settings_decoded = decoded["settings"]
+        assert settings_decoded["render_mode"] == "Keyframes Only"
+        assert settings_decoded["fps"] == 24
+        assert settings_decoded["seed"] == 999
+        assert settings_decoded["sd_model_checkpoint"] == "TestModel"
+        assert settings_decoded["scheduler"] == "euler_a"
+        assert settings_decoded["steps"] == 20
+        assert settings_decoded["cfg_scale"] == 7.0
+        assert settings_decoded["W"] == 1024
+        assert settings_decoded["H"] == 576
+        assert settings_decoded["max_frames"] == 100
+        assert settings_decoded["commit_id"]  # Should be present
+        assert settings_decoded["github_url"] == GITHUB_URL
+
+        # Verify human-readable metadata fields are also present
+        args_str = ' '.join(args)
+        assert 'deforum_resolution=1024x576' in args_str
+        assert 'deforum_fps=24' in args_str
+        assert 'deforum_seed=999' in args_str
+        assert 'deforum_model=TestModel' in args_str
+        assert f'deforum_github={GITHUB_URL}' in args_str
