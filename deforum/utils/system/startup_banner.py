@@ -9,12 +9,24 @@ logger = get_logger()
 def print_startup_banner():
     """Print Deforum initialization banner with slopcore gradient background."""
     import shutil
+    import unicodedata
 
     # ANSI color codes for slopcore gradient
     from deforum.utils.system.logging.themes import (
         HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
         HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7
     )
+
+    # Helper to get display width of text (accounts for wide chars like emojis)
+    def display_width(text):
+        """Calculate actual terminal display width (emojis count as 2)."""
+        width = 0
+        for char in text:
+            if unicodedata.east_asian_width(char) in ('F', 'W'):
+                width += 2  # Full-width or Wide characters (emojis, CJK, etc.)
+            else:
+                width += 1
+        return width
 
     # Create extended gradient with interpolated colors for smoother effect
     def interpolate_color(hex1, hex2, ratio):
@@ -69,6 +81,14 @@ def print_startup_banner():
     # Title with text gradient and bolt emojis
     title_text = "⚡ Zirteq's Fluxabled Fork of the Deforum Extension for Forge Neo Fork of Forge WebUI Fork of Automatic1111 ⚡"
 
+    # Center the title based on its display width
+    title_width = display_width(title_text)
+    # Use box_width - 4 as available width (2 padding on each side)
+    available_width = box_width - 4
+    if title_width < available_width:
+        left_pad_spaces = (available_width - title_width) // 2
+        title_text = (" " * left_pad_spaces) + title_text
+
     # Prepare content lines (plain text, background will have gradient)
     lines = [
         title_text,
@@ -109,31 +129,49 @@ def print_startup_banner():
 
     # Content lines with diagonal gradient background
     for row_idx, line in enumerate(lines):
-        # Strip ANSI codes to get visible length
+        # Strip ANSI codes to get visible text
         visible_text = re.sub(r'\033\[[0-9;]*m', '', line)
-        text_len = len(visible_text)
+        text_display_width = display_width(visible_text)  # Actual terminal width
 
         # Build line with diagonal gradient
         row_base = (row_idx + 1) / total_rows  # Vertical position
 
+        # Build content: 2 spaces + text + padding to fill box_width
+        left_padding = "  "
+        right_padding_width = box_width - 2 - text_display_width
+        right_padding = " " * right_padding_width
+
+        # Now apply gradient to each character position
         content_line = ""
+        char_idx = 0
+        display_pos = 0
 
-        # Calculate gradient for each character position in this row
-        for char_pos in range(box_width):
-            # Diagonal gradient: combine row and column position
-            # Clamp instead of modulo to prevent wrap-around from purple back to blue
-            gradient_pos = min(1.0, max(0.0, row_base + char_pos * diagonal_shift / box_width))
+        # Left padding (2 spaces)
+        for i in range(2):
+            gradient_pos = min(1.0, max(0.0, row_base + display_pos * diagonal_shift / box_width))
             bg = get_gradient_bg_by_position(gradient_pos)
+            content_line += f"{bg} "
+            display_pos += 1
 
-            if char_pos < 2:
-                # Left padding (2 spaces)
-                content_line += f"{bg} "
-            elif char_pos < text_len + 2:
-                # Text content
-                content_line += f"{bg}{WHITE}{visible_text[char_pos - 2]}"
-            else:
-                # Right padding
-                content_line += f"{bg} "
+        # Text content (accounting for wide chars)
+        text_idx = 0
+        while text_idx < len(visible_text):
+            char = visible_text[text_idx]
+            char_width = 2 if unicodedata.east_asian_width(char) in ('F', 'W') else 1
+
+            gradient_pos = min(1.0, max(0.0, row_base + display_pos * diagonal_shift / box_width))
+            bg = get_gradient_bg_by_position(gradient_pos)
+            content_line += f"{bg}{WHITE}{char}"
+
+            display_pos += char_width
+            text_idx += 1
+
+        # Right padding
+        for i in range(right_padding_width):
+            gradient_pos = min(1.0, max(0.0, row_base + display_pos * diagonal_shift / box_width))
+            bg = get_gradient_bg_by_position(gradient_pos)
+            content_line += f"{bg} "
+            display_pos += 1
 
         content_line += RESET  # Single reset at end of line
         banner_lines.append(content_line)
