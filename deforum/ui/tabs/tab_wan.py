@@ -186,12 +186,12 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
 
     # GENERATION SECTION - Moved outside deprecated accordion for accessibility
     gr.Markdown("---")
-    gr.Markdown("### 🎬 Generate Flux/Wan")
+    gr.Markdown(f"### {emoji_utils.movie_camera()} Generate Flux/Wan")
 
     # Generate Button with Validation
     with FormRow():
         wan_generate_button = gr.Button(
-            "🎬 Generate Flux/Wan (I2V Chaining)",
+            f"{emoji_utils.movie_camera()} Generate Flux/Wan (I2V Chaining)",
             variant="primary",
             size="lg",
             elem_id="wan_generate_button"
@@ -202,7 +202,7 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         label="Generation Status",
         interactive=False,
         lines=5,
-        placeholder="⚠️ Prompts required! Load prompts above first, then click Generate.",
+        placeholder=f"{emoji_utils.warn} Prompts required! Load prompts above first, then click Generate.",
         info="Status updates will appear here during generation."
     )
 
