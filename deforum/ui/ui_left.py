@@ -197,6 +197,14 @@ def setup_deforum_left_side_ui():
         visible=False
     )
 
+    # Hidden keyframe_distribution (render mode automatically controls distribution now)
+    keyframe_distribution = gr.Dropdown(
+        label="Keyframe Distribution (Auto-Controlled by Render Mode)",
+        choices=["Off", "Keyframes Only", "Redistributed Cadence"],
+        value="Keyframes Only",
+        visible=False
+    )
+
     with gr.Blocks():
         with gr.Tabs() as main_tabs:
             # Get main tab contents in new workflow order:
@@ -248,6 +256,7 @@ def setup_deforum_left_side_ui():
             # Add top-level settings to locals()
             locals()['render_mode'] = render_mode
             locals()['animation_mode'] = animation_mode
+            locals()['keyframe_distribution'] = keyframe_distribution
             locals()['fps'] = fps
             locals()['steps'] = steps
             locals()['cadence'] = cadence
