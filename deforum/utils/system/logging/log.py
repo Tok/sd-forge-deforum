@@ -52,13 +52,39 @@ def print_tween_frame_from_to_info(frame, is_disabled=True):
 
 
 def print_animation_frame_info(i, max_frames, is_keyframe=None):
+    """Print animation frame info with theme-aware colors.
+
+    Args:
+        i: Current frame index
+        max_frames: Total number of frames
+        is_keyframe: True if keyframe, False if cadence, None if unknown
+    """
+    from deforum.rendering.options import get_log_theme
+    from deforum.utils.system.logging.themes import (
+        get_tqdm_color_for_theme,
+        HEX_CLASSIC_GREEN,
+        HEX_CLASSIC_ORANGE
+    )
+
+    theme = get_log_theme()
+
+    # Get theme-appropriate colors for keyframe/cadence labels
+    # Green (classic) → Light purple (slopcore) for keyframes
+    # Orange (classic) → Mid purple (slopcore) for cadence
+    keyframe_color_hex = get_tqdm_color_for_theme(HEX_CLASSIC_GREEN, theme)
+    cadence_color_hex = get_tqdm_color_for_theme(HEX_CLASSIC_ORANGE, theme)
+
+    # Convert hex to ANSI codes
+    keyframe_color = from_hex_color(keyframe_color_hex) if keyframe_color_hex else ""
+    cadence_color = from_hex_color(cadence_color_hex) if cadence_color_hex else ""
+
     print("")
     frame_type = ""
     if is_keyframe is not None:
         if is_keyframe:
-            frame_type = f" {GREEN}[KEYFRAME]{RESET_COLOR}"
+            frame_type = f" {keyframe_color}[KEYFRAME]{RESET_COLOR}"
         else:
-            frame_type = f" {ORANGE}[CADENCE]{RESET_COLOR}"
+            frame_type = f" {cadence_color}[CADENCE]{RESET_COLOR}"
     print(f"{BLUE}Animation frame: {RESET_COLOR}{BOLD}{i}{RESET_COLOR}/{max_frames}{frame_type}")
 
 
