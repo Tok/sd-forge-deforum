@@ -159,8 +159,7 @@ class FixedDashboard:
         # Move cursor to top of scrolling region
         sys.stdout.write("\033[1;1H")
 
-        # Clear screen
-        sys.stdout.write("\033[2J")
+        # Don't clear screen - preserve previous output (subtitle info etc.)
         sys.stdout.flush()
 
         # Mark as active
