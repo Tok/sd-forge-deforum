@@ -120,6 +120,22 @@ class RenderDashboard:
             'current': 0,
             'total': 0,
             'type': 'KEYFRAME',
+            'seed': 0,
+            'color_rgb': None,
+            'movement': '',
+            'prompt': ''
+        }
+        self.table_data = {
+            'steps': '0/20',
+            'cfg': '1.0',
+            'dist_cfg': '3.5',
+            'denoise': '0.85',
+            'tr_x': '0',
+            'tr_y': '0',
+            'tr_z': '0',
+            'ro_x': '0',
+            'ro_y': '0',
+            'ro_z': '0'
         }
         self.progress_data = {
             'diffusion_frames': (0, 100),
@@ -196,3 +212,9 @@ class RenderDashboard:
         from deforum.utils.system.logging import get_logger
         logger = get_logger()
         logger.info(message)
+
+    def add_ascii_art_to_log(self, image, frame_idx: int):
+        """Add ASCII art to log if enabled (simplified - always off for now)."""
+        # This feature would spam the log too much in simple mode
+        # Users can enable ascii_preview to get it once per second instead
+        pass
