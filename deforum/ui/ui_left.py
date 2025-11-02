@@ -253,6 +253,9 @@ def setup_deforum_left_side_ui():
             audio_ai_end_prompt = tab_init_params.get('audio_ai_end_prompt')
             audio_sync_prompts = tab_init_params.get('audio_sync_prompts')
 
+            # Also unpack Wan FLF2V component from depth tab
+            enable_wan_flf2v = tab_depth_params.get('enable_wan_flf2v')
+
             # Add top-level settings to locals()
             locals()['render_mode'] = render_mode
             locals()['animation_mode'] = animation_mode
