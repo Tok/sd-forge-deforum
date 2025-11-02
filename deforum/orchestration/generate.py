@@ -96,17 +96,18 @@ def _get_mean_color(image):
         # Fallback for unexpected format
         return (128, 128, 128)
 
-def _rgb_to_ansi_background(rgb):
-    """Convert RGB tuple to ANSI background color escape code.
+def _rgb_to_ansi_color_block(rgb):
+    """Convert RGB tuple to ANSI color block (foreground + background same color).
 
     Args:
         rgb: Tuple of (r, g, b) with values 0-255
 
     Returns:
-        ANSI escape sequence for background color
+        ANSI escape sequence for solid color block (both fg and bg set to same color)
     """
     r, g, b = rgb
-    return f"\033[48;2;{r};{g};{b}m"
+    # Set both foreground (38;2) and background (48;2) to same color for solid block
+    return f"\033[38;2;{r};{g};{b}m\033[48;2;{r};{g};{b}m"
 
 def _get_movement_indicators(anim_args, keys, frame_idx):
     """Generate ASCII movement indicators for current frame.
@@ -213,7 +214,8 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
     # Add color indicator if we have a previous image
     if previous_image is not None:
         mean_color = _get_mean_color(previous_image)
-        color_block = _rgb_to_ansi_background(mean_color)
+        color_block = _rgb_to_ansi_color_block(mean_color)
+        # Use █ with both fg and bg set to same color for solid block
         seed_info += f", Color: {color_block}██{_RESET_BG}"
 
     # Add movement indicators
