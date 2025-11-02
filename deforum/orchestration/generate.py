@@ -32,6 +32,7 @@ from deforum.utils.ui.console import console
 from deforum.config.defaults import get_samplers_list, get_schedulers_list
 from deforum.utils.generation.prompts import check_is_number
 from deforum.utils.system.opts_overrider import A1111OptionsOverrider
+from deforum.utils.system.output_filter import suppress_forge_output
 import cv2
 import numpy as np
 from types import SimpleNamespace
@@ -525,7 +526,9 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
 
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
                 p_txt.scheduler = "Simple"  # FIXME provide
-                processed = processing.process_images(p_txt)
+                # Suppress redundant Forge output (info already shown in Deforum's table)
+                with suppress_forge_output():
+                    processed = processing.process_images(p_txt)
 
             try:
                 p_txt.close()
@@ -578,7 +581,9 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
                 logger.debug(f"Lumina patch not applied: {e}")
 
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
-                processed = processing.process_images(p)
+                # Suppress redundant Forge output (info already shown in Deforum's table)
+                with suppress_forge_output():
+                    processed = processing.process_images(p)
 
 
     if root.initial_info is None:

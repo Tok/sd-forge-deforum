@@ -40,9 +40,9 @@ class Taqaddumat:
             before calling this method, so initialization is always correct.
 
         Progress Bar Strategy:
-            - Transient bars (current tweens, current steps): leave=False (resets each frame)
-            - Accumulator bars (total frames, total steps): leave=True (show final totals)
+            - All bars except final: leave=False (disappear when animation completes)
             - Final progress bar (diffusion frames): leave=True (shows completion)
+            - Position reuse allows bars to update in-place during rendering
         """
         def create(iterable, position, color, description, unit, leave=False, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
             # Get themed color based on current theme
@@ -69,11 +69,11 @@ class Taqaddumat:
             range(initial_tween_count), 0, HEX_BLUE,
             "Current Tweens", "tween", leave=False)
 
-        # Accumulator bar: grows throughout animation, KEEP in log to show total output
+        # Accumulator bar: grows throughout animation, don't leave (prevents log clutter)
         total_frames = sum(len(frame.tweens) for frame in frames)
         self.total_frames = create(
             range(total_frames), 1, HEX_GREEN,
-            "Total Frames", "frame", leave=True)
+            "Total Frames", "frame", leave=False)
 
         # Transient bar: resets for each diffusion frame, don't leave in log
         initial_steps_count = frames[0].schedule.steps if len(frames) > 0 else 20
@@ -81,11 +81,11 @@ class Taqaddumat:
             range(initial_steps_count), 0, HEX_ORANGE,
             "Current Diffusion Steps", "step", leave=False)
 
-        # Accumulator bar: grows throughout animation, KEEP in log (user wants to see total)
+        # Accumulator bar: grows throughout animation, don't leave (prevents log clutter)
         total_steps = sum(frame.actual_steps(data) for frame in frames)
         self.total_steps = create(
             range(total_steps), 1, HEX_RED,
-            "Total Diffusion Steps", "step", leave=True)
+            "Total Diffusion Steps", "step", leave=False)
 
         # Final progress bar: shows overall completion, KEEP in log when done
         # Renamed from "Total Animation Cycles" to "Diffusion Frames" for clarity
