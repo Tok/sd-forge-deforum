@@ -21,6 +21,7 @@ import json
 import itertools
 import requests
 import numexpr
+import numpy as np
 from modules import processing, sd_models
 from modules.shared import sd_model, state, cmd_opts
 from deforum.integrations.controlnet.legacy_controlnet_stubs import is_controlnet_enabled, get_controlnet_script_args
@@ -67,11 +68,52 @@ def load_mask_latent(mask_input, shape):
     mask = mask.convert("L")
     return mask
 
-def print_combined_table(args, anim_args, p, keys, frame_idx):
+# ANSI escape codes for background color
+_RESET_BG = "\033[0m"
+
+def _get_mean_color(image):
+    """Calculate mean RGB color of an image.
+
+    Args:
+        image: PIL Image
+
+    Returns:
+        Tuple of (r, g, b) with values 0-255
+    """
+    # Convert PIL image to numpy array
+    img_array = np.array(image)
+
+    # Handle different image formats
+    if len(img_array.shape) == 2:  # Grayscale
+        mean_val = int(np.mean(img_array))
+        return (mean_val, mean_val, mean_val)
+    elif len(img_array.shape) == 3:  # RGB or RGBA
+        # Only use RGB channels
+        rgb_array = img_array[:, :, :3]
+        mean_rgb = np.mean(rgb_array, axis=(0, 1))
+        return tuple(int(v) for v in mean_rgb)
+    else:
+        # Fallback for unexpected format
+        return (128, 128, 128)
+
+def _rgb_to_ansi_background(rgb):
+    """Convert RGB tuple to ANSI background color escape code.
+
+    Args:
+        rgb: Tuple of (r, g, b) with values 0-255
+
+    Returns:
+        ANSI escape sequence for background color
+    """
+    r, g, b = rgb
+    return f"\033[48;2;{r};{g};{b}m"
+
+def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=None):
     """Print comprehensive frame parameters table.
 
     Displays all relevant parameters for the current frame including:
     - Seed (in table)
+    - Mean color of previous frame (if available)
     - Prompts (printed separately above table)
     - Sampling parameters (steps, CFG, denoise)
     - Optional schedules (subseed, sampler, scheduler, checkpoint)
@@ -83,6 +125,7 @@ def print_combined_table(args, anim_args, p, keys, frame_idx):
         p: Processing pipeline object
         keys: Animation keys with scheduled values
         frame_idx: Current frame index
+        previous_image: PIL Image of previous frame (optional, for color display)
     """
     from rich.table import Table
     from rich import box
@@ -92,10 +135,22 @@ def print_combined_table(args, anim_args, p, keys, frame_idx):
     model_ignores_negative = is_flux_model() or is_lumina_model()
 
     # ========================================================================
-    # Print prompts BEFORE table (cleaner than cramming into columns)
+    # Print seed and color info BEFORE table
+    # ========================================================================
+    seed_info = f"Seed: {p.seed}"
+
+    # Add color indicator if we have a previous image
+    if previous_image is not None:
+        mean_color = _get_mean_color(previous_image)
+        color_block = _rgb_to_ansi_background(mean_color)
+        seed_info += f", Color: {color_block}██{_RESET_BG}"
+
+    logger.info(seed_info)
+
+    # ========================================================================
+    # Print prompts
     # ========================================================================
     prompt_to_print = p.prompt if isinstance(p.prompt, str) else p.prompt[0] if p.prompt else ""
-    logger.info(f"Seed: {p.seed}")
     logger.info(f"Prompt: {prompt_to_print}")
 
     # Only print negative prompt if model uses it and it's not empty
@@ -372,7 +427,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
                 denoising_strength=0,
             )
 
-            print_combined_table(args, anim_args, p_txt, keys, frame)  # print dynamic table to cli
+            print_combined_table(args, anim_args, p_txt, keys, frame, root.init_sample)  # print dynamic table to cli
 
             initialise_forge_scripts(p_txt)
 
@@ -426,7 +481,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
         p.image_cfg_scale = args.cfg_scale
         p.image_distilled_cfg_scale = args.distilled_cfg_scale
 
-        print_combined_table(args, anim_args, p, keys, frame)  # print dynamic table to cli
+        print_combined_table(args, anim_args, p, keys, frame, root.init_sample)  # print dynamic table to cli
 
         if args.motion_preview_mode:
             processed = mock_process_images(args, p, init_image)
