@@ -72,6 +72,9 @@ def load_mask_latent(mask_input, shape):
 # ANSI escape codes for background color
 _RESET_BG = "\033[0m"
 
+# Removed _handle_forge_message - no longer needed with simplified dashboard
+# (was causing RecursionError due to logger.info() being intercepted)
+
 def _get_mean_color(image):
     """Calculate mean RGB color of an image.
 
@@ -111,17 +114,18 @@ def _rgb_to_ansi_color_block(rgb):
     return f"\033[38;2;{r};{g};{b}m\033[48;2;{r};{g};{b}m"
 
 def _get_movement_indicators(anim_args, keys, frame_idx):
-    """Generate ASCII movement indicators for current frame.
+    """Generate Unicode movement indicators for current frame with dominant movement names.
 
     Translation indicators:
-        < = left, > = right
-        ^ = up, v = down
-        + = forward (toward camera), - = backward (away from camera)
+        ← = left, → = right
+        ↑ = up, ↓ = down
+        + = forward/zoom (toward camera), - = backward/zoom (away from camera)
+        Diagonals: ↖ ↗ ↘ ↙ (when X+Y movement combined)
 
     Rotation indicators (pitch/yaw/roll):
-        ↑ = pitch up, ↓ = pitch down
-        ← = yaw left, → = yaw right
-        ↶ = roll counter-clockwise, ↷ = roll clockwise
+        ⤴ = pitch up, ⤵ = pitch down
+        ⤺ = yaw left, ⤻ = yaw right
+        ↺ = roll counter-clockwise, ↻ = roll clockwise
 
     Args:
         anim_args: Animation arguments
@@ -129,58 +133,122 @@ def _get_movement_indicators(anim_args, keys, frame_idx):
         frame_idx: Current frame index
 
     Returns:
-        String with ASCII movement indicators, or empty string if no movement
+        String with Unicode movement indicators and dominant movement name, or empty string if no movement
     """
     if anim_args.animation_mode in ['Video Input', 'Interpolation']:
         return ""  # No transform data available
 
-    indicators = []
+    movements = {}  # Track movements with their magnitudes
     threshold = 0.01  # Minimum value to show indicator
 
     # Translation indicators
     tr_x = keys.translation_x_series[frame_idx]
     tr_y = keys.translation_y_series[frame_idx]
 
-    if abs(tr_x) > threshold:
-        indicators.append(">" if tr_x > 0 else "<")
-    if abs(tr_y) > threshold:
-        indicators.append("v" if tr_y > 0 else "^")
+    # Check for diagonal movement (X+Y combined)
+    has_x = abs(tr_x) > threshold
+    has_y = abs(tr_y) > threshold
+
+    if has_x and has_y:
+        # Diagonal movement - combine into single indicator
+        magnitude = (tr_x**2 + tr_y**2)**0.5  # Euclidean distance
+        if tr_x > 0 and tr_y < 0:
+            movements['tr_xy'] = (magnitude, "↗ (up-right)")
+        elif tr_x < 0 and tr_y < 0:
+            movements['tr_xy'] = (magnitude, "↖ (up-left)")
+        elif tr_x > 0 and tr_y > 0:
+            movements['tr_xy'] = (magnitude, "↘ (down-right)")
+        else:  # tr_x < 0 and tr_y > 0
+            movements['tr_xy'] = (magnitude, "↙ (down-left)")
+    else:
+        # Single-axis movement
+        if has_x:
+            movements['tr_x'] = (abs(tr_x), "→ (right)" if tr_x > 0 else "← (left)")
+        if has_y:
+            movements['tr_y'] = (abs(tr_y), "↓ (down)" if tr_y > 0 else "↑ (up)")
 
     # 3D specific: Z translation and rotations
     if anim_args.animation_mode == '3D':
         tr_z = keys.translation_z_series[frame_idx]
         if abs(tr_z) > threshold:
-            indicators.append("+" if tr_z > 0 else "-")
+            movements['tr_z'] = (abs(tr_z), "+ (zoom)" if tr_z > 0 else "- (zoom)")
 
-        # Rotations (pitch/yaw/roll using Unicode arrows)
+        # Rotations (using better Unicode symbols)
         rot_x = keys.rotation_3d_x_series[frame_idx]  # Pitch
         rot_y = keys.rotation_3d_y_series[frame_idx]  # Yaw
         rot_z = keys.rotation_3d_z_series[frame_idx]  # Roll
 
         if abs(rot_x) > threshold:
-            indicators.append("↓" if rot_x > 0 else "↑")  # Pitch
+            movements['rot_x'] = (abs(rot_x), "⤵ (pitch down)" if rot_x > 0 else "⤴ (pitch up)")
         if abs(rot_y) > threshold:
-            indicators.append("→" if rot_y > 0 else "←")  # Yaw
+            movements['rot_y'] = (abs(rot_y), "⤻ (yaw right)" if rot_y > 0 else "⤺ (yaw left)")
         if abs(rot_z) > threshold:
-            indicators.append("↷" if rot_z > 0 else "↶")  # Roll
+            movements['rot_z'] = (abs(rot_z), "↻ (roll cw)" if rot_z > 0 else "↺ (roll ccw)")
 
-    # 2D specific: Angle and Zoom
-    if anim_args.animation_mode == '2D':
-        angle = keys.angle_series[frame_idx]
-        zoom = keys.zoom_series[frame_idx]
-
-        if abs(angle) > threshold:
-            indicators.append("↷" if angle > 0 else "↶")  # Rotation
-        if abs(zoom - 1.0) > threshold:
-            indicators.append("+" if zoom > 1.0 else "-")  # Zoom in/out
-
-    if indicators:
-        return " Move: " + " ".join(indicators)
+    if movements:
+        # Sort by magnitude to get dominant movement first
+        sorted_movements = sorted(movements.items(), key=lambda x: x[1][0], reverse=True)
+        indicators = [indicator for _, (_, indicator) in sorted_movements]
+        return "Move: " + " ".join(indicators)
     else:
         return ""
 
-def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=None):
-    """Print comprehensive frame parameters table.
+def _update_dashboard(args, anim_args, p, keys, frame_idx, previous_image, dashboard):
+    """Update dashboard with current frame information.
+
+    Args:
+        args: Generation arguments
+        anim_args: Animation arguments
+        p: Processing pipeline object
+        keys: Animation keys with scheduled values
+        frame_idx: Current frame index
+        previous_image: PIL Image of previous frame (optional)
+        dashboard: RenderDashboard instance
+    """
+    # Update frame info
+    dashboard.frame_info['current'] = frame_idx
+    dashboard.frame_info['total'] = anim_args.max_frames
+    dashboard.frame_info['type'] = 'KEYFRAME'  # Will be updated by caller if cadence
+    dashboard.frame_info['seed'] = p.seed
+    dashboard.frame_info['movement'] = _get_movement_indicators(anim_args, keys, frame_idx)
+    dashboard.frame_info['prompt'] = p.prompt if isinstance(p.prompt, str) else p.prompt[0] if p.prompt else ""
+
+    # Update color and image if previous image available
+    if previous_image is not None:
+        dashboard.frame_info['color_rgb'] = _get_mean_color(previous_image)
+        dashboard.last_frame_image = previous_image  # Store for ASCII preview (printed before next frame)
+
+    # Update table data
+    total_steps = p.steps
+    if p.denoising_strength is not None and anim_args.animation_mode != 'Interpolation':
+        actual_steps = int(total_steps * (1.0 - p.denoising_strength))
+        dashboard.table_data['steps'] = f"{actual_steps}/{total_steps}"
+    else:
+        dashboard.table_data['steps'] = str(total_steps)
+
+    dashboard.table_data['cfg'] = str(p.cfg_scale)
+    dashboard.table_data['dist_cfg'] = str(p.distilled_cfg_scale)
+    dashboard.table_data['denoise'] = f"{p.denoising_strength:.5g}" if p.denoising_strength is not None else "None"
+
+    # Transform parameters (mode-specific)
+    if anim_args.animation_mode not in ['Video Input', 'Interpolation']:
+        dashboard.table_data['tr_x'] = f"{keys.translation_x_series[frame_idx]:.5g}"
+        dashboard.table_data['tr_y'] = f"{keys.translation_y_series[frame_idx]:.5g}"
+
+        if anim_args.animation_mode == '3D':
+            dashboard.table_data['tr_z'] = f"{keys.translation_z_series[frame_idx]:.5g}"
+            dashboard.table_data['ro_x'] = f"{keys.rotation_3d_x_series[frame_idx]:.5g}"
+            dashboard.table_data['ro_y'] = f"{keys.rotation_3d_y_series[frame_idx]:.5g}"
+            dashboard.table_data['ro_z'] = f"{keys.rotation_3d_z_series[frame_idx]:.5g}"
+
+    # Trigger dashboard update
+    dashboard.update()
+
+def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=None, dashboard=None):
+    """Print comprehensive frame parameters table OR update dashboard.
+
+    Routes to dashboard if enabled and dashboard instance provided,
+    otherwise prints to console in classic format.
 
     Displays all relevant parameters for the current frame including:
     - Seed with color indicator and movement arrows
@@ -199,10 +267,17 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
         keys: Animation keys with scheduled values
         frame_idx: Current frame index
         previous_image: PIL Image of previous frame (optional, for color display)
+        dashboard: Optional RenderDashboard instance (routes to dashboard if provided)
     """
     from rich.table import Table
     from rich import box
     from deforum.utils.model_detection import is_flux_model, is_lumina_model
+    from deforum.rendering import options as opt_utils
+
+    # If dashboard provided, update it (but still print table to log)
+    if dashboard is not None and opt_utils.is_dashboard_enabled():
+        _update_dashboard(args, anim_args, p, keys, frame_idx, previous_image, dashboard)
+        # Continue to print table to scrolling log below
 
     # Detect if model ignores negative prompts
     model_ignores_negative = is_flux_model() or is_lumina_model()
@@ -222,7 +297,7 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
     # Add movement indicators
     movement = _get_movement_indicators(anim_args, keys, frame_idx)
     if movement:
-        seed_info += movement
+        seed_info += ", " + movement
 
     logger.info(seed_info)
 
@@ -506,7 +581,9 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
                 denoising_strength=0,
             )
 
-            print_combined_table(args, anim_args, p_txt, keys, frame, root.init_sample)  # print dynamic table to cli
+            # Get dashboard from root if available
+            dashboard = getattr(root, 'dashboard', None)
+            print_combined_table(args, anim_args, p_txt, keys, frame, root.init_sample, dashboard)  # print dynamic table to cli
 
             initialise_forge_scripts(p_txt)
 
@@ -527,6 +604,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
                 p_txt.scheduler = "Simple"  # FIXME provide
                 # Suppress redundant Forge output (info already shown in Deforum's table)
+                # No callback needed for simplified dashboard (would cause recursion)
                 with suppress_forge_output():
                     processed = processing.process_images(p_txt)
 
@@ -562,7 +640,9 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
         p.image_cfg_scale = args.cfg_scale
         p.image_distilled_cfg_scale = args.distilled_cfg_scale
 
-        print_combined_table(args, anim_args, p, keys, frame, root.init_sample)  # print dynamic table to cli
+        # Get dashboard from root if available
+        dashboard = getattr(root, 'dashboard', None)
+        print_combined_table(args, anim_args, p, keys, frame, root.init_sample, dashboard)  # print dynamic table to cli
 
         if args.motion_preview_mode:
             processed = mock_process_images(args, p, init_image)
@@ -582,6 +662,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
 
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
                 # Suppress redundant Forge output (info already shown in Deforum's table)
+                # No callback needed for simplified dashboard (would cause recursion)
                 with suppress_forge_output():
                     processed = processing.process_images(p)
 
@@ -593,6 +674,11 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
         root.first_frame = processed.images[0]
 
     results = processed.images[0]
+
+    # Update dashboard with diffusion output for ASCII preview
+    # (show actual generated frame, not the transformed input)
+    if dashboard is not None:
+        dashboard.last_frame_image = results
 
     return results
 

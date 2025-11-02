@@ -27,6 +27,14 @@ class Taqaddumat:
         self.steps = None
         self.total_steps = None
         self.total_animation_cycles = None
+        self.dashboard = None  # Optional dashboard for progress updates
+
+        # Manual counters for when tqdm is disabled
+        self._tweens_n = 0
+        self._total_frames_n = 0
+        self._steps_n = 0
+        self._total_steps_n = 0
+        self._animation_cycles_n = 0
 
     def reset(self, data, frames):
         """Initialize all progress bars with correct totals.
@@ -43,13 +51,23 @@ class Taqaddumat:
             - All bars except final: leave=False (disappear when animation completes)
             - Final progress bar (diffusion frames): leave=True (shows completion)
             - Position reuse allows bars to update in-place during rendering
+            - If dashboard enabled, tqdm bars are disabled to avoid double display
         """
+        # Store dashboard reference from data
+        self.dashboard = getattr(data, 'dashboard', None)
+
+        # Check if dashboard is enabled
+        from deforum.rendering import options as opt_utils
+        use_dashboard = opt_utils.is_dashboard_enabled() and self.dashboard is not None
+
         def create(iterable, position, color, description, unit, leave=False, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
             # Get themed color based on current theme
             themed_color = Taqaddumat._get_themed_color(color)
+            # Disable tqdm bars if dashboard is active
+            disable_tqdm = use_dashboard or shared.cmd_opts.disable_console_progressbars
             return tqdm(iterable, position=position, desc=description, unit=unit, dynamic_ncols=True,
                         file=shared.progress_print_out, bar_format=bar_format, leave=leave,
-                        disable=shared.cmd_opts.disable_console_progressbars, colour=themed_color)
+                        disable=disable_tqdm, colour=themed_color)
 
         # Positions greater than 0 are assigned where bars are meant to show up directly after each other and
         # need to be updated at the same time. 'Tweens' is paired with 'Total Frames' and 'Steps' with 'Total Steps'.
@@ -92,10 +110,17 @@ class Taqaddumat:
         num_diffusion_frames = len(frames)
         self.total_animation_cycles = create(
             range(num_diffusion_frames), 0, HEX_PURPLE,
-            "Diffusion Frames" + (" (Reverse)" if data.args.anim_args.reverse_generation else ""),
+            "Difforum Frames" + (" (Reverse)" if data.args.anim_args.reverse_generation else ""),
             "frame",
             leave=True,  # Keep final bar visible in log
             bar_format=Taqaddumat.DEFAULT_BAR_FORMAT)
+
+        # Reset manual counters
+        self._tweens_n = 0
+        self._total_frames_n = 0
+        self._steps_n = 0
+        self._total_steps_n = 0
+        self._animation_cycles_n = 0
 
         self.clear_all()
 
@@ -114,7 +139,14 @@ class Taqaddumat:
         self.tweens.refresh()
         self.total_frames.update()
         self.total_frames.refresh()
-        # Don't print newline on completion - bars use leave=False and should disappear cleanly
+        # Manual counters (work even when tqdm disabled)
+        self._tweens_n += 1
+        self._total_frames_n += 1
+        # Update dashboard if available
+        if self.dashboard:
+            self.dashboard.progress_data['current_tweens'] = (self._tweens_n, self.tweens.total)
+            self.dashboard.progress_data['total_frames'] = (self._total_frames_n, self.total_frames.total)
+            self.dashboard.update()
 
     def increment_step_count(self):
         if self.steps.n == 0:
@@ -124,12 +156,25 @@ class Taqaddumat:
         self.steps.refresh()
         self.total_steps.update()
         self.total_steps.refresh()
-        # Don't print newline on completion - bars use leave=False and should disappear cleanly
+        # Manual counters (work even when tqdm disabled)
+        self._steps_n += 1
+        self._total_steps_n += 1
+        # Update dashboard if available
+        if self.dashboard:
+            self.dashboard.progress_data['current_step'] = (self._steps_n, self.steps.total)
+            self.dashboard.progress_data['total_steps'] = (self._total_steps_n, self.total_steps.total)
+            self.dashboard.update()
 
     def increment_animation_cycle_count(self):
         # Calls to tqdm.update() without an argument increment it by 1.
         self.total_animation_cycles.update()
         self.total_animation_cycles.refresh()
+        # Manual counter (works even when tqdm disabled)
+        self._animation_cycles_n += 1
+        # Update dashboard if available
+        if self.dashboard:
+            self.dashboard.progress_data['diffusion_frames'] = (self._animation_cycles_n, self.total_animation_cycles.total)
+            self.dashboard.update()
         logger.info("")
 
     def reset_tween_count(self, n):
@@ -138,11 +183,21 @@ class Taqaddumat:
         self.tweens.reset()
         self.tweens.clear()
         self.tweens.total = n
+        self._tweens_n = 0
+        # Update dashboard if available
+        if self.dashboard:
+            self.dashboard.progress_data['current_tweens'] = (0, n)
+            self.dashboard.update()
 
     def reset_step_count(self, n):
         self.steps.reset()
         self.steps.clear()
         self.steps.total = n
+        self._steps_n = 0
+        # Update dashboard if available
+        if self.dashboard:
+            self.dashboard.progress_data['current_step'] = (0, n)
+            self.dashboard.update()
 
     def clear_all(self):
         self.tweens.clear()
@@ -150,7 +205,6 @@ class Taqaddumat:
         self.total_steps.clear()
         self.total_frames.clear()
         self.total_animation_cycles.clear()
-        logger.info("\n\n\n\n")
 
     @staticmethod
     def _get_themed_color(classic_color):
@@ -196,8 +250,8 @@ class Taqaddumat:
         def safe_desc_check(obj):
             """Check desc attribute with ReferenceError protection."""
             try:
-                return not obj.desc
-            except ReferenceError:
+                return not hasattr(obj, 'desc') or not obj.desc
+            except (ReferenceError, AttributeError):
                 return False
 
         list(map(lambda _: mute(_),

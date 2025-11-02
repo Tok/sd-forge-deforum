@@ -95,6 +95,21 @@ One-click AI video generation with **intentional chaos and glitches**. Click **"
 - **Lazy Loading**: Models only load when needed, auto-cleanup before generation
 - **Bilingual**: English and Chinese prompt enhancement support
 
+### 📺 **Terminal Dashboard with ASCII Art Preview**
+- **Fixed-Position Display**: Real-time dashboard with progress bars, VRAM monitoring, and scrolling log
+- **16:9 ASCII Art Preview**: Live colored preview of last generated frame (32x18 pixels, 2-space blocks)
+- **True Color Support**: 24-bit ANSI background colors for accurate frame representation
+- **Theme Integration**: Respects slopcore/classic/simple theme settings
+- **Aspect Ratio Preservation**: Automatic aspect ratio handling for all resolutions
+- **Optional Log Spam**: Write ASCII art to scrolling log on each frame (off by default)
+- **Memory Monitoring**: Parse and display Forge VRAM stats with visual progress bar
+- **Parallel Progress Tracking**: 5 themed tqdm bars (Tweens, Total Frames, Steps, Total Steps, Diffusion Frames)
+- **Zero Terminal Clutter**: Suppresses redundant Forge output, shows only essential messages
+- **Settings**: `Settings → Deforum → Console & UI Output Settings`
+  - Enable/disable dashboard (on by default)
+  - ASCII preview in header (on by default)
+  - ASCII to scrolling log (off by default)
+
 ### 🎵 **Automatic Audio Event Detection & Synchronization**
 - **Librosa Integration**: Professional audio analysis with onset/beat/bass detection
 - **Real-Time Preview**: Adjustable sensitivity with ±5% buttons

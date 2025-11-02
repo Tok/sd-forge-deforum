@@ -72,9 +72,109 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     else:
         generation_order_frames = diffusion_frames
 
+    # Initialize dashboard if enabled
+    from deforum.rendering import options as opt_utils
+    dashboard = None
+    if opt_utils.is_dashboard_enabled():
+        from deforum.utils.ui.dashboard import FixedDashboard
+        dashboard = FixedDashboard()
+        # Initialize progress totals
+        dashboard.progress_data['diffusion_frames'] = (0, len(generation_order_frames))
+        total_steps = sum(frame.actual_steps(data) for frame in generation_order_frames)
+        dashboard.progress_data['total_steps'] = (0, total_steps)
+
+        # Set up signal handler for clean Ctrl+C (only works in main thread)
+        import signal
+        import threading
+        import time
+
+        if threading.current_thread() is threading.main_thread():
+            original_sigint = signal.getsignal(signal.SIGINT)
+
+            # Track Ctrl+C presses for confirmation
+            sigint_state = {
+                'count': 0,
+                'first_time': 0,
+                'confirmation_window': 3.0  # seconds
+            }
+
+            def sigint_handler(sig, frame_obj):
+                """Handle Ctrl+C with confirmation to prevent accidental exit.
+
+                - 1st Ctrl+C: Show warning, require confirmation within 3 seconds
+                - 2nd Ctrl+C (within 3s): Clean exit
+                - 3rd Ctrl+C (anytime): Force quit immediately
+                """
+                current_time = time.time()
+                sigint_state['count'] += 1
+
+                # 3rd Ctrl+C: Force quit immediately (emergency escape)
+                if sigint_state['count'] >= 3:
+                    print("\n\n⚠️  FORCE QUIT - Exiting immediately without cleanup")
+                    # Restore original handler and force exit
+                    signal.signal(signal.SIGINT, original_sigint)
+                    if dashboard:
+                        try:
+                            dashboard._is_active = False  # Prevent cleanup
+                        except:
+                            pass
+                    raise KeyboardInterrupt
+
+                # 1st Ctrl+C: Show warning
+                if sigint_state['count'] == 1:
+                    sigint_state['first_time'] = current_time
+                    print("\n\n⚠️  Interrupt detected. Press Ctrl+C again within 3 seconds to confirm exit")
+                    print("   (Press Ctrl+C a 3rd time anytime to force quit)")
+                    return  # Don't exit, keep rendering
+
+                # 2nd Ctrl+C: Check if within confirmation window
+                if sigint_state['count'] == 2:
+                    time_since_first = current_time - sigint_state['first_time']
+
+                    if time_since_first <= sigint_state['confirmation_window']:
+                        # Within confirmation window - clean exit
+                        print("\n\n✓ Exit confirmed. Cleaning up...")
+                        if dashboard:
+                            try:
+                                dashboard.stop()
+                            except:
+                                pass
+                        # Restore original handler and call it
+                        signal.signal(signal.SIGINT, original_sigint)
+                        if callable(original_sigint):
+                            original_sigint(sig, frame_obj)
+                        else:
+                            raise KeyboardInterrupt
+                    else:
+                        # Outside confirmation window - reset and treat as first press
+                        sigint_state['count'] = 1
+                        sigint_state['first_time'] = current_time
+                        print("\n\n⚠️  Interrupt detected. Press Ctrl+C again within 3 seconds to confirm exit")
+                        print("   (Press Ctrl+C a 3rd time anytime to force quit)")
+                        return
+
+            signal.signal(signal.SIGINT, sigint_handler)
+
+        dashboard.start()
+
+        # Store dashboard on data so Taqaddumat can access it
+        data.dashboard = dashboard
+
     shared.total_tqdm = Taqaddumat()
     shared.total_tqdm.reset(data, generation_order_frames)
-    run_render_animation(data, generation_order_frames)
+
+    try:
+        run_render_animation(data, generation_order_frames, dashboard)
+    except KeyboardInterrupt:
+        # Handle Ctrl+C gracefully - stop dashboard and re-raise
+        if dashboard:
+            dashboard.stop()
+        raise
+    finally:
+        # Stop dashboard when done
+        if dashboard:
+            dashboard.stop()
+
     data.animation_mode.unload_raft_and_depth_model()
 
 
@@ -120,12 +220,17 @@ def prepare_reverse_generation(frames: List[DiffusionFrame]) -> List[DiffusionFr
     return generation_order_frames
 
 
-def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
+def run_render_animation(data: RenderData, frames: List[DiffusionFrame], dashboard=None):
     """Process all frames in generation order.
 
     Args:
+        data: Render data
         frames: Frames in generation order (already reversed if needed)
+        dashboard: Optional dashboard instance for UI updates
     """
+    # Store dashboard reference in data AND root for access by frame generation
+    data.dashboard = dashboard
+    data.args.root.dashboard = dashboard
     for frame in frames:
         is_resume, full_path = is_resume_with_image(data, frame)
         if is_resume:
@@ -172,6 +277,17 @@ def prepare_generation(data: RenderData, frame: DiffusionFrame):
     memory_utils.handle_med_or_low_vram_before_step(data)
     web_ui_utils.update_job(data, frame.i)
     shared.total_tqdm.reset_tween_count(len(frame.tweens))
+
+    # Print ASCII art for PREVIOUS frame before starting new frame
+    # (belongs to completed frame, not upcoming one)
+    dashboard = getattr(data, 'dashboard', None)
+    if dashboard and hasattr(dashboard, 'last_frame_image') and dashboard.last_frame_image is not None:
+        dashboard.add_ascii_art_to_log(dashboard.last_frame_image, frame.i - 1)
+
+    # Update dashboard frame type to match log output
+    if dashboard:
+        dashboard.frame_info['type'] = 'KEYFRAME' if frame.is_keyframe else 'CADENCE'
+
     log_utils.print_animation_frame_info(frame.i, data.args.anim_args.max_frames, frame.is_keyframe)
 
 
