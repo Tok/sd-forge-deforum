@@ -87,14 +87,14 @@ def get_tqdm_color_for_theme(classic_color_hex: str, theme: str) -> str:
     """
     if theme == 'slopcore':
         # Map classic rainbow colors to slopcore blue→purple gradient
-        # Preserves ordering: blue->green->orange->red->purple
-        # Maps to: bright blue -> light purple -> mid purple -> deep purple -> darkest purple
+        # Fast-moving "Current" bars (blue, orange) → bright blue side
+        # Slow-moving "Total" bars (red, green) → purple side
         color_map = {
-            HEX_CLASSIC_BLUE: HEX_SLOPCORE_1,      # Blue (#36CEDC) → Bright blue (#4A90E2)
-            HEX_CLASSIC_GREEN: HEX_SLOPCORE_3,     # Green (#8FE968) → Light purple (#667EEA)
-            HEX_CLASSIC_ORANGE: HEX_SLOPCORE_4,    # Orange (#FFB750) → Mid purple (#7B6DB8)
-            HEX_CLASSIC_RED: HEX_SLOPCORE_6,       # Red (#FE797B) → Deep purple (#A353A8)
-            HEX_CLASSIC_PURPLE: HEX_SLOPCORE_7,    # Purple (#A587CA) → Darkest purple (#764BA2)
+            HEX_CLASSIC_BLUE: HEX_SLOPCORE_1,      # Blue (#36CEDC) → Bright blue (#4A90E2) [Current Tweens - FAST]
+            HEX_CLASSIC_ORANGE: HEX_SLOPCORE_2,    # Orange (#FFB750) → Light blue (#5B9FD8) [Current Steps - FAST]
+            HEX_CLASSIC_RED: HEX_SLOPCORE_6,       # Red (#FE797B) → Deep purple (#A353A8) [Total Steps - SLOW]
+            HEX_CLASSIC_GREEN: HEX_SLOPCORE_7,     # Green (#8FE968) → Darkest purple (#764BA2) [Total Frames - SLOW]
+            HEX_CLASSIC_PURPLE: HEX_SLOPCORE_5,    # Purple (#A587CA) → Mid-deep purple (#8F5DA8)
         }
         return color_map.get(classic_color_hex, HEX_SLOPCORE_4)  # Default to mid purple
     elif theme == 'simple':
