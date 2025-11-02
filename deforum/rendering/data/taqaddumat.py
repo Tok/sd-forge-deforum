@@ -38,12 +38,17 @@ class Taqaddumat:
         Note:
             In reverse generation mode, frames are already reversed by core.py
             before calling this method, so initialization is always correct.
+
+        Progress Bar Strategy:
+            - Transient bars (tweens, steps): leave=False (don't clutter log)
+            - Accumulator bars (total frames, total steps): leave=False
+            - Final progress bar (diffusion frames): leave=True (shows completion)
         """
-        def create(iterable, position, color, description, unit, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
+        def create(iterable, position, color, description, unit, leave=False, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
             # Get themed color based on current theme
             themed_color = Taqaddumat._get_themed_color(color)
             return tqdm(iterable, position=position, desc=description, unit=unit, dynamic_ncols=True,
-                        file=shared.progress_print_out, bar_format=bar_format,
+                        file=shared.progress_print_out, bar_format=bar_format, leave=leave,
                         disable=shared.cmd_opts.disable_console_progressbars, colour=themed_color)
 
         # Positions greater than 0 are assigned where bars are meant to show up directly after each other and
@@ -59,36 +64,38 @@ class Taqaddumat:
         elif len(frames) > 0 and len(frames[0].tweens) > 0:
             initial_tween_count = len(frames[0].tweens)
 
+        # Transient bar: resets for each diffusion frame, don't leave in log
         self.tweens = create(
             range(initial_tween_count), 0, HEX_BLUE,
-            "Current Tweens", "tween")
+            "Current Tweens", "tween", leave=False)
 
-        # Total frames = all tweens across all diffusion frames
+        # Accumulator bar: grows throughout animation, don't leave in log
         total_frames = sum(len(frame.tweens) for frame in frames)
         self.total_frames = create(
             range(total_frames), 1, HEX_GREEN,
-            "Total Frames", "frame")
+            "Total Frames", "frame", leave=False)
 
-        # Get initial steps count safely
+        # Transient bar: resets for each diffusion frame, don't leave in log
         initial_steps_count = frames[0].schedule.steps if len(frames) > 0 else 20
         self.steps = create(
             range(initial_steps_count), 0, HEX_ORANGE,
-            "Current Diffusion Steps", "step")
+            "Current Diffusion Steps", "step", leave=False)
 
-        # Total steps = actual steps across all diffusion frames
+        # Accumulator bar: grows throughout animation, don't leave in log
         total_steps = sum(frame.actual_steps(data) for frame in frames)
         self.total_steps = create(
             range(total_steps), 1, HEX_RED,
-            "Total Diffusion Steps", "step")
+            "Total Diffusion Steps", "step", leave=False)
 
+        # Final progress bar: shows overall completion, KEEP in log when done
         # Renamed from "Total Animation Cycles" to "Diffusion Frames" for clarity
-        # This counts keyframes + cadence frames (not "cycles")
         num_diffusion_frames = len(frames)
         self.total_animation_cycles = create(
             range(num_diffusion_frames), 0, HEX_PURPLE,
             "Diffusion Frames" + (" (Reverse)" if data.args.anim_args.reverse_generation else ""),
             "frame",
-            Taqaddumat.DEFAULT_BAR_FORMAT)
+            leave=True,  # Keep final bar visible in log
+            bar_format=Taqaddumat.DEFAULT_BAR_FORMAT)
 
         self.clear_all()
 
