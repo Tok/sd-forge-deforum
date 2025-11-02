@@ -265,22 +265,33 @@ class FixedDashboard:
         # Separator (full width with slopcore gradient)
         lines.append(self._create_separator())
 
-        # Status line 1: Frame info (padded to full width)
+        # Status line 1: Frame info with color and movement
         df_current, df_total = self.progress_data['diffusion_frames']
         df_pct = int((df_current / df_total * 100) if df_total > 0 else 0)
 
         line1 = f"Frame {self.frame_info['current']}/{self.frame_info['total']} [{self.frame_info['type']}]"
         line1 += f" | Progress: {df_pct}%"
+
+        # Add color block if available
+        if self.frame_info.get('color_rgb'):
+            r, g, b = self.frame_info['color_rgb']
+            color_block = f"\033[48;2;{r};{g};{b}m  \033[0m"
+            line1 += f" | Color: {color_block}"
+
+        # Add movement indicators if available
+        movement = self.frame_info.get('movement', '')
+        if movement:
+            line1 += f" | {movement}"
+
         line1 = line1.ljust(self._terminal_width)
         lines.append(line1)
 
-        # Status line 2: Steps (padded to full width)
+        # Status line 2: VRAM bar (left) and Steps info (right)
         ts_current, ts_total = self.progress_data['total_steps']
         ts_pct = int((ts_current / ts_total * 100) if ts_total > 0 else 0)
         cs_current, cs_total = self.progress_data['current_step']
 
-        line2 = f"Steps: {ts_pct}% | Current: {cs_current}/{cs_total}"
-        line2 += f" | VRAM: {self.memory.free_gpu_mb/1024:.1f}GB"
+        line2 = f"{self._format_vram_bar()} | Steps: {ts_pct}% | Current: {cs_current}/{cs_total}"
         line2 = line2.ljust(self._terminal_width)
         lines.append(line2)
 
@@ -288,6 +299,40 @@ class FixedDashboard:
         lines.extend(self._render_tqdm_bars())
 
         return lines
+
+    def _format_vram_bar(self) -> str:
+        """Format VRAM usage as a colored progress bar.
+
+        Returns:
+            Formatted VRAM bar string with color (green/yellow/red based on usage)
+        """
+        try:
+            import torch
+            if torch.cuda.is_available():
+                free_mem, total_mem = torch.cuda.mem_get_info()
+                free_gb = free_mem / (1024 ** 3)
+                total_gb = total_mem / (1024 ** 3)
+                used_gb = total_gb - free_gb
+                used_pct = int((used_gb / total_gb * 100) if total_gb > 0 else 0)
+
+                # Determine color based on usage
+                if used_pct >= 95:
+                    color = "\033[38;2;255;100;100m"  # Red
+                elif used_pct >= 80:
+                    color = "\033[38;2;255;220;100m"  # Yellow
+                else:
+                    color = "\033[38;2;100;255;100m"  # Green
+
+                # Create mini bar (20 chars)
+                bar_width = 20
+                filled = int(bar_width * used_pct / 100)
+                bar = "█" * filled + "░" * (bar_width - filled)
+
+                return f"VRAM: {color}{bar}\033[0m {used_gb:.1f}/{total_gb:.1f}GB ({used_pct}%)"
+            else:
+                return "VRAM: N/A"
+        except Exception:
+            return "VRAM: N/A"
 
     def _create_separator(self) -> str:
         """Create separator line with slopcore gradient if enabled.
@@ -317,61 +362,79 @@ class FixedDashboard:
         """
         lines = []
 
-        # Access shared tqdm instance
+        # Use progress_data that's updated by callbacks (works even when tqdm disabled)
         try:
-            # noinspection PyUnresolvedReferences
+            from deforum.utils.system.logging.log import (
+                HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED, HEX_PURPLE
+            )
+
+            # Access shared tqdm instance for totals
             import modules.shared as shared
             taqaddum = shared.total_tqdm
 
             if taqaddum and hasattr(taqaddum, 'tweens'):
-                from deforum.utils.system.logging.log import (
-                    HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED, HEX_PURPLE
+                # Calculate max description length for alignment
+                desc5 = getattr(taqaddum.total_animation_cycles, 'desc', None) or "Diffusion Frames"
+                max_desc_len = max(
+                    len("Current Tweens"),
+                    len("Total Frames"),
+                    len("Current Diffusion Steps"),  # Longest at 23 chars
+                    len("Total Diffusion Steps"),
+                    len(desc5)
                 )
 
-                # Bar 1: Current Tweens (blue)
+                # Bar 1: Current Tweens (blue) - read from tqdm object
                 lines.append(self._format_tqdm_bar(
                     "Current Tweens",
                     taqaddum.tweens.n,
                     taqaddum.tweens.total,
                     "tween",
-                    HEX_BLUE
+                    HEX_BLUE,
+                    max_desc_len
                 ))
 
-                # Bar 2: Total Frames (green)
+                # Bar 2: Total Frames (green) - use progress_data if available
+                tf_current, tf_total = self.progress_data.get('total_frames', (taqaddum.total_frames.n, taqaddum.total_frames.total))
                 lines.append(self._format_tqdm_bar(
                     "Total Frames",
-                    taqaddum.total_frames.n,
-                    taqaddum.total_frames.total,
+                    tf_current,
+                    tf_total,
                     "frame",
-                    HEX_GREEN
+                    HEX_GREEN,
+                    max_desc_len
                 ))
 
-                # Bar 3: Current Diffusion Steps (orange)
+                # Bar 3: Current Diffusion Steps (orange) - use progress_data
+                cs_current, cs_total = self.progress_data.get('current_step', (taqaddum.steps.n, taqaddum.steps.total))
                 lines.append(self._format_tqdm_bar(
                     "Current Diffusion Steps",
-                    taqaddum.steps.n,
-                    taqaddum.steps.total,
+                    cs_current,
+                    cs_total,
                     "step",
-                    HEX_ORANGE
+                    HEX_ORANGE,
+                    max_desc_len
                 ))
 
-                # Bar 4: Total Diffusion Steps (red)
+                # Bar 4: Total Diffusion Steps (red) - use progress_data
+                ts_current, ts_total = self.progress_data.get('total_steps', (taqaddum.total_steps.n, taqaddum.total_steps.total))
                 lines.append(self._format_tqdm_bar(
                     "Total Diffusion Steps",
-                    taqaddum.total_steps.n,
-                    taqaddum.total_steps.total,
+                    ts_current,
+                    ts_total,
                     "step",
-                    HEX_RED
+                    HEX_RED,
+                    max_desc_len
                 ))
 
-                # Bar 5: Diffusion Frames (purple)
-                desc = taqaddum.total_animation_cycles.desc or "Diffusion Frames"
+                # Bar 5: Diffusion Frames (purple) - use progress_data
+                df_current, df_total = self.progress_data.get('diffusion_frames', (taqaddum.total_animation_cycles.n, taqaddum.total_animation_cycles.total))
                 lines.append(self._format_tqdm_bar(
-                    desc,
-                    taqaddum.total_animation_cycles.n,
-                    taqaddum.total_animation_cycles.total,
+                    desc5,
+                    df_current,
+                    df_total,
                     "frame",
-                    HEX_PURPLE
+                    HEX_PURPLE,
+                    max_desc_len
                 ))
             else:
                 # Fallback if tqdm not available
@@ -394,7 +457,7 @@ class FixedDashboard:
 
         return lines
 
-    def _format_tqdm_bar(self, desc: str, current: int, total: int, unit: str, color_hex: str = None) -> str:
+    def _format_tqdm_bar(self, desc: str, current: int, total: int, unit: str, color_hex: str = None, max_desc_len: int = None) -> str:
         """Format a single tqdm bar as text with theme colors.
 
         Args:
@@ -403,6 +466,7 @@ class FixedDashboard:
             total: Total progress value
             unit: Unit name (tween, frame, step)
             color_hex: Classic color hex for theme mapping
+            max_desc_len: Maximum description length for alignment (optional)
 
         Returns:
             Formatted bar string with ANSI colors
@@ -412,10 +476,16 @@ class FixedDashboard:
 
         pct = int((current / total * 100) if total > 0 else 0)
 
+        # Pad description for alignment
+        if max_desc_len:
+            desc_padded = desc.ljust(max_desc_len)
+        else:
+            desc_padded = desc
+
         # Calculate dynamic bar width to fill terminal
         # Format: "Description: [BAR] current/total units (pct%)"
         # Reserve space for desc, colons, spaces, numbers, and percentage
-        desc_len = len(desc)
+        desc_len = max_desc_len if max_desc_len else len(desc)
         suffix = f" {current}/{total} {unit}s ({pct}%)"
         reserved = desc_len + 2 + len(suffix)  # +2 for ": "
         bar_width = max(20, self._terminal_width - reserved - 1)  # -1 for safety margin
@@ -443,7 +513,7 @@ class FixedDashboard:
                 bar = bar_filled + bar_empty
 
         # Build line (don't pad here - ANSI codes mess up ljust)
-        line = f"{desc}: {bar} {current}/{total} {unit}s ({pct}%)"
+        line = f"{desc_padded}: {bar} {current}/{total} {unit}s ({pct}%)"
 
         # Calculate visible length (excluding ANSI codes)
         import re
