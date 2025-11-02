@@ -65,9 +65,11 @@ def on_ui_settings():
         "models/Deforum/deforum_persistent_settings.txt")
 
     add_subsection("Console & UI Output Settings")
-    add_cb("deforum_enable_dashboard", "Enable simplified dashboard (console status updates with progress, VRAM, and optional ASCII preview)", default_value=True)
-    add_cb("deforum_dashboard_ascii_preview", "Show ASCII art preview of last frame in dashboard (16:9 colored grid)", default_value=True)
-    add_cb("deforum_dashboard_ascii_to_log", "Also write ASCII art to scrolling log area on each frame (off by default, can be spammy)", default_value=False)
+    add_cb("deforum_enable_dashboard", "Enable fixed dashboard (real-time progress bars and VRAM stay at bottom, logs scroll above)", default_value=True)
+    add_cb("deforum_dashboard_ascii_preview", "Write ASCII art preview to scrolling log on each frame (shows progression of frames)", default_value=True)
+    add_dd("deforum_dashboard_ascii_size", "ASCII Preview Size - Small (16x9), Medium (32x18), Large (64x36)",
+           "medium", ["small", "medium", "large"])
+    add_cb("deforum_dashboard_ascii_to_log", "Legacy setting (same as dashboard_ascii_preview) - kept for compatibility", default_value=False)
     add_dd("deforum_log_level", "Log Level - Controls console output verbosity",
            "INFO", ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     add_dd("deforum_log_theme", "Console Theme - Slopcore (blue→purple), Classic (vibrant), Simple (plain text)",

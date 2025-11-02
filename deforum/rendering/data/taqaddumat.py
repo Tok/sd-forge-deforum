@@ -218,8 +218,8 @@ class Taqaddumat:
         def safe_desc_check(obj):
             """Check desc attribute with ReferenceError protection."""
             try:
-                return not obj.desc
-            except ReferenceError:
+                return not hasattr(obj, 'desc') or not obj.desc
+            except (ReferenceError, AttributeError):
                 return False
 
         list(map(lambda _: mute(_),

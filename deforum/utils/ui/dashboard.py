@@ -195,18 +195,6 @@ class RenderDashboard:
 
         logger.info(status)
 
-        # ASCII preview
-        if self.use_ascii_preview and self.last_frame_image is not None:
-            ascii_art = image_to_ascii_art(
-                self.last_frame_image,
-                width=32,
-                height=18,
-                use_color=(self.theme != 'simple')
-            )
-            if ascii_art:
-                for line in ascii_art.split('\n'):
-                    logger.info(line)
-
     def add_log(self, message: str):
         """Add log message (just pass through to logger)."""
         from deforum.utils.system.logging import get_logger
@@ -214,7 +202,31 @@ class RenderDashboard:
         logger.info(message)
 
     def add_ascii_art_to_log(self, image, frame_idx: int):
-        """Add ASCII art to log if enabled (simplified - always off for now)."""
-        # This feature would spam the log too much in simple mode
-        # Users can enable ascii_preview to get it once per second instead
-        pass
+        """Add ASCII art to log if enabled.
+
+        Args:
+            image: PIL Image or numpy array to convert
+            frame_idx: Current frame number
+        """
+        if not opt_utils.is_dashboard_ascii_to_log_enabled():
+            return
+
+        if image is None:
+            return
+
+        from deforum.utils.system.logging import get_logger
+        logger = get_logger()
+
+        width, height = opt_utils.get_dashboard_ascii_size()
+        ascii_art = image_to_ascii_art(
+            image,
+            width=width,
+            height=height,
+            use_color=(self.theme != 'simple')
+        )
+
+        if ascii_art:
+            logger.info(f"\n[Frame {frame_idx}]")
+            for line in ascii_art.split('\n'):
+                logger.info(line)
+            logger.info("")  # Extra newline for spacing

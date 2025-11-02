@@ -108,6 +108,9 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
 
         dashboard.start()
 
+        # Store dashboard on data so Taqaddumat can access it
+        data.dashboard = dashboard
+
     shared.total_tqdm = Taqaddumat()
     shared.total_tqdm.reset(data, generation_order_frames)
 

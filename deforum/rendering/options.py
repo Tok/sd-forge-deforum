@@ -33,13 +33,34 @@ def is_dashboard_enabled():
 
 
 def is_dashboard_ascii_preview_enabled():
-    """Check if ASCII art preview in dashboard is enabled."""
-    return _get_opts().data.get("deforum_dashboard_ascii_preview", True)  # Enabled by default
+    """Check if ASCII art preview should be written to scrolling log."""
+    # Check both settings for compatibility (they're the same now)
+    opts = _get_opts()
+    return opts.data.get("deforum_dashboard_ascii_preview", True) or \
+           opts.data.get("deforum_dashboard_ascii_to_log", False)
 
 
 def is_dashboard_ascii_to_log_enabled():
-    """Check if ASCII art should be written to log on each frame."""
-    return _get_opts().data.get("deforum_dashboard_ascii_to_log", False)  # Disabled by default
+    """Legacy function - redirects to is_dashboard_ascii_preview_enabled()."""
+    return is_dashboard_ascii_preview_enabled()
+
+
+def get_dashboard_ascii_size():
+    """Get ASCII preview size setting.
+
+    Returns:
+        Tuple of (width, height) based on size setting:
+        - "small": (16, 9)
+        - "medium": (32, 18) - default
+        - "large": (64, 36)
+    """
+    size = _get_opts().data.get("deforum_dashboard_ascii_size", "medium")
+    size_map = {
+        "small": (16, 9),
+        "medium": (32, 18),
+        "large": (64, 36)
+    }
+    return size_map.get(size, (32, 18))  # Default to medium
 
 
 def is_emojis_enabled():
