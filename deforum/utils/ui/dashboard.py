@@ -247,9 +247,8 @@ class RenderDashboard:
             color_block = _rgb_to_ansi_color_block((r, g, b))
             seed_line.append(f", Color: {color_block}██{_RESET_BG}")
 
-        # Add movement
+        # Add movement (already includes "Move: " prefix from orchestrator)
         if self.frame_info['movement']:
-            seed_line.append(" Move: ", style="dim")
             seed_line.append(self.frame_info['movement'], style="magenta")
 
         # Prompt line
@@ -419,18 +418,24 @@ class RenderDashboard:
         # Get themed color
         color_hex = self._get_themed_color(color_name)
         if color_hex:
-            return f"[{color_hex}]{bar}[/{color_hex}]"
+            # Remove # prefix if present (Rich doesn't need it)
+            color_hex = color_hex.lstrip('#')
+            return f"[#{color_hex}]{bar}[/#{color_hex}]"
         else:
             return bar  # No color for simple theme
 
     def update(self):
         """Update the dashboard display."""
-        self.layout["header"].update(self._render_header())
-        self.layout["progress"].update(self._render_progress())
-        self.layout["log"].update(self._render_log())
+        try:
+            self.layout["header"].update(self._render_header())
+            self.layout["progress"].update(self._render_progress())
+            self.layout["log"].update(self._render_log())
 
-        if self.live:
-            self.live.refresh()
+            # Don't call refresh - let Live handle it automatically
+            # Calling refresh() can block the main thread
+        except Exception as e:
+            # Silently ignore render errors to avoid blocking generation
+            pass
 
     def add_log(self, message: str):
         """Add a message to the scrolling log."""
