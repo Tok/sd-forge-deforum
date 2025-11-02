@@ -309,45 +309,46 @@ class FixedDashboard:
         if movement:
             line1_left += f" | {movement}"
 
-        # Add VRAM on the right (removed models from here - now on separate line)
-        vram_str = self._format_vram_bar()
-
-        # Calculate padding
+        # Pad line 1 to full width (VRAM moved to last line with models)
         import re
         visible_left = re.sub(r'\033\[[0-9;]*m', '', line1_left)
-        visible_vram = re.sub(r'\033\[[0-9;]*m', '', vram_str)
-        padding_needed = self._terminal_width - len(visible_left) - len(visible_vram) - 3  # -3 for " | "
-        if padding_needed > 0:
-            line1 = line1_left + (" " * padding_needed) + " | " + vram_str
-        else:
-            line1 = line1_left + " | " + vram_str
+        padding_needed = max(0, self._terminal_width - len(visible_left))
+        line1 = line1_left + (" " * padding_needed)
 
         lines.append(line1)
 
-        # Status line 2: Models info (detailed)
-        models_str = self._format_loaded_models_detailed()
-        if models_str:
-            line2 = models_str.ljust(self._terminal_width)
-        else:
-            line2 = " " * self._terminal_width
-        lines.append(line2)
-
-        # Status line 3: Prompt
+        # Status line 2: Prompt
         prompt = self.frame_info.get('prompt', '')
         if prompt:
             # Truncate prompt if too long for terminal width
             max_prompt_len = self._terminal_width - 10  # Leave some padding
             if len(prompt) > max_prompt_len:
                 prompt = prompt[:max_prompt_len - 3] + "..."
-            line3 = f"Prompt: {prompt}"
+            line2 = f"Prompt: {prompt}"
             # Pad to full width
-            line3 = line3.ljust(self._terminal_width)
+            line2 = line2.ljust(self._terminal_width)
         else:
-            line3 = " " * self._terminal_width
-        lines.append(line3)
+            line2 = " " * self._terminal_width
+        lines.append(line2)
 
         # Progress bars (5 tqdm bars from Taqaddumat)
         lines.extend(self._render_tqdm_bars())
+
+        # Last line: Models info (resource usage context with VRAM)
+        models_str = self._format_loaded_models_detailed()
+        if models_str:
+            # Add VRAM to models line for combined resource view
+            vram_only = self._format_vram_bar()
+            combined = f"{models_str} | {vram_only}"
+            # Pad to full width
+            visible_combined = re.sub(r'\033\[[0-9;]*m', '', combined)
+            padding_needed = max(0, self._terminal_width - len(visible_combined))
+            line_models = combined + (" " * padding_needed)
+        else:
+            # No models, just show VRAM centered or left-aligned
+            vram_only = self._format_vram_bar()
+            line_models = vram_only.ljust(self._terminal_width)
+        lines.append(line_models)
 
         return lines
 
