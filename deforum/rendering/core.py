@@ -89,6 +89,11 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
 
     try:
         run_render_animation(data, generation_order_frames, dashboard)
+    except KeyboardInterrupt:
+        # Handle Ctrl+C gracefully - stop dashboard and re-raise
+        if dashboard:
+            dashboard.stop()
+        raise
     finally:
         # Stop dashboard when done
         if dashboard:
