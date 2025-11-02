@@ -146,7 +146,7 @@ class FixedDashboard:
         self._terminal_height, self._terminal_width = self._get_terminal_size()
 
         # Calculate dashboard height (fixed status only, no ASCII preview)
-        self._dashboard_height = 8  # Separator + 2 status lines + 5 tqdm bars
+        self._dashboard_height = 7  # Separator + 1 status line + 1 blank + 5 tqdm bars
 
         # Set up scrolling region (reserve bottom lines for dashboard)
         # ANSI: \033[{top};{bottom}r sets scrolling region
@@ -265,34 +265,59 @@ class FixedDashboard:
         # Separator (full width with slopcore gradient)
         lines.append(self._create_separator())
 
-        # Status line 1: Frame info with color and movement
-        df_current, df_total = self.progress_data['diffusion_frames']
-        df_pct = int((df_current / df_total * 100) if df_total > 0 else 0)
+        # Status line 1: Frame info with color, movement, and VRAM on right
+        # Calculate progress from diffusion frames
+        import modules.shared as shared
+        taqaddum = shared.total_tqdm if hasattr(shared, 'total_tqdm') else None
+        if taqaddum and hasattr(taqaddum, 'total_animation_cycles'):
+            df_current = taqaddum.total_animation_cycles.n
+            df_total = taqaddum.total_animation_cycles.total
+            df_pct = int((df_current / df_total * 100) if df_total > 0 else 0)
+        else:
+            df_pct = 0
 
-        line1 = f"Frame {self.frame_info['current']}/{self.frame_info['total']} [{self.frame_info['type']}]"
-        line1 += f" | Progress: {df_pct}%"
+        # Colorize frame type
+        frame_type = self.frame_info['type']
+        if self.theme == 'slopcore':
+            from deforum.utils.system.logging.themes import HEX_SLOPCORE_3, HEX_SLOPCORE_6
+            from deforum.utils.image.color import hex_to_ansi_foreground
+            if frame_type == 'KEYFRAME':
+                type_color = hex_to_ansi_foreground(HEX_SLOPCORE_6)  # Deep purple
+            else:  # CADENCE
+                type_color = hex_to_ansi_foreground(HEX_SLOPCORE_3)  # Light purple
+            frame_type_colored = f"{type_color}[{frame_type}]\033[0m"
+        else:
+            frame_type_colored = f"[{frame_type}]"
+
+        line1_left = f"Frame {self.frame_info['current']}/{self.frame_info['total']} {frame_type_colored} | Progress: {df_pct}%"
 
         # Add color block if available
         if self.frame_info.get('color_rgb'):
             r, g, b = self.frame_info['color_rgb']
             color_block = f"\033[48;2;{r};{g};{b}m  \033[0m"
-            line1 += f" | Color: {color_block}"
+            line1_left += f" | Color: {color_block}"
 
         # Add movement indicators if available
         movement = self.frame_info.get('movement', '')
         if movement:
-            line1 += f" | {movement}"
+            line1_left += f" | {movement}"
 
-        line1 = line1.ljust(self._terminal_width)
+        # Add VRAM on the right
+        vram_str = self._format_vram_bar()
+        # Calculate padding
+        import re
+        visible_left = re.sub(r'\033\[[0-9;]*m', '', line1_left)
+        visible_vram = re.sub(r'\033\[[0-9;]*m', '', vram_str)
+        padding_needed = self._terminal_width - len(visible_left) - len(visible_vram) - 3  # -3 for " | "
+        if padding_needed > 0:
+            line1 = line1_left + (" " * padding_needed) + " | " + vram_str
+        else:
+            line1 = line1_left + " | " + vram_str
+
         lines.append(line1)
 
-        # Status line 2: VRAM bar (left) and Steps info (right)
-        ts_current, ts_total = self.progress_data['total_steps']
-        ts_pct = int((ts_current / ts_total * 100) if ts_total > 0 else 0)
-        cs_current, cs_total = self.progress_data['current_step']
-
-        line2 = f"{self._format_vram_bar()} | Steps: {ts_pct}% | Current: {cs_current}/{cs_total}"
-        line2 = line2.ljust(self._terminal_width)
+        # Status line 2: Empty (removed redundant info)
+        line2 = " " * self._terminal_width
         lines.append(line2)
 
         # Progress bars (5 tqdm bars from Taqaddumat)
@@ -383,7 +408,8 @@ class FixedDashboard:
                     len(desc5)
                 )
 
-                # Bar 1: Current Tweens (blue) - read from tqdm object
+                # Read directly from tqdm objects (they update even when disabled)
+                # Bar 1: Current Tweens (blue)
                 lines.append(self._format_tqdm_bar(
                     "Current Tweens",
                     taqaddum.tweens.n,
@@ -393,45 +419,41 @@ class FixedDashboard:
                     max_desc_len
                 ))
 
-                # Bar 2: Total Frames (green) - use progress_data if available
-                tf_current, tf_total = self.progress_data.get('total_frames', (taqaddum.total_frames.n, taqaddum.total_frames.total))
+                # Bar 2: Total Frames (green)
                 lines.append(self._format_tqdm_bar(
                     "Total Frames",
-                    tf_current,
-                    tf_total,
+                    taqaddum.total_frames.n,
+                    taqaddum.total_frames.total,
                     "frame",
                     HEX_GREEN,
                     max_desc_len
                 ))
 
-                # Bar 3: Current Diffusion Steps (orange) - use progress_data
-                cs_current, cs_total = self.progress_data.get('current_step', (taqaddum.steps.n, taqaddum.steps.total))
+                # Bar 3: Current Diffusion Steps (orange)
                 lines.append(self._format_tqdm_bar(
                     "Current Diffusion Steps",
-                    cs_current,
-                    cs_total,
+                    taqaddum.steps.n,
+                    taqaddum.steps.total,
                     "step",
                     HEX_ORANGE,
                     max_desc_len
                 ))
 
-                # Bar 4: Total Diffusion Steps (red) - use progress_data
-                ts_current, ts_total = self.progress_data.get('total_steps', (taqaddum.total_steps.n, taqaddum.total_steps.total))
+                # Bar 4: Total Diffusion Steps (red)
                 lines.append(self._format_tqdm_bar(
                     "Total Diffusion Steps",
-                    ts_current,
-                    ts_total,
+                    taqaddum.total_steps.n,
+                    taqaddum.total_steps.total,
                     "step",
                     HEX_RED,
                     max_desc_len
                 ))
 
-                # Bar 5: Diffusion Frames (purple) - use progress_data
-                df_current, df_total = self.progress_data.get('diffusion_frames', (taqaddum.total_animation_cycles.n, taqaddum.total_animation_cycles.total))
+                # Bar 5: Diffusion Frames (purple)
                 lines.append(self._format_tqdm_bar(
                     desc5,
-                    df_current,
-                    df_total,
+                    taqaddum.total_animation_cycles.n,
+                    taqaddum.total_animation_cycles.total,
                     "frame",
                     HEX_PURPLE,
                     max_desc_len

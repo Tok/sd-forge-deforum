@@ -125,7 +125,7 @@ class Taqaddumat:
         self.tweens.refresh()
         self.total_frames.update()
         self.total_frames.refresh()
-        # Update dashboard if available
+        # Update dashboard if available (must read .n AFTER update even if disabled)
         if self.dashboard:
             self.dashboard.progress_data['total_frames'] = (self.total_frames.n, self.total_frames.total)
             self.dashboard.update()
