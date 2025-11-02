@@ -149,7 +149,7 @@ class FixedDashboard:
         self._terminal_height, self._terminal_width = self._get_terminal_size()
 
         # Calculate dashboard height (fixed status only, no ASCII preview)
-        self._dashboard_height = 7  # Separator + 1 status + 1 prompt + 2 current bars + 1 models + 2 total bars
+        self._dashboard_height = 8  # Separator + 1 status + 1 prompt + 2 current bars + 1 models + 3 total bars
 
         # Set up scrolling region (reserve bottom lines for dashboard)
         # ANSI: \033[{top};{bottom}r sets scrolling region
@@ -646,9 +646,10 @@ class FixedDashboard:
         New order:
         1. Current Tweens
         2. Current Diffusion Steps
-        3. Total Diffusion Steps (reverse gradient if slopcore)
-        4. Total Frames (gradient as-is)
-        5. Models + VRAM (left-aligned, last line)
+        3. Total Diffusion Steps
+        4. Total Diffusion Frames
+        5. Total Frames
+        6. Models + VRAM (left-aligned, last line)
 
         Returns:
             List of formatted progress bar strings
@@ -669,6 +670,7 @@ class FixedDashboard:
                     len("Current Tweens"),
                     len("Current Diffusion Steps"),
                     len("Total Diffusion Steps"),
+                    len("Total Diffusion Frames"),
                     len("Total Frames")
                 )
 
@@ -694,19 +696,30 @@ class FixedDashboard:
                     max_desc_len
                 ))
 
-                # Line 3: Total Diffusion Steps (orange - slow/low frequency)
+                # Line 3: Total Diffusion Steps (green - medium-low frequency)
                 ts_current, ts_total = self.progress_data.get('total_steps', (taqaddum._total_steps_n, taqaddum.total_steps.total))
                 lines.append(self._format_tqdm_bar(
                     "Total Diffusion Steps",
                     ts_current,
                     ts_total,
                     "step",
-                    HEX_ORANGE,
+                    HEX_GREEN,
                     max_desc_len,
                     reverse_gradient=True  # NEW: reverse gradient
                 ))
 
-                # Line 4: Total Frames (red - slow/low frequency)
+                # Line 4: Total Diffusion Frames (orange - low frequency)
+                df_current, df_total = self.progress_data.get('diffusion_frames', (taqaddum._animation_cycles_n, taqaddum.total_animation_cycles.total))
+                lines.append(self._format_tqdm_bar(
+                    "Total Diffusion Frames",
+                    df_current,
+                    df_total,
+                    "frame",
+                    HEX_ORANGE,
+                    max_desc_len
+                ))
+
+                # Line 5: Total Frames (red - lowest frequency)
                 tf_current, tf_total = self.progress_data.get('total_frames', (taqaddum._total_frames_n, taqaddum.total_frames.total))
                 lines.append(self._format_tqdm_bar(
                     "Total Frames",
@@ -717,7 +730,7 @@ class FixedDashboard:
                     max_desc_len
                 ))
 
-                # Line 5: Models (left) + VRAM (right-aligned)
+                # Line 6: Models (left) + VRAM (right-aligned)
                 models_str = self._format_loaded_models_detailed()
                 vram_str = self._format_vram_bar()
 
@@ -746,6 +759,7 @@ class FixedDashboard:
                     "Current Tweens: 0/0",
                     "Current Diffusion Steps: 0/0",
                     "Total Diffusion Steps: 0/0",
+                    "Total Diffusion Frames: 0/0",
                     "Total Frames: 0/0",
                     "Models: N/A | VRAM: N/A"
                 ])
@@ -755,6 +769,7 @@ class FixedDashboard:
                 "Current Tweens: 0/0",
                 "Current Diffusion Steps: 0/0",
                 "Total Diffusion Steps: 0/0",
+                "Total Diffusion Frames: 0/0",
                 "Total Frames: 0/0",
                 "Models: N/A | VRAM: N/A"
             ])
