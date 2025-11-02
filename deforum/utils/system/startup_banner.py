@@ -111,17 +111,23 @@ def print_startup_banner():
     banner_lines = []
     total_rows = len(lines) + 2  # +2 for top and bottom borders
 
-    # Diagonal shift amount (shift gradient start position for each row)
-    # Smaller shift = more vertical, larger = more diagonal
-    diagonal_shift = 0.4  # 40% shift for stronger diagonal, no wrap-around
+    # Double Fibonacci spacing for diagonal shift (2, 2, 4, 6, 10, 16, repeating)
+    # Creates varied diagonal pattern instead of uniform shift
+    double_fib_pattern = [2, 2, 4, 6, 10, 16]
+
+    def get_row_shift(row_idx):
+        """Get horizontal shift amount for this row using double Fibonacci pattern."""
+        pattern_idx = row_idx % len(double_fib_pattern)
+        return double_fib_pattern[pattern_idx]
 
     # Top border with slopcore rounded corners and diagonal gradient
     import re
 
     # Top line: ◤ with gradient bg, then spaces with gradient, ending with ◥
     top_line = ""
+    top_shift = get_row_shift(0)
     for char_pos in range(box_width):
-        gradient_pos = min(1.0, max(0.0, 0 + char_pos * diagonal_shift / box_width))
+        gradient_pos = min(1.0, max(0.0, (char_pos + top_shift) / (box_width + max(double_fib_pattern))))
         bg = get_gradient_bg_by_position(gradient_pos)
 
         if char_pos == 0:
@@ -142,8 +148,8 @@ def print_startup_banner():
         visible_text = re.sub(r'\033\[[0-9;]*m', '', line)
         text_display_width = display_width(visible_text)  # Actual terminal width
 
-        # Build line with diagonal gradient
-        row_base = (row_idx + 1) / total_rows  # Vertical position
+        # Get row shift using double Fibonacci pattern
+        row_shift = get_row_shift(row_idx + 1)  # +1 because row 0 is top border
 
         # Build content: 2 spaces + text + padding to fill box_width
         left_padding = "  "
@@ -152,12 +158,11 @@ def print_startup_banner():
 
         # Now apply gradient to each character position
         content_line = ""
-        char_idx = 0
         display_pos = 0
 
         # Left padding (2 spaces)
         for i in range(2):
-            gradient_pos = min(1.0, max(0.0, row_base + display_pos * diagonal_shift / box_width))
+            gradient_pos = min(1.0, max(0.0, (display_pos + row_shift) / (box_width + max(double_fib_pattern))))
             bg = get_gradient_bg_by_position(gradient_pos)
             content_line += f"{bg} "
             display_pos += 1
@@ -168,7 +173,7 @@ def print_startup_banner():
             char = visible_text[text_idx]
             char_width = 2 if unicodedata.east_asian_width(char) in ('F', 'W') else 1
 
-            gradient_pos = min(1.0, max(0.0, row_base + display_pos * diagonal_shift / box_width))
+            gradient_pos = min(1.0, max(0.0, (display_pos + row_shift) / (box_width + max(double_fib_pattern))))
             bg = get_gradient_bg_by_position(gradient_pos)
             content_line += f"{bg}{WHITE}{char}"
 
@@ -177,7 +182,7 @@ def print_startup_banner():
 
         # Right padding
         for i in range(right_padding_width):
-            gradient_pos = min(1.0, max(0.0, row_base + display_pos * diagonal_shift / box_width))
+            gradient_pos = min(1.0, max(0.0, (display_pos + row_shift) / (box_width + max(double_fib_pattern))))
             bg = get_gradient_bg_by_position(gradient_pos)
             content_line += f"{bg} "
             display_pos += 1
@@ -187,8 +192,9 @@ def print_startup_banner():
 
     # Bottom border with slopcore rounded corners and diagonal gradient
     bottom_line = ""
+    bottom_shift = get_row_shift(len(lines) + 1)  # Last row
     for char_pos in range(box_width):
-        gradient_pos = min(1.0, max(0.0, (total_rows - 1) / total_rows + char_pos * diagonal_shift / box_width))
+        gradient_pos = min(1.0, max(0.0, (char_pos + bottom_shift) / (box_width + max(double_fib_pattern))))
         bg = get_gradient_bg_by_position(gradient_pos)
 
         if char_pos == 0:
