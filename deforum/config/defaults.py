@@ -35,7 +35,7 @@ def get_keyframe_distribution_list():
     return {
         'off': 'Off',
         'keyframes_only': 'Keyframes Only',
-        'redistributed': 'Redistributed',
+        'redistributed_cadence': 'Redistributed Cadence',
     }
 
 

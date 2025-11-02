@@ -330,8 +330,11 @@ def create_tuning_tab() -> tuple:
             """Open the tuning output directory in file browser."""
             from pathlib import Path
             from modules.util import open_folder
+            import os
 
-            tuning_dir = Path(__file__).parent.parent.parent / "outputs" / "deforum-tuning"
+            # Use Forge's standard outputs directory (same as normal generations)
+            forge_root = Path(os.getcwd())
+            tuning_dir = forge_root / "outputs" / "deforum-tuning"
             tuning_dir.mkdir(parents=True, exist_ok=True)
 
             logger.info(f"Opening tuning directory: {tuning_dir}")

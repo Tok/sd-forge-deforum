@@ -29,9 +29,36 @@ def get_tab_distribution(da):
 
     Returns:
         dict: Component dictionary for event binding
+
+    Note:
+        Keyframe distribution is now automatically determined by Render Mode selection
+        (top of main UI). This tab focuses on FLF2V tween configuration.
     """
     with gr.TabItem(f"{emoji_utils.distribution()} Distribution", elem_id='distribution_tab'):
-        keyframe_distribution = create_row(da.keyframe_distribution)
+        gr.Markdown("""
+        ## Distribution & Render Mode Configuration
+
+        **Keyframe distribution is automatically determined by your Render Mode selection:**
+
+        - **Classic 3D** → OFF (uniform cadence)
+          - Every Nth frame gets diffused (strict cadence)
+          - No special keyframe handling
+
+        - **New 3D** → REDISTRIBUTED_CADENCE ⭐ (Default)
+          - **EXACT keyframes** at prompt frame numbers (non-negotiable)
+          - **Cadence frames** redistributed BETWEEN keyframes
+          - Drops cadence frames if too close to keyframes
+          - Avoids back-to-back diffusions
+
+        - **Keyframes Only** → KEYFRAMES_ONLY
+          - Only diffuse at exact keyframe positions
+          - Depth-tween everything else (no cadence frames)
+
+        - **Flux + Interpolation** → Separate pipeline
+          - Flux keyframes + interpolation (Wan/RIFE/FILM)
+
+        Change Render Mode at the top of the main UI to control distribution behavior.
+        """)
 
         # Wan FLF2V Integration
         with gr.Accordion(f"{emoji_utils.movie_camera()} Wan FLF2V Tween Mode (Experimental)", open=False):

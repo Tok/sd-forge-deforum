@@ -39,7 +39,13 @@ from integration.utils import (
 # Test configuration
 MAX_ITERATIONS = 20  # Stop after 20 iterations or grayscale threshold
 GRAYSCALE_THRESHOLD = 20  # Color score below this = considered grayscale
-OUTPUT_DIR = Path(__file__).parent.parent.parent / "outputs" / "deforum-tuning" / "color_preservation"
+
+# Use Forge's standard outputs directory (same location as normal generations)
+# This will resolve to forge-neo/outputs/deforum-tuning/color_preservation
+# instead of being buried in the extension directory
+import os
+FORGE_ROOT = Path(os.getcwd())  # Forge webui root directory
+OUTPUT_DIR = FORGE_ROOT / "outputs" / "deforum-tuning" / "color_preservation"
 
 
 def create_colorful_test_image() -> Path:
@@ -112,18 +118,27 @@ def run_i2v_iteration(
     keyframe_strength: float,
     steps: int,
     output_dir: Path,
+    max_frames: int = 30,  # Enough frames to test cadence/normal strength
 ) -> Path:
     """Run a single I2V generation iteration.
 
     Args:
         init_image_path: Path to input image
-        strength: Normal/tween frame strength
-        keyframe_strength: Keyframe strength
+        strength: Normal/cadence frame strength (HIGH = 0.85 = stability)
+        keyframe_strength: Keyframe strength (LOW = 0.15 = change)
         steps: Number of sampling steps
         output_dir: Where to save output
+        max_frames: Total frames to generate (default 30 for good cadence coverage)
 
     Returns:
-        Path to generated output image (frame 0 of animation)
+        Path to generated output image (last frame of animation)
+
+    Note:
+        With New 3D mode and max_frames=30:
+        - Frame 0 is a keyframe (uses keyframe_strength)
+        - Frames 1-29 are mostly cadence frames (use normal strength)
+        - Frame 29 is also a keyframe (last frame)
+        - This gives us ~27 cadence frames to test normal_strength stability
     """
     options_overrides = get_test_options_overrides()
     options_overrides.update({
@@ -143,11 +158,13 @@ def run_i2v_iteration(
 
             # Animation settings
             "animation_mode": "3D",
-            "render_mode": "new_3d",  # New 3D with dual strength
-            "max_frames": 2,  # Just 2 frames (init + 1 generation)
+            "render_mode": "new_3d",  # New 3D with dual strength (REDISTRIBUTED)
+            "max_frames": max_frames,
             "fps": 24,
 
             # Strength schedules (the parameters we're testing!)
+            # normal_strength: HIGH (0.85+) = stability, fewer steps, used by cadence frames
+            # keyframe_strength: LOW (0.15-) = change, more steps, used by keyframes
             "strength_schedule": f"0: ({strength})",
             "keyframe_strength_schedule": f"0: ({keyframe_strength})",
 
@@ -156,10 +173,16 @@ def run_i2v_iteration(
             "init_image": str(init_image_path),
             "strength": keyframe_strength,  # For frame 0
 
-            # Prompts
+            # Prompts - single prompt means frame 0 is the only explicit keyframe
+            # Frame 29 will also be a keyframe (last frame is always keyframe)
+            # All other frames (1-28) will be cadence frames using normal_strength
             "animation_prompts": json.dumps({
                 "0": "vibrant colorful rainbow gradient, highly saturated colors"
             }),
+
+            # Disable audio for tuning tests
+            "audio_mode": "None",
+            "audio_sync": False,
 
             # Output
             "batch_name": get_test_batch_name(),
@@ -181,9 +204,10 @@ def run_i2v_iteration(
 
     assert final_status["status"] == "SUCCEEDED", f"Job failed: {final_status.get('message')}"
 
-    # Return path to frame 0 (the generated output)
+    # Return path to LAST frame (which will become input for next iteration)
     timestring = final_status["timestring"]
-    output_frame = output_dir / timestring / "0000000000.png"
+    last_frame_idx = max_frames - 1
+    output_frame = output_dir / timestring / f"{last_frame_idx:09d}.png"
 
     assert output_frame.exists(), f"Output frame not found: {output_frame}"
 
@@ -191,37 +215,54 @@ def run_i2v_iteration(
 
 
 @pytest.mark.parametrize("steps,normal_strength,keyframe_strength", [
-    # Flux Dev (20 steps) - baseline
-    (20, 0.85, 0.15),  # Current defaults
-    (20, 0.90, 0.15),  # Higher stability
-    (20, 0.80, 0.15),  # Lower stability
-    (20, 0.85, 0.10),  # Lower keyframe strength
-    (20, 0.85, 0.20),  # Higher keyframe strength
+    # TEST SET 1: Normal Strength Sweep (cadence frame stability)
+    # Goal: Find optimal normal_strength for I2I chain stability
+    # Keyframe strength fixed at 0.15, vary normal_strength
+    (20, 0.80, 0.15),  # Lower - more diffusion steps on cadence frames
+    (20, 0.85, 0.15),  # Current default
+    (20, 0.90, 0.15),  # Higher - fewer diffusion steps, more stability
+    (20, 0.95, 0.15),  # Very high - minimal diffusion, maximum stability
 
-    # Flux Dev (20 steps) - aggressive tuning
-    (20, 0.95, 0.10),  # Very high stability
-    (20, 0.75, 0.25),  # Lower stability, higher keyframe
+    # TEST SET 2: Keyframe Strength Sweep (keyframe retention)
+    # Goal: How much keyframe strength affects color preservation
+    # Normal strength fixed at 0.85, vary keyframe_strength
+    # (Less critical for color preservation since keyframes introduce change)
+    (20, 0.85, 0.10),  # Lower - more diffusion at keyframes (more change)
+    (20, 0.85, 0.20),  # Higher - less diffusion at keyframes (more retention)
 
-    # Flux Schnell (4 steps) - viability test
-    (4, 0.85, 0.15),   # Default values
-    (4, 0.90, 0.10),   # Tuned for 4 steps
-    (4, 0.70, 0.30),   # Inverse hypothesis
+    # TEST SET 3: Combined optimization
+    # Goal: Test if combined tuning improves results
+    (20, 0.90, 0.10),  # High cadence stability + low keyframe retention
+    (20, 0.95, 0.10),  # Very high cadence stability + low keyframe retention
+
+    # TEST SET 4: Schnell viability (4 steps)
+    # Goal: Check if Schnell can maintain stability with coarse resolution
+    # Note: 4 steps = 0.25 strength resolution vs 20 steps = 0.05 resolution
+    (4, 0.75, 0.25),   # 3/4 steps on cadence = similar to 0.85 @ 20 steps
+    (4, 1.00, 0.25),   # 4/4 steps on cadence = no diffusion (pure I2I feed)
 ])
 def test_color_preservation_sweep(steps, normal_strength, keyframe_strength):
-    """Sweep strength parameters and measure color preservation.
+    """Sweep strength parameters and measure color preservation through I2V chaining.
 
-    This test runs multiple I2V iterations with the same parameters,
-    feeding output back as input each time, until colors degrade to grayscale.
+    This test runs I2V chaining iterations: each iteration generates 30 frames,
+    then feeds the LAST frame back as input for the next iteration. This tests
+    how well the parameters maintain color through cascading I2I diffusion.
+
+    With New 3D mode (REDISTRIBUTED) and 30 frames:
+    - Frame 0: Keyframe (uses keyframe_strength)
+    - Frames 1-28: Mostly cadence frames (use normal_strength) ← THIS IS WHAT WE'RE TESTING
+    - Frame 29: Keyframe (uses keyframe_strength)
+    - ~27/30 frames use normal_strength, so this primarily tests cadence stability
 
     Metrics:
     - Iterations until grayscale (higher = better)
-    - Color score trajectory
-    - Temporal consistency
+    - Color score trajectory (measures degradation rate)
+    - Temporal consistency (not as relevant for chaining test)
 
     Args:
         steps: Number of sampling steps (4 for Schnell, 20 for Dev)
-        normal_strength: Strength for tween frames (0-1)
-        keyframe_strength: Strength for keyframes (0-1)
+        normal_strength: Strength for cadence frames (HIGH = 0.85+ = stability)
+        keyframe_strength: Strength for keyframes (LOW = 0.15- = change)
     """
     # Create test output directory
     test_name = f"steps{steps}_norm{normal_strength:.2f}_kf{keyframe_strength:.2f}"

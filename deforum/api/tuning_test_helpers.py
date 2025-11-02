@@ -126,10 +126,24 @@ def get_test_options_overrides(output_dir: Path = None) -> Dict[str, Any]:
             "outdir_samples": str(output_dir),
         }
     else:
-        # Use default tuning output directory
-        return {
-            "outdir_samples": str(Path(__file__).parent.parent.parent / "outputs" / "deforum-tuning"),
-        }
+        # Use Forge's standard outputs directory (same as normal generations)
+        # This will be outputs/deforum-tuning/ in the Forge webui root directory
+        try:
+            from modules import shared
+            # Get Forge's standard output directory
+            base_outdir = shared.opts.outdir_samples or shared.opts.outdir_img2img_samples
+            # Create tuning subdirectory within Forge outputs
+            tuning_dir = Path(base_outdir).parent / "deforum-tuning"
+            return {
+                "outdir_samples": str(tuning_dir),
+            }
+        except:
+            # Fallback if shared not available (e.g., in tests)
+            import os
+            forge_root = Path(os.getcwd())
+            return {
+                "outdir_samples": str(forge_root / "outputs" / "deforum-tuning"),
+            }
 
 
 def create_colorful_test_image(output_dir: Path) -> Path:
@@ -203,18 +217,27 @@ def run_i2v_iteration(
     keyframe_strength: float,
     steps: int,
     output_dir: Path,
+    max_frames: int = 30,  # Enough frames to test cadence/normal strength
 ) -> Path:
     """Run a single I2V generation iteration.
 
     Args:
         init_image_path: Path to input image
-        strength: Normal/tween frame strength
-        keyframe_strength: Keyframe strength
+        strength: Normal/cadence frame strength (HIGH = 0.85+ = stability)
+        keyframe_strength: Keyframe strength (LOW = 0.15- = change)
         steps: Number of sampling steps
         output_dir: Where to save output
+        max_frames: Total frames to generate (default 30 for good cadence coverage)
 
     Returns:
-        Path to generated output image (frame 0 of animation)
+        Path to generated output image (last frame of animation)
+
+    Note:
+        With New 3D mode and max_frames=30:
+        - Frame 0 is a keyframe (uses keyframe_strength)
+        - Frames 1-29 are mostly cadence frames (use normal strength)
+        - Frame 29 is also a keyframe (last frame)
+        - This gives us ~27 cadence frames to test normal_strength stability
     """
     # Use output_dir as the base for this specific test configuration
     options_overrides = get_test_options_overrides(output_dir)
@@ -235,11 +258,13 @@ def run_i2v_iteration(
 
             # Animation settings
             "animation_mode": "3D",
-            "render_mode": "new_3d",  # New 3D with dual strength
-            "max_frames": 2,  # Just 2 frames (init + 1 generation)
+            "render_mode": "new_3d",  # New 3D with dual strength (REDISTRIBUTED)
+            "max_frames": max_frames,
             "fps": 24,
 
             # Strength schedules (the parameters we're testing!)
+            # normal_strength: HIGH (0.85+) = stability, fewer steps, used by cadence frames
+            # keyframe_strength: LOW (0.15-) = change, more steps, used by keyframes
             "strength_schedule": f"0: ({strength})",
             "keyframe_strength_schedule": f"0: ({keyframe_strength})",
 
@@ -248,7 +273,9 @@ def run_i2v_iteration(
             "init_image": str(init_image_path),
             "strength": keyframe_strength,  # For frame 0
 
-            # Prompts
+            # Prompts - single prompt means frame 0 is the only explicit keyframe
+            # Frame 29 will also be a keyframe (last frame is always keyframe)
+            # All other frames (1-28) will be cadence frames using normal_strength
             "animation_prompts": json.dumps({
                 "0": "vibrant colorful rainbow gradient, highly saturated colors"
             }),
@@ -279,13 +306,14 @@ def run_i2v_iteration(
     if final_status["status"] != "SUCCEEDED":
         raise RuntimeError(f"Job failed: {final_status.get('message')}")
 
-    # Return path to frame 0 (the generated output)
+    # Return path to LAST frame (which will become input for next iteration)
     # The actual directory name is batch_name with timestring appended: "tuning-tuning_test_{timestring}"
     timestring = final_status["timestring"]
     batch_name = get_test_batch_name("tuning_test").replace("{timestring}", timestring)
 
-    # Frame filename is 9 digits (000000000.png), not 10
-    output_frame = output_dir / batch_name / "000000000.png"
+    # Frame filename is 9 digits - get LAST frame
+    last_frame_idx = max_frames - 1
+    output_frame = output_dir / batch_name / f"{last_frame_idx:09d}.png"
 
     if not output_frame.exists():
         # Debug: list what actually exists

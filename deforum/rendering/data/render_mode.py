@@ -131,7 +131,7 @@ _MODE_CONFIGS = {
 
     RenderMode.NEW_3D: ModeConfig(
         display_name="New 3D (Default)",
-        keyframe_distribution=KeyFrameDistribution.REDISTRIBUTED,
+        keyframe_distribution=KeyFrameDistribution.REDISTRIBUTED_CADENCE,
         uses_dual_strength=True,
         default_fps=60,
         default_cadence=5,
@@ -139,9 +139,11 @@ _MODE_CONFIGS = {
         shows_pseudo_cadence=False,
         description=(
             "Modern keyframe redistribution with dual strength schedules. "
+            "EXACT keyframe placement at prompt frame numbers (non-negotiable). "
+            "Cadence frames distributed BETWEEN keyframes to approximate desired cadence. "
+            "Drops cadence frames if too close to keyframes (avoids back-to-back diffusions). "
             "Keyframes use LOW strength (0.15 default) for dramatic changes (17/20 steps). "
-            "Cadence/tween frames use HIGH strength (0.85 default) for stability (3/20 steps). "
-            "Keyframes replace closest cadence frames for rhythm preservation. "
+            "Cadence frames use HIGH strength (0.85 default) for stability (3/20 steps). "
             "Balances quality, speed, and stability. Works with RAFT and ControlNet. "
             "Uses both strength schedules: keyframe_strength for keyframes, normal strength for cadence frames. "
             "20 steps = 0.05 strength resolution."
@@ -170,23 +172,25 @@ _MODE_CONFIGS = {
 
     RenderMode.FLUX_WAN: ModeConfig(
         display_name="Flux + Interpolation",
-        keyframe_distribution=None,  # Uses separate Flux + Interpolation pipeline
+        keyframe_distribution=None,  # Uses separate Flux/Lumina + Interpolation pipeline
         uses_dual_strength=False,
         default_fps=24,
         default_cadence=10,  # Not used for diffusion, but provides pseudo-cadence hint
-        default_steps=20,  # Flux Dev for keyframes (Schnell=4, Dev=20)
+        default_steps=20,  # Flux Dev for keyframes (Schnell=4, Dev=20, Lumina=30)
         shows_pseudo_cadence=True,
         description=(
-            "Flux keyframes + choice of interpolation method (Wan/RIFE/FILM). "
-            "Phase 1: Generate keyframes with Flux at prompt boundaries. "
-            "Phase 2: Interpolate tweens with selected method (Wan FLF2V / RIFE v4.6 / FILM). "
+            "Flux/Lumina keyframes + choice of interpolation method (Wan/FILM). "
+            "Phase 1: Generate keyframes with Flux or Lumina at prompt boundaries. "
+            "Phase 2: Interpolate tweens with selected method (Wan FLF2V / FILM). "
             "Phase 3: Stitch final video. "
+            "Models: Flux.1 (best quality), Lumina 2.0 (anime, 1024x1024 native). "
             "Best quality for dramatic changes between keyframes. "
             "Hides 3D-specific controls (RAFT, ControlNet, Shakify, Depth). "
             "Shows Wan Models tab (only needed when using Wan method). "
             "Uses only keyframe strength schedule (for Wan I2V chaining). "
             "IMPORTANT: Strength resolution depends on steps. "
             "Flux Dev (20 steps) = 0.05 resolution. Flux Schnell (4 steps) = 0.25 resolution. "
+            "Lumina (30 steps) = 0.033 resolution. "
             "Lower steps make strength harder to tune precisely."
         )
     ),
