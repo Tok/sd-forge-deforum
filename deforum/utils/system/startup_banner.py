@@ -41,6 +41,8 @@ def print_startup_banner():
     RESET = "\033[0m"
     BOLD = "\033[1m"
     WHITE = "\033[97m"
+    # Use dark gray for corners so they blend with terminal background
+    CORNER_COLOR = "\033[38;2;80;80;80m"
 
     # Helper to get terminal width
     term_width = shutil.get_terminal_size((120, 24)).columns
@@ -86,18 +88,22 @@ def print_startup_banner():
 
     # Top border with slopcore rounded corners and diagonal gradient
     import re
-    row_gradient = []
-    for char_pos in range(box_width):
-        # Diagonal: row 0, but gradient position shifts with horizontal position
-        # Clamp to 0-1 range instead of modulo to prevent wrap-around
-        gradient_pos = min(1.0, max(0.0, 0 + char_pos * diagonal_shift / box_width))
-        row_gradient.append(get_gradient_bg_by_position(gradient_pos))
 
-    # Top line: ◤ followed by spaces, ending with ◥
-    top_line = f"{row_gradient[0]}{WHITE}{ROUND_TL}"
-    for char_pos in range(1, box_width - 1):
-        top_line += f"{row_gradient[char_pos]} "
-    top_line += f"{row_gradient[-1]}{ROUND_TR}{RESET}"
+    # Top line: ◤ with gradient bg, then spaces with gradient, ending with ◥
+    top_line = ""
+    for char_pos in range(box_width):
+        gradient_pos = min(1.0, max(0.0, 0 + char_pos * diagonal_shift / box_width))
+        bg = get_gradient_bg_by_position(gradient_pos)
+
+        if char_pos == 0:
+            # Left corner with gradient bg
+            top_line += f"{bg}{CORNER_COLOR}{ROUND_TL}{RESET}"
+        elif char_pos == box_width - 1:
+            # Right corner with gradient bg
+            top_line += f"{bg}{CORNER_COLOR}{ROUND_TR}{RESET}"
+        else:
+            # Middle space with gradient bg
+            top_line += f"{bg} {RESET}"
     banner_lines.append(top_line)
 
     # Content lines with diagonal gradient background
@@ -118,39 +124,34 @@ def print_startup_banner():
             gradient_pos = min(1.0, max(0.0, row_base + char_pos * diagonal_shift / box_width))
             bg = get_gradient_bg_by_position(gradient_pos)
 
-            if char_pos == 0:
-                # Left edge (just background)
-                content_line += f"{bg} "
-            elif char_pos == 1:
-                # Space after left edge
-                content_line += f"{bg} "
+            if char_pos < 2:
+                # Left padding (2 spaces)
+                content_line += f"{bg} {RESET}"
             elif char_pos < text_len + 2:
                 # Text content
-                content_line += f"{bg}{visible_text[char_pos - 2]}"
-            elif char_pos < box_width - 1:
-                # Padding
-                content_line += f"{bg} "
+                content_line += f"{bg}{WHITE}{visible_text[char_pos - 2]}{RESET}"
             else:
-                # Right edge (last char)
+                # Right padding
                 content_line += f"{bg} {RESET}"
 
         banner_lines.append(content_line)
 
     # Bottom border with slopcore rounded corners and diagonal gradient
-    row_gradient = []
+    bottom_line = ""
     for char_pos in range(box_width):
-        # Clamp to prevent wrap-around
         gradient_pos = min(1.0, max(0.0, (total_rows - 1) / total_rows + char_pos * diagonal_shift / box_width))
-        row_gradient.append(get_gradient_bg_by_position(gradient_pos))
+        bg = get_gradient_bg_by_position(gradient_pos)
 
-    # Bottom line: ◣ followed by spaces, ending with ◢
-    bottom_line = f"{row_gradient[0]}{WHITE}{ROUND_BL}"
-    for char_pos in range(1, box_width - 1):
-        bottom_line += f"{row_gradient[char_pos]} "
-    bottom_line += f"{row_gradient[-1]}{ROUND_BR}{RESET}"
+        if char_pos == 0:
+            # Left corner with gradient bg
+            bottom_line += f"{bg}{CORNER_COLOR}{ROUND_BL}{RESET}"
+        elif char_pos == box_width - 1:
+            # Right corner with gradient bg
+            bottom_line += f"{bg}{CORNER_COLOR}{ROUND_BR}{RESET}"
+        else:
+            # Middle space with gradient bg
+            bottom_line += f"{bg} {RESET}"
     banner_lines.append(bottom_line)
 
-    # Print the banner
-    print("")
+    # Print the banner (no extra empty lines)
     print("\n".join(banner_lines))
-    print("")
