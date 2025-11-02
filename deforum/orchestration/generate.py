@@ -108,12 +108,83 @@ def _rgb_to_ansi_background(rgb):
     r, g, b = rgb
     return f"\033[48;2;{r};{g};{b}m"
 
+def _get_movement_indicators(anim_args, keys, frame_idx):
+    """Generate ASCII movement indicators for current frame.
+
+    Translation indicators:
+        < = left, > = right
+        ^ = up, v = down
+        + = forward (toward camera), - = backward (away from camera)
+
+    Rotation indicators (pitch/yaw/roll):
+        ↑ = pitch up, ↓ = pitch down
+        ← = yaw left, → = yaw right
+        ↶ = roll counter-clockwise, ↷ = roll clockwise
+
+    Args:
+        anim_args: Animation arguments
+        keys: Animation keys with scheduled values
+        frame_idx: Current frame index
+
+    Returns:
+        String with ASCII movement indicators, or empty string if no movement
+    """
+    if anim_args.animation_mode in ['Video Input', 'Interpolation']:
+        return ""  # No transform data available
+
+    indicators = []
+    threshold = 0.01  # Minimum value to show indicator
+
+    # Translation indicators
+    tr_x = keys.translation_x_series[frame_idx]
+    tr_y = keys.translation_y_series[frame_idx]
+
+    if abs(tr_x) > threshold:
+        indicators.append(">" if tr_x > 0 else "<")
+    if abs(tr_y) > threshold:
+        indicators.append("v" if tr_y > 0 else "^")
+
+    # 3D specific: Z translation and rotations
+    if anim_args.animation_mode == '3D':
+        tr_z = keys.translation_z_series[frame_idx]
+        if abs(tr_z) > threshold:
+            indicators.append("+" if tr_z > 0 else "-")
+
+        # Rotations (pitch/yaw/roll using Unicode arrows)
+        rot_x = keys.rotation_3d_x_series[frame_idx]  # Pitch
+        rot_y = keys.rotation_3d_y_series[frame_idx]  # Yaw
+        rot_z = keys.rotation_3d_z_series[frame_idx]  # Roll
+
+        if abs(rot_x) > threshold:
+            indicators.append("↓" if rot_x > 0 else "↑")  # Pitch
+        if abs(rot_y) > threshold:
+            indicators.append("→" if rot_y > 0 else "←")  # Yaw
+        if abs(rot_z) > threshold:
+            indicators.append("↷" if rot_z > 0 else "↶")  # Roll
+
+    # 2D specific: Angle and Zoom
+    if anim_args.animation_mode == '2D':
+        angle = keys.angle_series[frame_idx]
+        zoom = keys.zoom_series[frame_idx]
+
+        if abs(angle) > threshold:
+            indicators.append("↷" if angle > 0 else "↶")  # Rotation
+        if abs(zoom - 1.0) > threshold:
+            indicators.append("+" if zoom > 1.0 else "-")  # Zoom in/out
+
+    if indicators:
+        return " Move: " + " ".join(indicators)
+    else:
+        return ""
+
 def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=None):
     """Print comprehensive frame parameters table.
 
     Displays all relevant parameters for the current frame including:
-    - Seed (in table)
-    - Mean color of previous frame (if available)
+    - Seed with color indicator and movement arrows
+    - Mean color of previous frame (if available) shown as colored block ██
+    - Movement indicators: < > (left/right), ^ v (up/down), + - (forward/back)
+    - Rotation indicators: ↑ ↓ (pitch), ← → (yaw), ↶ ↷ (roll)
     - Prompts (printed separately above table)
     - Sampling parameters (steps, CFG, denoise)
     - Optional schedules (subseed, sampler, scheduler, checkpoint)
@@ -135,7 +206,7 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
     model_ignores_negative = is_flux_model() or is_lumina_model()
 
     # ========================================================================
-    # Print seed and color info BEFORE table
+    # Print seed, color, and movement info BEFORE table
     # ========================================================================
     seed_info = f"Seed: {p.seed}"
 
@@ -144,6 +215,11 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
         mean_color = _get_mean_color(previous_image)
         color_block = _rgb_to_ansi_background(mean_color)
         seed_info += f", Color: {color_block}██{_RESET_BG}"
+
+    # Add movement indicators
+    movement = _get_movement_indicators(anim_args, keys, frame_idx)
+    if movement:
+        seed_info += movement
 
     logger.info(seed_info)
 
