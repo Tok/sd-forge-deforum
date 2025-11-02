@@ -29,6 +29,16 @@ class Taqaddumat:
         self.total_animation_cycles = None
 
     def reset(self, data, frames):
+        """Initialize all progress bars with correct totals.
+
+        Args:
+            data: RenderData containing animation settings
+            frames: List of DiffusionFrame objects (in GENERATION order)
+
+        Note:
+            In reverse generation mode, frames are already reversed by core.py
+            before calling this method, so initialization is always correct.
+        """
         def create(iterable, position, color, description, unit, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
             # Get themed color based on current theme
             themed_color = Taqaddumat._get_themed_color(color)
@@ -42,29 +52,42 @@ class Taqaddumat:
         # The global step counter tqdm provided by Forge keeps reattaching itself after the highest position used here.
         # This dictates how much space the total tqdm will take up, even when positions are reassigned here later.
 
-        second_frame_tweens_count = len(frames[1].tweens)  # DF 0 can not have Tweens, so we initialize at 1.
+        # Get initial tween count safely (handle edge cases)
+        initial_tween_count = 0
+        if len(frames) > 1 and len(frames[1].tweens) > 0:
+            initial_tween_count = len(frames[1].tweens)
+        elif len(frames) > 0 and len(frames[0].tweens) > 0:
+            initial_tween_count = len(frames[0].tweens)
+
         self.tweens = create(
-            range(second_frame_tweens_count), 0, HEX_BLUE,
+            range(initial_tween_count), 0, HEX_BLUE,
             "Current Tweens", "tween")
 
+        # Total frames = all tweens across all diffusion frames
         total_frames = sum(len(frame.tweens) for frame in frames)
         self.total_frames = create(
             range(total_frames), 1, HEX_GREEN,
             "Total Frames", "frame")
 
-        first_frame_steps_count = frames[0].schedule.steps
+        # Get initial steps count safely
+        initial_steps_count = frames[0].schedule.steps if len(frames) > 0 else 20
         self.steps = create(
-            range(first_frame_steps_count), 0, HEX_ORANGE,
+            range(initial_steps_count), 0, HEX_ORANGE,
             "Current Diffusion Steps", "step")
 
+        # Total steps = actual steps across all diffusion frames
         total_steps = sum(frame.actual_steps(data) for frame in frames)
         self.total_steps = create(
             range(total_steps), 1, HEX_RED,
             "Total Diffusion Steps", "step")
 
+        # Renamed from "Total Animation Cycles" to "Diffusion Frames" for clarity
+        # This counts keyframes + cadence frames (not "cycles")
+        num_diffusion_frames = len(frames)
         self.total_animation_cycles = create(
-            frames, 0, HEX_PURPLE,
-            "Total Animation Cycles", "cycle",
+            range(num_diffusion_frames), 0, HEX_PURPLE,
+            "Diffusion Frames" + (" (Reverse)" if data.args.anim_args.reverse_generation else ""),
+            "frame",
             Taqaddumat.DEFAULT_BAR_FORMAT)
 
         self.clear_all()

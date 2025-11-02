@@ -64,41 +64,69 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     web_ui_utils.init_job(data)
     diffusion_frames = DiffusionFrame.create_all_frames(data, KeyFrameDistribution.from_UI_tab(data))
     subtitle_utils.create_all_subtitles_if_active(data, diffusion_frames)
+
+    # For reverse generation, reverse frames BEFORE tqdm initialization
+    # This ensures tqdm totals match actual processing order
+    if anim_args.reverse_generation:
+        generation_order_frames = prepare_reverse_generation(diffusion_frames)
+    else:
+        generation_order_frames = diffusion_frames
+
     shared.total_tqdm = Taqaddumat()
-    shared.total_tqdm.reset(data, diffusion_frames)
-    run_render_animation(data, diffusion_frames)
+    shared.total_tqdm.reset(data, generation_order_frames)
+    run_render_animation(data, generation_order_frames)
     data.animation_mode.unload_raft_and_depth_model()
 
 
-def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
-    # Reverse generation: process frames in reverse order (last→first), then reassemble correctly
-    # This allows stable forward-motion by generating zoom-out (model fills naturally), then reversing
-    if data.args.anim_args.reverse_generation:
-        logger.info("Reverse Generation enabled: Processing frames in reverse order (last→first)")
-        logger.info("Frames will be reassembled in correct order for final video")
+def prepare_reverse_generation(frames: List[DiffusionFrame]) -> List[DiffusionFrame]:
+    """Prepare frames for reverse generation mode.
 
-        # Reverse the frame list
-        generation_order_frames = list(reversed(frames))
+    Reverses frame order and reassigns tweens so frames are processed last→first
+    but saved with correct frame numbers for proper video reassembly.
 
-        # Reassign tweens: save all tweens first, then reassign to next frame in generation order
-        # (which is the PREVIOUS frame in timeline order)
-        # This way tweens are emitted AFTER their source keyframe is generated
-        saved_tweens = [frame.tweens for frame in generation_order_frames]
+    Args:
+        frames: Original frames in timeline order (0→N)
 
-        # Clear all tweens first
-        for frame in generation_order_frames:
-            frame.tweens = []
+    Returns:
+        Frames in generation order (N→0) with tweens reassigned
 
-        # Reassign: each frame's original tweens go to the next frame in generation order
-        for i in range(len(generation_order_frames) - 1):
-            generation_order_frames[i + 1].tweens = saved_tweens[i]
+    Example:
+        Timeline: [Frame0(tweens=1-4), Frame5(tweens=6-9), Frame10]
+        Generation: [Frame10(tweens=[]), Frame5(tweens=6-9), Frame0(tweens=1-4)]
+        Result: Tweens emitted AFTER their source keyframe exists
+    """
+    logger.info("Reverse Generation enabled: Processing frames in reverse order (last→first)")
+    logger.info("Frames will be reassembled in correct order for final video")
 
-        # First frame in generation order (last in timeline) has no tweens
-        generation_order_frames[0].tweens = []
-    else:
-        generation_order_frames = frames
+    # Reverse the frame list (last→first in generation order)
+    generation_order_frames = list(reversed(frames))
 
+    # Reassign tweens: save all tweens first, then reassign to next frame in generation order
+    # (which is the PREVIOUS frame in timeline order)
+    # This way tweens are emitted AFTER their source keyframe is generated
+    saved_tweens = [frame.tweens for frame in generation_order_frames]
+
+    # Clear all tweens first
     for frame in generation_order_frames:
+        frame.tweens = []
+
+    # Reassign: each frame's original tweens go to the next frame in generation order
+    for i in range(len(generation_order_frames) - 1):
+        generation_order_frames[i + 1].tweens = saved_tweens[i]
+
+    # First frame in generation order (last in timeline) has no tweens
+    generation_order_frames[0].tweens = []
+
+    return generation_order_frames
+
+
+def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
+    """Process all frames in generation order.
+
+    Args:
+        frames: Frames in generation order (already reversed if needed)
+    """
+    for frame in frames:
         is_resume, full_path = is_resume_with_image(data, frame)
         if is_resume:
             shared.total_tqdm.total_animation_cycles.update()
