@@ -32,6 +32,16 @@ def is_dashboard_enabled():
     return _get_opts().data.get("deforum_enable_dashboard", True)  # Enabled by default
 
 
+def is_dashboard_ascii_preview_enabled():
+    """Check if ASCII art preview in dashboard is enabled."""
+    return _get_opts().data.get("deforum_dashboard_ascii_preview", True)  # Enabled by default
+
+
+def is_dashboard_ascii_to_log_enabled():
+    """Check if ASCII art should be written to log on each frame."""
+    return _get_opts().data.get("deforum_dashboard_ascii_to_log", False)  # Disabled by default
+
+
 def is_emojis_enabled():
     """Check if emojis are enabled in UI and console output."""
     return _get_opts().data.get("deforum_enable_emojis", False)  # Disabled by default

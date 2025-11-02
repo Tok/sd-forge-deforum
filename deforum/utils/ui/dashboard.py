@@ -20,6 +20,13 @@ from typing import Optional, Dict, Any
 from deforum.rendering import options as opt_utils
 from deforum.utils.system.logging.themes import get_tqdm_color_for_theme, HEX_CLASSIC_BLUE, HEX_CLASSIC_GREEN, HEX_CLASSIC_ORANGE, HEX_CLASSIC_RED, HEX_CLASSIC_PURPLE, HEX_CLASSIC_YELLOW
 
+try:
+    import numpy as np
+    from PIL import Image
+except ImportError:
+    np = None
+    Image = None
+
 
 class MemoryStats:
     """Tracks GPU memory statistics from Forge output."""
@@ -83,6 +90,74 @@ class MemoryStats:
         return (self.free_gpu_mb / self.total_gpu_mb) * 100.0
 
 
+def image_to_ascii_art(image, width: int = 32, height: int = 18, use_color: bool = True) -> str:
+    """Convert PIL Image to colored ASCII art grid using 2-space blocks.
+
+    Args:
+        image: PIL Image object or numpy array
+        width: Number of PIXELS wide (not chars - will be doubled for 2-space pixels)
+        height: Number of PIXELS tall
+        use_color: If True, use ANSI color codes
+
+    Returns:
+        String with ASCII art (colored if use_color=True)
+
+    Note:
+        Each pixel is represented by 2 spaces ("  ") with background color,
+        maintaining proper aspect ratio in terminal display.
+    """
+    if image is None or Image is None or np is None:
+        return ""
+
+    # Convert to PIL Image if needed
+    if isinstance(image, np.ndarray):
+        image = Image.fromarray(image)
+
+    # Preserve aspect ratio - calculate target size based on image aspect
+    img_width, img_height = image.size
+    img_aspect = img_width / img_height
+
+    # Target aspect (width * 2 since we use 2 spaces per pixel)
+    target_aspect = width / height
+
+    # Adjust dimensions to preserve aspect ratio
+    if img_aspect > target_aspect:
+        # Image is wider - limit by width
+        final_width = width
+        final_height = int(width / img_aspect)
+    else:
+        # Image is taller - limit by height
+        final_height = height
+        final_width = int(height * img_aspect)
+
+    # Resize to final dimensions
+    image = image.resize((final_width, final_height), Image.Resampling.LANCZOS)
+    pixels = np.array(image)
+
+    lines = []
+    for y in range(final_height):
+        line = ""
+        for x in range(final_width):
+            # Get RGB values
+            if len(pixels.shape) == 3 and pixels.shape[2] >= 3:
+                r, g, b = pixels[y, x, :3]
+            else:
+                # Grayscale
+                gray = pixels[y, x] if pixels.ndim == 2 else pixels[y, x, 0]
+                r = g = b = gray
+
+            # Add pixel as 2 spaces with background color
+            if use_color:
+                # Use ANSI 24-bit background color (true color)
+                line += f"\033[48;2;{r};{g};{b}m  \033[0m"
+            else:
+                line += "  "
+
+        lines.append(line)
+
+    return "\n".join(lines)
+
+
 class RenderDashboard:
     """Terminal dashboard for Deforum rendering."""
 
@@ -101,6 +176,11 @@ class RenderDashboard:
         # Get theme and emoji settings
         self.theme = opt_utils.get_log_theme()
         self.use_emojis = opt_utils.is_emojis_enabled()
+        self.use_ascii_preview = opt_utils.is_dashboard_ascii_preview_enabled()
+        self.use_ascii_to_log = opt_utils.is_dashboard_ascii_to_log_enabled()
+
+        # Store last frame image for ASCII preview
+        self.last_frame_image = None
 
         # Dashboard state
         self.frame_info = {
@@ -136,9 +216,12 @@ class RenderDashboard:
 
     def _setup_layout(self):
         """Configure dashboard layout structure."""
-        # Split into header (frame info), body (progress + log split), main log (largest scrolling area)
+        # Split into header (frame info + ASCII preview), progress, log (main scrolling area)
+        # Header size depends on whether ASCII preview is enabled
+        header_size = 24 if self.use_ascii_preview else 6
+
         self.layout.split(
-            Layout(name="header", size=6),
+            Layout(name="header", size=header_size),
             Layout(name="progress", size=8),
             Layout(name="log")  # Takes remaining space - main scrolling log area
         )
@@ -200,7 +283,7 @@ class RenderDashboard:
             self.table_data['ro_z']
         )
 
-        # Combine all
+        # Combine text info
         content = Text()
         content.append_text(frame_line)
         content.append("\n")
@@ -208,8 +291,22 @@ class RenderDashboard:
         content.append("\n")
         content.append_text(prompt_line)
 
+        # Add ASCII preview if enabled and image available
+        elements = [content, table]
+        if self.use_ascii_preview and self.last_frame_image is not None:
+            ascii_art = image_to_ascii_art(
+                self.last_frame_image,
+                width=32,
+                height=18,
+                use_color=(self.theme != 'simple')
+            )
+            if ascii_art:
+                preview_text = Text()
+                preview_text.append(ascii_art)
+                elements.append(preview_text)
+
         return Panel(
-            Group(content, table),
+            Group(*elements),
             title="Frame Info",
             border_style="blue",
             padding=(0, 1)
@@ -338,6 +435,31 @@ class RenderDashboard:
     def add_log(self, message: str):
         """Add a message to the scrolling log."""
         self.log_buffer.append(message)
+
+    def add_ascii_art_to_log(self, image, frame_idx: int):
+        """Add ASCII art of image to the scrolling log if enabled.
+
+        Args:
+            image: PIL Image or numpy array
+            frame_idx: Current frame index
+        """
+        if not self.use_ascii_to_log or image is None:
+            return
+
+        # Generate small ASCII art for log (smaller than header preview)
+        ascii_art = image_to_ascii_art(
+            image,
+            width=16,  # Smaller for log
+            height=9,
+            use_color=(self.theme != 'simple')
+        )
+
+        if ascii_art:
+            # Add frame header
+            self.add_log(f"Frame {frame_idx}:")
+            # Add each line of ASCII art
+            for line in ascii_art.split('\n'):
+                self.add_log(line)
 
     def start(self):
         """Start live dashboard display."""

@@ -219,9 +219,11 @@ def _update_dashboard(args, anim_args, p, keys, frame_idx, previous_image, dashb
     dashboard.frame_info['movement'] = _get_movement_indicators(anim_args, keys, frame_idx)
     dashboard.frame_info['prompt'] = p.prompt if isinstance(p.prompt, str) else p.prompt[0] if p.prompt else ""
 
-    # Update color if previous image available
+    # Update color and image if previous image available
     if previous_image is not None:
         dashboard.frame_info['color_rgb'] = _get_mean_color(previous_image)
+        dashboard.last_frame_image = previous_image  # For ASCII preview
+        dashboard.add_ascii_art_to_log(previous_image, frame_idx)  # Add to log if enabled
 
     # Update table data
     total_steps = p.steps
