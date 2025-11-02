@@ -5,7 +5,14 @@ def print_startup_banner():
     """Print Deforum initialization banner with slopcore gradient background."""
     import shutil
     import unicodedata
-    from deforum.utils.general import get_deforum_version, FORK_NAME, GITHUB_URL
+    from deforum.constants import FORK_NAME, GITHUB_URL
+
+    # Get commit ID (may fail during early preload if modules.extensions not ready)
+    try:
+        from deforum.utils.general import get_deforum_version
+        commit_id = get_deforum_version()
+    except:
+        commit_id = "Unknown"
 
     # ANSI color codes for slopcore gradient
     from deforum.utils.system.logging.themes import (
@@ -84,9 +91,6 @@ def print_startup_banner():
     if title_width < available_width:
         left_pad_spaces = (available_width - title_width) // 2
         title_text = (" " * left_pad_spaces) + title_text
-
-    # Get commit ID for version info
-    commit_id = get_deforum_version()
 
     # Prepare content lines (plain text, background will have gradient)
     lines = [
