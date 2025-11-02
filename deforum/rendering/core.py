@@ -86,23 +86,72 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         # Set up signal handler for clean Ctrl+C (only works in main thread)
         import signal
         import threading
+        import time
 
         if threading.current_thread() is threading.main_thread():
             original_sigint = signal.getsignal(signal.SIGINT)
 
+            # Track Ctrl+C presses for confirmation
+            sigint_state = {
+                'count': 0,
+                'first_time': 0,
+                'confirmation_window': 3.0  # seconds
+            }
+
             def sigint_handler(sig, frame_obj):
-                """Handle Ctrl+C by stopping dashboard and restoring handler."""
-                if dashboard:
-                    try:
-                        dashboard.stop()
-                    except:
-                        pass  # Ensure we always restore handler
-                # Restore original handler and call it
-                signal.signal(signal.SIGINT, original_sigint)
-                if callable(original_sigint):
-                    original_sigint(sig, frame_obj)
-                else:
+                """Handle Ctrl+C with confirmation to prevent accidental exit.
+
+                - 1st Ctrl+C: Show warning, require confirmation within 3 seconds
+                - 2nd Ctrl+C (within 3s): Clean exit
+                - 3rd Ctrl+C (anytime): Force quit immediately
+                """
+                current_time = time.time()
+                sigint_state['count'] += 1
+
+                # 3rd Ctrl+C: Force quit immediately (emergency escape)
+                if sigint_state['count'] >= 3:
+                    print("\n\n⚠️  FORCE QUIT - Exiting immediately without cleanup")
+                    # Restore original handler and force exit
+                    signal.signal(signal.SIGINT, original_sigint)
+                    if dashboard:
+                        try:
+                            dashboard._is_active = False  # Prevent cleanup
+                        except:
+                            pass
                     raise KeyboardInterrupt
+
+                # 1st Ctrl+C: Show warning
+                if sigint_state['count'] == 1:
+                    sigint_state['first_time'] = current_time
+                    print("\n\n⚠️  Interrupt detected. Press Ctrl+C again within 3 seconds to confirm exit")
+                    print("   (Press Ctrl+C a 3rd time anytime to force quit)")
+                    return  # Don't exit, keep rendering
+
+                # 2nd Ctrl+C: Check if within confirmation window
+                if sigint_state['count'] == 2:
+                    time_since_first = current_time - sigint_state['first_time']
+
+                    if time_since_first <= sigint_state['confirmation_window']:
+                        # Within confirmation window - clean exit
+                        print("\n\n✓ Exit confirmed. Cleaning up...")
+                        if dashboard:
+                            try:
+                                dashboard.stop()
+                            except:
+                                pass
+                        # Restore original handler and call it
+                        signal.signal(signal.SIGINT, original_sigint)
+                        if callable(original_sigint):
+                            original_sigint(sig, frame_obj)
+                        else:
+                            raise KeyboardInterrupt
+                    else:
+                        # Outside confirmation window - reset and treat as first press
+                        sigint_state['count'] = 1
+                        sigint_state['first_time'] = current_time
+                        print("\n\n⚠️  Interrupt detected. Press Ctrl+C again within 3 seconds to confirm exit")
+                        print("   (Press Ctrl+C a 3rd time anytime to force quit)")
+                        return
 
             signal.signal(signal.SIGINT, sigint_handler)
 
