@@ -83,14 +83,16 @@ def print_startup_banner():
     total_rows = len(lines) + 2  # +2 for top and bottom borders
 
     # Diagonal shift amount (shift gradient start position for each row)
-    diagonal_shift = 0.15  # 15% shift per row for diagonal effect
+    # Smaller shift = more vertical, larger = more diagonal
+    diagonal_shift = 0.4  # 40% shift for stronger diagonal, no wrap-around
 
     # Top border with rounded corners and diagonal gradient
     import re
     row_gradient = []
     for char_pos in range(box_width):
         # Diagonal: row 0, but gradient position shifts with horizontal position
-        gradient_pos = (0 + char_pos * diagonal_shift / box_width) % 1.0
+        # Clamp to 0-1 range instead of modulo to prevent wrap-around
+        gradient_pos = min(1.0, max(0.0, 0 + char_pos * diagonal_shift / box_width))
         row_gradient.append(get_gradient_bg_by_position(gradient_pos))
 
     top_line = f"{row_gradient[0]}{WHITE}{ROUND_TL}"
@@ -109,34 +111,37 @@ def print_startup_banner():
         row_base = (row_idx + 1) / total_rows  # Vertical position
 
         content_line = ""
-        # Left border
-        gradient_pos = (row_base + 0 * diagonal_shift / box_width) % 1.0
-        bg = get_gradient_bg_by_position(gradient_pos)
-        content_line += f"{bg}{WHITE}{VERTICAL} "
 
-        # Text content with gradient shifting horizontally
-        for char_pos, char in enumerate(visible_text):
-            gradient_pos = (row_base + (char_pos + 2) * diagonal_shift / box_width) % 1.0
+        # Calculate gradient for each character position in this row
+        for char_pos in range(box_width):
+            # Diagonal gradient: combine row and column position
+            # Clamp instead of modulo to prevent wrap-around from purple back to blue
+            gradient_pos = min(1.0, max(0.0, row_base + char_pos * diagonal_shift / box_width))
             bg = get_gradient_bg_by_position(gradient_pos)
-            content_line += f"{bg}{char}"
 
-        # Padding
-        for char_pos in range(text_len, box_width - 4):
-            gradient_pos = (row_base + (char_pos + 2) * diagonal_shift / box_width) % 1.0
-            bg = get_gradient_bg_by_position(gradient_pos)
-            content_line += f"{bg} "
-
-        # Right border
-        gradient_pos = (row_base + (box_width - 1) * diagonal_shift / box_width) % 1.0
-        bg = get_gradient_bg_by_position(gradient_pos)
-        content_line += f"{bg}{VERTICAL}{RESET}"
+            if char_pos == 0:
+                # Left border
+                content_line += f"{bg}{WHITE}{VERTICAL}"
+            elif char_pos == 1:
+                # Space after left border
+                content_line += f"{bg} "
+            elif char_pos < text_len + 2:
+                # Text content
+                content_line += f"{bg}{visible_text[char_pos - 2]}"
+            elif char_pos < box_width - 1:
+                # Padding
+                content_line += f"{bg} "
+            else:
+                # Right border (last char)
+                content_line += f"{bg}{VERTICAL}{RESET}"
 
         banner_lines.append(content_line)
 
     # Bottom border with rounded corners and diagonal gradient
     row_gradient = []
     for char_pos in range(box_width):
-        gradient_pos = ((total_rows - 1) / total_rows + char_pos * diagonal_shift / box_width) % 1.0
+        # Clamp to prevent wrap-around
+        gradient_pos = min(1.0, max(0.0, (total_rows - 1) / total_rows + char_pos * diagonal_shift / box_width))
         row_gradient.append(get_gradient_bg_by_position(gradient_pos))
 
     bottom_line = f"{row_gradient[0]}{WHITE}{ROUND_BL}"
