@@ -27,6 +27,7 @@ class Taqaddumat:
         self.steps = None
         self.total_steps = None
         self.total_animation_cycles = None
+        self.dashboard = None  # Optional dashboard for progress updates
 
     def reset(self, data, frames):
         """Initialize all progress bars with correct totals.
@@ -43,13 +44,23 @@ class Taqaddumat:
             - All bars except final: leave=False (disappear when animation completes)
             - Final progress bar (diffusion frames): leave=True (shows completion)
             - Position reuse allows bars to update in-place during rendering
+            - If dashboard enabled, tqdm bars are disabled to avoid double display
         """
+        # Store dashboard reference from data
+        self.dashboard = getattr(data, 'dashboard', None)
+
+        # Check if dashboard is enabled
+        from deforum.rendering import options as opt_utils
+        use_dashboard = opt_utils.is_dashboard_enabled() and self.dashboard is not None
+
         def create(iterable, position, color, description, unit, leave=False, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
             # Get themed color based on current theme
             themed_color = Taqaddumat._get_themed_color(color)
+            # Disable tqdm bars if dashboard is active
+            disable_tqdm = use_dashboard or shared.cmd_opts.disable_console_progressbars
             return tqdm(iterable, position=position, desc=description, unit=unit, dynamic_ncols=True,
                         file=shared.progress_print_out, bar_format=bar_format, leave=leave,
-                        disable=shared.cmd_opts.disable_console_progressbars, colour=themed_color)
+                        disable=disable_tqdm, colour=themed_color)
 
         # Positions greater than 0 are assigned where bars are meant to show up directly after each other and
         # need to be updated at the same time. 'Tweens' is paired with 'Total Frames' and 'Steps' with 'Total Steps'.
@@ -114,7 +125,10 @@ class Taqaddumat:
         self.tweens.refresh()
         self.total_frames.update()
         self.total_frames.refresh()
-        # Don't print newline on completion - bars use leave=False and should disappear cleanly
+        # Update dashboard if available
+        if self.dashboard:
+            self.dashboard.progress_data['total_frames'] = (self.total_frames.n, self.total_frames.total)
+            self.dashboard.update()
 
     def increment_step_count(self):
         if self.steps.n == 0:
@@ -124,12 +138,20 @@ class Taqaddumat:
         self.steps.refresh()
         self.total_steps.update()
         self.total_steps.refresh()
-        # Don't print newline on completion - bars use leave=False and should disappear cleanly
+        # Update dashboard if available
+        if self.dashboard:
+            self.dashboard.progress_data['current_step'] = (self.steps.n, self.steps.total)
+            self.dashboard.progress_data['total_steps'] = (self.total_steps.n, self.total_steps.total)
+            self.dashboard.update()
 
     def increment_animation_cycle_count(self):
         # Calls to tqdm.update() without an argument increment it by 1.
         self.total_animation_cycles.update()
         self.total_animation_cycles.refresh()
+        # Update dashboard if available
+        if self.dashboard:
+            self.dashboard.progress_data['diffusion_frames'] = (self.total_animation_cycles.n, self.total_animation_cycles.total)
+            self.dashboard.update()
         logger.info("")
 
     def reset_tween_count(self, n):

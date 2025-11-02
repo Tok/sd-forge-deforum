@@ -72,6 +72,26 @@ def load_mask_latent(mask_input, shape):
 # ANSI escape codes for background color
 _RESET_BG = "\033[0m"
 
+def _handle_forge_message(message: str, dashboard):
+    """Handle intercepted Forge messages and route to dashboard.
+
+    Args:
+        message: Intercepted message from Forge output
+        dashboard: RenderDashboard instance
+    """
+    message = message.strip()
+
+    # Update memory stats from memory management messages
+    if "[Memory Management]" in message:
+        dashboard.memory.update_from_forge_message(message)
+        dashboard.update()
+        # Also add condensed version to log
+        dashboard.add_log(f"[Memory] {dashboard.memory.target_model} ({dashboard.memory.free_gpu_mb/1024:.1f}GB free)")
+
+    # Handle unload messages
+    elif "[Unload]" in message:
+        dashboard.add_log(f"[Unload] {message.split(']')[1].strip()[:50]}")  # First 50 chars after bracket
+
 def _get_mean_color(image):
     """Calculate mean RGB color of an image.
 
@@ -589,7 +609,11 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
                 p_txt.scheduler = "Simple"  # FIXME provide
                 # Suppress redundant Forge output (info already shown in Deforum's table)
-                with suppress_forge_output():
+                # Intercept memory messages for dashboard VRAM monitoring
+                dashboard = getattr(root, 'dashboard', None)
+                important_patterns = ["[Memory Management]", "[Unload]"] if dashboard else None
+                callback = (lambda msg: _handle_forge_message(msg, dashboard)) if dashboard else None
+                with suppress_forge_output(important_patterns=important_patterns, callback=callback):
                     processed = processing.process_images(p_txt)
 
             try:
@@ -646,7 +670,11 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
 
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
                 # Suppress redundant Forge output (info already shown in Deforum's table)
-                with suppress_forge_output():
+                # Intercept memory messages for dashboard VRAM monitoring
+                dashboard = getattr(root, 'dashboard', None)
+                important_patterns = ["[Memory Management]", "[Unload]"] if dashboard else None
+                callback = (lambda msg: _handle_forge_message(msg, dashboard)) if dashboard else None
+                with suppress_forge_output(important_patterns=important_patterns, callback=callback):
                     processed = processing.process_images(p)
 
 
