@@ -10,7 +10,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
 from rich.live import Live
-from rich.console import Console
+from rich.console import Console, Group
 from rich.text import Text
 from rich import box
 import re
@@ -207,7 +207,7 @@ class RenderDashboard:
         content.append_text(prompt_line)
 
         return Panel(
-            content + "\n" + table,
+            Group(content, table),
             title="Frame Info",
             border_style="blue",
             padding=(0, 1)
