@@ -39,9 +39,10 @@ def get_tab_init(d, da, dp, dau, dv=None):
     logger.info("About to create Init TabItem")
     with gr.TabItem('Init'):
         logger.info("Inside Init TabItem")
-        with gr.Tabs() as init_subtabs:  # First tab (Audio Sync) will be selected by default
-            # AUDIO SYNC INNER-TAB - First tab (selected by default)
-            with gr.Tab("Audio Sync") as audio_sync_subtab:
+        # Audio Sync tab is explicitly selected as default
+        with gr.Tabs(selected="Audio Sync") as init_subtabs:
+            # AUDIO SYNC INNER-TAB - First tab (explicitly selected by default)
+            with gr.Tab("Audio Sync", id="Audio Sync") as audio_sync_subtab:
                 gr.HTML(
                     value="<p>Audio event detection for prompt synchronization and video soundtrack. Upload audio file or enter path/URL below. Disabled when Parseq is active.</p>"
                 )
