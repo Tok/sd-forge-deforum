@@ -36,24 +36,23 @@ def call_write_subtitle_from_to(data, sub_i, frame_i, is_cadence, seed, subseed,
 
     if use_mode_aware:
         # NEW: Mode-aware subtitle generation
-        # Calculate actual steps based on strength
-        diffusion_frames = data.diffusion_frame_data.diffusion_frames
-        actual_steps = 20  # Default fallback
-        total_steps = 20
+        # For mode-aware subtitles, we calculate steps from strength schedule
+        # Since we don't have access to the actual DiffusionFrame here,
+        # we'll estimate from the strength schedule
+        strength_schedule = data.animation_keys.deform_keys.strength_schedule_series
+        keyframe_strength_schedule = data.animation_keys.deform_keys.keyframe_strength_schedule_series
+        steps_schedule = data.animation_keys.deform_keys.steps_schedule_series
 
-        # Find the diffusion frame for this frame_i
-        for df in diffusion_frames:
-            if df.i == frame_i:
-                actual_steps = df.actual_steps(data)
-                total_steps = df.schedule.steps
-                break
-            # Check if it's a tween of this diffusion frame
-            for tween in df.tweens:
-                if tween.i == frame_i:
-                    # Tween uses the diffusion frame's steps
-                    actual_steps = df.actual_steps(data)
-                    total_steps = df.schedule.steps
-                    break
+        # Get strength and steps for this frame
+        strength = keyframe_strength_schedule[frame_i] if not is_cadence else strength_schedule[frame_i]
+        total_steps = int(steps_schedule[frame_i]) if frame_i < len(steps_schedule) else 20
+
+        # Calculate actual steps (same formula as DiffusionFrame.actual_steps)
+        if frame_i == 0 and not data.args.args.use_init:
+            actual_steps = total_steps
+        else:
+            import math
+            actual_steps = int(math.ceil(total_steps * strength)) + 1
 
         text = format_subtitle_text_mode_aware(
             data, frame_i, is_cadence, seed, subseed,
