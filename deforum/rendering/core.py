@@ -76,8 +76,14 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     from deforum.rendering import options as opt_utils
     dashboard = None
     if opt_utils.is_dashboard_enabled():
-        from deforum.utils.ui.dashboard import RenderDashboard
-        dashboard = RenderDashboard()
+        # Try fixed-position dashboard first (better UX), fall back to simple
+        try:
+            from deforum.utils.ui.dashboard_fixed import FixedDashboard
+            dashboard = FixedDashboard()
+        except Exception:
+            # Fallback to simple dashboard
+            from deforum.utils.ui.dashboard import RenderDashboard
+            dashboard = RenderDashboard()
         # Initialize progress totals
         dashboard.progress_data['diffusion_frames'] = (0, len(generation_order_frames))
         total_steps = sum(frame.actual_steps(data) for frame in generation_order_frames)
