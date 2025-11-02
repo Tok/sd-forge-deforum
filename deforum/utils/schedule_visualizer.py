@@ -246,8 +246,18 @@ def visualize_schedules(
             showlegend=False
         ))
 
-    # Camera direction arrows - GREEN (show where camera faces on ALL frames)
+    # Camera direction arrows - GREEN (classic) or PINK/PURPLE (slopcore)
     import numpy as np
+
+    # Get theme-aware arrow color
+    try:
+        from deforum.rendering.options import get_log_theme
+        theme = get_log_theme()
+        # Slopcore: Deep purple/pink (#A353A8 = SLOPCORE_6)
+        # Classic: Green (#10B981)
+        arrow_color = '#A353A8' if theme == 'slopcore' else '#10B981'
+    except:
+        arrow_color = '#10B981'  # Fallback to green
 
     for idx in range(num_points):
         # Calculate forward direction from rotation angles (simplified)
@@ -267,7 +277,7 @@ def visualize_schedules(
             y=[y_coords[idx], y_coords[idx] + forward_y],
             z=[z_coords[idx], z_coords[idx] + forward_z],
             mode='lines',
-            line=dict(color='#10B981', width=2),  # Thinner for all frames
+            line=dict(color=arrow_color, width=2),  # Thinner for all frames
             hovertemplate=f'<b>Frame {idx}</b><extra></extra>',
             showlegend=False,
             hoverinfo='text'
