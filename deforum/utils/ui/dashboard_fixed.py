@@ -146,7 +146,7 @@ class FixedDashboard:
         self._terminal_height, self._terminal_width = self._get_terminal_size()
 
         # Calculate dashboard height (fixed status only, no ASCII preview)
-        self._dashboard_height = 7  # Separator + 1 status line + 1 blank + 5 tqdm bars
+        self._dashboard_height = 8  # Separator + 1 status + 1 models + 1 prompt + 5 tqdm bars
 
         # Set up scrolling region (reserve bottom lines for dashboard)
         # ANSI: \033[{top};{bottom}r sets scrolling region
@@ -309,38 +309,42 @@ class FixedDashboard:
         if movement:
             line1_left += f" | {movement}"
 
-        # Add loaded models info and VRAM on the right
-        models_str = self._format_loaded_models()
+        # Add VRAM on the right (removed models from here - now on separate line)
         vram_str = self._format_vram_bar()
-
-        # Combine models + VRAM on right side
-        right_side = f"{models_str} | {vram_str}" if models_str else vram_str
 
         # Calculate padding
         import re
         visible_left = re.sub(r'\033\[[0-9;]*m', '', line1_left)
-        visible_right = re.sub(r'\033\[[0-9;]*m', '', right_side)
-        padding_needed = self._terminal_width - len(visible_left) - len(visible_right) - 3  # -3 for " | "
+        visible_vram = re.sub(r'\033\[[0-9;]*m', '', vram_str)
+        padding_needed = self._terminal_width - len(visible_left) - len(visible_vram) - 3  # -3 for " | "
         if padding_needed > 0:
-            line1 = line1_left + (" " * padding_needed) + " | " + right_side
+            line1 = line1_left + (" " * padding_needed) + " | " + vram_str
         else:
-            line1 = line1_left + " | " + right_side
+            line1 = line1_left + " | " + vram_str
 
         lines.append(line1)
 
-        # Status line 2: Prompt
+        # Status line 2: Models info (detailed)
+        models_str = self._format_loaded_models_detailed()
+        if models_str:
+            line2 = models_str.ljust(self._terminal_width)
+        else:
+            line2 = " " * self._terminal_width
+        lines.append(line2)
+
+        # Status line 3: Prompt
         prompt = self.frame_info.get('prompt', '')
         if prompt:
             # Truncate prompt if too long for terminal width
             max_prompt_len = self._terminal_width - 10  # Leave some padding
             if len(prompt) > max_prompt_len:
                 prompt = prompt[:max_prompt_len - 3] + "..."
-            line2 = f"Prompt: {prompt}"
+            line3 = f"Prompt: {prompt}"
             # Pad to full width
-            line2 = line2.ljust(self._terminal_width)
+            line3 = line3.ljust(self._terminal_width)
         else:
-            line2 = " " * self._terminal_width
-        lines.append(line2)
+            line3 = " " * self._terminal_width
+        lines.append(line3)
 
         # Progress bars (5 tqdm bars from Taqaddumat)
         lines.extend(self._render_tqdm_bars())
@@ -381,11 +385,11 @@ class FixedDashboard:
         except Exception:
             return "VRAM: N/A"
 
-    def _format_loaded_models(self) -> str:
-        """Format loaded models info (Flux/Lumina + Depth).
+    def _format_loaded_models_detailed(self) -> str:
+        """Format loaded models info with detailed information on dedicated line.
 
         Returns:
-            String showing which models are loaded in VRAM with sizes, or empty if no info available
+            String showing which models are loaded with sizes, devices, and status indicators
         """
         try:
             import torch
@@ -469,20 +473,35 @@ class FixedDashboard:
             except:
                 pass  # Depth model not available
 
-            if loaded_models:
-                # Show indicator based on what's loaded
-                if len(loaded_models) == 2:
-                    # Both models loaded
-                    separator = " + "
-                elif len(loaded_models) == 1:
-                    # Only one model loaded
-                    separator = ""
-                else:
-                    separator = " + "
-
-                return "Models: " + separator.join(loaded_models)
-            else:
+            if not loaded_models:
                 return ""
+
+            # Build detailed info string
+            parts = []
+
+            # Add diffusion model info
+            if len(loaded_models) >= 1:
+                parts.append(f"Diffusion: {loaded_models[0]}")
+
+            # Add depth model info if present
+            if len(loaded_models) >= 2:
+                parts.append(f"Depth: {loaded_models[1]}")
+
+            # Add status indicator
+            if len(loaded_models) == 2:
+                # Both loaded simultaneously
+                status = "✓ Both in VRAM"
+            elif len(loaded_models) == 1 and main_model_on_gpu:
+                # Only diffusion loaded
+                status = "⇄ Swapping" if depth_model_on_gpu else ""
+            else:
+                status = ""
+
+            result = " | ".join(parts)
+            if status:
+                result += f" | {status}"
+
+            return result
 
         except Exception:
             return ""  # Silently fail if can't detect
