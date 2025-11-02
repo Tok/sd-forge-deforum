@@ -350,6 +350,7 @@ class FixedDashboard:
 
         # Use same color as log (BLUE, not theme-aware)
         from deforum.utils.system.logging.log import BLUE
+        from deforum.utils.image.color import hex_to_ansi_foreground
         animation_frame_color = BLUE
 
         # Colorize frame type
