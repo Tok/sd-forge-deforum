@@ -140,6 +140,16 @@ def print_cuda_memory_state(cuda):
 
 
 def info(s: str, color: str = None):
+    """Print info message (legacy function).
+
+    Args:
+        s: Message text (skips printing if empty)
+        color: Optional color code to apply
+    """
+    # Skip printing if message is empty or just whitespace
+    if not s or not s.strip():
+        return
+
     message = f"{color}{s}{RESET_COLOR}" if color else s
     print(f"{BLUE}{BOLD}INFO: {RESET_COLOR}{message}")
 
