@@ -30,13 +30,8 @@ from deforum.utils.general import get_deforum_version, get_commit_date
 from deforum.media.upscaling import make_upscale_v2
 from deforum.media.video_audio_utilities import ffmpeg_stitch_video, make_gifski_gif, handle_imgs_deletion, handle_input_frames_deletion, handle_cn_frames_deletion, get_ffmpeg_params, get_ffmpeg_paths
 from pathlib import Path
-from deforum.utils.system.logging.log import UNDERLINE, ORANGE, RED, RESET_COLOR
+from deforum.utils.system.logging.log import ORANGE, RED, RESET_COLOR
 from deforum.utils.system.logging import get_logger, emoji_if_enabled
-from deforum.utils.system.logging.themes import (
-    HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
-    HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7
-)
-from deforum.utils.image.color import hex_to_ansi_foreground
 from deforum.config.settings import save_settings_from_animation_run
 from deforum.integrations.controlnet.legacy_controlnet_stubs import num_of_models
 
@@ -49,32 +44,6 @@ logger = get_logger()
 
 # this global param will contain the latest generated video HTML-data-URL info (for preview inside the UI when needed)
 last_vid_data = None
-
-
-def _create_gradient_text(text: str, colors: list) -> str:
-    """Create gradient text by distributing colors across characters.
-
-    Args:
-        text: Text to colorize
-        colors: List of hex color strings (e.g., ['#4A90E2', '#764BA2'])
-
-    Returns:
-        ANSI-colored string with gradient effect
-    """
-    if not colors:
-        return text
-
-    # Calculate how many characters per color
-    chars_per_color = len(text) / len(colors)
-    result = ""
-
-    for i, char in enumerate(text):
-        # Determine which color index to use
-        color_idx = min(int(i / chars_per_color), len(colors) - 1)
-        color = hex_to_ansi_foreground(colors[color_idx])
-        result += f"{color}{char}"
-
-    return result + RESET_COLOR
 
 
 def run_deforum(*args):
@@ -205,14 +174,6 @@ def run_deforum(*args):
         job_id = f"{job_id_prefix}-{i}"
         JobStatusTracker().update_phase(job_id, DeforumJobPhase.PREPARING)
 
-        # Create slopcore gradient signature (always uses slopcore colors regardless of theme)
-        signature_text = "Zirteqs Fluxabled Fork of the Deforum Extension for WebUI Forge"
-        gradient_colors = [
-            HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
-            HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7
-        ]
-        gradient_signature = _create_gradient_text(signature_text, gradient_colors)
-        logger.info(f"{UNDERLINE}{gradient_signature}")
         logger.info(f"Version: {get_commit_date()} | Git commit: {get_deforum_version()}")
         logger.info(f"Starting job {job_id}...")
         args_dict['self'] = None

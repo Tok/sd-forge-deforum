@@ -9,17 +9,14 @@ logger = get_logger()
 def print_startup_banner():
     """Print Deforum initialization banner with slopcore 2D diagonal gradient table."""
     import os
+    import shutil
     from pathlib import Path
-    from rich.table import Table
-    from rich.console import Console
-    from rich import box
 
     # ANSI color codes for extended slopcore gradient (more shades for 2D effect)
     from deforum.utils.system.logging.themes import (
         HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
         HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7
     )
-    from deforum.utils.image.color import hex_to_ansi_foreground
 
     # Create extended gradient with interpolated colors for smoother diagonal effect
     def interpolate_color(hex1, hex2, ratio):
@@ -44,50 +41,91 @@ def print_startup_banner():
         gradient_colors.append(mid_color)
     gradient_colors.append(base_colors[-1])
 
-    WHITE = "\033[97m"
     RESET = "\033[0m"
     BOLD = "\033[1m"
 
-    # Detect Forge Neo vs classic Forge
-    try:
-        import modules.paths as ph
-        models_dir = Path(ph.models_path)
-        is_forge_neo = (models_dir / "text_encoder").exists()
-    except:
-        is_forge_neo = False
+    # Helper to get terminal width
+    term_width = shutil.get_terminal_size((120, 24)).columns
+    box_width = min(term_width - 4, 120)  # Max 120 chars wide
 
-    # Create Rich console for table rendering
-    console = Console()
+    # Helper to convert hex to ANSI RGB
+    def hex_to_rgb_ansi(hex_color):
+        r = int(hex_color[1:3], 16)
+        g = int(hex_color[3:5], 16)
+        b = int(hex_color[5:7], 16)
+        return f"\033[38;2;{r};{g};{b}m"
 
-    # Create table with diagonal gradient border
-    table = Table(
-        show_header=False,
-        box=box.DOUBLE,
-        padding=(0, 1),
-        border_style=f"rgb({int(HEX_SLOPCORE_4[1:3], 16)},{int(HEX_SLOPCORE_4[3:5], 16)},{int(HEX_SLOPCORE_4[5:7], 16)})",
-        style=f"rgb({int(HEX_SLOPCORE_4[1:3], 16)},{int(HEX_SLOPCORE_4[3:5], 16)},{int(HEX_SLOPCORE_4[5:7], 16)})"
-    )
+    # Helper to get gradient color by position (0.0 to 1.0)
+    def get_gradient_color(position):
+        idx = min(int(position * len(gradient_colors)), len(gradient_colors) - 1)
+        return hex_to_rgb_ansi(gradient_colors[idx])
 
-    # Title with diagonal gradient effect and bolt emojis (comically long fork-ception)
+    # Draw box with diagonal gradient borders
+    def draw_gradient_border(text_lines, width):
+        """Draw a box with diagonal gradient borders around text lines."""
+        # Top border with gradient
+        top_border = ""
+        for i in range(width):
+            color = get_gradient_color(i / width)
+            if i == 0:
+                top_border += f"{color}╔"
+            elif i == width - 1:
+                top_border += f"╗{RESET}"
+            else:
+                top_border += "═"
+
+        # Middle rows
+        middle_rows = []
+        for row_idx, line in enumerate(text_lines):
+            # Calculate diagonal position for left and right borders
+            left_pos = row_idx / (len(text_lines) + 1)
+            right_pos = (row_idx + width) / (len(text_lines) + width)
+
+            left_color = get_gradient_color(left_pos)
+            right_color = get_gradient_color(right_pos)
+
+            # Pad text to exact width
+            visible_len = len(line) - line.count('\033[') * 10  # Rough ANSI length estimate
+            # More accurate: strip ANSI codes
+            import re
+            visible_text = re.sub(r'\033\[[0-9;]*m', '', line)
+            padding_needed = width - 2 - len(visible_text)
+
+            middle_rows.append(f"{left_color}║{RESET} {line}{' ' * padding_needed}{right_color}║{RESET}")
+
+        # Bottom border with gradient
+        bottom_border = ""
+        for i in range(width):
+            color = get_gradient_color((i + len(text_lines)) / (width + len(text_lines)))
+            if i == 0:
+                bottom_border += f"{color}╚"
+            elif i == width - 1:
+                bottom_border += f"╝{RESET}"
+            else:
+                bottom_border += "═"
+
+        return "\n".join([top_border] + middle_rows + [bottom_border])
+
+    # Title with diagonal gradient effect and bolt emojis
     title_text = "⚡ Zirteq's Fluxabled Fork of the Deforum Extension for Forge Neo Fork of Forge WebUI Fork of Automatic1111 ⚡"
 
-    # Create diagonal gradient for title (each character gets color based on position)
+    # Create diagonal gradient for title
     gradient_title = ""
     for i, char in enumerate(title_text):
-        color_idx = min(int((i / len(title_text)) * len(gradient_colors)), len(gradient_colors) - 1)
-        hex_color = gradient_colors[color_idx]
-        r, g, b = int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)
-        gradient_title += f"[rgb({r},{g},{b})]{char}[/]"
+        color = get_gradient_color(i / len(title_text))
+        gradient_title += f"{BOLD}{color}{char}"
+    gradient_title += RESET
 
-    table.add_row(f"[bold]{gradient_title}[/bold]")
+    # Prepare content lines
+    lines = [
+        gradient_title,
+        "",  # Separator
+        f"{BOLD}Primary Target:{RESET} Forge Neo (fully tested and supported)",
+        f"{BOLD}Other Forge Versions:{RESET} May work but remain untested",
+        f"{BOLD}More Info:{RESET} https://github.com/Tok/sd-forge-deforum"
+    ]
 
-    # Additional info (removed feature lists - just essential info)
-    table.add_row("")  # Separator
-    table.add_row("[bold]Primary Target:[/bold] Forge Neo (fully tested and supported)")
-    table.add_row("[bold]Other Forge Versions:[/bold] May work but remain untested")
-    table.add_row("[bold]More Info:[/bold] https://github.com/Tok/sd-forge-deforum")
-
-    # Print with newlines for spacing
+    # Draw the banner
     print("")
-    console.print(table)
+    print(draw_gradient_border(lines, box_width))
     print("")

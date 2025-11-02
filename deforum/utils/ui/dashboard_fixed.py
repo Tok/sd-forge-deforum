@@ -327,9 +327,7 @@ class FixedDashboard:
         padding_needed = max(0, self._terminal_width - len(visible_left))
         line1 = line1_left + (" " * padding_needed)
 
-        lines.append(line1)
-
-        # Line 2: Prompt (centered, without "Prompt:" label)
+        # Line 1: Prompt (centered, without "Prompt:" label)
         prompt = self.frame_info.get('prompt', '')
         if prompt:
             # Truncate prompt if too long for terminal width
@@ -341,17 +339,24 @@ class FixedDashboard:
             padding_total = max(0, self._terminal_width - len(visible_prompt))
             padding_left = padding_total // 2
             padding_right = padding_total - padding_left
-            line2 = (" " * padding_left) + prompt + (" " * padding_right)
+            line1 = (" " * padding_left) + prompt + (" " * padding_right)
         else:
-            line2 = " " * self._terminal_width
+            line1 = " " * self._terminal_width
+        lines.append(line1)
+
+        # Line 2: Animation Frame (was line 1)
+        # Pad to full width (VRAM moved to last line with models)
+        visible_left = re.sub(r'\033\[[0-9;]*m', '', line1_left)
+        padding_needed = max(0, self._terminal_width - len(visible_left))
+        line2 = line1_left + (" " * padding_needed)
         lines.append(line2)
 
         # Lines 3-7: Reorganized progress bars
         # 3. Current Tweens
         # 4. Current Diffusion Steps
-        # 5. Models + VRAM (left-aligned)
-        # 6. Total Diffusion Steps (with reverse gradient if slopcore)
-        # 7. Total Frames (with gradient as-is)
+        # 5. Total Diffusion Steps (with reverse gradient if slopcore)
+        # 6. Total Frames (with gradient as-is)
+        # 7. Models + VRAM (left-aligned, last line)
         lines.extend(self._render_tqdm_bars_reorganized())
 
         return lines
@@ -637,14 +642,14 @@ class FixedDashboard:
         return lines
 
     def _render_tqdm_bars_reorganized(self) -> list:
-        """Render reorganized progress bars with models line in middle.
+        """Render reorganized progress bars with models line at the end.
 
         New order:
         1. Current Tweens
         2. Current Diffusion Steps
-        3. Models + VRAM (left-aligned)
-        4. Total Diffusion Steps (reverse gradient if slopcore)
-        5. Total Frames (gradient as-is)
+        3. Total Diffusion Steps (reverse gradient if slopcore)
+        4. Total Frames (gradient as-is)
+        5. Models + VRAM (left-aligned, last line)
 
         Returns:
             List of formatted progress bar strings
@@ -690,20 +695,7 @@ class FixedDashboard:
                     max_desc_len
                 ))
 
-                # Line 3: Models + VRAM (left-aligned, no bar)
-                models_str = self._format_loaded_models_detailed()
-                vram_str = self._format_vram_bar()
-                if models_str:
-                    models_vram_line = f"{models_str} | {vram_str}"
-                else:
-                    models_vram_line = vram_str
-                # Pad to full width
-                import re
-                visible = re.sub(r'\033\[[0-9;]*m', '', models_vram_line)
-                padding_needed = max(0, self._terminal_width - len(visible))
-                lines.append(models_vram_line + (" " * padding_needed))
-
-                # Line 4: Total Diffusion Steps (red, reverse gradient if slopcore)
+                # Line 3: Total Diffusion Steps (red, reverse gradient if slopcore)
                 ts_current, ts_total = self.progress_data.get('total_steps', (taqaddum._total_steps_n, taqaddum.total_steps.total))
                 lines.append(self._format_tqdm_bar(
                     "Total Diffusion Steps",
@@ -715,7 +707,7 @@ class FixedDashboard:
                     reverse_gradient=True  # NEW: reverse gradient
                 ))
 
-                # Line 5: Total Frames (green, gradient as-is)
+                # Line 4: Total Frames (green, gradient as-is)
                 tf_current, tf_total = self.progress_data.get('total_frames', (taqaddum._total_frames_n, taqaddum.total_frames.total))
                 lines.append(self._format_tqdm_bar(
                     "Total Frames",
@@ -725,23 +717,36 @@ class FixedDashboard:
                     HEX_GREEN,
                     max_desc_len
                 ))
+
+                # Line 5: Models + VRAM (left-aligned, no bar - moved to end)
+                models_str = self._format_loaded_models_detailed()
+                vram_str = self._format_vram_bar()
+                if models_str:
+                    models_vram_line = f"{models_str} | {vram_str}"
+                else:
+                    models_vram_line = vram_str
+                # Pad to full width
+                import re
+                visible = re.sub(r'\033\[[0-9;]*m', '', models_vram_line)
+                padding_needed = max(0, self._terminal_width - len(visible))
+                lines.append(models_vram_line + (" " * padding_needed))
             else:
                 # Fallback if tqdm not available
                 lines.extend([
                     "Current Tweens: 0/0",
                     "Current Diffusion Steps: 0/0",
-                    "Models: N/A | VRAM: N/A",
                     "Total Diffusion Steps: 0/0",
-                    "Total Frames: 0/0"
+                    "Total Frames: 0/0",
+                    "Models: N/A | VRAM: N/A"
                 ])
         except Exception:
             # Fallback on error
             lines.extend([
                 "Current Tweens: 0/0",
                 "Current Diffusion Steps: 0/0",
-                "Models: N/A | VRAM: N/A",
                 "Total Diffusion Steps: 0/0",
-                "Total Frames: 0/0"
+                "Total Frames: 0/0",
+                "Models: N/A | VRAM: N/A"
             ])
 
         return lines
