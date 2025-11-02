@@ -232,7 +232,7 @@ class DiffusionFrame:
                 # This handles deduplication when user provides last frame prompt
                 keyframes = KeyFrameDistribution.select_deforum_keyframes(data)
                 return len(keyframes)
-        elif keyframe_distribution is KeyFrameDistribution.REDISTRIBUTED:
+        elif keyframe_distribution is KeyFrameDistribution.REDISTRIBUTED_CADENCE:
             return 1 + int((data.args.anim_args.max_frames - start_index) / data.cadence())
         else:
             raise ValueError(f"Invalid keyframe_distribution: {keyframe_distribution}")
