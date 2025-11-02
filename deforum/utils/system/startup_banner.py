@@ -42,9 +42,10 @@ def print_startup_banner():
         return f"#{r:02x}{g:02x}{b:02x}"
 
     # Generate smooth gradient (more shades for smoother background)
+    # Reverse order: purple → blue (instead of blue → purple) for more purple in banner
     gradient_colors = []
-    base_colors = [HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
-                   HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7]
+    base_colors = [HEX_SLOPCORE_7, HEX_SLOPCORE_6, HEX_SLOPCORE_5, HEX_SLOPCORE_4,
+                   HEX_SLOPCORE_3, HEX_SLOPCORE_2, HEX_SLOPCORE_1]  # Reversed
 
     # Interpolate between each pair for smoother gradient
     for i in range(len(base_colors) - 1):
