@@ -146,7 +146,7 @@ class FixedDashboard:
         self._terminal_height, self._terminal_width = self._get_terminal_size()
 
         # Calculate dashboard height (fixed status only, no ASCII preview)
-        self._dashboard_height = 8  # Separator + 1 status + 1 models + 1 prompt + 5 tqdm bars
+        self._dashboard_height = 7  # Separator + 1 status + 1 prompt + 2 current bars + 1 models + 2 total bars
 
         # Set up scrolling region (reserve bottom lines for dashboard)
         # ANSI: \033[{top};{bottom}r sets scrolling region
@@ -317,38 +317,30 @@ class FixedDashboard:
 
         lines.append(line1)
 
-        # Status line 2: Prompt
+        # Line 2: Prompt (centered, without "Prompt:" label)
         prompt = self.frame_info.get('prompt', '')
         if prompt:
             # Truncate prompt if too long for terminal width
-            max_prompt_len = self._terminal_width - 10  # Leave some padding
+            max_prompt_len = self._terminal_width - 4  # Leave some padding
             if len(prompt) > max_prompt_len:
                 prompt = prompt[:max_prompt_len - 3] + "..."
-            line2 = f"Prompt: {prompt}"
-            # Pad to full width
-            line2 = line2.ljust(self._terminal_width)
+            # Center the prompt
+            visible_prompt = re.sub(r'\033\[[0-9;]*m', '', prompt)
+            padding_total = max(0, self._terminal_width - len(visible_prompt))
+            padding_left = padding_total // 2
+            padding_right = padding_total - padding_left
+            line2 = (" " * padding_left) + prompt + (" " * padding_right)
         else:
             line2 = " " * self._terminal_width
         lines.append(line2)
 
-        # Progress bars (5 tqdm bars from Taqaddumat)
-        lines.extend(self._render_tqdm_bars())
-
-        # Last line: Models info (resource usage context with VRAM)
-        models_str = self._format_loaded_models_detailed()
-        if models_str:
-            # Add VRAM to models line for combined resource view
-            vram_only = self._format_vram_bar()
-            combined = f"{models_str} | {vram_only}"
-            # Pad to full width
-            visible_combined = re.sub(r'\033\[[0-9;]*m', '', combined)
-            padding_needed = max(0, self._terminal_width - len(visible_combined))
-            line_models = combined + (" " * padding_needed)
-        else:
-            # No models, just show VRAM centered or left-aligned
-            vram_only = self._format_vram_bar()
-            line_models = vram_only.ljust(self._terminal_width)
-        lines.append(line_models)
+        # Lines 3-7: Reorganized progress bars
+        # 3. Current Tweens
+        # 4. Current Diffusion Steps
+        # 5. Models + VRAM (left-aligned)
+        # 6. Total Diffusion Steps (with reverse gradient if slopcore)
+        # 7. Total Frames (with gradient as-is)
+        lines.extend(self._render_tqdm_bars_reorganized())
 
         return lines
 
@@ -632,7 +624,117 @@ class FixedDashboard:
 
         return lines
 
-    def _format_tqdm_bar(self, desc: str, current: int, total: int, unit: str, color_hex: str = None, max_desc_len: int = None) -> str:
+    def _render_tqdm_bars_reorganized(self) -> list:
+        """Render reorganized progress bars with models line in middle.
+
+        New order:
+        1. Current Tweens
+        2. Current Diffusion Steps
+        3. Models + VRAM (left-aligned)
+        4. Total Diffusion Steps (reverse gradient if slopcore)
+        5. Total Frames (gradient as-is)
+
+        Returns:
+            List of formatted progress bar strings
+        """
+        lines = []
+
+        try:
+            from deforum.utils.system.logging.log import (
+                HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED
+            )
+
+            import modules.shared as shared
+            taqaddum = shared.total_tqdm
+
+            if taqaddum and hasattr(taqaddum, 'tweens'):
+                # Calculate max description length for alignment
+                max_desc_len = max(
+                    len("Current Tweens"),
+                    len("Current Diffusion Steps"),
+                    len("Total Diffusion Steps"),
+                    len("Total Frames")
+                )
+
+                # Line 1: Current Tweens (blue)
+                tw_current, tw_total = self.progress_data.get('current_tweens', (taqaddum._tweens_n, taqaddum.tweens.total))
+                lines.append(self._format_tqdm_bar(
+                    "Current Tweens",
+                    tw_current,
+                    tw_total,
+                    "tween",
+                    HEX_BLUE,
+                    max_desc_len
+                ))
+
+                # Line 2: Current Diffusion Steps (orange)
+                cs_current, cs_total = self.progress_data.get('current_step', (taqaddum._steps_n, taqaddum.steps.total))
+                lines.append(self._format_tqdm_bar(
+                    "Current Diffusion Steps",
+                    cs_current,
+                    cs_total,
+                    "step",
+                    HEX_ORANGE,
+                    max_desc_len
+                ))
+
+                # Line 3: Models + VRAM (left-aligned, no bar)
+                models_str = self._format_loaded_models_detailed()
+                vram_str = self._format_vram_bar()
+                if models_str:
+                    models_vram_line = f"{models_str} | {vram_str}"
+                else:
+                    models_vram_line = vram_str
+                # Pad to full width
+                import re
+                visible = re.sub(r'\033\[[0-9;]*m', '', models_vram_line)
+                padding_needed = max(0, self._terminal_width - len(visible))
+                lines.append(models_vram_line + (" " * padding_needed))
+
+                # Line 4: Total Diffusion Steps (red, reverse gradient if slopcore)
+                ts_current, ts_total = self.progress_data.get('total_steps', (taqaddum._total_steps_n, taqaddum.total_steps.total))
+                lines.append(self._format_tqdm_bar(
+                    "Total Diffusion Steps",
+                    ts_current,
+                    ts_total,
+                    "step",
+                    HEX_RED,
+                    max_desc_len,
+                    reverse_gradient=True  # NEW: reverse gradient
+                ))
+
+                # Line 5: Total Frames (green, gradient as-is)
+                tf_current, tf_total = self.progress_data.get('total_frames', (taqaddum._total_frames_n, taqaddum.total_frames.total))
+                lines.append(self._format_tqdm_bar(
+                    "Total Frames",
+                    tf_current,
+                    tf_total,
+                    "frame",
+                    HEX_GREEN,
+                    max_desc_len
+                ))
+            else:
+                # Fallback if tqdm not available
+                lines.extend([
+                    "Current Tweens: 0/0",
+                    "Current Diffusion Steps: 0/0",
+                    "Models: N/A | VRAM: N/A",
+                    "Total Diffusion Steps: 0/0",
+                    "Total Frames: 0/0"
+                ])
+        except Exception:
+            # Fallback on error
+            lines.extend([
+                "Current Tweens: 0/0",
+                "Current Diffusion Steps: 0/0",
+                "Models: N/A | VRAM: N/A",
+                "Total Diffusion Steps: 0/0",
+                "Total Frames: 0/0"
+            ])
+
+        return lines
+
+    def _format_tqdm_bar(self, desc: str, current: int, total: int, unit: str, color_hex: str = None, max_desc_len: int = None, reverse_gradient: bool = False) -> str:
         """Format a single tqdm bar as text with theme colors.
 
         Args:
@@ -642,6 +744,7 @@ class FixedDashboard:
             unit: Unit name (tween, frame, step)
             color_hex: Classic color hex for theme mapping
             max_desc_len: Maximum description length for alignment (optional)
+            reverse_gradient: If True, reverse the gradient direction (dark→light instead of light→dark)
 
         Returns:
             Formatted bar string with ANSI colors
@@ -667,12 +770,12 @@ class FixedDashboard:
 
         filled = int(bar_width * current / total) if total > 0 else 0
 
-        # Create bar with gradient ONLY for "Total Frames" in slopcore theme
-        # Other bars use solid themed colors for cleaner look
-        use_gradient = self.theme == 'slopcore' and desc == "Total Frames" and color_hex
+        # Create bar with gradient for "Total Frames" and "Total Diffusion Steps" in slopcore theme
+        # "Total Frames" gets normal gradient, "Total Diffusion Steps" gets reverse gradient
+        use_gradient = self.theme == 'slopcore' and (desc == "Total Frames" or desc == "Total Diffusion Steps") and color_hex
         if use_gradient:
             # Apply slopcore gradient to filled portion
-            bar = self._create_gradient_bar(filled, bar_width - filled, color_hex)
+            bar = self._create_gradient_bar(filled, bar_width - filled, color_hex, reverse=reverse_gradient)
         else:
             # Solid color bar for all other bars
             bar_filled = "█" * filled
@@ -699,13 +802,14 @@ class FixedDashboard:
 
         return line + (" " * padding_needed)
 
-    def _create_gradient_bar(self, filled: int, empty: int, color_hex: str) -> str:
+    def _create_gradient_bar(self, filled: int, empty: int, color_hex: str, reverse: bool = False) -> str:
         """Create a gradient progress bar for slopcore theme.
 
         Args:
             filled: Number of filled characters
             empty: Number of empty characters
             color_hex: Base color hex for gradient mapping
+            reverse: If True, reverse gradient direction (dark→light instead of light→dark)
 
         Returns:
             Gradient-colored bar string
@@ -721,6 +825,10 @@ class FixedDashboard:
             HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3,
             HEX_SLOPCORE_4, HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7
         ]
+
+        # Reverse gradient if requested (dark→light instead of light→dark)
+        if reverse:
+            gradient_colors = list(reversed(gradient_colors))
 
         result = ""
 
