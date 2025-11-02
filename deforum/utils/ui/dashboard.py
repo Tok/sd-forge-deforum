@@ -462,7 +462,20 @@ class RenderDashboard:
             return bar  # No color for simple theme
 
     def update(self):
-        """Update the dashboard display."""
+        """Update the dashboard display.
+
+        Note: Updates are throttled to avoid blocking - only updates every 10 calls.
+        """
+        # Throttle updates to avoid blocking
+        if not hasattr(self, '_update_counter'):
+            self._update_counter = 0
+
+        self._update_counter += 1
+
+        # Only update every 10 calls to avoid blocking
+        if self._update_counter % 10 != 0:
+            return
+
         try:
             self.layout["header"].update(self._render_header())
             self.layout["progress"].update(self._render_progress())
@@ -510,12 +523,12 @@ class RenderDashboard:
         self.layout["progress"].update(self._render_progress())
         self.layout["log"].update(self._render_log())
 
-        # Start Live display with reduced refresh rate to minimize CPU usage
+        # Start Live display with very low refresh rate to minimize blocking
         # Use transient=False to allow Ctrl+C to work properly
         self.live = Live(
             self.layout,
             console=self.console,
-            refresh_per_second=2,
+            refresh_per_second=0.5,  # Very slow refresh (every 2 seconds)
             transient=False  # Don't clear on exit - allows clean interrupt
         )
         self.live.start()
