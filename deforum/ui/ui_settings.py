@@ -65,7 +65,7 @@ def on_ui_settings():
         "models/Deforum/deforum_persistent_settings.txt")
 
     add_subsection("Console & UI Output Settings")
-    add_cb("deforum_enable_dashboard", "Enable terminal dashboard (fixed-position display with progress bars, VRAM monitoring, and scrolling log)", default_value=False)
+    add_cb("deforum_enable_dashboard", "Enable simplified dashboard (console status updates with progress, VRAM, and optional ASCII preview)", default_value=True)
     add_cb("deforum_dashboard_ascii_preview", "Show ASCII art preview of last frame in dashboard (16:9 colored grid)", default_value=True)
     add_cb("deforum_dashboard_ascii_to_log", "Also write ASCII art to scrolling log area on each frame (off by default, can be spammy)", default_value=False)
     add_dd("deforum_log_level", "Log Level - Controls console output verbosity",
