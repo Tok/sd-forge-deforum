@@ -471,6 +471,7 @@ class FixedDashboard:
             if hasattr(shared, 'sd_model') and shared.sd_model is not None:
                 model_name = "Unknown"
                 model_size_gb = 0
+                model_memory_mb = 0
 
                 # Try to get model name from config or checkpoint info
                 if hasattr(shared.sd_model, 'sd_checkpoint_info'):
@@ -479,23 +480,48 @@ class FixedDashboard:
                         model_name = checkpoint_info.model_name
                     elif hasattr(checkpoint_info, 'title'):
                         model_name = checkpoint_info.title
+                    elif hasattr(checkpoint_info, 'name'):
+                        model_name = checkpoint_info.name
 
-                # Simplify model name
+                # Extract meaningful name (keep quantization info)
+                # Remove common suffixes but keep important info like bnb-nf4
+                original_name = model_name
                 if 'flux' in model_name.lower():
-                    model_name = "Flux"
+                    # Keep Flux variant info (dev/schnell) and quantization (bnb-nf4)
+                    # Example: "flux1-dev-bnb-nf4-v2.safetensors" → "Flux1-Dev-Bnb-Nf4-V2"
+                    model_name = model_name.replace('.safetensors', '').replace('.ckpt', '')
+                    # Capitalize parts for readability
+                    parts = model_name.split('-')
+                    model_name = '-'.join(p.capitalize() if len(p) <= 3 else p.title() for p in parts)
                 elif 'lumina' in model_name.lower():
-                    model_name = "Lumina"
+                    # Keep Lumina variant info and any special suffixes
+                    # Example: "neta-lumina-v1.0-all-in-one.safetensors" → "Neta-Lumina-V1.0-All-In-One"
+                    model_name = model_name.replace('.safetensors', '').replace('.ckpt', '')
+                    # Capitalize parts for readability
+                    parts = model_name.split('-')
+                    model_name = '-'.join(p.capitalize() if len(p) <= 3 else p.title() for p in parts)
                 elif 'sd' in model_name.lower() or 'stable' in model_name.lower():
-                    model_name = "SD"
+                    # Keep SD version info (1.5, 2.1, XL, etc.)
+                    model_name = model_name.replace('.safetensors', '').replace('.ckpt', '')
+                    if len(model_name) > 30:
+                        model_name = "SD-" + model_name[:27] + "..."
+                    else:
+                        model_name = "SD-" + model_name
 
-                # Try to estimate size from parameters
-                if hasattr(shared.sd_model, 'parameters'):
-                    try:
-                        param_count = sum(p.numel() for p in shared.sd_model.parameters())
-                        # Rough estimate: 4 bytes per parameter (fp32) or 2 bytes (fp16)
-                        model_size_gb = (param_count * 2) / (1024 ** 3)  # Assume fp16
-                    except:
-                        pass
+                # Try to get actual GPU memory usage for this model
+                try:
+                    # Get memory allocated to tensors on GPU
+                    if hasattr(shared.sd_model, 'parameters'):
+                        # Count actual memory usage from model's GPU tensors
+                        total_bytes = 0
+                        for param in shared.sd_model.parameters():
+                            if param.is_cuda:
+                                total_bytes += param.element_size() * param.nelement()
+                        if total_bytes > 0:
+                            model_memory_mb = total_bytes / (1024 ** 2)
+                            model_size_gb = total_bytes / (1024 ** 3)
+                except:
+                    pass
 
                 # Check if model is on GPU
                 try:
@@ -504,8 +530,9 @@ class FixedDashboard:
                 except:
                     main_model_on_gpu = True  # Assume on GPU if can't determine
 
+                # Format model string with memory info
                 if model_size_gb > 0:
-                    loaded_models.append(f"{model_name} ({model_size_gb:.1f}GB)")
+                    loaded_models.append(f"{model_name} ({model_size_gb:.2f}GB)")
                 else:
                     loaded_models.append(model_name)
 
