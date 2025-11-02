@@ -93,8 +93,8 @@ def print_startup_banner():
     lines = [
         title_text,
         "",  # Separator
-        "⚠️  Recommended: Dedicated/Isolated Forge Neo Instance",
-        "Why: Aggressive output customizations (dashboard, progress bars, suppressed logs)",
+        "RECOMMENDED: Dedicated/Isolated Forge Neo Instance",
+        "Why: Hijacks Forge output pipeline (custom dashboard, progress bars, suppressed logs)",
         "     May conflict with other extensions - optimized specifically for Deforum workflows",
         "",
         "Primary Target: Forge Neo (fully tested and supported)",
