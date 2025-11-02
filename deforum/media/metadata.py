@@ -156,3 +156,67 @@ def create_ffmpeg_metadata_args(settings_dict: dict[str, Any]) -> list[str]:
     ]
 
     return metadata_args
+
+
+def extract_metadata_from_video(video_path: str) -> dict[str, Any] | None:
+    """Extract Deforum settings metadata from video file.
+
+    Uses ffprobe to read the comment field and decode embedded settings.
+
+    Args:
+        video_path: Path to video file
+
+    Returns:
+        Dictionary of extracted settings, or None if no metadata found
+
+    Raises:
+        FileNotFoundError: If video file doesn't exist
+        RuntimeError: If ffprobe fails
+    """
+    import os
+    import subprocess
+
+    if not os.path.exists(video_path):
+        raise FileNotFoundError(f"Video file not found: {video_path}")
+
+    # Find ffprobe (usually alongside ffmpeg)
+    from deforum.media.video_audio_utilities import find_ffmpeg_binary
+    ffmpeg_path = find_ffmpeg_binary()
+    if not ffmpeg_path:
+        raise RuntimeError("ffprobe not found - cannot extract metadata")
+
+    # ffprobe is usually in the same directory as ffmpeg
+    ffprobe_path = ffmpeg_path.replace('ffmpeg', 'ffprobe')
+
+    # Use ffprobe to extract comment metadata
+    cmd = [
+        ffprobe_path,
+        '-v', 'quiet',
+        '-print_format', 'json',
+        '-show_format',
+        video_path
+    ]
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        metadata_json = json.loads(result.stdout)
+
+        # Extract comment field from format tags
+        comment = metadata_json.get('format', {}).get('tags', {}).get('comment', '')
+
+        if not comment:
+            return None
+
+        # Check if it's Deforum metadata
+        if not comment.startswith(METADATA_PREFIX):
+            return None
+
+        # Decode and return settings
+        decoded = decode_settings_from_metadata(comment)
+        return decoded.get('settings', {})
+
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"ffprobe failed: {e.stderr}")
+    except (json.JSONDecodeError, ValueError) as e:
+        # Invalid or corrupted metadata
+        return None
