@@ -154,7 +154,7 @@ class FixedDashboard:
         self._terminal_height, self._terminal_width = self._get_terminal_size()
 
         # Calculate dashboard height (fixed status only, no ASCII preview)
-        self._dashboard_height = 8  # Separator + 1 status + 1 prompt + 2 current bars + 1 models + 3 total bars
+        self._dashboard_height = 9  # Separator + prompt + animation frame + 5 tqdm bars + models/vram
 
         # Set up scrolling region (reserve bottom lines for dashboard)
         # ANSI: \033[{top};{bottom}r sets scrolling region
@@ -368,7 +368,7 @@ class FixedDashboard:
         else:
             frame_type_colored = f"[{frame_type}]"
 
-        line1_left = f"{animation_frame_color}Animation Frame:\033[0m {self.frame_info['current']}/{self.frame_info['total']} {frame_type_colored} | Progress: {df_pct}%"
+        line1_left = f"{animation_frame_color}Animation Frame:\033[0m {self.frame_info['current']}/{self.frame_info['total']} {frame_type_colored}"
 
         # Add color block if available
         if self.frame_info.get('color_rgb'):
