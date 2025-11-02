@@ -93,6 +93,10 @@ def print_startup_banner():
     lines = [
         title_text,
         "",  # Separator
+        "⚠️  Recommended: Dedicated/Isolated Forge Neo Instance",
+        "Why: Aggressive output customizations (dashboard, progress bars, suppressed logs)",
+        "     May conflict with other extensions - optimized specifically for Deforum workflows",
+        "",
         "Primary Target: Forge Neo (fully tested and supported)",
         "Other Forge Versions: May work but remain untested",
         "More Info: https://github.com/Tok/sd-forge-deforum"
