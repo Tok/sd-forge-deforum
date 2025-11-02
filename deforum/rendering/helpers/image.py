@@ -52,7 +52,8 @@ def save_cadence_frame_and_depth_map_if_active(data: RenderData, frame, image):
         # We need to save to a temp location first to get the converted image
         temp_depth_path = os.path.join(data.args.args.outdir, "_temp_depth.png")
         data.depth_model.save(temp_depth_path, frame.depth)
-        depth_image = cv2.imread(temp_depth_path, cv2.IMREAD_UNCHANGED)
+        # Read as color image (depth_model.save() already converts to uint8)
+        depth_image = cv2.imread(temp_depth_path, cv2.IMREAD_COLOR)
 
         # Create preview with optional flow arrows
         show_flow_arrows = getattr(data.args.anim_args, 'show_flow_arrows', False)
