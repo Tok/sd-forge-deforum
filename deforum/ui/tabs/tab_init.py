@@ -39,10 +39,10 @@ def get_tab_init(d, da, dp, dau, dv=None):
     logger.info("About to create Init TabItem")
     with gr.TabItem('Init'):
         logger.info("Inside Init TabItem")
-        # Audio Sync tab is explicitly selected as default
-        with gr.Tabs(selected="Audio Sync") as init_subtabs:
-            # AUDIO SYNC INNER-TAB - First tab (explicitly selected by default)
-            with gr.Tab("Audio Sync", id="Audio Sync") as audio_sync_subtab:
+        # Audio Sync tab is first and opens by default
+        with gr.Tabs() as init_subtabs:
+            # AUDIO SYNC INNER-TAB - First tab (opens by default)
+            with gr.Tab("Audio Sync") as audio_sync_subtab:
                 gr.HTML(
                     value="<p>Audio event detection for prompt synchronization and video soundtrack. Upload audio file or enter path/URL below. Disabled when Parseq is active.</p>"
                 )
@@ -306,7 +306,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 # NOTE: use_mask_video and video_mask_path moved to dedicated Masking tab
             # NOTE: Mask Init tab moved to dedicated Masking tab
 
-            # ZERO-HITL INNER-TAB - Last tab for one-click generation
+            # ZERO-HITL INNER-TAB - Last tab (Audio Sync is first and default)
             from .tab_zero_hitl import get_tab_zero_hitl
             zero_hitl_tab_emoji = emoji_if_enabled(emoji_utils.dice())
             zero_hitl_title = f"{zero_hitl_tab_emoji} Zero-HITL" if zero_hitl_tab_emoji else "Zero-HITL"
