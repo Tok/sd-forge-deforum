@@ -17,6 +17,9 @@ import re
 from collections import deque
 from typing import Optional, Dict, Any
 
+from deforum.rendering import options as opt_utils
+from deforum.utils.system.logging.themes import get_tqdm_color_for_theme, HEX_CLASSIC_BLUE, HEX_CLASSIC_GREEN, HEX_CLASSIC_ORANGE, HEX_CLASSIC_RED, HEX_CLASSIC_PURPLE, HEX_CLASSIC_YELLOW
+
 
 class MemoryStats:
     """Tracks GPU memory statistics from Forge output."""
@@ -92,8 +95,12 @@ class RenderDashboard:
         self.console = console or Console()
         self.layout = Layout()
         self.memory = MemoryStats()
-        self.log_buffer = deque(maxlen=10)  # Last 10 log messages
+        self.log_buffer = deque(maxlen=20)  # Last 20 log messages (larger for main scrolling area)
         self.live = None
+
+        # Get theme and emoji settings
+        self.theme = opt_utils.get_log_theme()
+        self.use_emojis = opt_utils.is_emojis_enabled()
 
         # Dashboard state
         self.frame_info = {
@@ -129,17 +136,11 @@ class RenderDashboard:
 
     def _setup_layout(self):
         """Configure dashboard layout structure."""
-        # Split into header, body, footer
+        # Split into header (frame info), body (progress + log split), main log (largest scrolling area)
         self.layout.split(
             Layout(name="header", size=6),
-            Layout(name="body", size=12),
-            Layout(name="footer")
-        )
-
-        # Body split into progress and log
-        self.layout["body"].split_row(
-            Layout(name="progress", ratio=1),
-            Layout(name="log", ratio=1)
+            Layout(name="progress", size=8),
+            Layout(name="log")  # Takes remaining space - main scrolling log area
         )
 
     def _render_header(self) -> Panel:
@@ -165,6 +166,7 @@ class RenderDashboard:
 
         # Add movement
         if self.frame_info['movement']:
+            seed_line.append(" Move: ", style="dim")
             seed_line.append(self.frame_info['movement'], style="magenta")
 
         # Prompt line
@@ -251,37 +253,84 @@ class RenderDashboard:
     def _render_log(self) -> Panel:
         """Render scrolling log area."""
         content = Text()
-        for msg in self.log_buffer:
-            content.append(msg + "\n")
+        if len(self.log_buffer) == 0:
+            content.append("Waiting for generation to start...", style="dim")
+        else:
+            for msg in self.log_buffer:
+                content.append(msg + "\n")
 
         return Panel(
             content,
-            title="Log (Essential Messages)",
+            title="Console Log",
             border_style="yellow",
             padding=(0, 1)
         )
 
-    def _make_bar(self, percentage: float, width: int, color: str) -> str:
-        """Create a simple ASCII progress bar.
+    def _get_themed_color(self, classic_color_name: str) -> str:
+        """Get themed color for dashboard elements.
+
+        Args:
+            classic_color_name: Classic color name (purple, red, orange, cyan, etc.)
+
+        Returns:
+            Hex color code appropriate for current theme
+        """
+        # Map classic color names to hex codes
+        color_hex_map = {
+            'purple': HEX_CLASSIC_PURPLE,
+            'red': HEX_CLASSIC_RED,
+            'orange': HEX_CLASSIC_ORANGE,
+            'blue': HEX_CLASSIC_BLUE,
+            'green': HEX_CLASSIC_GREEN,
+            'yellow': HEX_CLASSIC_YELLOW,
+            'cyan': HEX_CLASSIC_BLUE,  # Use blue for cyan
+        }
+
+        classic_hex = color_hex_map.get(classic_color_name, HEX_CLASSIC_BLUE)
+        themed_hex = get_tqdm_color_for_theme(classic_hex, self.theme)
+
+        # If simple theme (None), return empty string
+        if themed_hex is None:
+            return ''
+
+        return themed_hex
+
+    def _make_bar(self, percentage: float, width: int, color_name: str) -> str:
+        """Create a simple ASCII progress bar with themed colors.
 
         Args:
             percentage: 0-100
             width: Character width
-            color: Rich color name
+            color_name: Classic color name (purple, red, orange, cyan, etc.)
 
         Returns:
             Colored bar string
         """
         filled = int(width * percentage / 100)
         empty = width - filled
-        bar = "█" * filled + "░" * empty
-        return f"[{color}]{bar}[/{color}]"
+
+        # Use emoji or ASCII based on settings
+        if self.use_emojis:
+            filled_char = "█"
+            empty_char = "░"
+        else:
+            filled_char = "█"
+            empty_char = "░"
+
+        bar = filled_char * filled + empty_char * empty
+
+        # Get themed color
+        color_hex = self._get_themed_color(color_name)
+        if color_hex:
+            return f"[{color_hex}]{bar}[/{color_hex}]"
+        else:
+            return bar  # No color for simple theme
 
     def update(self):
         """Update the dashboard display."""
         self.layout["header"].update(self._render_header())
-        self.layout["body"]["progress"].update(self._render_progress())
-        self.layout["body"]["log"].update(self._render_log())
+        self.layout["progress"].update(self._render_progress())
+        self.layout["log"].update(self._render_log())
 
         if self.live:
             self.live.refresh()
@@ -292,7 +341,13 @@ class RenderDashboard:
 
     def start(self):
         """Start live dashboard display."""
-        self.live = Live(self.layout, console=self.console, refresh_per_second=4)
+        # Initialize all layout sections before starting Live
+        self.layout["header"].update(self._render_header())
+        self.layout["progress"].update(self._render_progress())
+        self.layout["log"].update(self._render_log())
+
+        # Start Live display with reduced refresh rate to minimize CPU usage
+        self.live = Live(self.layout, console=self.console, refresh_per_second=2)
         self.live.start()
 
     def stop(self):
