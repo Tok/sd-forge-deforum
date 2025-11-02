@@ -17,6 +17,10 @@ import datetime
 import os
 import shutil
 
+# Fork identity constants
+FORK_NAME = "Zirteq's Fluxabled Fork of the Deforum Extension for Forge Neo Fork of Forge WebUI Fork of Automatic1111"
+GITHUB_URL = "https://github.com/Tok/sd-forge-deforum"
+
 # noinspection PyUnresolvedReferences
 from modules.shared import opts
 from torch.hub import download_url_to_file

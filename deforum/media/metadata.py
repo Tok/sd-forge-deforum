@@ -16,11 +16,35 @@ import base64
 import json
 from typing import Any
 
-
 # Metadata field constants
 METADATA_PREFIX = "DEFORUM_SETTINGS:"
 METADATA_VERSION = "1.0"
-GITHUB_URL = "https://github.com/Tok/sd-forge-deforum"
+
+
+def _get_fork_name_safe() -> str:
+    """Get fork name safely, avoiding heavy imports in tests.
+
+    Returns:
+        Fork name string or fallback
+    """
+    try:
+        from deforum.utils.general import FORK_NAME
+        return FORK_NAME
+    except Exception:
+        return "Zirteq's Fluxabled Fork of the Deforum Extension for Forge Neo Fork of Forge WebUI Fork of Automatic1111"
+
+
+def _get_github_url_safe() -> str:
+    """Get GitHub URL safely, avoiding heavy imports in tests.
+
+    Returns:
+        GitHub URL string or fallback
+    """
+    try:
+        from deforum.utils.general import GITHUB_URL
+        return GITHUB_URL
+    except Exception:
+        return "https://github.com/Tok/sd-forge-deforum"
 
 
 def _get_commit_id_safe() -> str:
@@ -121,10 +145,11 @@ def create_comprehensive_metadata(settings_dict: dict[str, Any]) -> dict[str, An
     Returns:
         Dictionary with commit ID and GitHub URL added, ready for embedding
     """
-    # Add commit ID and GitHub URL for version tracking
+    # Add commit ID, GitHub URL, and fork name for version tracking
     metadata = {
         "commit_id": _get_commit_id_safe(),
-        "github_url": GITHUB_URL,
+        "github_url": _get_github_url_safe(),
+        "fork_name": _get_fork_name_safe(),
     }
 
     # Add all provided settings
@@ -163,7 +188,9 @@ def create_ffmpeg_metadata_args(settings_dict: dict[str, Any]) -> list[str]:
     # Add human-readable key fields (directly readable in metadata)
     # These duplicate info from comment but provide quick access
 
-    # Repository info
+    # Repository info (fork-ception!)
+    if "fork_name" in settings_dict:
+        metadata_args.extend(['-metadata', f'deforum_fork={settings_dict["fork_name"]}'])
     if "github_url" in settings_dict:
         metadata_args.extend(['-metadata', f'deforum_github={settings_dict["github_url"]}'])
     if "commit_id" in settings_dict:

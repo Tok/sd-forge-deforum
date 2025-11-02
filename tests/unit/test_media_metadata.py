@@ -21,7 +21,10 @@ create_comprehensive_metadata = metadata.create_comprehensive_metadata
 create_ffmpeg_metadata_args = metadata.create_ffmpeg_metadata_args
 METADATA_PREFIX = metadata.METADATA_PREFIX
 METADATA_VERSION = metadata.METADATA_VERSION
-GITHUB_URL = metadata.GITHUB_URL
+
+# Constants used in tests (fallback values for when general.py can't be imported)
+GITHUB_URL = "https://github.com/Tok/sd-forge-deforum"
+FORK_NAME = "Zirteq's Fluxabled Fork of the Deforum Extension for Forge Neo Fork of Forge WebUI Fork of Automatic1111"
 
 
 class TestEncodeDecodeSettings:

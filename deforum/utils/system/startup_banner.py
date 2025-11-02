@@ -10,7 +10,7 @@ def print_startup_banner():
     """Print Deforum initialization banner with slopcore gradient background."""
     import shutil
     import unicodedata
-    from deforum.utils.general import get_deforum_version
+    from deforum.utils.general import get_deforum_version, FORK_NAME, GITHUB_URL
 
     # ANSI color codes for slopcore gradient
     from deforum.utils.system.logging.themes import (
@@ -80,7 +80,7 @@ def print_startup_banner():
     ROUND_BR = "◢"  # Bottom-right rounded
 
     # Title with text gradient and bolt emojis
-    title_text = "⚡ Zirteq's Fluxabled Fork of the Deforum Extension for Forge Neo Fork of Forge WebUI Fork of Automatic1111 ⚡"
+    title_text = f"⚡ {FORK_NAME} ⚡"
 
     # Center the title based on its display width
     title_width = display_width(title_text)
@@ -102,7 +102,7 @@ def print_startup_banner():
         "     May conflict with other extensions - optimized specifically for Deforum workflows",
         "",
         "Forge Neo: https://github.com/Haoming02/sd-webui-forge-classic/tree/neo",
-        f"This Fork: https://github.com/Tok/sd-forge-deforum (commit: {commit_id})",
+        f"This Fork: {GITHUB_URL} (commit: {commit_id})",
         "",
         "Primary Target: Forge Neo (fully tested and supported)",
         "Other Forge Versions: May work but remain untested"
