@@ -273,50 +273,29 @@ class PromptScheduler:
 # ============================================================================
 
 def prepare_prompt(prompt_series: str, max_frames: int, seed: int, frame_idx: int) -> str:
-    """Evaluate prompt expressions and print formatted prompt with seed info.
+    """Evaluate prompt expressions for rendering.
 
-    Legacy function that evaluates expressions in a prompt and prints
-    colored output to console. Maintained for backward compatibility with
-    existing rendering pipeline.
+    NOTE: This function no longer prints to console. Seed and prompt info is
+    displayed by print_combined_table() in deforum/orchestration/generate.py.
+
+    Legacy function that evaluates expressions in a prompt. Maintained for
+    backward compatibility with existing rendering pipeline.
 
     Args:
         prompt_series: Prompt string (may contain expressions)
         max_frames: Total frames for expression evaluation
-        seed: Seed value to display
+        seed: Seed value (unused, kept for API compatibility)
         frame_idx: Current frame for expression evaluation
 
     Returns:
         Evaluated prompt string (with --neg separator if present)
 
-    Side Effects:
-        - Prints seed in green
-        - Prints positive prompt in purple
-        - Prints negative prompt in red (if present)
-
     Examples:
-        >>> # With console output
         >>> prepare_prompt("a cat", max_frames=100, seed=42, frame_idx=0)
-        # Prints: Seed: 42
-        # Prints: Prompt: a cat
         'a cat'
 
-        >>> # With negative prompt
         >>> prepare_prompt("a cat --neg blurry", max_frames=100, seed=42, frame_idx=0)
-        # Prints: Seed: 42
-        # Prints: Prompt: a cat
-        # Prints: Neg Prompt: blurry
         'a cat --neg blurry'
     """
     prompt_parsed = substitute_prompt_expressions(prompt_series, frame_idx, max_frames)
-
-    prompt_to_print, *after_neg = prompt_parsed.strip().split("--neg")
-    prompt_to_print = prompt_to_print.strip()
-    after_neg = "".join(after_neg).strip()
-
-    logger.info(f"{_get_theme_color('seed')}Seed: {_get_reset_color()}{seed}")
-    logger.info(f"{_get_theme_color('prompt')}Prompt: {_get_reset_color()}{prompt_to_print}")
-    if after_neg and after_neg.strip():
-        logger.info(f"{_get_theme_color('neg_prompt')}Neg Prompt: {_get_reset_color()}{after_neg}")
-        prompt_to_print += f" --neg {after_neg}"
-
-    return prompt_to_print
+    return prompt_parsed

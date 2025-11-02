@@ -68,64 +68,136 @@ def load_mask_latent(mask_input, shape):
     return mask
 
 def print_combined_table(args, anim_args, p, keys, frame_idx):
+    """Print comprehensive frame parameters table.
+
+    Displays all relevant parameters for the current frame including:
+    - Seed (in table)
+    - Prompts (printed separately above table)
+    - Sampling parameters (steps, CFG, denoise)
+    - Optional schedules (subseed, sampler, scheduler, checkpoint)
+    - Transform parameters (translation, rotation for 3D)
+
+    Args:
+        args: Generation arguments
+        anim_args: Animation arguments
+        p: Processing pipeline object
+        keys: Animation keys with scheduled values
+        frame_idx: Current frame index
+    """
     from rich.table import Table
     from rich import box
+    from deforum.utils.model_detection import is_flux_model, is_lumina_model
 
-    table = Table(padding=0, box=box.ROUNDED)
+    # Detect if model ignores negative prompts
+    model_ignores_negative = is_flux_model() or is_lumina_model()
 
-    field_names1 = ["Steps", "CFG", "Dist. CFG"]
+    # ========================================================================
+    # Print prompts BEFORE table (cleaner than cramming into columns)
+    # ========================================================================
+    prompt_to_print = p.prompt if isinstance(p.prompt, str) else p.prompt[0] if p.prompt else ""
+    logger.info(f"Seed: {p.seed}")
+    logger.info(f"Prompt: {prompt_to_print}")
+
+    # Only print negative prompt if model uses it and it's not empty
+    if not model_ignores_negative:
+        neg_prompt = p.negative_prompt if isinstance(p.negative_prompt, str) else p.negative_prompt[0] if p.negative_prompt else ""
+        if neg_prompt and neg_prompt.strip():
+            logger.info(f"Neg Prompt: {neg_prompt}")
+
+    # ========================================================================
+    # Create table with sampling and transform parameters
+    # ========================================================================
+    table = Table(padding=0, box=box.ROUNDED, show_header=True)
+
+    # ========================================================================
+    # Sampling Parameters
+    # ========================================================================
+    columns = []
+    values = []
+
+    # Core parameters
+    columns.extend(["Steps", "CFG", "Dist. CFG"])
+
+    # Calculate actual steps used based on denoise strength
+    total_steps = p.steps
+    if p.denoising_strength is not None and anim_args.animation_mode != 'Interpolation':
+        actual_steps = int(total_steps * (1.0 - p.denoising_strength))
+        steps_display = f"{actual_steps}/{total_steps}"
+    else:
+        steps_display = str(total_steps)
+
+    values.extend([steps_display, str(p.cfg_scale), str(p.distilled_cfg_scale)])
+
+    # Denoise (skip for Interpolation mode)
     if anim_args.animation_mode != 'Interpolation':
-        field_names1.append("Denoise")
-    field_names1 += ["Subseed", "Subs. str"] * (anim_args.enable_subseed_scheduling)
-    field_names1 += ["Sampler"] * anim_args.enable_sampler_scheduling
-    field_names1 += ["Scheduler"] * anim_args.enable_scheduler_scheduling
-    field_names1 += ["Checkpoint"] * anim_args.enable_checkpoint_scheduling
+        columns.append("Denoise")
+        values.append(f"{p.denoising_strength:.5g}" if p.denoising_strength is not None else "None")
 
-    for field_name in field_names1:
-        table.add_column(field_name, justify="center")
+    # Optional schedules
+    if anim_args.enable_subseed_scheduling:
+        columns.extend(["Subseed", "Subs. str"])
+        values.extend([str(p.subseed), f"{p.subseed_strength:.5g}"])
 
-    rows1 = [str(p.steps), str(p.cfg_scale), str(p.distilled_cfg_scale)]
-    if anim_args.animation_mode != 'Interpolation':
-        rows1.append(f"{p.denoising_strength:.5g}" if p.denoising_strength is not None else "None")
+    if anim_args.enable_sampler_scheduling:
+        columns.append("Sampler")
+        values.append(p.sampler_name)
 
-    rows1 += [str(p.subseed), f"{p.subseed_strength:.5g}"] * anim_args.enable_subseed_scheduling
-    rows1 += [p.sampler_name] * anim_args.enable_sampler_scheduling
-    rows1 += [p.scheduler] * anim_args.enable_scheduler_scheduling
-    rows1 += [str(args.checkpoint)] * anim_args.enable_checkpoint_scheduling
+    if anim_args.enable_scheduler_scheduling:
+        columns.append("Scheduler")
+        values.append(p.scheduler_name)
 
-    rows2 = []
+    if anim_args.enable_checkpoint_scheduling:
+        columns.append("Checkpoint")
+        values.append(str(args.checkpoint))
+
+    # ========================================================================
+    # Transform Parameters (mode-specific)
+    # ========================================================================
     if anim_args.animation_mode not in ['Video Input', 'Interpolation']:
+        # 2D specific transforms
         if anim_args.animation_mode == '2D':
-            field_names2 = ["Angle", "Zoom", "Tr C X", "Tr C Y"]
-        else:
-            field_names2 = []
-        field_names2 += ["Tr X", "Tr Y"]
+            columns.extend(["Angle", "Zoom", "Tr C X", "Tr C Y"])
+            values.extend([
+                f"{keys.angle_series[frame_idx]:.5g}",
+                f"{keys.zoom_series[frame_idx]:.5g}",
+                f"{keys.transform_center_x_series[frame_idx]:.5g}",
+                f"{keys.transform_center_y_series[frame_idx]:.5g}"
+            ])
+
+        # Common X/Y translation
+        columns.extend(["Tr X", "Tr Y"])
+        values.extend([
+            f"{keys.translation_x_series[frame_idx]:.5g}",
+            f"{keys.translation_y_series[frame_idx]:.5g}"
+        ])
+
+        # 3D specific transforms (removed Aspect Ratio as it's rarely scheduled)
         if anim_args.animation_mode == '3D':
-            field_names2 += ["Tr Z", "Ro X", "Ro Y", "Ro Z"]
-            if anim_args.aspect_ratio_schedule.replace(" ", "") != '0:(1)':
-                field_names2 += ["Asp. Ratio"]
+            columns.extend(["Tr Z", "Ro X", "Ro Y", "Ro Z"])
+            values.extend([
+                f"{keys.translation_z_series[frame_idx]:.5g}",
+                f"{keys.rotation_3d_x_series[frame_idx]:.5g}",
+                f"{keys.rotation_3d_y_series[frame_idx]:.5g}",
+                f"{keys.rotation_3d_z_series[frame_idx]:.5g}"
+            ])
+
+        # Perspective flip (if enabled)
         if anim_args.enable_perspective_flip:
-            field_names2 += ["Pf T", "Pf P", "Pf G", "Pf F"]
+            columns.extend(["Pf T", "Pf P", "Pf G", "Pf F"])
+            values.extend([
+                f"{keys.perspective_flip_theta_series[frame_idx]:.5g}",
+                f"{keys.perspective_flip_phi_series[frame_idx]:.5g}",
+                f"{keys.perspective_flip_gamma_series[frame_idx]:.5g}",
+                f"{keys.perspective_flip_fv_series[frame_idx]:.5g}"
+            ])
 
-        for field_name in field_names2:
-            table.add_column(field_name, justify="center")
+    # ========================================================================
+    # Add columns and single data row
+    # ========================================================================
+    for col in columns:
+        table.add_column(col, justify="center", no_wrap=True)
 
-        if anim_args.animation_mode == '2D':
-            rows2 += [f"{keys.angle_series[frame_idx]:.5g}", f"{keys.zoom_series[frame_idx]:.5g}",
-                      f"{keys.transform_center_x_series[frame_idx]:.5g}", f"{keys.transform_center_y_series[frame_idx]:.5g}"]
-
-        rows2 += [f"{keys.translation_x_series[frame_idx]:.5g}", f"{keys.translation_y_series[frame_idx]:.5g}"]
-
-        if anim_args.animation_mode == '3D':
-            rows2 += [f"{keys.translation_z_series[frame_idx]:.5g}", f"{keys.rotation_3d_x_series[frame_idx]:.5g}",
-                      f"{keys.rotation_3d_y_series[frame_idx]:.5g}", f"{keys.rotation_3d_z_series[frame_idx]:.5g}"]
-            if anim_args.aspect_ratio_schedule.replace(" ", "") != '0:(1)':
-                rows2 += [f"{keys.aspect_ratio_series[frame_idx]:.5g}"]
-        if anim_args.enable_perspective_flip:
-            rows2 += [f"{keys.perspective_flip_theta_series[frame_idx]:.5g}", f"{keys.perspective_flip_phi_series[frame_idx]:.5g}",
-                      f"{keys.perspective_flip_gamma_series[frame_idx]:.5g}", f"{keys.perspective_flip_fv_series[frame_idx]:.5g}"]
-
-    table.add_row(*rows1, *rows2)
+    table.add_row(*values)
     console.print(table)
 
 def generate(args, keys, anim_args, loop_args, controlnet_args, root, parseq_adapter,  frame=0, sampler_name=None, scheduler_name=None):
