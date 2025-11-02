@@ -51,9 +51,15 @@ def print_tween_frame_from_to_info(frame, is_disabled=True):
             print(f"{ORANGE}Creating in-between: {RESET_COLOR}{count} frames ({start_i}-->{end_i}){formatted_values}")
 
 
-def print_animation_frame_info(i, max_frames):
+def print_animation_frame_info(i, max_frames, is_keyframe=None):
     print("")
-    print(f"{BLUE}Animation frame: {RESET_COLOR}{BOLD}{i}{RESET_COLOR}/{max_frames}")
+    frame_type = ""
+    if is_keyframe is not None:
+        if is_keyframe:
+            frame_type = f" {GREEN}[KEYFRAME]{RESET_COLOR}"
+        else:
+            frame_type = f" {ORANGE}[CADENCE]{RESET_COLOR}"
+    print(f"{BLUE}Animation frame: {RESET_COLOR}{BOLD}{i}{RESET_COLOR}/{max_frames}{frame_type}")
 
 
 def print_tween_frame_info(data, i, cadence_flow, tween, is_disabled=True):

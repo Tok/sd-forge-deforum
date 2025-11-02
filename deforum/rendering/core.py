@@ -144,7 +144,7 @@ def prepare_generation(data: RenderData, frame: DiffusionFrame):
     memory_utils.handle_med_or_low_vram_before_step(data)
     web_ui_utils.update_job(data, frame.i)
     shared.total_tqdm.reset_tween_count(len(frame.tweens))
-    log_utils.print_animation_frame_info(frame.i, data.args.anim_args.max_frames)
+    log_utils.print_animation_frame_info(frame.i, data.args.anim_args.max_frames, frame.is_keyframe)
 
 
 def emit_tweens(data: RenderData, frame: DiffusionFrame):
