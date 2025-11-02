@@ -256,6 +256,10 @@ def setup_deforum_left_side_ui():
             # Also unpack Wan FLF2V component from depth tab
             enable_wan_flf2v = tab_depth_params.get('enable_wan_flf2v')
 
+            # Unpack Wan components from wan tab
+            wan_generate_button = tab_wan_params.get('wan_generate_button')
+            wan_generation_status = tab_wan_params.get('wan_generation_status')
+
             # Add top-level settings to locals()
             locals()['render_mode'] = render_mode
             locals()['animation_mode'] = animation_mode
@@ -674,26 +678,21 @@ def setup_deforum_left_side_ui():
                     import traceback
                     traceback.print_exc()
                     return error_msg
-            
-            locals()['wan_generate_button'].click(
-                fn=wan_generate_wrapper,
-                inputs=component_inputs,  # Pass all UI component values
-                outputs=[locals()['wan_generation_status']]
-            )
-            logger.debug(f"{emoji_if_enabled('✅')} Wan generate button connected successfully")
+
+            # Only connect if button and status exist
+            if wan_generate_button is not None and wan_generation_status is not None:
+                wan_generate_button.click(
+                    fn=wan_generate_wrapper,
+                    inputs=component_inputs,  # Pass all UI component values
+                    outputs=[wan_generation_status]
+                )
+                logger.debug(f"{emoji_if_enabled('✅')} Wan generate button connected successfully")
+            else:
+                logger.warning(f"Wan generate button or status not found - skipping connection")
         except Exception as e:
             logger.error(f"Failed to connect Wan generate button: {e}")
             import traceback
             traceback.print_exc()
-            # Fallback to the simple placeholder function
-            def simple_wan_test():
-                return "🧪 Simple Wan test - button connection working but full integration failed"
-            
-            locals()['wan_generate_button'].click(
-                fn=simple_wan_test,
-                inputs=[],
-                outputs=[locals()['wan_generation_status']]
-            )
 
     # Set up Wan Prompt Enhancement button with proper wan_enhanced_prompts access
     if 'enhance_prompts_btn' in locals() and 'wan_enhanced_prompts' in locals():
