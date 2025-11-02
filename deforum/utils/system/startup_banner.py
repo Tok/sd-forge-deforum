@@ -68,8 +68,8 @@ def print_startup_banner():
         style=f"rgb({int(HEX_SLOPCORE_4[1:3], 16)},{int(HEX_SLOPCORE_4[3:5], 16)},{int(HEX_SLOPCORE_4[5:7], 16)})"
     )
 
-    # Title with diagonal gradient effect and bolt emojis
-    title_text = "⚡ Zirteq's Fluxabled Fork of the Deforum Extension ⚡"
+    # Title with diagonal gradient effect and bolt emojis (comically long fork-ception)
+    title_text = "⚡ Zirteq's Fluxabled Fork of the Deforum Extension for Forge Neo Fork of Forge WebUI Fork of Automatic1111 ⚡"
 
     # Create diagonal gradient for title (each character gets color based on position)
     gradient_title = ""
@@ -81,24 +81,10 @@ def print_startup_banner():
 
     table.add_row(f"[bold]{gradient_title}[/bold]")
 
-    # Patches section
-    if is_forge_neo:
-        table.add_row("")  # Separator
-        table.add_row("[bold cyan]Forge Neo Enhancements:[/bold cyan]")
-        table.add_row("  • Leveraging built-in Flux.1 and Wan 2.1/2.2 support")
-        table.add_row("  • Slopcore UI theme with checkbox-style buttons")
-        table.add_row("  • Flux ControlNet V2 + FLF2V interpolation workflows")
-    else:
-        table.add_row("")  # Separator
-        table.add_row("[bold yellow]Compatibility Patches:[/bold yellow]")
-        table.add_row("  • Flux ControlNet V2 support (patching IntegratedFluxTransformer2DModel)")
-        table.add_row("  • FlowMatchEulerDiscreteScheduler compatibility (diffusers + Forge)")
-        table.add_row("  • Wan 2.1 FLF2V + Wan 2.2 TI2V pipeline integration")
-
-    # Additional info
+    # Additional info (removed feature lists - just essential info)
     table.add_row("")  # Separator
     table.add_row("[bold]Primary Target:[/bold] Forge Neo (fully tested and supported)")
-    table.add_row("[bold]Other Versions:[/bold] May work but remain untested")
+    table.add_row("[bold]Other Forge Versions:[/bold] May work but remain untested")
     table.add_row("[bold]More Info:[/bold] https://github.com/Tok/sd-forge-deforum")
 
     # Print with newlines for spacing
