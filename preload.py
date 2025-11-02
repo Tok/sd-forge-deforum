@@ -113,6 +113,8 @@ try:
     print_startup_banner()
 except Exception as e:
     print(f"[Deforum] Warning: Could not print startup banner: {e}")
+    import traceback
+    traceback.print_exc()
 
 def preload(parser):
     parser.add_argument(

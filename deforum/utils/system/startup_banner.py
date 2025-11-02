@@ -1,10 +1,5 @@
 """Deforum startup banner with slopcore purple gradient styling."""
 
-from deforum.utils.system.logging import get_logger
-
-# Initialize logger
-logger = get_logger()
-
 
 def print_startup_banner():
     """Print Deforum initialization banner with slopcore gradient background."""
