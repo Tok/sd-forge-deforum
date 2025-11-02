@@ -27,6 +27,11 @@ def is_verbose():
     return _get_opts().data.get("deforum_debug_mode_enabled", False)
 
 
+def is_dashboard_enabled():
+    """Check if terminal dashboard is enabled."""
+    return _get_opts().data.get("deforum_enable_dashboard", True)  # Enabled by default
+
+
 def is_emojis_enabled():
     """Check if emojis are enabled in UI and console output."""
     return _get_opts().data.get("deforum_enable_emojis", False)  # Disabled by default

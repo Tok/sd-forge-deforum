@@ -72,9 +72,28 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     else:
         generation_order_frames = diffusion_frames
 
+    # Initialize dashboard if enabled
+    from deforum.rendering import options as opt_utils
+    dashboard = None
+    if opt_utils.is_dashboard_enabled():
+        from deforum.utils.ui.dashboard import RenderDashboard
+        dashboard = RenderDashboard()
+        # Initialize progress totals
+        dashboard.progress_data['diffusion_frames'] = (0, len(generation_order_frames))
+        total_steps = sum(frame.actual_steps(data) for frame in generation_order_frames)
+        dashboard.progress_data['total_steps'] = (0, total_steps)
+        dashboard.start()
+
     shared.total_tqdm = Taqaddumat()
     shared.total_tqdm.reset(data, generation_order_frames)
-    run_render_animation(data, generation_order_frames)
+
+    try:
+        run_render_animation(data, generation_order_frames, dashboard)
+    finally:
+        # Stop dashboard when done
+        if dashboard:
+            dashboard.stop()
+
     data.animation_mode.unload_raft_and_depth_model()
 
 
@@ -120,12 +139,17 @@ def prepare_reverse_generation(frames: List[DiffusionFrame]) -> List[DiffusionFr
     return generation_order_frames
 
 
-def run_render_animation(data: RenderData, frames: List[DiffusionFrame]):
+def run_render_animation(data: RenderData, frames: List[DiffusionFrame], dashboard=None):
     """Process all frames in generation order.
 
     Args:
+        data: Render data
         frames: Frames in generation order (already reversed if needed)
+        dashboard: Optional dashboard instance for UI updates
     """
+    # Store dashboard reference in data AND root for access by frame generation
+    data.dashboard = dashboard
+    data.args.root.dashboard = dashboard
     for frame in frames:
         is_resume, full_path = is_resume_with_image(data, frame)
         if is_resume:

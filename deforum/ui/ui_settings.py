@@ -65,6 +65,7 @@ def on_ui_settings():
         "models/Deforum/deforum_persistent_settings.txt")
 
     add_subsection("Console & UI Output Settings")
+    add_cb("deforum_enable_dashboard", "Enable terminal dashboard (fixed-position display with progress bars, VRAM monitoring, and scrolling log)", default_value=True)
     add_dd("deforum_log_level", "Log Level - Controls console output verbosity",
            "INFO", ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     add_dd("deforum_log_theme", "Console Theme - Slopcore (blue→purple), Classic (vibrant), Simple (plain text)",

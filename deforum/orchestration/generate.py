@@ -179,8 +179,61 @@ def _get_movement_indicators(anim_args, keys, frame_idx):
     else:
         return ""
 
-def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=None):
-    """Print comprehensive frame parameters table.
+def _update_dashboard(args, anim_args, p, keys, frame_idx, previous_image, dashboard):
+    """Update dashboard with current frame information.
+
+    Args:
+        args: Generation arguments
+        anim_args: Animation arguments
+        p: Processing pipeline object
+        keys: Animation keys with scheduled values
+        frame_idx: Current frame index
+        previous_image: PIL Image of previous frame (optional)
+        dashboard: RenderDashboard instance
+    """
+    # Update frame info
+    dashboard.frame_info['current'] = frame_idx
+    dashboard.frame_info['total'] = anim_args.max_frames
+    dashboard.frame_info['type'] = 'KEYFRAME'  # Will be updated by caller if cadence
+    dashboard.frame_info['seed'] = p.seed
+    dashboard.frame_info['movement'] = _get_movement_indicators(anim_args, keys, frame_idx)
+    dashboard.frame_info['prompt'] = p.prompt if isinstance(p.prompt, str) else p.prompt[0] if p.prompt else ""
+
+    # Update color if previous image available
+    if previous_image is not None:
+        dashboard.frame_info['color_rgb'] = _get_mean_color(previous_image)
+
+    # Update table data
+    total_steps = p.steps
+    if p.denoising_strength is not None and anim_args.animation_mode != 'Interpolation':
+        actual_steps = int(total_steps * (1.0 - p.denoising_strength))
+        dashboard.table_data['steps'] = f"{actual_steps}/{total_steps}"
+    else:
+        dashboard.table_data['steps'] = str(total_steps)
+
+    dashboard.table_data['cfg'] = str(p.cfg_scale)
+    dashboard.table_data['dist_cfg'] = str(p.distilled_cfg_scale)
+    dashboard.table_data['denoise'] = f"{p.denoising_strength:.5g}" if p.denoising_strength is not None else "None"
+
+    # Transform parameters (mode-specific)
+    if anim_args.animation_mode not in ['Video Input', 'Interpolation']:
+        dashboard.table_data['tr_x'] = f"{keys.translation_x_series[frame_idx]:.5g}"
+        dashboard.table_data['tr_y'] = f"{keys.translation_y_series[frame_idx]:.5g}"
+
+        if anim_args.animation_mode == '3D':
+            dashboard.table_data['tr_z'] = f"{keys.translation_z_series[frame_idx]:.5g}"
+            dashboard.table_data['ro_x'] = f"{keys.rotation_3d_x_series[frame_idx]:.5g}"
+            dashboard.table_data['ro_y'] = f"{keys.rotation_3d_y_series[frame_idx]:.5g}"
+            dashboard.table_data['ro_z'] = f"{keys.rotation_3d_z_series[frame_idx]:.5g}"
+
+    # Trigger dashboard update
+    dashboard.update()
+
+def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=None, dashboard=None):
+    """Print comprehensive frame parameters table OR update dashboard.
+
+    Routes to dashboard if enabled and dashboard instance provided,
+    otherwise prints to console in classic format.
 
     Displays all relevant parameters for the current frame including:
     - Seed with color indicator and movement arrows
@@ -199,10 +252,17 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
         keys: Animation keys with scheduled values
         frame_idx: Current frame index
         previous_image: PIL Image of previous frame (optional, for color display)
+        dashboard: Optional RenderDashboard instance (routes to dashboard if provided)
     """
     from rich.table import Table
     from rich import box
     from deforum.utils.model_detection import is_flux_model, is_lumina_model
+    from deforum.rendering import options as opt_utils
+
+    # If dashboard provided, update it instead of printing
+    if dashboard is not None and opt_utils.is_dashboard_enabled():
+        _update_dashboard(args, anim_args, p, keys, frame_idx, previous_image, dashboard)
+        return
 
     # Detect if model ignores negative prompts
     model_ignores_negative = is_flux_model() or is_lumina_model()
@@ -506,7 +566,9 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
                 denoising_strength=0,
             )
 
-            print_combined_table(args, anim_args, p_txt, keys, frame, root.init_sample)  # print dynamic table to cli
+            # Get dashboard from root if available
+            dashboard = getattr(root, 'dashboard', None)
+            print_combined_table(args, anim_args, p_txt, keys, frame, root.init_sample, dashboard)  # print dynamic table to cli
 
             initialise_forge_scripts(p_txt)
 
@@ -562,7 +624,9 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
         p.image_cfg_scale = args.cfg_scale
         p.image_distilled_cfg_scale = args.distilled_cfg_scale
 
-        print_combined_table(args, anim_args, p, keys, frame, root.init_sample)  # print dynamic table to cli
+        # Get dashboard from root if available
+        dashboard = getattr(root, 'dashboard', None)
+        print_combined_table(args, anim_args, p, keys, frame, root.init_sample, dashboard)  # print dynamic table to cli
 
         if args.motion_preview_mode:
             processed = mock_process_images(args, p, init_image)
