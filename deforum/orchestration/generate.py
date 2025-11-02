@@ -114,17 +114,18 @@ def _rgb_to_ansi_color_block(rgb):
     return f"\033[38;2;{r};{g};{b}m\033[48;2;{r};{g};{b}m"
 
 def _get_movement_indicators(anim_args, keys, frame_idx):
-    """Generate ASCII movement indicators for current frame with dominant movement names.
+    """Generate Unicode movement indicators for current frame with dominant movement names.
 
     Translation indicators:
-        < = left, > = right
-        ^ = up, v = down
+        ← = left, → = right
+        ↑ = up, ↓ = down
         + = forward/zoom (toward camera), - = backward/zoom (away from camera)
+        Diagonals: ↖ ↗ ↘ ↙ (when X+Y movement combined)
 
     Rotation indicators (pitch/yaw/roll):
-        ↑ = pitch up, ↓ = pitch down
-        ← = yaw left, → = yaw right
-        ↶ = roll counter-clockwise, ↷ = roll clockwise
+        ⤴ = pitch up, ⤵ = pitch down
+        ⤺ = yaw left, ⤻ = yaw right
+        ↺ = roll counter-clockwise, ↻ = roll clockwise
 
     Args:
         anim_args: Animation arguments
@@ -132,7 +133,7 @@ def _get_movement_indicators(anim_args, keys, frame_idx):
         frame_idx: Current frame index
 
     Returns:
-        String with ASCII movement indicators and dominant movement name, or empty string if no movement
+        String with Unicode movement indicators and dominant movement name, or empty string if no movement
     """
     if anim_args.animation_mode in ['Video Input', 'Interpolation']:
         return ""  # No transform data available
@@ -144,10 +145,27 @@ def _get_movement_indicators(anim_args, keys, frame_idx):
     tr_x = keys.translation_x_series[frame_idx]
     tr_y = keys.translation_y_series[frame_idx]
 
-    if abs(tr_x) > threshold:
-        movements['tr_x'] = (abs(tr_x), ">" if tr_x > 0 else "<")
-    if abs(tr_y) > threshold:
-        movements['tr_y'] = (abs(tr_y), "v" if tr_y > 0 else "^")
+    # Check for diagonal movement (X+Y combined)
+    has_x = abs(tr_x) > threshold
+    has_y = abs(tr_y) > threshold
+
+    if has_x and has_y:
+        # Diagonal movement - combine into single indicator
+        magnitude = (tr_x**2 + tr_y**2)**0.5  # Euclidean distance
+        if tr_x > 0 and tr_y < 0:
+            movements['tr_xy'] = (magnitude, "↗ (up-right)")
+        elif tr_x < 0 and tr_y < 0:
+            movements['tr_xy'] = (magnitude, "↖ (up-left)")
+        elif tr_x > 0 and tr_y > 0:
+            movements['tr_xy'] = (magnitude, "↘ (down-right)")
+        else:  # tr_x < 0 and tr_y > 0
+            movements['tr_xy'] = (magnitude, "↙ (down-left)")
+    else:
+        # Single-axis movement
+        if has_x:
+            movements['tr_x'] = (abs(tr_x), "→ (right)" if tr_x > 0 else "← (left)")
+        if has_y:
+            movements['tr_y'] = (abs(tr_y), "↓ (down)" if tr_y > 0 else "↑ (up)")
 
     # 3D specific: Z translation and rotations
     if anim_args.animation_mode == '3D':
@@ -155,17 +173,17 @@ def _get_movement_indicators(anim_args, keys, frame_idx):
         if abs(tr_z) > threshold:
             movements['tr_z'] = (abs(tr_z), "+ (zoom)" if tr_z > 0 else "- (zoom)")
 
-        # Rotations (pitch/yaw/roll using Unicode arrows)
+        # Rotations (using better Unicode symbols)
         rot_x = keys.rotation_3d_x_series[frame_idx]  # Pitch
         rot_y = keys.rotation_3d_y_series[frame_idx]  # Yaw
         rot_z = keys.rotation_3d_z_series[frame_idx]  # Roll
 
         if abs(rot_x) > threshold:
-            movements['rot_x'] = (abs(rot_x), "↓ (pitch)" if rot_x > 0 else "↑ (pitch)")
+            movements['rot_x'] = (abs(rot_x), "⤵ (pitch down)" if rot_x > 0 else "⤴ (pitch up)")
         if abs(rot_y) > threshold:
-            movements['rot_y'] = (abs(rot_y), "→ (yaw)" if rot_y > 0 else "← (yaw)")
+            movements['rot_y'] = (abs(rot_y), "⤻ (yaw right)" if rot_y > 0 else "⤺ (yaw left)")
         if abs(rot_z) > threshold:
-            movements['rot_z'] = (abs(rot_z), "↷ (roll)" if rot_z > 0 else "↶ (roll)")
+            movements['rot_z'] = (abs(rot_z), "↻ (roll cw)" if rot_z > 0 else "↺ (roll ccw)")
 
     if movements:
         # Sort by magnitude to get dominant movement first

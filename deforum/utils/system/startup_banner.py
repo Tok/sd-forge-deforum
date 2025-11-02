@@ -58,13 +58,11 @@ def print_startup_banner():
         idx = min(int(position * len(gradient_colors)), len(gradient_colors) - 1)
         return hex_to_bg_ansi(gradient_colors[idx])
 
-    # Rounded border characters (slopcore anti-tailwind aesthetic)
-    ROUND_TL = "╭"  # Top-left rounded
-    ROUND_TR = "╮"  # Top-right rounded
-    ROUND_BL = "╰"  # Bottom-left rounded
-    ROUND_BR = "╯"  # Bottom-right rounded
-    HORIZONTAL = "─"
-    VERTICAL = "│"
+    # Slopcore rounded button characters (anti-tailwind aesthetic)
+    ROUND_TL = "◤"  # Top-left rounded
+    ROUND_TR = "◥"  # Top-right rounded
+    ROUND_BL = "◣"  # Bottom-left rounded
+    ROUND_BR = "◢"  # Bottom-right rounded
 
     # Title with text gradient and bolt emojis
     title_text = "⚡ Zirteq's Fluxabled Fork of the Deforum Extension for Forge Neo Fork of Forge WebUI Fork of Automatic1111 ⚡"
@@ -86,7 +84,7 @@ def print_startup_banner():
     # Smaller shift = more vertical, larger = more diagonal
     diagonal_shift = 0.4  # 40% shift for stronger diagonal, no wrap-around
 
-    # Top border with rounded corners and diagonal gradient
+    # Top border with slopcore rounded corners and diagonal gradient
     import re
     row_gradient = []
     for char_pos in range(box_width):
@@ -95,9 +93,10 @@ def print_startup_banner():
         gradient_pos = min(1.0, max(0.0, 0 + char_pos * diagonal_shift / box_width))
         row_gradient.append(get_gradient_bg_by_position(gradient_pos))
 
+    # Top line: ◤ followed by spaces, ending with ◥
     top_line = f"{row_gradient[0]}{WHITE}{ROUND_TL}"
     for char_pos in range(1, box_width - 1):
-        top_line += f"{row_gradient[char_pos]}{HORIZONTAL}"
+        top_line += f"{row_gradient[char_pos]} "
     top_line += f"{row_gradient[-1]}{ROUND_TR}{RESET}"
     banner_lines.append(top_line)
 
@@ -120,10 +119,10 @@ def print_startup_banner():
             bg = get_gradient_bg_by_position(gradient_pos)
 
             if char_pos == 0:
-                # Left border
-                content_line += f"{bg}{WHITE}{VERTICAL}"
+                # Left edge (just background)
+                content_line += f"{bg} "
             elif char_pos == 1:
-                # Space after left border
+                # Space after left edge
                 content_line += f"{bg} "
             elif char_pos < text_len + 2:
                 # Text content
@@ -132,21 +131,22 @@ def print_startup_banner():
                 # Padding
                 content_line += f"{bg} "
             else:
-                # Right border (last char)
-                content_line += f"{bg}{VERTICAL}{RESET}"
+                # Right edge (last char)
+                content_line += f"{bg} {RESET}"
 
         banner_lines.append(content_line)
 
-    # Bottom border with rounded corners and diagonal gradient
+    # Bottom border with slopcore rounded corners and diagonal gradient
     row_gradient = []
     for char_pos in range(box_width):
         # Clamp to prevent wrap-around
         gradient_pos = min(1.0, max(0.0, (total_rows - 1) / total_rows + char_pos * diagonal_shift / box_width))
         row_gradient.append(get_gradient_bg_by_position(gradient_pos))
 
+    # Bottom line: ◣ followed by spaces, ending with ◢
     bottom_line = f"{row_gradient[0]}{WHITE}{ROUND_BL}"
     for char_pos in range(1, box_width - 1):
-        bottom_line += f"{row_gradient[char_pos]}{HORIZONTAL}"
+        bottom_line += f"{row_gradient[char_pos]} "
     bottom_line += f"{row_gradient[-1]}{ROUND_BR}{RESET}"
     banner_lines.append(bottom_line)
 
