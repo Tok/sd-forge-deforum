@@ -452,6 +452,156 @@ class FixedDashboard:
         except Exception:
             return "VRAM: N/A"
 
+    def _format_model_name(self, model_name: str) -> str:
+        """Format model name for display (remove extensions, capitalize parts).
+
+        Args:
+            model_name: Raw model name from checkpoint
+
+        Returns:
+            Formatted model name string
+        """
+        # Remove common file extensions
+        model_name = model_name.replace('.safetensors', '').replace('.ckpt', '')
+
+        # Handle Flux models
+        if 'flux' in model_name.lower():
+            parts = model_name.split('-')
+            return '-'.join(p.capitalize() if len(p) <= 3 else p.title() for p in parts)
+
+        # Handle Lumina models
+        if 'lumina' in model_name.lower():
+            parts = model_name.split('-')
+            return '-'.join(p.capitalize() if len(p) <= 3 else p.title() for p in parts)
+
+        # Handle SD models
+        if 'sd' in model_name.lower() or 'stable' in model_name.lower():
+            if len(model_name) > 30:
+                return "SD-" + model_name[:27] + "..."
+            return "SD-" + model_name
+
+        return model_name
+
+    def _sum_cuda_params(self, parameters) -> int:
+        """Sum memory usage of CUDA parameters.
+
+        Args:
+            parameters: Iterable of PyTorch parameters
+
+        Returns:
+            Total bytes on CUDA, or 0
+        """
+        total_bytes = 0
+        for param in parameters:
+            if hasattr(param, 'is_cuda') and param.is_cuda:
+                total_bytes += param.element_size() * param.nelement()
+        return total_bytes
+
+    def _calculate_model_memory(self, model) -> float:
+        """Calculate GPU memory usage for a model in GB.
+
+        Args:
+            model: PyTorch model object
+
+        Returns:
+            Size in GB, or 0.0 if cannot calculate
+        """
+        bytes_to_gb = lambda b: b / (1024 ** 3)
+
+        # Try Forge's model_patcher UNet
+        if hasattr(model, 'forge_objects') and hasattr(model.forge_objects, 'unet'):
+            unet = model.forge_objects.unet
+            if hasattr(unet, 'model') and hasattr(unet.model, 'parameters'):
+                total_bytes = self._sum_cuda_params(unet.model.parameters())
+                if total_bytes > 0:
+                    return bytes_to_gb(total_bytes)
+
+        # Try standard model.parameters()
+        if hasattr(model, 'parameters'):
+            total_bytes = self._sum_cuda_params(model.parameters())
+            if total_bytes > 0:
+                return bytes_to_gb(total_bytes)
+
+        # Try model.model.parameters()
+        if hasattr(model, 'model') and hasattr(model.model, 'parameters'):
+            total_bytes = self._sum_cuda_params(model.model.parameters())
+            if total_bytes > 0:
+                return bytes_to_gb(total_bytes)
+
+        return 0.0
+
+    def _get_main_model_info(self) -> tuple[str, float, bool]:
+        """Get main diffusion model info (name, size, GPU status).
+
+        Returns:
+            Tuple of (model_name, size_gb, on_gpu)
+        """
+        try:
+            import modules.shared as shared
+            if not hasattr(shared, 'sd_model') or shared.sd_model is None:
+                return ("", 0.0, False)
+
+            # Get model name from checkpoint info
+            model_name = "Unknown"
+            if hasattr(shared.sd_model, 'sd_checkpoint_info'):
+                checkpoint_info = shared.sd_model.sd_checkpoint_info
+                if hasattr(checkpoint_info, 'model_name'):
+                    model_name = checkpoint_info.model_name
+                elif hasattr(checkpoint_info, 'title'):
+                    model_name = checkpoint_info.title
+                elif hasattr(checkpoint_info, 'name'):
+                    model_name = checkpoint_info.name
+
+            # Format the name
+            formatted_name = self._format_model_name(model_name)
+
+            # Calculate memory
+            size_gb = self._calculate_model_memory(shared.sd_model)
+
+            # Check GPU status
+            on_gpu = False
+            if hasattr(shared.sd_model, 'device'):
+                on_gpu = str(shared.sd_model.device).startswith('cuda')
+            else:
+                on_gpu = True  # Assume on GPU if can't determine
+
+            return (formatted_name, size_gb, on_gpu)
+
+        except Exception:
+            return ("", 0.0, False)
+
+    def _get_depth_model_info(self) -> tuple[str, float, bool]:
+        """Get depth model info (name, size, GPU status).
+
+        Returns:
+            Tuple of (model_name, size_gb, on_gpu)
+        """
+        try:
+            from deforum.depth.depth import DepthModel
+            if DepthModel._instance is None or DepthModel._instance.should_delete:
+                return ("", 0.0, False)
+
+            # Get algorithm name
+            depth_algo = DepthModel._instance.depth_algorithm
+            parts = depth_algo.split('-')
+            depth_name = '-'.join(p.capitalize() if len(p) <= 3 else p.title() for p in parts)
+
+            # Estimate size from model variant
+            model_size = depth_algo.lower().split('-')[-1]
+            size_map = {'small': 0.1, 'base': 0.4, 'large': 1.3}
+            depth_size_gb = size_map.get(model_size, 0.1)
+
+            # Check GPU status
+            on_gpu = False
+            if hasattr(DepthModel._instance, 'device'):
+                depth_device = str(DepthModel._instance.device)
+                on_gpu = depth_device.startswith('cuda')
+
+            return (depth_name, depth_size_gb, on_gpu)
+
+        except Exception:
+            return ("", 0.0, False)
+
     def _format_loaded_models_detailed(self) -> str:
         """Format loaded models info with detailed information on dedicated line.
 
@@ -463,159 +613,40 @@ class FixedDashboard:
             if not torch.cuda.is_available():
                 return ""
 
-            # Try to detect loaded models from Forge's model management
-            import modules.shared as shared
             loaded_models = []
+            model_statuses = []
 
-            # Detect main model (Flux/Lumina/SD)
-            main_model_on_gpu = False
-            if hasattr(shared, 'sd_model') and shared.sd_model is not None:
-                model_name = "Unknown"
-                model_size_gb = 0
-                model_memory_mb = 0
-
-                # Try to get model name from config or checkpoint info
-                if hasattr(shared.sd_model, 'sd_checkpoint_info'):
-                    checkpoint_info = shared.sd_model.sd_checkpoint_info
-                    if hasattr(checkpoint_info, 'model_name'):
-                        model_name = checkpoint_info.model_name
-                    elif hasattr(checkpoint_info, 'title'):
-                        model_name = checkpoint_info.title
-                    elif hasattr(checkpoint_info, 'name'):
-                        model_name = checkpoint_info.name
-
-                # Extract meaningful name (keep quantization info)
-                # Remove common suffixes but keep important info like bnb-nf4
-                original_name = model_name
-                if 'flux' in model_name.lower():
-                    # Keep Flux variant info (dev/schnell) and quantization (bnb-nf4)
-                    # Example: "flux1-dev-bnb-nf4-v2.safetensors" → "Flux1-Dev-Bnb-Nf4-V2"
-                    model_name = model_name.replace('.safetensors', '').replace('.ckpt', '')
-                    # Capitalize parts for readability
-                    parts = model_name.split('-')
-                    model_name = '-'.join(p.capitalize() if len(p) <= 3 else p.title() for p in parts)
-                elif 'lumina' in model_name.lower():
-                    # Keep Lumina variant info and any special suffixes
-                    # Example: "neta-lumina-v1.0-all-in-one.safetensors" → "Neta-Lumina-V1.0-All-In-One"
-                    model_name = model_name.replace('.safetensors', '').replace('.ckpt', '')
-                    # Capitalize parts for readability
-                    parts = model_name.split('-')
-                    model_name = '-'.join(p.capitalize() if len(p) <= 3 else p.title() for p in parts)
-                elif 'sd' in model_name.lower() or 'stable' in model_name.lower():
-                    # Keep SD version info (1.5, 2.1, XL, etc.)
-                    model_name = model_name.replace('.safetensors', '').replace('.ckpt', '')
-                    if len(model_name) > 30:
-                        model_name = "SD-" + model_name[:27] + "..."
-                    else:
-                        model_name = "SD-" + model_name
-
-                # Try to get actual GPU memory usage for this model
-                try:
-                    # Approach 1: Try to get memory from Forge's model_patcher
-                    if hasattr(shared.sd_model, 'forge_objects') and hasattr(shared.sd_model.forge_objects, 'unet'):
-                        unet = shared.sd_model.forge_objects.unet
-                        if hasattr(unet, 'model') and hasattr(unet.model, 'parameters'):
-                            total_bytes = 0
-                            for param in unet.model.parameters():
-                                if hasattr(param, 'is_cuda') and param.is_cuda:
-                                    total_bytes += param.element_size() * param.nelement()
-                            if total_bytes > 0:
-                                model_size_gb = total_bytes / (1024 ** 3)
-
-                    # Approach 2: Try standard model.parameters()
-                    if model_size_gb == 0 and hasattr(shared.sd_model, 'parameters'):
-                        total_bytes = 0
-                        for param in shared.sd_model.parameters():
-                            if hasattr(param, 'is_cuda') and param.is_cuda:
-                                total_bytes += param.element_size() * param.nelement()
-                        if total_bytes > 0:
-                            model_size_gb = total_bytes / (1024 ** 3)
-
-                    # Approach 3: Try to get from model's internal structure
-                    if model_size_gb == 0 and hasattr(shared.sd_model, 'model'):
-                        if hasattr(shared.sd_model.model, 'parameters'):
-                            total_bytes = 0
-                            for param in shared.sd_model.model.parameters():
-                                if hasattr(param, 'is_cuda') and param.is_cuda:
-                                    total_bytes += param.element_size() * param.nelement()
-                            if total_bytes > 0:
-                                model_size_gb = total_bytes / (1024 ** 3)
-                except Exception as e:
-                    # Debug: print error to see what's failing
-                    pass
-
-                # Check if model is on GPU
-                try:
-                    if hasattr(shared.sd_model, 'device'):
-                        main_model_on_gpu = str(shared.sd_model.device).startswith('cuda')
-                except:
-                    main_model_on_gpu = True  # Assume on GPU if can't determine
-
-                # Format model string with memory info
-                if model_size_gb > 0:
-                    loaded_models.append(f"{model_name} ({model_size_gb:.2f}GB)")
+            # Get main model info
+            main_name, main_size, main_on_gpu = self._get_main_model_info()
+            if main_name:
+                if main_size > 0:
+                    loaded_models.append(f"{main_name} ({main_size:.2f}GB)")
                 else:
-                    loaded_models.append(model_name)
+                    loaded_models.append(main_name)
+                model_statuses.append(main_on_gpu)
 
-            # Detect depth model using singleton instance
-            depth_model_on_gpu = False
-            try:
-                from deforum.depth.depth import DepthModel
-                if DepthModel._instance is not None and not DepthModel._instance.should_delete:
-                    depth_algo = DepthModel._instance.depth_algorithm
-
-                    # Use full algorithm name and capitalize parts
-                    # Example: "Depth-Anything-V2-Small" instead of just "Depth-Small"
-                    depth_name = depth_algo
-                    parts = depth_name.split('-')
-                    depth_name = '-'.join(p.capitalize() if len(p) <= 3 else p.title() for p in parts)
-
-                    # Extract size from algorithm name for memory estimation
-                    model_size = depth_algo.lower().split('-')[-1]
-
-                    # Approximate sizes for Depth-Anything-V2 (fp16)
-                    size_map = {
-                        'small': 0.1,   # ~25M params
-                        'base': 0.4,    # ~97M params
-                        'large': 1.3    # ~335M params
-                    }
-                    depth_size_gb = size_map.get(model_size, 0.1)
-
-                    # Check if on GPU
-                    try:
-                        depth_device = str(DepthModel._instance.device)
-                        depth_model_on_gpu = depth_device.startswith('cuda')
-                    except:
-                        depth_model_on_gpu = False
-
-                    if depth_model_on_gpu:
-                        loaded_models.append(f"{depth_name} ({depth_size_gb:.1f}GB)")
-            except:
-                pass  # Depth model not available
+            # Get depth model info
+            depth_name, depth_size, depth_on_gpu = self._get_depth_model_info()
+            if depth_name:
+                loaded_models.append(f"{depth_name} ({depth_size:.1f}GB)")
+                model_statuses.append(depth_on_gpu)
 
             if not loaded_models:
                 return ""
 
-            # Build detailed info string
+            # Build display string
             parts = []
-
-            # Add diffusion model info
             if len(loaded_models) >= 1:
                 parts.append(f"Diffusion: {loaded_models[0]}")
-
-            # Add depth model info if present
             if len(loaded_models) >= 2:
                 parts.append(f"Depth: {loaded_models[1]}")
 
-            # Add status indicator
+            # Determine status
+            status = ""
             if len(loaded_models) == 2:
-                # Both loaded simultaneously
                 status = "✓ Both in VRAM"
-            elif len(loaded_models) == 1 and main_model_on_gpu:
-                # Only diffusion loaded
-                status = "⇄ Swapping" if depth_model_on_gpu else ""
-            else:
-                status = ""
+            elif len(loaded_models) == 1 and model_statuses[0]:
+                status = "⇄ Swapping" if len(model_statuses) > 1 and model_statuses[1] else ""
 
             result = " | ".join(parts)
             if status:
@@ -624,7 +655,7 @@ class FixedDashboard:
             return result
 
         except Exception:
-            return ""  # Silently fail if can't detect
+            return ""
 
     def _create_separator(self) -> str:
         """Create separator line with slopcore gradient if enabled.
