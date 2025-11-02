@@ -536,12 +536,14 @@ class FixedDashboard:
 
         filled = int(bar_width * current / total) if total > 0 else 0
 
-        # Create bar with gradient if slopcore, otherwise solid color
-        if self.theme == 'slopcore' and color_hex:
+        # Create bar with gradient ONLY for "Total Frames" in slopcore theme
+        # Other bars use solid themed colors for cleaner look
+        use_gradient = self.theme == 'slopcore' and desc == "Total Frames" and color_hex
+        if use_gradient:
             # Apply slopcore gradient to filled portion
             bar = self._create_gradient_bar(filled, bar_width - filled, color_hex)
         else:
-            # Solid color bar for classic/simple themes
+            # Solid color bar for all other bars
             bar_filled = "█" * filled
             bar_empty = "░" * (bar_width - filled)
 
@@ -697,5 +699,4 @@ class FixedDashboard:
 
                     lines[0] = overlay + first_line[cut_pos:]
 
-                print("\n" + "\n".join(lines))
-                print()  # Extra newline for spacing
+                print("\n".join(lines))

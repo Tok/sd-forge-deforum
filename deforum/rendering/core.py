@@ -234,6 +234,13 @@ def prepare_generation(data: RenderData, frame: DiffusionFrame):
     memory_utils.handle_med_or_low_vram_before_step(data)
     web_ui_utils.update_job(data, frame.i)
     shared.total_tqdm.reset_tween_count(len(frame.tweens))
+
+    # Print ASCII art for PREVIOUS frame before starting new frame
+    # (belongs to completed frame, not upcoming one)
+    dashboard = getattr(data, 'dashboard', None)
+    if dashboard and hasattr(dashboard, 'last_frame_image') and dashboard.last_frame_image is not None:
+        dashboard.add_ascii_art_to_log(dashboard.last_frame_image, frame.i - 1)
+
     log_utils.print_animation_frame_info(frame.i, data.args.anim_args.max_frames, frame.is_keyframe)
 
 
