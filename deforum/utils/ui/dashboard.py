@@ -170,12 +170,15 @@ class FixedDashboard:
         # Mark as active
         self._is_active = True
 
-        # Register resize signal handler
-        try:
-            self._old_sigwinch_handler = signal.signal(signal.SIGWINCH, self._handle_resize)
-        except (ValueError, OSError):
-            # signal.signal() can fail on some platforms or contexts (like threading)
-            pass
+        # Register resize signal handler (only works in main thread)
+        import threading
+        if threading.current_thread() is threading.main_thread():
+            try:
+                self._old_sigwinch_handler = signal.signal(signal.SIGWINCH, self._handle_resize)
+            except (ValueError, OSError, AttributeError):
+                # signal.signal() can fail on some platforms
+                # AttributeError: SIGWINCH not available on Windows
+                pass
 
         # Initial render
         self._render()
@@ -198,11 +201,12 @@ class FixedDashboard:
             return
 
         try:
-            # Restore old signal handler
-            if self._old_sigwinch_handler is not None:
+            # Restore old signal handler (only if we're in main thread)
+            import threading
+            if self._old_sigwinch_handler is not None and threading.current_thread() is threading.main_thread():
                 try:
                     signal.signal(signal.SIGWINCH, self._old_sigwinch_handler)
-                except (ValueError, OSError):
+                except (ValueError, OSError, AttributeError):
                     pass
                 self._old_sigwinch_handler = None
 
@@ -510,17 +514,37 @@ class FixedDashboard:
 
                 # Try to get actual GPU memory usage for this model
                 try:
-                    # Get memory allocated to tensors on GPU
-                    if hasattr(shared.sd_model, 'parameters'):
-                        # Count actual memory usage from model's GPU tensors
+                    # Approach 1: Try to get memory from Forge's model_patcher
+                    if hasattr(shared.sd_model, 'forge_objects') and hasattr(shared.sd_model.forge_objects, 'unet'):
+                        unet = shared.sd_model.forge_objects.unet
+                        if hasattr(unet, 'model') and hasattr(unet.model, 'parameters'):
+                            total_bytes = 0
+                            for param in unet.model.parameters():
+                                if hasattr(param, 'is_cuda') and param.is_cuda:
+                                    total_bytes += param.element_size() * param.nelement()
+                            if total_bytes > 0:
+                                model_size_gb = total_bytes / (1024 ** 3)
+
+                    # Approach 2: Try standard model.parameters()
+                    if model_size_gb == 0 and hasattr(shared.sd_model, 'parameters'):
                         total_bytes = 0
                         for param in shared.sd_model.parameters():
-                            if param.is_cuda:
+                            if hasattr(param, 'is_cuda') and param.is_cuda:
                                 total_bytes += param.element_size() * param.nelement()
                         if total_bytes > 0:
-                            model_memory_mb = total_bytes / (1024 ** 2)
                             model_size_gb = total_bytes / (1024 ** 3)
-                except:
+
+                    # Approach 3: Try to get from model's internal structure
+                    if model_size_gb == 0 and hasattr(shared.sd_model, 'model'):
+                        if hasattr(shared.sd_model.model, 'parameters'):
+                            total_bytes = 0
+                            for param in shared.sd_model.model.parameters():
+                                if hasattr(param, 'is_cuda') and param.is_cuda:
+                                    total_bytes += param.element_size() * param.nelement()
+                            if total_bytes > 0:
+                                model_size_gb = total_bytes / (1024 ** 3)
+                except Exception as e:
+                    # Debug: print error to see what's failing
                     pass
 
                 # Check if model is on GPU
@@ -543,7 +567,13 @@ class FixedDashboard:
                 if DepthModel._instance is not None and not DepthModel._instance.should_delete:
                     depth_algo = DepthModel._instance.depth_algorithm
 
-                    # Extract size from algorithm name (Small/Base/Large)
+                    # Use full algorithm name and capitalize parts
+                    # Example: "Depth-Anything-V2-Small" instead of just "Depth-Small"
+                    depth_name = depth_algo
+                    parts = depth_name.split('-')
+                    depth_name = '-'.join(p.capitalize() if len(p) <= 3 else p.title() for p in parts)
+
+                    # Extract size from algorithm name for memory estimation
                     model_size = depth_algo.lower().split('-')[-1]
 
                     # Approximate sizes for Depth-Anything-V2 (fp16)
@@ -562,7 +592,7 @@ class FixedDashboard:
                         depth_model_on_gpu = False
 
                     if depth_model_on_gpu:
-                        loaded_models.append(f"Depth-{model_size.capitalize()} ({depth_size_gb:.1f}GB)")
+                        loaded_models.append(f"{depth_name} ({depth_size_gb:.1f}GB)")
             except:
                 pass  # Depth model not available
 
