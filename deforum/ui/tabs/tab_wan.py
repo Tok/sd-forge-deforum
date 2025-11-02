@@ -14,8 +14,14 @@ from deforum.utils.system.logging import emoji as emoji_utils
 from deforum.utils.ui.builders import create_gr_elem, create_row
 
 
-def get_tab_wan(dw: SimpleNamespace, skip_tabitem=False):
-    """Interpolation Settings Tab - Multi-method interpolation (Wan/RIFE/FILM)"""
+def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=False):
+    """Interpolation Settings Tab - Multi-method interpolation (Wan/RIFE/FILM)
+
+    Args:
+        dw: DeforumWanArgs namespace
+        da: DeforumAnimArgs namespace (optional, needed for FLF2V tween settings)
+        skip_tabitem: If True, don't create TabItem wrapper
+    """
 
     gr.Markdown("""
     ## 🎬 Interpolation Methods
@@ -308,7 +314,34 @@ def get_tab_wan(dw: SimpleNamespace, skip_tabitem=False):
         with FormRow():
             wan_flf2v_guidance_scale = create_gr_elem(dw.wan_flf2v_guidance_scale)
             wan_flf2v_prompt_mode = create_gr_elem(dw.wan_flf2v_prompt_mode)
-    
+
+        # Advanced FLF2V settings for 3D mode tween interpolation
+        # Only show if da (DeforumAnimArgs) is provided
+        if da is not None:
+            gr.Markdown("---")
+            gr.Markdown("### 🎯 Advanced FLF2V Control (For 3D Mode Tween Interpolation)")
+            gr.Markdown("""
+            **These settings control Wan FLF2V interpolation in 3D modes when "Enable FLF2V Tween Mode" is checked in the 3D Depth tab.**
+
+            - **Chunk Size:** Maximum frames per FLF2V clip (must be 4n+1, e.g., 13, 81)
+            - **Keyframe Type Schedule:** Per-keyframe control of interpolation method
+            """)
+
+            with FormRow():
+                wan_flf2v_chunk_size = create_row(da.wan_flf2v_chunk_size)
+
+            gr.Markdown("**Per-Keyframe Type Control (Advanced):**")
+            keyframe_type_schedule = create_row(da.keyframe_type_schedule)
+
+            with FormRow():
+                auto_assign_keyframe_types_btn = gr.Button(
+                    "🤖 Auto-Assign Types",
+                    variant="secondary",
+                    size="sm",
+                    elem_id="auto_assign_keyframe_types_btn"
+                )
+                gr.Markdown("*Analyzes tween distances and suggests optimal types based on chunk size*")
+
     with gr.Accordion(f"{emoji_utils.wrench()} Advanced Generation", open=False):
 
         # Advanced Generation Settings

@@ -202,11 +202,10 @@ def setup_deforum_left_side_ui():
             # Get main tab contents in new workflow order:
             # Init tab now contains Zero-HITL as first subtab
             tab_init_params = get_tab_init(d, da, dp, dau, dv)  # 1. Init - all modes (includes Zero-HITL, audio sync)
-            from .ui_elements import get_tab_distribution, get_tab_shakify, get_tab_depth_warping
-            tab_distribution_params = get_tab_distribution(da)  # 2. Distribution - all modes
-            tab_prompts_params = get_tab_prompts(da, dw, dv)  # 3. Prompts - all modes (now includes audio/timing)
-            tab_keyframes_params = get_tab_keyframes(d, da, dloopArgs)  # 4. Keyframes - all modes
-            tab_camera_path_params = get_tab_camera_path(da)  # 5. Camera Path - after audio sync & keyframes
+            from .ui_elements import get_tab_shakify, get_tab_depth_warping
+            tab_prompts_params = get_tab_prompts(da, dw, dv)  # 2. Prompts - all modes (now includes audio/timing)
+            tab_keyframes_params = get_tab_keyframes(d, da, dloopArgs)  # 3. Keyframes - all modes
+            tab_camera_path_params = get_tab_camera_path(da)  # 4. Camera Path - after audio sync & keyframes
 
             # Mode-specific tabs (with visibility control):
             # 3D mode only tabs:
@@ -220,7 +219,7 @@ def setup_deforum_left_side_ui():
             # Flux + Interpolation mode tab:
             from .ui_elements import get_tab_wan
             with gr.TabItem(f"{emoji_utils.wan_video()} Interpolation", visible=True) as tab_wan:
-                tab_wan_params = get_tab_wan(dw, skip_tabitem=True)  # 8. Interpolation - Flux + Interpolation mode
+                tab_wan_params = get_tab_wan(dw, da, skip_tabitem=True)  # 8. Interpolation - Flux + Interpolation mode
 
             # Always visible tabs:
             tab_run_params = get_tab_run(d, da)  # 8. Run - all modes
@@ -231,7 +230,7 @@ def setup_deforum_left_side_ui():
 
             # add returned gradio elements from main tabs to locals()
             # Note: Zero-HITL components now come from tab_init_params
-            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_distribution_params, **tab_prompts_params, **tab_camera_path_params, **tab_shakify_params, **tab_masking_params, **tab_depth_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params}.items():
+            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_prompts_params, **tab_camera_path_params, **tab_shakify_params, **tab_masking_params, **tab_depth_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params}.items():
                 locals()[key] = value
 
             # WORKAROUND: Explicitly unpack audio AI components as actual local variables
@@ -1188,7 +1187,7 @@ def setup_deforum_left_side_ui():
     result = locals().copy()
 
     # Flatten all tab dicts so components are accessible at top level
-    tab_dicts = ['tab_zero_hitl_params', 'tab_camera_path_params', 'tab_init_params', 'tab_distribution_params', 'tab_prompts_params',
+    tab_dicts = ['tab_zero_hitl_params', 'tab_camera_path_params', 'tab_init_params', 'tab_prompts_params',
                  'tab_keyframes_params', 'tab_depth_params', 'tab_shakify_params',
                  'tab_masking_params', 'tab_wan_params', 'tab_run_params', 'tab_output_params']
 

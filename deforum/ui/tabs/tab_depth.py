@@ -39,6 +39,30 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             padding_mode = create_gr_elem(da.padding_mode)
             sampling_mode = create_gr_elem(da.sampling_mode)
 
+    with gr.Accordion(f"{emoji_utils.movie_camera()} Wan FLF2V Tween Mode", open=False):
+        gr.Markdown("""
+        **Use Wan AI video interpolation instead of depth-based tweening for in-between frames.**
+
+        **When to use:**
+        - Calm sections with few tween frames (< 20 frames between keyframes)
+        - When depth warping creates artifacts
+        - When you want cinematic AI-generated motion
+
+        **How it works:**
+        1. Generate keyframes as normal (with depth warping if enabled)
+        2. Wan FLF2V interpolates smooth video between keyframes
+        3. No depth estimation needed for tween frames
+
+        **⚠️ Requirements:**
+        - **MUST use FLF2V-specific Wan model:** Wan2.1-FLF2V-14B
+        - **TI2V models will NOT work** - they extend first frame instead
+        - VRAM: ~15-18GB (less than standalone Wan T2V)
+
+        **Advanced settings** (chunk size, per-keyframe control) are in the Interpolation tab.
+        """)
+        with FormRow(visible=is_visible) as wan_flf2v_row:
+            enable_wan_flf2v = create_gr_elem(da.enable_wan_flf2v)
+
     with gr.Accordion("🌊 Optical Flow / Cadence", open=False):
         gr.Markdown("""
         **Optical flow** estimates motion between frames for smooth in-between (cadence) frames.

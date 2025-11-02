@@ -1760,8 +1760,14 @@ def auto_assign_keyframe_types_handler(animation_prompts_json, chunk_size):
         return "0:(tween)"
 
 
-def get_tab_wan(dw: SimpleNamespace, skip_tabitem=False):
-    """Interpolation Settings Tab - Multi-method interpolation (Wan/RIFE/FILM)"""
+def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=False):
+    """Interpolation Settings Tab - Multi-method interpolation (Wan/RIFE/FILM)
+
+    Args:
+        dw: DeforumWanArgs namespace
+        da: DeforumAnimArgs namespace (optional, needed for FLF2V tween settings)
+        skip_tabitem: If True, don't create TabItem wrapper
+    """
 
     gr.Markdown("""
     ## 🎬 Interpolation Methods
@@ -2054,7 +2060,34 @@ def get_tab_wan(dw: SimpleNamespace, skip_tabitem=False):
         with FormRow():
             wan_flf2v_guidance_scale = create_gr_elem(dw.wan_flf2v_guidance_scale)
             wan_flf2v_prompt_mode = create_gr_elem(dw.wan_flf2v_prompt_mode)
-    
+
+        # Advanced FLF2V settings for 3D mode tween interpolation
+        # Only show if da (DeforumAnimArgs) is provided
+        if da is not None:
+            gr.Markdown("---")
+            gr.Markdown("### 🎯 Advanced FLF2V Control (For 3D Mode Tween Interpolation)")
+            gr.Markdown("""
+            **These settings control Wan FLF2V interpolation in 3D modes when "Enable FLF2V Tween Mode" is checked in the 3D Depth tab.**
+
+            - **Chunk Size:** Maximum frames per FLF2V clip (must be 4n+1, e.g., 13, 81)
+            - **Keyframe Type Schedule:** Per-keyframe control of interpolation method
+            """)
+
+            with FormRow():
+                wan_flf2v_chunk_size = create_row(da.wan_flf2v_chunk_size)
+
+            gr.Markdown("**Per-Keyframe Type Control (Advanced):**")
+            keyframe_type_schedule = create_row(da.keyframe_type_schedule)
+
+            with FormRow():
+                auto_assign_keyframe_types_btn = gr.Button(
+                    "🤖 Auto-Assign Types",
+                    variant="secondary",
+                    size="sm",
+                    elem_id="auto_assign_keyframe_types_btn"
+                )
+                gr.Markdown("*Analyzes tween distances and suggests optimal types based on chunk size*")
+
     with gr.Accordion(f"{emoji_utils.wrench()} Advanced Generation", open=False):
 
         # Advanced Generation Settings
@@ -2529,70 +2562,6 @@ def get_tab_wan(dw: SimpleNamespace, skip_tabitem=False):
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
-def get_tab_distribution(da):
-    """Distribution & Render Mode - Main workflow control (promoted from Keyframes subtab)"""
-    with gr.TabItem(f"{emoji_utils.distribution()} Distribution", elem_id='distribution_tab'):
-        keyframe_distribution = create_row(da.keyframe_distribution)
-
-        # Wan FLF2V Integration
-        with gr.Accordion(f"{emoji_utils.movie_camera()} Wan FLF2V Tween Mode (Experimental)", open=False):
-            gr.Markdown("""
-            **Use Wan AI video interpolation instead of depth-based tweening.**
-
-            **When to use:**
-            - Calm sections with few tween frames (< 20 frames between keyframes)
-            - When depth warping creates artifacts
-            - When you want cinematic AI-generated motion
-
-            **How it works:**
-            1. Flux generates keyframes as normal
-            2. Wan FLF2V interpolates smooth video between keyframes
-            3. No depth estimation needed
-
-            **⚠️ Requirements:**
-            - **MUST use FLF2V-specific model:** Wan2.1-FLF2V-14B
-            - **TI2V models (e.g., Wan2.2-TI2V-5B) will NOT work** - they extend first frame instead
-            - Works best with keyframe distribution mode
-            - VRAM: ~15-18GB (less than standalone Wan T2V)
-            - Download: `huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers --local-dir models/Deforum/wan/Wan2.1-FLF2V-14B`
-
-            **For longer sections (> 81 frames):**
-            - Automatically uses FLF2V chaining mode
-            - Generates depth-tween intermediate keyframes
-            - Chains FLF2V between them for smooth motion
-            """)
-            enable_wan_flf2v = create_row(da.enable_wan_flf2v)
-            wan_flf2v_chunk_size = create_row(da.wan_flf2v_chunk_size)
-
-            gr.Markdown("**Per-Keyframe Type Control (Advanced):**")
-            keyframe_type_schedule = create_row(da.keyframe_type_schedule)
-
-            with FormRow():
-                auto_assign_keyframe_types_btn = gr.Button(
-                    "🤖 Auto-Assign Types",
-                    variant="secondary",
-                    size="sm",
-                    elem_id="auto_assign_keyframe_types_btn"
-                )
-                gr.Markdown("*Analyzes tween distances and suggests optimal types based on chunk size*")
-
-        # Informational section at bottom
-        gr.Markdown("""
-        ---
-        ## Keyframe Distribution & Render Mode
-
-        **This is the main control for switching between rendering modes:**
-        - **Keyframes Only:** Modern render core (recommended for Flux + Wan)
-        - **Cadence:** Traditional rendering with fixed frame intervals
-
-        **Wan FLF2V Integration** is available when using Keyframes Only mode.
-        """)
-
-        create_keyframe_distribution_info_tab()
-
-    return {k: v for k, v in {**locals(), **vars()}.items()}
-
-
 def get_tab_output(da, dv):
     with gr.TabItem(f"{emoji_utils.document()} Output", elem_id='output_tab'):
         # VID OUTPUT ACCORD
@@ -2716,51 +2685,6 @@ def get_tab_output(da, dv):
             ffmpeg_stitch_imgs_but.click(fn=direct_stitch_vid_from_frames,
                                          inputs=[image_path, fps, add_soundtrack, soundtrack_path])
     return {k: v for k, v in {**locals(), **vars()}.items()}
-
-
-def create_keyframe_distribution_info_tab():
-    create_row(gr.Markdown(f"""
-        {emoji_utils.warn} Keyframe distribution has a slightly different feature set.
-        Some features may not be supported and could cause errors or unexpected results if not disabled.
-    """))
-    create_accordion_md_row("Keyframe Distribution Info", f"""
-        ### Purpose & Description
-        - Ensures diffusion of frames with entries in Prompts or Parseq tables
-        - Allows faster generation with high or no cadence
-        - Produces less jittery videos, but may introduce artifacts like 'depth smear' at 3D fast movement.
-        - Mitigate cumulative negative effects by inserting lower strength frames at regular intervals
-
-        ### Distribution Modes
-        1. **Off**: Standard render core, respects cadence settings
-        2. **Keyframes Only**: Diffuses only Prompts/Parseq entries, ignores cadence
-        3. **Additive**: Uses keyframes and adds cadence for stability.
-        4. **Redistributed**: Calculates cadence but rearranges the frames closest to keyframe positions
-            to fit them for better synchronization and reactivity at high cadence.
-    """)
-    create_accordion_md_row("General Recommendations & Warnings", f"""
-        - Use with high FPS (e.g., 60) and high cadence (e.g., 15)
-        - 'Keyframe_strength' should be lower than 'strength' (ignored when using Parseq)
-        - {emoji_utils.warn} Not recommended with optical flow
-        - {emoji_utils.warn} Optical flow settings ~may~ will behave unexpectedly.
-            - Turn off in tab "Keyframes", sub-tab "Coherence".
-        - Prevent issues like dark-outs that add up over frames:
-            - Set up regular low-strength diffusions by using enough keyframes
-        - Balance strength values for optimal results
-    """)
-    create_accordion_md_row("Deforum Setup Recommendations", f"""
-        - Set 'Keyframe strength' lower than 'Strength' to make sure keyframes get diffused with more steps
-            - The higher the difference, the more keyframes become key compared to regular cadence frames. 
-        - Force keyframe creation by duplicating the previous prompt with the desired frame number
-            - This ensures diffusion with 'Keyframe strength' value
-    """)
-    create_accordion_md_row("Parseq Setup Recommendations", f"""
-        - Deforum prompt keyframes are ignored
-        - All frames with Parseq entries are treated as keyframes and will be diffused
-        - 'Keyframe strength' is ignored; use Parseq for direct 'Strength' control
-        - Create strength-dips at regular intervals:
-            - Mark frames with 'Info' (e.g., "event")
-            - Use formulas like: `if (f == info_match_last("event")) 0.25 else 0.75`
-    """)
 
 
 # QwenPromptExpander and Movement Analysis Event Handlers - moved outside for proper import
