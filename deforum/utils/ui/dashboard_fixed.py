@@ -657,7 +657,7 @@ class FixedDashboard:
 
         try:
             from deforum.utils.system.logging.log import (
-                HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED
+                HEX_BLUE, HEX_GREEN, HEX_ORANGE, HEX_RED, HEX_PURPLE
             )
 
             import modules.shared as shared
@@ -672,48 +672,48 @@ class FixedDashboard:
                     len("Total Frames")
                 )
 
-                # Line 1: Current Tweens (blue)
+                # Line 1: Current Tweens (purple - fast/high frequency)
                 tw_current, tw_total = self.progress_data.get('current_tweens', (taqaddum._tweens_n, taqaddum.tweens.total))
                 lines.append(self._format_tqdm_bar(
                     "Current Tweens",
                     tw_current,
                     tw_total,
                     "tween",
-                    HEX_BLUE,
+                    HEX_PURPLE,
                     max_desc_len
                 ))
 
-                # Line 2: Current Diffusion Steps (orange)
+                # Line 2: Current Diffusion Steps (blue - fast/high frequency)
                 cs_current, cs_total = self.progress_data.get('current_step', (taqaddum._steps_n, taqaddum.steps.total))
                 lines.append(self._format_tqdm_bar(
                     "Current Diffusion Steps",
                     cs_current,
                     cs_total,
                     "step",
-                    HEX_ORANGE,
+                    HEX_BLUE,
                     max_desc_len
                 ))
 
-                # Line 3: Total Diffusion Steps (red, reverse gradient if slopcore)
+                # Line 3: Total Diffusion Steps (orange - slow/low frequency)
                 ts_current, ts_total = self.progress_data.get('total_steps', (taqaddum._total_steps_n, taqaddum.total_steps.total))
                 lines.append(self._format_tqdm_bar(
                     "Total Diffusion Steps",
                     ts_current,
                     ts_total,
                     "step",
-                    HEX_RED,
+                    HEX_ORANGE,
                     max_desc_len,
                     reverse_gradient=True  # NEW: reverse gradient
                 ))
 
-                # Line 4: Total Frames (green, gradient as-is)
+                # Line 4: Total Frames (red - slow/low frequency)
                 tf_current, tf_total = self.progress_data.get('total_frames', (taqaddum._total_frames_n, taqaddum.total_frames.total))
                 lines.append(self._format_tqdm_bar(
                     "Total Frames",
                     tf_current,
                     tf_total,
                     "frame",
-                    HEX_GREEN,
+                    HEX_RED,
                     max_desc_len
                 ))
 
