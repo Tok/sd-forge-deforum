@@ -21,7 +21,7 @@ from modules.ui import create_output_panel, wrap_gradio_call
 from modules.util import open_folder
 from modules.call_queue import wrap_gradio_gpu_call
 from deforum.orchestration.run_deforum import run_deforum
-from deforum.config.settings import save_settings, load_all_settings, get_default_settings_path, update_settings_path
+from deforum.config.settings import save_settings, load_all_settings, load_settings_from_video, get_default_settings_path, update_settings_path
 from deforum.utils.general import get_deforum_version, get_commit_date
 from deforum.ui.ui_left import setup_deforum_left_side_ui
 from scripts.deforum_extend_paths import deforum_sys_extend
@@ -338,6 +338,15 @@ def on_ui_tabs():
                     load_settings_btn = gr.Button('Load All Settings', elem_id='deforum_load_settings_btn')
                     open_folder_btn = gr.Button('📂 Open Output Directory', elem_id='deforum_open_folder_btn')
 
+                with gr.Row(variant='compact'):
+                    video_upload = gr.File(
+                        label="Load Settings from Video (ComfyUI-style metadata extraction)",
+                        file_types=[".mp4", ".mov", ".avi", ".webm", ".mkv"],
+                        type="filepath",
+                        elem_id="deforum_video_upload",
+                        file_count="single"
+                    )
+
                 # Camera Path Visualization (real-time display)
                 with gr.Row(variant='compact'):
                     camera_path_plot = gr.Plot(
@@ -400,6 +409,13 @@ def on_ui_tabs():
         load_settings_btn.click(
             fn=wrap_gradio_call(path_updating_load_settings),
             inputs=[settings_path] + settings_component_list,
+            outputs=settings_component_list,
+        )
+
+        # Video upload for metadata extraction
+        video_upload.upload(
+            fn=wrap_gradio_call(load_settings_from_video),
+            inputs=[video_upload] + settings_component_list,
             outputs=settings_component_list,
         )
 
@@ -540,6 +556,13 @@ def on_ui_tabs():
                     outputs=[camera_path_plot]
                 )
 
+                # Also trigger on video upload (metadata extraction)
+                video_upload.upload(
+                    fn=update_viz_from_schedules,
+                    inputs=schedule_inputs,
+                    outputs=[camera_path_plot]
+                )
+
                 logger.debug("✅ Schedule textboxes wired to visualization")
 
         except Exception as e:
@@ -569,6 +592,13 @@ def on_ui_tabs():
 
             # Also update visibility when settings are loaded
             load_settings_btn.click(
+                fn=update_depth_preview_visibility,
+                inputs=[components['save_depth_maps'], components['animation_mode']],
+                outputs=[depth_preview_image]
+            )
+
+            # And when video is uploaded (metadata extraction)
+            video_upload.upload(
                 fn=update_depth_preview_visibility,
                 inputs=[components['save_depth_maps'], components['animation_mode']],
                 outputs=[depth_preview_image]

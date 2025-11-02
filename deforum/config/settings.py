@@ -362,5 +362,67 @@ def load_video_settings(*args, **kwargs):
             ret.append(jdata[key])
         else:
             ret.append(data[key])
-    
+
+    return ret
+
+
+def load_settings_from_video(video_path: str, *args):
+    """Load settings from video metadata (ComfyUI-style workflow extraction).
+
+    Args:
+        video_path: Path to video file with embedded Deforum metadata
+        *args: Current UI component values (same as load_all_settings)
+
+    Returns:
+        Updated component values with settings from video metadata
+    """
+    import gradio as gr
+    from deforum.media.metadata import extract_metadata_from_video
+
+    settings_component_names = get_settings_component_names()
+    data = {settings_component_names[i]: args[i] for i in range(len(settings_component_names))}
+
+    if not video_path or not os.path.isfile(video_path):
+        logger.warning(f"Video file not found: {video_path}")
+        return list(data.values())
+
+    try:
+        # Extract metadata from video
+        logger.info(f"Extracting settings from video: {video_path}", emoji='movie_camera')
+        jdata = extract_metadata_from_video(video_path)
+
+        if not jdata:
+            logger.warning("No Deforum metadata found in video file")
+            return list(data.values())
+
+        logger.info(f"Successfully extracted {len(jdata)} settings from video metadata", emoji='check')
+
+        # Handle deprecated settings
+        handle_deprecated_settings(jdata)
+
+        # Handle animation_prompts → prompts conversion
+        if 'animation_prompts' in jdata:
+            jdata['prompts'] = jdata['animation_prompts']
+
+    except Exception as e:
+        logger.error(f"Error extracting metadata from video: {str(e)}")
+        return list(data.values())
+
+    # Build return values (same logic as load_all_settings)
+    ret = []
+    for key in settings_component_names:
+        if key == 'add_soundtrack':
+            if key in jdata:
+                add_soundtrack_val = jdata[key]
+                if type(add_soundtrack_val) == bool:
+                    ret.append('File' if add_soundtrack_val else 'None')
+                else:
+                    ret.append(add_soundtrack_val)
+            else:
+                ret.append('None')
+        elif key in jdata:
+            ret.append(jdata[key])
+        else:
+            ret.append(data[key])
+
     return ret

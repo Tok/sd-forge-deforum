@@ -43,7 +43,6 @@ from deforum.ui.tabs.tab_masking import get_tab_masking
 from deforum.ui.tabs.tab_depth import get_tab_depth_warping
 from deforum.ui.tabs.tab_init import get_tab_init
 from deforum.ui.tabs.tab_wan import get_tab_wan
-from deforum.ui.tabs.tab_distribution import get_tab_distribution
 from deforum.ui.tabs.tab_output import get_tab_output
 from deforum.utils.system.logging import get_logger, emoji_if_enabled
 

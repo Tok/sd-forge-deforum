@@ -232,6 +232,62 @@ class TestCreateFFmpegMetadataArgs:
             assert idx + 1 < len(args)
             assert not args[idx + 1].startswith('-')  # Value shouldn't start with flag
 
+    def test_include_readable_fields_false_only_embeds_comment(self):
+        """When include_readable_fields=False, should only embed base64 comment."""
+        settings = {
+            "fps": 24,
+            "seed": 12345,
+            "W": 1280,
+            "H": 720,
+            "github_url": "https://github.com/Tok/sd-forge-deforum",
+            "commit_id": "abc123",
+            "sd_model_checkpoint": "TestModel",
+        }
+        args = create_ffmpeg_metadata_args(settings, include_readable_fields=False)
+
+        # Should only have ONE -metadata flag (just the comment)
+        metadata_count = args.count('-metadata')
+        assert metadata_count == 1
+
+        args_str = ' '.join(args)
+
+        # Should include encoded comment
+        assert 'comment=' in args_str
+        assert METADATA_PREFIX in args_str
+
+        # Should NOT include human-readable fields
+        assert 'deforum_fps' not in args_str
+        assert 'deforum_seed' not in args_str
+        assert 'deforum_resolution' not in args_str
+        assert 'deforum_github' not in args_str
+        assert 'deforum_commit' not in args_str
+        assert 'deforum_model' not in args_str
+
+        # But the base64 comment should still contain all data
+        comment_value = args[1][8:]  # Remove 'comment=' prefix
+        decoded = decode_settings_from_metadata(comment_value)
+        assert decoded["settings"]["fps"] == 24
+        assert decoded["settings"]["seed"] == 12345
+
+    def test_include_readable_fields_true_embeds_both(self):
+        """When include_readable_fields=True (default), should embed both comment and readable fields."""
+        settings = {
+            "fps": 24,
+            "seed": 12345,
+            "W": 1280,
+            "H": 720,
+        }
+        args = create_ffmpeg_metadata_args(settings, include_readable_fields=True)
+
+        # Should have multiple -metadata flags
+        metadata_count = args.count('-metadata')
+        assert metadata_count > 1
+
+        args_str = ' '.join(args)
+        assert 'comment=' in args_str
+        assert 'deforum_fps=24' in args_str
+        assert 'deforum_resolution=1280x720' in args_str
+
 
 class TestIntegration:
     """Integration tests combining multiple functions."""
