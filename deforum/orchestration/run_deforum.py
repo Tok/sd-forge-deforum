@@ -284,7 +284,21 @@ def run_deforum(*args):
             try:
                 f_location, f_crf, f_preset = get_ffmpeg_params() # get params for ffmpeg exec
                 image_path, mp4_path, real_audio_track, srt_path = get_ffmpeg_paths(args.outdir, root.timestring, anim_args, video_args)
-                ffmpeg_stitch_video(ffmpeg_location=f_location, fps=video_args.fps, outmp4_path=mp4_path, stitch_from_frame=0, stitch_to_frame=anim_args.max_frames, imgs_path=image_path, add_soundtrack=video_args.add_soundtrack, audio_path=real_audio_track, crf=f_crf, preset=f_preset, srt_path=srt_path)
+
+                # Create comprehensive metadata from all settings for embedding in video
+                from deforum.media.metadata import create_comprehensive_metadata
+                settings_metadata = create_comprehensive_metadata({
+                    **vars(args),
+                    **vars(anim_args),
+                    **vars(video_args),
+                    **vars(parseq_args),
+                    **vars(audio_sync_args),
+                    **vars(loop_args),
+                    **vars(controlnet_args),
+                    **vars(wan_args),
+                })
+
+                ffmpeg_stitch_video(ffmpeg_location=f_location, fps=video_args.fps, outmp4_path=mp4_path, stitch_from_frame=0, stitch_to_frame=anim_args.max_frames, imgs_path=image_path, add_soundtrack=video_args.add_soundtrack, audio_path=real_audio_track, crf=f_crf, preset=f_preset, srt_path=srt_path, settings_metadata=settings_metadata)
                 mp4 = open(mp4_path, 'rb').read()
                 data_url = f"data:video/mp4;base64, {b64encode(mp4).decode()}"
                 global last_vid_data

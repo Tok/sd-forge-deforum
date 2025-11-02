@@ -108,56 +108,23 @@ def decode_settings_from_metadata(metadata_string: str) -> dict[str, Any]:
     return metadata
 
 
-def create_essential_metadata(
-    render_mode: str,
-    fps: int,
-    max_frames: int,
-    width: int,
-    height: int,
-    seed: int,
-    steps: int,
-    cfg_scale: float,
-    model_name: str = "Unknown",
-    scheduler: str = "Unknown",
-    prompts: dict[int, str] | None = None
-) -> dict[str, Any]:
-    """Create essential metadata for video embedding.
+def create_comprehensive_metadata(settings_dict: dict[str, Any]) -> dict[str, Any]:
+    """Create comprehensive metadata from all generation settings.
 
-    Includes only technical generation settings for reproducibility.
-    No user-identifying information or branding.
+    Includes ALL technical generation settings for full reproducibility.
+    No user-identifying information or branding - only generation parameters.
 
     Args:
-        render_mode: Render mode (e.g., "New 3D", "Flux + Interpolation")
-        fps: Frames per second
-        max_frames: Total frame count
-        width: Video width in pixels
-        height: Video height in pixels
-        seed: Generation seed
-        steps: Sampling steps
-        cfg_scale: CFG scale value
-        model_name: Name of the model used (default: "Unknown")
-        scheduler: Scheduler/sampler name (default: "Unknown")
-        prompts: Optional prompt schedule dict {frame: prompt}
+        settings_dict: Full dictionary of all settings (args, anim_args, video_args, etc.)
 
     Returns:
-        Dictionary of essential metadata (technical settings only)
+        Dictionary with commit ID added and ready for embedding
     """
-    metadata = {
-        "commit_id": _get_commit_id_safe(),
-        "render_mode": render_mode,
-        "model": model_name,
-        "scheduler": scheduler,
-        "steps": steps,
-        "cfg_scale": cfg_scale,
-        "seed": seed,
-        "fps": fps,
-        "total_frames": max_frames,
-        "width": width,
-        "height": height,
-    }
+    # Add commit ID for version tracking
+    metadata = {"commit_id": _get_commit_id_safe()}
 
-    if prompts is not None:
-        metadata["prompts"] = prompts
+    # Add all provided settings
+    metadata.update(settings_dict)
 
     return metadata
 

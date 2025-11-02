@@ -283,7 +283,8 @@ def download_audio(audio_path):
 
 # Stitch images to a h264 mp4 video using ffmpeg
 def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch_from_frame=0, stitch_to_frame=None,
-                        imgs_path=None, add_soundtrack=None, audio_path=None, crf=17, preset='veryslow', srt_path=None):
+                        imgs_path=None, add_soundtrack=None, audio_path=None, crf=17, preset='veryslow', srt_path=None,
+                        settings_metadata=None):
     start_time = time.time()
 
     # Download audio at the beginning if soundtrack is enabled
@@ -317,8 +318,16 @@ def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch
             '-crf', str(crf),
             '-preset', preset,
             '-pattern_type', 'sequence',
-            outmp4_path
         ]
+
+        # Add metadata if provided
+        if settings_metadata is not None:
+            from deforum.media.metadata import create_ffmpeg_metadata_args
+            metadata_args = create_ffmpeg_metadata_args(settings_metadata)
+            cmd.extend(metadata_args)
+
+        # Add output path
+        cmd.append(outmp4_path)
 
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         stdout, stderr = process.communicate()
