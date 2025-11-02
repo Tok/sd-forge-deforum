@@ -117,14 +117,23 @@ def _is_schedule_active(data: RenderData, schedule_name: str) -> bool:
             return False
 
         series = getattr(keys, series_name)
-        if not series or len(series) == 0:
+
+        # Handle pandas Series (check if empty using .empty attribute)
+        if hasattr(series, 'empty'):
+            if series.empty:
+                return False
+            # Check if all values are the same (static schedule)
+            return series.nunique() > 1
+
+        # Handle lists/arrays
+        if series is None or len(series) == 0:
             return False
 
         # Check if all values are the same (static schedule)
         first_value = series[0]
         return not all(v == first_value for v in series)
 
-    except (AttributeError, IndexError):
+    except (AttributeError, IndexError, TypeError):
         return False
 
 
