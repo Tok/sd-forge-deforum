@@ -114,12 +114,12 @@ def _rgb_to_ansi_color_block(rgb):
     return f"\033[38;2;{r};{g};{b}m\033[48;2;{r};{g};{b}m"
 
 def _get_movement_indicators(anim_args, keys, frame_idx):
-    """Generate ASCII movement indicators for current frame.
+    """Generate ASCII movement indicators for current frame with dominant movement names.
 
     Translation indicators:
         < = left, > = right
         ^ = up, v = down
-        + = forward (toward camera), - = backward (away from camera)
+        + = forward/zoom (toward camera), - = backward/zoom (away from camera)
 
     Rotation indicators (pitch/yaw/roll):
         ↑ = pitch up, ↓ = pitch down
@@ -132,12 +132,12 @@ def _get_movement_indicators(anim_args, keys, frame_idx):
         frame_idx: Current frame index
 
     Returns:
-        String with ASCII movement indicators, or empty string if no movement
+        String with ASCII movement indicators and dominant movement name, or empty string if no movement
     """
     if anim_args.animation_mode in ['Video Input', 'Interpolation']:
         return ""  # No transform data available
 
-    indicators = []
+    movements = {}  # Track movements with their magnitudes
     threshold = 0.01  # Minimum value to show indicator
 
     # Translation indicators
@@ -145,15 +145,15 @@ def _get_movement_indicators(anim_args, keys, frame_idx):
     tr_y = keys.translation_y_series[frame_idx]
 
     if abs(tr_x) > threshold:
-        indicators.append(">" if tr_x > 0 else "<")
+        movements['tr_x'] = (abs(tr_x), ">" if tr_x > 0 else "<")
     if abs(tr_y) > threshold:
-        indicators.append("v" if tr_y > 0 else "^")
+        movements['tr_y'] = (abs(tr_y), "v" if tr_y > 0 else "^")
 
     # 3D specific: Z translation and rotations
     if anim_args.animation_mode == '3D':
         tr_z = keys.translation_z_series[frame_idx]
         if abs(tr_z) > threshold:
-            indicators.append("+" if tr_z > 0 else "-")
+            movements['tr_z'] = (abs(tr_z), "+ (zoom)" if tr_z > 0 else "- (zoom)")
 
         # Rotations (pitch/yaw/roll using Unicode arrows)
         rot_x = keys.rotation_3d_x_series[frame_idx]  # Pitch
@@ -161,24 +161,17 @@ def _get_movement_indicators(anim_args, keys, frame_idx):
         rot_z = keys.rotation_3d_z_series[frame_idx]  # Roll
 
         if abs(rot_x) > threshold:
-            indicators.append("↓" if rot_x > 0 else "↑")  # Pitch
+            movements['rot_x'] = (abs(rot_x), "↓ (pitch)" if rot_x > 0 else "↑ (pitch)")
         if abs(rot_y) > threshold:
-            indicators.append("→" if rot_y > 0 else "←")  # Yaw
+            movements['rot_y'] = (abs(rot_y), "→ (yaw)" if rot_y > 0 else "← (yaw)")
         if abs(rot_z) > threshold:
-            indicators.append("↷" if rot_z > 0 else "↶")  # Roll
+            movements['rot_z'] = (abs(rot_z), "↷ (roll)" if rot_z > 0 else "↶ (roll)")
 
-    # 2D specific: Angle and Zoom
-    if anim_args.animation_mode == '2D':
-        angle = keys.angle_series[frame_idx]
-        zoom = keys.zoom_series[frame_idx]
-
-        if abs(angle) > threshold:
-            indicators.append("↷" if angle > 0 else "↶")  # Rotation
-        if abs(zoom - 1.0) > threshold:
-            indicators.append("+" if zoom > 1.0 else "-")  # Zoom in/out
-
-    if indicators:
-        return " Move: " + " ".join(indicators)
+    if movements:
+        # Sort by magnitude to get dominant movement first
+        sorted_movements = sorted(movements.items(), key=lambda x: x[1][0], reverse=True)
+        indicators = [indicator for _, (_, indicator) in sorted_movements]
+        return "Move: " + " ".join(indicators)
     else:
         return ""
 

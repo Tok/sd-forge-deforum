@@ -29,6 +29,13 @@ class Taqaddumat:
         self.total_animation_cycles = None
         self.dashboard = None  # Optional dashboard for progress updates
 
+        # Manual counters for when tqdm is disabled
+        self._tweens_n = 0
+        self._total_frames_n = 0
+        self._steps_n = 0
+        self._total_steps_n = 0
+        self._animation_cycles_n = 0
+
     def reset(self, data, frames):
         """Initialize all progress bars with correct totals.
 
@@ -103,10 +110,17 @@ class Taqaddumat:
         num_diffusion_frames = len(frames)
         self.total_animation_cycles = create(
             range(num_diffusion_frames), 0, HEX_PURPLE,
-            "Diffusion Frames" + (" (Reverse)" if data.args.anim_args.reverse_generation else ""),
+            "Difforum Frames" + (" (Reverse)" if data.args.anim_args.reverse_generation else ""),
             "frame",
             leave=True,  # Keep final bar visible in log
             bar_format=Taqaddumat.DEFAULT_BAR_FORMAT)
+
+        # Reset manual counters
+        self._tweens_n = 0
+        self._total_frames_n = 0
+        self._steps_n = 0
+        self._total_steps_n = 0
+        self._animation_cycles_n = 0
 
         self.clear_all()
 
@@ -125,9 +139,13 @@ class Taqaddumat:
         self.tweens.refresh()
         self.total_frames.update()
         self.total_frames.refresh()
-        # Update dashboard if available (must read .n AFTER update even if disabled)
+        # Manual counters (work even when tqdm disabled)
+        self._tweens_n += 1
+        self._total_frames_n += 1
+        # Update dashboard if available
         if self.dashboard:
-            self.dashboard.progress_data['total_frames'] = (self.total_frames.n, self.total_frames.total)
+            self.dashboard.progress_data['current_tweens'] = (self._tweens_n, self.tweens.total)
+            self.dashboard.progress_data['total_frames'] = (self._total_frames_n, self.total_frames.total)
             self.dashboard.update()
 
     def increment_step_count(self):
@@ -138,19 +156,24 @@ class Taqaddumat:
         self.steps.refresh()
         self.total_steps.update()
         self.total_steps.refresh()
+        # Manual counters (work even when tqdm disabled)
+        self._steps_n += 1
+        self._total_steps_n += 1
         # Update dashboard if available
         if self.dashboard:
-            self.dashboard.progress_data['current_step'] = (self.steps.n, self.steps.total)
-            self.dashboard.progress_data['total_steps'] = (self.total_steps.n, self.total_steps.total)
+            self.dashboard.progress_data['current_step'] = (self._steps_n, self.steps.total)
+            self.dashboard.progress_data['total_steps'] = (self._total_steps_n, self.total_steps.total)
             self.dashboard.update()
 
     def increment_animation_cycle_count(self):
         # Calls to tqdm.update() without an argument increment it by 1.
         self.total_animation_cycles.update()
         self.total_animation_cycles.refresh()
+        # Manual counter (works even when tqdm disabled)
+        self._animation_cycles_n += 1
         # Update dashboard if available
         if self.dashboard:
-            self.dashboard.progress_data['diffusion_frames'] = (self.total_animation_cycles.n, self.total_animation_cycles.total)
+            self.dashboard.progress_data['diffusion_frames'] = (self._animation_cycles_n, self.total_animation_cycles.total)
             self.dashboard.update()
         logger.info("")
 
@@ -160,11 +183,21 @@ class Taqaddumat:
         self.tweens.reset()
         self.tweens.clear()
         self.tweens.total = n
+        self._tweens_n = 0
+        # Update dashboard if available
+        if self.dashboard:
+            self.dashboard.progress_data['current_tweens'] = (0, n)
+            self.dashboard.update()
 
     def reset_step_count(self, n):
         self.steps.reset()
         self.steps.clear()
         self.steps.total = n
+        self._steps_n = 0
+        # Update dashboard if available
+        if self.dashboard:
+            self.dashboard.progress_data['current_step'] = (0, n)
+            self.dashboard.update()
 
     def clear_all(self):
         self.tweens.clear()
@@ -172,7 +205,6 @@ class Taqaddumat:
         self.total_steps.clear()
         self.total_frames.clear()
         self.total_animation_cycles.clear()
-        logger.info("\n\n\n\n")
 
     @staticmethod
     def _get_themed_color(classic_color):

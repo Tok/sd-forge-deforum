@@ -276,11 +276,18 @@ class FixedDashboard:
         else:
             df_pct = 0
 
+        # Colorize "Animation Frame:" label with theme-aware blue
+        from deforum.utils.system.logging.log import HEX_BLUE
+        from deforum.utils.system.logging.themes import get_tqdm_color_for_theme
+        from deforum.utils.image.color import hex_to_ansi_foreground
+
+        themed_blue_hex = get_tqdm_color_for_theme(HEX_BLUE, self.theme)
+        animation_frame_color = hex_to_ansi_foreground(themed_blue_hex)
+
         # Colorize frame type
         frame_type = self.frame_info['type']
         if self.theme == 'slopcore':
             from deforum.utils.system.logging.themes import HEX_SLOPCORE_3, HEX_SLOPCORE_6
-            from deforum.utils.image.color import hex_to_ansi_foreground
             if frame_type == 'KEYFRAME':
                 type_color = hex_to_ansi_foreground(HEX_SLOPCORE_6)  # Deep purple
             else:  # CADENCE
@@ -289,7 +296,7 @@ class FixedDashboard:
         else:
             frame_type_colored = f"[{frame_type}]"
 
-        line1_left = f"Frame {self.frame_info['current']}/{self.frame_info['total']} {frame_type_colored} | Progress: {df_pct}%"
+        line1_left = f"{animation_frame_color}Animation Frame:\033[0m {self.frame_info['current']}/{self.frame_info['total']} {frame_type_colored} | Progress: {df_pct}%"
 
         # Add color block if available
         if self.frame_info.get('color_rgb'):
@@ -316,8 +323,18 @@ class FixedDashboard:
 
         lines.append(line1)
 
-        # Status line 2: Empty (removed redundant info)
-        line2 = " " * self._terminal_width
+        # Status line 2: Prompt
+        prompt = self.frame_info.get('prompt', '')
+        if prompt:
+            # Truncate prompt if too long for terminal width
+            max_prompt_len = self._terminal_width - 10  # Leave some padding
+            if len(prompt) > max_prompt_len:
+                prompt = prompt[:max_prompt_len - 3] + "..."
+            line2 = f"Prompt: {prompt}"
+            # Pad to full width
+            line2 = line2.ljust(self._terminal_width)
+        else:
+            line2 = " " * self._terminal_width
         lines.append(line2)
 
         # Progress bars (5 tqdm bars from Taqaddumat)
@@ -408,52 +425,57 @@ class FixedDashboard:
                     len(desc5)
                 )
 
-                # Read directly from tqdm objects (they update even when disabled)
+                # Read from progress_data (updated via callbacks even when tqdm disabled)
                 # Bar 1: Current Tweens (blue)
+                tw_current, tw_total = self.progress_data.get('current_tweens', (taqaddum._tweens_n, taqaddum.tweens.total))
                 lines.append(self._format_tqdm_bar(
                     "Current Tweens",
-                    taqaddum.tweens.n,
-                    taqaddum.tweens.total,
+                    tw_current,
+                    tw_total,
                     "tween",
                     HEX_BLUE,
                     max_desc_len
                 ))
 
                 # Bar 2: Total Frames (green)
+                tf_current, tf_total = self.progress_data.get('total_frames', (taqaddum._total_frames_n, taqaddum.total_frames.total))
                 lines.append(self._format_tqdm_bar(
                     "Total Frames",
-                    taqaddum.total_frames.n,
-                    taqaddum.total_frames.total,
+                    tf_current,
+                    tf_total,
                     "frame",
                     HEX_GREEN,
                     max_desc_len
                 ))
 
                 # Bar 3: Current Diffusion Steps (orange)
+                cs_current, cs_total = self.progress_data.get('current_step', (taqaddum._steps_n, taqaddum.steps.total))
                 lines.append(self._format_tqdm_bar(
                     "Current Diffusion Steps",
-                    taqaddum.steps.n,
-                    taqaddum.steps.total,
+                    cs_current,
+                    cs_total,
                     "step",
                     HEX_ORANGE,
                     max_desc_len
                 ))
 
                 # Bar 4: Total Diffusion Steps (red)
+                ts_current, ts_total = self.progress_data.get('total_steps', (taqaddum._total_steps_n, taqaddum.total_steps.total))
                 lines.append(self._format_tqdm_bar(
                     "Total Diffusion Steps",
-                    taqaddum.total_steps.n,
-                    taqaddum.total_steps.total,
+                    ts_current,
+                    ts_total,
                     "step",
                     HEX_RED,
                     max_desc_len
                 ))
 
                 # Bar 5: Diffusion Frames (purple)
+                df_current, df_total = self.progress_data.get('diffusion_frames', (taqaddum._animation_cycles_n, taqaddum.total_animation_cycles.total))
                 lines.append(self._format_tqdm_bar(
                     desc5,
-                    taqaddum.total_animation_cycles.n,
-                    taqaddum.total_animation_cycles.total,
+                    df_current,
+                    df_total,
                     "frame",
                     HEX_PURPLE,
                     max_desc_len
@@ -630,6 +652,50 @@ class FixedDashboard:
         )
 
         if ascii_art:
-            print(f"\n[Frame {frame_idx}]")
-            print(ascii_art)
-            print()  # Extra newline for spacing
+            # Integrate frame number into first line of ASCII art
+            lines = ascii_art.split('\n')
+            if lines:
+                frame_text = f"[Frame {frame_idx}]"
+                # Overlay text on first line (white text on colored background)
+                first_line = lines[0]
+                # Strip ANSI codes to calculate visible length
+                import re
+                visible_first = re.sub(r'\033\[[0-9;]*m', '', first_line)
+
+                # If we have enough space, overlay the text at the start
+                if len(visible_first) >= len(frame_text):
+                    # Create white text on background: each char replaces 2-space block
+                    # White foreground + preserve background color
+                    overlay = ""
+                    # Parse first N blocks to get background colors
+                    pos = 0
+                    for char in frame_text:
+                        # Find next background color code in first_line
+                        bg_match = re.search(r'\033\[48;2;(\d+);(\d+);(\d+)m', first_line[pos:])
+                        if bg_match:
+                            r, g, b = bg_match.groups()
+                            # White text (255,255,255) on extracted background
+                            overlay += f"\033[38;2;255;255;255m\033[48;2;{r};{g};{b}m{char} \033[0m"
+                            # Move position past this block (bg code + 2 spaces + reset)
+                            pos += bg_match.end() + 3  # Skip " \033[0m"
+                        else:
+                            # Fallback: white on black
+                            overlay += f"\033[38;2;255;255;255m{char} \033[0m"
+
+                    # Replace start of first line with overlay
+                    # Count how many complete blocks (each "  " = one block) to replace
+                    blocks_to_replace = len(frame_text)
+                    # Each block is: \033[48;2;r;g;bm  \033[0m (approx 20-25 chars)
+                    # Find position after N blocks
+                    block_count = 0
+                    cut_pos = 0
+                    for match in re.finditer(r'\033\[48;2;\d+;\d+;\d+m  \033\[0m', first_line):
+                        if block_count >= blocks_to_replace:
+                            cut_pos = match.start()
+                            break
+                        block_count += 1
+
+                    lines[0] = overlay + first_line[cut_pos:]
+
+                print("\n" + "\n".join(lines))
+                print()  # Extra newline for spacing

@@ -78,15 +78,13 @@ def print_animation_frame_info(i, max_frames, is_keyframe=None):
     keyframe_color = from_hex_color(keyframe_color_hex) if keyframe_color_hex else ""
     cadence_color = from_hex_color(cadence_color_hex) if cadence_color_hex else ""
 
-    print("")
     frame_type = ""
     if is_keyframe is not None:
         if is_keyframe:
             frame_type = f" {keyframe_color}[KEYFRAME]{RESET_COLOR}"
         else:
             frame_type = f" {cadence_color}[CADENCE]{RESET_COLOR}"
-    print(f"{BLUE}Animation frame: {RESET_COLOR}{BOLD}{i}{RESET_COLOR}/{max_frames}{frame_type}")
-
+    print(f"{BLUE}Animation Frame: {RESET_COLOR}{BOLD}{i}{RESET_COLOR}/{max_frames}{frame_type}")
 
 def print_tween_frame_info(data, i, cadence_flow, tween, is_disabled=True):
     if not is_disabled:  # disabled because it's spamming the cli on high cadence settings.
