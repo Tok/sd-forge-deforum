@@ -40,8 +40,8 @@ class Taqaddumat:
             before calling this method, so initialization is always correct.
 
         Progress Bar Strategy:
-            - Transient bars (tweens, steps): leave=False (don't clutter log)
-            - Accumulator bars (total frames, total steps): leave=False
+            - Transient bars (current tweens, current steps): leave=False (resets each frame)
+            - Accumulator bars (total frames, total steps): leave=True (show final totals)
             - Final progress bar (diffusion frames): leave=True (shows completion)
         """
         def create(iterable, position, color, description, unit, leave=False, bar_format=Taqaddumat.NO_ETA_BAR_FORMAT):
@@ -69,11 +69,11 @@ class Taqaddumat:
             range(initial_tween_count), 0, HEX_BLUE,
             "Current Tweens", "tween", leave=False)
 
-        # Accumulator bar: grows throughout animation, don't leave in log
+        # Accumulator bar: grows throughout animation, KEEP in log to show total output
         total_frames = sum(len(frame.tweens) for frame in frames)
         self.total_frames = create(
             range(total_frames), 1, HEX_GREEN,
-            "Total Frames", "frame", leave=False)
+            "Total Frames", "frame", leave=True)
 
         # Transient bar: resets for each diffusion frame, don't leave in log
         initial_steps_count = frames[0].schedule.steps if len(frames) > 0 else 20
@@ -81,11 +81,11 @@ class Taqaddumat:
             range(initial_steps_count), 0, HEX_ORANGE,
             "Current Diffusion Steps", "step", leave=False)
 
-        # Accumulator bar: grows throughout animation, don't leave in log
+        # Accumulator bar: grows throughout animation, KEEP in log (user wants to see total)
         total_steps = sum(frame.actual_steps(data) for frame in frames)
         self.total_steps = create(
             range(total_steps), 1, HEX_RED,
-            "Total Diffusion Steps", "step", leave=False)
+            "Total Diffusion Steps", "step", leave=True)
 
         # Final progress bar: shows overall completion, KEEP in log when done
         # Renamed from "Total Animation Cycles" to "Diffusion Frames" for clarity
@@ -114,8 +114,7 @@ class Taqaddumat:
         self.tweens.refresh()
         self.total_frames.update()
         self.total_frames.refresh()
-        if Taqaddumat.is_last_iteration(self.tweens):
-            logger.info("\n")
+        # Don't print newline on completion - bars use leave=False and should disappear cleanly
 
     def increment_step_count(self):
         if self.steps.n == 0:
@@ -125,8 +124,7 @@ class Taqaddumat:
         self.steps.refresh()
         self.total_steps.update()
         self.total_steps.refresh()
-        if Taqaddumat.is_last_iteration(self.steps):
-            logger.info("\n")
+        # Don't print newline on completion - bars use leave=False and should disappear cleanly
 
     def increment_animation_cycle_count(self):
         # Calls to tqdm.update() without an argument increment it by 1.
