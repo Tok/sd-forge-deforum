@@ -397,6 +397,7 @@ class FixedDashboard:
             loaded_models = []
 
             # Detect main model (Flux/Lumina/SD)
+            main_model_on_gpu = False
             if hasattr(shared, 'sd_model') and shared.sd_model is not None:
                 model_name = "Unknown"
                 model_size_gb = 0
@@ -426,20 +427,60 @@ class FixedDashboard:
                     except:
                         pass
 
+                # Check if model is on GPU
+                try:
+                    if hasattr(shared.sd_model, 'device'):
+                        main_model_on_gpu = str(shared.sd_model.device).startswith('cuda')
+                except:
+                    main_model_on_gpu = True  # Assume on GPU if can't determine
+
                 if model_size_gb > 0:
                     loaded_models.append(f"{model_name} ({model_size_gb:.1f}GB)")
                 else:
                     loaded_models.append(model_name)
 
-            # Detect depth model (check if loaded in VRAM)
-            # This is trickier - we'd need to track it in the depth module
-            # For now, we'll just indicate if depth is active based on mode
-            # (proper tracking would require modifying depth loading code)
+            # Detect depth model using singleton instance
+            depth_model_on_gpu = False
+            try:
+                from deforum.depth.depth import DepthModel
+                if DepthModel._instance is not None and not DepthModel._instance.should_delete:
+                    depth_algo = DepthModel._instance.depth_algorithm
+
+                    # Extract size from algorithm name (Small/Base/Large)
+                    model_size = depth_algo.lower().split('-')[-1]
+
+                    # Approximate sizes for Depth-Anything-V2 (fp16)
+                    size_map = {
+                        'small': 0.1,   # ~25M params
+                        'base': 0.4,    # ~97M params
+                        'large': 1.3    # ~335M params
+                    }
+                    depth_size_gb = size_map.get(model_size, 0.1)
+
+                    # Check if on GPU
+                    try:
+                        depth_device = str(DepthModel._instance.device)
+                        depth_model_on_gpu = depth_device.startswith('cuda')
+                    except:
+                        depth_model_on_gpu = False
+
+                    if depth_model_on_gpu:
+                        loaded_models.append(f"Depth-{model_size.capitalize()} ({depth_size_gb:.1f}GB)")
+            except:
+                pass  # Depth model not available
 
             if loaded_models:
-                # Show arrow if swapping, or checkmark if both loaded
-                # For now, just show what's loaded
-                return "Models: " + " + ".join(loaded_models)
+                # Show indicator based on what's loaded
+                if len(loaded_models) == 2:
+                    # Both models loaded
+                    separator = " + "
+                elif len(loaded_models) == 1:
+                    # Only one model loaded
+                    separator = ""
+                else:
+                    separator = " + "
+
+                return "Models: " + separator.join(loaded_models)
             else:
                 return ""
 
