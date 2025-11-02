@@ -53,8 +53,8 @@ def print_startup_banner():
     RESET = "\033[0m"
     BOLD = "\033[1m"
     WHITE = "\033[97m"
-    # Use darker gray for corners so they blend better with terminal background
-    CORNER_COLOR = "\033[38;2;50;50;50m"
+    # Use very dark gray for corners so they blend better with terminal background
+    CORNER_COLOR = "\033[38;2;30;30;30m"
 
     # Helper to get terminal width
     term_width = shutil.get_terminal_size((120, 24)).columns

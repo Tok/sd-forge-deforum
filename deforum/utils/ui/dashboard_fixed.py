@@ -718,18 +718,29 @@ class FixedDashboard:
                     max_desc_len
                 ))
 
-                # Line 5: Models + VRAM (left-aligned, no bar - moved to end)
+                # Line 5: Models (left) + VRAM (right-aligned)
                 models_str = self._format_loaded_models_detailed()
                 vram_str = self._format_vram_bar()
-                if models_str:
-                    models_vram_line = f"{models_str} | {vram_str}"
-                else:
-                    models_vram_line = vram_str
-                # Pad to full width
+
+                # Calculate spacing to right-align VRAM
                 import re
-                visible = re.sub(r'\033\[[0-9;]*m', '', models_vram_line)
-                padding_needed = max(0, self._terminal_width - len(visible))
-                lines.append(models_vram_line + (" " * padding_needed))
+                models_visible = re.sub(r'\033\[[0-9;]*m', '', models_str) if models_str else ""
+                vram_visible = re.sub(r'\033\[[0-9;]*m', '', vram_str)
+
+                # Space between models and VRAM to fill terminal width
+                total_content_len = len(models_visible) + len(vram_visible)
+                if models_str:
+                    total_content_len += 3  # Account for " | " separator
+
+                padding_needed = max(1, self._terminal_width - total_content_len)
+
+                if models_str:
+                    models_vram_line = f"{models_str}{' ' * padding_needed}{vram_str}"
+                else:
+                    # If no models, still right-align VRAM
+                    models_vram_line = f"{' ' * padding_needed}{vram_str}"
+
+                lines.append(models_vram_line)
             else:
                 # Fallback if tqdm not available
                 lines.extend([
@@ -787,27 +798,20 @@ class FixedDashboard:
 
         filled = int(bar_width * current / total) if total > 0 else 0
 
-        # Create bar with gradient for "Total Frames" and "Total Diffusion Steps" in slopcore theme
-        # "Total Frames" gets normal gradient, "Total Diffusion Steps" gets reverse gradient
-        use_gradient = self.theme == 'slopcore' and (desc == "Total Frames" or desc == "Total Diffusion Steps") and color_hex
-        if use_gradient:
-            # Apply slopcore gradient to filled portion
-            bar = self._create_gradient_bar(filled, bar_width - filled, color_hex, reverse=reverse_gradient)
-        else:
-            # Solid color bar for all other bars
-            bar_filled = "█" * filled
-            bar_empty = "░" * (bar_width - filled)
+        # Always use solid color bars (gradients were confusing)
+        bar_filled = "█" * filled
+        bar_empty = "░" * (bar_width - filled)
 
-            # Apply theme color if provided
-            if color_hex and self.theme != 'simple':
-                themed_hex = get_tqdm_color_for_theme(color_hex, self.theme)
-                if themed_hex:
-                    color_code = hex_to_ansi_foreground(themed_hex)
-                    bar = f"{color_code}{bar_filled}\033[0m{bar_empty}"
-                else:
-                    bar = bar_filled + bar_empty
+        # Apply theme color if provided
+        if color_hex and self.theme != 'simple':
+            themed_hex = get_tqdm_color_for_theme(color_hex, self.theme)
+            if themed_hex:
+                color_code = hex_to_ansi_foreground(themed_hex)
+                bar = f"{color_code}{bar_filled}\033[0m{bar_empty}"
             else:
                 bar = bar_filled + bar_empty
+        else:
+            bar = bar_filled + bar_empty
 
         # Build line (don't pad here - ANSI codes mess up ljust)
         line = f"{desc_padded}: {bar} {current}/{total} {unit}s ({pct}%)"
