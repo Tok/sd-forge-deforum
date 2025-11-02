@@ -82,6 +82,20 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         dashboard.progress_data['diffusion_frames'] = (0, len(generation_order_frames))
         total_steps = sum(frame.actual_steps(data) for frame in generation_order_frames)
         dashboard.progress_data['total_steps'] = (0, total_steps)
+
+        # Set up signal handler for clean Ctrl+C
+        import signal
+        original_sigint = signal.getsignal(signal.SIGINT)
+
+        def sigint_handler(sig, frame):
+            """Handle Ctrl+C by stopping dashboard and restoring handler."""
+            if dashboard:
+                dashboard.stop()
+            # Restore original handler and re-raise
+            signal.signal(signal.SIGINT, original_sigint)
+            raise KeyboardInterrupt
+
+        signal.signal(signal.SIGINT, sigint_handler)
         dashboard.start()
 
     shared.total_tqdm = Taqaddumat()

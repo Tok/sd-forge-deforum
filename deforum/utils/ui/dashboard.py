@@ -511,11 +511,22 @@ class RenderDashboard:
         self.layout["log"].update(self._render_log())
 
         # Start Live display with reduced refresh rate to minimize CPU usage
-        self.live = Live(self.layout, console=self.console, refresh_per_second=2)
+        # Use transient=False to allow Ctrl+C to work properly
+        self.live = Live(
+            self.layout,
+            console=self.console,
+            refresh_per_second=2,
+            transient=False  # Don't clear on exit - allows clean interrupt
+        )
         self.live.start()
 
     def stop(self):
         """Stop live dashboard display."""
         if self.live:
-            self.live.stop()
-            self.live = None
+            try:
+                self.live.stop()
+            except Exception:
+                # Silently ignore errors during cleanup
+                pass
+            finally:
+                self.live = None
