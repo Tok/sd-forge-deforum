@@ -284,6 +284,10 @@ def prepare_generation(data: RenderData, frame: DiffusionFrame):
     if dashboard and hasattr(dashboard, 'last_frame_image') and dashboard.last_frame_image is not None:
         dashboard.add_ascii_art_to_log(dashboard.last_frame_image, frame.i - 1)
 
+    # Update dashboard frame type to match log output
+    if dashboard:
+        dashboard.frame_info['type'] = 'KEYFRAME' if frame.is_keyframe else 'CADENCE'
+
     log_utils.print_animation_frame_info(frame.i, data.args.anim_args.max_frames, frame.is_keyframe)
 
 
