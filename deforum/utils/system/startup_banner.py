@@ -76,7 +76,7 @@ def print_startup_banner():
         idx = min(int(position * len(slopcore_gradient)), len(slopcore_gradient) - 1)
         return hex_to_bg_ansi(slopcore_gradient[idx])
 
-    # Slopcore rounded button characters (tailwind-hegemony punk)
+    # Slopcore rounded button characters (tailwind-hegemony punk, bootstrap default-css-wave)
     ROUND_TL = "◤"  # Top-left rounded
     ROUND_TR = "◥"  # Top-right rounded
     ROUND_BL = "◣"  # Bottom-left rounded
