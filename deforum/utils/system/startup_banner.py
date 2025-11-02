@@ -41,8 +41,8 @@ def print_startup_banner():
     RESET = "\033[0m"
     BOLD = "\033[1m"
     WHITE = "\033[97m"
-    # Use dark gray for corners so they blend with terminal background
-    CORNER_COLOR = "\033[38;2;80;80;80m"
+    # Use darker gray for corners so they blend better with terminal background
+    CORNER_COLOR = "\033[38;2;50;50;50m"
 
     # Helper to get terminal width
     term_width = shutil.get_terminal_size((120, 24)).columns
@@ -97,13 +97,14 @@ def print_startup_banner():
 
         if char_pos == 0:
             # Left corner with gradient bg
-            top_line += f"{bg}{CORNER_COLOR}{ROUND_TL}{RESET}"
+            top_line += f"{bg}{CORNER_COLOR}{ROUND_TL}"
         elif char_pos == box_width - 1:
             # Right corner with gradient bg
-            top_line += f"{bg}{CORNER_COLOR}{ROUND_TR}{RESET}"
+            top_line += f"{bg}{CORNER_COLOR}{ROUND_TR}"
         else:
             # Middle space with gradient bg
-            top_line += f"{bg} {RESET}"
+            top_line += f"{bg} "
+    top_line += RESET  # Single reset at end of line
     banner_lines.append(top_line)
 
     # Content lines with diagonal gradient background
@@ -126,14 +127,15 @@ def print_startup_banner():
 
             if char_pos < 2:
                 # Left padding (2 spaces)
-                content_line += f"{bg} {RESET}"
+                content_line += f"{bg} "
             elif char_pos < text_len + 2:
                 # Text content
-                content_line += f"{bg}{WHITE}{visible_text[char_pos - 2]}{RESET}"
+                content_line += f"{bg}{WHITE}{visible_text[char_pos - 2]}"
             else:
                 # Right padding
-                content_line += f"{bg} {RESET}"
+                content_line += f"{bg} "
 
+        content_line += RESET  # Single reset at end of line
         banner_lines.append(content_line)
 
     # Bottom border with slopcore rounded corners and diagonal gradient
@@ -144,13 +146,14 @@ def print_startup_banner():
 
         if char_pos == 0:
             # Left corner with gradient bg
-            bottom_line += f"{bg}{CORNER_COLOR}{ROUND_BL}{RESET}"
+            bottom_line += f"{bg}{CORNER_COLOR}{ROUND_BL}"
         elif char_pos == box_width - 1:
             # Right corner with gradient bg
-            bottom_line += f"{bg}{CORNER_COLOR}{ROUND_BR}{RESET}"
+            bottom_line += f"{bg}{CORNER_COLOR}{ROUND_BR}"
         else:
             # Middle space with gradient bg
-            bottom_line += f"{bg} {RESET}"
+            bottom_line += f"{bg} "
+    bottom_line += RESET  # Single reset at end of line
     banner_lines.append(bottom_line)
 
     # Print the banner (no extra empty lines)
