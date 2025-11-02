@@ -111,23 +111,39 @@ def print_startup_banner():
     banner_lines = []
     total_rows = len(lines) + 2  # +2 for top and bottom borders
 
-    # Double Fibonacci spacing for diagonal shift (2, 2, 4, 6, 10, 16, repeating)
-    # Creates varied diagonal pattern instead of uniform shift
-    double_fib_pattern = [2, 2, 4, 6, 10, 16]
+    # Double Fibonacci spacing: Fibonacci sequence * 2 for varied diagonal increments
+    # Generate enough entries to cover all rows (13 total) without cycling
+    # Fibonacci: 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233...
+    # Doubled: 2, 2, 4, 6, 10, 16, 26, 42, 68, 110, 178, 288, 466...
+    # We'll use first 15 entries scaled down to fit banner width
+    double_fib_raw = [2, 2, 4, 6, 10, 16, 26, 42, 68, 110, 178, 288, 466, 754, 1220]
+
+    # Normalize to small increments (divide by 100) for smooth gradient
+    double_fib_pattern = [x / 100.0 for x in double_fib_raw[:15]]
+
+    # Cumulative shifts for smooth diagonal gradient
+    cumulative_shifts = [0]  # Start at 0
+    for increment in double_fib_pattern:
+        cumulative_shifts.append(cumulative_shifts[-1] + increment)
 
     def get_row_shift(row_idx):
-        """Get horizontal shift amount for this row using double Fibonacci pattern."""
-        pattern_idx = row_idx % len(double_fib_pattern)
-        return double_fib_pattern[pattern_idx]
+        """Get cumulative horizontal shift for this row using double Fibonacci spacing."""
+        if row_idx >= len(cumulative_shifts):
+            return cumulative_shifts[-1]  # Max shift for overflow
+        return cumulative_shifts[row_idx]
 
     # Top border with slopcore rounded corners and diagonal gradient
     import re
+
+    # Maximum shift value for normalization (last cumulative shift)
+    max_shift = cumulative_shifts[-1]
 
     # Top line: ◤ with gradient bg, then spaces with gradient, ending with ◥
     top_line = ""
     top_shift = get_row_shift(0)
     for char_pos in range(box_width):
-        gradient_pos = min(1.0, max(0.0, (char_pos + top_shift) / (box_width + max(double_fib_pattern))))
+        # Smooth gradient: combine row shift and character position
+        gradient_pos = min(1.0, max(0.0, (top_shift * 10 + char_pos) / (max_shift * 10 + box_width)))
         bg = get_gradient_bg_by_position(gradient_pos)
 
         if char_pos == 0:
@@ -162,7 +178,7 @@ def print_startup_banner():
 
         # Left padding (2 spaces)
         for i in range(2):
-            gradient_pos = min(1.0, max(0.0, (display_pos + row_shift) / (box_width + max(double_fib_pattern))))
+            gradient_pos = min(1.0, max(0.0, (row_shift * 10 + display_pos) / (max_shift * 10 + box_width)))
             bg = get_gradient_bg_by_position(gradient_pos)
             content_line += f"{bg} "
             display_pos += 1
@@ -173,7 +189,7 @@ def print_startup_banner():
             char = visible_text[text_idx]
             char_width = 2 if unicodedata.east_asian_width(char) in ('F', 'W') else 1
 
-            gradient_pos = min(1.0, max(0.0, (display_pos + row_shift) / (box_width + max(double_fib_pattern))))
+            gradient_pos = min(1.0, max(0.0, (row_shift * 10 + display_pos) / (max_shift * 10 + box_width)))
             bg = get_gradient_bg_by_position(gradient_pos)
             content_line += f"{bg}{WHITE}{char}"
 
@@ -182,7 +198,7 @@ def print_startup_banner():
 
         # Right padding
         for i in range(right_padding_width):
-            gradient_pos = min(1.0, max(0.0, (display_pos + row_shift) / (box_width + max(double_fib_pattern))))
+            gradient_pos = min(1.0, max(0.0, (row_shift * 10 + display_pos) / (max_shift * 10 + box_width)))
             bg = get_gradient_bg_by_position(gradient_pos)
             content_line += f"{bg} "
             display_pos += 1
@@ -194,7 +210,7 @@ def print_startup_banner():
     bottom_line = ""
     bottom_shift = get_row_shift(len(lines) + 1)  # Last row
     for char_pos in range(box_width):
-        gradient_pos = min(1.0, max(0.0, (char_pos + bottom_shift) / (box_width + max(double_fib_pattern))))
+        gradient_pos = min(1.0, max(0.0, (bottom_shift * 10 + char_pos) / (max_shift * 10 + box_width)))
         bg = get_gradient_bg_by_position(gradient_pos)
 
         if char_pos == 0:
