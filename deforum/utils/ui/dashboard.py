@@ -231,15 +231,15 @@ class RenderDashboard:
         from deforum.orchestration.generate import _rgb_to_ansi_color_block, _RESET_BG
 
         # Frame info line
-        frame_type_color = "green" if self.frame_info['type'] == 'KEYFRAME' else "yellow"
+        frame_type_color = "green" if self.frame_info['type'] == 'KEYFRAME' else "yellow"  # Exception colors (success/warn)
         frame_line = Text()
-        frame_line.append(f"Animation frame: ", style="blue bold")
+        frame_line.append(f"Animation frame: ", style=self._themed_style('blue', bold=True))
         frame_line.append(f"{self.frame_info['current']}/{self.frame_info['total']} ", style="bold")
         frame_line.append(f"[{self.frame_info['type']}]", style=frame_type_color)
 
         # Seed and color line
         seed_line = Text()
-        seed_line.append(f"Seed: {self.frame_info['seed']}", style="cyan")
+        seed_line.append(f"Seed: {self.frame_info['seed']}", style=self._themed_style('cyan'))
 
         # Add color block if available
         if self.frame_info['color_rgb']:
@@ -249,25 +249,25 @@ class RenderDashboard:
 
         # Add movement (already includes "Move: " prefix from orchestrator)
         if self.frame_info['movement']:
-            seed_line.append(self.frame_info['movement'], style="magenta")
+            seed_line.append(self.frame_info['movement'], style=self._themed_style('purple'))
 
         # Prompt line
         prompt_line = Text()
-        prompt_line.append("Prompt: ", style="blue")
+        prompt_line.append("Prompt: ", style=self._themed_style('blue'))
         prompt_line.append(self.frame_info['prompt'], style="white")
 
         # Parameter table
         table = Table(padding=0, box=box.SIMPLE, show_header=True, expand=True)
-        table.add_column("Steps", style="cyan")
-        table.add_column("CFG", style="cyan")
-        table.add_column("Dist.CFG", style="cyan")
-        table.add_column("Denoise", style="cyan")
-        table.add_column("Tr X", style="green")
-        table.add_column("Tr Y", style="green")
-        table.add_column("Tr Z", style="green")
-        table.add_column("Ro X", style="yellow")
-        table.add_column("Ro Y", style="yellow")
-        table.add_column("Ro Z", style="yellow")
+        table.add_column("Steps", style=self._themed_style('cyan'))
+        table.add_column("CFG", style=self._themed_style('cyan'))
+        table.add_column("Dist.CFG", style=self._themed_style('cyan'))
+        table.add_column("Denoise", style=self._themed_style('cyan'))
+        table.add_column("Tr X", style=self._themed_style('blue'))
+        table.add_column("Tr Y", style=self._themed_style('blue'))
+        table.add_column("Tr Z", style=self._themed_style('blue'))
+        table.add_column("Ro X", style=self._themed_style('purple'))
+        table.add_column("Ro Y", style=self._themed_style('purple'))
+        table.add_column("Ro Z", style=self._themed_style('purple'))
 
         table.add_row(
             self.table_data['steps'],
@@ -304,10 +304,13 @@ class RenderDashboard:
                 preview_text.append(ascii_art)
                 elements.append(preview_text)
 
+        # Get themed border color (use blue, but allow simple theme to disable)
+        border_color = self._themed_style('blue').replace(' bold', '') if self._themed_style('blue') else "dim"
+
         return Panel(
             Group(*elements),
             title="Frame Info",
-            border_style="blue",
+            border_style=border_color,
             padding=(0, 1)
         )
 
@@ -338,13 +341,16 @@ class RenderDashboard:
         # Memory info
         mem_pct = self.memory.get_usage_percentage()
         mem_bar = self._make_bar(mem_pct, 30, "cyan")
-        content.append(f"VRAM Usage        {mem_bar} ", style="cyan bold")
+        content.append(f"VRAM Usage        {mem_bar} ", style=self._themed_style('cyan', bold=True))
         content.append(f"{self.memory.free_gpu_mb/1024:.1f}GB free\n")
 
         if self.memory.target_model:
-            content.append(f"Loading: {self.memory.target_model}\n", style="yellow")
+            content.append(f"Loading: {self.memory.target_model}\n", style="yellow")  # Exception color (warn)
 
-        return Panel(content, title="Progress", border_style="green", padding=(0, 1))
+        # Get themed border color
+        border_color = self._themed_style('purple').replace(' bold', '') if self._themed_style('purple') else "dim"
+
+        return Panel(content, title="Progress", border_style=border_color, padding=(0, 1))
 
     def _render_log(self) -> Panel:
         """Render scrolling log area."""
@@ -355,10 +361,13 @@ class RenderDashboard:
             for msg in self.log_buffer:
                 content.append(msg + "\n")
 
+        # Get themed border color
+        border_color = self._themed_style('cyan').replace(' bold', '') if self._themed_style('cyan') else "dim"
+
         return Panel(
             content,
             title="Console Log",
-            border_style="yellow",
+            border_style=border_color,
             padding=(0, 1)
         )
 
@@ -390,6 +399,34 @@ class RenderDashboard:
             return ''
 
         return themed_hex
+
+    def _themed_style(self, classic_color_name: str, bold: bool = False) -> str:
+        """Get Rich style string with themed color.
+
+        Args:
+            classic_color_name: Classic color name (purple, red, orange, cyan, etc.)
+            bold: If True, add bold styling
+
+        Returns:
+            Rich style string (e.g., "#764BA2 bold" or "" for simple theme)
+        """
+        # Exception colors that always use original (warn/error/success)
+        exception_colors = {'yellow', 'red', 'green'}
+
+        if classic_color_name in exception_colors:
+            # Use original color for essential info
+            style = classic_color_name
+        else:
+            # Get themed color
+            themed_hex = self._get_themed_color(classic_color_name)
+            if not themed_hex:
+                return "bold" if bold else ""
+            style = f"#{themed_hex.lstrip('#')}"
+
+        if bold:
+            style += " bold"
+
+        return style
 
     def _make_bar(self, percentage: float, width: int, color_name: str) -> str:
         """Create a simple ASCII progress bar with themed colors.
