@@ -264,10 +264,10 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
     from deforum.utils.model_detection import is_flux_model, is_lumina_model
     from deforum.rendering import options as opt_utils
 
-    # If dashboard provided, update it instead of printing
+    # If dashboard provided, update it (but still print table to log)
     if dashboard is not None and opt_utils.is_dashboard_enabled():
         _update_dashboard(args, anim_args, p, keys, frame_idx, previous_image, dashboard)
-        return
+        # Continue to print table to scrolling log below
 
     # Detect if model ignores negative prompts
     model_ignores_negative = is_flux_model() or is_lumina_model()
