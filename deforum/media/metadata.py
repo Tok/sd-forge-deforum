@@ -158,15 +158,19 @@ def create_comprehensive_metadata(settings_dict: dict[str, Any]) -> dict[str, An
     return metadata
 
 
-def create_ffmpeg_metadata_args(settings_dict: dict[str, Any]) -> list[str]:
+def create_ffmpeg_metadata_args(
+    settings_dict: dict[str, Any],
+    include_readable_fields: bool = True
+) -> list[str]:
     """Create ffmpeg command arguments for metadata embedding.
 
     Embeds BOTH:
     1. Base64-encoded full settings in comment field (comprehensive, machine-readable)
-    2. Key info as direct metadata fields (human-readable)
+    2. Key info as direct metadata fields (human-readable) - optional
 
     Args:
         settings_dict: Dictionary of settings to embed
+        include_readable_fields: If True, also embed human-readable fields (default: True)
 
     Returns:
         List of ffmpeg arguments for -metadata options
@@ -184,6 +188,10 @@ def create_ffmpeg_metadata_args(settings_dict: dict[str, Any]) -> list[str]:
     metadata_args = [
         '-metadata', f'comment={encoded_settings}',
     ]
+
+    # Return early if human-readable fields not requested
+    if not include_readable_fields:
+        return metadata_args
 
     # Add human-readable key fields (directly readable in metadata)
     # These duplicate info from comment but provide quick access

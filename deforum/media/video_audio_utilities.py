@@ -320,11 +320,20 @@ def ffmpeg_stitch_video(ffmpeg_location=None, fps=None, outmp4_path=None, stitch
             '-pattern_type', 'sequence',
         ]
 
-        # Add metadata if provided
+        # Add metadata if provided and enabled in settings
         if settings_metadata is not None:
-            from deforum.media.metadata import create_ffmpeg_metadata_args
-            metadata_args = create_ffmpeg_metadata_args(settings_metadata)
-            cmd.extend(metadata_args)
+            embed_metadata = opts.data.get("deforum_embed_metadata", True)
+            if embed_metadata:
+                from deforum.media.metadata import create_ffmpeg_metadata_args
+
+                # Check if human-readable fields should be included
+                include_readable = opts.data.get("deforum_embed_human_readable_metadata", True)
+
+                metadata_args = create_ffmpeg_metadata_args(
+                    settings_metadata,
+                    include_readable_fields=include_readable
+                )
+                cmd.extend(metadata_args)
 
         # Add output path
         cmd.append(outmp4_path)

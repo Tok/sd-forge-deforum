@@ -99,6 +99,14 @@ def on_ui_settings():
            "Always write keyframe subtitle (makes subtitles per second fuzzy, but provides better synchronization. Render core only).",
            True)
 
+    add_subsection("Deforum Video Metadata Settings")
+    add_cb("deforum_embed_metadata",
+           "Embed comprehensive generation settings into video metadata (privacy-focused: technical params only, no user-identifying info). Enables full reproducibility similar to ComfyUI's workflow embedding.",
+           True)
+    add_cb("deforum_embed_human_readable_metadata",
+           "Also embed key settings as directly readable metadata fields (deforum_model, deforum_resolution, deforum_seed, etc.) alongside base64-encoded comprehensive data.",
+           True)
+
     add_subsection("Deforum Preview Settings")
     add_dd("deforum_preview",
            "Generate preview video during generation? (does not include frame interpolation and up-scaling)",
