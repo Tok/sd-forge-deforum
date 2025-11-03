@@ -304,36 +304,85 @@ def emoji_if_enabled(emoji_str: str) -> str:
     return emoji_str
 
 
-def get_logger() -> DeforumLogger:
-    """Get global logger instance (singleton).
+class _LazyLogger:
+    """Lazy-loading logger proxy that defers initialization until first method call.
+
+    This allows 'logger = get_logger()' at module level without opts being ready.
+    The actual DeforumLogger is only created when you call logger.info(), etc.
+    """
+    def __init__(self):
+        self._real_logger = None
+
+    def _ensure_initialized(self):
+        """Initialize real logger on first use."""
+        if self._real_logger is None:
+            # Try to get settings, fall back to defaults
+            try:
+                from deforum.rendering.options import (
+                    get_log_theme,
+                    get_log_level,
+                    is_emojis_enabled
+                )
+                theme = get_log_theme()
+                log_level = get_log_level()
+                emojis_enabled = is_emojis_enabled()
+            except (ImportError, AttributeError):
+                # Fallback to defaults if settings not available or opts not initialized yet
+                theme = 'slopcore'
+                log_level = 'INFO'
+                emojis_enabled = False  # Match UI default (unchecked = disabled)
+
+            self._real_logger = DeforumLogger(
+                theme=theme,
+                log_level=log_level,
+                emojis_enabled=emojis_enabled
+            )
+
+    def debug(self, msg: str, emoji: Optional[str] = None, **kwargs):
+        self._ensure_initialized()
+        return self._real_logger.debug(msg, emoji, **kwargs)
+
+    def info(self, msg: str, emoji: Optional[str] = None, **kwargs):
+        self._ensure_initialized()
+        return self._real_logger.info(msg, emoji, **kwargs)
+
+    def warning(self, msg: str, emoji: Optional[str] = None, **kwargs):
+        self._ensure_initialized()
+        return self._real_logger.warning(msg, emoji, **kwargs)
+
+    def error(self, msg: str, emoji: Optional[str] = None, **kwargs):
+        self._ensure_initialized()
+        return self._real_logger.error(msg, emoji, **kwargs)
+
+    def critical(self, msg: str, emoji: Optional[str] = None, **kwargs):
+        self._ensure_initialized()
+        return self._real_logger.critical(msg, emoji, **kwargs)
+
+    def header(self, msg: str, width: int = 80):
+        self._ensure_initialized()
+        return self._real_logger.header(msg, width)
+
+    def progress(self, iterable, desc: str = '', total: Optional[int] = None, **tqdm_kwargs):
+        self._ensure_initialized()
+        return self._real_logger.progress(iterable, desc, total, **tqdm_kwargs)
+
+    def separator(self, char: str = '-', width: int = 80):
+        self._ensure_initialized()
+        return self._real_logger.separator(char, width)
+
+
+def get_logger() -> _LazyLogger:
+    """Get global lazy logger instance (singleton).
+
+    Returns a lazy proxy that defers DeforumLogger initialization until first use.
+    Safe to call at module level even if opts is not ready.
 
     Returns:
-        DeforumLogger instance
+        _LazyLogger proxy instance
     """
     global _logger_instance
     if _logger_instance is None:
-        # Try to get settings, fall back to defaults
-        try:
-            from deforum.rendering.options import (
-                get_log_theme,
-                get_log_level,
-                is_emojis_enabled
-            )
-            theme = get_log_theme()
-            log_level = get_log_level()
-            emojis_enabled = is_emojis_enabled()
-        except (ImportError, AttributeError):
-            # Fallback to defaults if settings not available or opts not initialized yet
-            theme = 'slopcore'
-            log_level = 'INFO'
-            emojis_enabled = False  # Match UI default (unchecked = disabled)
-
-        _logger_instance = DeforumLogger(
-            theme=theme,
-            log_level=log_level,
-            emojis_enabled=emojis_enabled
-        )
-
+        _logger_instance = _LazyLogger()
     return _logger_instance
 
 
