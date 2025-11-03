@@ -291,6 +291,9 @@ class TestIntegration:
     @patch('deforum.rendering.options._get_opts')
     def test_full_logging_flow(self, mock_get_opts, mock_print):
         """Test complete logging workflow."""
+        from deforum.utils.system.logging import reset_logger
+        reset_logger()  # Clear singleton so patches take effect
+
         mock_opts = MagicMock()
         mock_opts.data = {
             'deforum_log_level': 'INFO',
