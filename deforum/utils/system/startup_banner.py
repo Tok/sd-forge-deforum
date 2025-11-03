@@ -87,9 +87,10 @@ def print_startup_banner():
     # Brightest slopcore blue for title text foreground (end of spectrum)
     SLOPCORE_BRIGHT_BLUE_FG = f"\033[38;2;{int(HEX_SLOPCORE_1[1:3], 16)};{int(HEX_SLOPCORE_1[3:5], 16)};{int(HEX_SLOPCORE_1[5:7], 16)}m"
 
-    # Black pill button title with slopcore lenticular brackets
-    # Format: 【 FORK NAME 】with terminal-black background, blue text, gradient-colored brackets
-    title_text = f"【 {FORK_NAME} 】"
+    # Black pill button title with slopcore lenticular brackets and bolt emojis
+    # Format: 【⚡ FORK NAME ⚡】 with terminal-black background, blue text, gradient-colored brackets
+    # Bolts inside pill for better yellow/black contrast
+    title_text = f"【⚡ {FORK_NAME} ⚡】"
 
     # Center the title based on its display width
     title_width = display_width(title_text)
@@ -229,10 +230,17 @@ def print_startup_banner():
                     content_line += f"{TERMINAL_BLACK}{fg}{char}"
                     inside_pill = False
                 elif inside_pill:
-                    # Inside pill: blue foreground, terminal-black background
-                    content_line += f"{TERMINAL_BLACK}{SLOPCORE_BRIGHT_BLUE_FG}{char}"
+                    if char == '⚡':
+                        # Bolt emoji: natural yellow color, terminal-black background
+                        content_line += f"{TERMINAL_BLACK}{char}"
+                    elif char == ' ':
+                        # Space inside pill: terminal-black background
+                        content_line += f"{TERMINAL_BLACK} "
+                    else:
+                        # Fork name text: blue foreground, terminal-black background
+                        content_line += f"{TERMINAL_BLACK}{SLOPCORE_BRIGHT_BLUE_FG}{char}"
                 else:
-                    # Outside pill (shouldn't happen with current title format): normal gradient
+                    # Outside pill (shouldn't happen): normal gradient background, white text
                     bg = get_slopcore_bg_by_position(gradient_pos)
                     content_line += f"{bg}{WHITE}{char}"
             else:
