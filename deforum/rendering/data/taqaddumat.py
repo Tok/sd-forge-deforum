@@ -10,9 +10,16 @@ from deforum.utils.system.logging import get_logger
 from deforum.utils.system.logging.themes import get_tqdm_color_for_theme
 from deforum.rendering.options import get_log_theme
 
-# Initialize logger
-logger = get_logger()
+# Defer logger initialization to avoid module-level opts access
+_logger_instance = None
 
+
+def _get_logger():
+    """Get logger instance - deferred to avoid module-level opts access."""
+    global _logger_instance
+    if _logger_instance is None:
+        _logger_instance = get_logger()
+    return _logger_instance
 
 
 class Taqaddumat:
@@ -175,7 +182,7 @@ class Taqaddumat:
         if self.dashboard:
             self.dashboard.progress_data['diffusion_frames'] = (self._animation_cycles_n, self.total_animation_cycles.total)
             self.dashboard.update()
-        logger.info("")
+        _get_logger().info("")
 
     def reset_tween_count(self, n):
         if n == 0:
