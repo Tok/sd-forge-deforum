@@ -13,19 +13,19 @@ from typing import List, Dict, Any, Optional
 # Use non-interactive backend for server-side generation
 matplotlib.use('Agg')
 
-# Slopcore gradient colors (tailwind-hegemony punk, bootstrap default-css-wave)
-SLOPCORE_1 = '#4A90E2'  # Bright blue
-SLOPCORE_2 = '#5883D8'  # Blue-purple
-SLOPCORE_3 = '#667EEA'  # Light purple
-SLOPCORE_4 = '#7B6DB8'  # Mid purple
-SLOPCORE_5 = '#8F5CA0'  # Purple
-SLOPCORE_6 = '#A353A8'  # Deep purple
-SLOPCORE_7 = '#764BA2'  # Darkest purple
+# Authentic BLANK BANSHEE 0 gradient colors (pipetted from album cover)
+SLOPCORE_1 = '#5606FF'  # Deep purple-blue (album top)
+SLOPCORE_2 = '#4C21FF'  # Purple-blue
+SLOPCORE_3 = '#413CFF'  # Blue-purple
+SLOPCORE_4 = '#3757FF'  # Mid blue
+SLOPCORE_5 = '#2C71FE'  # Blue
+SLOPCORE_6 = '#228CFE'  # Bright blue
+SLOPCORE_7 = '#17A7FE'  # Cyan (album bottom)
 
-# Create custom slopcore colormap for heatmaps (dark purple → bright blue)
+# Create custom slopcore colormap for heatmaps (dark purple → bright cyan)
 SLOPCORE_CMAP = mcolors.LinearSegmentedColormap.from_list(
     'slopcore',
-    [SLOPCORE_7, SLOPCORE_6, SLOPCORE_5, SLOPCORE_4, SLOPCORE_3, SLOPCORE_2, SLOPCORE_1]
+    [SLOPCORE_1, SLOPCORE_2, SLOPCORE_3, SLOPCORE_4, SLOPCORE_5, SLOPCORE_6, SLOPCORE_7]
 )
 
 

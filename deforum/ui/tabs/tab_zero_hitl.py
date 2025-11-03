@@ -46,7 +46,7 @@ def _build_zero_hitl_ui(components: dict):
     logger.debug("_build_zero_hitl_ui() called - starting UI build")
 
     gr.HTML(value="""
-        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        <div style='background: linear-gradient(135deg, #5606ff 0%, #17a7fe 100%);
                     padding: 20px; border-radius: 10px; margin-bottom: 20px; color: white;'>
             <h2 style='margin: 0 0 10px 0; font-size: 24px;'>🎲 Zero-HITL Slopcore Generator</h2>
             <p style='margin: 0; font-size: 14px; opacity: 0.9;'>

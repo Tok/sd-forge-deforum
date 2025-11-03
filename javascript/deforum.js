@@ -46,12 +46,12 @@ function applyDeforumUICustomization() {
     for (const selector of generateSelectors) {
         generateBtn = gradioApp().querySelector(selector);
         if (generateBtn) {
-            generateBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            generateBtn.style.background = 'linear-gradient(135deg, #5606ff 0%, #17a7fe 100%)';
             generateBtn.style.border = 'none';
             generateBtn.style.color = 'white';
             generateBtn.style.fontWeight = '600';
             generateBtn.style.textShadow = '0 1px 2px rgba(0,0,0,0.2)';
-            generateBtn.style.boxShadow = '0 4px 6px rgba(102, 126, 234, 0.3)';
+            generateBtn.style.boxShadow = '0 4px 6px rgba(86, 6, 255, 0.3)';
             generateBtn.style.transition = 'all 0.3s ease';
             break;
         }
@@ -68,22 +68,22 @@ function applyDeforumUICustomization() {
     slopcoreButtons.forEach(selector => {
         const btn = gradioApp().querySelector(selector);
         if (btn) {
-            btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            btn.style.background = 'linear-gradient(135deg, #5606ff 0%, #17a7fe 100%)';
             btn.style.border = 'none';
             btn.style.color = 'white';
             btn.style.fontWeight = '600';
             btn.style.textShadow = '0 1px 2px rgba(0,0,0,0.2)';
-            btn.style.boxShadow = '0 4px 6px rgba(102, 126, 234, 0.3)';
+            btn.style.boxShadow = '0 4px 6px rgba(86, 6, 255, 0.3)';
             btn.style.transition = 'all 0.3s ease';
 
             // Add hover effect
             btn.addEventListener('mouseenter', function() {
-                this.style.background = 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)';
-                this.style.boxShadow = '0 6px 15px rgba(102, 126, 234, 0.5)';
+                this.style.background = 'linear-gradient(135deg, #17a7fe 0%, #5606ff 100%)';
+                this.style.boxShadow = '0 6px 15px rgba(86, 6, 255, 0.5)';
             });
             btn.addEventListener('mouseleave', function() {
-                this.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                this.style.boxShadow = '0 4px 6px rgba(102, 126, 234, 0.3)';
+                this.style.background = 'linear-gradient(135deg, #5606ff 0%, #17a7fe 100%)';
+                this.style.boxShadow = '0 4px 6px rgba(86, 6, 255, 0.3)';
             });
         }
     });

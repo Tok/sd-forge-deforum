@@ -141,14 +141,14 @@ def on_ui_tabs():
     *[class*="slopcore-button"] button,
     .generate-box-generating,
     .generate-box-interrupting {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        background-color: #667eea !important;
+        background: linear-gradient(135deg, #5606ff 0%, #17a7fe 100%) !important;
+        background-image: linear-gradient(135deg, #5606ff 0%, #17a7fe 100%) !important;
+        background-color: #5606ff !important;
         border: none !important;
         color: white !important;
         font-weight: 600 !important;
         text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
-        box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3) !important;
+        box-shadow: 0 4px 6px rgba(86, 6, 255, 0.3) !important;
         transition: all 0.3s ease !important;
     }
     /* Hover states with universal selectors */
@@ -188,10 +188,10 @@ def on_ui_tabs():
     button.slopcore-button:hover,
     *[class*="slopcore-button"]:hover,
     *[class*="slopcore-button"] button:hover {
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
-        background-image: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
-        background-color: #764ba2 !important;
-        box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4) !important;
+        background: linear-gradient(135deg, #17a7fe 0%, #5606ff 100%) !important;
+        background-image: linear-gradient(135deg, #17a7fe 0%, #5606ff 100%) !important;
+        background-color: #17a7fe !important;
+        box-shadow: 0 6px 12px rgba(86, 6, 255, 0.4) !important;
         transform: translateY(-1px) !important;
     }
 
