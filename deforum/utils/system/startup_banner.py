@@ -220,14 +220,14 @@ def print_startup_banner():
                 gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
 
                 if char == '【':
-                    # Opening bracket: gradient foreground, terminal-black background
+                    # Opening bracket: bold gradient foreground, terminal-black background
                     fg = get_slopcore_fg_by_position(gradient_pos)
-                    content_line += f"{TERMINAL_BLACK}{fg}{char}"
+                    content_line += f"{TERMINAL_BLACK}{BOLD}{fg}{char}{RESET}"
                     inside_pill = True
                 elif char == '】':
-                    # Closing bracket: gradient foreground, terminal-black background
+                    # Closing bracket: bold gradient foreground, terminal-black background
                     fg = get_slopcore_fg_by_position(gradient_pos)
-                    content_line += f"{TERMINAL_BLACK}{fg}{char}"
+                    content_line += f"{TERMINAL_BLACK}{BOLD}{fg}{char}{RESET}"
                     inside_pill = False
                 elif inside_pill:
                     if char == '⚡':
