@@ -6,21 +6,16 @@ def _get_opts():
 
     A1111OptionsOverrider modifies opts.data at runtime, so we need to import
     opts fresh in each function rather than at module level.
+
+    Raises:
+        ImportError: If modules.shared.opts is not available
+        AttributeError: If opts is None (not yet initialized)
     """
     # noinspection PyUnresolvedReferences
-    try:
-        from modules.shared import opts
-        if opts is None:
-            # opts not initialized yet - return mock
-            class MockOpts:
-                data = {}
-            return MockOpts()
-        return opts
-    except ImportError:
-        # Mock opts for testing environment
-        class MockOpts:
-            data = {}
-        return MockOpts()
+    from modules.shared import opts
+    if opts is None:
+        raise AttributeError("opts not initialized yet - called too early in startup")
+    return opts
 
 
 def is_subtitle_generation_active():

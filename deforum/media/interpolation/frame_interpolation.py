@@ -35,7 +35,10 @@ from deforum.utils.system.logging import get_logger
 logger = get_logger()
 
 
-DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False)
+def _is_debug_mode():
+    """Check debug mode - deferred to avoid module-level opts access."""
+    from deforum.rendering.options import is_verbose
+    return is_verbose()
     
 # get uploaded video frame count, fps, and return 3 valuees for the gradio UI: in fcount, in fps, out fps (using the set_interp_out_fps function above)
 def gradio_f_interp_get_fps_and_fcount(vid_path, interp_x, slow_x_enabled, slom_x):
