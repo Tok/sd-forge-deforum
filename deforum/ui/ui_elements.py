@@ -766,7 +766,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
         zero_hitl_tab_emoji = emoji_if_enabled(emoji_utils.dice())
         zero_hitl_title = f"{zero_hitl_tab_emoji} Zero-HITL" if zero_hitl_tab_emoji else "Zero-HITL"
 
-        with gr.Tabs(selected=1) as init_subtabs:  # Default to Audio Sync (index 1)
+        with gr.Tabs() as init_subtabs:
             with gr.Tab(zero_hitl_title) as zero_hitl_subtab:
                 zero_hitl_params = get_tab_zero_hitl(skip_tabitem=True)
 
@@ -1009,6 +1009,18 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         strength = create_gr_elem(d.strength)  # TODO rename to init_strength
                 init_image = create_row(d.init_image)
                 init_image_box = create_row(d.init_image_box)
+
+            # LOAD FROM VIDEO INNER-TAB
+            with gr.Tab('Load from Video'):
+                gr.HTML(value="<p>Load complete settings from a Deforum-generated video (ComfyUI-style metadata extraction). Upload a video file below to extract and load all embedded settings.</p>")
+                video_upload = gr.File(
+                    label="📹 Upload Video File",
+                    file_types=[".mp4", ".mov", ".avi", ".webm", ".mkv"],
+                    type="filepath",
+                    elem_id="deforum_video_upload",
+                    file_count="single"
+                )
+
             # VIDEO INIT INNER-TAB - Hidden (deprecated - use Image Init or Parseq instead)
             with gr.Tab('Video Init', visible=False):
                 video_init_path = create_row(da.video_init_path)

@@ -337,15 +337,6 @@ def on_ui_tabs():
                     load_settings_btn = gr.Button('Load All Settings', elem_id='deforum_load_settings_btn')
                     open_folder_btn = gr.Button('📂 Open Output Directory', elem_id='deforum_open_folder_btn')
 
-                with gr.Row(variant='compact'):
-                    video_upload = gr.File(
-                        label="Load Settings from Video (ComfyUI-style metadata extraction)",
-                        file_types=[".mp4", ".mov", ".avi", ".webm", ".mkv"],
-                        type="filepath",
-                        elem_id="deforum_video_upload",
-                        file_count="single"
-                    )
-
                 # Camera Path Visualization (real-time display)
                 with gr.Row(variant='compact'):
                     camera_path_plot = gr.Plot(
@@ -411,12 +402,14 @@ def on_ui_tabs():
             outputs=settings_component_list,
         )
 
-        # Video upload for metadata extraction
-        video_upload.upload(
-            fn=wrap_gradio_call(load_settings_from_video),
-            inputs=[video_upload] + settings_component_list,
-            outputs=settings_component_list,
-        )
+        # Video upload for metadata extraction (component from Init tab)
+        if 'video_upload' in components:
+            video_upload = components['video_upload']
+            video_upload.upload(
+                fn=wrap_gradio_call(load_settings_from_video),
+                inputs=[video_upload] + settings_component_list,
+                outputs=settings_component_list,
+            )
 
         # Open output folder button
         open_folder_btn.click(
@@ -556,11 +549,12 @@ def on_ui_tabs():
                 )
 
                 # Also trigger on video upload (metadata extraction)
-                video_upload.upload(
-                    fn=update_viz_from_schedules,
-                    inputs=schedule_inputs,
-                    outputs=[camera_path_plot]
-                )
+                if 'video_upload' in components:
+                    components['video_upload'].upload(
+                        fn=update_viz_from_schedules,
+                        inputs=schedule_inputs,
+                        outputs=[camera_path_plot]
+                    )
 
                 logger.debug("✅ Schedule textboxes wired to visualization")
 
@@ -597,11 +591,12 @@ def on_ui_tabs():
             )
 
             # And when video is uploaded (metadata extraction)
-            video_upload.upload(
-                fn=update_depth_preview_visibility,
-                inputs=[components['save_depth_maps'], components['animation_mode']],
-                outputs=[depth_preview_image]
-            )
+            if 'video_upload' in components:
+                components['video_upload'].upload(
+                    fn=update_depth_preview_visibility,
+                    inputs=[components['save_depth_maps'], components['animation_mode']],
+                    outputs=[depth_preview_image]
+                )
 
     # handle settings loading on UI launch
     def trigger_load_general_settings():
