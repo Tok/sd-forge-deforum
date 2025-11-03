@@ -82,8 +82,12 @@ def print_startup_banner():
     ROUND_BL = "◣"  # Bottom-left rounded
     ROUND_BR = "◢"  # Bottom-right rounded
 
-    # Title with text gradient and bolt emojis
-    title_text = f"⚡ {FORK_NAME} ⚡"
+    # Brightest slopcore blue for inverted title (end of spectrum)
+    SLOPCORE_BRIGHT_BLUE = hex_to_bg_ansi(HEX_SLOPCORE_1)
+
+    # Inverted title with slopcore lenticular brackets and brightest blue background
+    # Format: 【 FORK NAME 】with inverted colors (blue bg, white text)
+    title_text = f"【 {FORK_NAME} 】"
 
     # Center the title based on its display width
     title_width = display_width(title_text)
@@ -178,31 +182,48 @@ def print_startup_banner():
         content_line = ""
         display_pos = 0
 
+        # Special handling for title row (row_idx == 0): inverted slopcore blue
+        is_title_row = (row_idx == 0)
+
         # Left padding (2 spaces)
         for i in range(2):
-            gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
-            bg = get_slopcore_bg_by_position(gradient_pos)
-            content_line += f"{bg} "
+            if is_title_row:
+                # Title row: use brightest slopcore blue for entire row
+                content_line += f"{SLOPCORE_BRIGHT_BLUE} "
+            else:
+                gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+                bg = get_slopcore_bg_by_position(gradient_pos)
+                content_line += f"{bg} "
             display_pos += 1
 
         # Text content (accounting for wide chars)
+
         text_idx = 0
         while text_idx < len(visible_text):
             char = visible_text[text_idx]
             char_width = 2 if unicodedata.east_asian_width(char) in ('F', 'W') else 1
 
-            gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
-            bg = get_slopcore_bg_by_position(gradient_pos)
-            content_line += f"{bg}{WHITE}{char}"
+            if is_title_row:
+                # Title: brightest slopcore blue background, white text (inverted)
+                content_line += f"{SLOPCORE_BRIGHT_BLUE}{WHITE}{char}"
+            else:
+                # Regular content: slopcore gradient background, white text
+                gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+                bg = get_slopcore_bg_by_position(gradient_pos)
+                content_line += f"{bg}{WHITE}{char}"
 
             display_pos += char_width
             text_idx += 1
 
         # Right padding
         for i in range(right_padding_width):
-            gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
-            bg = get_slopcore_bg_by_position(gradient_pos)
-            content_line += f"{bg} "
+            if is_title_row:
+                # Title row: use brightest slopcore blue for entire row
+                content_line += f"{SLOPCORE_BRIGHT_BLUE} "
+            else:
+                gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+                bg = get_slopcore_bg_by_position(gradient_pos)
+                content_line += f"{bg} "
             display_pos += 1
 
         content_line += RESET  # Single reset at end of line
