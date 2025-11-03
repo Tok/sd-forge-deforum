@@ -145,52 +145,77 @@ def synchronize_prompts_to_audio(
         resolved_target, target_desc = resolve_keyframe_target(user_target, bpm_based_target, keyframe_adjustment)
         logger.info(f"Target keyframes: {target_desc}", emoji='target')
 
-        # 6. GENERATE KEYFRAMES: Iteratively adjust spacing to hit target count
-        # When user clicks +/-% buttons, we need to adjust spacing to achieve the target
-        spacing_multiplier = calculate_spacing_multiplier(keyframe_adjustment)
-        adjusted_min_spacing = calculate_adjusted_min_spacing(min_spacing_frames, spacing_multiplier)
+        # 6. GENERATE KEYFRAMES: Two approaches based on whether user wants exact count
+        # When user has adjusted target (via +/- buttons or explicit count), use get_n_strongest_events
+        # Otherwise, use spacing-based filtering
+        if keyframe_adjustment != 0 or (user_target and user_target > 0):
+            # USER WANTS EXACT COUNT - select top N strongest events
+            from deforum.audio import get_n_strongest_events
 
-        # Try to hit the target by iteratively reducing spacing if needed
-        max_attempts = 5
-        best_keyframes = None
-        best_spacing = adjusted_min_spacing
+            logger.info(f"Using intensity-based selection for exact count: {resolved_target}")
 
-        for attempt in range(max_attempts):
-            keyframes = generate_keyframes_from_events(
+            # Get top N strongest events (bypasses spacing restrictions)
+            selected_times, selected_intensities = get_n_strongest_events(
                 event_times=event_times,
                 event_intensities=event_intensities,
-                fps=current_fps,
-                min_spacing_frames=adjusted_min_spacing,
-                max_frames=total_frames
+                n=resolved_target
             )
 
-            if not keyframes:
-                # Reduce spacing and try again
-                adjusted_min_spacing = max(1, int(adjusted_min_spacing * 0.7))
-                continue
+            # Convert to keyframes
+            keyframes = [int(t * current_fps) for t in selected_times]
 
-            best_keyframes = keyframes
+            logger.info(f"{emoji_if_enabled('✅')} Selected {len(keyframes)} strongest events")
+
+        else:
+            # DEFAULT - use spacing-based filtering (original behavior)
+            spacing_multiplier = calculate_spacing_multiplier(keyframe_adjustment)
+            adjusted_min_spacing = calculate_adjusted_min_spacing(min_spacing_frames, spacing_multiplier)
+
+            # Try to hit the target by iteratively reducing spacing if needed
+            max_attempts = 5
+            best_keyframes = None
             best_spacing = adjusted_min_spacing
 
-            # Check if we hit the target (within 10% tolerance)
-            if len(keyframes) >= resolved_target * 0.9:
-                break
+            for attempt in range(max_attempts):
+                keyframes = generate_keyframes_from_events(
+                    event_times=event_times,
+                    event_intensities=event_intensities,
+                    fps=current_fps,
+                    min_spacing_frames=adjusted_min_spacing,
+                    max_frames=total_frames
+                )
 
-            # If we're significantly under target, reduce spacing
-            if len(keyframes) < resolved_target * 0.9:
-                # Calculate how much we need to reduce spacing
-                ratio = len(keyframes) / resolved_target
-                adjusted_min_spacing = max(1, int(adjusted_min_spacing * ratio * 0.9))
-                logger.debug(f"Attempt {attempt + 1}: {len(keyframes)} < {resolved_target}, reducing spacing to {adjusted_min_spacing}")
-            else:
-                # Close enough
-                break
+                if not keyframes:
+                    # Reduce spacing and try again
+                    adjusted_min_spacing = max(1, int(adjusted_min_spacing * 0.7))
+                    continue
 
-        keyframes = best_keyframes
+                best_keyframes = keyframes
+                best_spacing = adjusted_min_spacing
+
+                # Check if we hit the target (within 10% tolerance)
+                if len(keyframes) >= resolved_target * 0.9:
+                    break
+
+                # If we're significantly under target, reduce spacing
+                if len(keyframes) < resolved_target * 0.9:
+                    # Calculate how much we need to reduce spacing
+                    ratio = len(keyframes) / resolved_target
+                    adjusted_min_spacing = max(1, int(adjusted_min_spacing * ratio * 0.9))
+                    logger.debug(f"Attempt {attempt + 1}: {len(keyframes)} < {resolved_target}, reducing spacing to {adjusted_min_spacing}")
+                else:
+                    # Close enough
+                    break
+
+            keyframes = best_keyframes
+            if not keyframes:
+                return gr.update(), gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
+
+            logger.info(f"{emoji_if_enabled('✅')} Generated {len(keyframes)} keyframes with spacing ≥{best_spacing} frames")
+
+        # Final validation
         if not keyframes:
-            return gr.update(), gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
-
-        logger.info(f"{emoji_if_enabled('✅')} Generated {len(keyframes)} keyframes with spacing ≥{best_spacing} frames")
+            return gr.update(), gr.update(), "✗ Error: No keyframes generated. Try adjusting detection settings."
 
         # 8. DISTRIBUTE PROMPTS: Assign prompts to keyframes
         # Returns JSON string ready for Deforum animation_prompts format

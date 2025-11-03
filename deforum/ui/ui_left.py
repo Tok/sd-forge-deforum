@@ -141,6 +141,21 @@ def setup_deforum_left_side_ui():
     with gr.Row(variant='compact'):
         from .ui_elements import create_gr_elem
         render_mode = create_gr_elem(da.render_mode)
+        reset_to_defaults_btn = gr.Button(
+            value="🔄 Reset to Mode Defaults",
+            variant="secondary",
+            scale=0,
+            size="sm"
+        )
+
+    # Progress indicator for defaults generation
+    reset_progress = gr.Textbox(
+        label="Generation Progress",
+        value="",
+        interactive=False,
+        visible=False,
+        lines=1
+    )
 
     with gr.Row(variant='compact'):
         fps = create_gr_elem(dv.fps)
@@ -597,6 +612,119 @@ def setup_deforum_left_side_ui():
         ]
     )
 
+    # Reset to Defaults handler
+    def on_reset_to_defaults_click(render_mode_val):
+        """Handle Reset to Mode Defaults button click.
+
+        Generates AI-powered defaults for the selected render mode:
+        1. Loads static settings from JSON
+        2. Generates audio with Meta MusicGen
+        3. Detects audio events with BPM-aware sensitivity
+        4. Generates prompts with Qwen
+        5. Syncs prompts to audio events
+        6. Updates all UI components
+        """
+        from deforum.config.defaults_generator import generate_mode_defaults
+        import json
+
+        # Show progress
+        yield {reset_progress: gr.update(visible=True, value="Starting...")}
+
+        try:
+            # Get current model for model-specific defaults
+            try:
+                from modules import shared
+                current_model = shared.sd_model.sd_checkpoint_info.model_name if hasattr(shared, 'sd_model') else "Flux\\flux1-dev-bnb-nf4-v2.safetensors"
+            except:
+                current_model = "Flux\\flux1-dev-bnb-nf4-v2.safetensors"  # Fallback
+
+            # Progress callback for updates
+            progress_messages = []
+            def progress_callback(msg):
+                progress_messages.append(msg)
+                # Return update for progress display
+                return gr.update(value=msg)
+
+            # Generate defaults
+            logger.info(f"Generating defaults for {render_mode_val} with model {current_model}")
+
+            # Show each progress step
+            yield {reset_progress: gr.update(value="Loading mode defaults...")}
+
+            defaults = generate_mode_defaults(
+                render_mode=render_mode_val,
+                current_model=current_model,
+                progress_callback=lambda msg: None  # Don't use callback for now, too complex with yield
+            )
+
+            # Build update dict for all components
+            updates = {}
+
+            # Update progress
+            updates[reset_progress] = gr.update(value="Updating UI components...", visible=True)
+
+            # Essential settings
+            updates[fps] = gr.update(value=defaults.get("fps", 60))
+            updates[steps] = gr.update(value=defaults.get("steps", 20))
+
+            # Camera path schedules
+            camera_keys = ["angle", "zoom", "translation_x", "translation_y", "translation_z",
+                          "rotation_3d_x", "rotation_3d_y", "rotation_3d_z"]
+            for key in camera_keys:
+                if key in locals() and key in defaults:
+                    updates[locals()[key]] = gr.update(value=defaults[key])
+
+            # Prompts (convert dict to JSON string for textbox)
+            if 'animation_prompts' in locals() and 'prompts' in defaults:
+                prompts_json = json.dumps(defaults['prompts'], indent=2)
+                updates[locals()['animation_prompts']] = gr.update(value=prompts_json)
+
+            # Audio path
+            if 'soundtrack_path' in locals() and 'soundtrack_path' in defaults:
+                updates[locals()['soundtrack_path']] = gr.update(value=defaults['soundtrack_path'])
+
+            # Strength schedules
+            if 'normal_strength' in locals() and 'strength_schedule' in defaults:
+                updates[locals()['normal_strength']] = gr.update(value=defaults['strength_schedule'])
+            if 'keyframe_strength' in locals() and 'keyframe_strength_schedule' in defaults:
+                updates[locals()['keyframe_strength']] = gr.update(value=defaults['keyframe_strength_schedule'])
+
+            # CFG scale
+            if 'distilled_cfg_scale_schedule' in locals() and 'distilled_cfg_scale_schedule' in defaults:
+                updates[locals()['distilled_cfg_scale_schedule']] = gr.update(value=defaults['distilled_cfg_scale_schedule'])
+
+            # Depth settings
+            if 'use_depth_warping' in locals() and 'use_depth_warping' in defaults:
+                updates[locals()['use_depth_warping']] = gr.update(value=defaults['use_depth_warping'])
+            if 'depth_algorithm' in locals() and 'depth_algorithm' in defaults:
+                updates[locals()['depth_algorithm']] = gr.update(value=defaults['depth_algorithm'])
+
+            # Shakify settings
+            if 'shake_name' in locals() and 'shake_name' in defaults:
+                updates[locals()['shake_name']] = gr.update(value=defaults['shake_name'])
+
+            # Max frames
+            if 'max_frames' in locals() and 'max_frames' in defaults:
+                updates[locals()['max_frames']] = gr.update(value=defaults['max_frames'])
+
+            # Hide progress and show success
+            updates[reset_progress] = gr.update(value="✓ Defaults loaded successfully!", visible=True)
+
+            logger.info(f"✓ Reset to defaults complete for {render_mode_val}")
+            yield updates
+
+            # Hide progress after 2 seconds
+            import time
+            time.sleep(2)
+            yield {reset_progress: gr.update(visible=False)}
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            error_msg = f"✗ Error: {str(e)}"
+            logger.error(f"Reset to defaults failed: {e}")
+            yield {reset_progress: gr.update(value=error_msg, visible=True)}
+
     # Smart strength slider handlers - ONE-WAY SYNC to prevent infinite loops
     # Slider -> Textbox ONLY. Textbox is source of truth.
 
@@ -632,6 +760,14 @@ def setup_deforum_left_side_ui():
         fn=slider_to_textbox,
         inputs=[keyframe_strength_slider],
         outputs=[keyframe_strength]
+    )
+
+    # Connect Reset to Defaults button
+    # Note: This is a generator function (uses yield) so outputs must be dict-based
+    reset_to_defaults_btn.click(
+        fn=on_reset_to_defaults_click,
+        inputs=[render_mode],
+        outputs=[reset_progress]  # Will update via yield dict
     )
 
     # Gradio's Change functions - hiding and renaming elements based on other elements
