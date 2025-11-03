@@ -304,8 +304,15 @@ Generate {len(event_times)} prompts for bunny:"""
     try:
         from deforum.audio import distribute_prompts_across_keyframes
 
-        # Convert event times to keyframes
-        keyframes = [int(t * fps) for t in event_times]
+        # Convert event times to keyframe dicts (required format for distribution)
+        keyframes = [
+            {
+                'frame': int(t * fps),
+                'intensity': intensity,
+                'time_seconds': t
+            }
+            for t, intensity in zip(event_times, event_intensities)
+        ]
 
         # Distribute prompts (sequential mode - first prompt → first keyframe)
         prompt_schedule_json = distribute_prompts_across_keyframes(
@@ -322,6 +329,8 @@ Generate {len(event_times)} prompts for bunny:"""
 
     except Exception as e:
         logger.error(f"Prompt sync failed: {e}")
+        import traceback
+        traceback.print_exc()
         progress(f"⚠️ Prompt sync failed")
         # Create simple sequential schedule as fallback
         defaults["prompts"] = {str(i * 15): prompt for i, prompt in enumerate(prompts)}

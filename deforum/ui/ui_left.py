@@ -142,19 +142,30 @@ def setup_deforum_left_side_ui():
         from .ui_elements import create_gr_elem
         render_mode = create_gr_elem(da.render_mode)
         reset_to_defaults_btn = gr.Button(
-            value="🔄 Reset to Mode Defaults",
+            value=emoji_if_enabled("🔄") or "Reset",
             variant="secondary",
             scale=0,
-            size="sm"
+            size="sm",
+            min_width=40,
+            elem_classes=["tool-button"]
         )
+
+    # Confirmation modal for reset to defaults
+    with gr.Row(visible=False) as reset_confirm_row:
+        with gr.Column(scale=1):
+            warning_emoji = emoji_if_enabled("⚠️") or "WARNING"
+            gr.Markdown(f"{warning_emoji} **Reset to Mode Defaults?**\n\nThis will generate new AI defaults. Make sure you've saved your current settings if needed.")
+            with gr.Row():
+                reset_confirm_yes = gr.Button("Yes, Generate Defaults", variant="primary", size="sm")
+                reset_confirm_no = gr.Button("Cancel", variant="secondary", size="sm")
 
     # Progress indicator for defaults generation
     reset_progress = gr.Textbox(
-        label="Generation Progress",
+        label="Generation Status",
         value="",
         interactive=False,
         visible=False,
-        lines=1
+        lines=4
     )
 
     with gr.Row(variant='compact'):
@@ -622,13 +633,15 @@ def setup_deforum_left_side_ui():
         3. Detects audio events with BPM-aware sensitivity
         4. Generates prompts with Qwen
         5. Syncs prompts to audio events
-        6. Updates all UI components
+        6. Saves to temporary file for user to load
+
+        Note: Due to Gradio limitations, defaults are saved to a temp file.
+        User needs to manually load the settings file after generation.
         """
         from deforum.config.defaults_generator import generate_mode_defaults
         import json
-
-        # Show progress
-        yield {reset_progress: gr.update(visible=True, value="Starting...")}
+        from pathlib import Path
+        import tempfile
 
         try:
             # Get current model for model-specific defaults
@@ -638,92 +651,45 @@ def setup_deforum_left_side_ui():
             except:
                 current_model = "Flux\\flux1-dev-bnb-nf4-v2.safetensors"  # Fallback
 
-            # Progress callback for updates
-            progress_messages = []
-            def progress_callback(msg):
-                progress_messages.append(msg)
-                # Return update for progress display
-                return gr.update(value=msg)
-
             # Generate defaults
             logger.info(f"Generating defaults for {render_mode_val} with model {current_model}")
-
-            # Show each progress step
-            yield {reset_progress: gr.update(value="Loading mode defaults...")}
 
             defaults = generate_mode_defaults(
                 render_mode=render_mode_val,
                 current_model=current_model,
-                progress_callback=lambda msg: None  # Don't use callback for now, too complex with yield
+                progress_callback=None
             )
 
-            # Build update dict for all components
-            updates = {}
+            # Save to temp file
+            temp_dir = Path("models/Deforum/audio_cache")
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            temp_file = temp_dir / f"generated_defaults_{render_mode_val.replace(' ', '_').lower()}.txt"
 
-            # Update progress
-            updates[reset_progress] = gr.update(value="Updating UI components...", visible=True)
+            with open(temp_file, 'w') as f:
+                json.dump(defaults, f, indent=4)
 
-            # Essential settings
-            updates[fps] = gr.update(value=defaults.get("fps", 60))
-            updates[steps] = gr.update(value=defaults.get("steps", 20))
+            check_emoji = emoji_if_enabled("✓") or "[OK]"
+            success_msg = (
+                f"{check_emoji} Defaults generated successfully!\n"
+                f"Generated {len(defaults.get('prompts', {}))} prompts synced to audio.\n"
+                f"Settings saved to: {temp_file}\n"
+                f"\n"
+                f"To apply: Use the Settings tab → Load Settings → Browse to the file above\n"
+                f"or manually copy the prompts and audio path from the generated file."
+            )
 
-            # Camera path schedules
-            camera_keys = ["angle", "zoom", "translation_x", "translation_y", "translation_z",
-                          "rotation_3d_x", "rotation_3d_y", "rotation_3d_z"]
-            for key in camera_keys:
-                if key in locals() and key in defaults:
-                    updates[locals()[key]] = gr.update(value=defaults[key])
+            logger.info(f"{emoji_if_enabled('✓')} Reset to defaults complete for {render_mode_val}")
+            logger.info(f"Settings saved to: {temp_file}")
 
-            # Prompts (convert dict to JSON string for textbox)
-            if 'animation_prompts' in locals() and 'prompts' in defaults:
-                prompts_json = json.dumps(defaults['prompts'], indent=2)
-                updates[locals()['animation_prompts']] = gr.update(value=prompts_json)
-
-            # Audio path
-            if 'soundtrack_path' in locals() and 'soundtrack_path' in defaults:
-                updates[locals()['soundtrack_path']] = gr.update(value=defaults['soundtrack_path'])
-
-            # Strength schedules
-            if 'normal_strength' in locals() and 'strength_schedule' in defaults:
-                updates[locals()['normal_strength']] = gr.update(value=defaults['strength_schedule'])
-            if 'keyframe_strength' in locals() and 'keyframe_strength_schedule' in defaults:
-                updates[locals()['keyframe_strength']] = gr.update(value=defaults['keyframe_strength_schedule'])
-
-            # CFG scale
-            if 'distilled_cfg_scale_schedule' in locals() and 'distilled_cfg_scale_schedule' in defaults:
-                updates[locals()['distilled_cfg_scale_schedule']] = gr.update(value=defaults['distilled_cfg_scale_schedule'])
-
-            # Depth settings
-            if 'use_depth_warping' in locals() and 'use_depth_warping' in defaults:
-                updates[locals()['use_depth_warping']] = gr.update(value=defaults['use_depth_warping'])
-            if 'depth_algorithm' in locals() and 'depth_algorithm' in defaults:
-                updates[locals()['depth_algorithm']] = gr.update(value=defaults['depth_algorithm'])
-
-            # Shakify settings
-            if 'shake_name' in locals() and 'shake_name' in defaults:
-                updates[locals()['shake_name']] = gr.update(value=defaults['shake_name'])
-
-            # Max frames
-            if 'max_frames' in locals() and 'max_frames' in defaults:
-                updates[locals()['max_frames']] = gr.update(value=defaults['max_frames'])
-
-            # Hide progress and show success
-            updates[reset_progress] = gr.update(value="✓ Defaults loaded successfully!", visible=True)
-
-            logger.info(f"✓ Reset to defaults complete for {render_mode_val}")
-            yield updates
-
-            # Hide progress after 2 seconds
-            import time
-            time.sleep(2)
-            yield {reset_progress: gr.update(visible=False)}
+            return gr.update(value=success_msg, visible=True)
 
         except Exception as e:
             import traceback
             traceback.print_exc()
-            error_msg = f"✗ Error: {str(e)}"
+            x_emoji = emoji_if_enabled("✗") or "[ERROR]"
+            error_msg = f"{x_emoji} Error generating defaults:\n{str(e)}\n\nCheck console for details."
             logger.error(f"Reset to defaults failed: {e}")
-            yield {reset_progress: gr.update(value=error_msg, visible=True)}
+            return gr.update(value=error_msg, visible=True)
 
     # Smart strength slider handlers - ONE-WAY SYNC to prevent infinite loops
     # Slider -> Textbox ONLY. Textbox is source of truth.
@@ -762,12 +728,28 @@ def setup_deforum_left_side_ui():
         outputs=[keyframe_strength]
     )
 
-    # Connect Reset to Defaults button
-    # Note: This is a generator function (uses yield) so outputs must be dict-based
+    # Connect Reset to Defaults button - shows confirmation
     reset_to_defaults_btn.click(
+        fn=lambda: gr.update(visible=True),
+        inputs=[],
+        outputs=[reset_confirm_row]
+    )
+
+    # Connect confirmation buttons
+    reset_confirm_yes.click(
         fn=on_reset_to_defaults_click,
         inputs=[render_mode],
-        outputs=[reset_progress]  # Will update via yield dict
+        outputs=[reset_progress]
+    ).then(
+        fn=lambda: gr.update(visible=False),
+        inputs=[],
+        outputs=[reset_confirm_row]
+    )
+
+    reset_confirm_no.click(
+        fn=lambda: gr.update(visible=False),
+        inputs=[],
+        outputs=[reset_confirm_row]
     )
 
     # Gradio's Change functions - hiding and renaming elements based on other elements
