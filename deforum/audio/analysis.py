@@ -259,6 +259,202 @@ def get_audio_duration(audio: np.ndarray, sample_rate: int) -> float:
     return len(audio) / float(sample_rate)
 
 
+def get_n_strongest_events(
+    event_times: np.ndarray,
+    event_intensities: np.ndarray,
+    n: int
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Select N strongest events by intensity.
+
+    Useful for +/- adjustment buttons to increase/decrease keyframe count
+    without being limited by spacing restrictions.
+
+    Args:
+        event_times: Event timestamps in seconds
+        event_intensities: Event intensities (normalized 0-1)
+        n: Number of events to return
+
+    Returns:
+        Tuple of (selected_times, selected_intensities) sorted by time
+
+    Example:
+        >>> # Get top 20 strongest events from 100 detected
+        >>> times_top20, intensities_top20 = get_n_strongest_events(
+        ...     all_times, all_intensities, n=20
+        ... )
+    """
+    if len(event_times) == 0:
+        return np.array([]), np.array([])
+
+    # If requesting more events than available, return all
+    if n >= len(event_times):
+        return event_times, event_intensities
+
+    # Pair times with intensities
+    events = list(zip(event_times, event_intensities))
+
+    # Sort by intensity (strongest first)
+    events_sorted = sorted(events, key=lambda x: x[1], reverse=True)
+
+    # Take top N
+    top_n = events_sorted[:n]
+
+    # Re-sort by time for chronological order
+    top_n_sorted = sorted(top_n, key=lambda x: x[0])
+
+    times, intensities = zip(*top_n_sorted) if top_n_sorted else ([], [])
+    return np.array(times), np.array(intensities)
+
+
+def detect_events_bpm_aware(
+    audio: np.ndarray,
+    sample_rate: int,
+    method: str = "onset",
+    target_bpm: Optional[float] = None,
+    tolerance: float = 0.15,
+    prefer_under_detection: bool = True
+) -> Tuple[np.ndarray, np.ndarray, float]:
+    """Detect events with BPM-aware sensitivity auto-adjustment.
+
+    Iteratively adjusts detection sensitivity until the number of detected
+    events matches the expected count based on BPM (1 event per beat ideally).
+
+    This solves the problem where fixed sensitivity either misses events or
+    detects too many. By targeting BPM-based event count, we get consistent
+    results that match the actual rhythm of the audio.
+
+    Args:
+        audio: Input audio signal
+        sample_rate: Audio sample rate in Hz
+        method: Detection method ('onset', 'beat', 'bass')
+        target_bpm: Optional target BPM (auto-detected if None)
+        tolerance: Acceptable deviation from target (0.15 = ±15%)
+        prefer_under_detection: If True, favor fewer events over too many
+            (better to drop frames at weak events than add frames where no event exists)
+
+    Returns:
+        Tuple of (event_times, event_intensities, detected_bpm)
+
+    Example:
+        >>> # Auto-detect BPM and get matching number of events
+        >>> times, intensities, bpm = detect_events_bpm_aware(
+        ...     audio, sr, method='onset', tolerance=0.15
+        ... )
+        >>> print(f"Detected {len(times)} events at {bpm:.1f} BPM")
+    """
+    if not LIBROSA_AVAILABLE:
+        raise ImportError("librosa is required")
+
+    from deforum.utils.system.logging import get_logger
+    logger = get_logger()
+
+    # 1. DETECT BPM if not provided
+    if target_bpm is None:
+        tempo, _ = librosa.beat.beat_track(y=audio, sr=sample_rate)
+        target_bpm = float(tempo)
+
+    duration = get_audio_duration(audio, sample_rate)
+
+    # Expected events based on BPM (1 event per beat)
+    expected_events_per_sec = target_bpm / 60.0
+    expected_total_events = int(duration * expected_events_per_sec)
+
+    # Acceptable range
+    if prefer_under_detection:
+        # Stricter upper bound - prefer missing weak events over false positives
+        min_events = int(expected_total_events * (1 - tolerance))
+        max_events = int(expected_total_events * (1 + tolerance * 0.5))
+    else:
+        # Symmetric tolerance
+        min_events = int(expected_total_events * (1 - tolerance))
+        max_events = int(expected_total_events * (1 + tolerance))
+
+    logger.info(
+        f"BPM-aware detection: {target_bpm:.1f} BPM, "
+        f"target {expected_total_events} events (range: {min_events}-{max_events})"
+    )
+
+    # 2. BINARY SEARCH for optimal sensitivity
+    sensitivity_low = 0.1
+    sensitivity_high = 0.9
+    best_events = None
+    best_sensitivity = 0.5
+    best_distance = float('inf')
+
+    for attempt in range(12):  # Max 12 iterations for convergence
+        sensitivity = (sensitivity_low + sensitivity_high) / 2.0
+
+        # Detect events at current sensitivity
+        event_times, event_intensities = detect_events(
+            audio=audio,
+            sample_rate=sample_rate,
+            method=method,
+            sensitivity=sensitivity
+        )
+
+        num_events = len(event_times)
+        distance_from_target = abs(num_events - expected_total_events)
+
+        logger.debug(
+            f"  Attempt {attempt+1}: sensitivity={sensitivity:.3f} → "
+            f"{num_events} events (target: {expected_total_events})"
+        )
+
+        # Check if in acceptable range
+        if min_events <= num_events <= max_events:
+            # Found acceptable solution
+            best_events = (event_times, event_intensities)
+            best_sensitivity = sensitivity
+            logger.info(
+                f"✓ Found optimal sensitivity: {sensitivity:.3f} "
+                f"({num_events} events)"
+            )
+            break
+
+        # Track best so far (closest to target within constraints)
+        if prefer_under_detection:
+            # Only update if not over-detecting
+            if num_events <= max_events and distance_from_target < best_distance:
+                best_events = (event_times, event_intensities)
+                best_sensitivity = sensitivity
+                best_distance = distance_from_target
+        else:
+            # Update if closer to target
+            if distance_from_target < best_distance:
+                best_events = (event_times, event_intensities)
+                best_sensitivity = sensitivity
+                best_distance = distance_from_target
+
+        # Adjust search range for next iteration
+        if num_events < min_events:
+            # Too few events - decrease sensitivity threshold (more sensitive)
+            sensitivity_high = sensitivity
+        else:
+            # Too many events - increase sensitivity threshold (less sensitive)
+            sensitivity_low = sensitivity
+
+        # Check for convergence (search range too narrow)
+        if abs(sensitivity_high - sensitivity_low) < 0.01:
+            logger.debug("Sensitivity search converged")
+            break
+
+    # Fallback if no solution found
+    if best_events is None:
+        logger.warning(
+            f"Could not find optimal sensitivity, using default 0.5"
+        )
+        best_events = detect_events(audio, sample_rate, method, sensitivity=0.5)
+        best_sensitivity = 0.5
+
+    event_times, event_intensities = best_events
+    logger.info(
+        f"Final: {len(event_times)} events at sensitivity {best_sensitivity:.3f} "
+        f"(BPM: {target_bpm:.1f})"
+    )
+
+    return event_times, event_intensities, target_bpm
+
+
 def get_audio_info(file_path: str) -> dict:
     """Get audio file information without loading full audio.
 

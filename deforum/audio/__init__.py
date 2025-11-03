@@ -15,6 +15,8 @@ from .analysis import (
     detect_onsets,
     detect_beats,
     extract_bass_energy,
+    detect_events_bpm_aware,
+    get_n_strongest_events,
 )
 
 from .processing import (
@@ -42,6 +44,8 @@ __all__ = [
     "detect_onsets",
     "detect_beats",
     "extract_bass_energy",
+    "detect_events_bpm_aware",
+    "get_n_strongest_events",
     # Processing
     "apply_lowpass_filter",
     "apply_distortion",
