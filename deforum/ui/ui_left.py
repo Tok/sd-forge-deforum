@@ -154,7 +154,12 @@ def setup_deforum_left_side_ui():
             warning_emoji = emoji_if_enabled("⚠️") or "WARNING"
             gr.Markdown(f"{warning_emoji} **Reset to Mode Defaults?**\n\nThis will generate new AI defaults. Make sure you've saved your current settings if needed.")
             with gr.Row():
-                reset_confirm_yes = gr.Button("Yes, Generate Defaults", variant="primary", size="sm")
+                reset_confirm_yes = gr.Button(
+                    "Yes, Generate Defaults",
+                    variant="primary",
+                    size="sm",
+                    elem_classes=["slopcore-button"]
+                )
                 reset_confirm_no = gr.Button("Cancel", variant="secondary", size="sm")
 
     # Progress indicator for defaults generation
