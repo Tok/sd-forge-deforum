@@ -24,7 +24,10 @@ from deforum.constants import FORK_NAME, GITHUB_URL
 from modules.shared import opts
 from torch.hub import download_url_to_file
 
-from deforum.utils.system.logging import log
+from deforum.utils.system.logging import log, get_logger
+
+# Get logger instance for this module
+logger = get_logger()
 
 # Import pure functions from refactored utils module
 from deforum.utils.parsing.strings import (
@@ -54,7 +57,7 @@ clean_folder_name = _clean_folder_name
 def debug_print(message):
     is_debug_mode = opts.data.get("deforum_debug_mode_enabled", False)
     if is_debug_mode:
-        log_utils.debug(message)
+        logger.debug(message)
 
 
 # checksum imported from deforum.utils.conversion.hashing
@@ -126,7 +129,7 @@ def _get_extension_info():
                 return ext
         return None
     except Exception as e:
-        log_utils.error(f"Cannot read extension info: {e}.")
+        logger.error(f"Cannot read extension info: {e}.")
         return None
 
 

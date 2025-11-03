@@ -98,9 +98,9 @@ class TestVersionFunctions:
 class TestExtensionInfo:
     """Test _get_extension_info internal function."""
 
-    @patch('modules.extensions.extensions')
-    def test_get_extension_info_finds_deforum(self, mock_extensions):
+    def test_get_extension_info_finds_deforum(self):
         """_get_extension_info should find and return sd-forge-deforum extension."""
+        import sys
         from deforum.utils.general import _get_extension_info
 
         mock_ext = MagicMock()
@@ -109,47 +109,65 @@ class TestExtensionInfo:
         mock_ext.version = "1.0.0"
         mock_ext.read_info_from_repo = MagicMock()
 
-        mock_extensions.__iter__ = MagicMock(return_value=iter([mock_ext]))
+        # Directly set the extensions list on the mock module
+        sys.modules['modules.extensions'].extensions = [mock_ext]
 
         result = _get_extension_info()
         assert result is mock_ext
         mock_ext.read_info_from_repo.assert_called_once()
 
-    @patch('modules.extensions.extensions')
-    def test_get_extension_info_not_found(self, mock_extensions):
+        # Cleanup: reset to empty list
+        sys.modules['modules.extensions'].extensions = []
+
+    def test_get_extension_info_not_found(self):
         """_get_extension_info should return None if extension not found."""
+        import sys
         from deforum.utils.general import _get_extension_info
 
         mock_other_ext = MagicMock()
         mock_other_ext.name = "some-other-extension"
         mock_other_ext.enabled = True
 
-        mock_extensions.__iter__ = MagicMock(return_value=iter([mock_other_ext]))
+        sys.modules['modules.extensions'].extensions = [mock_other_ext]
 
         result = _get_extension_info()
         assert result is None
 
-    @patch('modules.extensions.extensions')
-    def test_get_extension_info_disabled(self, mock_extensions):
+        # Cleanup
+        sys.modules['modules.extensions'].extensions = []
+
+    def test_get_extension_info_disabled(self):
         """_get_extension_info should return None if extension is disabled."""
+        import sys
         from deforum.utils.general import _get_extension_info
 
         mock_ext = MagicMock()
         mock_ext.name = "sd-forge-deforum"
         mock_ext.enabled = False
 
-        mock_extensions.__iter__ = MagicMock(return_value=iter([mock_ext]))
+        sys.modules['modules.extensions'].extensions = [mock_ext]
 
         result = _get_extension_info()
         assert result is None
 
-    @patch('modules.extensions.extensions', side_effect=Exception("Mock error"))
-    def test_get_extension_info_handles_exception(self, mock_extensions):
+        # Cleanup
+        sys.modules['modules.extensions'].extensions = []
+
+    def test_get_extension_info_handles_exception(self):
         """_get_extension_info should return None and log error on exception."""
+        import sys
         from deforum.utils.general import _get_extension_info
 
+        # Create a mock that raises an exception when iterated
+        mock_extensions_list = MagicMock()
+        mock_extensions_list.__iter__ = MagicMock(side_effect=Exception("Mock error"))
+        sys.modules['modules.extensions'].extensions = mock_extensions_list
+
         result = _get_extension_info()
         assert result is None
+
+        # Cleanup
+        sys.modules['modules.extensions'].extensions = []
 
 
 class TestPathFunctions:

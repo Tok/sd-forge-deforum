@@ -8,9 +8,61 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
+# CRITICAL: Mock modules package BEFORE any imports that might use it
+# This must happen BEFORE any imports, including deforum imports
+# Many modules import from 'modules.shared' at the top level
+
+# Create minimal opts mock with data dict
+class MinimalOpts:
+    def __init__(self):
+        self.data = {}
+
+    def get(self, key, default=None):
+        return self.data.get(key, default)
+
+    def __getattr__(self, name):
+        # Return safe defaults for any attribute access
+        # Return empty list for iterables (like hide_samplers),
+        # None for other attributes
+        # This prevents AttributeError during module imports
+        return []
+
+    def __contains__(self, key):
+        return key in self.data
+
+# Mock modules.shared package
+mock_shared = MagicMock()
+mock_shared.opts = MinimalOpts()
+mock_shared.options_templates = {}
+mock_shared.cmd_opts = MagicMock()
+mock_shared.state = MagicMock()
+
+# Mock modules.options for OptionInfo
+mock_options = MagicMock()
+mock_options.OptionInfo = MagicMock
+
+# Mock modules.extensions for extension detection
+# Use MagicMock to allow test patching to work correctly
+mock_extensions_module = MagicMock()
+mock_extensions_module.extensions = []
+mock_extensions_module.Extension = MagicMock
+
+# Install mocks into sys.modules BEFORE any imports
+mock_modules = MagicMock()
+sys.modules['modules'] = mock_modules
+sys.modules['modules.shared'] = mock_shared
+sys.modules['modules.options'] = mock_options
+sys.modules['modules.extensions'] = mock_extensions_module
+sys.modules['modules.shared_cmd_options'] = MagicMock()
+
+# CRITICAL: Link module attributes so 'from modules import X' works correctly
+# When code does 'from modules import extensions', Python checks sys.modules['modules'].extensions
+# So we need to make sure that points to the same object as sys.modules['modules.extensions']
+mock_modules.shared = mock_shared
+mock_modules.options = mock_options
+mock_modules.extensions = mock_extensions_module
+
 # Mock Forge backend modules that aren't available in test environment
-# This must happen BEFORE any imports that might load backend.loader
-# Create proper mock package structure
 mock_hf_guess = MagicMock()
 mock_hf_guess_utils = MagicMock()
 mock_hf_guess_utils.resize_to_batch_size = MagicMock()
@@ -30,10 +82,11 @@ sys.argv = ['webui.py']  # Minimal args that won't cause argparse errors
 extension_root = Path(__file__).parent.parent
 sys.path.insert(0, str(extension_root))
 
-# Add Forge root directory to Python path
-# This allows `import modules` to work (Forge's modules package)
+# Try to add Forge root if it exists (for local development)
+# In CI/GitHub Actions, this won't exist, but mocks above handle it
 forge_root = extension_root.parent.parent
-sys.path.insert(0, str(forge_root))
+if forge_root.exists():
+    sys.path.insert(0, str(forge_root))
 
 # Initialize Forge shared state BEFORE any imports that use it
 # Many Forge modules access shared.opts, shared.options_templates at import time
@@ -45,25 +98,8 @@ try:
     if shared.options_templates is None:
         shared.options_templates = {}
 
-    if shared.opts is None:
-        # Create a minimal opts object that returns safe defaults for any attribute
-        class MinimalOpts:
-            def __init__(self):
-                self.data = {}
-
-            def get(self, key, default=None):
-                return self.data.get(key, default)
-
-            def __getattr__(self, name):
-                # Return safe defaults for any attribute access
-                # Return empty list for iterables (like hide_samplers),
-                # None for other attributes
-                # This prevents AttributeError during module imports
-                return []
-
-            def __contains__(self, key):
-                return key in self.data
-
+    if shared.opts is None or not isinstance(shared.opts, MinimalOpts):
+        # Use the MinimalOpts class defined above
         shared.opts = MinimalOpts()
 
 except Exception as e:
