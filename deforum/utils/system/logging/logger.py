@@ -310,10 +310,10 @@ class _LazyLogger:
     This allows 'logger = get_logger()' at module level without opts being ready.
     The actual DeforumLogger is only created when you call logger.info(), etc.
     """
-    def __init__(self):
-        self._real_logger = None
+    def __init__(self) -> None:
+        self._real_logger: Optional[DeforumLogger] = None
 
-    def _ensure_initialized(self):
+    def _ensure_initialized(self) -> None:
         """Initialize real logger on first use."""
         if self._real_logger is None:
             # Try to get settings, fall back to defaults
@@ -338,35 +338,35 @@ class _LazyLogger:
                 emojis_enabled=emojis_enabled
             )
 
-    def debug(self, msg: str, emoji: Optional[str] = None, **kwargs):
+    def debug(self, msg: str, emoji: Optional[str] = None, **kwargs) -> None:
         self._ensure_initialized()
         return self._real_logger.debug(msg, emoji, **kwargs)
 
-    def info(self, msg: str, emoji: Optional[str] = None, **kwargs):
+    def info(self, msg: str, emoji: Optional[str] = None, **kwargs) -> None:
         self._ensure_initialized()
         return self._real_logger.info(msg, emoji, **kwargs)
 
-    def warning(self, msg: str, emoji: Optional[str] = None, **kwargs):
+    def warning(self, msg: str, emoji: Optional[str] = None, **kwargs) -> None:
         self._ensure_initialized()
         return self._real_logger.warning(msg, emoji, **kwargs)
 
-    def error(self, msg: str, emoji: Optional[str] = None, **kwargs):
+    def error(self, msg: str, emoji: Optional[str] = None, **kwargs) -> None:
         self._ensure_initialized()
         return self._real_logger.error(msg, emoji, **kwargs)
 
-    def critical(self, msg: str, emoji: Optional[str] = None, **kwargs):
+    def critical(self, msg: str, emoji: Optional[str] = None, **kwargs) -> None:
         self._ensure_initialized()
         return self._real_logger.critical(msg, emoji, **kwargs)
 
-    def header(self, msg: str, width: int = 80):
+    def header(self, msg: str, width: int = 80) -> None:
         self._ensure_initialized()
         return self._real_logger.header(msg, width)
 
-    def progress(self, iterable, desc: str = '', total: Optional[int] = None, **tqdm_kwargs):
+    def progress(self, iterable: Iterator, desc: str = '', total: Optional[int] = None, **tqdm_kwargs) -> Iterator:
         self._ensure_initialized()
         return self._real_logger.progress(iterable, desc, total, **tqdm_kwargs)
 
-    def separator(self, char: str = '-', width: int = 80):
+    def separator(self, char: str = '-', width: int = 80) -> None:
         self._ensure_initialized()
         return self._real_logger.separator(char, width)
 
