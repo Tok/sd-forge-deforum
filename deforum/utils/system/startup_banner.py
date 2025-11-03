@@ -59,9 +59,9 @@ def print_startup_banner():
     WHITE = "\033[97m"
     # Terminal black for fade background (same as corners/edges)
     TERMINAL_BLACK = "\033[48;2;0;0;0m"
-    # Dark grays for fade foreground (progressively darker toward black)
-    DARK_GRAY_1 = "\033[38;2;60;60;60m"  # ▓ (dark shade) - very dark gray
-    DARK_GRAY_2 = "\033[38;2;40;40;40m"  # ▒ (medium shade) - darker gray
+    # Grays for fade foreground (fade inward toward black)
+    LIGHTER_GRAY = "\033[38;2;60;60;60m"  # ▒ (inner) - closer to black section
+    DARKER_GRAY = "\033[38;2;40;40;40m"   # ▓ (outer) - closer to gradient
     # Use very dark gray for corners so they blend better with terminal background
     CORNER_COLOR = "\033[38;2;30;30;30m"
 
@@ -205,9 +205,9 @@ def print_startup_banner():
 
         # Track if we're inside the black section (after ▓▓▒▒ fade-in, before ▒▒▓▓ fade-out)
         # Pattern: ▓▓▒▒ ⚡ FORK ⚡ ▒▒▓▓
-        inside_pill = False  # Variable name kept for simplicity
+        inside_black_section = False
         fade_chars_seen = 0  # Count ▓ and ▒ characters
-        exiting_pill = False  # Flag when we start seeing ▒ on the right side
+        exiting_black_section = False  # Flag when we start seeing ▒ on the right side
 
         # Left padding (2 spaces)
         for i in range(2):
@@ -227,20 +227,21 @@ def print_startup_banner():
                 gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
 
                 if char in ('▓', '▒'):
-                    # Shade characters: gradient background, dark gray foreground (fade to black)
+                    # Shade characters: gradient background, gray foreground (fade to black)
                     bg = get_slopcore_bg_by_position(gradient_pos)
-                    # Use progressively darker grays: ▓ is darker than ▒
-                    fg = DARK_GRAY_1 if char == '▓' else DARK_GRAY_2
+                    # Fade inward: ▓ (outer) = lighter gray (60), ▒ (inner) = darker gray (40)
+                    # Pattern: Gradient → lighter ▓ → darker ▒ → BLACK
+                    fg = LIGHTER_GRAY if char == '▓' else DARKER_GRAY
                     content_line += f"{bg}{fg}{char}"
 
-                    if not inside_pill and not exiting_pill:
+                    if not inside_black_section and not exiting_black_section:
                         fade_chars_seen += 1
                         if fade_chars_seen == 4:  # After ▓▓▒▒, next char starts black section
-                            inside_pill = True
-                    elif inside_pill:
-                        exiting_pill = True  # First ▒ on right side
-                        inside_pill = False
-                elif inside_pill or (fade_chars_seen == 4 and not exiting_pill):
+                            inside_black_section = True
+                    elif inside_black_section:
+                        exiting_black_section = True  # First ▒ on right side
+                        inside_black_section = False
+                elif inside_black_section or (fade_chars_seen == 4 and not exiting_black_section):
                     # Inside the black section (space, emoji, text)
                     if char == '⚡':
                         # Bolt emoji: natural yellow color, terminal-black background
