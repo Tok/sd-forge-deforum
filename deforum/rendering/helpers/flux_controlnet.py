@@ -273,16 +273,16 @@ def prepare_flux_controlnet_for_frame(
 
         # Debug: Check control sample values
         if controlnet_block_samples is not None and len(controlnet_block_samples) > 0:
-            print(f"   DEBUG: block_samples[0] shape: {controlnet_block_samples[0].shape}, "
-                  f"dtype: {controlnet_block_samples[0].dtype}, "
-                  f"range: [{controlnet_block_samples[0].min():.6f}, {controlnet_block_samples[0].max():.6f}], "
-                  f"mean: {controlnet_block_samples[0].mean():.6f}")
+            logger.debug(f"block_samples[0] shape: {controlnet_block_samples[0].shape}, "
+                        f"dtype: {controlnet_block_samples[0].dtype}, "
+                        f"range: [{controlnet_block_samples[0].min():.6f}, {controlnet_block_samples[0].max():.6f}], "
+                        f"mean: {controlnet_block_samples[0].mean():.6f}")
 
         if controlnet_single_block_samples is not None and len(controlnet_single_block_samples) > 0:
-            print(f"   DEBUG: single_block_samples[0] shape: {controlnet_single_block_samples[0].shape}, "
-                  f"dtype: {controlnet_single_block_samples[0].dtype}, "
-                  f"range: [{controlnet_single_block_samples[0].min():.6f}, {controlnet_single_block_samples[0].max():.6f}], "
-                  f"mean: {controlnet_single_block_samples[0].mean():.6f}")
+            logger.debug(f"single_block_samples[0] shape: {controlnet_single_block_samples[0].shape}, "
+                        f"dtype: {controlnet_single_block_samples[0].dtype}, "
+                        f"range: [{controlnet_single_block_samples[0].min():.6f}, {controlnet_single_block_samples[0].max():.6f}], "
+                        f"mean: {controlnet_single_block_samples[0].mean():.6f}")
 
         # Store control samples for Forge to pick up
         store_control_samples(controlnet_block_samples, controlnet_single_block_samples)

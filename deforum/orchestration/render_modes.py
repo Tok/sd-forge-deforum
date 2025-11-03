@@ -153,8 +153,8 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
         if prompt_to_print.endswith("--neg"):
             prompt_to_print = prompt_to_print[:-5]
 
-        print(f"{BLUE}Interpolation frame: {RESET_COLOR}"
-              f"{BOLD}{frame_idx}{RESET_COLOR}/{anim_args.max_frames}  ")
+        logger.info(f"{BLUE}Interpolation frame: {RESET_COLOR}"
+                    f"{BOLD}{frame_idx}{RESET_COLOR}/{anim_args.max_frames}")
         logger.info(f"{_get_theme_color('seed')}Seed: {_get_reset_color()}{args.seed}")
         logger.info(f"{_get_theme_color('prompt')}Prompt: {_get_reset_color()}{prompt_to_print}")
 

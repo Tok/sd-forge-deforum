@@ -9,6 +9,10 @@ Forge Neo is a maintained fork with Wan 2.2 and Flux built-in, so we need to:
 import os
 import sys
 
+from deforum.utils.system.logging import get_logger
+
+logger = get_logger()
+
 
 def is_forge_neo() -> bool:
     """
@@ -68,7 +72,7 @@ def is_forge_neo() -> bool:
 
     except Exception as e:
         # If detection fails, assume NOT Neo (safe default for compatibility patches)
-        print(f"[Deforum] Warning: Neo detection failed: {e}")
+        logger.warning(f"Neo detection failed: {e}")
         return False
 
 

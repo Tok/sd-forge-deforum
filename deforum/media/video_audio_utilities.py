@@ -622,7 +622,7 @@ def render_preview(args, anim_args, video_args, root, frame_idx, last_preview_fr
     mp4_preview_path = mp4_temp_path.replace("_preview__rendering__", "_preview")
     def task():
         if os.path.exists(mp4_temp_path):
-            print(f"--! Skipping preview video on frame {frame_idx} (previous preview still rendering to {mp4_temp_path}...")            
+            logger.info(f"Skipping preview video on frame {frame_idx} (previous preview still rendering to {mp4_temp_path}...)")
         else:
             logger.info(f"--> Rendering preview video up to frame {frame_idx} to {mp4_preview_path}...")
             try:

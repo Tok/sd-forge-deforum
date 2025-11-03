@@ -370,7 +370,7 @@ def on_ui_tabs():
         is_flux_blocker_active = len(components) < 10  # Minimal set has only ~2 components
 
         if is_flux_blocker_active:
-            print("[INFO] Flux blocker active - Deforum UI will show setup instructions")
+            logger.info("Flux blocker active - Deforum UI will show setup instructions")
             # In blocker mode, just use what components we have
             component_list = [components.get(name, dummy_component) for name in ['show_info_on_ui']]
         else:
