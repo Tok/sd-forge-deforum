@@ -141,9 +141,9 @@ def setup_deforum_left_side_ui():
     with gr.Row(variant='compact'):
         from .ui_elements import create_gr_elem
         render_mode = create_gr_elem(da.render_mode)
-        with gr.Column(scale=0, min_width=32):
+        with gr.Column(scale=0, min_width=60):
             reset_to_defaults_btn = gr.Button(
-                value=emoji_if_enabled("🔄") or "↻",
+                value="Reset",
                 variant="secondary",
                 size="sm"
             )

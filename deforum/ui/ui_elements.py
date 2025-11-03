@@ -766,11 +766,11 @@ def get_tab_init(d, da, dp, dau, dv=None):
         zero_hitl_tab_emoji = emoji_if_enabled(emoji_utils.dice())
         zero_hitl_title = f"{zero_hitl_tab_emoji} Zero-HITL" if zero_hitl_tab_emoji else "Zero-HITL"
 
-        with gr.Tabs() as init_subtabs:
+        with gr.Tabs(selected=1) as init_subtabs:  # Default to Audio Sync (index 1)
             with gr.Tab(zero_hitl_title) as zero_hitl_subtab:
                 zero_hitl_params = get_tab_zero_hitl(skip_tabitem=True)
 
-            # AUDIO SYNC INNER-TAB - Second tab
+            # AUDIO SYNC INNER-TAB - Second tab (DEFAULT)
             with gr.Tab("Audio Sync") as audio_sync_subtab:
                 gr.HTML(value="<p>Audio event detection for prompt synchronization and video soundtrack. Upload audio file or enter path/URL below. Disabled when Parseq is active.</p>")
 
