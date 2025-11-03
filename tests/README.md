@@ -84,6 +84,12 @@ tests/
 
 **Coverage:** Optional, enable with `./run-unit-tests.sh --coverage`
 
+**Recent Coverage Improvements:**
+- `deforum/utils/general.py`: 5% → 55% (+50%) - Comprehensive tests for backward compatibility aliases, version functions, and path handling
+- `deforum/utils/system/logging/log.py`: 39% → 71% (+32%) - Complete test coverage for legacy logging functions and ANSI formatting
+- `deforum/utils/system/logging/logger.py`: Added comprehensive tests for lazy logger proxy pattern
+- Logger cleanup: All inappropriate `print()` statements replaced with centralized logger (6 files fixed)
+
 ### Functional Tests (`functional/`) - Reserved
 **What:** End-to-end tests of complete workflows from user perspective.
 

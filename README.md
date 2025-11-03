@@ -560,12 +560,19 @@ https://github.com/Tok/sd-forge-deforum/blob/main/deforum/config/default_setting
 
 ## Testing
 
-Run the full test suite:
+Comprehensive test suite with unit and integration tests:
+
 ```bash
 cd extensions/sd-forge-deforum
-pytest tests/unit/ -v          # Unit tests only
-pytest tests/ --start-server   # Full integration tests
+
+# Unit tests (fast, no server required)
+pytest tests/unit/ -v
+
+# Integration tests (requires Forge server)
+pytest tests/integration/ --start-server
 ```
+
+See [tests/README.md](tests/README.md) for detailed testing documentation.
 
 ## Documentation
 

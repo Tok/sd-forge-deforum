@@ -428,6 +428,37 @@ disallow_untyped_defs = true
 
 ## Code Quality Standards
 
+### 0. Logging Best Practices
+
+**Use the Centralized Logger:**
+All logging must use the centralized logger system from `deforum.utils.system.logging`:
+
+```python
+from deforum.utils.system.logging import get_logger
+
+# Safe at module level - lazy proxy pattern
+logger = get_logger()
+
+# Use appropriate log levels
+logger.debug("Detailed diagnostic information")
+logger.info("Normal operation progress")
+logger.warning("Warning about potential issues")
+logger.error("Error occurred but recoverable")
+logger.critical("Critical error, cannot continue")
+```
+
+**Never use `print()` directly except:**
+- ✅ Ctrl+C interrupt handling (immediate console output required)
+- ✅ ASCII art banners (startup_banner.py, dashboard.py)
+- ✅ Logger implementation itself (utils/system/logging/)
+- ❌ **All other cases must use logger**
+
+**Lazy Logger Pattern:**
+Module-level `logger = get_logger()` is safe - it returns a lazy proxy that defers initialization until first method call. This solves `opts` timing issues during imports.
+
+**Theme-Aware Output:**
+The logger respects the user's console theme setting (slopcore, classic, simple) and emoji preferences. Use the logger for all user-facing output.
+
 ### 1. No Duplicate Code (DRY Principle)
 - Extract common functionality into shared utilities
 - If you copy-paste, you must refactor into a shared function
@@ -612,17 +643,40 @@ radon cc scripts/deforum_helpers/ -a      # Show all
 mypy scripts/deforum_helpers/ --strict
 ```
 
-### Test Coverage
+### Testing
+
+**Test Organization:**
+- `tests/unit/` - Fast, isolated tests (no GPU/Forge backend)
+- `tests/integration/` - Full-stack tests (requires Forge + GPU)
+
+**Run tests:**
 ```bash
-# Run tests with coverage
+# Unit tests only (fast, CI-friendly)
 pytest tests/unit/ -v
 
-# Generate HTML coverage report
-pytest tests/unit/ --cov-report=html
+# Unit tests with coverage
+pytest tests/unit/ --cov=deforum --cov=scripts --cov-report=html
 
-# Require minimum coverage
+# Integration tests (requires server)
+pytest tests/integration/ --start-server
+
+# Require minimum coverage threshold
 pytest tests/unit/ --cov-fail-under=70
 ```
+
+**Testing Best Practices:**
+- Write unit tests for all pure functions in `deforum/utils/`
+- Integration tests for full rendering pipelines
+- Separate unit/integration to keep CI fast
+- Use `@pytest.mark.integration` for integration tests
+- Mock external dependencies in unit tests (Forge, GPU, filesystem)
+- Target 70%+ coverage for utility modules
+- See [tests/README.md](tests/README.md) for comprehensive testing guide
+
+**Recent Coverage Achievements:**
+- `deforum/utils/general.py`: 5% → 55%
+- `deforum/utils/system/logging/log.py`: 39% → 71%
+- Lazy logger pattern comprehensively tested
 
 ## Examples of Good Refactoring
 
