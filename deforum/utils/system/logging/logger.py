@@ -322,8 +322,8 @@ def get_logger() -> DeforumLogger:
             theme = get_log_theme()
             log_level = get_log_level()
             emojis_enabled = is_emojis_enabled()
-        except ImportError:
-            # Fallback to defaults if settings not available
+        except (ImportError, AttributeError):
+            # Fallback to defaults if settings not available or opts not initialized yet
             theme = 'slopcore'
             log_level = 'INFO'
             emojis_enabled = False  # Match UI default (unchecked = disabled)
