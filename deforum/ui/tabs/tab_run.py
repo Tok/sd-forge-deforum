@@ -68,7 +68,4 @@ def get_tab_run(d, da):
         if not k.startswith('_') and k not in ('d', 'da', 'gr', 'FormRow', 'emoji_run', 'create_row', 'create_gr_elem')
     }
 
-    # Debug: Print what we're returning
-    print(f"[DEBUG] get_tab_run returning keys: {list(result.keys())}")
-
     return result
