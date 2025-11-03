@@ -13,17 +13,6 @@ completely refactored and modernized to work with Flux.1, Wan 2.1/2.2 AI Video G
 
 ## ⚡ Major New Features
 
-### 🟦🟪🟪 **Tailwind-Hegemony Slopcore Gradient-Wave UI** (SaaS Griftcore-Punk Aesthetic)
-All primary action buttons now feature the industry-standard blue-purple slopcore gradient (#667eea → #764ba2) that has come to define contemporary AI tool aesthetics. This gradient represents our commitment to embracing the visual language of modern SaaS griftcore-punk design movements while delivering 20+ actual functional features.
-- **Generate Button**: Primary purple gradient for the main rendering action
-- **Audio Sync Controls**: Synchronization buttons now feature identical slopcore styling
-- **AI Enhancement**: Qwen prompt generation with blue/purple gradient hierarchy
-- **Event Adjustment**: Sensitivity ±5% buttons maintain visual consistency
-- **Visual Hierarchy**: Gradient provides immediate affordance recognition in the post-Tailwind design landscape
-- **Console Output**: Themed logging system with blue→purple gradient across all 5 parallel progress bars (Settings → Deforum → Console Theme)
-
-*"We added the gradient ironically, but kept it because it actually works." - The maintainers*
-
 ### 🔥 **Zero-HITL Slopcore Generator** (Qwen-Spec'd, Zero Human-In-The-Loop)
 *Specifications and review by Qwen3-Next-80B-A3B. Implementation was practically zero-HITL too (copy-paste driven development).*
 
@@ -590,7 +579,6 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 - **RIFE**: Megvii Research
 - **Depth-Anything V2**: DepthAnything Team
 - **Camera Shakify**: EatTheFuture (CC0 license)
-- **Industry-Standard Slopcore Gradient**: Bootstrap & Vercel (Tailwind CSS hegemony)
 
 ## License
 
