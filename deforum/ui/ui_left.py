@@ -141,14 +141,12 @@ def setup_deforum_left_side_ui():
     with gr.Row(variant='compact'):
         from .ui_elements import create_gr_elem
         render_mode = create_gr_elem(da.render_mode)
-        reset_to_defaults_btn = gr.Button(
-            value=emoji_if_enabled("🔄") or "Reset",
-            variant="secondary",
-            scale=0,
-            size="sm",
-            min_width=40,
-            elem_classes=["tool-button"]
-        )
+        with gr.Column(scale=0, min_width=32):
+            reset_to_defaults_btn = gr.Button(
+                value=emoji_if_enabled("🔄") or "↻",
+                variant="secondary",
+                size="sm"
+            )
 
     # Confirmation modal for reset to defaults
     with gr.Row(visible=False) as reset_confirm_row:
@@ -660,8 +658,8 @@ def setup_deforum_left_side_ui():
                 progress_callback=None
             )
 
-            # Save to temp file
-            temp_dir = Path("models/Deforum/audio_cache")
+            # Save to outputs/settings directory (not git-tracked)
+            temp_dir = Path("outputs/settings")
             temp_dir.mkdir(parents=True, exist_ok=True)
             temp_file = temp_dir / f"generated_defaults_{render_mode_val.replace(' ', '_').lower()}.txt"
 
