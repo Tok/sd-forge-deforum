@@ -82,16 +82,20 @@ Contact the authors: https://deforum.github.io/
   max-height: 60px;
 }
 
-/* Slopcore purple gradient for audio sync and AI prompt buttons */
+/* Slopcore gradient for audio sync and AI prompt buttons */
+/* Authentic BLANK BANSHEE 0 gradient (pipetted from album cover) */
 #audio_sync_button,
 #audio_sync_fewer_button,
 #audio_sync_more_button,
 #audio_ai_generate_button,
 .slopcore-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: linear-gradient(135deg, #5606ff 0%, #17a7fe 100%) !important;
   border: none !important;
   color: white !important;
   font-weight: 600 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 4px 6px rgba(86, 6, 255, 0.3) !important;
+  transition: all 0.3s ease !important;
 }
 
 #audio_sync_button:hover,
@@ -99,6 +103,7 @@ Contact the authors: https://deforum.github.io/
 #audio_sync_more_button:hover,
 #audio_ai_generate_button:hover,
 .slopcore-button:hover {
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
-  box-shadow: 0 4px 15px 0 rgba(102, 126, 234, 0.5) !important;
+  background: linear-gradient(135deg, #17a7fe 0%, #5606ff 100%) !important;
+  box-shadow: 0 6px 12px rgba(86, 6, 255, 0.4) !important;
+  transform: translateY(-1px) !important;
 }
