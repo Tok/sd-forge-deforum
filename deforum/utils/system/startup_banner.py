@@ -87,9 +87,10 @@ def print_startup_banner():
     # Brightest slopcore blue for title text foreground (end of spectrum)
     SLOPCORE_BRIGHT_BLUE_FG = f"\033[38;2;{int(HEX_SLOPCORE_1[1:3], 16)};{int(HEX_SLOPCORE_1[3:5], 16)};{int(HEX_SLOPCORE_1[5:7], 16)}m"
 
-    # Black pill button title with fade-to-black using block shades
+    # Title with smooth fade-to-black using block shades
     # Format: ▓▓▒▒ ⚡ FORK NAME ⚡ ▒▒▓▓
-    # Fade pattern: gradient → dark shade → medium shade → space → black pill → space → medium shade → dark shade → gradient
+    # Fade pattern: gradient → dark shade → medium shade → terminal black → medium shade → dark shade → gradient
+    # Whole banner is slopcore button (rounded corners), title has fade effect (not pill)
     title_text = f"▓▓▒▒ ⚡ {FORK_NAME} ⚡ ▒▒▓▓"
 
     # Center the title based on its display width
@@ -199,9 +200,9 @@ def print_startup_banner():
             idx = min(int(position * len(slopcore_gradient)), len(slopcore_gradient) - 1)
             return hex_to_fg_ansi(slopcore_gradient[idx])
 
-        # Track if we're inside the pill (after ▓▓▒▒ fade-in, before ▒▒▓▓ fade-out)
+        # Track if we're inside the black section (after ▓▓▒▒ fade-in, before ▒▒▓▓ fade-out)
         # Pattern: ▓▓▒▒ ⚡ FORK ⚡ ▒▒▓▓
-        inside_pill = False
+        inside_pill = False  # Variable name kept for simplicity
         fade_chars_seen = 0  # Count ▓ and ▒ characters
         exiting_pill = False  # Flag when we start seeing ▒ on the right side
 
@@ -235,18 +236,18 @@ def print_startup_banner():
                         exiting_pill = True  # First ▒ on right side
                         inside_pill = False
                 elif inside_pill or (fade_chars_seen == 4 and not exiting_pill):
-                    # Inside the black pill (space, emoji, text)
+                    # Inside the black section (space, emoji, text)
                     if char == '⚡':
                         # Bolt emoji: natural yellow color, terminal-black background
                         content_line += f"{TERMINAL_BLACK}{char}"
                     elif char == ' ':
-                        # Space inside pill: terminal-black background
+                        # Space inside black section: terminal-black background
                         content_line += f"{TERMINAL_BLACK} "
                     else:
                         # Fork name text: blue foreground, terminal-black background
                         content_line += f"{TERMINAL_BLACK}{SLOPCORE_BRIGHT_BLUE_FG}{char}"
                 else:
-                    # Outside pill: normal gradient background, white text
+                    # Outside black section: normal gradient background, white text
                     bg = get_slopcore_bg_by_position(gradient_pos)
                     content_line += f"{bg}{WHITE}{char}"
             else:
