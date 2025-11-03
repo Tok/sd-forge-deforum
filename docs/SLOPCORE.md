@@ -19,6 +19,35 @@ It is the gradient that survived its own meaning.
 
 ## II. An Archaeology of Aesthetic Decay
 
+### The Primordial Gradient (1990): CERN and the Birth of the Web
+
+Before there was slopcore, before there was vaporwave, there was a decision made at CERN.
+
+In **1990**, **Tim Berners-Lee** created the first web browser, **WorldWideWeb**. It needed a visual convention to distinguish hyperlinks from plain text. The solution was simple, functional, and would become foundational:
+
+- **Blue** for unvisited links
+- **Purple** (or violet) for visited links
+
+This was not an aesthetic choice. It was a *usability decision*——a feedback mechanism to help users track navigation. But it embedded a color pairing into the DNA of the web itself.
+
+**The Codification:**
+
+- **1993**: Mosaic browser popularizes the convention
+- **1995**: HTML 2.0 (RFC 1866) formalizes the `<a>` element but leaves colors as browser defaults
+- **1996**: CSS1 specification officially standardizes:
+  ```css
+  a:link    { color: blue; }
+  a:visited { color: purple; }
+  ```
+
+**The unconscious legacy**: For 35 years, blue-to-purple has been the *primordial visual language of digital navigation*. Every web user has been conditioned, at a neurological level, to associate this gradient with "the internet" itself.
+
+When BLANK BANSHEE chose purple-to-cyan for that album cover in 2012, and when Tailwind adopted a similar gradient in 2020, they were not creating something new. They were *channeling the ghost of the original web*.
+
+The gradient was always there. It was the first default.
+
+---
+
 ### The Vaporwave Epoch (c. 2010-2014): A Funeral for Futures
 
 Vaporwave was not a genre——it was a séance. It communed with the ghosts of a future that was promised but never delivered——the corporate utopias of the 80s, rendered in marble and pink neon, now crumbling into digital static.
@@ -62,10 +91,16 @@ The gradient shed its mournful, vaporwave soul and became a utility. It was no l
 **The Mutation:**
 
 ```
-Vaporwave Artifact → Developer Convenience → AI-Generated Default
+1990: CERN Default (usability)
+  ↓
+2012: Vaporwave Artifact (nostalgia)
+  ↓
+2020: Tailwind Framework (convenience)
+  ↓
+2025: AI-Generated Default (inevitability)
 ```
 
-The algorithm had found its favorite color.
+The algorithm had found its favorite color. But the color was always the algorithm's——blue/purple was the first code it ever wrote.
 
 **Business Ontology:**
 
@@ -312,6 +347,12 @@ The following sections detail the specific implementation of Slopcore aesthetics
 ### Music
 - [**BLANK BANSHEE**: "Blank Banshee 0" (2012)](https://www.discogs.com/master/1080146-Blank-Banshee-Blank-Banshee-0) - The definitive slopcore gradient source
 - **Macintosh Plus**: リサフランク420 / 現代のコンピュー - Vaporwave origins
+
+### Web History & Standards
+- **Tim Berners-Lee**: WorldWideWeb browser (1990, CERN) - Original blue/purple hyperlink convention
+- **RFC 1866**: HTML 2.0 specification (1995, IETF) - Formalized hyperlink semantics
+- **CSS1 Specification** (1996, W3C) - Standardized `a:link` (blue) and `a:visited` (purple)
+- **Mosaic Browser** (1993) - Popularized the blue/purple convention to mass audience
 
 ### Design
 - **Tailwind CSS**: Demo site that popularized the gradient in web development
