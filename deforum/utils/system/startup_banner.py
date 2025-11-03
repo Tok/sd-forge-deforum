@@ -57,10 +57,9 @@ def print_startup_banner():
     RESET = "\033[0m"
     BOLD = "\033[1m"
     WHITE = "\033[97m"
-    # Terminal black for fade background and black section
-    TERMINAL_BLACK = "\033[48;2;0;0;0m"
-    # Use very dark gray for corners so they blend better with terminal background
-    CORNER_COLOR = "\033[38;2;30;30;30m"
+    # Very dark gray (30,30,30) for terminal black and corners (same color)
+    TERMINAL_BLACK_BG = "\033[48;2;30;30;30m"  # Background for fade and black section
+    CORNER_COLOR = "\033[38;2;30;30;30m"        # Foreground for corner triangles
 
     # Helper to get terminal width
     term_width = shutil.get_terminal_size((120, 24)).columns
@@ -228,7 +227,7 @@ def print_startup_banner():
                     # Shade characters: gradient foreground on terminal-black background
                     # Creates colored fade effect - denser characters show more color
                     fg = get_slopcore_fg_by_position(gradient_pos)
-                    content_line += f"{TERMINAL_BLACK}{fg}{char}"
+                    content_line += f"{TERMINAL_BLACK_BG}{fg}{char}"
 
                     if not inside_black_section and not exiting_black_section:
                         fade_chars_seen += 1
@@ -241,13 +240,13 @@ def print_startup_banner():
                     # Inside the black section (space, emoji, text)
                     if char == '⚡':
                         # Bolt emoji: natural yellow color, terminal-black background
-                        content_line += f"{TERMINAL_BLACK}{char}"
+                        content_line += f"{TERMINAL_BLACK_BG}{char}"
                     elif char == ' ':
                         # Space inside black section: terminal-black background
-                        content_line += f"{TERMINAL_BLACK} "
+                        content_line += f"{TERMINAL_BLACK_BG} "
                     else:
                         # Fork name text: blue foreground, terminal-black background
-                        content_line += f"{TERMINAL_BLACK}{SLOPCORE_BRIGHT_BLUE_FG}{char}"
+                        content_line += f"{TERMINAL_BLACK_BG}{SLOPCORE_BRIGHT_BLUE_FG}{char}"
                 else:
                     # Outside black section: normal gradient background, white text
                     bg = get_slopcore_bg_by_position(gradient_pos)
