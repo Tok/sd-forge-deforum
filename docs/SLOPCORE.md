@@ -19,16 +19,16 @@ It is the gradient that survived its own meaning.
 
 ## II. An Archaeology of Aesthetic Decay
 
-### The Primordial Gradient (1990): CERN and the Birth of Hypertext
+### The Primordial Gradient (1990): CERN and the Birth of **HYPERTEXT**
 
 Before there was slopcore, before there was vaporwave, there was a decision made at CERN.
 
-In **1990**, **Tim Berners-Lee** created the first web browser, **WorldWideWeb**. It needed a visual convention to distinguish **hypertext links** from plain text. The solution was simple, functional, and would become foundational:
+In **1990**, **Tim Berners-Lee** created the first web browser, **WorldWideWeb**. It needed a visual convention to distinguish **HYPERTEXT** links from plain text. The solution was simple, functional, and would become foundational:
 
 - **Blue** for unvisited links
 - **Purple** (or violet) for visited links
 
-This was not an aesthetic choice. It was a *usability decision*——a feedback mechanism to help users track navigation. But it embedded a color pairing into the DNA of the web itself.
+This was not an aesthetic choice. It was a *usability decision*——a feedback mechanism to help users track navigation through **HYPERTEXT**. But it embedded a color pairing into the DNA of the web itself.
 
 **The Codification:**
 
