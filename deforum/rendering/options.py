@@ -10,6 +10,11 @@ def _get_opts():
     # noinspection PyUnresolvedReferences
     try:
         from modules.shared import opts
+        if opts is None:
+            # opts not initialized yet - return mock
+            class MockOpts:
+                data = {}
+            return MockOpts()
         return opts
     except ImportError:
         # Mock opts for testing environment
