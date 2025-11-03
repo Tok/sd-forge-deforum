@@ -1,16 +1,32 @@
 """Chart generation for tuning metrics visualization.
 
 This module provides functions to generate matplotlib charts for
-displaying tuning test results.
+displaying tuning test results with slopcore gradient aesthetics.
 """
 
 import matplotlib.pyplot as plt
 import matplotlib
+import matplotlib.colors as mcolors
 import numpy as np
 from typing import List, Dict, Any, Optional
 
 # Use non-interactive backend for server-side generation
 matplotlib.use('Agg')
+
+# Slopcore gradient colors (tailwind-hegemony punk, bootstrap default-css-wave)
+SLOPCORE_1 = '#4A90E2'  # Bright blue
+SLOPCORE_2 = '#5883D8'  # Blue-purple
+SLOPCORE_3 = '#667EEA'  # Light purple
+SLOPCORE_4 = '#7B6DB8'  # Mid purple
+SLOPCORE_5 = '#8F5CA0'  # Purple
+SLOPCORE_6 = '#A353A8'  # Deep purple
+SLOPCORE_7 = '#764BA2'  # Darkest purple
+
+# Create custom slopcore colormap for heatmaps (dark purple → bright blue)
+SLOPCORE_CMAP = mcolors.LinearSegmentedColormap.from_list(
+    'slopcore',
+    [SLOPCORE_7, SLOPCORE_6, SLOPCORE_5, SLOPCORE_4, SLOPCORE_3, SLOPCORE_2, SLOPCORE_1]
+)
 
 
 def create_metrics_plot(results: List[Dict[str, Any]]) -> plt.Figure:
@@ -43,10 +59,10 @@ def create_metrics_plot(results: List[Dict[str, Any]]) -> plt.Figure:
     x = np.arange(len(configs))
     width = 0.25
 
-    # Plot bars
-    ax.bar(x - width, final_color, width, label='Final Color', alpha=0.8)
-    ax.bar(x, avg_temporal, width, label='Avg Temporal', alpha=0.8)
-    ax.bar(x + width, overall, width, label='Overall Score', alpha=0.8)
+    # Plot bars with slopcore gradient colors
+    ax.bar(x - width, final_color, width, label='Final Color', alpha=0.8, color=SLOPCORE_3)
+    ax.bar(x, avg_temporal, width, label='Avg Temporal', alpha=0.8, color=SLOPCORE_5)
+    ax.bar(x + width, overall, width, label='Overall Score', alpha=0.8, color=SLOPCORE_7)
 
     # Formatting
     ax.set_xlabel('Configuration')
@@ -90,10 +106,10 @@ def create_heatmap_plot(results: List[Dict[str, Any]], metric: str = 'overall_sc
         j = normal_strengths.index(result['normal_strength'])
         matrix[i, j] = result[metric]
 
-    # Create heatmap
+    # Create heatmap with slopcore gradient colormap
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    im = ax.imshow(matrix, cmap='RdYlGn', aspect='auto', vmin=0, vmax=100)
+    im = ax.imshow(matrix, cmap=SLOPCORE_CMAP, aspect='auto', vmin=0, vmax=100)
 
     # Set ticks
     ax.set_xticks(np.arange(len(normal_strengths)))
@@ -156,8 +172,8 @@ def create_degradation_plot(results: List[Dict[str, Any]]) -> plt.Figure:
     x = np.arange(len(configs))
     width = 0.35
 
-    # Plot degradation rates (lower is better)
-    color = 'tab:red'
+    # Plot degradation rates (lower is better) - use darker purple for warning
+    color = SLOPCORE_7
     ax1.set_xlabel('Configuration')
     ax1.set_ylabel('Degradation Rate (%/iteration)', color=color)
     ax1.bar(x - width/2, degradation_rates, width, label='Degradation Rate',
@@ -166,9 +182,9 @@ def create_degradation_plot(results: List[Dict[str, Any]]) -> plt.Figure:
     ax1.set_xticks(x)
     ax1.set_xticklabels(configs, rotation=45, ha='right')
 
-    # Plot iterations (higher is better)
+    # Plot iterations (higher is better) - use brighter blue for positive metric
     ax2 = ax1.twinx()
-    color = 'tab:blue'
+    color = SLOPCORE_2
     ax2.set_ylabel('Iterations Completed', color=color)
     ax2.bar(x + width/2, iterations, width, label='Iterations',
             color=color, alpha=0.6)

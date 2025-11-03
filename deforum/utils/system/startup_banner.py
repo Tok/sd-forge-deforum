@@ -57,6 +57,8 @@ def print_startup_banner():
     RESET = "\033[0m"
     BOLD = "\033[1m"
     WHITE = "\033[97m"
+    # Terminal black for pill-shaped title button background
+    TERMINAL_BLACK = "\033[48;2;0;0;0m"
     # Use very dark gray for corners so they blend better with terminal background
     CORNER_COLOR = "\033[38;2;30;30;30m"
 
@@ -82,11 +84,11 @@ def print_startup_banner():
     ROUND_BL = "◣"  # Bottom-left rounded
     ROUND_BR = "◢"  # Bottom-right rounded
 
-    # Brightest slopcore blue for inverted title (end of spectrum)
-    SLOPCORE_BRIGHT_BLUE = hex_to_bg_ansi(HEX_SLOPCORE_1)
+    # Brightest slopcore blue for title text foreground (end of spectrum)
+    SLOPCORE_BRIGHT_BLUE_FG = f"\033[38;2;{int(HEX_SLOPCORE_1[1:3], 16)};{int(HEX_SLOPCORE_1[3:5], 16)};{int(HEX_SLOPCORE_1[5:7], 16)}m"
 
-    # Inverted title with slopcore lenticular brackets and brightest blue background
-    # Format: 【 FORK NAME 】with inverted colors (blue bg, white text)
+    # Black pill button title with slopcore lenticular brackets
+    # Format: 【 FORK NAME 】with terminal-black background, blue text, gradient-colored brackets
     title_text = f"【 {FORK_NAME} 】"
 
     # Center the title based on its display width
@@ -182,30 +184,57 @@ def print_startup_banner():
         content_line = ""
         display_pos = 0
 
-        # Special handling for title row (row_idx == 0): inverted slopcore blue
+        # Special handling for title row (row_idx == 0): black pill button effect
         is_title_row = (row_idx == 0)
+
+        # Helper to get gradient foreground color (for brackets)
+        def hex_to_fg_ansi(hex_color):
+            r = int(hex_color[1:3], 16)
+            g = int(hex_color[3:5], 16)
+            b = int(hex_color[5:7], 16)
+            return f"\033[38;2;{r};{g};{b}m"
+
+        def get_slopcore_fg_by_position(position):
+            idx = min(int(position * len(slopcore_gradient)), len(slopcore_gradient) - 1)
+            return hex_to_fg_ansi(slopcore_gradient[idx])
+
+        # Track if we're inside the pill (between 【 and 】)
+        inside_pill = False
 
         # Left padding (2 spaces)
         for i in range(2):
-            if is_title_row:
-                # Title row: use brightest slopcore blue for entire row
-                content_line += f"{SLOPCORE_BRIGHT_BLUE} "
-            else:
-                gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
-                bg = get_slopcore_bg_by_position(gradient_pos)
-                content_line += f"{bg} "
+            gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+            bg = get_slopcore_bg_by_position(gradient_pos)
+            content_line += f"{bg} "
             display_pos += 1
 
         # Text content (accounting for wide chars)
-
         text_idx = 0
         while text_idx < len(visible_text):
             char = visible_text[text_idx]
             char_width = 2 if unicodedata.east_asian_width(char) in ('F', 'W') else 1
 
             if is_title_row:
-                # Title: brightest slopcore blue background, white text (inverted)
-                content_line += f"{SLOPCORE_BRIGHT_BLUE}{WHITE}{char}"
+                # Calculate gradient position for this character
+                gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+
+                if char == '【':
+                    # Opening bracket: gradient foreground, terminal-black background
+                    fg = get_slopcore_fg_by_position(gradient_pos)
+                    content_line += f"{TERMINAL_BLACK}{fg}{char}"
+                    inside_pill = True
+                elif char == '】':
+                    # Closing bracket: gradient foreground, terminal-black background
+                    fg = get_slopcore_fg_by_position(gradient_pos)
+                    content_line += f"{TERMINAL_BLACK}{fg}{char}"
+                    inside_pill = False
+                elif inside_pill:
+                    # Inside pill: blue foreground, terminal-black background
+                    content_line += f"{TERMINAL_BLACK}{SLOPCORE_BRIGHT_BLUE_FG}{char}"
+                else:
+                    # Outside pill (shouldn't happen with current title format): normal gradient
+                    bg = get_slopcore_bg_by_position(gradient_pos)
+                    content_line += f"{bg}{WHITE}{char}"
             else:
                 # Regular content: slopcore gradient background, white text
                 gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
@@ -217,13 +246,9 @@ def print_startup_banner():
 
         # Right padding
         for i in range(right_padding_width):
-            if is_title_row:
-                # Title row: use brightest slopcore blue for entire row
-                content_line += f"{SLOPCORE_BRIGHT_BLUE} "
-            else:
-                gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
-                bg = get_slopcore_bg_by_position(gradient_pos)
-                content_line += f"{bg} "
+            gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+            bg = get_slopcore_bg_by_position(gradient_pos)
+            content_line += f"{bg} "
             display_pos += 1
 
         content_line += RESET  # Single reset at end of line
