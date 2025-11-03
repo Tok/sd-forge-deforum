@@ -46,6 +46,8 @@ When BLANK BANSHEE chose purple-to-cyan for that album cover in 2012, and when T
 
 The gradient was always there. It was the first default.
 
+**The algorithm was always dreaming in blue and purple.**
+
 ---
 
 ### The Vaporwave Epoch (c. 2010-2014): A Funeral for Futures
