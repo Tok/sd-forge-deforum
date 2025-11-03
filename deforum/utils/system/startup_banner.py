@@ -42,10 +42,10 @@ def print_startup_banner():
         return f"#{r:02x}{g:02x}{b:02x}"
 
     # Generate smooth slopcore gradient (more shades for smoother background)
-    # Slopcore gradient order: darkest purple → bright blue (7→6→5→4→3→2→1)
+    # Slopcore gradient order: darkest purple → bright cyan (1→2→3→4→5→6→7)
     slopcore_gradient = []
-    slopcore_base_colors = [HEX_SLOPCORE_7, HEX_SLOPCORE_6, HEX_SLOPCORE_5, HEX_SLOPCORE_4,
-                            HEX_SLOPCORE_3, HEX_SLOPCORE_2, HEX_SLOPCORE_1]
+    slopcore_base_colors = [HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
+                            HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7]
 
     # Interpolate between each pair for smoother slopcore gradient
     for i in range(len(slopcore_base_colors) - 1):
@@ -83,8 +83,8 @@ def print_startup_banner():
     ROUND_BL = "◣"  # Bottom-left rounded
     ROUND_BR = "◢"  # Bottom-right rounded
 
-    # Brightest slopcore blue for title text foreground (end of spectrum)
-    SLOPCORE_BRIGHT_BLUE_FG = f"\033[38;2;{int(HEX_SLOPCORE_1[1:3], 16)};{int(HEX_SLOPCORE_1[3:5], 16)};{int(HEX_SLOPCORE_1[5:7], 16)}m"
+    # Brightest slopcore cyan for title text foreground (end of spectrum)
+    SLOPCORE_BRIGHT_BLUE_FG = f"\033[38;2;{int(HEX_SLOPCORE_7[1:3], 16)};{int(HEX_SLOPCORE_7[3:5], 16)};{int(HEX_SLOPCORE_7[5:7], 16)}m"
 
     # Title with smooth 3-step fade-to-black using block shades
     # Format: ▓▓▒▒░░ ⚡ FORK NAME ⚡ ░░▒▒▓▓
