@@ -28,9 +28,16 @@ from deforum.core.prompts import prepare_prompt
 from deforum.config.settings import save_settings_from_animation_run
 from deforum.utils.system.logging import get_logger
 
-# Initialize logger
-logger = get_logger()
+# Defer logger initialization to avoid module-level opts access
+_logger_instance = None
 
+
+def _get_logger():
+    """Get logger instance - deferred to avoid module-level opts access."""
+    global _logger_instance
+    if _logger_instance is None:
+        _logger_instance = get_logger()
+    return _logger_instance
 
 
 @dataclass(init=True, frozen=True, repr=False, eq=False)
@@ -267,7 +274,7 @@ class RenderData:
     @staticmethod
     def create_output_directory_for_the_batch(directory):
         os.makedirs(directory, exist_ok=True)
-        logger.info(f"Saving animation frames to:\n{directory}")
+        _get_logger().info(f"Saving animation frames to:\n{directory}")
 
     @staticmethod
     def create_parseq_adapter(args):
