@@ -636,15 +636,15 @@ def setup_deforum_left_side_ui():
         3. Detects audio events with BPM-aware sensitivity
         4. Generates prompts with Qwen
         5. Syncs prompts to audio events
-        6. Saves to temporary file for user to load
+        6. Saves to batch directory
 
-        Note: Due to Gradio limitations, defaults are saved to a temp file.
+        Note: Due to Gradio limitations, defaults are saved to a batch directory.
         User needs to manually load the settings file after generation.
         """
         from deforum.config.defaults_generator import generate_mode_defaults
         import json
         from pathlib import Path
-        import tempfile
+        from datetime import datetime
 
         try:
             # Get current model for model-specific defaults
@@ -654,35 +654,41 @@ def setup_deforum_left_side_ui():
             except:
                 current_model = "Flux\\flux1-dev-bnb-nf4-v2.safetensors"  # Fallback
 
-            # Generate defaults
+            # Create batch directory with timestamp
+            timestring = datetime.now().strftime("%Y%m%d_%H%M%S")
+            mode_safe = render_mode_val.replace(' ', '')
+            batch_name = f"Deforum_Defaults_{mode_safe}_{timestring}"
+            batch_dir = Path("outputs") / batch_name
+            batch_dir.mkdir(parents=True, exist_ok=True)
+
+            # Generate defaults (will put audio in this batch dir)
             logger.info(f"Generating defaults for {render_mode_val} with model {current_model}")
+            logger.info(f"Batch directory: {batch_dir}")
 
             defaults = generate_mode_defaults(
                 render_mode=render_mode_val,
                 current_model=current_model,
+                batch_dir=batch_dir,
                 progress_callback=None
             )
 
-            # Save to outputs/settings directory (not git-tracked)
-            temp_dir = Path("outputs/settings")
-            temp_dir.mkdir(parents=True, exist_ok=True)
-            temp_file = temp_dir / f"generated_defaults_{render_mode_val.replace(' ', '_').lower()}.txt"
-
-            with open(temp_file, 'w') as f:
+            # Save settings to batch directory
+            settings_file = batch_dir / "deforum_settings.txt"
+            with open(settings_file, 'w') as f:
                 json.dump(defaults, f, indent=4)
 
             check_emoji = emoji_if_enabled("✓") or "[OK]"
             success_msg = (
                 f"{check_emoji} Defaults generated successfully!\n"
                 f"Generated {len(defaults.get('prompts', {}))} prompts synced to audio.\n"
-                f"Settings saved to: {temp_file}\n"
+                f"Batch: {batch_name}\n"
+                f"Settings: {settings_file}\n"
                 f"\n"
-                f"To apply: Use the Settings tab → Load Settings → Browse to the file above\n"
-                f"or manually copy the prompts and audio path from the generated file."
+                f"To apply: Load Settings → Browse to the file above"
             )
 
             logger.info(f"{emoji_if_enabled('✓')} Reset to defaults complete for {render_mode_val}")
-            logger.info(f"Settings saved to: {temp_file}")
+            logger.info(f"Batch created: {batch_dir}")
 
             return gr.update(value=success_msg, visible=True)
 

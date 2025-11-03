@@ -113,6 +113,7 @@ def load_static_defaults(render_mode: str, model_type: str) -> Dict:
 def generate_mode_defaults(
     render_mode: str,
     current_model: str,
+    batch_dir: Optional[Path] = None,
     progress_callback: Optional[Callable[[str], None]] = None
 ) -> Dict:
     """Generate AI-powered defaults for specific mode and model.
@@ -123,6 +124,7 @@ def generate_mode_defaults(
     Args:
         render_mode: Render mode ("New 3D", "Classic 3D", etc.)
         current_model: Current SD model name (to detect type)
+        batch_dir: Optional batch directory to save audio file (instead of outputs/audio/defaults)
         progress_callback: Optional callback for progress updates
 
     Returns:
@@ -132,6 +134,7 @@ def generate_mode_defaults(
         >>> defaults = generate_mode_defaults(
         ...     render_mode="New 3D",
         ...     current_model="Flux\\flux1-dev-bnb-nf4-v2.safetensors",
+        ...     batch_dir=Path("outputs/Deforum_Defaults_New3D_20231105_123456"),
         ...     progress_callback=lambda msg: print(msg)
         ... )
         >>> # defaults now contains all settings including AI-generated audio + prompts
@@ -156,13 +159,18 @@ def generate_mode_defaults(
     try:
         from deforum.utils.audio_generation import generate_loop
 
-        # Create cache directory if it doesn't exist
-        cache_dir = Path("models/Deforum/audio_cache")
-        cache_dir.mkdir(parents=True, exist_ok=True)
+        # Determine audio output directory
+        if batch_dir is not None:
+            # Use batch directory (preferred - keeps everything together)
+            audio_dir = Path(batch_dir)
+        else:
+            # Fallback to outputs/audio/defaults
+            audio_dir = Path("outputs/audio/defaults")
+            audio_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate filename based on mode
         audio_filename = f"bunny_default_{render_mode.replace(' ', '_').lower()}.mp3"
-        audio_path = str(cache_dir / audio_filename)
+        audio_path = str(audio_dir / audio_filename)
 
         # Generate audio
         actual_audio_path, slop_log = generate_loop(
