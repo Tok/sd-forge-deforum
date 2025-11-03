@@ -87,10 +87,10 @@ def print_startup_banner():
     # Brightest slopcore blue for title text foreground (end of spectrum)
     SLOPCORE_BRIGHT_BLUE_FG = f"\033[38;2;{int(HEX_SLOPCORE_1[1:3], 16)};{int(HEX_SLOPCORE_1[3:5], 16)};{int(HEX_SLOPCORE_1[5:7], 16)}m"
 
-    # Black pill button title with slopcore lenticular brackets and bolt emojis
-    # Format: 【⚡ FORK NAME ⚡】 with terminal-black background, blue text, gradient-colored brackets
-    # Bolts inside pill for better yellow/black contrast
-    title_text = f"【⚡ {FORK_NAME} ⚡】"
+    # Black pill button title with fade-to-black using block shades
+    # Format: ▓▓▒▒ ⚡ FORK NAME ⚡ ▒▒▓▓
+    # Fade pattern: gradient → dark shade → medium shade → space → black pill → space → medium shade → dark shade → gradient
+    title_text = f"▓▓▒▒ ⚡ {FORK_NAME} ⚡ ▒▒▓▓"
 
     # Center the title based on its display width
     title_width = display_width(title_text)
@@ -199,8 +199,11 @@ def print_startup_banner():
             idx = min(int(position * len(slopcore_gradient)), len(slopcore_gradient) - 1)
             return hex_to_fg_ansi(slopcore_gradient[idx])
 
-        # Track if we're inside the pill (between 【 and 】)
+        # Track if we're inside the pill (after ▓▓▒▒ fade-in, before ▒▒▓▓ fade-out)
+        # Pattern: ▓▓▒▒ ⚡ FORK ⚡ ▒▒▓▓
         inside_pill = False
+        fade_chars_seen = 0  # Count ▓ and ▒ characters
+        exiting_pill = False  # Flag when we start seeing ▒ on the right side
 
         # Left padding (2 spaces)
         for i in range(2):
@@ -219,17 +222,20 @@ def print_startup_banner():
                 # Calculate gradient position for this character
                 gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
 
-                if char == '【':
-                    # Opening bracket: bold gradient foreground, terminal-black background
-                    fg = get_slopcore_fg_by_position(gradient_pos)
-                    content_line += f"{TERMINAL_BLACK}{BOLD}{fg}{char}{RESET}"
-                    inside_pill = True
-                elif char == '】':
-                    # Closing bracket: bold gradient foreground, terminal-black background
-                    fg = get_slopcore_fg_by_position(gradient_pos)
-                    content_line += f"{TERMINAL_BLACK}{BOLD}{fg}{char}{RESET}"
-                    inside_pill = False
-                elif inside_pill:
+                if char in ('▓', '▒'):
+                    # Shade characters: gradient background, white foreground (fade effect)
+                    bg = get_slopcore_bg_by_position(gradient_pos)
+                    content_line += f"{bg}{WHITE}{char}"
+
+                    if not inside_pill and not exiting_pill:
+                        fade_chars_seen += 1
+                        if fade_chars_seen == 4:  # After ▓▓▒▒, next char starts pill
+                            inside_pill = True
+                    elif inside_pill:
+                        exiting_pill = True  # First ▒ on right side
+                        inside_pill = False
+                elif inside_pill or (fade_chars_seen == 4 and not exiting_pill):
+                    # Inside the black pill (space, emoji, text)
                     if char == '⚡':
                         # Bolt emoji: natural yellow color, terminal-black background
                         content_line += f"{TERMINAL_BLACK}{char}"
@@ -240,7 +246,7 @@ def print_startup_banner():
                         # Fork name text: blue foreground, terminal-black background
                         content_line += f"{TERMINAL_BLACK}{SLOPCORE_BRIGHT_BLUE_FG}{char}"
                 else:
-                    # Outside pill (shouldn't happen): normal gradient background, white text
+                    # Outside pill: normal gradient background, white text
                     bg = get_slopcore_bg_by_position(gradient_pos)
                     content_line += f"{bg}{WHITE}{char}"
             else:
