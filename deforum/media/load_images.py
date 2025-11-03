@@ -28,8 +28,17 @@ from deforum.utils.validation.validators import (
 )
 from deforum.utils.system.logging import get_logger
 
-# Initialize logger
-logger = get_logger()
+# Defer logger initialization to avoid module-level opts access
+_logger_instance = None
+
+
+def _get_logger():
+    """Get logger instance - deferred to avoid module-level opts access."""
+    global _logger_instance
+    if _logger_instance is None:
+        _logger_instance = get_logger()
+    return _logger_instance
+
 
 def load_img(path : str, image_box :Image.Image, shape=None, use_alpha_as_mask=False):
     # use_alpha_as_mask: Read the alpha channel of the image as the mask image
@@ -47,8 +56,8 @@ def load_img(path : str, image_box :Image.Image, shape=None, use_alpha_as_mask=F
         # check using init image alpha as mask if mask is not blank
         extrema = mask_image.getextrema()
         if (extrema == (0,0)) or extrema == (255,255):
-            logger.info("use_alpha_as_mask==True: Using the alpha channel from the init image as a mask, but the alpha channel is blank.")
-            logger.info("ignoring alpha as mask.")
+            _get_logger().info("use_alpha_as_mask==True: Using the alpha channel from the init image as a mask, but the alpha channel is blank.")
+            _get_logger().info("ignoring alpha as mask.")
             mask_image = None
 
     return image, mask_image
