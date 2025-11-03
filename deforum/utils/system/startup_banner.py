@@ -59,15 +59,16 @@ def print_startup_banner():
     WHITE = "\033[97m"
     # Terminal black for fade background (same as corners/edges)
     TERMINAL_BLACK = "\033[48;2;0;0;0m"
-    # Grays for fade foreground (fade inward toward black)
-    LIGHTER_GRAY = "\033[38;2;60;60;60m"  # ▒ (inner) - closer to black section
-    DARKER_GRAY = "\033[38;2;40;40;40m"   # ▓ (outer) - closer to gradient
+    # Grays for smooth 3-step fade (gradient → ▓ → ▒ → ░ → black)
+    LIGHTEST_GRAY = "\033[38;2;80;80;80m"  # ▓ (high density) - outermost
+    MEDIUM_GRAY = "\033[38;2;60;60;60m"    # ▒ (medium density) - middle
+    DARKEST_GRAY = "\033[38;2;40;40;40m"   # ░ (low density) - innermost, closest to black
     # Use very dark gray for corners so they blend better with terminal background
     CORNER_COLOR = "\033[38;2;30;30;30m"
 
     # Helper to get terminal width
     term_width = shutil.get_terminal_size((120, 24)).columns
-    box_width = min(term_width - 4, 124)  # Max 124 chars wide (increased for longer title)
+    box_width = min(term_width - 4, 128)  # Max 128 chars wide (3-step fade is 4 chars wider)
 
     # Helper to convert hex to ANSI background RGB
     def hex_to_bg_ansi(hex_color):
@@ -90,11 +91,11 @@ def print_startup_banner():
     # Brightest slopcore blue for title text foreground (end of spectrum)
     SLOPCORE_BRIGHT_BLUE_FG = f"\033[38;2;{int(HEX_SLOPCORE_1[1:3], 16)};{int(HEX_SLOPCORE_1[3:5], 16)};{int(HEX_SLOPCORE_1[5:7], 16)}m"
 
-    # Title with smooth fade-to-black using block shades
-    # Format: ▓▓▒▒ ⚡ FORK NAME ⚡ ▒▒▓▓
-    # Fade pattern: gradient → dark shade → medium shade → terminal black → medium shade → dark shade → gradient
-    # Whole banner is slopcore button (rounded corners), title has fade effect (not pill)
-    title_text = f"▓▓▒▒ ⚡ {FORK_NAME} ⚡ ▒▒▓▓"
+    # Title with smooth 3-step fade-to-black using block shades
+    # Format: ▓▓▒▒░░ ⚡ FORK NAME ⚡ ░░▒▒▓▓
+    # Fade pattern: gradient → ▓ (high) → ▒ (med) → ░ (low) → black → ░ (low) → ▒ (med) → ▓ (high) → gradient
+    # Whole banner is slopcore button (rounded corners), title has smooth fade effect
+    title_text = f"▓▓▒▒░░ ⚡ {FORK_NAME} ⚡ ░░▒▒▓▓"
 
     # Center the title based on its display width
     title_width = display_width(title_text)
@@ -203,11 +204,11 @@ def print_startup_banner():
             idx = min(int(position * len(slopcore_gradient)), len(slopcore_gradient) - 1)
             return hex_to_fg_ansi(slopcore_gradient[idx])
 
-        # Track if we're inside the black section (after ▓▓▒▒ fade-in, before ▒▒▓▓ fade-out)
-        # Pattern: ▓▓▒▒ ⚡ FORK ⚡ ▒▒▓▓
+        # Track if we're inside the black section (after ▓▓▒▒░░ fade-in, before ░░▒▒▓▓ fade-out)
+        # Pattern: ▓▓▒▒░░ ⚡ FORK ⚡ ░░▒▒▓▓
         inside_black_section = False
-        fade_chars_seen = 0  # Count ▓ and ▒ characters
-        exiting_black_section = False  # Flag when we start seeing ▒ on the right side
+        fade_chars_seen = 0  # Count ▓, ▒, and ░ characters
+        exiting_black_section = False  # Flag when we start seeing ░ on the right side
 
         # Left padding (2 spaces)
         for i in range(2):
@@ -226,22 +227,26 @@ def print_startup_banner():
                 # Calculate gradient position for this character
                 gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
 
-                if char in ('▓', '▒'):
-                    # Shade characters: gradient background, gray foreground (fade to black)
+                if char in ('▓', '▒', '░'):
+                    # Shade characters: gradient background, gray foreground (3-step fade to black)
                     bg = get_slopcore_bg_by_position(gradient_pos)
-                    # Fade inward: ▓ (outer) = lighter gray (60), ▒ (inner) = darker gray (40)
-                    # Pattern: Gradient → lighter ▓ → darker ▒ → BLACK
-                    fg = LIGHTER_GRAY if char == '▓' else DARKER_GRAY
+                    # 3-step fade inward: ▓ (outermost) → ▒ (middle) → ░ (innermost) → BLACK
+                    if char == '▓':
+                        fg = LIGHTEST_GRAY  # 80,80,80 - closest to gradient
+                    elif char == '▒':
+                        fg = MEDIUM_GRAY    # 60,60,60 - middle
+                    else:  # ░
+                        fg = DARKEST_GRAY   # 40,40,40 - closest to black
                     content_line += f"{bg}{fg}{char}"
 
                     if not inside_black_section and not exiting_black_section:
                         fade_chars_seen += 1
-                        if fade_chars_seen == 4:  # After ▓▓▒▒, next char starts black section
+                        if fade_chars_seen == 6:  # After ▓▓▒▒░░, next char starts black section
                             inside_black_section = True
                     elif inside_black_section:
-                        exiting_black_section = True  # First ▒ on right side
+                        exiting_black_section = True  # First ░ on right side
                         inside_black_section = False
-                elif inside_black_section or (fade_chars_seen == 4 and not exiting_black_section):
+                elif inside_black_section or (fade_chars_seen == 6 and not exiting_black_section):
                     # Inside the black section (space, emoji, text)
                     if char == '⚡':
                         # Bolt emoji: natural yellow color, terminal-black background
