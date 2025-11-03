@@ -552,6 +552,7 @@ class TestStreetPath:
         assert path_long[-1].z > path_short[-1].z * 4.0
 
 
+@pytest.mark.skip(reason="Requires full Forge backend (k_diffusion, etc.). Run in Forge WebUI context only.")
 class TestPresetIntegration:
     """Test preset generation from handlers (integration tests)."""
 
