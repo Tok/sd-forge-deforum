@@ -9,11 +9,12 @@ Defines color palettes and styling for three themes:
 from deforum.utils.image.color import hex_to_ansi_foreground as from_hex_color
 
 # ============================================================================
-# SLOPCORE THEME - Authentic BLANK BANSHEE 0 gradient (7 shades)
+# SLOPCORE THEME - Authentic BLANK BANSHEE 0 gradient
 # ============================================================================
-# Exact colors pipetted from BB0 album cover, interpolated into 7 shades
+# Exact colors pipetted from BB0 album cover
 # Original album gradient: #5606ff (top) → #17a7fe (bottom), straight vertical
 
+# 7-shade gradient (for CLI banner, charts, general use)
 HEX_SLOPCORE_1 = '#5606FF'  # Deep purple-blue (album top)
 HEX_SLOPCORE_2 = '#4C21FF'  # Purple-blue
 HEX_SLOPCORE_3 = '#413CFF'  # Blue-purple (banner start)
@@ -21,6 +22,14 @@ HEX_SLOPCORE_4 = '#3757FF'  # Mid blue
 HEX_SLOPCORE_5 = '#2C71FE'  # Blue
 HEX_SLOPCORE_6 = '#228CFE'  # Bright blue
 HEX_SLOPCORE_7 = '#17A7FE'  # Cyan (album bottom, banner end)
+
+# 5-shade gradient (specifically for tqdm progress bars)
+# Maps to the 5 parallel dashboard bars in display order
+HEX_SLOPCORE_TQDM_1 = '#5606FF'  # Deep purple-blue [Current Tweens - FASTEST]
+HEX_SLOPCORE_TQDM_2 = '#462EFF'  # Purple-blue [Current Steps - FAST]
+HEX_SLOPCORE_TQDM_3 = '#3757FF'  # Mid blue [Total Steps - MEDIUM]
+HEX_SLOPCORE_TQDM_4 = '#277FFE'  # Bright blue [Total Diffusion Frames - SLOW]
+HEX_SLOPCORE_TQDM_5 = '#17A7FE'  # Cyan [Total Frames - SLOWEST]
 
 # Functional colors (borrowed from classic theme for slopcore mode)
 # These are NOT slopcore colors, but used for practical UX purposes
@@ -87,17 +96,16 @@ def get_tqdm_color_for_theme(classic_color_hex: str, theme: str) -> str:
         Color hex appropriate for the theme, or None for no color
     """
     if theme == 'slopcore':
-        # Map classic rainbow colors to slopcore blue→purple gradient
-        # Fast-moving "Current" bars (purple, blue) → bright blue side
-        # Slow-moving "Total" bars (green, orange, red) → purple side
+        # Map classic rainbow colors to 5-shade slopcore tqdm gradient
+        # Evenly spaced interpolation from dark purple-blue → bright cyan
         color_map = {
-            HEX_CLASSIC_PURPLE: HEX_SLOPCORE_1,    # Purple (#A587CA) → Bright blue (#4A90E2) [Current Tweens - FASTEST]
-            HEX_CLASSIC_BLUE: HEX_SLOPCORE_2,      # Blue (#36CEDC) → Light blue (#5B9FD8) [Current Steps - FAST]
-            HEX_CLASSIC_GREEN: HEX_SLOPCORE_5,     # Green (#8FE968) → Mid-deep purple (#8F5DA8) [Total Steps - MEDIUM]
-            HEX_CLASSIC_ORANGE: HEX_SLOPCORE_6,    # Orange (#FFB750) → Deep purple (#A353A8) [Total Diffusion Frames - SLOW]
-            HEX_CLASSIC_RED: HEX_SLOPCORE_7,       # Red (#FE797B) → Darkest purple (#764BA2) [Total Frames - SLOWEST]
+            HEX_CLASSIC_PURPLE: HEX_SLOPCORE_TQDM_1,  # Purple → Deep purple-blue [Current Tweens - FASTEST]
+            HEX_CLASSIC_BLUE: HEX_SLOPCORE_TQDM_2,    # Blue → Purple-blue [Current Steps - FAST]
+            HEX_CLASSIC_GREEN: HEX_SLOPCORE_TQDM_3,   # Green → Mid blue [Total Steps - MEDIUM]
+            HEX_CLASSIC_ORANGE: HEX_SLOPCORE_TQDM_4,  # Orange → Bright blue [Total Diffusion Frames - SLOW]
+            HEX_CLASSIC_RED: HEX_SLOPCORE_TQDM_5,     # Red → Cyan [Total Frames - SLOWEST]
         }
-        return color_map.get(classic_color_hex, HEX_SLOPCORE_4)  # Default to mid purple
+        return color_map.get(classic_color_hex, HEX_SLOPCORE_TQDM_3)  # Default to mid blue
     elif theme == 'simple':
         # Simple theme: no color
         return None

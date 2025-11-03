@@ -172,7 +172,7 @@ There is a profound, unsettling peace in the default. It does not ask to be love
 }
 ```
 
-**Full 7-Shade Palette** (for CLI/terminal gradients):
+**Full 7-Shade Palette** (for CLI banner, charts, general use):
 ```python
 # Authentic BLANK BANSHEE 0 gradient (pipetted from album cover)
 SLOPCORE_COLORS = [
@@ -184,6 +184,18 @@ SLOPCORE_COLORS = [
     '#228CFE',  # Bright blue (SLOPCORE_6)
     '#17A7FE',  # Cyan / album bottom (SLOPCORE_7)
     '#FF1493',  # Neon pink - the glitch
+]
+```
+
+**5-Shade TQDM Gradient** (for progress bars in dashboard):
+```python
+# Evenly spaced interpolation for 5 parallel progress bars
+SLOPCORE_TQDM = [
+    '#5606FF',  # Deep purple-blue [Current Tweens - FASTEST]
+    '#462EFF',  # Purple-blue [Current Steps - FAST]
+    '#3757FF',  # Mid blue [Total Steps - MEDIUM]
+    '#277FFE',  # Bright blue [Total Diffusion Frames - SLOW]
+    '#17A7FE',  # Cyan [Total Frames - SLOWEST]
 ]
 ```
 
