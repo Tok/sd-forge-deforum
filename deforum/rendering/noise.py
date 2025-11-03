@@ -21,7 +21,7 @@ from deforum.utils.generation.noise import (
 
 try:
     from modules.shared import opts
-    DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False)
+    DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False) if opts else False
 except ImportError:
     DEBUG_MODE = False
 
