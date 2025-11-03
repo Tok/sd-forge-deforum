@@ -383,5 +383,271 @@ class TestFileOperations:
         assert params == ['url', 'expected_checksum', 'dest_folder', 'dest_filename']
 
 
+class TestDebugPrint:
+    """Test debug_print function."""
+
+    @patch('deforum.utils.general.opts')
+    @patch('deforum.utils.general.logger')
+    def test_debug_print_enabled(self, mock_logger, mock_opts):
+        """debug_print should log when debug mode is enabled."""
+        from deforum.utils.general import debug_print
+
+        mock_opts.data = {'deforum_debug_mode_enabled': True}
+
+        debug_print("Test message")
+
+        mock_logger.debug.assert_called_once_with("Test message")
+
+    @patch('deforum.utils.general.opts')
+    @patch('deforum.utils.general.logger')
+    def test_debug_print_disabled(self, mock_logger, mock_opts):
+        """debug_print should not log when debug mode is disabled."""
+        from deforum.utils.general import debug_print
+
+        mock_opts.data = {'deforum_debug_mode_enabled': False}
+
+        debug_print("Test message")
+
+        mock_logger.debug.assert_not_called()
+
+    @patch('deforum.utils.general.opts')
+    @patch('deforum.utils.general.logger')
+    def test_debug_print_missing_setting(self, mock_logger, mock_opts):
+        """debug_print should not log when setting is missing."""
+        from deforum.utils.general import debug_print
+
+        mock_opts.data = {}
+
+        debug_print("Test message")
+
+        mock_logger.debug.assert_not_called()
+
+
+class TestLongPathSupport:
+    """Test test_long_path_support function."""
+
+    @patch('deforum.utils.general.shutil.rmtree')
+    @patch('deforum.utils.general.os.makedirs')
+    def test_long_path_supported(self, mock_makedirs, mock_rmtree):
+        """test_long_path_support should return True when long paths work."""
+        from deforum.utils.general import test_long_path_support
+
+        mock_makedirs.return_value = None
+        mock_rmtree.return_value = None
+
+        result = test_long_path_support("/tmp")
+
+        assert result is True
+        mock_makedirs.assert_called_once()
+        mock_rmtree.assert_called_once()
+
+    @patch('deforum.utils.general.os.makedirs')
+    def test_long_path_not_supported(self, mock_makedirs):
+        """test_long_path_support should return False when OSError occurs."""
+        from deforum.utils.general import test_long_path_support
+
+        mock_makedirs.side_effect = OSError("Path too long")
+
+        result = test_long_path_support("/tmp")
+
+        assert result is False
+
+
+class TestDuplicatePngsFromFolder:
+    """Test duplicate_pngs_from_folder function."""
+
+    @patch('cv2.imread')
+    @patch('cv2.imwrite')
+    @patch('deforum.utils.general.shutil.copy')
+    @patch('deforum.utils.general.os.listdir')
+    @patch('deforum.utils.general.os.makedirs')
+    def test_duplicate_pngs_with_video_origin(
+        self, mock_makedirs, mock_listdir, mock_copy, mock_imwrite, mock_imread
+    ):
+        """duplicate_pngs_from_folder should copy files when orig_vid_name is set."""
+        from deforum.utils.general import duplicate_pngs_from_folder
+
+        mock_listdir.return_value = ['0001.png', '0002.png', '0003.jpg']
+
+        result = duplicate_pngs_from_folder(
+            from_folder="/source",
+            to_folder="output",
+            img_batch_id=None,
+            orig_vid_name="video.mp4"
+        )
+
+        assert result == 3
+        assert mock_copy.call_count == 3
+        mock_imread.assert_not_called()
+
+    @patch('cv2.imread')
+    @patch('cv2.imwrite')
+    @patch('deforum.utils.general.os.listdir')
+    @patch('deforum.utils.general.os.makedirs')
+    def test_duplicate_pngs_without_video_origin(
+        self, mock_makedirs, mock_listdir, mock_imwrite, mock_imread
+    ):
+        """duplicate_pngs_from_folder should convert images when orig_vid_name is None."""
+        from deforum.utils.general import duplicate_pngs_from_folder
+
+        mock_listdir.return_value = ['0001.png', '0002.png']
+        mock_imread.return_value = MagicMock()  # Mock image data
+
+        result = duplicate_pngs_from_folder(
+            from_folder="/source",
+            to_folder="output",
+            img_batch_id=None,
+            orig_vid_name=None
+        )
+
+        assert result == 2
+        assert mock_imread.call_count == 2
+        assert mock_imwrite.call_count == 2
+
+    @patch('deforum.utils.general.shutil.copy')
+    @patch('deforum.utils.general.os.listdir')
+    @patch('deforum.utils.general.os.makedirs')
+    def test_duplicate_pngs_filters_depth_files(self, mock_makedirs, mock_listdir, mock_copy):
+        """duplicate_pngs_from_folder should skip depth map files."""
+        from deforum.utils.general import duplicate_pngs_from_folder
+
+        mock_listdir.return_value = ['0001.png', '0001_depth_0001.png', '0002.png']
+
+        result = duplicate_pngs_from_folder(
+            from_folder="/source",
+            to_folder="output",
+            img_batch_id=None,
+            orig_vid_name="video.mp4"
+        )
+
+        # Should only process 2 files (excluding depth map)
+        assert result == 2
+
+    @patch('deforum.utils.general.shutil.copy')
+    @patch('deforum.utils.general.os.listdir')
+    @patch('deforum.utils.general.os.makedirs')
+    def test_duplicate_pngs_with_batch_id_filter(self, mock_makedirs, mock_listdir, mock_copy):
+        """duplicate_pngs_from_folder should filter by batch ID."""
+        from deforum.utils.general import duplicate_pngs_from_folder
+
+        mock_listdir.return_value = ['batch1_0001.png', 'batch2_0001.png', 'batch1_0002.png']
+
+        result = duplicate_pngs_from_folder(
+            from_folder="/source",
+            to_folder="output",
+            img_batch_id="batch1",
+            orig_vid_name="video.mp4"
+        )
+
+        # Should only process files starting with 'batch1'
+        assert result == 2
+
+
+class TestConvertImagesFromList:
+    """Test convert_images_from_list function."""
+
+    def test_convert_images_creates_output_dir(self):
+        """convert_images_from_list should create output directory."""
+        from deforum.utils.general import convert_images_from_list
+        from PIL import Image
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create test images
+            test_img_path = os.path.join(tmpdir, 'test.png')
+            Image.new('RGB', (10, 10)).save(test_img_path)
+
+            output_dir = os.path.join(tmpdir, 'output')
+
+            convert_images_from_list([test_img_path], output_dir, 'png')
+
+            # Output directory should be created
+            assert os.path.exists(output_dir)
+
+    def test_convert_images_saves_with_format(self):
+        """convert_images_from_list should save images in specified format."""
+        from deforum.utils.general import convert_images_from_list
+        from PIL import Image
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create test images
+            test_img1 = os.path.join(tmpdir, 'test1.png')
+            test_img2 = os.path.join(tmpdir, 'test2.png')
+            Image.new('RGB', (10, 10)).save(test_img1)
+            Image.new('RGB', (10, 10)).save(test_img2)
+
+            output_dir = os.path.join(tmpdir, 'output')
+
+            convert_images_from_list([test_img1, test_img2], output_dir, 'jpg')
+
+            # Check output files exist
+            assert os.path.exists(os.path.join(output_dir, '000000001.jpg'))
+            assert os.path.exists(os.path.join(output_dir, '000000002.jpg'))
+
+
+class TestDownloadFileWithChecksum:
+    """Test download_file_with_checksum function."""
+
+    @patch('deforum.utils.general.checksum')
+    @patch('deforum.utils.general.download_url_to_file')
+    @patch('deforum.utils.general.os.path.exists')
+    def test_download_when_file_missing(
+        self, mock_exists, mock_download, mock_checksum
+    ):
+        """download_file_with_checksum should download when file doesn't exist."""
+        from deforum.utils.general import download_file_with_checksum
+
+        mock_exists.return_value = False
+        mock_checksum.return_value = "abc123"
+
+        download_file_with_checksum(
+            url="https://example.com/file.bin",
+            expected_checksum="abc123",
+            dest_folder="/tmp",
+            dest_filename="file.bin"
+        )
+
+        mock_download.assert_called_once()
+        mock_checksum.assert_called_once()
+
+    @patch('deforum.utils.general.checksum')
+    @patch('deforum.utils.general.download_url_to_file')
+    @patch('deforum.utils.general.os.path.exists')
+    def test_download_raises_on_checksum_mismatch(
+        self, mock_exists, mock_download, mock_checksum
+    ):
+        """download_file_with_checksum should raise exception on checksum mismatch."""
+        from deforum.utils.general import download_file_with_checksum
+
+        mock_exists.return_value = False
+        mock_checksum.return_value = "wrong_checksum"
+
+        with pytest.raises(Exception, match="Error while downloading"):
+            download_file_with_checksum(
+                url="https://example.com/file.bin",
+                expected_checksum="expected_checksum",
+                dest_folder="/tmp",
+                dest_filename="file.bin"
+            )
+
+    @patch('deforum.utils.general.download_url_to_file')
+    @patch('deforum.utils.general.os.path.exists')
+    def test_download_skips_when_file_exists(self, mock_exists, mock_download):
+        """download_file_with_checksum should skip download when file exists."""
+        from deforum.utils.general import download_file_with_checksum
+
+        mock_exists.return_value = True
+
+        download_file_with_checksum(
+            url="https://example.com/file.bin",
+            expected_checksum="abc123",
+            dest_folder="/tmp",
+            dest_filename="file.bin"
+        )
+
+        mock_download.assert_not_called()
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

@@ -54,7 +54,12 @@ from deforum.utils.conversion.hashing import (
 clean_folder_name = _clean_folder_name
 
 
-def debug_print(message):
+def debug_print(message: str) -> None:
+    """Print debug message if debug mode is enabled.
+
+    Args:
+        message: Debug message to print
+    """
     is_debug_mode = opts.data.get("deforum_debug_mode_enabled", False)
     if is_debug_mode:
         logger.debug(message)
@@ -136,7 +141,17 @@ def _get_extension_info():
 # custom_placeholder_format imported from deforum.utils.parsing.strings
 
 
-def test_long_path_support(base_folder_path):
+def test_long_path_support(base_folder_path: str) -> bool:
+    """Test if the OS supports long path names (>260 characters).
+
+    Creates a test directory with a 300-character name and removes it.
+
+    Args:
+        base_folder_path: Base directory to test in
+
+    Returns:
+        True if long paths are supported, False otherwise
+    """
     long_folder_name = 'A' * 300
     long_path = os.path.join(base_folder_path, long_folder_name)
     try:
@@ -147,8 +162,15 @@ def test_long_path_support(base_folder_path):
         return False
 
 
-def get_max_path_length(base_folder_path):
-    """Get maximum path length for OS (wrapper with side effects for testing)."""
+def get_max_path_length(base_folder_path: str) -> int:
+    """Get maximum path length for OS (wrapper with side effects for testing).
+
+    Args:
+        base_folder_path: Base directory path to test
+
+    Returns:
+        Maximum path length supported by OS
+    """
     os_name = get_os()
     supports_long_paths = test_long_path_support(base_folder_path) if os_name == 'Windows' else False
     return _get_max_path_length(base_folder_path, os_name, supports_long_paths)
