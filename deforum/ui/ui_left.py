@@ -282,6 +282,13 @@ def setup_deforum_left_side_ui():
             audio_ai_end_prompt = tab_init_params.get('audio_ai_end_prompt')
             audio_sync_prompts = tab_init_params.get('audio_sync_prompts')
 
+            # Explicitly unpack components needed for Reset to Defaults button
+            soundtrack_path = tab_init_params.get('soundtrack_path')
+            max_frames = tab_keyframes_params.get('max_frames')
+            rotation_3d_y = tab_keyframes_params.get('rotation_3d_y')
+            translation_z = tab_keyframes_params.get('translation_z')
+            zoom = tab_keyframes_params.get('zoom')
+
             # Also unpack Wan FLF2V component from depth tab
             enable_wan_flf2v = tab_depth_params.get('enable_wan_flf2v')
 
@@ -679,18 +686,27 @@ def setup_deforum_left_side_ui():
 
             check_emoji = emoji_if_enabled("✓") or "[OK]"
             success_msg = (
-                f"{check_emoji} Defaults generated successfully!\n"
+                f"{check_emoji} Defaults loaded successfully!\n"
                 f"Generated {len(defaults.get('prompts', {}))} prompts synced to audio.\n"
                 f"Batch: {batch_name}\n"
-                f"Settings: {settings_file}\n"
-                f"\n"
-                f"To apply: Load Settings → Browse to the file above"
+                f"Settings: {settings_file}"
             )
 
             logger.info(f"{emoji_if_enabled('✓')} Reset to defaults complete for {render_mode_val}")
             logger.info(f"Batch created: {batch_dir}")
 
-            return gr.update(value=success_msg, visible=True)
+            # Return updates for key components
+            import json as json_module
+            return (
+                gr.update(value=success_msg, visible=True),  # Status message
+                gr.update(value=json_module.dumps(defaults.get('prompts', {}), indent=4)),  # Prompts
+                gr.update(value=defaults.get('soundtrack_path', '')),  # Audio path
+                gr.update(value=defaults.get('fps', 60)),  # FPS
+                gr.update(value=defaults.get('max_frames', 120)),  # Max frames
+                gr.update(value=defaults.get('rotation_3d_y', '0: (0)')),  # Camera rotation
+                gr.update(value=defaults.get('translation_z', '0: (0)')),  # Camera Z
+                gr.update(value=defaults.get('zoom', '0: (1.0)')),  # Zoom
+            )
 
         except Exception as e:
             import traceback
@@ -698,7 +714,17 @@ def setup_deforum_left_side_ui():
             x_emoji = emoji_if_enabled("✗") or "[ERROR]"
             error_msg = f"{x_emoji} Error generating defaults:\n{str(e)}\n\nCheck console for details."
             logger.error(f"Reset to defaults failed: {e}")
-            return gr.update(value=error_msg, visible=True)
+            # Return error message + no updates for other components
+            return (
+                gr.update(value=error_msg, visible=True),  # Status message
+                gr.update(),  # Prompts - no change
+                gr.update(),  # Audio path - no change
+                gr.update(),  # FPS - no change
+                gr.update(),  # Max frames - no change
+                gr.update(),  # Camera rotation - no change
+                gr.update(),  # Camera Z - no change
+                gr.update(),  # Zoom - no change
+            )
 
     # Smart strength slider handlers - ONE-WAY SYNC to prevent infinite loops
     # Slider -> Textbox ONLY. Textbox is source of truth.
@@ -748,7 +774,16 @@ def setup_deforum_left_side_ui():
     reset_confirm_yes.click(
         fn=on_reset_to_defaults_click,
         inputs=[render_mode],
-        outputs=[reset_progress]
+        outputs=[
+            reset_progress,
+            animation_prompts,  # Update prompts JSON
+            soundtrack_path,    # Update audio path
+            fps,                # Update FPS
+            max_frames,         # Update frame count
+            rotation_3d_y,      # Update camera path
+            translation_z,      # Update camera path
+            zoom,               # Update camera path
+        ]
     ).then(
         fn=lambda: gr.update(visible=False),
         inputs=[],
