@@ -57,14 +57,17 @@ def print_startup_banner():
     RESET = "\033[0m"
     BOLD = "\033[1m"
     WHITE = "\033[97m"
-    # Terminal black for pill-shaped title button background
+    # Terminal black for fade background (same as corners/edges)
     TERMINAL_BLACK = "\033[48;2;0;0;0m"
+    # Dark grays for fade foreground (progressively darker toward black)
+    DARK_GRAY_1 = "\033[38;2;60;60;60m"  # ▓ (dark shade) - very dark gray
+    DARK_GRAY_2 = "\033[38;2;40;40;40m"  # ▒ (medium shade) - darker gray
     # Use very dark gray for corners so they blend better with terminal background
     CORNER_COLOR = "\033[38;2;30;30;30m"
 
     # Helper to get terminal width
     term_width = shutil.get_terminal_size((120, 24)).columns
-    box_width = min(term_width - 4, 120)  # Max 120 chars wide
+    box_width = min(term_width - 4, 124)  # Max 124 chars wide (increased for longer title)
 
     # Helper to convert hex to ANSI background RGB
     def hex_to_bg_ansi(hex_color):
@@ -224,13 +227,15 @@ def print_startup_banner():
                 gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
 
                 if char in ('▓', '▒'):
-                    # Shade characters: gradient background, white foreground (fade effect)
+                    # Shade characters: gradient background, dark gray foreground (fade to black)
                     bg = get_slopcore_bg_by_position(gradient_pos)
-                    content_line += f"{bg}{WHITE}{char}"
+                    # Use progressively darker grays: ▓ is darker than ▒
+                    fg = DARK_GRAY_1 if char == '▓' else DARK_GRAY_2
+                    content_line += f"{bg}{fg}{char}"
 
                     if not inside_pill and not exiting_pill:
                         fade_chars_seen += 1
-                        if fade_chars_seen == 4:  # After ▓▓▒▒, next char starts pill
+                        if fade_chars_seen == 4:  # After ▓▓▒▒, next char starts black section
                             inside_pill = True
                     elif inside_pill:
                         exiting_pill = True  # First ▒ on right side
