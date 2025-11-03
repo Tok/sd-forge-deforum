@@ -45,11 +45,11 @@ One-click AI video generation with **intentional chaos and glitches**. Click **"
    - 10% 360° spin during calm scenes
    - Informs Qwen's prompt generation
 
-5. **VHS Scan Lines** (Mandatory Slopcore)
+5. **VHS Scan Lines** (Always Applied)
    - Dual approach: Per-frame (1-3px) + FFmpeg post-processing
    - Randomized parameters: degrade, chroma, noise, jitter
    - Left-side degradation (realistic VHS tape wear)
-   - Always applied (no opt-out)
+   - Mandatory for authentic glitch aesthetic
 
 6. **Accidental Masterpiece Mode** (Always Enabled)
    - Detects "too good" outputs via broken heuristics
