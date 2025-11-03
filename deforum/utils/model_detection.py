@@ -4,10 +4,102 @@ Detect which diffusion model is currently loaded in Forge.
 Used for model-specific tuning and compatibility handling.
 """
 
-from typing import Optional
+from typing import Any, Optional
+from dataclasses import dataclass
+
 from deforum.utils.system.logging import get_logger
 
 logger = get_logger()
+
+
+# Model-specific configuration constants
+@dataclass(frozen=True)
+class ModelConfig:
+    """Configuration parameters for a specific model type."""
+
+    name: str
+    cfg_range: tuple[float, float]
+    recommended_steps: int
+
+
+LUMINA_CONFIG = ModelConfig(
+    name="Lumina 2.0",
+    cfg_range=(4.0, 5.5),
+    recommended_steps=30,
+)
+
+FLUX_CONFIG = ModelConfig(
+    name="Flux",
+    cfg_range=(1.0, 3.5),
+    recommended_steps=20,
+)
+
+DEFAULT_CONFIG = ModelConfig(
+    name="Unknown",
+    cfg_range=(7.0, 12.0),
+    recommended_steps=20,
+)
+
+
+def _get_shared_module() -> Optional[Any]:
+    """Safely import and return modules.shared.
+
+    Returns:
+        modules.shared module or None if unavailable
+    """
+    try:
+        import modules.shared as shared
+        return shared
+    except ImportError:
+        logger.debug("modules.shared not available")
+        return None
+
+
+def _get_model_class_name(model: Any) -> Optional[str]:
+    """Extract class name from model object.
+
+    Args:
+        model: Model object
+
+    Returns:
+        Class name string or None
+    """
+    return model.__class__.__name__ if hasattr(model, '__class__') else None
+
+
+def _get_checkpoint_name(shared: Any) -> Optional[str]:
+    """Extract checkpoint name from shared module.
+
+    Args:
+        shared: modules.shared module
+
+    Returns:
+        Lowercase checkpoint name or None
+    """
+    if not (hasattr(shared, 'opts') and hasattr(shared.opts, 'sd_model_checkpoint')):
+        return None
+    return shared.opts.sd_model_checkpoint.lower()
+
+
+def _check_diffusion_model_class(model: Any, target_class: str) -> bool:
+    """Check if model's diffusion model matches target class name.
+
+    Args:
+        model: Model object to check
+        target_class: Expected diffusion model class name
+
+    Returns:
+        True if match found, False otherwise
+    """
+    if not hasattr(model, 'forge_objects'):
+        return False
+
+    unet = model.forge_objects.unet
+    if not (hasattr(unet, 'model') and hasattr(unet.model, 'diffusion_model')):
+        return False
+
+    diff_model = unet.model.diffusion_model
+    return diff_model.__class__.__name__ == target_class
 
 
 def is_lumina_model() -> bool:
@@ -23,35 +115,28 @@ def is_lumina_model() -> bool:
         True if Lumina is loaded, False otherwise
     """
     try:
-        import modules.shared as shared
-
-        if not hasattr(shared, 'sd_model'):
+        shared = _get_shared_module()
+        if shared is None or not hasattr(shared, 'sd_model'):
             return False
 
         model = shared.sd_model
 
-        # Check 1: Model class name
-        if hasattr(model, '__class__'):
-            class_name = model.__class__.__name__
-            if 'Lumina' in class_name:
-                logger.debug(f"Detected Lumina model via class name: {class_name}")
-                return True
+        # Check 1: Model class name contains 'Lumina'
+        class_name = _get_model_class_name(model)
+        if class_name and 'Lumina' in class_name:
+            logger.debug(f"Detected Lumina model via class name: {class_name}")
+            return True
 
-        # Check 2: Check diffusion engine type
-        if hasattr(model, 'forge_objects'):
-            unet = model.forge_objects.unet
-            if hasattr(unet, 'model') and hasattr(unet.model, 'diffusion_model'):
-                diff_model = unet.model.diffusion_model
-                if diff_model.__class__.__name__ == 'Lumina2NextDiT':
-                    logger.debug("Detected Lumina model via diffusion_model class")
-                    return True
+        # Check 2: Diffusion engine type is Lumina2NextDiT
+        if _check_diffusion_model_class(model, 'Lumina2NextDiT'):
+            logger.debug("Detected Lumina model via diffusion_model class")
+            return True
 
-        # Check 3: Checkpoint filename contains 'lumina'
-        if hasattr(shared, 'opts') and hasattr(shared.opts, 'sd_model_checkpoint'):
-            checkpoint_name = shared.opts.sd_model_checkpoint.lower()
-            if 'lumina' in checkpoint_name or 'neta' in checkpoint_name:
-                logger.debug(f"Detected Lumina model via checkpoint name: {checkpoint_name}")
-                return True
+        # Check 3: Checkpoint filename contains 'lumina' or 'neta'
+        checkpoint_name = _get_checkpoint_name(shared)
+        if checkpoint_name and ('lumina' in checkpoint_name or 'neta' in checkpoint_name):
+            logger.debug(f"Detected Lumina model via checkpoint name: {checkpoint_name}")
+            return True
 
         return False
 
@@ -67,24 +152,21 @@ def is_flux_model() -> bool:
         True if Flux is loaded, False otherwise
     """
     try:
-        import modules.shared as shared
-
-        if not hasattr(shared, 'sd_model'):
+        shared = _get_shared_module()
+        if shared is None or not hasattr(shared, 'sd_model'):
             return False
 
         model = shared.sd_model
 
-        # Check model class name
-        if hasattr(model, '__class__'):
-            class_name = model.__class__.__name__
-            if 'Flux' in class_name:
-                return True
+        # Check 1: Model class name contains 'Flux'
+        class_name = _get_model_class_name(model)
+        if class_name and 'Flux' in class_name:
+            return True
 
-        # Check checkpoint name
-        if hasattr(shared, 'opts') and hasattr(shared.opts, 'sd_model_checkpoint'):
-            checkpoint_name = shared.opts.sd_model_checkpoint.lower()
-            if 'flux' in checkpoint_name:
-                return True
+        # Check 2: Checkpoint name contains 'flux'
+        checkpoint_name = _get_checkpoint_name(shared)
+        if checkpoint_name and 'flux' in checkpoint_name:
+            return True
 
         return False
 
@@ -93,29 +175,35 @@ def is_flux_model() -> bool:
         return False
 
 
+def _detect_flux_variant(checkpoint_name: Optional[str]) -> str:
+    """Detect Flux variant (Dev or Schnell) from checkpoint name.
+
+    Args:
+        checkpoint_name: Lowercase checkpoint filename
+
+    Returns:
+        "Flux Schnell", "Flux Dev", or "Flux"
+    """
+    if checkpoint_name and 'schnell' in checkpoint_name:
+        return "Flux Schnell"
+    return "Flux Dev" if checkpoint_name else "Flux"
+
+
 def get_model_name() -> str:
     """Get friendly name of currently loaded model.
 
     Returns:
-        Model name string ("Lumina 2.0", "Flux Dev", "Flux Schnell", "SDXL", "Unknown")
+        Model name string ("Lumina 2.0", "Flux Dev", "Flux Schnell", "Unknown")
     """
     if is_lumina_model():
-        return "Lumina 2.0"
-    elif is_flux_model():
-        # Try to detect Dev vs Schnell
-        try:
-            import modules.shared as shared
-            if hasattr(shared, 'opts') and hasattr(shared.opts, 'sd_model_checkpoint'):
-                checkpoint_name = shared.opts.sd_model_checkpoint.lower()
-                if 'schnell' in checkpoint_name:
-                    return "Flux Schnell"
-                else:
-                    return "Flux Dev"
-        except:
-            pass
-        return "Flux"
-    else:
-        return "Unknown"
+        return LUMINA_CONFIG.name
+
+    if is_flux_model():
+        shared = _get_shared_module()
+        checkpoint_name = _get_checkpoint_name(shared) if shared else None
+        return _detect_flux_variant(checkpoint_name)
+
+    return DEFAULT_CONFIG.name
 
 
 def get_recommended_cfg_scale() -> tuple[float, float]:
@@ -125,11 +213,10 @@ def get_recommended_cfg_scale() -> tuple[float, float]:
         Tuple of (min_cfg, max_cfg)
     """
     if is_lumina_model():
-        return (4.0, 5.5)  # Lumina official recommendation
-    elif is_flux_model():
-        return (1.0, 3.5)  # Flux typical range
-    else:
-        return (7.0, 12.0)  # SDXL/SD15 typical range
+        return LUMINA_CONFIG.cfg_range
+    if is_flux_model():
+        return FLUX_CONFIG.cfg_range
+    return DEFAULT_CONFIG.cfg_range
 
 
 def get_recommended_steps() -> int:
@@ -139,8 +226,7 @@ def get_recommended_steps() -> int:
         Recommended number of sampling steps
     """
     if is_lumina_model():
-        return 30  # Lumina official recommendation
-    elif is_flux_model():
-        return 20  # Flux typical
-    else:
-        return 20  # SDXL/SD15 typical
+        return LUMINA_CONFIG.recommended_steps
+    if is_flux_model():
+        return FLUX_CONFIG.recommended_steps
+    return DEFAULT_CONFIG.recommended_steps
