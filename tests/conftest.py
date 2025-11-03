@@ -6,6 +6,18 @@ It configures the Python path so that the deforum package can be imported.
 
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
+
+# Mock Forge backend modules that aren't available in test environment
+# This must happen BEFORE any imports that might load backend.loader
+# Create proper mock package structure
+mock_hf_guess = MagicMock()
+mock_hf_guess_utils = MagicMock()
+mock_hf_guess_utils.resize_to_batch_size = MagicMock()
+mock_hf_guess.utils = mock_hf_guess_utils
+mock_hf_guess.model_list = MagicMock()
+sys.modules['huggingface_guess'] = mock_hf_guess
+sys.modules['huggingface_guess.utils'] = mock_hf_guess_utils
 
 # CRITICAL: Mock sys.argv BEFORE any imports
 # modules.shared_cmd_options calls parse_args() at import time,

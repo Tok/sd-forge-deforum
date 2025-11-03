@@ -2,6 +2,9 @@
 
 Tests the spline generation, path calculation, and schedule conversion
 for the Camera Path feature.
+
+NOTE: Preset integration tests require full Forge environment (k_diffusion, etc.)
+and are currently skipped in isolated test runs. They work in full Forge context.
 """
 
 import pytest

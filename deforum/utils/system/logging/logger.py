@@ -370,6 +370,31 @@ class _LazyLogger:
         self._ensure_initialized()
         return self._real_logger.separator(char, width)
 
+    # Property accessors to expose underlying logger attributes
+    @property
+    def log_level(self) -> 'LogLevel':
+        """Access log_level from real logger."""
+        self._ensure_initialized()
+        return self._real_logger.log_level
+
+    @property
+    def theme(self) -> str:
+        """Access theme from real logger."""
+        self._ensure_initialized()
+        return self._real_logger.theme
+
+    @property
+    def emojis_enabled(self) -> bool:
+        """Access emojis_enabled from real logger."""
+        self._ensure_initialized()
+        return self._real_logger.emojis_enabled
+
+    @property
+    def colors(self) -> dict:
+        """Access colors from real logger."""
+        self._ensure_initialized()
+        return self._real_logger.colors
+
 
 def get_logger() -> _LazyLogger:
     """Get global lazy logger instance (singleton).
