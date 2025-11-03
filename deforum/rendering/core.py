@@ -25,16 +25,8 @@ from deforum.rendering.helpers import subtitle as subtitle_utils
 from deforum.rendering.helpers import webui as web_ui_utils
 from deforum.utils.system.logging import get_logger
 
-# Defer logger initialization to avoid module-level opts access
-_logger_instance = None
-
-
-def _get_logger():
-    """Get logger instance - deferred to avoid module-level opts access."""
-    global _logger_instance
-    if _logger_instance is None:
-        _logger_instance = get_logger()
-    return _logger_instance
+# Initialize logger (now safe at module level - returns lazy proxy)
+logger = get_logger()
 
 
 IS_USE_PROFILER = False
@@ -59,13 +51,13 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
     # Pre-download soundtrack if specified
     if video_args.add_soundtrack == 'File' and video_args.soundtrack_path is not None:
         if video_args.soundtrack_path.startswith(('http://', 'https://')):
-            _get_logger().info(f"Pre-downloading soundtrack at the beginning of the render process: {video_args.soundtrack_path}")
+            logger.info(f"Pre-downloading soundtrack at the beginning of the render process: {video_args.soundtrack_path}")
             try:
                 from deforum.media.video_audio_utilities import download_audio
                 video_args.soundtrack_path = download_audio(video_args.soundtrack_path)
-                _get_logger().info(f"Audio successfully pre-downloaded to: {video_args.soundtrack_path}")
+                logger.info(f"Audio successfully pre-downloaded to: {video_args.soundtrack_path}")
             except Exception as e:
-                _get_logger().error(f"Pre-downloading audio failed: {e}")
+                logger.error(f"Pre-downloading audio failed: {e}")
     
     data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, root)
     check_render_conditions(data)
@@ -203,8 +195,8 @@ def prepare_reverse_generation(frames: List[DiffusionFrame]) -> List[DiffusionFr
         Generation: [Frame10(tweens=[]), Frame5(tweens=6-9), Frame0(tweens=1-4)]
         Result: Tweens emitted AFTER their source keyframe exists
     """
-    _get_logger().info("Reverse Generation enabled: Processing frames in reverse order (last→first)")
-    _get_logger().info("Frames will be reassembled in correct order for final video")
+    logger.info("Reverse Generation enabled: Processing frames in reverse order (last→first)")
+    logger.info("Frames will be reassembled in correct order for final video")
 
     # Reverse the frame list (last→first in generation order)
     generation_order_frames = list(reversed(frames))
