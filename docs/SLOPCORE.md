@@ -130,9 +130,17 @@ We now live in the empire of the slop. "Vibecoding" is the dominant praxis. Desi
 
 Slopcore achieved what its predecessor could not: it escaped the screen. It is on billboards, on hoodies, in the branding of corporations that sell you intelligence while embracing aesthetic stupor. We do not merely observe Slopcore——we *inhabit* it.
 
-**Brand Examples:**
-- **Purple monocolor**: Qwen AI branding
-- **Purple/blue gradient**: Google Gemini, countless AI startups, SaaS landing pages, no-code tools, AI wrapper services
+**Brand Examples (The Gradient):**
+
+The blue/purple gradient has become the de facto branding for AI tools, SaaS products, and tech startups:
+- **Google Gemini** - Purple/blue gradient throughout brand identity
+- **GitHub Copilot** - Purple gradient in logo and marketing
+- **Anthropic Claude** - Gradient variants across product suite
+- **Countless AI wrappers** - ChatGPT clones, no-code builders, automation tools
+- **SaaS landing pages** - Framer templates, Webflow showcases, startup hero sections
+- **Developer tools** - Code editors, API dashboards, DevOps platforms
+
+The gradient is *everywhere*. It is no longer a design choice——it is the visual signature of "we use AI" itself.
 
 **Capitalist Realism:**
 
