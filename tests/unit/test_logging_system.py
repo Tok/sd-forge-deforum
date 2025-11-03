@@ -201,6 +201,9 @@ class TestLoggerOutput:
     @patch('deforum.rendering.options._get_opts')
     def test_info_message_format(self, mock_get_opts, mock_print):
         """Info messages should be properly formatted."""
+        from deforum.utils.system.logging import reset_logger
+        reset_logger()  # Clear singleton so patches take effect
+
         mock_opts = MagicMock()
         mock_opts.data = {
             'deforum_log_level': 'INFO',
@@ -222,6 +225,9 @@ class TestLoggerOutput:
     @patch('deforum.rendering.options._get_opts')
     def test_info_with_emoji(self, mock_get_opts, mock_print):
         """Info messages should include emoji when enabled."""
+        from deforum.utils.system.logging import reset_logger
+        reset_logger()  # Clear singleton so patches take effect
+
         mock_opts = MagicMock()
         mock_opts.data = {
             'deforum_log_level': 'INFO',
