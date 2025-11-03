@@ -57,12 +57,8 @@ def print_startup_banner():
     RESET = "\033[0m"
     BOLD = "\033[1m"
     WHITE = "\033[97m"
-    # Terminal black for fade background (same as corners/edges)
+    # Terminal black for fade background and black section
     TERMINAL_BLACK = "\033[48;2;0;0;0m"
-    # Grays for smooth 3-step fade (gradient → ▓ → ▒ → ░ → black)
-    LIGHTEST_GRAY = "\033[38;2;80;80;80m"  # ▓ (high density) - outermost
-    MEDIUM_GRAY = "\033[38;2;60;60;60m"    # ▒ (medium density) - middle
-    DARKEST_GRAY = "\033[38;2;40;40;40m"   # ░ (low density) - innermost, closest to black
     # Use very dark gray for corners so they blend better with terminal background
     CORNER_COLOR = "\033[38;2;30;30;30m"
 
@@ -93,8 +89,9 @@ def print_startup_banner():
 
     # Title with smooth 3-step fade-to-black using block shades
     # Format: ▓▓▒▒░░ ⚡ FORK NAME ⚡ ░░▒▒▓▓
-    # Fade pattern: gradient → ▓ (high) → ▒ (med) → ░ (low) → black → ░ (low) → ▒ (med) → ▓ (high) → gradient
-    # Whole banner is slopcore button (rounded corners), title has smooth fade effect
+    # Fade effect: gradient foreground on terminal-black background
+    # Pattern: ▓ (high density) → ▒ (medium) → ░ (low) → pure black → ░ → ▒ → ▓
+    # Whole banner is slopcore button (rounded corners), title has smooth colored fade
     title_text = f"▓▓▒▒░░ ⚡ {FORK_NAME} ⚡ ░░▒▒▓▓"
 
     # Center the title based on its display width
@@ -228,16 +225,10 @@ def print_startup_banner():
                 gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
 
                 if char in ('▓', '▒', '░'):
-                    # Shade characters: gradient background, gray foreground (3-step fade to black)
-                    bg = get_slopcore_bg_by_position(gradient_pos)
-                    # 3-step fade inward: ▓ (outermost) → ▒ (middle) → ░ (innermost) → BLACK
-                    if char == '▓':
-                        fg = LIGHTEST_GRAY  # 80,80,80 - closest to gradient
-                    elif char == '▒':
-                        fg = MEDIUM_GRAY    # 60,60,60 - middle
-                    else:  # ░
-                        fg = DARKEST_GRAY   # 40,40,40 - closest to black
-                    content_line += f"{bg}{fg}{char}"
+                    # Shade characters: gradient foreground on terminal-black background
+                    # Creates colored fade effect - denser characters show more color
+                    fg = get_slopcore_fg_by_position(gradient_pos)
+                    content_line += f"{TERMINAL_BLACK}{fg}{char}"
 
                     if not inside_black_section and not exiting_black_section:
                         fade_chars_seen += 1
