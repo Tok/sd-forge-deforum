@@ -9,17 +9,18 @@ Defines color palettes and styling for three themes:
 from deforum.utils.image.color import hex_to_ansi_foreground as from_hex_color
 
 # ============================================================================
-# SLOPCORE THEME - Blue to Purple gradient (7 shades)
+# SLOPCORE THEME - Authentic BLANK BANSHEE 0 gradient (7 shades)
 # ============================================================================
-# Core slopcore identity: 7-shade gradient from bright blue through purple
+# Exact colors pipetted from BB0 album cover, interpolated into 7 shades
+# Original album gradient: #5606ff (top) → #17a7fe (bottom), straight vertical
 
-HEX_SLOPCORE_1 = '#4A90E2'  # Bright blue
-HEX_SLOPCORE_2 = '#5883D8'  # Blue-purple
-HEX_SLOPCORE_3 = '#667EEA'  # Light purple (banner start)
-HEX_SLOPCORE_4 = '#7B6DB8'  # Mid purple
-HEX_SLOPCORE_5 = '#8F5CA0'  # Purple
-HEX_SLOPCORE_6 = '#A353A8'  # Deep purple
-HEX_SLOPCORE_7 = '#764BA2'  # Darkest purple (banner end)
+HEX_SLOPCORE_1 = '#5606FF'  # Deep purple-blue (album top)
+HEX_SLOPCORE_2 = '#4C21FF'  # Purple-blue
+HEX_SLOPCORE_3 = '#413CFF'  # Blue-purple (banner start)
+HEX_SLOPCORE_4 = '#3757FF'  # Mid blue
+HEX_SLOPCORE_5 = '#2C71FE'  # Blue
+HEX_SLOPCORE_6 = '#228CFE'  # Bright blue
+HEX_SLOPCORE_7 = '#17A7FE'  # Cyan (album bottom, banner end)
 
 # Functional colors (borrowed from classic theme for slopcore mode)
 # These are NOT slopcore colors, but used for practical UX purposes

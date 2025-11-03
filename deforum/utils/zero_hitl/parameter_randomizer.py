@@ -140,17 +140,18 @@ class CuratedChaosEngine:
     NOISE_TYPES = ['perlin', 'uniform']
     COLOR_COHERENCE_OPTIONS = ['Match Frame 0 LAB', 'Match Frame 0 HSV', 'Video Input']
 
-    # Slopcore color palette (7 blue/purple shades + pink)
+    # Authentic BLANK BANSHEE 0 gradient (7 shades + pink glitch)
+    # Exact colors pipetted from BB0 album cover
     # From deforum/utils/system/logging/themes.py
     SLOPCORE_COLORS = [
-        '#4A90E2',  # Bright blue (SLOPCORE_1)
-        '#5883D8',  # Blue-purple (SLOPCORE_2)
-        '#667EEA',  # Light purple / banner start (SLOPCORE_3)
-        '#7B6DB8',  # Mid purple (SLOPCORE_4)
-        '#8F5CA0',  # Purple (SLOPCORE_5)
-        '#A353A8',  # Deep purple (SLOPCORE_6)
-        '#764BA2',  # Darkest purple / banner end (SLOPCORE_7)
-        '#FF1493',  # Neon pink (the one non-purple allowed)
+        '#5606FF',  # Deep purple-blue (SLOPCORE_1 / album top)
+        '#4C21FF',  # Purple-blue (SLOPCORE_2)
+        '#413CFF',  # Blue-purple (SLOPCORE_3 / banner start)
+        '#3757FF',  # Mid blue (SLOPCORE_4)
+        '#2C71FE',  # Blue (SLOPCORE_5)
+        '#228CFE',  # Bright blue (SLOPCORE_6)
+        '#17A7FE',  # Cyan (SLOPCORE_7 / album bottom, banner end)
+        '#FF1493',  # Neon pink - the glitch
     ]
 
     # Style options - expanded for creative freedom
