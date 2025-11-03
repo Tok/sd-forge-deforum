@@ -110,8 +110,10 @@ def get_deforum_version():
 
 def get_commit_date():
     ext = _get_extension_info()
+    if not ext:
+        return "Unknown"
     formatted = datetime.datetime.fromtimestamp(ext.commit_date)
-    return formatted if ext else "Unknown"
+    return formatted
 
 
 def _get_extension_info():
