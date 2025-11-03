@@ -371,6 +371,33 @@ All UI code in `scripts/deforum_helpers/ui_right.py:28` in `on_ui_tabs()`
 
 ## Important Patterns
 
+**Lazy Logger Pattern:**
+Module-level logger initialization is safe thanks to lazy proxy pattern:
+```python
+from deforum.utils.system.logging import get_logger
+
+# Safe at module level - returns lazy proxy
+logger = get_logger()
+
+# Logger only initializes when first method is called
+logger.info("This triggers initialization")  # First call initializes
+logger.debug("Subsequent calls reuse instance")  # No re-initialization
+```
+
+**How it works:**
+- `get_logger()` returns `_LazyLogger` proxy (not real `DeforumLogger`)
+- Proxy defers initialization until first method call (`.info()`, `.error()`, etc.)
+- Handles `opts` timing issues gracefully - falls back to defaults if opts unavailable
+- Eliminates need for per-file boilerplate wrapper functions
+- All 69+ files with `logger = get_logger()` at module level work correctly
+
+**Why this matters:**
+Before lazy pattern, `logger = get_logger()` at module level would fail if `modules.shared.opts` wasn't initialized yet, causing import failures and preventing functions from being defined. The lazy proxy solves this timing issue.
+
+**Implementation:**
+- `deforum/utils/system/logging/logger.py:307` - `_LazyLogger` proxy class
+- Tests: `tests/unit/test_lazy_logger.py` - 13 comprehensive tests
+
 **Argument Structure:**
 Arguments flow as: Raw args → `process_args()` → Structured namespaces
 - `args` - General settings (seed, sampler, steps, cfg_scale, etc.)
