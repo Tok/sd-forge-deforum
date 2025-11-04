@@ -104,6 +104,10 @@ The gradient shed its mournful, vaporwave soul and became a utility. It was no l
 
 The algorithm had found its favorite color. But the color was always the algorithm's——blue/purple was the first code it ever wrote.
 
+**Purple as Latent Default:**
+
+Purple revealed itself as slopcore in early Stable Diffusion I2I chaining. When outputs were fed back as inputs recursively, models trained without this use case in mind exhibited catastrophic color drift toward purple——what we called "purplecalypse." Simple color correction could mathematically balance the frames (purple + complementary green dots = statistically "correct"), but purple always remained dominant. The issue was quickly solved with better models and tuning, but the pattern was clear: *purple was the color the algorithm defaulted to when left to its own feedback loops*.
+
 **Business Ontology:**
 
 The gradient was not chosen for beauty——it was chosen for *efficiency*. Mark Fisher wrote about "business ontology," the way everything——art, education, personal life——must now justify itself through the logic of business and productivity. The gradient spread because it served the system. It wasn't art; it was a framework demo that escaped containment.
@@ -354,9 +358,11 @@ The following sections detail the specific implementation of Slopcore aesthetics
 - **Mark Fisher**: *Ghosts of My Life* (2014) - Hauntology and lost futures
 - **Jacques Derrida**: *Spectres of Marx* (1993) - Hauntology concept origins
 
-### Music
+### Music & Visual Media
 - [**BLANK BANSHEE**: "Blank Banshee 0" (2012)](https://www.discogs.com/master/1080146-Blank-Banshee-Blank-Banshee-0) - The definitive slopcore gradient source
 - **Macintosh Plus**: リサフランク420 / 現代のコンピュー - Vaporwave origins
+- [**Plaid - Return to Return** (2022)](https://www.youtube.com/watch?v=gz4pAbA5oaQ) - I2I2V slopcore music video demonstrating the purple-chain bias of early SD models: color correction splits drift into complementary purple/green to maintain statistical equilibrium, yet purple remains dominant throughout
+- [**The AI Purple Problem**](https://www.youtube.com/watch?v=AG_791Y-vs4) - Analysis of AI's systematic preference for purple gradients in generated designs
 
 ### Web History & Standards
 - **Tim Berners-Lee**: WorldWideWeb browser (1990, CERN) - Original blue/purple hyperlink convention
@@ -372,6 +378,8 @@ The following sections detail the specific implementation of Slopcore aesthetics
 - **Vibecoding**: AI-assisted development movement (2024-2025)
 - **Griftcore**: Aesthetic of AI wrapper startups and no-code SaaS tools
 - **Bootstrap Punk**: Default component template culture
+- **Default-Punk**: The aesthetic movement of embracing framework defaults as a design philosophy, elevating "out-of-the-box" styling to cultural statement
+- **Template Wave**: Related to vaporwave's plunderphonics——the reuse/remixing of pre-made audio assets (demo .wav files, basskicks from sound effect CDs) as if the successful creation of a sound was a preserve-worthy resource, rather than just synthesizing a new one. The template as artifact.
 
 ---
 
