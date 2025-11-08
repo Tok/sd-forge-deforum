@@ -20,6 +20,8 @@ def real_emoji_module():
     real_emoji = importlib.util.module_from_spec(spec)
 
     # Save original sys.modules state for cleanup
+    original_deforum = sys.modules.get('deforum')
+    original_deforum_rendering_attr = getattr(sys.modules.get('deforum'), 'rendering', None) if 'deforum' in sys.modules else None
     original_rendering = sys.modules.get('deforum.rendering')
     original_options = sys.modules.get('deforum.rendering.options')
     original_logging = sys.modules.get('deforum.utils.system.logging')
@@ -31,13 +33,19 @@ def real_emoji_module():
     mock_options.is_emojis_enabled = Mock(return_value=True)
 
     # Create or update deforum.rendering module
-    if 'deforum.rendering' not in sys.modules:
-        mock_rendering = MagicMock()
-        mock_rendering.options = mock_options
-        sys.modules['deforum.rendering'] = mock_rendering
+    mock_rendering = MagicMock()
+    mock_rendering.options = mock_options
+    sys.modules['deforum.rendering'] = mock_rendering
+
+    # CRITICAL: Set the .rendering attribute on the parent deforum module
+    # This is what CI was missing!
+    if 'deforum' in sys.modules:
+        sys.modules['deforum'].rendering = mock_rendering
     else:
-        # If it exists, add the options attribute
-        sys.modules['deforum.rendering'].options = mock_options
+        # If deforum doesn't exist, create it
+        mock_deforum = MagicMock()
+        mock_deforum.rendering = mock_rendering
+        sys.modules['deforum'] = mock_deforum
 
     # Also add to sys.modules for direct import
     sys.modules['deforum.rendering.options'] = mock_options
@@ -60,6 +68,16 @@ def real_emoji_module():
     yield real_emoji
 
     # Cleanup: Restore original sys.modules state
+    # Restore deforum module and its .rendering attribute
+    if original_deforum is not None:
+        sys.modules['deforum'] = original_deforum
+        if original_deforum_rendering_attr is not None:
+            sys.modules['deforum'].rendering = original_deforum_rendering_attr
+        elif hasattr(sys.modules['deforum'], 'rendering'):
+            delattr(sys.modules['deforum'], 'rendering')
+    elif 'deforum' in sys.modules and original_deforum is None:
+        del sys.modules['deforum']
+
     if original_rendering is not None:
         sys.modules['deforum.rendering'] = original_rendering
     elif 'deforum.rendering' in sys.modules:
