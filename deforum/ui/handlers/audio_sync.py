@@ -64,11 +64,11 @@ def _create_error_response(message: str) -> tuple:
         message: Error message to display
 
     Returns:
-        Tuple of (gr.update(), gr.update(), empty_plot, error_message)
+        Tuple of (gr.update(), gr.update(), gr.update(value=empty_plot), error_message)
     """
     empty_plot = create_empty_timeline_plot("Error")
     cross = emoji_utils.maybe_cross()
-    return gr.update(), gr.update(), empty_plot, f"{cross} {message}"
+    return gr.update(), gr.update(), gr.update(value=empty_plot), f"{cross} {message}"
 
 
 def _validate_and_parse_inputs(
