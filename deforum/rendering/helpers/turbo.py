@@ -39,7 +39,12 @@ def do_optical_flow_cadence_after_animation_warping(data, tween_frame, prev_imag
     4. Blend result with previous frame based on tween position
     """
     if not data.animation_mode.is_raft_active():
-        # No optical flow - just blend frames
+        # When depth warping is active, schedules handle interpolation - no blending needed
+        # Blending would cause keyframe "leaking" and defeat 3D transforms
+        if data.args.anim_args.use_depth_warping:
+            return image  # Return warped image directly
+
+        # No depth warping, no optical flow - blend for smooth transition
         if prev_image is not None and tween_frame.value < 1.0:
             return prev_image * (1.0 - tween_frame.value) + image * tween_frame.value
         return image
