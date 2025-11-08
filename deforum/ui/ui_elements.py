@@ -789,16 +789,47 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     label="Audio Info",
                     value="",
                     interactive=False,
-                    info="Audio duration and suggested max_frames (updates when you upload audio above)"
+                    info="Audio duration and suggested max_frames (auto-loads from soundtrack path)"
                 )
 
-                # Wire up audio upload to save file and update path
+                # Helper function to calculate audio info from path (URL or local file)
+                def calculate_audio_info(audio_path, current_fps):
+                    """Calculate audio duration and suggested max_frames from path.
+
+                    Args:
+                        audio_path: Local file path or URL to audio file
+                        current_fps: Target FPS for calculation
+
+                    Returns:
+                        Info text string with duration and suggested max_frames
+                    """
+                    if not audio_path or not str(audio_path).strip():
+                        return ""
+
+                    try:
+                        import librosa
+                        from deforum.media.video_audio_utilities import download_audio
+
+                        # Download if URL, or pass through if local path
+                        local_path = download_audio(audio_path)
+
+                        # Get audio duration (faster than loading full audio)
+                        duration = librosa.get_duration(path=local_path)
+
+                        # Calculate suggested max_frames
+                        fps = current_fps if current_fps and current_fps > 0 else 24
+                        suggested_max_frames = int(duration * fps)
+
+                        return f"Duration: {duration:.2f}s | Suggested max_frames @ {fps} FPS: {suggested_max_frames}"
+                    except Exception as e:
+                        return f"Could not load audio: {str(e)}"
+
+                # Upload handler: Save uploaded file and calculate info
                 def handle_audio_upload(audio_filepath, current_fps):
                     """Save uploaded audio to output directory and calculate suggested max_frames."""
                     if audio_filepath is None:
                         return None, "File", ""
 
-                    import os
                     import shutil
                     from pathlib import Path
 
@@ -814,31 +845,30 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     shutil.copy2(audio_filepath, dest_path)
                     abs_path = str(dest_path.absolute())
 
-                    # Calculate audio duration using librosa
-                    try:
-                        import librosa
-                        import soundfile as sf
-
-                        # Get audio duration (faster than loading full audio)
-                        duration = librosa.get_duration(path=abs_path)
-
-                        # Calculate suggested max_frames
-                        # Use current_fps if provided, otherwise default to 24
-                        fps = current_fps if current_fps and current_fps > 0 else 24
-                        suggested_max_frames = int(duration * fps)
-
-                        info_text = f"Duration: {duration:.2f}s | Suggested max_frames @ {fps} FPS: {suggested_max_frames}"
-                    except Exception as e:
-                        info_text = f"Could not calculate duration: {str(e)}"
+                    # Calculate audio info using helper function
+                    info_text = calculate_audio_info(abs_path, current_fps)
 
                     # Return absolute path, set add_soundtrack to "File", and info text
                     return abs_path, "File", info_text
 
+                # Auto-load handler: Load info from existing soundtrack_path
+                def auto_load_audio_info(soundtrack_path_val, current_fps):
+                    """Auto-load audio info when tab is opened if soundtrack path is valid."""
+                    return calculate_audio_info(soundtrack_path_val, current_fps)
+
+                # Wire up audio upload to save file and update path
                 # Note: fps component not accessible here - will be wired up in ui_left.py
                 audio_upload.upload(
                     fn=handle_audio_upload,
                     inputs=[audio_upload, gr.Number(value=24, visible=False)],  # Placeholder for FPS
                     outputs=[soundtrack_path, add_soundtrack, audio_info_display]
+                )
+
+                # Auto-load audio info when Audio Sync tab is selected
+                audio_sync_subtab.select(
+                    fn=auto_load_audio_info,
+                    inputs=[soundtrack_path, gr.Number(value=24, visible=False)],  # Placeholder for FPS
+                    outputs=[audio_info_display]
                 )
 
                 gr.Markdown("---")
