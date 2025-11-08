@@ -1478,7 +1478,7 @@ def DeforumOutputArgs():
         "frame_interpolation_engine": {
             "label": "Engine",
             "type": "radio",
-            "choices": ['None', 'RIFE v4.3', 'FILM'],
+            "choices": ['None', 'RIFE v4.26', 'FILM'],
             "value": "None",
             "info": "select the frame interpolation engine. hover on the options for more info"
         },

@@ -14,8 +14,8 @@ class TestExtractRifeName:
     """Test extract_rife_name function."""
 
     def test_standard_version(self):
-        result = extract_rife_name("RIFE v4.3")
-        assert result == "RIFE43"
+        result = extract_rife_name("RIFE v4.26")
+        assert result == "RIFE426"
 
     def test_single_digit_version(self):
         result = extract_rife_name("RIFE v2.0")
@@ -26,8 +26,8 @@ class TestExtractRifeName:
         assert result == "RIFE1015"
 
     def test_three_part_version(self):
-        result = extract_rife_name("RIFE v4.3.2")
-        assert result == "RIFE432"
+        result = extract_rife_name("RIFE v4.26.1")
+        assert result == "RIFE4261"
 
     def test_single_number_version(self):
         result = extract_rife_name("RIFE v5")
@@ -35,15 +35,15 @@ class TestExtractRifeName:
 
     def test_invalid_missing_v_prefix(self):
         with pytest.raises(ValueError, match="Version should start with 'v'"):
-            extract_rife_name("RIFE 4.3")
+            extract_rife_name("RIFE 4.26")
 
     def test_invalid_wrong_first_word(self):
         with pytest.raises(ValueError, match="First word should be 'RIFE'"):
-            extract_rife_name("FILM v4.3")
+            extract_rife_name("FILM v4.26")
 
     def test_invalid_too_many_words(self):
         with pytest.raises(ValueError, match="exactly 2 words"):
-            extract_rife_name("RIFE v4.3 beta")
+            extract_rife_name("RIFE v4.26 beta")
 
     def test_invalid_too_few_words(self):
         with pytest.raises(ValueError, match="exactly 2 words"):
@@ -51,7 +51,7 @@ class TestExtractRifeName:
 
     def test_invalid_non_numeric_version(self):
         with pytest.raises(ValueError, match="only digits and dots"):
-            extract_rife_name("RIFE v4.3a")
+            extract_rife_name("RIFE v4.26a")
 
     def test_invalid_letters_in_version(self):
         with pytest.raises(ValueError, match="only digits and dots"):
@@ -262,14 +262,14 @@ class TestIntegration:
 
     def test_rife_workflow(self):
         """Test complete RIFE interpolation setup."""
-        model_name = "RIFE v4.3"
+        model_name = "RIFE v4.26"
         total_frames = 100
         interp_x = 2
         in_fps = 30.0
 
         # Extract model folder name
         model_folder = extract_rife_name(model_name)
-        assert model_folder == "RIFE43"
+        assert model_folder == "RIFE426"
 
         # Calculate output FPS
         out_fps = set_interp_out_fps(str(interp_x), False, "1", in_fps)

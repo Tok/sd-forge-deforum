@@ -9,21 +9,21 @@ functional programming principles with no side effects.
 def extract_rife_name(model_string: str) -> str:
     """Extract RIFE model folder name from display string.
 
-    Converts display format (e.g., "RIFE v4.3") to folder format (e.g., "RIFE43").
+    Converts display format (e.g., "RIFE v4.26") to folder format (e.g., "RIFE426").
     Used for locating RIFE model directories.
 
     Args:
         model_string: RIFE model display string in format "RIFE v{major}.{minor}"
 
     Returns:
-        RIFE model folder name with version numbers concatenated (e.g., "RIFE43")
+        RIFE model folder name with version numbers concatenated (e.g., "RIFE426")
 
     Raises:
         ValueError: If input doesn't match expected "RIFE v{number}.{number}" format
 
     Examples:
-        >>> extract_rife_name("RIFE v4.3")
-        'RIFE43'
+        >>> extract_rife_name("RIFE v4.26")
+        'RIFE426'
         >>> extract_rife_name("RIFE v2.0")
         'RIFE20'
         >>> extract_rife_name("RIFE v10.15")

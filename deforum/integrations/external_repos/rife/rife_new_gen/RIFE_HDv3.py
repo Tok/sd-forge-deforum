@@ -56,10 +56,39 @@ class Model:
                 self.flownet.load_state_dict(convert(torch.load(os.path.join(deforum_models_path,'{}.pkl').format(path), map_location ='cpu')), False)
 
     def inference(self, img0, img1, timestep=0.5, scale=1.0):
-        imgs = torch.cat((img0, img1), 1)
-        scale_list = [8/scale, 4/scale, 2/scale, 1/scale]
-        flow, mask, merged = self.flownet(imgs, timestep, scale_list)
-        return merged[3]
+        # Get dimensions (batch, channels, height, width)
+        _, _, ph, pw = img0.shape
+
+        # Create warp grid tensors for optical flow
+        tenFlow_div = torch.tensor(
+            [(pw - 1.0) / 2.0, (ph - 1.0) / 2.0],
+            dtype=torch.float,
+            device=img0.device
+        )
+
+        tenHorizontal = torch.linspace(-1.0, 1.0, pw, dtype=torch.float, device=img0.device)
+        tenHorizontal = tenHorizontal.view(1, 1, 1, pw).expand(-1, -1, ph, -1)
+        tenVertical = torch.linspace(-1.0, 1.0, ph, dtype=torch.float, device=img0.device)
+        tenVertical = tenVertical.view(1, 1, ph, 1).expand(-1, -1, -1, pw)
+        backwarp_tenGrid = torch.cat([tenHorizontal, tenVertical], 1)
+
+        # Encode features using Head encoder (v4.26 requirement)
+        f0 = self.flownet.encode(img0)
+        f1 = self.flownet.encode(img1)
+
+        # Create timestep tensor (shape: [batch, 1, height, width])
+        timestep_tensor = torch.full(
+            [img0.shape[0], 1, ph, pw],
+            timestep,
+            dtype=torch.float,
+            device=img0.device
+        )
+
+        # Call flownet with v4.26 signature
+        # Returns interpolated frame directly (not a list)
+        output = self.flownet(img0, img1, timestep_tensor, tenFlow_div, backwarp_tenGrid, f0, f1)
+
+        return output
     
     def update(self, imgs, gt, learning_rate=0, mul=1, training=True, flow_gt=None):
         for param_group in self.optimG.param_groups:
@@ -91,15 +120,15 @@ class Model:
             }
 
 def download_rife_model(path, deforum_models_path):
-    # RIFE v4.3 from official Practical-RIFE repository (2022.08.17)
-    # Compatible with IFNet_HDv3 architecture (7, 12, 12, 12 channel configuration)
-    # Google Drive file ID: 1xrNofTGMHdt9sQv7-EOG0EChl8hZW_cU
+    # RIFE v4.26 from official Practical-RIFE repository (2024.09.21)
+    # Compatible with IFNet_HDv3 v4.26 architecture (5-block, Head encoder, feature propagation)
+    # Google Drive file ID: 1gViYvvQrtETBgU1w8axZSsr7YUuw31uy
     import hashlib
     import zipfile
 
-    options = {'RIFE43': (
-               '41b0ed6f8200f1375402fdb57828aee5f6263da70f19116b1db457f972a5649b5c7053a1decdf06724d20e5c7a7179d9046b9edf12ad3bda40305394aa4a10ef',
-               '1xrNofTGMHdt9sQv7-EOG0EChl8hZW_cU')}
+    options = {'RIFE426': (
+               '2c18c32ad467acd16a773c7068be25f0c0eb84f85f16719d72b2046617f22fe2fe441b1b5e16c8419e1a396c7ed6e6227901bfd7a1419475e225d02435bae681',
+               '1gViYvvQrtETBgU1w8axZSsr7YUuw31uy')}
     if path in options:
         target_file = f"{path}.pkl"
         target_path = os.path.join(deforum_models_path, target_file)
