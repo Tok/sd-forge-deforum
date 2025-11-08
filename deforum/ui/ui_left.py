@@ -603,7 +603,6 @@ def setup_deforum_left_side_ui():
 
     # Import event handlers from helpers module
     from deforum.ui.handlers.ui_left_handlers import (
-        handle_render_mode_change,
         on_reset_to_defaults_click,
         update_slider_step_size,
         slider_to_textbox
