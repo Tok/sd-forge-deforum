@@ -353,9 +353,10 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             gr.Markdown("**Per-Keyframe Type Control (Advanced):**")
             keyframe_type_schedule = create_row(da.keyframe_type_schedule)
 
+            robot = emoji_utils.robot()
             with FormRow():
                 auto_assign_keyframe_types_btn = gr.Button(
-                    "🤖 Auto-Assign Types",
+                    f"{robot} Auto-Assign Types",
                     variant="secondary",
                     size="sm",
                     elem_id="auto_assign_keyframe_types_btn"
@@ -386,76 +387,87 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             wan_movement_sensitivity = create_gr_elem(dw.wan_movement_sensitivity)
             wan_movement_sensitivity.interactive = False  # Start disabled
     
-    with gr.Accordion("⚡ Timing & Interpolation", open=False):
+    lightning = emoji_utils.lightning()
+    with gr.Accordion(f"{lightning} Timing & Interpolation", open=False):
         with FormRow():
             wan_frame_overlap = create_gr_elem(dw.wan_frame_overlap)
-            
+
         with FormRow():
             wan_enable_interpolation = create_gr_elem(dw.wan_enable_interpolation)
             wan_interpolation_strength = create_gr_elem(dw.wan_interpolation_strength)
-            
+
         # Flash Attention Settings Section
-        with gr.Accordion("⚡ Flash Attention Settings", open=False):
+        with gr.Accordion(f"{lightning} Flash Attention Settings", open=False):
             gr.Markdown("""
             **Flash Attention Performance Control**
-            
+
             Flash Attention provides faster and more memory-efficient attention computation.
-            
+
             **Modes:**
             - **Auto (Recommended)**: Try Flash Attention, fall back to PyTorch if unavailable
             - **Force Flash Attention**: Force Flash Attention (fails if not available)
             - **Force PyTorch Fallback**: Always use PyTorch attention (slower but compatible)
             """)
-            
+
             wan_flash_attention_mode = create_gr_elem(dw.wan_flash_attention_mode)
-            
+
             # Flash Attention Status
+            warning = emoji_utils.maybe_warning()
+            magnifying_glass = emoji_utils.magnifying_glass()
             wan_flash_attention_status = gr.HTML(
                 label="Flash Attention Status",
-                value="⚠️ <span style='color: #FF9800;'>Status check unavailable</span>",
+                value=f"{warning} <span style='color: #FF9800;'>Status check unavailable</span>",
                 elem_id="wan_flash_attention_status"
             )
-            
+
             check_flash_attention_btn = gr.Button(
-                "🔍 Check Flash Attention Status",
+                f"{magnifying_glass} Check Flash Attention Status",
                 variant="secondary",
                 elem_id="wan_check_flash_attention_btn"
             )
     
     # QWEN MODEL MANAGEMENT - Collapsed by default
-    with gr.Accordion("🧠 Qwen Model Management", open=False):
+    brain = emoji_utils.brain()
+    with gr.Accordion(f"{brain} Qwen Model Management", open=False):
         gr.Markdown("""
         **Model Information & Auto-Download Status**
-        
+
         Monitor Qwen model availability and manage downloads:
         """)
-        
+
+        hourglass = emoji_utils.hourglass()
+        magnifying_glass = emoji_utils.magnifying_glass()
+        download = emoji_utils.download()
+        broom = emoji_utils.broom()
+
         qwen_model_status = gr.HTML(
             label="Qwen Model Status",
-            value="⏳ Checking model availability...",
+            value=f"{hourglass} Checking model availability...",
             elem_id="wan_qwen_model_status"
         )
-        
+
         with FormRow():
             check_qwen_models_btn = gr.Button(
-                "🔍 Check Model Status",
+                f"{magnifying_glass} Check Model Status",
                 variant="secondary",
                 elem_id="wan_check_qwen_models_btn"
             )
             download_qwen_model_btn = gr.Button(
-                "📥 Download Selected Model",
+                f"{download} Download Selected Model",
                 variant="primary",
                 elem_id="wan_download_qwen_model_btn"
             )
             cleanup_qwen_cache_btn = gr.Button(
-                "🧹 Cleanup Model Cache",
+                f"{broom} Cleanup Model Cache",
                 variant="secondary",
                 elem_id="wan_cleanup_qwen_cache_btn"
             )
 
     # Auto-Discovery and Setup Information
-    with gr.Accordion("📥 Model Auto-Discovery & Setup", open=False):
+    download = emoji_utils.download()
+    with gr.Accordion(f"{download} Model Auto-Discovery & Setup", open=False):
         check = emoji_utils.maybe_check()
+        sparkles = emoji_utils.sparkles()
         gr.Markdown(f"""
         **{check} Auto-Discovery System**
 
@@ -464,13 +476,13 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         - `models/video/wan/`
         - Custom paths you specify
 
-        **✨ Wan 2.2 TI2V Models (Recommended)**
+        **{sparkles} Wan 2.2 TI2V Models (Recommended)**
 
         TI2V models are unified text/image-to-video with diffusers format:
         - **TI2V-5B**: 720p@24fps, 24GB VRAM, RTX 4090 compatible (recommended)
         - **TI2V-A14B**: Mixture-of-Experts, 32GB+ VRAM, highest quality
 
-        **📥 Easy Download Commands:**
+        **{download} Easy Download Commands:**
         ```bash
         # Download TI2V-5B (recommended default)
         huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B
@@ -542,18 +554,27 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             """)
             
             with gr.Accordion(f"{emoji_utils.movie_camera()} Movement Translation: From Deforum Schedules to Prompt Descriptions", open=False):
-                gr.Markdown("""
-                ### ✨ NEW: Frame-Specific Movement Analysis
-                
+                sparkles = emoji_utils.sparkles()
+                target = emoji_utils.target()
+                refresh = emoji_utils.refresh_icon()
+                distribution = emoji_utils.distribution()
+                palette = emoji_utils.palette()
+                movie_camera = emoji_utils.movie_camera()
+                wrench = emoji_utils.wrench()
+                chart_increasing = emoji_utils.chart_increasing()
+                rocket = emoji_utils.rocket()
+                gr.Markdown(f"""
+                ### {sparkles} NEW: Frame-Specific Movement Analysis
+
                 Wan now provides **unique movement descriptions for each prompt** based on its exact position in the video timeline, eliminating generic repetitive text.
-                
-                **🎯 Key Improvements:**
+
+                **{target} Key Improvements:**
                 - **Frame-Specific Analysis**: Each prompt analyzes movement at its specific frame range
                 - **Directional Specificity**: "panning left", "tilting down", "dolly forward" instead of generic text
                 - **Camera Shakify Integration**: Analyzes actual shake patterns at each frame offset
                 - **Varied Descriptions**: No more identical "investigative handheld" text across all prompts
-                
-                ### 🔄 How Frame-Specific Analysis Works
+
+                ### {refresh} How Frame-Specific Analysis Works
                 
                 **Traditional Approach (OLD):**
                 ```json
@@ -562,17 +583,17 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
                 
                 **Frame-Specific Approach (NEW):**
                 ```json
-                {
+                {{
                   "0": "...with subtle panning left (sustained) and gentle moving down (extended)",
                   "43": "...with moderate panning right (brief) and subtle rotating left (sustained)",
                   "106": "...with gentle dolly forward (extended) and subtle rolling clockwise (brief)",
                   "210": "...with subtle tilting down (extended) and moderate panning left (brief)",
                   "324": "...with gentle rotating right (sustained) and subtle dolly backward (extended)"
-                }
+                }}}}
                 ```
-                
-                ### 📊 Movement Detection & Classification
-                
+
+                ### {distribution} Movement Detection & Classification
+
                 **Translation Movements:**
                 - **Translation X**: 
                   - Increasing → "panning right"
@@ -596,11 +617,11 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
                   - Decreasing → "rolling counter-clockwise"
                 
                 **Zoom & Effects:**
-                - **Zoom**: 
+                - **Zoom**:
                   - Increasing → "zooming in"
                   - Decreasing → "zooming out"
-                
-                ### 🎨 Intensity & Duration Modifiers
+
+                ### {palette} Intensity & Duration Modifiers
                 
                 **Movement Intensity:**
                 - **Subtle**: Very small movements (< 1.0 units)
@@ -612,8 +633,8 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
                 - **Brief**: Short duration (< 20% of total frames)
                 - **Extended**: Medium duration (20% - 50% of total frames)
                 - **Sustained**: Long duration (> 50% of total frames)
-                
-                ### 🎬 Camera Shakify Integration
+
+                ### {movie_camera} Camera Shakify Integration
                 
                 When Camera Shakify is enabled, the system:
                 1. **Generates frame-specific shake data** based on the prompt's frame position
@@ -627,8 +648,8 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
                 Frame 43 prompt → Analyzes shake pattern frames 43-60
                 Frame 106 prompt → Analyzes shake pattern frames 106-123
                 ```
-                
-                ### 🔧 Smart Motion Analysis
+
+                ### {wrench} Smart Motion Analysis
                 
                 **Sensitivity Auto-Calculation:**
                 The system automatically calculates optimal sensitivity based on movement magnitude:
@@ -642,8 +663,8 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
                 - Groups similar movements that occur close together
                 - Reduces redundancy while preserving directional specificity
                 - Creates readable, varied descriptions
-                
-                ### 📈 Results Comparison
+
+                ### {chart_increasing} Results Comparison
                 
                 **Before Frame-Specific Analysis:**
                 ```json
@@ -656,14 +677,14 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
                 
                 **After Frame-Specific Analysis:**
                 ```json
-                {
+                {{
                   "0": "...camera movement with subtle panning left (sustained) and gentle moving down (extended)",
                   "43": "...camera movement with moderate panning right (brief) and subtle rotating left (sustained)",
                   "106": "...camera movement with gentle dolly forward (extended) and subtle rolling clockwise (brief)"
-                }
+                }}}}
                 ```
-                
-                ### 🚀 Practical Usage
+
+                ### {rocket} Practical Usage
                 
                 1. **Set up movement** in Keyframes → Motion tab or enable Camera Shakify
                 2. **Configure prompts** in Prompts tab with frame numbers
@@ -740,7 +761,8 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             from deforum.integrations.wan.wan_flash_attention_patch import get_flash_attention_status_html
             return get_flash_attention_status_html()
         except Exception as e:
-            return f"❌ <span style='color: #f44336;'>Error checking status: {e}</span>"
+            cross = emoji_utils.maybe_cross()
+            return f"{cross} <span style='color: #f44336;'>Error checking status: {e}</span>"
 
     def update_flash_attention_mode(mode):
         """Update flash attention mode and return updated status"""
@@ -750,7 +772,8 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             status = get_flash_attention_status_html()
             return f"{status} - Mode: {mode}"
         except Exception as e:
-            return f"❌ <span style='color: #f44336;'>Error updating mode: {e}</span>"
+            cross = emoji_utils.maybe_cross()
+            return f"{cross} <span style='color: #f44336;'>Error updating mode: {e}</span>"
     
     # Connect button click to status check
     check_flash_attention_btn.click(
@@ -771,7 +794,8 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         from deforum.integrations.wan.wan_flash_attention_patch import get_flash_attention_status_html
         wan_flash_attention_status.value = get_flash_attention_status_html()
     except Exception:
-        wan_flash_attention_status.value = "⚠️ <span style='color: #FF9800;'>Status check unavailable</span>"
+        warning = emoji_utils.maybe_warning()
+        wan_flash_attention_status.value = f"{warning} <span style='color: #FF9800;'>Status check unavailable</span>"
     
     # Get all component names for the handlers
     from deforum.config.args import get_component_names
