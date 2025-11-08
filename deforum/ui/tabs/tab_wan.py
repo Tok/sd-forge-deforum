@@ -106,15 +106,17 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         )
         
         # Prompt Enhancement Actions
+        ruler = emoji_utils.ruler()
+        palette = emoji_utils.palette()
         with FormRow():
             analyze_movement_btn = gr.Button(
-                "📐 Add Movement Descriptions",
+                f"{ruler} Add Movement Descriptions",
                 variant="secondary",
                 size="lg",
                 elem_id="wan_analyze_movement_btn"
             )
             enhance_prompts_btn = gr.Button(
-                "🎨 AI Prompt Enhancement",
+                f"{palette} AI Prompt Enhancement",
                 variant="secondary",
                 size="lg",
                 elem_id="wan_enhance_prompts_btn"
@@ -148,11 +150,12 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             )
         
         # Movement Analysis Results - Enhanced with frame-by-frame details
+        bulb = emoji_utils.bulb()
         wan_movement_description = gr.Textbox(
             label="Movement Analysis Results",
             lines=6,
             interactive=False,
-            placeholder="Movement analysis results will appear here...\n\n💡 TIP: This shows frame-by-frame movement detection with Camera Shakify integration.",
+            placeholder=f"Movement analysis results will appear here...\n\n{bulb} TIP: This shows frame-by-frame movement detection with Camera Shakify integration.",
             info="Fine-grained movement descriptions with specific frame ranges and Camera Shakify effects.",
             elem_id="wan_movement_description_textbox",
             visible=True  # Always visible for immediate feedback
@@ -215,23 +218,24 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     )
 
     # MODEL SETTINGS - Collapsed by default
+    download = emoji_utils.download()
     with gr.Accordion(f"{emoji_utils.wrench()} Model Settings", open=False):
-        gr.Markdown("""
-        **📥 One-Click Model Download**: Download official Wan 2.2 models from Hugging Face!
+        gr.Markdown(f"""
+        **{download} One-Click Model Download**: Download official Wan 2.2 models from Hugging Face!
         - **TI2V-5B** (Recommended): Works with 16GB VRAM using automatic CPU offload
         - **TI2V-A14B** (Advanced): Highest quality, requires 24GB+ VRAM
         """)
 
         # Model Download Buttons
-        with gr.Accordion("📥 Download Models", open=True):
+        with gr.Accordion(f"{download} Download Models", open=True):
             check = emoji_utils.maybe_check()
             gr.Markdown(f"**{check} Recommended for Most Users (16GB+ VRAM)**")
             with FormRow():
-                download_ti2v_5b = gr.Button("📥 TI2V-5B (30GB Download, ~16GB VRAM with offload)", variant="primary", size="sm")
+                download_ti2v_5b = gr.Button(f"{download} TI2V-5B (30GB Download, ~16GB VRAM with offload)", variant="primary", size="sm")
 
             gr.Markdown(f"**{emoji_utils.rocket()} Advanced / High-End GPUs (24GB+ VRAM)**")
             with FormRow():
-                download_ti2v_a14b = gr.Button("📥 TI2V-A14B (60GB Download, ~32GB VRAM)", size="sm")
+                download_ti2v_a14b = gr.Button(f"{download} TI2V-A14B (60GB Download, ~32GB VRAM)", size="sm")
 
             download_status = gr.Textbox(
                 label="Download Status",
@@ -260,14 +264,16 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             )
 
     # VRAM OPTIMIZATION SETTINGS
-    with gr.Accordion("💾 VRAM Optimization", open=False):
-        gr.Markdown("""
+    save = emoji_utils.save()
+    warning = emoji_utils.maybe_warning()
+    with gr.Accordion(f"{save} VRAM Optimization", open=False):
+        gr.Markdown(f"""
         **Reduce VRAM usage for 16GB GPUs:**
 
         These settings can help run larger models on GPUs with limited VRAM.
         All settings are OFF by default for maximum compatibility.
 
-        **⚠️ Trade-offs:**
+        **{warning} Trade-offs:**
         - T5 CPU Offload: Slightly slower text encoding, saves ~3-4GB VRAM
         - Gradient Checkpointing: Slower inference (~15-20%), saves ~2-3GB VRAM
         - Both combined: Can reduce peak VRAM by ~5-7GB
@@ -281,12 +287,14 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             wan_t5_cpu_offload = create_gr_elem(dw.wan_t5_cpu_offload)
             wan_gradient_checkpointing = create_gr_elem(dw.wan_gradient_checkpointing)
 
+        bulb = emoji_utils.bulb()
+        distribution = emoji_utils.distribution()
         vram_optimization_info = gr.HTML(
-            value="""
+            value=f"""
             <div style='padding: 10px; background: #1a1a1a; border-radius: 5px; margin-top: 10px;'>
                 <p style='margin: 0; color: #aaa;'>
-                    💡 <strong>Tip:</strong> Enable these if you see "CUDA out of memory" errors on 16GB GPUs.
-                    <br/>📊 Current setup enables automatic CPU offload based on model size (5B vs A14B).
+                    {bulb} <strong>Tip:</strong> Enable these if you see "CUDA out of memory" errors on 16GB GPUs.
+                    <br/>{distribution} Current setup enables automatic CPU offload based on model size (5B vs A14B).
                 </p>
             </div>
             """,
