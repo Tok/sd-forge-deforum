@@ -391,6 +391,98 @@ def generate_custom_spline_path(
         return f"{emoji_utils.maybe_cross()} Error: {str(e)}", {}, []
 
 
+def _create_empty_camera_plot() -> Tuple[go.Figure, str]:
+    """Create empty 3D plot for camera path visualization."""
+    fig = go.Figure()
+    fig.update_layout(
+        title=dict(
+            text="No path generated yet",
+            font=dict(color='#E0E7FF', size=18, family='system-ui')
+        ),
+        paper_bgcolor='#0F172A',
+        plot_bgcolor='#1E293B',
+        font=dict(color='#CBD5E1', family='system-ui'),
+        scene=dict(
+            xaxis_title="X (Left/Right)",
+            yaxis_title="Y (Up/Down)",
+            zaxis_title="Z (Forward/Back)",
+            xaxis=dict(
+                backgroundcolor='#1E293B',
+                gridcolor='#334155',
+                showbackground=True,
+                zerolinecolor='#475569',
+                title=dict(font=dict(color='#94A3B8'))
+            ),
+            yaxis=dict(
+                backgroundcolor='#1E293B',
+                gridcolor='#334155',
+                showbackground=True,
+                zerolinecolor='#475569',
+                title=dict(font=dict(color='#94A3B8'))
+            ),
+            zaxis=dict(
+                backgroundcolor='#1E293B',
+                gridcolor='#334155',
+                showbackground=True,
+                zerolinecolor='#475569',
+                title=dict(font=dict(color='#94A3B8'))
+            )
+        )
+    )
+    return fig, "No path data"
+
+
+def _generate_gradient_colors(num_points: int) -> list:
+    """Generate gradient colors for camera path visualization."""
+    return [
+        f'rgb({int(102 + (118-102)*i/num_points)}, '
+        f'{int(126 + (75-126)*i/num_points)}, '
+        f'{int(234 + (162-234)*i/num_points)})'
+        for i in range(num_points)
+    ]
+
+
+def _calculate_keyframe_indices(num_points: int) -> list:
+    """Calculate keyframe marker indices for visualization."""
+    keyframe_interval = max(20, min(40, num_points // 10))
+    keyframe_indices = list(range(0, num_points, keyframe_interval))
+    if keyframe_indices and keyframe_indices[-1] != num_points - 1:
+        keyframe_indices.append(num_points - 1)
+    return keyframe_indices
+
+
+def _calculate_path_statistics(camera_path: list, x_coords: list, y_coords: list, z_coords: list) -> str:
+    """Calculate and format path statistics."""
+    # Calculate total distance
+    total_distance = 0.0
+    for i in range(1, len(camera_path)):
+        dx = camera_path[i].x - camera_path[i-1].x
+        dy = camera_path[i].y - camera_path[i-1].y
+        dz = camera_path[i].z - camera_path[i-1].z
+        total_distance += np.sqrt(dx**2 + dy**2 + dz**2)
+
+    # Calculate ranges
+    x_range = max(x_coords) - min(x_coords)
+    y_range = max(y_coords) - min(y_coords)
+    z_range = max(z_coords) - min(z_coords)
+
+    # Calculate keyframe info
+    num_points = len(camera_path)
+    keyframe_interval = max(20, min(40, num_points // 10))
+    num_keyframes = (num_points + keyframe_interval - 1) // keyframe_interval
+
+    return f"""Path Statistics:
+- Frames: {len(camera_path)}
+- Keyframes: ~{num_keyframes} (every {keyframe_interval} frames)
+- Total Distance: {total_distance:.2f}
+- X Range: {x_range:.2f} (left/right)
+- Y Range: {y_range:.2f} (up/down)
+- Z Range: {z_range:.2f} (forward/back)
+- Start: ({x_coords[0]:.2f}, {y_coords[0]:.2f}, {z_coords[0]:.2f})
+- End: ({x_coords[-1]:.2f}, {y_coords[-1]:.2f}, {z_coords[-1]:.2f})
+"""
+
+
 def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
     """Create 3D visualization of camera path.
 
@@ -401,44 +493,7 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
         (plotly_figure, stats_text)
     """
     if not camera_path:
-        # Empty plot - SLOPCORE DARKMODE
-        fig = go.Figure()
-        fig.update_layout(
-            title=dict(
-                text="No path generated yet",
-                font=dict(color='#E0E7FF', size=18, family='system-ui')
-            ),
-            paper_bgcolor='#0F172A',  # Tailwind slate-900
-            plot_bgcolor='#1E293B',   # Tailwind slate-800
-            font=dict(color='#CBD5E1', family='system-ui'),  # Tailwind slate-300
-            scene=dict(
-                xaxis_title="X (Left/Right)",
-                yaxis_title="Y (Up/Down)",
-                zaxis_title="Z (Forward/Back)",
-                xaxis=dict(
-                    backgroundcolor='#1E293B',
-                    gridcolor='#334155',  # Tailwind slate-700
-                    showbackground=True,
-                    zerolinecolor='#475569',  # Tailwind slate-600
-                    title=dict(font=dict(color='#94A3B8'))  # Tailwind slate-400
-                ),
-                yaxis=dict(
-                    backgroundcolor='#1E293B',
-                    gridcolor='#334155',
-                    showbackground=True,
-                    zerolinecolor='#475569',
-                    title=dict(font=dict(color='#94A3B8'))
-                ),
-                zaxis=dict(
-                    backgroundcolor='#1E293B',
-                    gridcolor='#334155',
-                    showbackground=True,
-                    zerolinecolor='#475569',
-                    title=dict(font=dict(color='#94A3B8'))
-                )
-            )
-        )
-        return fig, "No path data"
+        return _create_empty_camera_plot()
 
     # Extract coordinates
     x_coords = [p.x for p in camera_path]
@@ -449,10 +504,8 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
     fig = go.Figure()
 
     # Path line - PURPLE GRADIENT VIBES (simulate gradient with multiple segments)
-    # Create gradient effect by varying color along path
     num_points = len(x_coords)
-    colors = [f'rgb({int(102 + (118-102)*i/num_points)}, {int(126 + (75-126)*i/num_points)}, {int(234 + (162-234)*i/num_points)})'
-              for i in range(num_points)]
+    colors = _generate_gradient_colors(num_points)
 
     fig.add_trace(go.Scatter3d(
         x=x_coords,
@@ -511,11 +564,8 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
     ))
 
     # Keyframe markers - BRIGHT BLUE highlights at regular intervals (SLOPCORE)
-    # Calculate keyframe positions (every ~20-40 frames depending on path length)
+    keyframe_indices = _calculate_keyframe_indices(num_points)
     keyframe_interval = max(20, min(40, num_points // 10))
-    keyframe_indices = list(range(0, num_points, keyframe_interval))
-    if keyframe_indices and keyframe_indices[-1] != num_points - 1:
-        keyframe_indices.append(num_points - 1)  # Ensure last frame is included
 
     # Extract keyframe coordinates
     keyframe_x = [x_coords[i] for i in keyframe_indices]
@@ -603,31 +653,7 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
     )
 
     # Calculate statistics
-    total_distance = 0.0
-    for i in range(1, len(camera_path)):
-        dx = camera_path[i].x - camera_path[i-1].x
-        dy = camera_path[i].y - camera_path[i-1].y
-        dz = camera_path[i].z - camera_path[i-1].z
-        total_distance += np.sqrt(dx**2 + dy**2 + dz**2)
-
-    x_range = max(x_coords) - min(x_coords)
-    y_range = max(y_coords) - min(y_coords)
-    z_range = max(z_coords) - min(z_coords)
-
-    # Calculate keyframe info for stats
-    keyframe_interval = max(20, min(40, num_points // 10))
-    num_keyframes = (num_points + keyframe_interval - 1) // keyframe_interval  # Ceiling division
-
-    stats = f"""Path Statistics:
-- Frames: {len(camera_path)}
-- Keyframes: ~{num_keyframes} (every {keyframe_interval} frames)
-- Total Distance: {total_distance:.2f}
-- X Range: {x_range:.2f} (left/right)
-- Y Range: {y_range:.2f} (up/down)
-- Z Range: {z_range:.2f} (forward/back)
-- Start: ({x_coords[0]:.2f}, {y_coords[0]:.2f}, {z_coords[0]:.2f})
-- End: ({x_coords[-1]:.2f}, {y_coords[-1]:.2f}, {z_coords[-1]:.2f})
-"""
+    stats = _calculate_path_statistics(camera_path, x_coords, y_coords, z_coords)
 
     return fig, stats
 
