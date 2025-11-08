@@ -23,8 +23,9 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         skip_tabitem: If True, don't create TabItem wrapper
     """
 
-    gr.Markdown("""
-    ## 🎬 Interpolation Methods
+    movie_camera = emoji_utils.movie_camera()
+    gr.Markdown(f"""
+    ## {movie_camera} Interpolation Methods
 
     **Choose your interpolation method for smooth transitions between keyframes:**
 
@@ -37,23 +38,27 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     """)
 
     # INTERPOLATION METHOD SELECTOR - ALWAYS VISIBLE AT TOP
-    gr.Markdown("### 🎯 Select Interpolation Method")
+    gr.Markdown(f"### {emoji_utils.target()} Select Interpolation Method")
     with gr.Row():
         flux_flf2v_interpolation_method = create_gr_elem(dw.flux_flf2v_interpolation_method)
 
     gr.Markdown("---")
 
     # Deforum Integration Info - Shows what settings are used
-    with gr.Accordion("🔗 Deforum Integration Details", open=False):
+    link = emoji_utils.link()
+    with gr.Accordion(f"{link} Deforum Integration Details", open=False):
         check = emoji_utils.maybe_check()
+        memo = emoji_utils.memo()
+        dice = emoji_utils.dice()
+        strength_emoji = emoji_utils.strength()
         gr.Markdown(f"""
         **{check} Wan seamlessly integrates with your Deforum settings:**
 
-        - **📝 Prompts:** Uses prompts from Deforum Prompts tab
-        - **🎬 Movement:** Uses same movement schedules as normal Deforum renders
-        - **🎲 Seed & CFG:** Uses Deforum's seed and CFG schedules
-        - **💪 Strength:** Uses Deforum's strength schedule for I2V continuity
-        - **🎬 FPS:** Uses Output tab FPS setting
+        - **{memo} Prompts:** Uses prompts from Deforum Prompts tab
+        - **{movie_camera} Movement:** Uses same movement schedules as normal Deforum renders
+        - **{dice} Seed & CFG:** Uses Deforum's seed and CFG schedules
+        - **{strength_emoji} Strength:** Uses Deforum's strength schedule for I2V continuity
+        - **{movie_camera} FPS:** Uses Output tab FPS setting
 
         **Movement Integration:**
         - {check} Translation X/Y/Z, Rotation 3D X/Y/Z, Zoom schedules
@@ -67,23 +72,25 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     if False:  # Dead code kept for reference
         pass
     with gr.Accordion(f"{emoji_utils.warn} DEPRECATED: Standalone Wan Workflow (Reference Only)", open=False, visible=False):
-        gr.Markdown("""
-        **🎯 Essential for Wan Generation:** These prompts define what video clips will be generated.
-        
+        target = emoji_utils.target()
+        gr.Markdown(f"""
+        **{target} Essential for Wan Generation:** These prompts define what video clips will be generated.
+
         **Quick Setup:** Load → Analyze Movement → Enhance → Generate
         """)
-        
+
         # Prompt Loading Buttons
+        clipboard = emoji_utils.clipboard()
         with FormRow():
             load_deforum_to_wan_btn = gr.Button(
-                "📋 Load from Deforum Prompts",
+                f"{clipboard} Load from Deforum Prompts",
                 variant="primary",
                 size="lg",
                 elem_id="load_deforum_to_wan_btn"
             )
             load_wan_defaults_btn = gr.Button(
-                "📝 Load Default Wan Prompts",
-                variant="secondary", 
+                f"{memo} Load Default Wan Prompts",
+                variant="secondary",
                 size="lg",
                 elem_id="load_wan_defaults_btn"
             )
@@ -94,7 +101,7 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             lines=10,
             interactive=True,
             placeholder='REQUIRED: Load prompts first! Click "Load from Deforum Prompts" or "Load Default Wan Prompts" above.',
-            info="🎯 ESSENTIAL: These prompts will be used for Wan video generation. Edit manually or use buttons below to enhance.",
+            info=f"{emoji_utils.target()} ESSENTIAL: These prompts will be used for Wan video generation. Edit manually or use buttons below to enhance.",
             elem_id="wan_enhanced_prompts_textbox"
         )
         
@@ -116,7 +123,7 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         # Camera Shakify Integration Control
         with FormRow():
             wan_enable_shakify = gr.Checkbox(
-                label="🎬 Include Camera Shakify with Movement Analysis",
+                label=f"{emoji_utils.movie_camera()} Include Camera Shakify with Movement Analysis",
                 value=True,
                 info="Enable Camera Shakify integration for movement analysis (uses settings from Keyframes → Motion → Shakify tab)",
                 elem_id="wan_enable_shakify_checkbox"
@@ -162,7 +169,7 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             visible=True
         )
         gr.Markdown("---")
-        gr.Markdown("### ⚙️ Essential Settings")
+        gr.Markdown(f"### {emoji_utils.gear()} Essential Settings")
 
         with FormRow():
             wan_auto_download = create_gr_elem(dw.wan_auto_download)
@@ -222,7 +229,7 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             with FormRow():
                 download_ti2v_5b = gr.Button("📥 TI2V-5B (30GB Download, ~16GB VRAM with offload)", variant="primary", size="sm")
 
-            gr.Markdown("**🚀 Advanced / High-End GPUs (24GB+ VRAM)**")
+            gr.Markdown(f"**{emoji_utils.rocket()} Advanced / High-End GPUs (24GB+ VRAM)**")
             with FormRow():
                 download_ti2v_a14b = gr.Button("📥 TI2V-A14B (60GB Download, ~32GB VRAM)", size="sm")
 
@@ -288,7 +295,7 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
 
     # GENERATION SETTINGS - More prominent and open by default
     gr.Markdown("---")
-    gr.Markdown("### ⚙️ Generation Settings")
+    gr.Markdown(f"### {emoji_utils.gear()} Generation Settings")
     
     with gr.Accordion("🎨 T2V / Keyframe Generation", open=True):
         with FormRow():
@@ -322,7 +329,7 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         # Only show if da (DeforumAnimArgs) is provided
         if da is not None:
             gr.Markdown("---")
-            gr.Markdown("### 🎯 Advanced FLF2V Control (For 3D Mode Tween Interpolation)")
+            gr.Markdown(f"### {emoji_utils.target()} Advanced FLF2V Control (For 3D Mode Tween Interpolation)")
             gr.Markdown("""
             **These settings control Wan FLF2V interpolation in 3D modes when "Enable FLF2V Tween Mode" is checked in the 3D Depth tab.**
 
@@ -477,8 +484,10 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     )
     
     # Detailed Documentation - Collapsed by default
-    with gr.Accordion("📚 Detailed Documentation", open=False):
-        with gr.Accordion("🎯 How Wan Integrates with Deforum Schedules", open=False):
+    books = emoji_utils.books()
+    with gr.Accordion(f"{books} Detailed Documentation", open=False):
+        target = emoji_utils.target()
+        with gr.Accordion(f"{target} How Wan Integrates with Deforum Schedules", open=False):
             gr.Markdown("""
             ### Prompt Schedule Integration
             - Wan reads your prompts from the **Prompts tab**
