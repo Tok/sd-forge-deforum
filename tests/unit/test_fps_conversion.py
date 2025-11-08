@@ -8,17 +8,50 @@ import pytest
 import sys
 from pathlib import Path
 
-# Mock emoji_utils before importing fps module
+# Mock emoji_utils before importing fps module (complete set for all tests)
 class MockEmojiUtils:
     @staticmethod
     def maybe_check(): return '✓'
+    @staticmethod
+    def maybe_cross(): return '✗'
+    @staticmethod
+    def maybe_warning(): return '⚠'
+    @staticmethod
+    def download(): return '⬇'
+    @staticmethod
+    def trash(): return '🗑'
+    @staticmethod
+    def wrench(): return '🔧'
+    @staticmethod
+    def bulb(): return '💡'
+    @staticmethod
+    def signal(): return '📶'
+    @staticmethod
+    def save(): return '💾'
+    @staticmethod
+    def refresh_icon(): return '🔄'
+    @staticmethod
+    def memo(): return '📝'
+    @staticmethod
+    def movie_camera(): return '🎬'
+    @staticmethod
+    def target(): return '🎯'
+    @staticmethod
+    def rocket(): return '🚀'
+    @staticmethod
+    def chart_increasing(): return '📈'
     @staticmethod
     def magnifying_glass(): return '🔍'
     @staticmethod
     def pencil(): return '✏️'
 
-sys.modules['deforum.utils.system.logging'] = type(sys)('deforum.utils.system.logging')
-sys.modules['deforum.utils.system.logging'].emoji = MockEmojiUtils
+# Create mock logging module
+mock_logging = type(sys)('deforum.utils.system.logging')
+mock_logging.emoji = MockEmojiUtils
+mock_logging.emoji_if_enabled = lambda emoji_str: emoji_str  # Return emoji as-is
+
+sys.modules['deforum.utils.system.logging'] = mock_logging
+sys.modules['deforum.utils.system.logging.emoji'] = MockEmojiUtils  # Mock the emoji submodule
 
 from deforum.utils.conversion.fps import (
     calculate_fps_ratio,

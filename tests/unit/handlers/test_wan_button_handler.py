@@ -23,9 +23,6 @@ class MockLogger:
     def info(self, *args, **kwargs): pass
     def debug(self, *args, **kwargs): pass
 
-sys.modules['deforum.utils.system.logging'] = type(sys)('deforum.utils.system.logging')
-sys.modules['deforum.utils.system.logging'].get_logger = lambda: MockLogger()
-
 # Mock emoji_utils
 class MockEmojiUtils:
     @staticmethod
@@ -59,7 +56,14 @@ class MockEmojiUtils:
     @staticmethod
     def chart_increasing(): return '📈'
 
-sys.modules['deforum.utils.system.logging'].emoji = MockEmojiUtils
+# Create mock logging module
+mock_logging = type(sys)('deforum.utils.system.logging')
+mock_logging.get_logger = lambda: MockLogger()
+mock_logging.emoji_if_enabled = lambda emoji_str: emoji_str  # Return emoji as-is
+mock_logging.emoji = MockEmojiUtils
+
+sys.modules['deforum.utils.system.logging'] = mock_logging
+sys.modules['deforum.utils.system.logging.emoji'] = MockEmojiUtils  # Mock the emoji submodule
 
 spec.loader.exec_module(wan_button_handler)
 
