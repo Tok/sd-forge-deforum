@@ -555,6 +555,8 @@ def get_tab_qwen(dw: SimpleNamespace):
             Returns:
                 Tuple of (keyframe_count, prompt_count, pseudo_cadence, max_frame)
             """
+            print(f"!!! update_prompt_stats CALLED with prompts_text length: {len(prompts_text) if prompts_text else 0}")
+
             from deforum.utils.system.logging import get_logger
             logger = get_logger()
 
@@ -596,6 +598,12 @@ def get_tab_qwen(dw: SimpleNamespace):
         # Note: max_frames not accessible here - will use parsed max frame instead
         from deforum.utils.system.logging import get_logger
         logger = get_logger()
+
+        print("=" * 80)
+        print("PROMPT STATISTICS: Starting event wiring")
+        print(f"  animation_prompts type: {type(animation_prompts)}")
+        print(f"  animation_prompts: {animation_prompts}")
+        print("=" * 80)
 
         try:
             logger.debug(f"Wiring prompt statistics events. animation_prompts type: {type(animation_prompts)}")
