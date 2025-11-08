@@ -275,7 +275,7 @@ def get_tab_prompts(da, dw, dv=None):
                        placeholder="words here will be added to the end of all negative prompts.  ignored with Flux."))
 
         # PROMPT TIMING SETTINGS
-        with gr.Accordion("⏱️ Prompt Timing", open=False):
+        with gr.Accordion(f"{emoji_utils.stopwatch()} Prompt Timing", open=False):
             gr.Markdown("""
             **Prompt Authored FPS:** If you authored prompts at a different FPS (e.g., 60 FPS) but want to render at another (e.g., 24 FPS), set this to auto-convert frame numbers.
 
@@ -286,7 +286,7 @@ def get_tab_prompts(da, dw, dv=None):
                 prompt_authored_fps = create_gr_elem(dv.prompt_authored_fps)
 
         # AI PROMPT ENHANCEMENT - Qwen integration
-        with gr.Accordion("🧠 AI Prompt Enhancement (Qwen)", open=False):
+        with gr.Accordion(f"{emoji_utils.brain()} AI Prompt Enhancement (Qwen)", open=False):
             gr.Markdown("""
             **Enhance your prompts using Qwen AI models** for better generation quality:
             - Refines and expands prompt descriptions
@@ -320,17 +320,17 @@ def get_tab_prompts(da, dw, dv=None):
 
                 with FormRow():
                     check_qwen_models_btn = gr.Button(
-                        "🔍 Check Model Status",
+                        f"{emoji_utils.magnifying_glass()} Check Model Status",
                         variant="secondary",
                         elem_id="wan_check_qwen_models_btn"
                     )
                     download_qwen_model_btn = gr.Button(
-                        "📥 Download Selected Model",
+                        f"{emoji_utils.download()} Download Selected Model",
                         variant="primary",
                         elem_id="wan_download_qwen_model_btn"
                     )
                     cleanup_qwen_cache_btn = gr.Button(
-                        "🧹 Cleanup Model Cache",
+                        f"{emoji_utils.broom()} Cleanup Model Cache",
                         variant="secondary",
                         elem_id="wan_cleanup_qwen_cache_btn"
                     )
@@ -396,7 +396,7 @@ def get_tab_prompts(da, dw, dv=None):
 
             with FormRow():
                 fps_converter_btn = gr.Button(
-                    "🔄 Convert Prompt Frame Numbers",
+                    f"{emoji_utils.refresh_icon()} Convert Prompt Frame Numbers",
                     variant="primary",
                     elem_id="fps_converter_btn"
                 )
@@ -426,7 +426,7 @@ def get_tab_prompts(da, dw, dv=None):
 
 def get_tab_qwen(dw: SimpleNamespace):
     """AI Prompt Enhancement Tab - Qwen model for enhancing prompts"""
-    with gr.TabItem(f"🧠 AI Enhancement"):
+    with gr.TabItem(f"{emoji_utils.brain()} AI Enhancement"):
         gr.Markdown("""
         ## AI Prompt Enhancement with Qwen
 
@@ -467,17 +467,17 @@ def get_tab_qwen(dw: SimpleNamespace):
 
             with FormRow():
                 check_qwen_models_btn = gr.Button(
-                    "🔍 Check Model Status",
+                    f"{emoji_utils.magnifying_glass()} Check Model Status",
                     variant="secondary",
                     elem_id="wan_check_qwen_models_btn"
                 )
                 download_qwen_model_btn = gr.Button(
-                    "📥 Download Selected Model",
+                    f"{emoji_utils.download()} Download Selected Model",
                     variant="primary",
                     elem_id="wan_download_qwen_model_btn"
                 )
                 cleanup_qwen_cache_btn = gr.Button(
-                    "🧹 Cleanup Model Cache",
+                    f"{emoji_utils.broom()} Cleanup Model Cache",
                     variant="secondary",
                     elem_id="wan_cleanup_qwen_cache_btn"
                 )
@@ -672,11 +672,11 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             sampling_mode = create_gr_elem(da.sampling_mode)
 
     with gr.Accordion("🌊 Optical Flow / Cadence", open=False):
-        gr.Markdown("""
+        gr.Markdown(f"""
         **Optical flow** estimates motion between frames for smooth in-between (cadence) frames.
         Enable RAFT to generate only keyframes and use motion estimation for tweens (10x speedup).
 
-        ⚠️ **WARNING:** Can produce "smear-core" artifacts with many cadence frames.
+        {emoji_utils.maybe_warning()} **WARNING:** Can produce "smear-core" artifacts with many cadence frames.
         Works best with low cadence (2-3 frames). Experimental feature - disabled by default.
         """)
         with FormRow(visible=is_visible) as optical_flow_cadence_row:
@@ -695,13 +695,13 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             with FormColumn(min_width=220, visible=False) as redo_flow_factor_schedule_column:
                 redo_flow_factor_schedule = create_gr_elem(da.redo_flow_factor_schedule)
 
-    with gr.Accordion("🌐 Flux ControlNet", open=False):
-        gr.Markdown("""
+    with gr.Accordion(f"{emoji_utils.globe()} Flux ControlNet", open=False):
+        gr.Markdown(f"""
         **Flux ControlNet** adds structural control to keyframe generation using:
         - **Canny edges** from previous frame (preserves shapes and lines)
         - **Depth maps** from Depth-Anything V2 (preserves 3D structure)
 
-        ⚠️ **Only applies to keyframes** (not tween frames). Requires Flux model.
+        {emoji_utils.maybe_warning()} **Only applies to keyframes** (not tween frames). Requires Flux model.
         """)
         with FormRow(visible=is_visible) as flux_controlnet_row_1:
             enable_flux_controlnet = create_gr_elem(da.enable_flux_controlnet)
@@ -1901,47 +1901,47 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         # Prompt Loading Buttons
         with FormRow():
             load_deforum_to_wan_btn = gr.Button(
-                "📋 Load from Deforum Prompts",
+                f"{emoji_utils.memo()} Load from Deforum Prompts",
                 variant="primary",
                 size="lg",
                 elem_id="load_deforum_to_wan_btn"
             )
             load_wan_defaults_btn = gr.Button(
-                "📝 Load Default Wan Prompts",
-                variant="secondary", 
+                f"{emoji_utils.memo()} Load Default Wan Prompts",
+                variant="secondary",
                 size="lg",
                 elem_id="load_wan_defaults_btn"
             )
-        
+
         # Wan Prompts Display - ALWAYS VISIBLE AND PROMINENT
         wan_enhanced_prompts = gr.Textbox(
             label="Flux/Wan Prompts (JSON Format)",
             lines=10,
             interactive=True,
             placeholder='REQUIRED: Load prompts first! Click "Load from Deforum Prompts" or "Load Default Wan Prompts" above.',
-            info="🎯 ESSENTIAL: These prompts will be used for Wan video generation. Edit manually or use buttons below to enhance.",
+            info=f"{emoji_utils.target()} ESSENTIAL: These prompts will be used for Wan video generation. Edit manually or use buttons below to enhance.",
             elem_id="wan_enhanced_prompts_textbox"
         )
-        
+
         # Prompt Enhancement Actions
         with FormRow():
             analyze_movement_btn = gr.Button(
-                "📐 Add Movement Descriptions",
+                f"{emoji_utils.ruler()} Add Movement Descriptions",
                 variant="secondary",
                 size="lg",
                 elem_id="wan_analyze_movement_btn"
             )
             enhance_prompts_btn = gr.Button(
-                "🎨 AI Prompt Enhancement",
+                f"{emoji_utils.palette()} AI Prompt Enhancement",
                 variant="secondary",
                 size="lg",
                 elem_id="wan_enhance_prompts_btn"
             )
-        
+
         # Camera Shakify Integration Control
         with FormRow():
             wan_enable_shakify = gr.Checkbox(
-                label="🎬 Include Camera Shakify with Movement Analysis",
+                label=f"{emoji_utils.movie_camera()} Include Camera Shakify with Movement Analysis",
                 value=True,
                 info="Enable Camera Shakify integration for movement analysis (uses settings from Keyframes → Motion → Shakify tab)",
                 elem_id="wan_enable_shakify_checkbox"
@@ -2011,7 +2011,7 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
 
         # ESSENTIAL SETTINGS - Compact
         gr.Markdown("---")
-        gr.Markdown("### ⚙️ Essential Settings")
+        gr.Markdown(f"### {emoji_utils.gear()} Essential Settings")
 
         with FormRow():
             wan_auto_download = create_gr_elem(dw.wan_auto_download)
@@ -2036,21 +2036,21 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     
     # MODEL SETTINGS - Collapsed by default
     with gr.Accordion(f"{emoji_utils.wrench()} Model Settings", open=False):
-        gr.Markdown("""
-        **📥 One-Click Model Download**: Download official Wan 2.2 models from Hugging Face!
+        gr.Markdown(f"""
+        **{emoji_utils.download()} One-Click Model Download**: Download official Wan 2.2 models from Hugging Face!
         - **TI2V-5B** (Recommended): Works with 16GB VRAM using automatic CPU offload
         - **TI2V-A14B** (Advanced): Highest quality, requires 24GB+ VRAM
         """)
 
         # Model Download Buttons
-        with gr.Accordion("📥 Download Models", open=True):
-            gr.Markdown("**✅ Recommended for Most Users (16GB+ VRAM)**")
+        with gr.Accordion(f"{emoji_utils.download()} Download Models", open=True):
+            gr.Markdown(f"**{emoji_utils.maybe_check()} Recommended for Most Users (16GB+ VRAM)**")
             with FormRow():
-                download_ti2v_5b = gr.Button("📥 TI2V-5B (30GB Download, ~16GB VRAM with offload)", variant="primary", size="sm")
+                download_ti2v_5b = gr.Button(f"{emoji_utils.download()} TI2V-5B (30GB Download, ~16GB VRAM with offload)", variant="primary", size="sm")
 
-            gr.Markdown("**🚀 Advanced / High-End GPUs (24GB+ VRAM)**")
+            gr.Markdown(f"**{emoji_utils.rocket()} Advanced / High-End GPUs (24GB+ VRAM)**")
             with FormRow():
-                download_ti2v_a14b = gr.Button("📥 TI2V-A14B (60GB Download, ~32GB VRAM)", size="sm")
+                download_ti2v_a14b = gr.Button(f"{emoji_utils.download()} TI2V-A14B (60GB Download, ~32GB VRAM)", size="sm")
 
             download_status = gr.Textbox(
                 label="Download Status",
@@ -2114,9 +2114,9 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
 
     # GENERATION SETTINGS - More prominent and open by default
     gr.Markdown("---")
-    gr.Markdown("### ⚙️ Generation Settings")
-    
-    with gr.Accordion("🎨 T2V / Keyframe Generation", open=True):
+    gr.Markdown(f"### {emoji_utils.gear()} Generation Settings")
+
+    with gr.Accordion(f"{emoji_utils.palette()} T2V / Keyframe Generation", open=True):
         with FormRow():
             wan_strength_override = create_gr_elem(dw.wan_strength_override)
             wan_fixed_strength = create_gr_elem(dw.wan_fixed_strength)
@@ -2232,40 +2232,40 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             )
     
     # QWEN MODEL MANAGEMENT - Collapsed by default
-    with gr.Accordion("🧠 Qwen Model Management", open=False):
+    with gr.Accordion(f"{emoji_utils.brain()} Qwen Model Management", open=False):
         gr.Markdown("""
         **Model Information & Auto-Download Status**
-        
+
         Monitor Qwen model availability and manage downloads:
         """)
-        
+
         qwen_model_status = gr.HTML(
             label="Qwen Model Status",
             value="⏳ Checking model availability...",
             elem_id="wan_qwen_model_status"
         )
-        
+
         with FormRow():
             check_qwen_models_btn = gr.Button(
-                "🔍 Check Model Status",
+                f"{emoji_utils.magnifying_glass()} Check Model Status",
                 variant="secondary",
                 elem_id="wan_check_qwen_models_btn"
             )
             download_qwen_model_btn = gr.Button(
-                "📥 Download Selected Model",
+                f"{emoji_utils.download()} Download Selected Model",
                 variant="primary",
                 elem_id="wan_download_qwen_model_btn"
             )
             cleanup_qwen_cache_btn = gr.Button(
-                "🧹 Cleanup Model Cache",
+                f"{emoji_utils.broom()} Cleanup Model Cache",
                 variant="secondary",
                 elem_id="wan_cleanup_qwen_cache_btn"
             )
 
     # Auto-Discovery and Setup Information
-    with gr.Accordion("📥 Model Auto-Discovery & Setup", open=False):
-        gr.Markdown("""
-        **✅ Auto-Discovery System**
+    with gr.Accordion(f"{emoji_utils.download()} Model Auto-Discovery & Setup", open=False):
+        gr.Markdown(f"""
+        **{emoji_utils.maybe_check()} Auto-Discovery System**
         
         Wan automatically finds models in these locations:
         - `models/Deforum/wan/` (recommended)
