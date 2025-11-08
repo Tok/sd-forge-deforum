@@ -118,9 +118,11 @@ def create_keyframe_timeline_plot(
     total_frames: int,
     duration: float,
     fps: int,
-    prompts: List[str] = None
+    prompts: List[str] = None,
+    audio_data=None,
+    sample_rate: int = None
 ):
-    """Create interactive Plotly timeline visualization of keyframe placement.
+    """Create interactive Plotly timeline visualization with audio waveform.
 
     Args:
         keyframes: List of keyframe dicts with 'frame' and optional 'intensity'
@@ -128,6 +130,8 @@ def create_keyframe_timeline_plot(
         duration: Audio duration in seconds
         fps: Frames per second
         prompts: Optional list of prompts corresponding to keyframes
+        audio_data: Optional numpy array of audio samples for waveform display
+        sample_rate: Audio sample rate (required if audio_data provided)
 
     Returns:
         Plotly Figure object with theme-aware timeline visualization
@@ -170,6 +174,53 @@ def create_keyframe_timeline_plot(
     # Create figure
     fig = go.Figure()
 
+    # Add audio waveform if provided (background layer)
+    if audio_data is not None and sample_rate is not None:
+        import numpy as np
+
+        # Downsample audio to match frame count for efficient visualization
+        # Use RMS (root mean square) for amplitude envelope
+        samples_per_frame = len(audio_data) // total_frames
+        if samples_per_frame < 1:
+            samples_per_frame = 1
+
+        frame_amplitudes = []
+        for i in range(total_frames):
+            start_idx = i * samples_per_frame
+            end_idx = min(start_idx + samples_per_frame, len(audio_data))
+            if start_idx < len(audio_data):
+                chunk = audio_data[start_idx:end_idx]
+                # RMS amplitude for this frame
+                rms = np.sqrt(np.mean(chunk**2))
+                frame_amplitudes.append(rms)
+            else:
+                frame_amplitudes.append(0.0)
+
+        # Normalize to 0-0.4 range (lower half of plot)
+        if frame_amplitudes:
+            max_amp = max(frame_amplitudes) if max(frame_amplitudes) > 0 else 1.0
+            normalized_amps = [a / max_amp * 0.4 for a in frame_amplitudes]
+        else:
+            normalized_amps = [0.0] * total_frames
+
+        # Create frame x-axis
+        frame_x = list(range(total_frames))
+
+        # Add waveform as filled area (subtle background)
+        waveform_color = f'rgba{tuple(list(int(marker_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [0.2])}'  # 20% opacity
+
+        fig.add_trace(go.Scatter(
+            x=frame_x,
+            y=normalized_amps,
+            mode='lines',
+            fill='tozeroy',
+            line=dict(color=waveform_color, width=1),
+            fillcolor=waveform_color,
+            hoverinfo='skip',
+            showlegend=False,
+            name='Audio Waveform'
+        ))
+
     # Extract frame numbers and intensities
     frame_numbers = [kf['frame'] for kf in keyframes]
     intensities = [kf.get('intensity', 1.0) for kf in keyframes]
@@ -206,15 +257,30 @@ def create_keyframe_timeline_plot(
             for f, t, i in zip(frame_numbers, timestamps, intensities)
         ]
 
-    # Add timeline markers as scatter plot (Y=0.5 for centered positioning)
+    # Add keyframe markers as vertical lines spanning from bottom to top
+    for i, (frame, intensity, hover) in enumerate(zip(frame_numbers, intensities, hover_texts)):
+        fig.add_trace(go.Scatter(
+            x=[frame, frame],
+            y=[0, 1],
+            mode='lines',
+            line=dict(
+                color=marker_color,
+                width=2 + (normalized_intensities[i] * 3),  # Width based on intensity (2-5px)
+            ),
+            hovertemplate=f'{hover}<extra></extra>',
+            showlegend=False,
+            opacity=0.7
+        ))
+
+    # Add marker dots at the top of each keyframe line for better visibility
     fig.add_trace(go.Scatter(
         x=frame_numbers,
-        y=[0.5] * len(frame_numbers),
+        y=[0.95] * len(frame_numbers),
         mode='markers',
         marker=dict(
-            size=marker_sizes,
+            size=[8 + ni * 6 for ni in normalized_intensities],  # 8-14 based on intensity
             color=marker_color,
-            symbol='line-ns-open',  # Vertical line symbol
+            symbol='circle',
             line=dict(color=line_color, width=2),
             opacity=0.9
         ),
@@ -223,21 +289,17 @@ def create_keyframe_timeline_plot(
         showlegend=False
     ))
 
-    # Add horizontal reference line (timeline base)
-    fig.add_trace(go.Scatter(
-        x=[0, total_frames],
-        y=[0.5, 0.5],
-        mode='lines',
-        line=dict(color=grid_color, width=1, dash='dot'),
-        hoverinfo='skip',
-        showlegend=False
-    ))
-
-    # Update layout for compact timeline appearance
+    # Update layout for timeline with waveform
     fig.update_layout(
         paper_bgcolor=bg_color,
         plot_bgcolor=plot_bg,
         font=dict(color=text_color, family='system-ui, -apple-system, sans-serif', size=10),
+        title=dict(
+            text=f'Audio Sync Timeline: {len(keyframes)} Keyframes across {total_frames} Frames ({duration:.1f}s @ {fps} FPS)',
+            font=dict(size=12, color=text_color),
+            x=0.5,
+            xanchor='center'
+        ),
         xaxis=dict(
             title=dict(text='Frame Number', font=dict(size=11)),
             range=[0, total_frames],
@@ -253,8 +315,8 @@ def create_keyframe_timeline_plot(
             showticklabels=False,
             zeroline=False
         ),
-        margin=dict(l=40, r=20, t=10, b=40),
-        height=200,  # Compact timeline height
+        margin=dict(l=40, r=20, t=40, b=40),
+        height=280,  # Taller to show waveform + keyframes
         hovermode='closest',
         showlegend=False
     )

@@ -496,7 +496,9 @@ def synchronize_prompts_to_audio(
             total_frames=total_frames,
             duration=duration,
             fps=current_fps,
-            prompts=prompts
+            prompts=prompts,
+            audio_data=y_processed,
+            sample_rate=sr
         )
 
         status_msg = _build_success_status(
