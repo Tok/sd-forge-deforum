@@ -2304,241 +2304,106 @@ def get_tab_output(da, dv):
 # QwenPromptExpander and Movement Analysis Event Handlers - moved outside for proper import
 def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download):
     """Handle prompt enhancement with QwenPromptExpander with progress feedback"""
-    # Theme-aware emoji symbols
-    from deforum.utils.system.logging import emoji as emoji_utils
-    check = emoji_utils.maybe_check()
-    cross = emoji_utils.maybe_cross()
-    warning = emoji_utils.maybe_warning()
-    palette = emoji_utils.palette()
-    memo = emoji_utils.memo()
-    wrench = emoji_utils.wrench()
-    hourglass = emoji_utils.hourglass()
-    download = emoji_utils.download()
-    bulb = emoji_utils.bulb()
-    refresh_icon = emoji_utils.refresh_icon()
-    robot = emoji_utils.robot()
-    magnifying_glass = emoji_utils.magnifying_glass()
-    pencil = emoji_utils.pencil()
-    chart_increasing = emoji_utils.chart_increasing()
-    save = emoji_utils.save()
-    sparkles = emoji_utils.sparkles()
-    ruler = emoji_utils.ruler()
-    party = emoji_utils.party()
+    from deforum.ui.handlers.enhance_prompts_handler import (
+        load_enhance_prompts_emojis,
+        validate_auto_download,
+        handle_model_switching,
+        log_model_selection,
+        parse_wan_prompts,
+        validate_prompts_content,
+        create_prompt_expander,
+        enhance_prompts_with_movement,
+    )
+    import json
+
+    # Load emojis
+    emojis = load_enhance_prompts_emojis()
 
     try:
         from deforum.integrations.wan.utils.qwen_manager import qwen_manager
-        import json
+        from deforum.utils.system.logging import emoji as emoji_utils
 
         logger.info(f"AI Prompt Enhancement requested for {qwen_model}", emoji='palette')
-        logger.info(f"{memo} Received prompts: {str(current_prompts)[:100]}...")
+        logger.info(f"{emojis['memo']} Received prompts: {str(current_prompts)[:100]}...")
 
         # Progress: Start
-        progress_update = f"{palette} Starting AI Prompt Enhancement...\n"
-        
-        # Check if auto-download is enabled for model availability
-        if not auto_download:
-            # Check if the selected model is available
-            if not qwen_manager.is_model_downloaded(qwen_model):
-                return f"""{cross} Qwen model not available: {qwen_model}
+        progress_update = f"{emojis['palette']} Starting AI Prompt Enhancement...\n"
 
-{wrench} **Model Download Required:**
-1. {check} Enable "Auto-Download Qwen Models" checkbox
-2. {palette} Click "AI Prompt Enhancement" again to auto-download
-3. {hourglass} Wait for download to complete
-
-{download} **Manual Download Alternative:**
-1. Use HuggingFace CLI: `huggingface-cli download {qwen_manager.get_model_info(qwen_model).get('huggingface_id', 'model-id')}`
-2. {check} Enable auto-download for easier setup
-
-{bulb} **Auto-download is recommended** for seamless model management.""", progress_update + f"{cross} Model not available - enable auto-download!"
+        # Validate auto-download for model availability
+        is_valid, error_msg, progress_update = validate_auto_download(
+            qwen_manager, qwen_model, auto_download, emojis, progress_update
+        )
+        if not is_valid:
+            return error_msg, progress_update
 
         # Progress: Model check
-        progress_update += f"{magnifying_glass} Checking model availability...\n"
+        progress_update += f"{emojis['magnifying_glass']} Checking model availability...\n"
 
-        # Check if a model is already loaded
-        if qwen_manager.is_model_loaded():
-            loaded_info = qwen_manager.get_loaded_model_info()
-            current_model = loaded_info['name'] if loaded_info else "Unknown"
+        # Handle model switching if different model requested
+        progress_update = handle_model_switching(qwen_manager, qwen_model, emojis, progress_update)
 
-            # If different model requested, cleanup first
-            if qwen_model != "Auto-Select" and current_model != qwen_model:
-                logger.info(f"Switching from {current_model} to {qwen_model}", emoji='refresh')
-                progress_update += f"{refresh_icon} Switching from {current_model} to {qwen_model}...\n"
-                qwen_manager.cleanup_cache()
+        # Log model selection if needed
+        progress_update = log_model_selection(qwen_manager, qwen_model, emojis, progress_update)
 
-        # Progress: Model loading
-        if not qwen_manager.is_model_loaded():
-            if qwen_model == "Auto-Select":
-                selected_model = qwen_manager.auto_select_model()
-                logger.info(f"{robot} Auto-selected model: {selected_model}")
-                progress_update += f"{robot} Auto-selected model: {selected_model}\n"
-            else:
-                logger.info(f"{download} Loading Qwen model: {qwen_model}")
-                progress_update += f"{download} Loading Qwen model: {qwen_model}...\n"
-        
-        # Get wan prompts from the current_prompts parameter (passed directly)
-        animation_prompts = None
-        
-        if current_prompts and current_prompts.strip():
-            try:
-                # Try to parse as JSON first
-                animation_prompts = json.loads(current_prompts)
-                logger.info(f"{emoji_utils.maybe_check()} Successfully parsed {len(animation_prompts)} Wan prompts as JSON")
-                progress_update += f"{check} Parsed {len(animation_prompts)} prompts successfully\n"
-            except json.JSONDecodeError:
-                # Try to parse as readable format (Frame X: prompt)
-                try:
-                    animation_prompts = {}
-                    for line in current_prompts.strip().split('\n'):
-                        if ':' in line:
-                            # Handle both "Frame X:" and "X:" formats
-                            parts = line.split(':', 1)
-                            frame_part = parts[0].strip()
-                            prompt_part = parts[1].strip()
+        # Parse Wan prompts from current_prompts
+        animation_prompts, error_msg, progress_update = parse_wan_prompts(
+            current_prompts, emojis, progress_update
+        )
+        if error_msg:
+            return error_msg, progress_update
 
-                            # Extract frame number
-                            if frame_part.lower().startswith('frame '):
-                                frame_num = frame_part[6:].strip()
-                            else:
-                                frame_num = frame_part
-
-                            animation_prompts[frame_num] = prompt_part
-
-                    if animation_prompts:
-                        logger.info(f"{emoji_utils.maybe_check()} Successfully parsed {len(animation_prompts)} Wan prompts as readable format")
-                        progress_update += f"{check} Parsed {len(animation_prompts)} prompts from readable format\n"
-                    else:
-                        raise ValueError("No valid prompts found")
-                except Exception as e:
-                    logger.error(f"Could not parse Wan prompts: {e}", emoji='off')
-                    error_msg = f"{cross} Invalid format in Wan prompts. Expected JSON format like:\n{{\n  \"0\": \"prompt text\",\n  \"60\": \"another prompt\"\n}}\n\nOr readable format like:\nFrame 0: prompt text\nFrame 60: another prompt"
-                    return error_msg, progress_update + f"{cross} Failed to parse prompts!"
-        else:
-            logger.warning(f"{warning} Empty Wan prompts")
-            
-        # Check if we got valid prompts
-        if not animation_prompts:
-            error_msg = f"""{cross} No Wan prompts found!
-
-{wrench} **Setup Required:**
-1. {memo} Load prompts using "Load from Deforum Prompts" or "Load Default Wan Prompts"
-2. {memo} Make sure your prompts are in proper JSON format like:
-   {{
-     "0": "prompt text",
-     "60": "another prompt",
-     "120": "a cyberpunk environment with glowing elements"
-   }}
-3. {palette} Click **AI Prompt Enhancement** again after setting up prompts
-
-{bulb} **Quick Start:**
-Click "Load Default Wan Prompts" to start with example prompts!"""
-            return error_msg, progress_update + f"{cross} No prompts to enhance!"
-
-        # Validate prompts content
-        if len(animation_prompts) == 1 and "0" in animation_prompts and "beautiful landscape" in animation_prompts["0"]:
-            error_msg = f"""{cross} Default prompts detected!
-
-{wrench} **Please configure your actual animation prompts:**
-1. {memo} Load your real prompts using the load buttons above
-2. {pencil} Or manually edit the Wan prompts field
-3. {palette} Click **AI Prompt Enhancement** again
-
-{bulb} **For your animation sequence:**
-Set up prompts like:
-{{{{
-  "0": "A peaceful scene, photorealistic",
-  "18": "A scene with glowing effects, neon colors, synthwave aesthetic",
-  "36": "A cyberpunk scene with LED patterns, digital environment"
-}}}}"""
-            return error_msg, progress_update + f"{cross} Default prompts detected!"
+        # Validate prompts content (not empty, not default)
+        is_valid, error_msg, progress_update = validate_prompts_content(
+            animation_prompts, emojis, progress_update
+        )
+        if not is_valid:
+            return error_msg, progress_update
 
         logger.info(f"Enhancing {len(animation_prompts)} Wan prompts with {qwen_model}", emoji='palette')
-        progress_update += f"{palette} Starting enhancement of {len(animation_prompts)} prompts...\n"
+        progress_update += f"{emojis['palette']} Starting enhancement of {len(animation_prompts)} prompts...\n"
 
-        # Create the Qwen prompt expander with better error handling
+        # Create prompt expander
+        prompt_expander, error_msg, progress_update = create_prompt_expander(
+            qwen_manager, qwen_model, auto_download, emojis, progress_update
+        )
+        if error_msg:
+            return error_msg, progress_update
+
+        # Enhance prompts and append movement descriptions
         try:
-            progress_update += f"{download} Creating AI model instance...\n"
-            prompt_expander = qwen_manager.create_prompt_expander(qwen_model, auto_download)
-
-            if not prompt_expander:
-                if auto_download:
-                    error_msg = f"""{hourglass} Downloading {qwen_model} model...
-
-{refresh_icon} **Download in Progress:**
-Model download started automatically. This may take a few minutes.
-
-{download} **Please wait** and try clicking "AI Prompt Enhancement" again in 30-60 seconds.
-
-{bulb} **Status**: Check console for download progress."""
-                    return error_msg, progress_update + f"{hourglass} Downloading {qwen_model}..."
-                else:
-                    error_msg = f"""{cross} Failed to create Qwen prompt expander: {qwen_model}
-
-{wrench} **Solutions:**
-1. {check} Enable "Auto-Download Qwen Models" and try again
-2. {download} Manual download: Check console for HuggingFace CLI commands
-3. {refresh_icon} Restart WebUI after downloading
-
-{chart_increasing} **Model Info**: {qwen_manager.get_model_info(qwen_model).get('description', 'N/A')}"""
-                    return error_msg, progress_update + f"{cross} Failed to create AI model!"
-        except Exception as e:
-            error_msg = f"""{cross} Error creating Qwen prompt expander: {str(e)}
-
-{wrench} **Troubleshooting:**
-1. {check} Enable auto-download and try again
-2. {refresh_icon} Restart WebUI if models were just downloaded
-3. {save} Check available disk space ({qwen_manager.get_model_info(qwen_model).get('vram_gb', 'Unknown')}GB VRAM required)
-
-{bulb} **Tip**: Try selecting "Auto-Select" for automatic model choice."""
-            return error_msg, progress_update + f"{cross} Error: {str(e)}"
-        
-        # Use the QwenModelManager's enhance_prompts method directly
-        try:
-            progress_update += f"{sparkles} Enhancing prompts with AI...\n"
-            enhanced_prompts_dict = qwen_manager.enhance_prompts(
-                prompts=animation_prompts,
-                model_name=qwen_model,
-                language=language,
-                auto_download=auto_download
+            enhanced_prompts_dict, progress_update = enhance_prompts_with_movement(
+                qwen_manager,
+                animation_prompts,
+                qwen_model,
+                language,
+                auto_download,
+                enhance_prompts_handler,
+                emojis,
+                progress_update
             )
-
-            # Check if movement descriptions are available and append them
-            movement_description = ""
-            if hasattr(enhance_prompts_handler, '_movement_description'):
-                movement_description = enhance_prompts_handler._movement_description
-                logger.info(f"{ruler} Found movement description to append: {movement_description}")
-                progress_update += f"{ruler} Adding movement descriptions...\n"
-
-            # Append movement descriptions to enhanced prompts if available
-            if movement_description and movement_description.strip():
-                for frame_key in enhanced_prompts_dict:
-                    original_prompt = enhanced_prompts_dict[frame_key]
-                    enhanced_prompts_dict[frame_key] = f"{original_prompt}. {movement_description}"
-                logger.info(f"{emoji_utils.maybe_check()} Appended movement description to {len(enhanced_prompts_dict)} enhanced prompts")
-                progress_update += f"{check} Added movement to {len(enhanced_prompts_dict)} prompts\n"
 
             # Format the enhanced prompts as JSON
             enhanced_json = json.dumps(enhanced_prompts_dict, ensure_ascii=False, indent=2)
 
             logger.info(f"{emoji_utils.maybe_check()} Successfully enhanced {len(enhanced_prompts_dict)} prompts")
-            progress_update += f"{check} Enhancement complete! {len(enhanced_prompts_dict)} prompts ready\n"
+            progress_update += f"{emojis['check']} Enhancement complete! {len(enhanced_prompts_dict)} prompts ready\n"
 
             # Return the enhanced prompts and success progress
-            return enhanced_json, progress_update + f"{party} Ready for generation!"
-            
+            return enhanced_json, progress_update + f"{emojis['party']} Ready for generation!"
+
         except Exception as e:
             logger.error(f"Error enhancing prompts: {e}", emoji='off')
             import traceback
             traceback.print_exc()
-            error_msg = f"{cross} Error enhancing prompts: {str(e)}"
-            return error_msg, progress_update + f"{cross} Enhancement failed: {str(e)}"
+            error_msg = f"{emojis['cross']} Error enhancing prompts: {str(e)}"
+            return error_msg, progress_update + f"{emojis['cross']} Enhancement failed: {str(e)}"
 
     except Exception as e:
         logger.info(f"Fatal error in enhance_prompts_handler: {e}", emoji='off')
         import traceback
         traceback.print_exc()
-        error_msg = f"{cross} Fatal error: {str(e)}"
-        return error_msg, f"{cross} Fatal error: {str(e)}"
+        error_msg = f"{emojis['cross']} Fatal error: {str(e)}"
+        return error_msg, f"{emojis['cross']} Fatal error: {str(e)}"
 
 
 def analyze_movement_handler(current_prompts, enable_shakify=True, sensitivity_override=False, manual_sensitivity=1.0):
