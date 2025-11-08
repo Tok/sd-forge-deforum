@@ -953,19 +953,50 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         scale=1
                     )
 
-                # Status output
-                audio_sync_status = gr.Textbox(
-                    label="Sync Status",
-                    value="",
-                    interactive=False,
-                    lines=8,
-                    info="Status messages will appear here"
-                )
+                # Structured sync info display (prominent key metrics)
+                with FormRow():
+                    audio_sync_keyframe_count_display = gr.Number(
+                        label=f"{emoji_utils.key()} Keyframes",
+                        value=0,
+                        interactive=False,
+                        precision=0,
+                        scale=1
+                    )
+                    audio_sync_pseudo_cadence_display = gr.Number(
+                        label=f"{emoji_utils.frames()} Pseudo-Cadence",
+                        value=0,
+                        interactive=False,
+                        precision=1,
+                        scale=1,
+                        info="Avg frames between keyframes"
+                    )
+                    audio_sync_bpm_display = gr.Number(
+                        label=f"{emoji_utils.music()} Estimated BPM",
+                        value=0,
+                        interactive=False,
+                        precision=1,
+                        scale=1
+                    )
+                    audio_sync_duration_display = gr.Textbox(
+                        label=f"{emoji_utils.stopwatch()} Duration",
+                        value="",
+                        interactive=False,
+                        scale=1
+                    )
 
-                # Interactive timeline visualization
+                # Interactive timeline visualization (above status for better visibility)
                 audio_sync_timeline = gr.Plot(
                     label="Keyframe Timeline",
                     show_label=True
+                )
+
+                # Simplified status output (less stringy, more concise)
+                audio_sync_status = gr.Textbox(
+                    label="Sync Details",
+                    value="",
+                    interactive=False,
+                    lines=4,
+                    info="Additional sync information"
                 )
 
             # PARSEQ INNER-TAB
@@ -1023,7 +1054,11 @@ def get_tab_init(d, da, dp, dau, dv=None):
     audio_component_names = [
         'audio_ai_generation_mode', 'audio_ai_intensity', 'audio_ai_style',
         'audio_ai_prompt_theme', 'audio_ai_prompt_count', 'audio_ai_start_prompt',
-        'audio_ai_end_prompt', 'audio_sync_prompts'
+        'audio_ai_end_prompt', 'audio_sync_prompts',
+        'audio_sync_keyframe_count_display',
+        'audio_sync_pseudo_cadence_display',
+        'audio_sync_bpm_display',
+        'audio_sync_duration_display'
     ]
 
     local_scope = locals()
@@ -1031,6 +1066,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
     missing_components = [name for name in audio_component_names if name not in local_scope]
 
     logger.debug(f"{emoji_utils.magnifying_glass()} DEBUG get_tab_init() return:")
+    logger.debug(f"   audio_component_names has {len(audio_component_names)} items: {audio_component_names}")
     logger.debug(f"   Found in locals(): {found_components}")
     logger.debug(f"   Missing from locals(): {missing_components}")
 
