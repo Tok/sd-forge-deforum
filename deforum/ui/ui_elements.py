@@ -256,7 +256,7 @@ def get_tab_prompts(da, dw, dv=None):
         from types import SimpleNamespace
         dv = SimpleNamespace(**DeforumOutputArgs())
 
-    with gr.TabItem(f"{emoji_utils.prompts()} Prompts"):
+    with gr.TabItem(f"{emoji_utils.prompts()} Prompts") as prompts_tab:
         # PROMPTS INFO ACCORD
         with gr.Accordion(label='*Important* notes on Prompts', elem_id='prompts_info_accord',
                           open=False) as prompts_info_accord:
@@ -587,6 +587,18 @@ def get_tab_qwen(dw: SimpleNamespace):
         # Wire animation_prompts to update stats displays on change
         # Note: max_frames not accessible here - will use parsed max frame instead
         animation_prompts.change(
+            fn=lambda prompts: update_prompt_stats(prompts, 0),
+            inputs=[animation_prompts],
+            outputs=[
+                prompts_keyframe_count_display,
+                prompts_prompt_count_display,
+                prompts_pseudo_cadence_display,
+                prompts_max_frames_display
+            ]
+        )
+
+        # Calculate stats when Prompts tab is selected (includes initial load)
+        prompts_tab.select(
             fn=lambda prompts: update_prompt_stats(prompts, 0),
             inputs=[animation_prompts],
             outputs=[
