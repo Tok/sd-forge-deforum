@@ -25,8 +25,8 @@ def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, st
     Returns:
         str: Generated prompts (one per line)
     """
-    logger.debug(f"AI PROMPT GENERATION BUTTON CLICKED!", emoji='palette')
-    logger.debug(f"   Mode: {generation_mode}, Intensity: {intensity}, Style: {style}, Theme: {theme}, Count: {count}")
+    logger.info(f"AI PROMPT GENERATION BUTTON CLICKED!", emoji='palette')
+    logger.info(f"   Mode: {generation_mode}, Intensity: {intensity}, Style: {style}, Theme: {theme}, Count: {count}")
 
     try:
         from deforum.integrations.wan.utils.prompt_extend import QwenPromptExpander

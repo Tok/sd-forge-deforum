@@ -5,10 +5,44 @@ Extracted from ui_left.py to reduce complexity.
 """
 
 import gradio as gr
+import plotly.graph_objects as go
 from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
 logger = get_logger()
+
+
+def create_empty_timeline_plot(message: str = "No data") -> go.Figure:
+    """Create empty timeline plot for error/empty states.
+
+    Args:
+        message: Message to display in empty plot
+
+    Returns:
+        Empty Plotly Figure with message
+    """
+    fig = go.Figure()
+    fig.update_layout(
+        paper_bgcolor='#0F172A',
+        plot_bgcolor='#1E293B',
+        font=dict(color='#CBD5E1'),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        annotations=[
+            dict(
+                text=message,
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+                font=dict(size=14, color='#94A3B8')
+            )
+        ],
+        margin=dict(l=40, r=20, t=10, b=40),
+        height=200
+    )
+    return fig
 
 
 
@@ -65,12 +99,14 @@ def synchronize_prompts_to_audio(
     try:
         # 1. VALIDATION: Check soundtrack path
         if not soundtrack_path_val or not soundtrack_path_val.strip():
-            return gr.update(), gr.update(), gr.update(), "✗ Error: Please provide a soundtrack path or URL"
+            empty_plot = create_empty_timeline_plot("Please provide a soundtrack path")
+            return gr.update(), gr.update(), empty_plot, "✗ Error: Please provide a soundtrack path or URL"
 
         # 2. PARSE PROMPTS: Extract prompts from prompt list
         prompts = parse_prompt_list(audio_sync_prompts_val)
         if not prompts:
-            return gr.update(), gr.update(), gr.update(), "✗ Error: Please enter at least one prompt"
+            empty_plot = create_empty_timeline_plot("Please enter prompts")
+            return gr.update(), gr.update(), empty_plot, "✗ Error: Please enter at least one prompt"
 
         logger.info(f"{emoji_if_enabled('✅')} Parsed {len(prompts)} prompts from input")
 
@@ -104,7 +140,8 @@ def synchronize_prompts_to_audio(
 
             logger.info(f"{emoji_if_enabled('✅')} Loaded audio: {duration:.2f}s at {sr}Hz")
         except Exception as e:
-            return gr.update(), gr.update(), gr.update(), f"✗ Error loading audio: {str(e)}"
+            empty_plot = create_empty_timeline_plot("Error loading audio")
+            return gr.update(), gr.update(), empty_plot, f"✗ Error loading audio: {str(e)}"
 
         # 4. DETECT EVENTS: Detect beats/onsets in audio
         event_times, event_intensities = detect_events(
@@ -115,7 +152,8 @@ def synchronize_prompts_to_audio(
         )
 
         if len(event_times) == 0:
-            return gr.update(), gr.update(), gr.update(), f"✗ Error: No audio events detected. Check your audio file."
+            empty_plot = create_empty_timeline_plot("No audio events detected")
+            return gr.update(), gr.update(), empty_plot, f"✗ Error: No audio events detected. Check your audio file."
 
         logger.info(f"{emoji_if_enabled('✅')} Detected {len(event_times)} events using {detection_method} method")
 
@@ -136,7 +174,7 @@ def synchronize_prompts_to_audio(
         keyframes_per_beat = calculate_keyframes_per_beat(estimated_bpm)
         bpm_based_target = calculate_bpm_based_target(audio_data['duration'], estimated_bpm, keyframes_per_beat)
 
-        logger.debug(f"Estimated BPM: {estimated_bpm:.1f}, keyframes_per_beat: {keyframes_per_beat}, bpm_target: {bpm_based_target}")
+        logger.info(f"Estimated BPM: {estimated_bpm:.1f}, keyframes_per_beat: {keyframes_per_beat}, bpm_target: {bpm_based_target}")
 
         # Convert target_count to int (comes from UI as string)
         user_target = int(target_count) if target_count else 0
@@ -216,13 +254,15 @@ def synchronize_prompts_to_audio(
 
             keyframes = best_keyframes
             if not keyframes:
-                return gr.update(), gr.update(), gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
+                empty_plot = create_empty_timeline_plot("No keyframes generated")
+                return gr.update(), gr.update(), empty_plot, "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
 
             logger.info(f"{emoji_if_enabled('✅')} Generated {len(keyframes)} keyframes with spacing ≥{best_spacing} frames")
 
         # Final validation
         if not keyframes:
-            return gr.update(), gr.update(), gr.update(), "✗ Error: No keyframes generated. Try adjusting detection settings."
+            empty_plot = create_empty_timeline_plot("No keyframes generated")
+            return gr.update(), gr.update(), empty_plot, "✗ Error: No keyframes generated. Try adjusting detection settings."
 
         # 8. DISTRIBUTE PROMPTS: Assign prompts to keyframes
         # Returns JSON string ready for Deforum animation_prompts format
@@ -266,11 +306,11 @@ def synchronize_prompts_to_audio(
         logger.info(f"   Total frames: {total_frames}")
         logger.info("="*80)
 
-        logger.info(f"{emoji_if_enabled('🔍')} DEBUG synchronize_prompts_to_audio return:")
-        logger.info(f"   formatted_schedule type: {type(formatted_schedule)}, length: {len(formatted_schedule)}")
-        logger.info(f"   formatted_schedule preview: {formatted_schedule[:100]}...")
-        logger.info(f"   target_count: {len(keyframes)}")
-        logger.info(f"   Returning timeline plot and status")
+        logger.debug(f"{emoji_if_enabled('🔍')} DEBUG synchronize_prompts_to_audio return:")
+        logger.debug(f"   formatted_schedule type: {type(formatted_schedule)}, length: {len(formatted_schedule)}")
+        logger.debug(f"   formatted_schedule preview: {formatted_schedule[:100]}...")
+        logger.debug(f"   target_count: {len(keyframes)}")
+        logger.debug(f"   Returning timeline plot and status")
 
         return (
             gr.update(value=formatted_schedule),
@@ -282,4 +322,5 @@ def synchronize_prompts_to_audio(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return gr.update(), gr.update(), gr.update(), f"✗ Error: {str(e)}"
+        empty_plot = create_empty_timeline_plot("Error during sync")
+        return gr.update(), gr.update(), empty_plot, f"✗ Error: {str(e)}"
