@@ -2914,11 +2914,11 @@ Click "Load Default Wan Prompts" to start with example prompts!"""
 
 {bulb} **For your animation sequence:**
 Set up prompts like:
-{
+{{{{
   "0": "A peaceful scene, photorealistic",
   "18": "A scene with glowing effects, neon colors, synthwave aesthetic",
   "36": "A cyberpunk scene with LED patterns, digital environment"
-}}"""
+}}}}"""
             return error_msg, progress_update + f"{cross} Default prompts detected!"
 
         logger.info(f"Enhancing {len(animation_prompts)} Wan prompts with {qwen_model}", emoji='palette')
