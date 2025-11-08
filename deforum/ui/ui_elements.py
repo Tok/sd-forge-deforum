@@ -250,6 +250,10 @@ def get_tab_keyframes(d, da, dloopArgs):
 
 
 def get_tab_prompts(da, dw, dv=None):
+    print("=" * 80)
+    print("!!! GET_TAB_PROMPTS FUNCTION CALLED")
+    print("=" * 80)
+
     # Import dv if not provided
     if dv is None:
         from deforum.config.args import DeforumOutputArgs
