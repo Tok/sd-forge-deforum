@@ -19,21 +19,66 @@ def real_emoji_module():
     spec = importlib.util.spec_from_file_location("real_emoji", emoji_path)
     real_emoji = importlib.util.module_from_spec(spec)
 
-    # Need to ensure deforum.rendering.options exists for the import
-    # Mock it minimally
+    # Save original sys.modules state for cleanup
+    original_rendering = sys.modules.get('deforum.rendering')
+    original_options = sys.modules.get('deforum.rendering.options')
+    original_logging = sys.modules.get('deforum.utils.system.logging')
+    original_logger = sys.modules.get('deforum.utils.system.logging.logger')
+
+    # Properly set up deforum.rendering module hierarchy
+    # Need both the parent module AND the submodule
     mock_options = MagicMock()
     mock_options.is_emojis_enabled = Mock(return_value=True)
-    if 'deforum.rendering.options' not in sys.modules:
-        sys.modules['deforum.rendering.options'] = mock_options
+
+    # Create or update deforum.rendering module
+    if 'deforum.rendering' not in sys.modules:
+        mock_rendering = MagicMock()
+        mock_rendering.options = mock_options
+        sys.modules['deforum.rendering'] = mock_rendering
+    else:
+        # If it exists, add the options attribute
+        sys.modules['deforum.rendering'].options = mock_options
+
+    # Also add to sys.modules for direct import
+    sys.modules['deforum.rendering.options'] = mock_options
 
     # Mock logger module for emoji_if_enabled
     mock_logger = MagicMock()
     mock_logger.emoji_if_enabled = Mock(side_effect=lambda x: x)  # Return emoji as-is
-    if 'deforum.utils.system.logging.logger' not in sys.modules:
-        sys.modules['deforum.utils.system.logging.logger'] = mock_logger
+
+    if 'deforum.utils.system.logging' not in sys.modules:
+        mock_logging = MagicMock()
+        mock_logging.logger = mock_logger
+        sys.modules['deforum.utils.system.logging'] = mock_logging
+    else:
+        sys.modules['deforum.utils.system.logging'].logger = mock_logger
+
+    sys.modules['deforum.utils.system.logging.logger'] = mock_logger
 
     spec.loader.exec_module(real_emoji)
-    return real_emoji
+
+    yield real_emoji
+
+    # Cleanup: Restore original sys.modules state
+    if original_rendering is not None:
+        sys.modules['deforum.rendering'] = original_rendering
+    elif 'deforum.rendering' in sys.modules:
+        del sys.modules['deforum.rendering']
+
+    if original_options is not None:
+        sys.modules['deforum.rendering.options'] = original_options
+    elif 'deforum.rendering.options' in sys.modules:
+        del sys.modules['deforum.rendering.options']
+
+    if original_logging is not None:
+        sys.modules['deforum.utils.system.logging'] = original_logging
+    elif 'deforum.utils.system.logging' in sys.modules:
+        del sys.modules['deforum.utils.system.logging']
+
+    if original_logger is not None:
+        sys.modules['deforum.utils.system.logging.logger'] = original_logger
+    elif 'deforum.utils.system.logging.logger' in sys.modules:
+        del sys.modules['deforum.utils.system.logging.logger']
 
 
 class TestSelectFunction:
