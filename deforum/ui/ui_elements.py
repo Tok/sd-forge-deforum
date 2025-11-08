@@ -930,9 +930,11 @@ def get_tab_init(d, da, dp, dau, dv=None):
 
                 # Synchronize buttons with purple slopecore gradient styling
                 gr.Markdown("**Click to detect audio events and populate the Prompts tab:**")
+                minus = emoji_utils.minus()
+                plus = emoji_utils.plus()
                 with FormRow():
                     audio_sync_fewer_button = gr.Button(
-                        "➖ -5% Keyframes",
+                        f"{minus} Fewer Keyframes",
                         variant="primary",
                         elem_id="audio_sync_fewer_button",
                         elem_classes=["slopcore-button"],
@@ -946,7 +948,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         scale=2
                     )
                     audio_sync_more_button = gr.Button(
-                        "➕ +5% Keyframes",
+                        f"{plus} More Keyframes",
                         variant="primary",
                         elem_id="audio_sync_more_button",
                         elem_classes=["slopcore-button"],
@@ -960,7 +962,8 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         value=0,
                         interactive=False,
                         precision=0,
-                        scale=1
+                        scale=1,
+                        info="Total diffusion keyframes"
                     )
                     audio_sync_pseudo_cadence_display = gr.Number(
                         label=f"{emoji_utils.frames()} Pseudo-Cadence",
@@ -975,13 +978,15 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         value=0,
                         interactive=False,
                         precision=1,
-                        scale=1
+                        scale=1,
+                        info="Tempo from event timing"
                     )
                     audio_sync_duration_display = gr.Textbox(
                         label=f"{emoji_utils.stopwatch()} Duration",
                         value="",
                         interactive=False,
-                        scale=1
+                        scale=1,
+                        info="Audio length and frame count"
                     )
 
                 # Interactive timeline visualization (above status for better visibility)

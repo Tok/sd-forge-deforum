@@ -308,7 +308,8 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         value=0,
                         interactive=False,
                         precision=0,
-                        scale=1
+                        scale=1,
+                        info="Total diffusion keyframes"
                     )
                     audio_sync_pseudo_cadence_display = gr.Number(
                         label=f"{emoji_utils.frames()} Pseudo-Cadence",
@@ -323,13 +324,15 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         value=0,
                         interactive=False,
                         precision=1,
-                        scale=1
+                        scale=1,
+                        info="Tempo from event timing"
                     )
                     audio_sync_duration_display = gr.Textbox(
                         label=f"{emoji_utils.stopwatch()} Duration",
                         value="",
                         interactive=False,
-                        scale=1
+                        scale=1,
+                        info="Audio length and frame count"
                     )
 
                 # Interactive timeline visualization (above status for better visibility)
