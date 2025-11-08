@@ -415,6 +415,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
     missing_components = [name for name in audio_component_names if name not in local_scope]
 
     logger.debug(f"{emoji_if_enabled('🔍')} DEBUG get_tab_init() return:")
+    logger.debug(f"   audio_component_names has {len(audio_component_names)} items: {audio_component_names}")
     logger.debug(f"   Found in locals(): {found_components}")
     logger.debug(f"   Missing from locals(): {missing_components}")
 
