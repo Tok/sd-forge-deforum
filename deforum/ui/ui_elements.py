@@ -1819,6 +1819,9 @@ def auto_assign_keyframe_types_handler(animation_prompts_json, chunk_size):
 
     Returns: keyframe_type_schedule string in format "0:(tween), 60:(flf2v), 120:(tween)"
     """
+    from deforum.utils.system.logging import emoji as emoji_utils
+    robot = emoji_utils.robot()
+
     import json
     from deforum.utils.parsing.keyframes import auto_assign_keyframe_types
 
@@ -1832,7 +1835,7 @@ def auto_assign_keyframe_types_handler(animation_prompts_json, chunk_size):
         # Auto-assign using pure function
         result, _ = auto_assign_keyframe_types(animation_prompts, chunk_size)
 
-        logger.info(f"🤖 Auto-assigned keyframe types: {result}")
+        logger.info(f"{robot} Auto-assigned keyframe types: {result}")
         return result
 
     except Exception as e:
