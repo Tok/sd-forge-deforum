@@ -107,6 +107,7 @@ def print_startup_banner():
         "",  # Separator
         "RECOMMENDED: Dedicated/Isolated Forge Neo Instance",
         "Why: Hijacks Forge output pipeline (custom dashboard, progress bars, suppressed logs)",
+        "     Patches sigma timesteps for continuous 1% strength resolution (vs 5% at 20 steps)",
         "     May conflict with other extensions - optimized specifically for Deforum workflows",
         "",
         "Forge Neo: https://github.com/Haoming02/sd-webui-forge-classic/tree/neo",
