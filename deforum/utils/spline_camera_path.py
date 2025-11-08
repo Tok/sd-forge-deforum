@@ -308,8 +308,8 @@ def generate_rotate_around_path(
         dy = (center_y + height) - y
         dz = center_z - z
 
-        # Pan angle (rotation_y) - Negated to match Deforum coordinate system
-        rot_y = -np.degrees(np.arctan2(dx, dz))
+        # Pan angle (rotation_y)
+        rot_y = np.degrees(np.arctan2(dx, dz))
 
         # Tilt angle (rotation_x)
         horizontal_dist = np.sqrt(dx**2 + dz**2)
