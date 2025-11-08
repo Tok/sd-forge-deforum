@@ -58,6 +58,41 @@ def get_tab_prompts(da, dw, dv=None):
             )
         )
 
+        # Prompt statistics display (mirrors audio sync info)
+        with FormRow():
+            prompts_keyframe_count_display = gr.Number(
+                label=f"{emoji_utils.key()} Keyframes",
+                value=0,
+                interactive=False,
+                precision=0,
+                scale=1,
+                info="Total keyframes in prompts"
+            )
+            prompts_prompt_count_display = gr.Number(
+                label=f"{emoji_utils.prompts()} Unique Prompts",
+                value=0,
+                interactive=False,
+                precision=0,
+                scale=1,
+                info="Distinct prompt variations"
+            )
+            prompts_pseudo_cadence_display = gr.Number(
+                label=f"{emoji_utils.frames()} Pseudo-Cadence",
+                value=0,
+                interactive=False,
+                precision=1,
+                scale=1,
+                info="Avg frames between keyframes"
+            )
+            prompts_max_frames_display = gr.Number(
+                label=f"{emoji_utils.stopwatch()} Max Frame",
+                value=0,
+                interactive=False,
+                precision=0,
+                scale=1,
+                info="Last keyframe in sequence"
+            )
+
         animation_prompts_positive = create_row(
             gr.Textbox(
                 label="Prompts positive",
@@ -231,5 +266,58 @@ def get_tab_prompts(da, dw, dv=None):
             )
 
         # NOTE: Composable mask scheduling moved to dedicated Masking tab
+
+        # Handler to calculate and update prompt statistics
+        def update_prompt_stats(prompts_text: str, max_frames: int) -> tuple:
+            """Calculate statistics from prompts JSON and update displays.
+
+            Args:
+                prompts_text: Animation prompts in JSON format
+                max_frames: Maximum frames from animation settings
+
+            Returns:
+                Tuple of (keyframe_count, prompt_count, pseudo_cadence, max_frame)
+            """
+            try:
+                import json
+                import re
+
+                # Parse prompts JSON
+                if not prompts_text or not prompts_text.strip():
+                    return 0, 0, 0, 0
+
+                # Remove comments and parse
+                clean_text = re.sub(r'//.*?$', '', prompts_text, flags=re.MULTILINE)
+                prompts_dict = json.loads(clean_text)
+
+                # Count keyframes (frame numbers)
+                keyframes = sorted([int(k) for k in prompts_dict.keys()])
+                keyframe_count = len(keyframes)
+
+                # Count unique prompts
+                unique_prompts = len(set(prompts_dict.values()))
+
+                # Calculate pseudo-cadence (avg frames between keyframes)
+                max_frame = keyframes[-1] if keyframes else 0
+                pseudo_cadence = max_frame / keyframe_count if keyframe_count > 0 else 0
+
+                return keyframe_count, unique_prompts, pseudo_cadence, max_frame
+
+            except Exception as e:
+                # Return zeros on parse error
+                return 0, 0, 0, 0
+
+        # Wire animation_prompts to update stats displays on change
+        # Note: max_frames not accessible here - will use parsed max frame instead
+        animation_prompts.change(
+            fn=lambda prompts: update_prompt_stats(prompts, 0),
+            inputs=[animation_prompts],
+            outputs=[
+                prompts_keyframe_count_display,
+                prompts_prompt_count_display,
+                prompts_pseudo_cadence_display,
+                prompts_max_frames_display
+            ]
+        )
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
