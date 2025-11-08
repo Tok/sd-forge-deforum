@@ -3438,110 +3438,130 @@ def check_qwen_models_handler(qwen_model):
 
 def download_qwen_model_handler(qwen_model, auto_download_enabled):
     """Download selected Qwen model"""
+    from deforum.utils.system.logging import emoji as emoji_utils
+
+    # Theme-aware emoji symbols
+    check = emoji_utils.maybe_check()
+    cross = emoji_utils.maybe_cross()
+    download = emoji_utils.download()
+    robot = emoji_utils.robot()
+    palette = emoji_utils.palette()
+
     try:
         from deforum.integrations.wan.utils.qwen_manager import qwen_manager
-        
+
         if not auto_download_enabled:
-            return """❌ <span style='color: #f44336;'>Auto-download is disabled</span>
+            return f"""{cross} <span style='color: #f44336;'>Auto-download is disabled</span>
 
 <strong style='color: #333;'>To download models:</strong><br>
-1. ✅ Enable 'Auto-Download Qwen Models' checkbox above<br>
-2. 📥 Click this button again<br>
+1. {check} Enable 'Auto-Download Qwen Models' checkbox above<br>
+2. {download} Click this button again<br>
 <br>
 <strong style='color: #333;'>Or download manually:</strong><br>
 Use HuggingFace CLI or git to download the model"""
-        
-        logger.info(f"📥 Downloading Qwen model: {qwen_model}")
-        
+
+        logger.info(f"{download} Downloading Qwen model: {qwen_model}")
+
         # Handle auto-select
         if qwen_model == "Auto-Select":
             selected_model = qwen_manager.auto_select_model()
-            logger.info(f"🤖 Auto-selected model for download: {selected_model}")
+            logger.info(f"{robot} Auto-selected model for download: {selected_model}")
         else:
             selected_model = qwen_model
-        
+
         # Check if already downloaded
         if qwen_manager.is_model_downloaded(selected_model):
-            return f"""✅ <span style='color: #4CAF50;'>Model already available: {selected_model}</span>
+            return f"""{check} <span style='color: #4CAF50;'>Model already available: {selected_model}</span>
 
 <strong style='color: #333;'>Status:</strong> Model is downloaded and ready to use<br>
-🎨 Click 'AI Prompt Enhancement' to start using this model"""
-        
+{palette} Click 'AI Prompt Enhancement' to start using this model"""
+
         # Start download
         download_status = []
-        download_status.append(f"📥 <span style='color: #2196F3;'>Starting download: {selected_model}</span>")
-        
+        download_status.append(f"{download} <span style='color: #2196F3;'>Starting download: {selected_model}</span>")
+
         model_info = qwen_manager.get_model_info(selected_model)
         if model_info:
             download_status.append(f"<strong style='color: #333;'>Description:</strong> {model_info.get('description', 'N/A')}")
             download_status.append(f"<strong style='color: #333;'>VRAM Required:</strong> {model_info.get('vram_gb', 'Unknown')}GB")
             download_status.append(f"<strong style='color: #333;'>HuggingFace:</strong> {model_info.get('hf_name', 'N/A')}")
-        
+
         # Attempt download
         success = qwen_manager.download_model(selected_model)
-        
+
         if success:
-            download_status.append("<br>✅ <span style='color: #4CAF50;'>Download completed successfully!</span>")
-            download_status.append("🎨 Ready to use - click 'AI Prompt Enhancement' to start")
+            download_status.append(f"<br>{check} <span style='color: #4CAF50;'>Download completed successfully!</span>")
+            download_status.append(f"{palette} Ready to use - click 'AI Prompt Enhancement' to start")
         else:
-            download_status.append("<br>❌ <span style='color: #f44336;'>Download failed</span>")
+            download_status.append(f"<br>{cross} <span style='color: #f44336;'>Download failed</span>")
             download_status.append("<strong style='color: #333;'>Troubleshooting:</strong>")
             download_status.append("• Check internet connection")
             download_status.append("• Verify disk space")
             download_status.append("• Try manual download with HuggingFace CLI")
-            
+
             if model_info and 'hf_name' in model_info:
                 download_status.append(f"<br><strong style='color: #333;'>Manual command:</strong>")
                 download_status.append(f"<code>huggingface-cli download {model_info['hf_name']} --local-dir models/Deforum/qwen/{selected_model}</code>")
-        
+
         return "<br>".join(download_status)
-        
+
     except Exception as e:
         logger.error(f"Error downloading Qwen model: {e}", emoji='off')
-        return f"❌ <span style='color: #f44336;'>Download error: {str(e)}</span>"
+        return f"{cross} <span style='color: #f44336;'>Download error: {str(e)}</span>"
 
 
 def cleanup_qwen_cache_handler():
     """Cleanup Qwen model cache and free VRAM"""
+    from deforum.utils.system.logging import emoji as emoji_utils
+
+    # Theme-aware emoji symbols
+    check = emoji_utils.maybe_check()
+    cross = emoji_utils.maybe_cross()
+    info = emoji_utils.info()
+    floppy_disk = emoji_utils.floppy_disk()
+    brain = emoji_utils.brain()
+    refresh_icon = emoji_utils.refresh_icon()
+    bulb = emoji_utils.bulb()
+
     try:
         from deforum.integrations.wan.utils.qwen_manager import qwen_manager
-        
+
         logger.info("Cleaning up Qwen model cache...", emoji='broom')
-        
+
         # Check if any model is loaded
         if not qwen_manager.is_model_loaded():
-            return """ℹ️ <span style='color: #2196F3;'>No Qwen models currently loaded</span>
+            return f"""{info} <span style='color: #2196F3;'>No Qwen models currently loaded</span>
 
 <strong style='color: #333;'>Cache Status:</strong> Clean - no cleanup needed<br>
-💾 VRAM available for other operations"""
-        
+{floppy_disk} VRAM available for other operations"""
+
         # Get info about loaded model before cleanup
         loaded_info = qwen_manager.get_loaded_model_info()
         model_name = loaded_info['name'] if loaded_info else "Unknown"
         estimated_vram = loaded_info.get('vram_usage', 0) if loaded_info else 0
-        
+
         # Perform cleanup
         qwen_manager.cleanup_cache()
-        
+
         result = []
-        result.append("✅ <span style='color: #4CAF50;'>Qwen model cache cleaned successfully</span>")
+        result.append(f"{check} <span style='color: #4CAF50;'>Qwen model cache cleaned successfully</span>")
         result.append(f"<strong style='color: #333;'>Unloaded model:</strong> {model_name}")
-        
+
         if estimated_vram > 0:
             result.append(f"<strong style='color: #333;'>Freed VRAM:</strong> ~{estimated_vram:.1f}GB")
-        
+
         result.append("<br><strong style='color: #333;'>Benefits:</strong>")
-        result.append("💾 VRAM freed for video generation")
-        result.append("🧠 Reduced memory usage")
-        result.append("🔄 Fresh start for next enhancement")
-        
-        result.append("<br>💡 <span style='color: #333;'>Models will auto-load when needed for enhancement</span>")
-        
+        result.append(f"{floppy_disk} VRAM freed for video generation")
+        result.append(f"{brain} Reduced memory usage")
+        result.append(f"{refresh_icon} Fresh start for next enhancement")
+
+        result.append(f"<br>{bulb} <span style='color: #333;'>Models will auto-load when needed for enhancement</span>")
+
         return "<br>".join(result)
-        
+
     except Exception as e:
         logger.error(f"Error during Qwen cache cleanup: {e}", emoji='off')
-        return f"❌ <span style='color: #f44336;'>Cleanup error: {str(e)}</span>"
+        return f"{cross} <span style='color: #f44336;'>Cleanup error: {str(e)}</span>"
 
 
 def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
@@ -3559,6 +3579,7 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
     Returns:
         Tuple of (updated_prompts_json, html_status_message)
     """
+    from deforum.utils.system.logging import emoji as emoji_utils
     import json
     from deforum.utils.conversion.fps import (
         validate_fps_values,
@@ -3567,20 +3588,23 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
         build_conversion_status
     )
 
+    # Theme-aware emoji symbol
+    cross = emoji_utils.maybe_cross()
+
     try:
         # Validate FPS values
         is_valid, error_msg = validate_fps_values(source_fps, target_fps)
         if not is_valid:
-            return prompts_json, f"❌ <span style='color: #f44336;'>Error: {error_msg}</span>"
+            return prompts_json, f"{cross} <span style='color: #f44336;'>Error: {error_msg}</span>"
 
         # Parse prompts JSON
         try:
             prompts = json.loads(prompts_json)
         except json.JSONDecodeError as e:
-            return prompts_json, f"❌ <span style='color: #f44336;'>Error parsing prompts JSON: {str(e)}</span>"
+            return prompts_json, f"{cross} <span style='color: #f44336;'>Error parsing prompts JSON: {str(e)}</span>"
 
         if not isinstance(prompts, dict):
-            return prompts_json, "❌ <span style='color: #f44336;'>Error: Prompts must be a JSON object/dictionary</span>"
+            return prompts_json, f"{cross} <span style='color: #f44336;'>Error: Prompts must be a JSON object/dictionary</span>"
 
         # Convert frame numbers using pure functions
         fps_ratio = calculate_fps_ratio(source_fps, target_fps)
@@ -3601,7 +3625,7 @@ def convert_fps_handler(prompts_json, source_fps, target_fps, preview_only):
         import traceback
         logger.error(f"Error in FPS converter: {e}", emoji='off')
         traceback.print_exc()
-        return prompts_json, f"❌ <span style='color: #f44336;'>Error: {str(e)}</span>"
+        return prompts_json, f"{cross} <span style='color: #f44336;'>Error: {str(e)}</span>"
 
 
 def load_wan_prompts_handler():
@@ -3609,9 +3633,14 @@ def load_wan_prompts_handler():
 
     Uses pure functions from deforum.utils.parsing.prompts for formatting.
     """
+    from deforum.utils.system.logging import emoji as emoji_utils
     import json
     import os
     from deforum.utils.parsing.prompts import format_prompts_as_multiline
+
+    # Theme-aware emoji symbols
+    check = emoji_utils.maybe_check()
+    warning = emoji_utils.maybe_warning()
 
     try:
         # Load prompts from default_settings.txt
@@ -3628,12 +3657,12 @@ def load_wan_prompts_handler():
         wan_prompts = settings.get('wan_prompts', {})
 
         if not wan_prompts:
-            logger.warning("⚠️ No wan_prompts found in default settings, falling back to basic prompt")
+            logger.warning(f"{warning} No wan_prompts found in default settings, falling back to basic prompt")
             return "0: A peaceful landscape scene, photorealistic"
 
         # Convert prompts dict to textarea format using pure function
         result = format_prompts_as_multiline(wan_prompts)
-        logger.info(f"{emoji_if_enabled('✅')} Loaded {len(wan_prompts)} Wan prompts from default settings")
+        logger.info(f"{check} Loaded {len(wan_prompts)} Wan prompts from default settings")
         return result
 
     except Exception as e:
@@ -3646,9 +3675,14 @@ def load_deforum_prompts_handler():
 
     Uses pure functions from deforum.utils.parsing.prompts for formatting.
     """
+    from deforum.utils.system.logging import emoji as emoji_utils
     import json
     import os
     from deforum.utils.parsing.prompts import format_prompts_as_multiline
+
+    # Theme-aware emoji symbols
+    check = emoji_utils.maybe_check()
+    warning = emoji_utils.maybe_warning()
 
     try:
         # Load prompts from default_settings.txt
@@ -3665,12 +3699,12 @@ def load_deforum_prompts_handler():
         deforum_prompts = settings.get('prompts', {})
 
         if not deforum_prompts:
-            logger.warning("⚠️ No prompts found in default settings, falling back to basic prompt")
+            logger.warning(f"{warning} No prompts found in default settings, falling back to basic prompt")
             return "0: A peaceful landscape scene, photorealistic"
 
         # Convert prompts dict to textarea format using pure function
         result = format_prompts_as_multiline(deforum_prompts)
-        logger.info(f"{emoji_if_enabled('✅')} Loaded {len(deforum_prompts)} Deforum prompts from default settings")
+        logger.info(f"{check} Loaded {len(deforum_prompts)} Deforum prompts from default settings")
         return result
 
     except Exception as e:
@@ -3683,6 +3717,7 @@ def load_deforum_to_wan_prompts_handler():
 
     Uses pure functions from deforum.utils.parsing.prompts for conversion.
     """
+    from deforum.utils.system.logging import emoji as emoji_utils
     from deforum.utils.parsing.prompts import (
         validate_prompts_not_empty,
         parse_prompts_json,
@@ -3691,6 +3726,12 @@ def load_deforum_to_wan_prompts_handler():
         create_error_prompt
     )
 
+    # Theme-aware emoji symbols
+    check = emoji_utils.maybe_check()
+    cross = emoji_utils.maybe_cross()
+    warning = emoji_utils.maybe_warning()
+    memo = emoji_utils.memo()
+
     try:
         # Try to get animation prompts from the stored component reference
         animation_prompts_json = ""
@@ -3698,9 +3739,9 @@ def load_deforum_to_wan_prompts_handler():
         if hasattr(enhance_prompts_handler, '_animation_prompts_component'):
             try:
                 animation_prompts_json = enhance_prompts_handler._animation_prompts_component.value
-                logger.info(f"📋 Loading Deforum prompts to Wan prompts field")
+                logger.info(f"{memo} Loading Deforum prompts to Wan prompts field")
             except Exception as e:
-                logger.error(f"⚠️ Could not access animation_prompts component: {e}")
+                logger.error(f"{warning} Could not access animation_prompts component: {e}")
 
         # Validate not empty
         is_valid, error = validate_prompts_not_empty(animation_prompts_json)
@@ -3721,11 +3762,11 @@ def load_deforum_to_wan_prompts_handler():
 
         # Return as JSON
         result = format_prompts_as_json(wan_prompts_dict)
-        logger.info(f"{emoji_if_enabled('✅')} Converted {len(prompts_dict)} Deforum prompts to Wan JSON format")
+        logger.info(f"{check} Converted {len(prompts_dict)} Deforum prompts to Wan JSON format")
         return result
 
     except Exception as e:
-        return f"❌ Error loading Deforum prompts: {str(e)}"
+        return f"{cross} Error loading Deforum prompts: {str(e)}"
 
 
 def load_wan_defaults_handler():
@@ -3733,12 +3774,17 @@ def load_wan_defaults_handler():
 
     Uses pure functions from deforum.utils.parsing.prompts for formatting.
     """
+    from deforum.utils.system.logging import emoji as emoji_utils
     import json
     import os
     from deforum.utils.parsing.prompts import (
         create_fallback_prompts,
         format_prompts_as_json
     )
+
+    # Theme-aware emoji symbols
+    check = emoji_utils.maybe_check()
+    warning = emoji_utils.maybe_warning()
 
     try:
         # Load default prompts from settings
@@ -3757,17 +3803,17 @@ def load_wan_defaults_handler():
             if wan_prompts:
                 # Return as JSON using pure function
                 result = format_prompts_as_json(wan_prompts)
-                logger.info(f"{emoji_if_enabled('✅')} Loaded {len(wan_prompts)} default Wan prompts from settings")
+                logger.info(f"{check} Loaded {len(wan_prompts)} default Wan prompts from settings")
                 return result
             else:
                 # Use fallback
                 return format_prompts_as_json(create_fallback_prompts())
 
         except Exception as e:
-            logger.warning(f"⚠️ Error loading default settings: {e}")
+            logger.warning(f"{warning} Error loading default settings: {e}")
             # Return simple fallback
             return format_prompts_as_json(create_fallback_prompts())
-            
+
     except Exception as e:
         return json.dumps({
             "0": f"Error loading default prompts: {str(e)}"

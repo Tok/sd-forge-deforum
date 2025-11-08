@@ -317,6 +317,11 @@ def info():
     return _select(f'\U00002139{_suffix}')  # ℹ️
 
 
+def floppy_disk():
+    """Floppy disk emoji - respects emoji toggle."""
+    return _select('\U0001F4BE')  # 💾
+
+
 # Slopcore minimal emojis
 def blue_square():
     return _select('\U0001F7E6')  # 🟦
