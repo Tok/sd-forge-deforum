@@ -151,6 +151,14 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     )
 
             with FormRow(variant="compact"):
+                btn_save_camera_path_as_default = gr.Button(
+                    f"{emoji_utils.floppy_disk()} Save Camera Path as Default",
+                    variant="primary",
+                    elem_id="btn_save_camera_path_as_default",
+                    elem_classes=["slopcore-button"]
+                )
+
+            with FormRow(variant="compact"):
                 preset_status = gr.Textbox(
                     label="Status",
                     value="",
@@ -328,6 +336,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
         'preset_random_seed': preset_random_seed,
         'btn_generate_preset': btn_generate_preset,
         'btn_randomize_preset': btn_randomize_preset,
+        'btn_save_camera_path_as_default': btn_save_camera_path_as_default,
         'preset_status': preset_status,
         'num_control_points': num_control_points,
         'spline_type': spline_type,
