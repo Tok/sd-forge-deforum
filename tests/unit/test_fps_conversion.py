@@ -44,6 +44,20 @@ class MockEmojiUtils:
     def magnifying_glass(): return '🔍'
     @staticmethod
     def pencil(): return '✏️'
+    @staticmethod
+    def palette(): return '🎨'
+    @staticmethod
+    def hourglass(): return '⏳'
+    @staticmethod
+    def sleeping(): return '💤'
+    @staticmethod
+    def fire(): return '🔥'
+    @staticmethod
+    def get_themed_emoji(emoji_name: str, theme: str = 'classic') -> str:
+        """Get emoji based on theme (mock always returns emoji)."""
+        if hasattr(MockEmojiUtils, emoji_name):
+            return getattr(MockEmojiUtils, emoji_name)()
+        return '📦'
 
 # Create mock logging module
 mock_logging = type(sys)('deforum.utils.system.logging')
