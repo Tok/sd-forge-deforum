@@ -10,58 +10,45 @@ from deforum.utils.system.logging import get_logger
 logger = get_logger()
 
 
-def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, start_prompt, end_prompt):
-    """Generate prompts using Qwen with multiple modes and intensity levels.
+# Pure helper functions (complexity ≤ 3 each)
+
+def _get_intensity_instruction(intensity: str) -> str:
+    """Get intensity instruction text for prompt generation.
 
     Args:
-        generation_mode: Generation style (escalating, start-to-end, varied, etc.)
         intensity: Intensity level (subtle, normal, crazy, extreme, etc.)
-        style: Optional visual style to apply
-        theme: Main subject/theme for prompts
-        count: Number of prompts to generate
-        start_prompt: Starting prompt (for start-to-end mode)
-        end_prompt: Ending prompt (for start-to-end mode)
 
     Returns:
-        str: Generated prompts (one per line)
+        Instruction text for the given intensity level
     """
-    logger.info(f"AI PROMPT GENERATION BUTTON CLICKED!", emoji='palette')
-    logger.info(f"   Mode: {generation_mode}, Intensity: {intensity}, Style: {style}, Theme: {theme}, Count: {count}")
+    intensity_instructions = {
+        "": "",  # Empty - let Qwen decide
+        "subtle": "Keep prompts very subtle and minimal. Almost imperceptible changes between frames. Focus on nuance and delicate variations.",
+        "normal": "Keep prompts realistic and grounded. Progressive but natural changes. Believable transformations.",
+        "crazy": "Make prompts over-the-top and extremely creative! Wild transformations and escalating intensity! Go big with each step!",
+        "extreme": "GO ABSOLUTELY BONKERS! Each prompt should be MORE INSANE than the last! Reality-bending, physics-defying, mind-blowing escalation! Maximum chaos and creativity!",
+        "chaotic": "Embrace complete chaos and unpredictability! Random, erratic, contradictory elements. No rules, pure creative mayhem!",
+        "surreal": "Create dream-like, surreal imagery. Logic-defying, symbolic, metaphorical. Think Salvador Dali meets fever dream."
+    }
 
-    try:
-        from deforum.integrations.wan.utils.prompt_extend import QwenPromptExpander
+    # If custom value not in dict, use it directly as instruction
+    return intensity_instructions.get(
+        intensity,
+        f"Creative direction: {intensity}" if intensity else intensity_instructions["crazy"]
+    )
 
-        # Initialize Qwen (will auto-select model based on VRAM)
-        qwen = QwenPromptExpander()
 
-        # Build style descriptor
-        style_text = f"{style} style " if style and style.strip() else ""
+# Template builders for each mode (pure functions, complexity ≤ 3 each)
 
-        # Build intensity descriptor
-        intensity_instructions = {
-            "": "",  # Empty - let Qwen decide
-            "subtle": "Keep prompts very subtle and minimal. Almost imperceptible changes between frames. Focus on nuance and delicate variations.",
-            "normal": "Keep prompts realistic and grounded. Progressive but natural changes. Believable transformations.",
-            "crazy": "Make prompts over-the-top and extremely creative! Wild transformations and escalating intensity! Go big with each step!",
-            "extreme": "GO ABSOLUTELY BONKERS! Each prompt should be MORE INSANE than the last! Reality-bending, physics-defying, mind-blowing escalation! Maximum chaos and creativity!",
-            "chaotic": "Embrace complete chaos and unpredictability! Random, erratic, contradictory elements. No rules, pure creative mayhem!",
-            "surreal": "Create dream-like, surreal imagery. Logic-defying, symbolic, metaphorical. Think Salvador Dali meets fever dream."
-        }
-        # If custom value not in dict, use it directly as instruction
-        intensity_inst = intensity_instructions.get(
-            intensity,
-            f"Creative direction: {intensity}" if intensity else intensity_instructions["crazy"]
-        )
-
-        # Mode-specific prompt generation
-        if generation_mode == "start-to-end":
-            # Interpolation mode - fill between start and end
-            generation_prompt = f"""You are creating an animated sequence that transitions from one scene to another.
+def _template_start_to_end(count_int: int, style_text: str, start_prompt: str,
+                          end_prompt: str, intensity_inst: str) -> str:
+    """Build start-to-end transition template."""
+    return f"""You are creating an animated sequence that transitions from one scene to another.
 
 START PROMPT: {start_prompt}
 END PROMPT: {end_prompt}
 
-Generate {int(count)} {style_text}prompts that smoothly transition from the start to the end.
+Generate {count_int} {style_text}prompts that smoothly transition from the start to the end.
 
 INTENSITY: {intensity_inst}
 
@@ -70,95 +57,92 @@ Requirements:
 - Last prompt should lead into END
 - Middle prompts progressively transform from start to end
 - Each step should build on the previous one
-- {style_text if style else ""}Focus on visual progression
+- {style_text if style_text else ""}Focus on visual progression
 - Keep prompts concise (5-12 words each)
 - Return ONLY the prompts, one per line, NO numbering
 
-Generate {int(count)} transition prompts:"""
+Generate {count_int} transition prompts:"""
 
-        elif generation_mode == "varied":
-            # Random creative variations
-            generation_prompt = f"""Create {int(count)} wildly varied and creative {style_text}prompts featuring {theme}.
+
+def _template_varied(count_int: int, style_text: str, theme: str,
+                    intensity_inst: str, common_reqs: str) -> str:
+    """Build varied prompts template."""
+    return f"""Create {count_int} wildly varied and creative {style_text}prompts featuring {theme}.
 
 INTENSITY: {intensity_inst}
 
 Requirements:
 - Each prompt should be COMPLETELY DIFFERENT
 - Mix of scenes, actions, perspectives, moods
-- {style_text if style else ""}Unexpected combinations and scenarios
+- {style_text if style_text else ""}Unexpected combinations and scenarios
 - Progressive escalation of creativity
-- Keep prompts concise (5-12 words each)
-- Return ONLY the prompts, one per line, NO numbering
+{common_reqs} for {theme}:"""
 
-Generate {int(count)} varied {style_text}prompts for {theme}:"""
 
-        elif generation_mode == "thematic":
-            # Variations on a theme
-            generation_prompt = f"""Generate {int(count)} {style_text}prompts that are variations on the theme of {theme}.
+def _template_thematic(count_int: int, style_text: str, theme: str,
+                      intensity_inst: str, common_reqs: str) -> str:
+    """Build thematic variations template."""
+    return f"""Generate {count_int} {style_text}prompts that are variations on the theme of {theme}.
 
 INTENSITY: {intensity_inst}
 
 Requirements:
 - All prompts should relate to {theme}
 - Explore different aspects, angles, perspectives
-- {style_text if style else ""}Maintain thematic coherence
+- {style_text if style_text else ""}Maintain thematic coherence
 - Variations in composition, lighting, action, mood
-- Keep prompts concise (5-12 words each)
-- Return ONLY the prompts, one per line, NO numbering
+{common_reqs[:-9]} thematic {style_text}variations of {theme}:"""
 
-Generate {int(count)} thematic {style_text}variations of {theme}:"""
 
-        elif generation_mode == "narrative":
-            # Story progression
-            generation_prompt = f"""Create {int(count)} {style_text}prompts that tell a story about {theme}.
+def _template_narrative(count_int: int, style_text: str, theme: str,
+                       intensity_inst: str, common_reqs: str) -> str:
+    """Build narrative sequence template."""
+    return f"""Create {count_int} {style_text}prompts that tell a story about {theme}.
 
 INTENSITY: {intensity_inst}
 
 Requirements:
 - Prompts should form a narrative sequence
 - Clear beginning, middle, progression toward resolution
-- {style_text if style else ""}Story should be engaging and coherent
+- {style_text if style_text else ""}Story should be engaging and coherent
 - Each prompt advances the plot or reveals character
-- Keep prompts concise (5-12 words each)
-- Return ONLY the prompts, one per line, NO numbering
+{common_reqs} for the story of {theme}:"""
 
-Generate {int(count)} narrative {style_text}prompts for the story of {theme}:"""
 
-        elif generation_mode == "cyclical":
-            # Repeating patterns / loops
-            generation_prompt = f"""Generate {int(count)} {style_text}prompts that form a cyclical, looping pattern featuring {theme}.
+def _template_cyclical(count_int: int, style_text: str, theme: str,
+                      intensity_inst: str, common_reqs: str) -> str:
+    """Build cyclical looping template."""
+    return f"""Generate {count_int} {style_text}prompts that form a cyclical, looping pattern featuring {theme}.
 
 INTENSITY: {intensity_inst}
 
 Requirements:
 - Prompts should loop back to the beginning
 - Last prompt should connect naturally to first prompt
-- {style_text if style else ""}Pattern should feel circular/repeating
+- {style_text if style_text else ""}Pattern should feel circular/repeating
 - Maintain rhythm and flow throughout
-- Keep prompts concise (5-12 words each)
-- Return ONLY the prompts, one per line, NO numbering
+{common_reqs} for {theme}:"""
 
-Generate {int(count)} cyclical {style_text}prompts for {theme}:"""
 
-        elif generation_mode == "random-walk":
-            # Random but related progressions
-            generation_prompt = f"""Create {int(count)} {style_text}prompts that drift randomly but stay conceptually related to {theme}.
+def _template_random_walk(count_int: int, style_text: str, theme: str,
+                         intensity_inst: str, common_reqs: str) -> str:
+    """Build random walk template."""
+    return f"""Create {count_int} {style_text}prompts that drift randomly but stay conceptually related to {theme}.
 
 INTENSITY: {intensity_inst}
 
 Requirements:
 - Each prompt should be somewhat related to the previous
 - Allow unexpected connections and associations
-- {style_text if style else ""}Maintain loose thematic thread
+- {style_text if style_text else ""}Maintain loose thematic thread
 - Drift naturally like stream of consciousness
-- Keep prompts concise (5-12 words each)
-- Return ONLY the prompts, one per line, NO numbering
+{common_reqs} starting from {theme}:"""
 
-Generate {int(count)} random-walk {style_text}prompts starting from {theme}:"""
 
-        elif generation_mode == "first-person-perspective":
-            # First-person/POV camera movement (perfect for reverse generation)
-            generation_prompt = f"""Generate {int(count)} {style_text}prompts for a first-person perspective camera movement through {theme}.
+def _template_first_person(count_int: int, style_text: str, theme: str,
+                          intensity_inst: str, common_reqs: str) -> str:
+    """Build first-person perspective template."""
+    return f"""Generate {count_int} {style_text}prompts for a first-person perspective camera movement through {theme}.
 
 INTENSITY: {intensity_inst}
 
@@ -172,114 +156,220 @@ INTENSITY: {intensity_inst}
 Requirements:
 - First-person camera perspective throughout
 - Progressive movement through stable environment (e.g., {theme})
-- {style_text if style else ""}Natural camera motion: forward, backward, turning, ascending, descending
+- {style_text if style_text else ""}Natural camera motion: forward, backward, turning, ascending, descending
 - Background details should PERSIST across frames (buildings, landmarks stay put)
 - Describe what the camera sees as it moves, not scene changes
 - Smooth transitions that maintain spatial continuity
-- Keep prompts concise (5-12 words each)
-- Return ONLY the prompts, one per line, NO numbering
+{common_reqs} for {theme}:"""
 
-Example for "city street at night":
-POV moving forward on neon-lit city street
-passing glowing storefronts and street lamps ahead
-approaching busy intersection with traffic lights
-turning left past corner coffee shop entrance
-driving along quieter side street with parked cars
 
-Generate {int(count)} first-person {style_text}perspective prompts for {theme}:"""
-
-        elif generation_mode == "" or not generation_mode:
-            # Empty/minimal mode - let Qwen be creative
-            generation_prompt = f"""Generate {int(count)} {style_text}prompts featuring {theme}.
-
-{f'INTENSITY: {intensity_inst}' if intensity_inst else ''}
-
-Requirements:
-- Keep prompts concise (5-12 words each)
-- Return ONLY the prompts, one per line, NO numbering
-
-Generate {int(count)} {style_text}prompts for {theme}:"""
-
-        elif generation_mode in ["escalating"]:  # escalating mode (explicit)
-            # Escalating intensity mode
-            generation_prompt = f"""Generate {int(count)} {style_text}prompts that build in intensity for an animated sequence featuring {theme}.
+def _template_escalating(count_int: int, style_text: str, theme: str,
+                        intensity_inst: str, common_reqs: str) -> str:
+    """Build escalating intensity template."""
+    return f"""Generate {count_int} {style_text}prompts that build in intensity for an animated sequence featuring {theme}.
 
 INTENSITY: {intensity_inst}
 
 Requirements:
 - START CALM: Begin with simple, peaceful scene (e.g., "cute {theme} in nature")
 - ESCALATE DRAMATICALLY: Each prompt MORE intense than the last
-- {style_text if style else ""}Progressive transformation: calm → active → dynamic → EXTREME → ABSOLUTELY WILD
+- {style_text if style_text else ""}Progressive transformation: calm → active → dynamic → EXTREME → ABSOLUTELY WILD
 - Final prompts should be PEAK INSANITY (if crazy/extreme mode)
-- Keep prompts concise (5-12 words each)
-- Return ONLY the prompts, one per line, NO numbering
+{common_reqs} for {theme}:"""
 
-Example progression for "{style_text}bunny" (CRAZY mode):
-cute bunny sitting peacefully in grass
-bunny hopping through vibrant neon forest
-{style_text}bunny leaping over glowing obstacles
-bunny racing through laser-filled cityscape
-EXTREME {style_text}bunny surfing massive energy wave
-INSANE {style_text}bunny commanding lightning storm on motorcycle
-ABSOLUTELY BONKERS {style_text}bunny transcending reality in cosmic explosion
 
-Now generate {int(count)} {style_text}prompts for {theme}:"""
+def _template_default(count_int: int, style_text: str, theme: str,
+                     intensity_inst: str, common_reqs: str) -> str:
+    """Build default/empty mode template."""
+    intensity_line = f'INTENSITY: {intensity_inst}' if intensity_inst else ''
+    return f"""Generate {count_int} {style_text}prompts featuring {theme}.
 
-        else:
-            # Custom generation mode - use user's custom text as instruction
-            generation_prompt = f"""Generate {int(count)} {style_text}prompts for an animated sequence featuring {theme}.
+{intensity_line}
 
-GENERATION STYLE: {generation_mode}
+{common_reqs} for {theme}:"""
 
-{f'INTENSITY: {intensity_inst}' if intensity_inst else ''}
+
+def _template_custom(count_int: int, style_text: str, theme: str, mode: str,
+                    intensity_inst: str, common_reqs: str) -> str:
+    """Build custom mode template."""
+    intensity_line = f'INTENSITY: {intensity_inst}' if intensity_inst else ''
+    return f"""Generate {count_int} {style_text}prompts for an animated sequence featuring {theme}.
+
+GENERATION STYLE: {mode}
+
+{intensity_line}
 
 Requirements:
 - Follow the GENERATION STYLE instruction above
+{common_reqs} for {theme}:"""
+
+
+def _build_generation_prompt(
+    mode: str,
+    count: int,
+    style: str,
+    theme: str,
+    intensity_inst: str,
+    start_prompt: str,
+    end_prompt: str
+) -> str:
+    """Build Qwen generation prompt based on mode.
+
+    Args:
+        mode: Generation mode
+        count: Number of prompts to generate
+        style: Visual style (optional)
+        theme: Main subject/theme
+        intensity_inst: Intensity instruction text
+        start_prompt: Start prompt (for start-to-end mode)
+        end_prompt: End prompt (for start-to-end mode)
+
+    Returns:
+        Complete generation prompt for Qwen
+    """
+    style_text = f"{style} style " if style and style.strip() else ""
+    count_int = int(count)
+    common_reqs = f"""Requirements:
 - Keep prompts concise (5-12 words each)
 - Return ONLY the prompts, one per line, NO numbering
 
-Generate {int(count)} {style_text}prompts for {theme}:"""
+Generate {count_int} {style_text}prompts"""
+
+    # Map modes to template builders
+    mode_templates = {
+        "start-to-end": lambda: _template_start_to_end(count_int, style_text, start_prompt, end_prompt, intensity_inst),
+        "varied": lambda: _template_varied(count_int, style_text, theme, intensity_inst, common_reqs),
+        "thematic": lambda: _template_thematic(count_int, style_text, theme, intensity_inst, common_reqs),
+        "narrative": lambda: _template_narrative(count_int, style_text, theme, intensity_inst, common_reqs),
+        "cyclical": lambda: _template_cyclical(count_int, style_text, theme, intensity_inst, common_reqs),
+        "random-walk": lambda: _template_random_walk(count_int, style_text, theme, intensity_inst, common_reqs),
+        "first-person-perspective": lambda: _template_first_person(count_int, style_text, theme, intensity_inst, common_reqs),
+        "escalating": lambda: _template_escalating(count_int, style_text, theme, intensity_inst, common_reqs),
+        "": lambda: _template_default(count_int, style_text, theme, intensity_inst, common_reqs),
+    }
+
+    # Return template from map, or custom template for unknown modes
+    template_builder = mode_templates.get(mode)
+    return template_builder() if template_builder else _template_custom(count_int, style_text, theme, mode, intensity_inst, common_reqs)
+
+
+def _clean_qwen_output(result_text: str, count: int) -> list[str]:
+    """Clean and parse Qwen output into prompts list.
+
+    Args:
+        result_text: Raw text output from Qwen
+        count: Maximum number of prompts to return
+
+    Returns:
+        List of cleaned prompt strings
+    """
+    import re
+
+    # Split into lines and clean
+    lines = [line.strip() for line in result_text.split('\n') if line.strip()]
+    prompts = []
+
+    for line in lines:
+        # Remove leading numbers and punctuation
+        clean_line = line
+        if len(line) > 0 and line[0].isdigit():
+            clean_line = re.sub(r'^\d+[\.\)]\s*', '', line)
+
+        # Skip comment lines
+        if clean_line and not clean_line.startswith('#') and not clean_line.startswith('//'):
+            prompts.append(clean_line)
+
+    # Return only requested count
+    return prompts[:int(count)]
+
+
+def _generate_fallback_prompts(
+    generation_mode: str,
+    style: str,
+    theme: str,
+    count: int,
+    start_prompt: str,
+    end_prompt: str
+) -> str:
+    """Generate fallback prompts when Qwen fails.
+
+    Args:
+        generation_mode: Generation mode that was attempted
+        style: Visual style (optional)
+        theme: Main subject/theme
+        count: Number of prompts to generate
+        start_prompt: Start prompt (for start-to-end mode)
+        end_prompt: End prompt (for start-to-end mode)
+
+    Returns:
+        Newline-separated fallback prompts
+    """
+    style_prefix = f"{style} " if style else ""
+    count_int = int(count)
+
+    if generation_mode == "start-to-end":
+        middle_count = max(0, count_int - 2)
+        prompts = [start_prompt] + [f"{style_prefix}{theme} transforming"] * middle_count + [end_prompt]
+        return '\n'.join(prompts)
+    else:
+        actions = ["resting peacefully", "moving slowly", "actively exploring", "racing dynamically", "GOING WILD"]
+        prompts = [f"{style_prefix}{theme} {action}" for action in actions[:count_int]]
+        return '\n'.join(prompts)
+
+
+def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, start_prompt, end_prompt):
+    """Generate prompts using Qwen with multiple modes and intensity levels.
+
+    Args:
+        generation_mode: Generation style (escalating, start-to-end, varied, etc.)
+        intensity: Intensity level (subtle, normal, crazy, extreme, etc.)
+        style: Optional visual style to apply
+        theme: Main subject/theme for prompts
+        count: Number of prompts to generate
+        start_prompt: Starting prompt (for start-to-end mode)
+        end_prompt: Ending prompt (for start-to-end mode)
+
+    Returns:
+        Gradio update with generated prompts (one per line)
+    """
+    logger.info(f"AI PROMPT GENERATION BUTTON CLICKED!", emoji='palette')
+    logger.info(f"   Mode: {generation_mode}, Intensity: {intensity}, Style: {style}, Theme: {theme}, Count: {count}")
+
+    try:
+        from deforum.integrations.wan.utils.prompt_extend import QwenPromptExpander
+
+        # Initialize Qwen (will auto-select model based on VRAM)
+        qwen = QwenPromptExpander()
+
+        # Build intensity instruction
+        intensity_inst = _get_intensity_instruction(intensity)
+
+        # Build generation prompt based on mode
+        generation_prompt = _build_generation_prompt(
+            generation_mode, count, style, theme, intensity_inst, start_prompt, end_prompt
+        )
 
         # Generate with Qwen
         logger.info(f"Generating {count} AI prompts: {generation_mode}/{intensity} {style or ''} {theme}".strip(), emoji='robot')
 
-        # Use a simple system prompt and user prompt format
         system_prompt = "You are a creative AI assistant helping generate prompts for animated sequences. Return ONLY the prompts, one per line, with no numbering or extra formatting."
-
         result = qwen(prompt=generation_prompt, system_prompt=system_prompt, tar_lang="en")
 
-        # Check if generation succeeded first
+        # Validate generation succeeded
         if not result.status:
             raise Exception(f"Qwen generation failed: {result.message}")
 
-        # Extract the prompt text from PromptOutput object
         result_text = result.prompt
 
-        # Check if result is just echoing back the input (means generation failed silently)
+        # Check for silent failures
         if result_text == generation_prompt:
             raise Exception(f"Qwen returned input prompt unchanged - generation failed: {result.message}")
 
-        # Check if we got actual prompt text
         if not result_text or not result_text.strip():
             raise Exception(f"Qwen generation failed: {result.message if hasattr(result, 'message') else 'No prompts generated'}")
 
-        # Clean up the result (remove any numbering or extra formatting)
-        lines = [line.strip() for line in result_text.split('\n') if line.strip()]
-        prompts = []
-        for line in lines:
-            # Skip lines with numbering like "1.", "1)", etc.
-            clean_line = line
-            if len(line) > 0 and line[0].isdigit():
-                # Remove leading numbers and punctuation
-                import re
-                clean_line = re.sub(r'^\d+[\.\)]\s*', '', line)
-            if clean_line and not clean_line.startswith('#') and not clean_line.startswith('//'):
-                prompts.append(clean_line)
-
-        # Take only the requested count
-        prompts = prompts[:int(count)]
-
-        # Join with newlines
+        # Clean and parse output
+        prompts = _clean_qwen_output(result_text, count)
         prompts_text = '\n'.join(prompts)
 
         from deforum.utils.system.logging import emoji as emoji_utils
@@ -294,11 +384,7 @@ Generate {int(count)} {style_text}prompts for {theme}:"""
         warning = emoji_utils.maybe_warning()
         error_msg = f"Error generating prompts: {str(e)}"
         logger.warning(f"{warning} {error_msg}")
-        # Fallback to template-based generation
-        style_prefix = f"{style} " if style else ""
-        if generation_mode == "start-to-end":
-            fallback = '\n'.join([start_prompt] + [f"{style_prefix}{theme} transforming"] * max(0, int(count)-2) + [end_prompt])
-        else:
-            actions = ["resting peacefully", "moving slowly", "actively exploring", "racing dynamically", "GOING WILD"]
-            fallback = '\n'.join([f"{style_prefix}{theme} {action}" for action in actions[:int(count)]])
+
+        # Generate fallback prompts
+        fallback = _generate_fallback_prompts(generation_mode, style, theme, count, start_prompt, end_prompt)
         return gr.update(value=fallback)
