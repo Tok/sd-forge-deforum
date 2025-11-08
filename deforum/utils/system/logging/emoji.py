@@ -175,6 +175,78 @@ def folder():
     return _select('\U0001F4C1')  # 📁
 
 
+def rocket():
+    return _select('\U0001F680')  # 🚀
+
+
+def download():
+    return _select('\U0001F4E5')  # 📥
+
+
+def sparkles():
+    return _select('\U00002728')  # ✨
+
+
+def target():
+    return _select('\U0001F3AF')  # 🎯
+
+
+def magnifying_glass():
+    return _select('\U0001F50D')  # 🔍
+
+
+def lock():
+    return _select('\U0001F510')  # 🔐
+
+
+def save():
+    return _select('\U0001F4BE')  # 💾
+
+
+def trash():
+    return _select(f'\U0001F5D1{_suffix}')  # 🗑️
+
+
+def fire():
+    return _select('\U0001F525')  # 🔥
+
+
+def sleeping():
+    return _select('\U0001F4A4')  # 💤
+
+
+def clipboard():
+    return _select('\U0001F4CB')  # 📋
+
+
+def pencil():
+    return _select(f'\U0000270F{_suffix}')  # ✏️
+
+
+def link():
+    return _select('\U0001F517')  # 🔗
+
+
+def brain():
+    return _select('\U0001F9E0')  # 🧠
+
+
+def robot():
+    return _select('\U0001F916')  # 🤖
+
+
+def party():
+    return _select('\U0001F389')  # 🎉
+
+
+def eyes():
+    return _select('\U0001F440')  # 👀
+
+
+def globe():
+    return _select(f'\U0001F310')  # 🌐
+
+
 # Slopcore minimal emojis
 def blue_square():
     return _select('\U0001F7E6')  # 🟦
