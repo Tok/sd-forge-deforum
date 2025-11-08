@@ -5,6 +5,21 @@ All functions here are side-effect free and easily testable.
 """
 
 import pytest
+import sys
+from pathlib import Path
+
+# Mock emoji_utils before importing fps module
+class MockEmojiUtils:
+    @staticmethod
+    def maybe_check(): return '✓'
+    @staticmethod
+    def magnifying_glass(): return '🔍'
+    @staticmethod
+    def pencil(): return '✏️'
+
+sys.modules['deforum.utils.system.logging'] = type(sys)('deforum.utils.system.logging')
+sys.modules['deforum.utils.system.logging'].emoji = MockEmojiUtils
+
 from deforum.utils.conversion.fps import (
     calculate_fps_ratio,
     convert_frame_number,
