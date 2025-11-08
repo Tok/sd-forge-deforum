@@ -8,7 +8,13 @@ Tests the logging infrastructure in deforum/utils/system/logging/ including:
 """
 
 import pytest
+import sys
+from pathlib import Path
 from unittest.mock import patch, MagicMock
+
+# Add parent directory to path to allow direct imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from deforum.utils.system.logging import (
     get_logger,
     emoji_if_enabled,
