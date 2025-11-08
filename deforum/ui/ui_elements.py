@@ -1087,7 +1087,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
     found_components = [name for name in audio_component_names if name in local_scope]
     missing_components = [name for name in audio_component_names if name not in local_scope]
 
-    logger.debug(f"{emoji_if_enabled('🔍')} DEBUG get_tab_init() return:")
+    logger.debug(f"{emoji_utils.magnifying_glass()} DEBUG get_tab_init() return:")
     logger.debug(f"   Found in locals(): {found_components}")
     logger.debug(f"   Missing from locals(): {missing_components}")
 
@@ -1156,14 +1156,14 @@ def wan_generate_video(*component_args):
                 # Try to download TI2V-5B (Wan 2.2 unified text/image-to-video)
                 logger.info(f"{download} Downloading Wan 2.2 TI2V-5B model (recommended: 24GB VRAM, RTX 4090)...")
                 if downloader.download_model("TI2V-5B"):
-                    logger.info(f"{emoji_if_enabled('✅')} TI2V-5B model download completed!")
+                    logger.info(f"{emoji_utils.maybe_check()} TI2V-5B model download completed!")
                     # Re-discover models after download
                     models = integration.discover_models()
                 else:
                     logger.error("TI2V-5B download failed, trying A14B (MoE)...", emoji='off')
                     # Fallback to A14B MoE
                     if downloader.download_model("A14B"):
-                        logger.info(f"{emoji_if_enabled('✅')} A14B MoE model download completed!")
+                        logger.info(f"{emoji_utils.maybe_check()} A14B MoE model download completed!")
                         models = integration.discover_models()
                     else:
                         logger.error("All model downloads failed", emoji='off')
@@ -1173,7 +1173,7 @@ def wan_generate_video(*component_args):
 
         # If we have models but they might be corrupted, validate them
         if models:
-            logger.debug(f"{emoji_if_enabled('🔍')} Validating discovered models...")
+            logger.debug(f"{emoji_utils.magnifying_glass()} Validating discovered models...")
             valid_models = []
             corrupted_models = []
 
@@ -1183,7 +1183,7 @@ def wan_generate_video(*component_args):
                     model_path = Path(model['path'])
                     if (model_path / "model_index.json").exists():
                         valid_models.append(model)
-                        logger.debug(f"{emoji_if_enabled('✅')} {model['name']}: Valid {model['type']} model")
+                        logger.debug(f"{emoji_utils.maybe_check()} {model['name']}: Valid {model['type']} model")
                     else:
                         corrupted_models.append(model)
                         logger.debug(f"{model['name']}: Incomplete {model['type']} model", emoji='off')
@@ -1200,7 +1200,7 @@ def wan_generate_video(*component_args):
 
                     if has_valid_structure:
                         valid_models.append(model)
-                        logger.debug(f"{emoji_if_enabled('✅')} {model['name']}: Valid legacy model")
+                        logger.debug(f"{emoji_utils.maybe_check()} {model['name']}: Valid legacy model")
                     else:
                         corrupted_models.append(model)
                         logger.debug(f"{model['name']}: Invalid/leftover files (not a proper Wan model)", emoji='off')
@@ -1272,7 +1272,7 @@ TI2V models are unified text/image-to-video (Wan 2.2) - recommended!
 
 {bulb} TI2V models handle both text-to-video and image-to-video in one unified model!"""
         
-        logger.info(f"{emoji_if_enabled('✅')} Found {len(models)} Wan model(s):")
+        logger.info(f"{emoji_utils.maybe_check()} Found {len(models)} Wan model(s):")
         for i, model in enumerate(models, 1):
             logger.info(f"   {i}. {model['name']} ({model['size']}) - {model['path']}")
         
@@ -1327,7 +1327,7 @@ Each prompt will be smoothly connected using I2V continuity!"""
         
         if animation_mode_index is not None and animation_mode_index < len(component_args):
             component_args[animation_mode_index] = 'Flux/Wan'
-            logger.info(f"{emoji_if_enabled('✅')} Set animation mode to 'Flux/Wan' at index {animation_mode_index}")
+            logger.info(f"{emoji_utils.maybe_check()} Set animation mode to 'Flux/Wan' at index {animation_mode_index}")
         else:
             logger.error(f"{warning} Could not set animation mode - index not found or out of range")
 
@@ -1407,7 +1407,7 @@ def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo
     import time
 
     logger.info("Wan video generation started with AUTO-DISCOVERY (Internal Call)", emoji='movie_camera')
-    logger.info(f"{emoji_if_enabled('🔍')} Using smart model discovery instead of manual paths")
+    logger.info(f"{emoji_utils.magnifying_glass()} Using smart model discovery instead of manual paths")
 
     # Ensure Qwen models are unloaded before video generation to free VRAM
     try:
@@ -1425,7 +1425,7 @@ def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo
         integration = WanSimpleIntegration()
         
         # Auto-discover models
-        logger.info(f"{emoji_if_enabled('🔍')} Auto-discovering Wan models...")
+        logger.info(f"{emoji_utils.magnifying_glass()} Auto-discovering Wan models...")
         models = integration.discover_models()
 
         if not models:
@@ -1478,7 +1478,7 @@ The auto-discovery will find your models automatically!
                 for model in models:
                     if size_to_match == model['size']:
                         selected_model = model
-                        logger.info(f"{emoji_if_enabled('✅')} Using user-selected model: {model['name']} ({model['size']})")
+                        logger.info(f"{emoji_utils.maybe_check()} Using user-selected model: {model['name']} ({model['size']})")
                         break
 
                 if not selected_model:
@@ -1498,7 +1498,7 @@ The auto-discovery will find your models automatically!
         logger.info("Loading Wan pipeline...", emoji='refresh')
         if not integration.load_simple_wan_pipeline(selected_model, wan_args):
             raise RuntimeError(f"Failed to load Wan pipeline for {selected_model['name']}")
-        logger.info(f"{emoji_if_enabled('✅')} Wan pipeline loaded successfully")
+        logger.info(f"{emoji_utils.maybe_check()} Wan pipeline loaded successfully")
 
         # Prepare output directory with proper batch name
         import os
@@ -1528,7 +1528,7 @@ The auto-discovery will find your models automatically!
             # Validate that outdir has a timestring or unique identifier
             if 'Deforum_' in args.outdir or any(char.isdigit() for char in os.path.basename(args.outdir)):
                 output_directory = args.outdir
-                logger.info(f"{emoji_if_enabled('✅')} Using args.outdir (contains identifier): {output_directory}")
+                logger.info(f"{emoji_utils.maybe_check()} Using args.outdir (contains identifier): {output_directory}")
             else:
                 logger.warning(f"{warning} args.outdir lacks unique identifier: {args.outdir}")
                 logger.warning(f"{warning} Will reconstruct with batch name to avoid collisions")
@@ -1566,7 +1566,7 @@ The auto-discovery will find your models automatically!
                 logger.warning(f"{warning} Added timestring for uniqueness: {batch_name}")
             
             output_directory = os.path.join(deforum_outpath, batch_name)
-            logger.info(f"{emoji_if_enabled('✅')} Constructed output directory: {output_directory}")
+            logger.info(f"{emoji_utils.maybe_check()} Constructed output directory: {output_directory}")
         
         # Ensure directory exists
         os.makedirs(output_directory, exist_ok=True)
@@ -1582,8 +1582,8 @@ The auto-discovery will find your models automatically!
             raise RuntimeError(f"Invalid output directory (no unique ID): {output_directory}")
         
         logger.info("="*80)
-        logger.info(f"{emoji_if_enabled('✅')} Final output directory: {output_directory}")
-        logger.info(f"{emoji_if_enabled('✅')} Directory name: {dir_name}")
+        logger.info(f"{emoji_utils.maybe_check()} Final output directory: {output_directory}")
+        logger.info(f"{emoji_utils.maybe_check()} Directory name: {dir_name}")
         logger.info("="*80)
 
         # Generate video using direct integration
@@ -1662,7 +1662,7 @@ The auto-discovery will find your models automatically!
                 
                 # Show enhanced/movement prompt info
                 if wan_args.wan_enhanced_prompts or wan_args.wan_movement_description:
-                    logger.info(f"  {emoji_if_enabled('🎨')} Enhanced Clip {i+1}: '{clean_prompt[:80]}...' (frames: {frame_count})", emoji='palette')
+                    logger.info(f"  {emoji_utils.palette()} Enhanced Clip {i+1}: '{clean_prompt[:80]}...' (frames: {frame_count})", emoji='palette')
                 else:
                     logger.info(f"  Clip {i+1}: '{clean_prompt[:50]}...' (start: frame {start_frame}, frames: {frame_count})")
             
@@ -1695,7 +1695,7 @@ The auto-discovery will find your models automatically!
                 )
                 
                 motion_strength = dynamic_motion_strength  # Fallback for simple integrations
-                logger.info(f"{emoji_if_enabled('✅')} Dynamic motion strength: {motion_strength:.2f} (average)")
+                logger.info(f"{emoji_utils.maybe_check()} Dynamic motion strength: {motion_strength:.2f} (average)")
                 logger.info(f"{ruler} Generated motion intensity schedule with frame-by-frame control")
 
             except Exception as e:
@@ -1718,25 +1718,25 @@ The auto-discovery will find your models automatically!
         is_720p = (width >= 1280 and height >= 720) or (width >= 720 and height >= 1280)
         is_480p = (width <= 864 and height <= 480) or (width <= 480 and height <= 864)
         
-        logger.info(f"\n{emoji_if_enabled('🔍')} Model/Resolution Validation:")
+        logger.info(f"\n{emoji_utils.magnifying_glass()} Model/Resolution Validation:")
         logger.info(f"   {package} Model: {model_name} ({model_size})")
         logger.info(f"   {ruler} Resolution: {width}x{height} ({'720p' if is_720p else '480p' if is_480p else 'Custom'})")
 
         # Check for resolution/model mismatches and warn
         if "5B" in model_size and is_720p:
-            logger.info(f"\n{emoji_if_enabled('✅')} Perfect Match: TI2V-5B + 720p")
+            logger.info(f"\n{emoji_utils.maybe_check()} Perfect Match: TI2V-5B + 720p")
             logger.info(f"   {package} Model: {model_name} (optimized for 720p@24fps)")
             logger.info(f"   {ruler} Resolution: {width}x{height} (720p)")
             logger.info(f"   {target} Optimal configuration for TI2V-5B!")
 
         elif "5B" in model_size and is_480p:
-            logger.info(f"\n{emoji_if_enabled('💡')} INFO: TI2V-5B + 480p Resolution", emoji='bulb')
+            logger.info(f"\n{emoji_utils.bulb()} INFO: TI2V-5B + 480p Resolution", emoji='bulb')
             logger.info(f"   {package} Model: {model_name} (optimized for 720p)")
             logger.info(f"   {ruler} Resolution: {width}x{height} (480p)")
-            logger.info(f"   {emoji_if_enabled('✅')} This works, but you could use 1280x720 for better quality")
+            logger.info(f"   {emoji_utils.maybe_check()} This works, but you could use 1280x720 for better quality")
 
         elif "A14B" in model_size and is_720p:
-            logger.info(f"\n{emoji_if_enabled('✅')} Perfect Match: TI2V-A14B + 720p")
+            logger.info(f"\n{emoji_utils.maybe_check()} Perfect Match: TI2V-A14B + 720p")
             logger.info(f"   {package} Model: {model_name} (MoE architecture, highest quality)")
             logger.info(f"   {ruler} Resolution: {width}x{height} (720p)")
             logger.info(f"   {target} Maximum quality configuration!")
@@ -1759,7 +1759,7 @@ The auto-discovery will find your models automatically!
         
         # Wan 2.2 TI2V models always use unified T2V+I2V (no separate modes)
         mode_description = "unified TI2V generation"
-        logger.info(f"\n{emoji_if_enabled('🎬')} Using Wan 2.2 TI2V unified generation for {len(clips_data)} clips with frame continuity", emoji='movie_camera')
+        logger.info(f"\n{emoji_utils.movie_camera()} Using Wan 2.2 TI2V unified generation for {len(clips_data)} clips with frame continuity", emoji='movie_camera')
 
         # Generate video using I2V chaining (TI2V supports both T2V and I2V)
         result = integration.generate_video_with_i2v_chaining(
@@ -1784,10 +1784,10 @@ The auto-discovery will find your models automatically!
         
         if generated_videos:
             logger.info(f"\n{party} Wan {mode_description} generation completed!")
-            logger.info(f"{emoji_if_enabled('✅')} Generated seamless video with {len(clips_data)} clips using {mode_description}")
+            logger.info(f"{emoji_utils.maybe_check()} Generated seamless video with {len(clips_data)} clips using {mode_description}")
             logger.info(f"Total time: {total_time:.1f} seconds", emoji='stopwatch')
             logger.info(f"{folder} Output file: {generated_videos[0]}")
-            logger.info(f"{emoji_if_enabled('🔗')} {mode_description} ensures smooth transitions between clips")
+            logger.info(f"{emoji_utils.link()} {mode_description} ensures smooth transitions between clips")
 
             # Return the output directory for Deforum's video processing
             return str(output_directory)
@@ -1798,7 +1798,7 @@ The auto-discovery will find your models automatically!
         logger.error(f"Wan generation failed: {e}", emoji='off')
         
         # Provide helpful troubleshooting info
-        logger.info(f"\n{emoji_if_enabled('🔧')} TROUBLESHOOTING:", emoji='wrench')
+        logger.info(f"\n{emoji_utils.wrench()} TROUBLESHOOTING:", emoji='wrench')
         logger.info(f"   • Check model availability with: python scripts/deforum_helpers/wan_direct_integration.py")
         logger.info(f"   • Download models: huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan")
         logger.info(f"   • Verify Wan models are in: models/Deforum/wan/ directory")
@@ -2852,7 +2852,7 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
             try:
                 # Try to parse as JSON first
                 animation_prompts = json.loads(current_prompts)
-                logger.info(f"{emoji_if_enabled('✅')} Successfully parsed {len(animation_prompts)} Wan prompts as JSON")
+                logger.info(f"{emoji_utils.maybe_check()} Successfully parsed {len(animation_prompts)} Wan prompts as JSON")
                 progress_update += f"{check} Parsed {len(animation_prompts)} prompts successfully\n"
             except json.JSONDecodeError:
                 # Try to parse as readable format (Frame X: prompt)
@@ -2874,7 +2874,7 @@ def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download
                             animation_prompts[frame_num] = prompt_part
 
                     if animation_prompts:
-                        logger.info(f"{emoji_if_enabled('✅')} Successfully parsed {len(animation_prompts)} Wan prompts as readable format")
+                        logger.info(f"{emoji_utils.maybe_check()} Successfully parsed {len(animation_prompts)} Wan prompts as readable format")
                         progress_update += f"{check} Parsed {len(animation_prompts)} prompts from readable format\n"
                     else:
                         raise ValueError("No valid prompts found")
@@ -2983,13 +2983,13 @@ Model download started automatically. This may take a few minutes.
                 for frame_key in enhanced_prompts_dict:
                     original_prompt = enhanced_prompts_dict[frame_key]
                     enhanced_prompts_dict[frame_key] = f"{original_prompt}. {movement_description}"
-                logger.info(f"{emoji_if_enabled('✅')} Appended movement description to {len(enhanced_prompts_dict)} enhanced prompts")
+                logger.info(f"{emoji_utils.maybe_check()} Appended movement description to {len(enhanced_prompts_dict)} enhanced prompts")
                 progress_update += f"{check} Added movement to {len(enhanced_prompts_dict)} prompts\n"
 
             # Format the enhanced prompts as JSON
             enhanced_json = json.dumps(enhanced_prompts_dict, ensure_ascii=False, indent=2)
 
-            logger.info(f"{emoji_if_enabled('✅')} Successfully enhanced {len(enhanced_prompts_dict)} prompts")
+            logger.info(f"{emoji_utils.maybe_check()} Successfully enhanced {len(enhanced_prompts_dict)} prompts")
             progress_update += f"{check} Enhancement complete! {len(enhanced_prompts_dict)} prompts ready\n"
 
             # Return the enhanced prompts and success progress
@@ -3075,7 +3075,7 @@ Movement descriptions will be added to your existing prompts."""
                 anim_args.angle = components.get('angle', "0:(0)")
                 anim_args.max_frames = int(components.get('max_frames', 100))
 
-                logger.info(f"{emoji_if_enabled('✅')} Using actual Deforum movement schedules from UI")
+                logger.info(f"{emoji_utils.maybe_check()} Using actual Deforum movement schedules from UI")
                 logger.info(f"Translation X: {anim_args.translation_x}", emoji='distribution')
                 logger.info(f"Translation Z: {anim_args.translation_z}", emoji='distribution')
                 logger.info(f"Rotation Y: {anim_args.rotation_3d_y}", emoji='distribution')
@@ -3115,7 +3115,7 @@ Movement descriptions will be added to your existing prompts."""
                     anim_args.shake_name = components.get('shake_name', "None")
                     anim_args.shake_intensity = float(components.get('shake_intensity', 1.0))
                     anim_args.shake_speed = float(components.get('shake_speed', 1.0))
-                    logger.info(f"{emoji_if_enabled('✅')} Using Camera Shakify settings from UI components")
+                    logger.info(f"{emoji_utils.maybe_check()} Using Camera Shakify settings from UI components")
                 else:
                     # Fallback to reading from DeforumArgs if component references not available
                     from deforum.config.args import DeforumArgs
@@ -3123,7 +3123,7 @@ Movement descriptions will be added to your existing prompts."""
                     anim_args.shake_name = getattr(current_args, 'shake_name', "None")
                     anim_args.shake_intensity = getattr(current_args, 'shake_intensity', 1.0)
                     anim_args.shake_speed = getattr(current_args, 'shake_speed', 1.0)
-                    logger.info(f"{emoji_if_enabled('✅')} Using Camera Shakify settings from DeforumArgs fallback")
+                    logger.info(f"{emoji_utils.maybe_check()} Using Camera Shakify settings from DeforumArgs fallback")
                 
                 # Camera Shakify is enabled when shake_name is not "None"
                 camera_shake_enabled = anim_args.shake_name and anim_args.shake_name != "None"
@@ -3316,7 +3316,7 @@ Ready for AI enhancement or video generation."""
 
 {check} Analysis complete for {len(updated_prompts)} prompts."""
         
-        logger.info(f"{emoji_if_enabled('✅')} Updated {len(updated_prompts)} Wan prompts with enhanced movement descriptions")
+        logger.info(f"{emoji_utils.maybe_check()} Updated {len(updated_prompts)} Wan prompts with enhanced movement descriptions")
         logger.info(f"Use this motion intensity schedule in Wan: {motion_intensity_schedule}", emoji='distribution')
         logger.info(f"Copy this schedule to Wan's Motion Intensity field for synchronized movement effects!", emoji='bulb')
         
@@ -3356,7 +3356,7 @@ def check_qwen_models_handler(qwen_model):
     try:
         from deforum.integrations.wan.utils.qwen_manager import qwen_manager
 
-        logger.info(f"{emoji_if_enabled('🔍')} Checking Qwen model status: {qwen_model}")
+        logger.info(f"{emoji_utils.magnifying_glass()} Checking Qwen model status: {qwen_model}")
         
         # Get model information
         model_info = qwen_manager.get_model_info(qwen_model)
