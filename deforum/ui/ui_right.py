@@ -532,46 +532,6 @@ def on_ui_tabs():
                     ]
                 )
 
-            # Wire "Save Camera Path as Default" button
-            btn_save_camera_path_as_default = components.get('btn_save_camera_path_as_default')
-            if btn_save_camera_path_as_default and tx:
-                def save_camera_path_as_default_handler(tx_val, ty_val, tz_val, rx_val, ry_val, rz_val):
-                    """Save current camera path schedules to default_settings.txt."""
-                    try:
-                        import json
-                        from deforum.config.settings import get_default_settings_path
-
-                        settings_path = get_default_settings_path()
-
-                        # Load existing settings
-                        with open(settings_path, 'r', encoding='utf-8') as f:
-                            settings = json.load(f)
-
-                        # Update movement schedules
-                        settings['translation_x'] = tx_val
-                        settings['translation_y'] = ty_val
-                        settings['translation_z'] = tz_val
-                        settings['rotation_3d_x'] = rx_val
-                        settings['rotation_3d_y'] = ry_val
-                        settings['rotation_3d_z'] = rz_val
-
-                        # Save back to file
-                        with open(settings_path, 'w', encoding='utf-8') as f:
-                            json.dump(settings, f, ensure_ascii=False, indent=4)
-
-                        checkmark = emoji_if_enabled('✅')
-                        return f"{checkmark} Camera path saved as default!\n\nSchedules saved to: {settings_path}\n\nThese will load automatically on next startup."
-
-                    except Exception as e:
-                        cross = emoji_if_enabled('❌')
-                        return f"{cross} Error saving camera path: {str(e)}"
-
-                btn_save_camera_path_as_default.click(
-                    fn=save_camera_path_as_default_handler,
-                    inputs=[tx, ty, tz, rx, ry, rz],
-                    outputs=[components.get('preset_status')]
-                )
-
             # Wire schedule textboxes to update visualization whenever they change
             def update_viz_from_schedules(tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, prompts_val="", max_frames=333):
                 """Update visualization from schedule textbox values."""
