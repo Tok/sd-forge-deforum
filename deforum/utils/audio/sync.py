@@ -300,19 +300,22 @@ def create_keyframe_timeline_plot(
             showgrid=True,
             gridcolor=grid_color,
             zeroline=False,
-            tickfont=dict(size=9)
+            tickfont=dict(size=9),
+            fixedrange=True  # Disable zoom/pan on x-axis
         ),
         yaxis=dict(
             title=None,
             range=[0, 1],
             showgrid=False,
             showticklabels=False,
-            zeroline=False
+            zeroline=False,
+            fixedrange=True  # Disable zoom/pan on y-axis
         ),
         margin=dict(l=0, r=0, t=5, b=35),  # Minimal margins for space efficiency
         height=280,  # Taller to show waveform + keyframes
         hovermode='closest',
-        showlegend=False
+        showlegend=False,
+        dragmode=False  # Disable drag interactions
     )
 
     return fig
