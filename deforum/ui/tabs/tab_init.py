@@ -280,7 +280,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 plus = emoji_utils.plus()
                 with FormRow():
                     audio_sync_fewer_button = gr.Button(
-                        f"{minus} -5% Keyframes",
+                        f"{minus} Fewer Keyframes",
                         variant="primary",
                         elem_id="audio_sync_fewer_button",
                         elem_classes=["slopcore-button"],
@@ -294,12 +294,18 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         scale=2
                     )
                     audio_sync_more_button = gr.Button(
-                        f"{plus} +5% Keyframes",
+                        f"{plus} More Keyframes",
                         variant="primary",
                         elem_id="audio_sync_more_button",
                         elem_classes=["slopcore-button"],
                         scale=1
                     )
+
+                # Interactive timeline visualization (above status for better visibility)
+                audio_sync_timeline = gr.Plot(
+                    label="Keyframe Timeline",
+                    show_label=True
+                )
 
                 # Status output
                 audio_sync_status = gr.Textbox(
@@ -308,12 +314,6 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     interactive=False,
                     lines=8,
                     info="Status messages will appear here"
-                )
-
-                # Interactive timeline visualization
-                audio_sync_timeline = gr.Plot(
-                    label="Keyframe Timeline",
-                    show_label=True
                 )
 
             # PARSEQ INNER-TAB
