@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Any
 import json
 
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji as emoji_utils
 
 logger = get_logger()
 
@@ -21,8 +21,17 @@ def create_tuning_tab() -> tuple:
         Tuple of (interface, title, id) for WebUI tab registration
     """
     with gr.Blocks() as tuning_interface:
-        gr.Markdown("""
-        # 🔬 Deforum Parameter Tuning Lab
+        # Theme-aware emojis for buttons and status
+        rocket = emoji_utils.rocket()
+        refresh = emoji_utils.refresh_icon()
+        folder = emoji_utils.folder()
+        sparkles = emoji_utils.sparkles()
+        microscope = emoji_utils.microscope()
+        stop = emoji_utils.stop()
+        check = emoji_utils.maybe_check()
+        cross = emoji_utils.maybe_cross()
+        gr.Markdown(f"""
+        # {microscope} Deforum Parameter Tuning Lab
 
         Automated quality assessment for finding optimal Deforum parameters.
 
@@ -132,12 +141,12 @@ def create_tuning_tab() -> tuple:
 
                 # Action buttons
                 with gr.Row():
-                    run_tests_btn = gr.Button("🚀 Run Tests", variant="primary", size="lg")
-                    stop_tests_btn = gr.Button("⏹️ Stop", variant="stop")
+                    run_tests_btn = gr.Button(f"{rocket} Run Tests", variant="primary", size="lg")
+                    stop_tests_btn = gr.Button(f"{stop} Stop", variant="stop")
 
                 with gr.Row():
-                    refresh_btn = gr.Button("🔄 Refresh Results", size="sm")
-                    open_tuning_dir_btn = gr.Button("📁 Open Tuning Directory", size="sm")
+                    refresh_btn = gr.Button(f"{refresh} Refresh Results", size="sm")
+                    open_tuning_dir_btn = gr.Button(f"{folder} Open Tuning Directory", size="sm")
 
                 # Status
                 status_box = gr.Textbox(
@@ -165,7 +174,7 @@ def create_tuning_tab() -> tuple:
                         )
 
                         apply_best_btn = gr.Button(
-                            "✨ Apply to Deforum Defaults",
+                            f"{sparkles} Apply to Deforum Defaults",
                             variant="secondary",
                         )
 
@@ -299,11 +308,11 @@ def create_tuning_tab() -> tuple:
                 current_test_id["id"] = result["test_id"]
 
                 logger.info(f"Started tuning test: {current_test_id['id']}")
-                return f"✅ Test started: {current_test_id['id']}\nStatus: {result['status']}"
+                return f"{check} Test started: {current_test_id['id']}\nStatus: {result['status']}"
 
             except Exception as e:
                 logger.error(f"Failed to start tuning test: {e}", exc_info=True)
-                return f"❌ Error: {str(e)}"
+                return f"{cross} Error: {str(e)}"
 
         def on_stop_tests():
             """Stop running tests via API."""
@@ -316,15 +325,15 @@ def create_tuning_tab() -> tuple:
                 )
                 response.raise_for_status()
                 logger.info(f"Cancelled test: {current_test_id['id']}")
-                return "⏹️ Test cancelled"
+                return f"{stop} Test cancelled"
             except Exception as e:
                 logger.error(f"Failed to cancel test: {e}", exc_info=True)
-                return f"❌ Error: {str(e)}"
+                return f"{cross} Error: {str(e)}"
 
         def on_apply_best():
             """Apply best parameters to defaults."""
             logger.info("Applying best parameters...")
-            return "✨ Applied! (Feature coming soon)"
+            return f"{sparkles} Applied! (Feature coming soon)"
 
         def on_open_tuning_dir():
             """Open the tuning output directory in file browser."""
@@ -339,7 +348,7 @@ def create_tuning_tab() -> tuple:
 
             logger.info(f"Opening tuning directory: {tuning_dir}")
             open_folder(str(tuning_dir))
-            return f"📁 Opened: {tuning_dir}"
+            return f"{folder} Opened: {tuning_dir}"
 
         def poll_test_status():
             """Poll for test status updates."""

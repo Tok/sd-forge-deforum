@@ -15,10 +15,16 @@ def _select(emoji):
 # Use emojis sparingly to catch attention to essential items.
 _suffix = '\U0000FE0F'
 
-# essentials, shouldn't be turned off.
+# Module constants (legacy - prefer function versions below for emoji toggle support)
 refresh = '\U0001f504'  # 🔄
 info = f'\U00002139{_suffix}'  # ℹ️
 warn = f'\U000026A0{_suffix}'  # ⚠️
+
+
+# Function versions that respect emoji toggle
+def refresh_icon():
+    """Refresh/reload icon - respects emoji toggle."""
+    return _select('\U0001f504')  # 🔄
 
 
 def bulb():
@@ -245,6 +251,14 @@ def eyes():
 
 def globe():
     return _select(f'\U0001F310')  # 🌐
+
+
+def microscope():
+    return _select('\U0001F52C')  # 🔬
+
+
+def stop():
+    return _select(f'\U000023F9{_suffix}')  # ⏹️
 
 
 # Slopcore minimal emojis
