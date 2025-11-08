@@ -108,7 +108,7 @@ def _validate_and_parse_inputs(
     if not prompts:
         return False, _create_error_response("Error: Please enter at least one prompt")
 
-    logger.info(f"{emoji_if_enabled('✅')} Parsed {len(prompts)} prompts from input")
+    logger.debug(f"Parsed {len(prompts)} prompts from input")
     return True, prompts
 
 
@@ -140,7 +140,7 @@ def _load_and_process_audio(soundtrack_path: str, frequency_band: str):
         distortion_gain=10.0
     )
 
-    logger.info(f"{emoji_if_enabled('✅')} Loaded audio: {duration:.2f}s at {sr}Hz")
+    logger.debug(f"Loaded audio: {duration:.2f}s at {sr}Hz")
     return y_processed, sr, duration, local_audio_path
 
 
@@ -181,7 +181,7 @@ def _generate_keyframes_intensity_based(
     """
     from deforum.audio import get_n_strongest_events
 
-    logger.info(f"Using intensity-based selection for exact count: {target_count}")
+    logger.debug(f"Using intensity-based selection for exact count: {target_count}")
 
     selected_times, selected_intensities = get_n_strongest_events(
         event_times=event_times,
@@ -198,7 +198,7 @@ def _generate_keyframes_intensity_based(
         for t, i in zip(selected_times, selected_intensities)
     ]
 
-    logger.info(f"{emoji_if_enabled('✅')} Selected {len(keyframes)} strongest events")
+    logger.debug(f"Selected {len(keyframes)} strongest events")
     return keyframes
 
 
@@ -270,8 +270,8 @@ def _generate_keyframes_spacing_based(
             break
 
     if best_keyframes:
-        logger.info(
-            f"{emoji_if_enabled('✅')} Generated {len(best_keyframes)} keyframes "
+        logger.debug(
+            f"Generated {len(best_keyframes)} keyframes "
             f"with spacing ≥{best_spacing} frames"
         )
 

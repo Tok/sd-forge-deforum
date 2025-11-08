@@ -262,11 +262,11 @@ def download_audio(audio_path):
 
         # Check cache first
         if os.path.exists(cache_path):
-            logger.info(f"Using cached audio file: {cache_filename}")
+            logger.debug(f"Using cached audio file: {cache_filename}")
             return cache_path
 
         # Download if not cached
-        logger.info(f"Downloading audio file from: {url}")
+        logger.debug(f"Downloading audio file from: {url}")
         response = get_http_client().get(url, stream=True)
         response.raise_for_status()
 
