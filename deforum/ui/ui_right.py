@@ -370,6 +370,39 @@ def on_ui_tabs():
 
                 components['camera_path_plot'] = camera_path_plot
 
+        # Camera Path visualization - update when tab is selected
+        camera_path_tab = components.get('camera_path_tab')
+        if camera_path_tab and camera_path_plot:
+            from deforum.utils.schedule_visualizer import visualize_schedules
+
+            def update_camera_path_visualization(tx, ty, tz, rx, ry, rz, prompts):
+                """Update camera path visualization from current schedule values."""
+                try:
+                    fig, _ = visualize_schedules(
+                        tx or "", ty or "", tz or "",
+                        rx or "", ry or "", rz or "",
+                        333,  # max_frames default
+                        prompts or ""
+                    )
+                    return fig
+                except Exception as e:
+                    logger.warning(f"Failed to update camera path visualization: {e}")
+                    return None
+
+            camera_path_tab.select(
+                fn=update_camera_path_visualization,
+                inputs=[
+                    components.get('translation_x'),
+                    components.get('translation_y'),
+                    components.get('translation_z'),
+                    components.get('rotation_3d_x'),
+                    components.get('rotation_3d_y'),
+                    components.get('rotation_3d_z'),
+                    components.get('animation_prompts')
+                ],
+                outputs=[camera_path_plot]
+            )
+
         # Live preview polling - updates every 500ms
         # Smart polling: only shows fresh previews (< 5 sec old), silently handles errors
         live_preview_timer = gr.Timer(value=0.5, active=True)

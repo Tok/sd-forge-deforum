@@ -596,37 +596,8 @@ def setup_deforum_left_side_ui():
         ]
     )
 
-    # Camera Path visualization - update when tab is selected
-    if tab_camera_path_params.get('camera_path_tab'):
-        from deforum.utils.schedule_visualizer import visualize_schedules
-
-        def update_camera_path_visualization(tx, ty, tz, rx, ry, rz, prompts):
-            """Update camera path visualization from current schedule values."""
-            try:
-                fig, _ = visualize_schedules(
-                    tx or "", ty or "", tz or "",
-                    rx or "", ry or "", rz or "",
-                    333,  # max_frames default
-                    prompts or ""
-                )
-                return fig
-            except Exception as e:
-                logger.warning(f"Failed to update camera path visualization: {e}")
-                return None
-
-        tab_camera_path_params['camera_path_tab'].select(
-            fn=update_camera_path_visualization,
-            inputs=[
-                locals()['translation_x'],
-                locals()['translation_y'],
-                locals()['translation_z'],
-                locals()['rotation_3d_x'],
-                locals()['rotation_3d_y'],
-                locals()['rotation_3d_z'],
-                locals()['animation_prompts']
-            ],
-            outputs=[locals()['camera_path_plot']]
-        )
+    # Camera Path visualization auto-load event wiring moved to ui_right.py
+    # (must be after camera_path_plot is created)
 
     # Import event handlers from helpers module
     from deforum.ui.handlers.ui_left_handlers import (
