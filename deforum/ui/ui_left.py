@@ -28,6 +28,7 @@ from deforum.ui.tabs.tab_camera_path import get_tab_camera_path
 from deforum.ui.tabs.tab_zero_hitl import get_tab_zero_hitl
 from deforum.ui.handlers.audio_prompt_generator import generate_prompts_with_ai
 from deforum.ui.handlers.audio_sync import synchronize_prompts_to_audio
+from deforum.ui.handlers.ui_left_handlers import handle_render_mode_change
 from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 # Initialize logger
