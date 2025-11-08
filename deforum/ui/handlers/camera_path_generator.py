@@ -55,7 +55,7 @@ def generate_preset_path(
                 rotation_factor=rotation_factor,
                 use_sphere=True  # Use 3D sphere rotation (not flat circle)
             )
-            status = f"✅ Generated rotate-around path ({len(camera_path)} frames)\n"
+            status = f"{emoji_utils.maybe_check()} Generated rotate-around path ({len(camera_path)} frames)\n"
             status += f"Radius: {radius}, Height: {height}, Rotation Factor: {rotation_factor}\n"
             status += "Mode: Random sphere rotation (3D)"
 
@@ -75,7 +75,7 @@ def generate_preset_path(
                 smoothness=0.8
             )
             camera_path = generate_camera_path(config, control_points, look_at_curve=True)
-            status = f"✅ Generated figure-8 path ({len(camera_path)} frames)\n"
+            status = f"{emoji_utils.maybe_check()} Generated figure-8 path ({len(camera_path)} frames)\n"
             status += f"Scale: {radius}, Height: {height}, Closed: {closed_loop}"
 
         elif preset_type == "forward-zoom":
@@ -92,7 +92,7 @@ def generate_preset_path(
                 )
                 for i in range(int(num_frames))
             ]
-            status = f"✅ Generated forward zoom ({len(camera_path)} frames)\n"
+            status = f"{emoji_utils.maybe_check()} Generated forward zoom ({len(camera_path)} frames)\n"
             status += f"Zoom distance: {radius}, Height: {height}"
 
         elif preset_type == "orbit-up":
@@ -114,7 +114,7 @@ def generate_preset_path(
                 smoothness=0.7
             )
             camera_path = generate_camera_path(config, control_points, look_at_curve=True)
-            status = f"✅ Generated orbit-up path ({len(camera_path)} frames)\n"
+            status = f"{emoji_utils.maybe_check()} Generated orbit-up path ({len(camera_path)} frames)\n"
             status += f"Radius: {radius}, Rise: {radius * 0.8:.1f}\n"
             status += "Note: Orbit-up cannot be closed (rising path)"
 
@@ -177,7 +177,7 @@ def generate_preset_path(
                     frame=frame_idx
                 ))
 
-            status = f"✅ Generated 3D spiral path ({len(camera_path)} frames)\n"
+            status = f"{emoji_utils.maybe_check()} Generated 3D spiral path ({len(camera_path)} frames)\n"
             status += f"Start radius: {radius}, End radius: 0\n"
             status += f"Mode: 3D spiral with look-at center (fits in cube)"
 
@@ -191,7 +191,7 @@ def generate_preset_path(
                 center_y=height if height != 0 else 10.0,  # Default eye level at 10
                 center_z=0.0
             )
-            status = f"✅ Generated street path ({len(camera_path)} frames)\n"
+            status = f"{emoji_utils.maybe_check()} Generated street path ({len(camera_path)} frames)\n"
             status += f"Distance: {radius * 5:.0f}, Eye height: {height if height != 0 else 10.0:.0f}\n"
             status += "Mode: Forward-facing (dashcam/POV)"
 
@@ -205,7 +205,7 @@ def generate_preset_path(
                 center_y=height if height != 0 else 8.0,  # Lower eye level (car seat)
                 center_z=0.0
             )
-            status = f"✅ Generated dashcam path ({len(camera_path)} frames)\n"
+            status = f"{emoji_utils.maybe_check()} Generated dashcam path ({len(camera_path)} frames)\n"
             status += f"Distance: {radius * 8:.0f}, Eye height: {height if height != 0 else 8.0:.0f}\n"
             status += "Mode: Dashcam (faster, more weaving)\n"
             status += "Tip: Combine with GENTLE_HANDHELD shakify pattern"
@@ -220,13 +220,13 @@ def generate_preset_path(
                 center_y=height if height != 0 else 15.0,  # Standing eye level
                 center_z=0.0
             )
-            status = f"✅ Generated bodycam path ({len(camera_path)} frames)\n"
+            status = f"{emoji_utils.maybe_check()} Generated bodycam path ({len(camera_path)} frames)\n"
             status += f"Distance: {radius * 3:.0f}, Eye height: {height if height != 0 else 15.0:.0f}\n"
             status += "Mode: Bodycam (walking pace)\n"
             status += "Tip: Combine with INVESTIGATION or GENTLE_HANDHELD shakify pattern"
 
         else:
-            return f"❌ Unknown preset type: {preset_type}", {}, []
+            return f"{emoji_utils.maybe_cross()} Unknown preset type: {preset_type}", {}, []
 
         # Convert to schedules
         schedules = camera_path_to_schedules(camera_path)
@@ -234,7 +234,7 @@ def generate_preset_path(
         return status, schedules, camera_path
 
     except Exception as e:
-        return f"❌ Error: {str(e)}", {}, []
+        return f"{emoji_utils.maybe_cross()} Error: {str(e)}", {}, []
 
 
 def generate_custom_spline_path(
@@ -299,7 +299,7 @@ def generate_custom_spline_path(
                 for _ in range(int(num_control_points))
             ]
         else:
-            return f"❌ Unknown pattern: {control_point_pattern}", {}, []
+            return f"{emoji_utils.maybe_cross()} Unknown pattern: {control_point_pattern}", {}, []
 
         # Generate spline
         config = SplineConfig(
@@ -315,14 +315,14 @@ def generate_custom_spline_path(
         # Convert to schedules
         schedules = camera_path_to_schedules(camera_path)
 
-        status = f"✅ Generated custom spline path ({len(camera_path)} frames)\n"
+        status = f"{emoji_utils.maybe_check()} Generated custom spline path ({len(camera_path)} frames)\n"
         status += f"Control points: {num_control_points}, Type: {spline_type}\n"
         status += f"Pattern: {control_point_pattern}, Scale: {pattern_scale}, Closed: {closed_loop}"
 
         return status, schedules, camera_path
 
     except Exception as e:
-        return f"❌ Error: {str(e)}", {}, []
+        return f"{emoji_utils.maybe_cross()} Error: {str(e)}", {}, []
 
 
 def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
