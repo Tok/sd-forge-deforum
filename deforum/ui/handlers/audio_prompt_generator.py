@@ -5,7 +5,7 @@ and intensity levels for audio-synchronized animations.
 """
 
 import gradio as gr
-from deforum.utils.system.logging import get_logger, emoji_if_enabled
+from deforum.utils.system.logging import get_logger
 
 logger = get_logger()
 
@@ -282,14 +282,18 @@ Generate {int(count)} {style_text}prompts for {theme}:"""
         # Join with newlines
         prompts_text = '\n'.join(prompts)
 
-        logger.info(f"{emoji_if_enabled('✓')} Generated {len(prompts)} prompts")
+        from deforum.utils.system.logging import emoji as emoji_utils
+        check = emoji_utils.maybe_check()
+        logger.info(f"{check} Generated {len(prompts)} prompts")
         return gr.update(value=prompts_text)
 
     except Exception as e:
         import traceback
         traceback.print_exc()
+        from deforum.utils.system.logging import emoji as emoji_utils
+        warning = emoji_utils.maybe_warning()
         error_msg = f"Error generating prompts: {str(e)}"
-        logger.warning(f"⚠️ {error_msg}")
+        logger.warning(f"{warning} {error_msg}")
         # Fallback to template-based generation
         style_prefix = f"{style} " if style else ""
         if generation_mode == "start-to-end":
