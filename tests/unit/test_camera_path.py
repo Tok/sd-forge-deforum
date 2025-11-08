@@ -310,7 +310,7 @@ class TestScheduleConversion:
     """Test conversion of camera path to Deforum schedules."""
 
     def test_camera_path_to_schedules(self):
-        """Test converting camera path to schedule strings."""
+        """Test converting camera path to schedule strings (as deltas)."""
         camera_path = [
             CameraPoint(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0),
             CameraPoint(10.0, 5.0, -5.0, 15.0, -10.0, 0.0, 1),
@@ -327,13 +327,16 @@ class TestScheduleConversion:
         assert 'rotation_3d_y' in schedules
         assert 'rotation_3d_z' in schedules
 
-        # Check translation_x schedule format
+        # Check translation_x schedule contains deltas
+        # Frame 0: x=0 (delta from 0 = 0)
+        # Frame 1: x=10 (delta from 0 = 10)
+        # Frame 2: x=20 (delta from 10 = 10)
         assert '0: (0.00)' in schedules['translation_x']
         assert '1: (10.00)' in schedules['translation_x']
-        assert '2: (20.00)' in schedules['translation_x']
+        assert '2: (10.00)' in schedules['translation_x']  # Delta, not absolute!
 
     def test_schedule_string_format(self):
-        """Test that schedule strings are properly formatted."""
+        """Test that schedule strings are properly formatted (as deltas)."""
         camera_path = [
             CameraPoint(1.5, 2.75, 3.333, 0.0, 0.0, 0.0, 0),
             CameraPoint(4.5, 5.75, 6.333, 0.0, 0.0, 0.0, 10)
@@ -341,9 +344,11 @@ class TestScheduleConversion:
 
         schedules = camera_path_to_schedules(camera_path)
 
-        # Check that values are rounded to 2 decimal places
+        # Check that delta values are rounded to 2 decimal places
+        # Frame 0: x=1.5 (delta from 0 = 1.5)
+        # Frame 10: x=4.5 (delta from 1.5 = 3.0)
         assert '0: (1.50)' in schedules['translation_x']
-        assert '10: (4.50)' in schedules['translation_x']
+        assert '10: (3.00)' in schedules['translation_x']  # Delta!
         assert '0: (3.33)' in schedules['translation_z']
 
 

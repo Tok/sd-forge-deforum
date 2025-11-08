@@ -380,26 +380,28 @@ def generate_street_path(
     return camera_path
 
 
-def camera_path_to_schedules(camera_path: List[CameraPoint], keyframe_interval: int = 10) -> Dict[str, str]:
-    """Convert camera path to Deforum schedule strings (keyframes only).
+def _normalize_angle_delta(delta: float) -> float:
+    """Normalize angle delta to shortest rotation (-180 to +180 degrees)."""
+    while delta > 180:
+        delta -= 360
+    while delta < -180:
+        delta += 360
+    return delta
 
-    Samples keyframes at regular intervals instead of outputting every frame.
-    Deforum's interpolation system will fill in the tween frames at runtime.
+
+def camera_path_to_schedules(camera_path: List[CameraPoint]) -> Dict[str, str]:
+    """Convert camera path to Deforum schedule strings (as DELTAS).
+
+    Animation engine expects frame-to-frame deltas, not absolute positions.
+    Outputs delta for EVERY frame to ensure smooth spline curves.
 
     Args:
-        camera_path: List of CameraPoint objects (one per frame)
-        keyframe_interval: Output a keyframe every N frames (default 10)
-                          If path is shorter than 2x interval, outputs all frames
+        camera_path: List of CameraPoint objects (absolute positions along curve)
 
     Returns:
-        Dict with schedule strings for each parameter:
-        - translation_x, translation_y, translation_z
-        - rotation_3d_x, rotation_3d_y, rotation_3d_z
-
-    Example:
-        Input: 333 frames with keyframe_interval=10
-        Output: "0: (100.00), 10: (95.00), 20: (88.00), ..., 330: (50.00)"
-        Deforum interpolates frames 1-9, 11-19, 21-29, etc. at runtime
+        Dict with DELTA schedule strings for each parameter:
+        - translation_x, translation_y, translation_z (linear deltas)
+        - rotation_3d_x, rotation_3d_y, rotation_3d_z (angle-wrapped deltas)
     """
     schedules = {
         'translation_x': [],
@@ -410,26 +412,40 @@ def camera_path_to_schedules(camera_path: List[CameraPoint], keyframe_interval: 
         'rotation_3d_z': []
     }
 
-    # For short paths (< 2x interval), output all frames to preserve test compatibility
-    # For long paths, sample keyframes at intervals
-    if len(camera_path) < keyframe_interval * 2:
-        keyframe_indices = range(len(camera_path))
-    else:
-        # Always include first and last frame as keyframes
-        keyframe_indices = {0, len(camera_path) - 1}
-        # Add intermediate keyframes at regular intervals
-        keyframe_indices.update(range(0, len(camera_path), keyframe_interval))
-        keyframe_indices = sorted(keyframe_indices)
+    # Track previous absolute values to calculate frame-to-frame deltas
+    prev_x = 0.0
+    prev_y = 0.0
+    prev_z = 0.0
+    prev_rot_x = 0.0
+    prev_rot_y = 0.0
+    prev_rot_z = 0.0
 
-    # Output keyframe entries
-    for frame_idx in keyframe_indices:
-        point = camera_path[frame_idx]
-        schedules['translation_x'].append(f"{point.frame}: ({point.x:.2f})")
-        schedules['translation_y'].append(f"{point.frame}: ({point.y:.2f})")
-        schedules['translation_z'].append(f"{point.frame}: ({point.z:.2f})")
-        schedules['rotation_3d_x'].append(f"{point.frame}: ({point.rot_x:.2f})")
-        schedules['rotation_3d_y'].append(f"{point.frame}: ({point.rot_y:.2f})")
-        schedules['rotation_3d_z'].append(f"{point.frame}: ({point.rot_z:.2f})")
+    for point in camera_path:
+        # Calculate translation deltas (linear)
+        delta_x = point.x - prev_x
+        delta_y = point.y - prev_y
+        delta_z = point.z - prev_z
+
+        # Calculate rotation deltas with angle wrapping (shortest path)
+        delta_rot_x = _normalize_angle_delta(point.rot_x - prev_rot_x)
+        delta_rot_y = _normalize_angle_delta(point.rot_y - prev_rot_y)
+        delta_rot_z = _normalize_angle_delta(point.rot_z - prev_rot_z)
+
+        # Output deltas (frame 0 outputs absolute as delta from origin)
+        schedules['translation_x'].append(f"{point.frame}: ({delta_x:.2f})")
+        schedules['translation_y'].append(f"{point.frame}: ({delta_y:.2f})")
+        schedules['translation_z'].append(f"{point.frame}: ({delta_z:.2f})")
+        schedules['rotation_3d_x'].append(f"{point.frame}: ({delta_rot_x:.2f})")
+        schedules['rotation_3d_y'].append(f"{point.frame}: ({delta_rot_y:.2f})")
+        schedules['rotation_3d_z'].append(f"{point.frame}: ({delta_rot_z:.2f})")
+
+        # Store current as previous for next iteration
+        prev_x = point.x
+        prev_y = point.y
+        prev_z = point.z
+        prev_rot_x = point.rot_x
+        prev_rot_y = point.rot_y
+        prev_rot_z = point.rot_z
 
     # Join with commas
     return {
