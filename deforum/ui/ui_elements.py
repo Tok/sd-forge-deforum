@@ -334,7 +334,7 @@ def get_tab_prompts(da, dw, dv=None):
             """)
 
             # Qwen Settings
-            with gr.Accordion(f"{emoji_utils.gear()} Qwen Settings", open=True):
+            with gr.Accordion(f"{emoji_utils.gear()} Qwen Settings", open=False):
                 with FormRow():
                     wan_qwen_model = create_gr_elem(dw.wan_qwen_model)
                     wan_qwen_language = create_gr_elem(dw.wan_qwen_language)
@@ -481,7 +481,7 @@ def get_tab_qwen(dw: SimpleNamespace):
         """)
 
         # Qwen Settings
-        with gr.Accordion(f"{emoji_utils.gear()} Qwen Settings", open=True):
+        with gr.Accordion(f"{emoji_utils.gear()} Qwen Settings", open=False):
             with FormRow():
                 wan_qwen_model = create_gr_elem(dw.wan_qwen_model)
                 wan_qwen_language = create_gr_elem(dw.wan_qwen_language)
