@@ -17,7 +17,7 @@ def _load_qwen_emojis() -> Dict[str, str]:
         'palette': emoji_utils.palette(),
         'hourglass': emoji_utils.hourglass(),
         'refresh': emoji_utils.refresh_icon(),
-        'zzz': emoji_utils.zzz(),
+        'zzz': emoji_utils.sleeping(),
         'fire': emoji_utils.fire(),
     }
 

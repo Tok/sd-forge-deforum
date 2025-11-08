@@ -49,11 +49,31 @@ mock_extensions_module.Extension = MagicMock
 
 # Install mocks into sys.modules BEFORE any imports
 mock_modules = MagicMock()
+mock_paths = MagicMock()
+mock_paths.models_path = "/tmp/models"
+mock_paths.script_path = "/tmp/forge"
+mock_processing = MagicMock()
+mock_processing.get_fixed_seed = lambda x: x if x != -1 else 42
+mock_ui = MagicMock()
+mock_ui.create_output_panel = MagicMock(return_value=[])
+mock_ui.wrap_gradio_call = lambda fn: fn
+mock_util = MagicMock()
+mock_util.open_folder = MagicMock()
+mock_call_queue = MagicMock()
+mock_call_queue.wrap_gradio_gpu_call = lambda fn: fn
 sys.modules['modules'] = mock_modules
 sys.modules['modules.shared'] = mock_shared
 sys.modules['modules.options'] = mock_options
 sys.modules['modules.extensions'] = mock_extensions_module
 sys.modules['modules.shared_cmd_options'] = MagicMock()
+sys.modules['modules.paths'] = mock_paths
+sys.modules['modules.processing'] = mock_processing
+sys.modules['modules.ui'] = mock_ui
+sys.modules['modules.util'] = mock_util
+sys.modules['modules.call_queue'] = mock_call_queue
+sys.modules['modules.scripts'] = MagicMock()
+sys.modules['modules.images'] = MagicMock()
+sys.modules['modules.sd_models'] = MagicMock()
 
 # CRITICAL: Link module attributes so 'from modules import X' works correctly
 # When code does 'from modules import extensions', Python checks sys.modules['modules'].extensions
@@ -61,6 +81,10 @@ sys.modules['modules.shared_cmd_options'] = MagicMock()
 mock_modules.shared = mock_shared
 mock_modules.options = mock_options
 mock_modules.extensions = mock_extensions_module
+mock_modules.paths = mock_paths
+mock_modules.processing = mock_processing
+mock_modules.ui = mock_ui
+mock_modules.util = mock_util
 
 # Mock Forge backend modules that aren't available in test environment
 mock_hf_guess = MagicMock()
