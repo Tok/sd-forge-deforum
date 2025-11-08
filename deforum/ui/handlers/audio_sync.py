@@ -64,11 +64,20 @@ def _create_error_response(message: str) -> tuple:
         message: Error message to display
 
     Returns:
-        Tuple of (gr.update(), gr.update(), gr.update(value=empty_plot), error_message)
+        Tuple of 8 gr.update() values matching success path
     """
     empty_plot = create_empty_timeline_plot("Error")
     cross = emoji_utils.maybe_cross()
-    return gr.update(), gr.update(), gr.update(value=empty_plot), f"{cross} {message}"
+    return (
+        gr.update(),              # animation_prompts
+        gr.update(),              # audio_target_keyframe_count
+        gr.update(value=0),       # audio_sync_keyframe_count_display
+        gr.update(value=0),       # audio_sync_pseudo_cadence_display
+        gr.update(value=0),       # audio_sync_bpm_display
+        gr.update(value=""),      # audio_sync_duration_display
+        gr.update(value=empty_plot),  # audio_sync_timeline
+        f"{cross} {message}"      # audio_sync_status
+    )
 
 
 def _validate_and_parse_inputs(
@@ -397,14 +406,9 @@ def synchronize_prompts_to_audio(
     Returns:
         Tuple of (formatted_schedule, keyframe_count, status_msg, timeline_plot)
     """
-    logger.info("="*80)
-    logger.info("AUDIO SYNC FUNCTION CALLED", emoji='sound')
-    logger.info(f"   Soundtrack: {soundtrack_path_val}")
-    logger.info(f"   Prompts: {audio_sync_prompts_val[:100]}...")
-    logger.info(f"   Detection: {detection_method}, Sensitivity: {sensitivity}")
-    if keyframe_adjustment != 0:
-        logger.info(f"   Keyframe adjustment: {keyframe_adjustment:+d}%")
-    logger.info("="*80)
+    # Concise single-line logging
+    adj_str = f" ({keyframe_adjustment:+d}%)" if keyframe_adjustment != 0 else ""
+    logger.info(f"Audio sync: {detection_method} detection{adj_str}", emoji='sound')
 
     try:
         # 1. VALIDATE AND PARSE INPUTS
@@ -436,8 +440,6 @@ def synchronize_prompts_to_audio(
         if len(event_times) == 0:
             return _create_error_response("Error: No audio events detected. Check your audio file.")
 
-        logger.info(f"{emoji_if_enabled('✅')} Detected {len(event_times)} events using {detection_method} method")
-
         # 5. CALCULATE TARGET: Determine how many keyframes to generate
         from deforum.utils.audio.sync import (
             calculate_keyframes_per_beat,
@@ -451,16 +453,12 @@ def synchronize_prompts_to_audio(
         keyframes_per_beat = calculate_keyframes_per_beat(estimated_bpm)
         bpm_based_target = calculate_bpm_based_target(duration, estimated_bpm, keyframes_per_beat)
 
-        logger.info(
-            f"Estimated BPM: {estimated_bpm:.1f}, keyframes_per_beat: {keyframes_per_beat}, "
-            f"bpm_target: {bpm_based_target}"
-        )
-
         user_target = int(target_count) if target_count else 0
         resolved_target, target_desc = resolve_keyframe_target(
             user_target, bpm_based_target, keyframe_adjustment
         )
-        logger.info(f"Target keyframes: {target_desc}", emoji='target')
+
+        logger.debug(f"BPM: {estimated_bpm:.1f}, target: {target_desc}")
 
         # 6. GENERATE KEYFRAMES
         success, keyframes_or_error = _generate_keyframes(
@@ -486,8 +484,6 @@ def synchronize_prompts_to_audio(
             mode=distribution_mode
         )
 
-        logger.info(f"{emoji_if_enabled('✅')} Distributed {len(prompts)} prompts across {len(keyframes)} keyframes")
-
         # 8. BUILD VISUALIZATIONS: Create both text status and interactive plot
         from deforum.utils.audio.sync import create_keyframe_timeline_plot
 
@@ -501,34 +497,31 @@ def synchronize_prompts_to_audio(
             sample_rate=sr
         )
 
-        status_msg = _build_success_status(
-            duration=duration,
-            fps=current_fps,
-            total_frames=total_frames,
-            estimated_bpm=estimated_bpm,
-            num_events=len(event_times),
-            num_keyframes=len(keyframes),
-            num_prompts=len(prompts),
-            distribution_mode=distribution_mode
+        # Calculate pseudo-cadence (average frames between keyframes)
+        pseudo_cadence = total_frames / len(keyframes) if len(keyframes) > 0 else 0
+
+        # Build concise status message
+        status_msg = (
+            f"Detected: {len(event_times)} events | "
+            f"Distributed: {len(prompts)} prompts across {len(keyframes)} keyframes | "
+            f"Mode: {distribution_mode}"
         )
 
-        logger.info("="*80)
-        logger.info(f"{emoji_if_enabled('✅')} AUDIO SYNC COMPLETE")
-        logger.info(f"   Keyframes: {len(keyframes)}")
-        logger.info(f"   Prompts: {len(prompts)}")
-        logger.info(f"   Total frames: {total_frames}")
-        logger.info("="*80)
+        # Duration display string
+        duration_str = f"{duration:.1f}s @ {current_fps} FPS ({total_frames} frames)"
 
-        logger.debug(f"{emoji_if_enabled('🔍')} DEBUG synchronize_prompts_to_audio return:")
-        logger.debug(f"   formatted_schedule type: {type(formatted_schedule)}, length: {len(formatted_schedule)}")
-        logger.debug(f"   formatted_schedule preview: {formatted_schedule[:100]}...")
-        logger.debug(f"   target_count: {len(keyframes)}")
+        # Single-line completion log
+        logger.info(f"Synced: {len(keyframes)} keyframes, pseudo-cadence={pseudo_cadence:.1f}, BPM={estimated_bpm:.1f}")
 
         return (
-            gr.update(value=formatted_schedule),
-            gr.update(value=len(keyframes)),
-            gr.update(value=timeline_plot),  # 3rd: timeline plot for audio_sync_timeline
-            gr.update(value=status_msg)      # 4th: status message for audio_sync_status
+            gr.update(value=formatted_schedule),  # animation_prompts
+            gr.update(value=len(keyframes)),      # audio_target_keyframe_count
+            gr.update(value=len(keyframes)),      # audio_sync_keyframe_count_display
+            gr.update(value=pseudo_cadence),      # audio_sync_pseudo_cadence_display
+            gr.update(value=estimated_bpm),       # audio_sync_bpm_display
+            gr.update(value=duration_str),        # audio_sync_duration_display
+            gr.update(value=timeline_plot),       # audio_sync_timeline
+            gr.update(value=status_msg)           # audio_sync_status
         )
 
     except Exception as e:

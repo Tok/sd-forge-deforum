@@ -406,6 +406,11 @@ def setup_deforum_left_side_ui():
             audio_sync_status = tab_init_params.get('audio_sync_status')
             audio_sync_timeline = tab_init_params.get('audio_sync_timeline')
             audio_target_keyframe_count = tab_init_params.get('audio_target_keyframe_count')
+            # New structured info displays
+            audio_sync_keyframe_count_display = tab_init_params.get('audio_sync_keyframe_count_display')
+            audio_sync_pseudo_cadence_display = tab_init_params.get('audio_sync_pseudo_cadence_display')
+            audio_sync_bpm_display = tab_init_params.get('audio_sync_bpm_display')
+            audio_sync_duration_display = tab_init_params.get('audio_sync_duration_display')
             animation_prompts = tab_prompts_params.get('animation_prompts')
 
             logger.debug(f"   Retrieved audio_sync_button: {audio_sync_button is not None}")
@@ -461,39 +466,54 @@ def setup_deforum_left_side_ui():
 
                 if len(audio_sync_inputs) == len(required_components):
                     # Buttons already retrieved above, just check they all exist
-                    if all([audio_sync_button, audio_sync_fewer_button, audio_sync_more_button, audio_sync_status, audio_sync_timeline, audio_target_keyframe_count, animation_prompts]):
+                    required_outputs = all([
+                        audio_sync_button, audio_sync_fewer_button, audio_sync_more_button,
+                        audio_sync_status, audio_sync_timeline, audio_target_keyframe_count,
+                        audio_sync_keyframe_count_display, audio_sync_pseudo_cadence_display,
+                        audio_sync_bpm_display, audio_sync_duration_display, animation_prompts
+                    ])
+
+                    if required_outputs:
+                        # Define common outputs list for all buttons
+                        audio_sync_outputs = [
+                            animation_prompts,
+                            audio_target_keyframe_count,
+                            audio_sync_keyframe_count_display,
+                            audio_sync_pseudo_cadence_display,
+                            audio_sync_bpm_display,
+                            audio_sync_duration_display,
+                            audio_sync_timeline,
+                            audio_sync_status
+                        ]
+
                         # Main sync button (0% adjustment)
                         audio_sync_button.click(
                             fn=synchronize_prompts_to_audio,
                             inputs=audio_sync_inputs,
-                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_timeline, audio_sync_status]
+                            outputs=audio_sync_outputs
                         )
 
-                        # -5% button (fewer keyframes)
+                        # Fewer keyframes button
                         def fewer_keyframes_wrapper(*args):
-                            result = synchronize_prompts_to_audio(*args, keyframe_adjustment=-5)
-                            logger.debug(f"{emoji_if_enabled('🔍')} DEBUG fewer_keyframes_wrapper returning: {type(result)}, len={len(result) if isinstance(result, tuple) else 'N/A'}")
-                            return result
+                            return synchronize_prompts_to_audio(*args, keyframe_adjustment=-5)
 
                         audio_sync_fewer_button.click(
                             fn=fewer_keyframes_wrapper,
                             inputs=audio_sync_inputs,
-                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_timeline, audio_sync_status]
+                            outputs=audio_sync_outputs
                         )
 
-                        # +5% button (more keyframes)
+                        # More keyframes button
                         def more_keyframes_wrapper(*args):
-                            result = synchronize_prompts_to_audio(*args, keyframe_adjustment=5)
-                            logger.debug(f"{emoji_if_enabled('🔍')} DEBUG more_keyframes_wrapper returning: {type(result)}, len={len(result) if isinstance(result, tuple) else 'N/A'}")
-                            return result
+                            return synchronize_prompts_to_audio(*args, keyframe_adjustment=5)
 
                         audio_sync_more_button.click(
                             fn=more_keyframes_wrapper,
                             inputs=audio_sync_inputs,
-                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_timeline, audio_sync_status]
+                            outputs=audio_sync_outputs
                         )
 
-                        logger.debug("Audio sync buttons connected successfully (main, -5%, +5%)", emoji='sound')
+                        logger.debug("Audio sync buttons connected successfully (main, fewer, more)", emoji='sound')
                     else:
                         warning = emoji_utils.maybe_warning()
                         logger.error(f"{warning} Could not connect audio sync buttons: missing button/output components")

@@ -301,19 +301,50 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         scale=1
                     )
 
+                # Structured sync info display (prominent key metrics)
+                with FormRow():
+                    audio_sync_keyframe_count_display = gr.Number(
+                        label=f"{emoji_utils.key()} Keyframes",
+                        value=0,
+                        interactive=False,
+                        precision=0,
+                        scale=1
+                    )
+                    audio_sync_pseudo_cadence_display = gr.Number(
+                        label=f"{emoji_utils.frames()} Pseudo-Cadence",
+                        value=0,
+                        interactive=False,
+                        precision=1,
+                        scale=1,
+                        info="Avg frames between keyframes"
+                    )
+                    audio_sync_bpm_display = gr.Number(
+                        label=f"{emoji_utils.music()} Estimated BPM",
+                        value=0,
+                        interactive=False,
+                        precision=1,
+                        scale=1
+                    )
+                    audio_sync_duration_display = gr.Textbox(
+                        label=f"{emoji_utils.stopwatch()} Duration",
+                        value="",
+                        interactive=False,
+                        scale=1
+                    )
+
                 # Interactive timeline visualization (above status for better visibility)
                 audio_sync_timeline = gr.Plot(
                     label="Keyframe Timeline",
                     show_label=True
                 )
 
-                # Status output
+                # Simplified status output (less stringy, more concise)
                 audio_sync_status = gr.Textbox(
-                    label="Sync Status",
+                    label="Sync Details",
                     value="",
                     interactive=False,
-                    lines=8,
-                    info="Status messages will appear here"
+                    lines=4,
+                    info="Additional sync information"
                 )
 
             # PARSEQ INNER-TAB

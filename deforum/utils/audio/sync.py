@@ -257,7 +257,7 @@ def create_keyframe_timeline_plot(
             for f, t, i in zip(frame_numbers, timestamps, intensities)
         ]
 
-    # Add keyframe markers as vertical lines spanning from bottom to top
+    # Add keyframe markers as uniform vertical lines spanning from bottom to top
     for i, (frame, intensity, hover) in enumerate(zip(frame_numbers, intensities, hover_texts)):
         fig.add_trace(go.Scatter(
             x=[frame, frame],
@@ -265,23 +265,23 @@ def create_keyframe_timeline_plot(
             mode='lines',
             line=dict(
                 color=marker_color,
-                width=2 + (normalized_intensities[i] * 3),  # Width based on intensity (2-5px)
+                width=2.5,  # Uniform width for all keyframes
             ),
             hovertemplate=f'{hover}<extra></extra>',
             showlegend=False,
-            opacity=0.7
+            opacity=0.8
         ))
 
-    # Add marker dots at the top of each keyframe line for better visibility
+    # Add marker dots at the top - size varies by intensity for visual feedback
     fig.add_trace(go.Scatter(
         x=frame_numbers,
         y=[0.95] * len(frame_numbers),
         mode='markers',
         marker=dict(
-            size=[8 + ni * 6 for ni in normalized_intensities],  # 8-14 based on intensity
+            size=[8 + ni * 4 for ni in normalized_intensities],  # 8-12px based on intensity
             color=marker_color,
             symbol='circle',
-            line=dict(color=line_color, width=2),
+            line=dict(color=line_color, width=1.5),
             opacity=0.9
         ),
         hovertemplate='%{text}<extra></extra>',
@@ -289,17 +289,11 @@ def create_keyframe_timeline_plot(
         showlegend=False
     ))
 
-    # Update layout for timeline with waveform
+    # Update layout for timeline with waveform (minimal margins for maximum space usage)
     fig.update_layout(
         paper_bgcolor=bg_color,
         plot_bgcolor=plot_bg,
         font=dict(color=text_color, family='system-ui, -apple-system, sans-serif', size=10),
-        title=dict(
-            text=f'Audio Sync Timeline: {len(keyframes)} Keyframes across {total_frames} Frames ({duration:.1f}s @ {fps} FPS)',
-            font=dict(size=12, color=text_color),
-            x=0.5,
-            xanchor='center'
-        ),
         xaxis=dict(
             title=dict(text='Frame Number', font=dict(size=11)),
             range=[0, total_frames],
@@ -315,7 +309,7 @@ def create_keyframe_timeline_plot(
             showticklabels=False,
             zeroline=False
         ),
-        margin=dict(l=40, r=20, t=40, b=40),
+        margin=dict(l=0, r=0, t=5, b=35),  # Minimal margins for space efficiency
         height=280,  # Taller to show waveform + keyframes
         hovermode='closest',
         showlegend=False
