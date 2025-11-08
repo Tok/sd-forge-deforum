@@ -27,19 +27,22 @@ def fractional_sigma_slice(sigmas: torch.Tensor, steps: int, t_enc: float) -> to
     Returns:
         Sliced sigma schedule with fractional starting point
     """
-    from deforum.utils.system.logging import get_logger
+    from deforum.utils.system.logging import get_logger, emoji as emoji_utils
     logger = get_logger()
+    magnifying_glass = emoji_utils.magnifying_glass()
+    check = emoji_utils.maybe_check()
+    warning = emoji_utils.maybe_warning()
 
-    logger.info(f"🔍 FRACTIONAL SIGMA: sigmas.shape={sigmas.shape}, steps={steps}, t_enc={t_enc:.4f}")
+    logger.debug(f"{magnifying_glass} FRACTIONAL SIGMA: sigmas.shape={sigmas.shape}, steps={steps}, t_enc={t_enc:.4f}")
 
     # Calculate fractional index
     frac_idx = steps - t_enc - 1
-    logger.info(f"   frac_idx = {frac_idx:.4f}")
+    logger.debug(f"   frac_idx = {frac_idx:.4f}")
 
     # If already integer, use normal slicing
     if isinstance(t_enc, int) or frac_idx == int(frac_idx):
         result = sigmas[int(frac_idx):]
-        logger.info(f"   ✓ INTEGER case: result.shape={result.shape}")
+        logger.debug(f"   {check} INTEGER case: result.shape={result.shape}")
         return result
 
     # Fractional case: interpolate starting sigma
@@ -47,24 +50,24 @@ def fractional_sigma_slice(sigmas: torch.Tensor, steps: int, t_enc: float) -> to
     high_idx = int(torch.ceil(torch.tensor(frac_idx)).item())
     weight = frac_idx - low_idx
 
-    logger.info(f"   FRACTIONAL: low={low_idx}, high={high_idx}, weight={weight:.4f}")
+    logger.debug(f"   FRACTIONAL: low={low_idx}, high={high_idx}, weight={weight:.4f}")
 
     # Bound check
     if high_idx >= len(sigmas):
-        logger.warning(f"   ⚠️ Clamping high_idx {high_idx} → {len(sigmas)-1}")
+        logger.warning(f"   {warning} Clamping high_idx {high_idx} → {len(sigmas)-1}")
         high_idx = len(sigmas) - 1
     if low_idx < 0:
-        logger.warning(f"   ⚠️ Clamping low_idx {low_idx} → 0")
+        logger.warning(f"   {warning} Clamping low_idx {low_idx} → 0")
         low_idx = 0
 
     # Interpolate first sigma
     first_sigma = (1 - weight) * sigmas[low_idx] + weight * sigmas[high_idx]
-    logger.info(f"   first_sigma = {first_sigma:.6f}")
+    logger.debug(f"   first_sigma = {first_sigma:.6f}")
 
     # Concatenate with remaining schedule
     remaining_sigmas = sigmas[high_idx:]
     result = torch.cat([first_sigma.unsqueeze(0), remaining_sigmas])
-    logger.info(f"   ✓ RESULT: shape={result.shape}, range=[{result[0]:.6f}, {result[-1]:.6f}]")
+    logger.debug(f"   {check} RESULT: shape={result.shape}, range=[{result[0]:.6f}, {result[-1]:.6f}]")
 
     return result
 

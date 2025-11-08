@@ -30,8 +30,9 @@ def fractional_setup_img2img_steps(p, steps=None):
     Returns:
         Tuple of (steps, t_enc) where t_enc can be fractional
     """
-    from deforum.utils.system.logging import get_logger
+    from deforum.utils.system.logging import get_logger, emoji as emoji_utils
     logger = get_logger()
+    magnifying_glass = emoji_utils.magnifying_glass()
 
     opts = shared.opts
 
@@ -39,14 +40,14 @@ def fractional_setup_img2img_steps(p, steps=None):
         requested_steps = steps or p.steps
         steps = int(requested_steps / min(p.denoising_strength, 0.999)) if p.denoising_strength > 0 else 0
         t_enc = requested_steps - 1
-        logger.debug(f"🔍 fractional_setup (fix_steps): steps={steps}, t_enc={t_enc}")
+        logger.debug(f"{magnifying_glass} fractional_setup (fix_steps): steps={steps}, t_enc={t_enc}")
     else:
         steps = p.steps
         # FRACTIONAL CHANGE: Remove int() to keep fractional precision
         t_enc = min(p.denoising_strength, 0.999) * steps
         discrete = int(t_enc)
-        logger.info(f"🔍 FRACTIONAL SETUP: denoising={p.denoising_strength:.4f}, steps={steps}")
-        logger.info(f"   t_enc = {t_enc:.4f} (discrete would be {discrete})")
+        logger.debug(f"{magnifying_glass} FRACTIONAL SETUP: denoising={p.denoising_strength:.4f}, steps={steps}")
+        logger.debug(f"   t_enc = {t_enc:.4f} (discrete would be {discrete})")
 
     return steps, t_enc
 
