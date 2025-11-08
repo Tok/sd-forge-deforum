@@ -417,6 +417,10 @@ def setup_deforum_left_side_ui():
             logger.debug(f"   Retrieved audio_sync_status: {audio_sync_status is not None}")
             logger.debug(f"   Retrieved audio_sync_timeline: {audio_sync_timeline is not None}")
             logger.debug(f"   Retrieved audio_target_keyframe_count: {audio_target_keyframe_count is not None}")
+            logger.debug(f"   Retrieved audio_sync_keyframe_count_display: {audio_sync_keyframe_count_display is not None}")
+            logger.debug(f"   Retrieved audio_sync_pseudo_cadence_display: {audio_sync_pseudo_cadence_display is not None}")
+            logger.debug(f"   Retrieved audio_sync_bpm_display: {audio_sync_bpm_display is not None}")
+            logger.debug(f"   Retrieved audio_sync_duration_display: {audio_sync_duration_display is not None}")
             logger.debug(f"   Retrieved animation_prompts: {animation_prompts is not None}")
 
             if audio_sync_button and audio_sync_status:
