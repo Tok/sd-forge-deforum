@@ -48,8 +48,9 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 )
 
                 # Audio upload section
+                sound = emoji_utils.sound()
                 audio_upload = gr.Audio(
-                    label="🎵 Upload Audio File",
+                    label=f"{sound} Upload Audio File",
                     type="filepath",
                     sources=["upload"],
                     info="Upload MP3, WAV, FLAC, etc. File will be saved to output directory and path auto-filled below."
@@ -170,7 +171,8 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     audio_intensity_threshold = create_gr_elem(dau.audio_intensity_threshold)
 
                 gr.Markdown("---")
-                gr.Markdown("### 🎯 Automatic Prompt Synchronization")
+                target = emoji_utils.target()
+                gr.Markdown(f"### {target} Automatic Prompt Synchronization")
                 gr.Markdown(
                     "Enter your prompts below (one per line or comma-separated). Click **Synchronize** to **detect audio events and populate the Prompts tab** with your prompts distributed across detected keyframes."
                 )
@@ -274,9 +276,11 @@ def get_tab_init(d, da, dp, dau, dv=None):
 
                 # Synchronize buttons with purple slopecore gradient styling
                 gr.Markdown("**Click to detect audio events and populate the Prompts tab:**")
+                minus = emoji_utils.minus()
+                plus = emoji_utils.plus()
                 with FormRow():
                     audio_sync_fewer_button = gr.Button(
-                        "➖ -5% Keyframes",
+                        f"{minus} -5% Keyframes",
                         variant="primary",
                         elem_id="audio_sync_fewer_button",
                         elem_classes=["slopcore-button"],
@@ -290,7 +294,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         scale=2
                     )
                     audio_sync_more_button = gr.Button(
-                        "➕ +5% Keyframes",
+                        f"{plus} +5% Keyframes",
                         variant="primary",
                         elem_id="audio_sync_more_button",
                         elem_classes=["slopcore-button"],
