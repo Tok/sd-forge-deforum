@@ -6,7 +6,7 @@ Extracted from ui_left.py to reduce complexity.
 
 import gradio as gr
 import plotly.graph_objects as go
-from deforum.utils.system.logging import get_logger, emoji_if_enabled
+from deforum.utils.system.logging import get_logger, emoji_if_enabled, emoji as emoji_utils
 
 # Initialize logger
 logger = get_logger()
@@ -100,13 +100,15 @@ def synchronize_prompts_to_audio(
         # 1. VALIDATION: Check soundtrack path
         if not soundtrack_path_val or not soundtrack_path_val.strip():
             empty_plot = create_empty_timeline_plot("Please provide a soundtrack path")
-            return gr.update(), gr.update(), empty_plot, "✗ Error: Please provide a soundtrack path or URL"
+            cross = emoji_utils.maybe_cross()
+            return gr.update(), gr.update(), empty_plot, f"{cross} Error: Please provide a soundtrack path or URL"
 
         # 2. PARSE PROMPTS: Extract prompts from prompt list
         prompts = parse_prompt_list(audio_sync_prompts_val)
         if not prompts:
             empty_plot = create_empty_timeline_plot("Please enter prompts")
-            return gr.update(), gr.update(), empty_plot, "✗ Error: Please enter at least one prompt"
+            cross = emoji_utils.maybe_cross()
+            return gr.update(), gr.update(), empty_plot, f"{cross} Error: Please enter at least one prompt"
 
         logger.info(f"{emoji_if_enabled('✅')} Parsed {len(prompts)} prompts from input")
 
@@ -141,7 +143,8 @@ def synchronize_prompts_to_audio(
             logger.info(f"{emoji_if_enabled('✅')} Loaded audio: {duration:.2f}s at {sr}Hz")
         except Exception as e:
             empty_plot = create_empty_timeline_plot("Error loading audio")
-            return gr.update(), gr.update(), empty_plot, f"✗ Error loading audio: {str(e)}"
+            cross = emoji_utils.maybe_cross()
+            return gr.update(), gr.update(), empty_plot, f"{cross} Error loading audio: {str(e)}"
 
         # 4. DETECT EVENTS: Detect beats/onsets in audio
         event_times, event_intensities = detect_events(
@@ -153,7 +156,8 @@ def synchronize_prompts_to_audio(
 
         if len(event_times) == 0:
             empty_plot = create_empty_timeline_plot("No audio events detected")
-            return gr.update(), gr.update(), empty_plot, f"✗ Error: No audio events detected. Check your audio file."
+            cross = emoji_utils.maybe_cross()
+            return gr.update(), gr.update(), empty_plot, f"{cross} Error: No audio events detected. Check your audio file."
 
         logger.info(f"{emoji_if_enabled('✅')} Detected {len(event_times)} events using {detection_method} method")
 
@@ -255,14 +259,16 @@ def synchronize_prompts_to_audio(
             keyframes = best_keyframes
             if not keyframes:
                 empty_plot = create_empty_timeline_plot("No keyframes generated")
-                return gr.update(), gr.update(), empty_plot, "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
+                cross = emoji_utils.maybe_cross()
+                return gr.update(), gr.update(), empty_plot, f"{cross} Error: No keyframes generated after filtering. Try reducing min spacing."
 
             logger.info(f"{emoji_if_enabled('✅')} Generated {len(keyframes)} keyframes with spacing ≥{best_spacing} frames")
 
         # Final validation
         if not keyframes:
             empty_plot = create_empty_timeline_plot("No keyframes generated")
-            return gr.update(), gr.update(), empty_plot, "✗ Error: No keyframes generated. Try adjusting detection settings."
+            cross = emoji_utils.maybe_cross()
+            return gr.update(), gr.update(), empty_plot, f"{cross} Error: No keyframes generated. Try adjusting detection settings."
 
         # 8. DISTRIBUTE PROMPTS: Assign prompts to keyframes
         # Returns JSON string ready for Deforum animation_prompts format
@@ -323,4 +329,5 @@ def synchronize_prompts_to_audio(
         import traceback
         traceback.print_exc()
         empty_plot = create_empty_timeline_plot("Error during sync")
-        return gr.update(), gr.update(), empty_plot, f"✗ Error: {str(e)}"
+        cross = emoji_utils.maybe_cross()
+        return gr.update(), gr.update(), empty_plot, f"{cross} Error: {str(e)}"
