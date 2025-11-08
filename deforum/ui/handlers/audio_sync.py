@@ -521,9 +521,6 @@ def synchronize_prompts_to_audio(
         logger.debug(f"   formatted_schedule type: {type(formatted_schedule)}, length: {len(formatted_schedule)}")
         logger.debug(f"   formatted_schedule preview: {formatted_schedule[:100]}...")
         logger.debug(f"   target_count: {len(keyframes)}")
-        logger.debug(f"   timeline_plot type: {type(timeline_plot)}")
-        logger.debug(f"   timeline_plot value: {str(timeline_plot)[:200]}...")
-        logger.debug(f"   Returning timeline plot and status")
 
         return (
             gr.update(value=formatted_schedule),
