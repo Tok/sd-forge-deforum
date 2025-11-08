@@ -278,12 +278,15 @@ def get_tab_prompts(da, dw, dv=None):
             Returns:
                 Tuple of (keyframe_count, prompt_count, pseudo_cadence, max_frame)
             """
+            print(f"!!! [tabs/tab_prompts.py] update_prompt_stats CALLED, length={len(prompts_text) if prompts_text else 0}")
+
             try:
                 import json
                 import re
 
                 # Parse prompts JSON
                 if not prompts_text or not prompts_text.strip():
+                    print("!!! [tabs/tab_prompts.py] Empty prompts, returning zeros")
                     return 0, 0, 0, 0
 
                 # Remove comments and parse
@@ -301,14 +304,18 @@ def get_tab_prompts(da, dw, dv=None):
                 max_frame = keyframes[-1] if keyframes else 0
                 pseudo_cadence = max_frame / keyframe_count if keyframe_count > 0 else 0
 
+                print(f"!!! [tabs/tab_prompts.py] Calculated: kf={keyframe_count}, unique={unique_prompts}, cadence={pseudo_cadence:.1f}, max={max_frame}")
                 return keyframe_count, unique_prompts, pseudo_cadence, max_frame
 
             except Exception as e:
                 # Return zeros on parse error
+                print(f"!!! [tabs/tab_prompts.py] ERROR parsing: {e}")
                 return 0, 0, 0, 0
 
         # Wire animation_prompts to update stats displays on change
         # Note: max_frames not accessible here - will use parsed max frame instead
+        print(f"!!! [tabs/tab_prompts.py] Wiring animation_prompts.change() event...")
+        print(f"!!!   animation_prompts={animation_prompts}")
         animation_prompts.change(
             fn=lambda prompts: update_prompt_stats(prompts, 0),
             inputs=[animation_prompts],
@@ -319,5 +326,6 @@ def get_tab_prompts(da, dw, dv=None):
                 prompts_max_frames_display
             ]
         )
+        print(f"!!! [tabs/tab_prompts.py] Event wired successfully!")
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
