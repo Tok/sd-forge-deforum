@@ -91,14 +91,15 @@ class Model:
             }
 
 def download_rife_model(path, deforum_models_path):
-    # RIFE v4.15 from official Practical-RIFE repository (2024.03.11)
-    # Google Drive file ID: 1xlem7cfKoMaiLzjoeum8KIQTYO-9iqG5
+    # RIFE v4.3 from official Practical-RIFE repository (2022.08.17)
+    # Compatible with IFNet_HDv3 architecture (7, 12, 12, 12 channel configuration)
+    # Google Drive file ID: 1xrNofTGMHdt9sQv7-EOG0EChl8hZW_cU
     import hashlib
     import zipfile
 
-    options = {'RIFE415': (
-               'bb316b28151b54cd1ab55a3ebabf16f3a455e7dc0e11047f10b56b0e833370939ad47fd74b1c90fea4dc44c9275632d068188c59cb2763cc6516ec9fa8d3dc38',
-               '1xlem7cfKoMaiLzjoeum8KIQTYO-9iqG5')}
+    options = {'RIFE43': (
+               '41b0ed6f8200f1375402fdb57828aee5f6263da70f19116b1db457f972a5649b5c7053a1decdf06724d20e5c7a7179d9046b9edf12ad3bda40305394aa4a10ef',
+               '1xrNofTGMHdt9sQv7-EOG0EChl8hZW_cU')}
     if path in options:
         target_file = f"{path}.pkl"
         target_path = os.path.join(deforum_models_path, target_file)
@@ -110,20 +111,20 @@ def download_rife_model(path, deforum_models_path):
             temp_zip_path = os.path.join(deforum_models_path, f"{path}_temp.zip")
             gdown.download(id=options[path][1], output=temp_zip_path, quiet=False)
 
-            # Extract flownet.pkl from RIFEv4.15/train_log/flownet.pkl
+            # Extract flownet.pkl from train_log/flownet.pkl
             print(f"Extracting RIFE model from archive...")
             try:
                 with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
                     # Extract the flownet.pkl file
-                    zip_ref.extract('RIFEv4.15/train_log/flownet.pkl', deforum_models_path)
+                    zip_ref.extract('train_log/flownet.pkl', deforum_models_path)
 
                 # Move extracted file to target location
-                extracted_path = os.path.join(deforum_models_path, 'RIFEv4.15/train_log/flownet.pkl')
+                extracted_path = os.path.join(deforum_models_path, 'train_log/flownet.pkl')
                 os.rename(extracted_path, target_path)
 
                 # Clean up extracted directory structure
                 import shutil
-                extracted_dir = os.path.join(deforum_models_path, 'RIFEv4.15')
+                extracted_dir = os.path.join(deforum_models_path, 'train_log')
                 if os.path.exists(extracted_dir):
                     shutil.rmtree(extracted_dir)
 

@@ -118,11 +118,11 @@ pip install -r requirements.txt
   - Integrates Deforum prompt scheduling, FPS, seed, and strength
 - **flux_interp.py** - Flux + Interpolation mode pipeline with multi-method support
   - Phase 1: Generate ALL keyframes with Flux
-  - Phase 2: Interpolate tweens with selected method (Wan FLF2V / RIFE v4.15 / FILM)
+  - Phase 2: Interpolate tweens with selected method (Wan FLF2V / RIFE v4.3 / FILM)
   - Phase 3: Stitch final video
   - Supports three interpolation methods via `flux_flf2v_interpolation_method` parameter:
     - **Wan FLF2V (default):** AI-generated video with semantic understanding
-    - **RIFE v4.15:** Optical flow-based interpolation (no extra models needed)
+    - **RIFE v4.3:** Optical flow-based interpolation (no extra models needed)
     - **FILM:** Google's Frame Interpolation for Large Motion (no extra models needed)
 - **qwen_prompt_expander.py** - AI prompt enhancement (integrated into Prompts tab)
   - Auto-selects Qwen model (3B/7B/14B) based on VRAM
@@ -234,12 +234,12 @@ The extension now uses a unified `RenderMode` system that replaces the old anima
    - Shows: Interpolation tab (if using Wan), Flux Interpolation Settings, pseudo-cadence display (read-only)
    - Hides: 3D tabs (Depth, Shakify, RAFT, ControlNet)
    - Phase 1: Generate ALL keyframes with Flux at prompt boundaries
-   - Phase 2: Interpolate tweens with selected method (Wan FLF2V / RIFE v4.15 / FILM)
+   - Phase 2: Interpolate tweens with selected method (Wan FLF2V / RIFE v4.3 / FILM)
    - Phase 3: Stitch final video
    - Integrated Qwen prompt enhancement
    - Three interpolation methods available:
      - **Wan FLF2V (default):** AI video generation with semantic understanding (guidance_scale=3.5)
-     - **RIFE v4.15:** Optical flow-based interpolation (no extra models needed)
+     - **RIFE v4.3:** Optical flow-based interpolation (no extra models needed)
      - **FILM:** Google's Frame Interpolation for Large Motion (no extra models needed)
 
 **Mode Selection Impact:**

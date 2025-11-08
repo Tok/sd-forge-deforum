@@ -227,7 +227,7 @@ def get_frame_interpolation_info_html():
          <p style="margin-top:1em">
             Supported engines:
             <ul style="list-style-type:circle; margin-left:1em; margin-bottom:1em">
-                <li>RIFE v4.15 and FILM.</li>
+                <li>RIFE v4.3 and FILM.</li>
             </ul>
         </p>
          <p style="margin-top:1em">
