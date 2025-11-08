@@ -793,7 +793,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
     if 'zero_hitl_params' in locals() and zero_hitl_params:
         result.update(zero_hitl_params)
 
-    # DEBUG: Check what audio components are in locals()
+    # Add audio sync components to result
     audio_component_names = [
         'audio_ai_generation_mode', 'audio_ai_intensity', 'audio_ai_style',
         'audio_ai_prompt_theme', 'audio_ai_prompt_count', 'audio_ai_start_prompt',
@@ -805,17 +805,9 @@ def get_tab_init(d, da, dp, dau, dv=None):
     ]
 
     local_scope = locals()
-    found_components = [name for name in audio_component_names if name in local_scope]
-    missing_components = [name for name in audio_component_names if name not in local_scope]
-
-    logger.debug(f"{emoji_utils.magnifying_glass()} DEBUG get_tab_init() return:")
-    logger.debug(f"   audio_component_names has {len(audio_component_names)} items: {audio_component_names}")
-    logger.debug(f"   Found in locals(): {found_components}")
-    logger.debug(f"   Missing from locals(): {missing_components}")
-
-    # Add found components to result
-    for comp_name in found_components:
-        result[comp_name] = local_scope[comp_name]
+    for comp_name in audio_component_names:
+        if comp_name in local_scope:
+            result[comp_name] = local_scope[comp_name]
 
     return result
 
@@ -911,8 +903,7 @@ Each prompt will be smoothly connected using I2V continuity!"""
 
         # Build final args for run_deforum call
         expected_component_count = len(component_names)
-        logger.info(f"Debug: Expected {expected_component_count} components, have {len(component_args)} args", emoji='wrench')
-
+        logger.debug(f"Component count check: expected={expected_component_count}, actual={len(component_args)}")
         final_args = build_deforum_final_args(job_id, component_args, expected_component_count, emojis)
 
         # Call the main Deforum generation function

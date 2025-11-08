@@ -446,10 +446,7 @@ def build_args_from_slopcore(
         'mask_preset_names': ['everywhere', 'video_mask'],
     }
 
-    logger.info(f"🔍 DEBUG: root_dict created with keys: {list(root_dict.keys())}")
-    logger.info(f"🔍 DEBUG: root_dict['animation_prompts'] = {root_dict.get('animation_prompts', 'MISSING!')}")
-    logger.info(f"🔍 DEBUG: root_dict['prompt_keyframes'] = {root_dict.get('prompt_keyframes', 'MISSING!')}")
-    logger.info(f"🔍 DEBUG: args_dict['outdir'] = {args_dict.get('outdir', 'MISSING!')}")
+    logger.debug(f"root_dict keys: {list(root_dict.keys())}, has animation_prompts: {'animation_prompts' in root_dict}, outdir: {args_dict.get('outdir', 'MISSING')}")
 
     return {
         'args': args_dict,
@@ -505,10 +502,7 @@ def execute_render(
         controlnet_args = SimpleNamespace(**all_args['controlnet_args'])  # Convert to SimpleNamespace
         root = SimpleNamespace(**all_args['root'])  # Convert root to SimpleNamespace too
 
-        logger.info(f"🔍 DEBUG: args namespace attributes: {dir(args)}")
-        logger.info(f"🔍 DEBUG: args has outdir: {hasattr(args, 'outdir')}")
-        if hasattr(args, 'outdir'):
-            logger.info(f"🔍 DEBUG: args.outdir value: {args.outdir}")
+        logger.debug(f"args namespace check - has outdir: {hasattr(args, 'outdir')}, value: {getattr(args, 'outdir', 'MISSING')}")
 
         # Call Deforum render
         logger.info("🎬 About to call render_animation()...")

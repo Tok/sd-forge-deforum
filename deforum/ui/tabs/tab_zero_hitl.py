@@ -41,10 +41,6 @@ def get_tab_zero_hitl(skip_tabitem=False):
 
 def _build_zero_hitl_ui(components: dict):
     """Build the Zero-HITL UI components."""
-    from deforum.utils.system.logging import get_logger
-    logger = get_logger()
-    logger.debug("_build_zero_hitl_ui() called - starting UI build")
-
     gr.HTML(value="""
         <div style='background: linear-gradient(135deg, #5606ff 0%, #17a7fe 100%);
                     padding: 20px; border-radius: 10px; margin-bottom: 20px; color: white;'>

@@ -30,15 +30,12 @@ def get_tab_init(d, da, dp, dau, dv=None):
     Returns:
         dict: Component dictionary for event binding
     """
-    logger.info("========== get_tab_init() CALLED ==========")
     # Import dv if not provided
     if dv is None:
         from deforum.config.args import DeforumOutputArgs
         dv = SimpleNamespace(**DeforumOutputArgs())
 
-    logger.info("About to create Init TabItem")
     with gr.TabItem('Init'):
-        logger.info("Inside Init TabItem")
         # Audio Sync tab opens by default (first tab)
         with gr.Tabs() as init_subtabs:
             # AUDIO SYNC INNER-TAB - First tab (opens by default)
@@ -384,11 +381,8 @@ def get_tab_init(d, da, dp, dau, dv=None):
             from .tab_zero_hitl import get_tab_zero_hitl
             zero_hitl_tab_emoji = emoji_if_enabled(emoji_utils.dice())
             zero_hitl_title = f"{zero_hitl_tab_emoji} Zero-HITL" if zero_hitl_tab_emoji else "Zero-HITL"
-            logger.debug(f"Creating Zero-HITL subtab with title: {zero_hitl_title}")
             with gr.Tab(zero_hitl_title) as zero_hitl_subtab:
-                logger.debug("Inside Zero-HITL gr.Tab context")
                 zero_hitl_params = get_tab_zero_hitl(skip_tabitem=True)
-                logger.debug(f"Zero-HITL params returned: {list(zero_hitl_params.keys()) if zero_hitl_params else 'None'}")
 
     # Build result dict from locals/vars
     result = {k: v for k, v in {**locals(), **vars()}.items()}
@@ -397,7 +391,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
     if 'zero_hitl_params' in locals() and zero_hitl_params:
         result.update(zero_hitl_params)
 
-    # DEBUG: Check what audio components are in locals()
+    # Add audio sync components to result
     audio_component_names = [
         'audio_ai_generation_mode',
         'audio_ai_intensity',
@@ -414,16 +408,8 @@ def get_tab_init(d, da, dp, dau, dv=None):
     ]
 
     local_scope = locals()
-    found_components = [name for name in audio_component_names if name in local_scope]
-    missing_components = [name for name in audio_component_names if name not in local_scope]
-
-    logger.debug(f"{emoji_if_enabled('🔍')} DEBUG get_tab_init() return:")
-    logger.debug(f"   audio_component_names has {len(audio_component_names)} items: {audio_component_names}")
-    logger.debug(f"   Found in locals(): {found_components}")
-    logger.debug(f"   Missing from locals(): {missing_components}")
-
-    # Add found components to result
-    for comp_name in found_components:
-        result[comp_name] = local_scope[comp_name]
+    for comp_name in audio_component_names:
+        if comp_name in local_scope:
+            result[comp_name] = local_scope[comp_name]
 
     return result

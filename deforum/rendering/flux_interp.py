@@ -89,19 +89,11 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     logger.info(f"   Keyframes to generate: {len(keyframes)}")
     logger.info(f"   FLF2V segments: {len(keyframes) - 1}")
 
-    # DEBUG: Show resume and path info
-    logger.debug(f"\n{emoji_if_enabled('🔍')} DEBUG Resume Info:")
-    logger.debug(f"   resume_from_timestring: {anim_args.resume_from_timestring}")
-    logger.debug(f"   resume_timestring: {anim_args.resume_timestring if hasattr(anim_args, 'resume_timestring') else 'N/A'}")
-    logger.debug(f"   root.timestring: {root.timestring}")
-    logger.debug(f"   args.outdir: {args.outdir}")
-    logger.debug(f"   data.output_directory: {data.output_directory}")
-    logger.debug(f"   Directory exists: {os.path.exists(data.output_directory)}")
+    # Resume info (compact)
+    logger.debug(f"Resume: {anim_args.resume_from_timestring}, outdir: {args.outdir}, exists: {os.path.exists(data.output_directory)}")
     if os.path.exists(data.output_directory):
-        files_in_dir = [f for f in os.listdir(data.output_directory) if f.endswith(('.png', '.jpg', '.jpeg'))]
-        logger.debug(f"   Image files in directory: {len(files_in_dir)}")
-        if len(files_in_dir) > 0:
-            logger.debug(f"   First few files: {files_in_dir[:5]}")
+        img_count = len([f for f in os.listdir(data.output_directory) if f.endswith(('.png', '.jpg', '.jpeg'))])
+        logger.debug(f"Existing images in output dir: {img_count}")
 
     # ====================
     # PHASE 1: Batch Generate All Keyframes with Flux/SD
@@ -602,9 +594,7 @@ def stitch_wan_flux_video(data, frame_paths, video_args, interp_method="Wan"):
         logger.info(f"{emoji_if_enabled('✅')} Video stitched successfully")
 
         # Add audio if specified (use pre-downloaded path from video_args)
-        logger.debug(f"{emoji_if_enabled('🔍')} DEBUG: video_args.add_soundtrack = {video_args.add_soundtrack}")
-        logger.debug(f"{emoji_if_enabled('🔍')} DEBUG: video_args.soundtrack_path = {video_args.soundtrack_path}")
-
+        logger.debug(f"Soundtrack: add={video_args.add_soundtrack}, path={video_args.soundtrack_path}")
         if video_args.add_soundtrack == 'File' and video_args.soundtrack_path:
             logger.info(f"{emoji_if_enabled('🎵')} Adding audio track...")
             temp_output = output_path + '.temp.mp4'
