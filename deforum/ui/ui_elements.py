@@ -1618,7 +1618,7 @@ The auto-discovery will find your models automatically!
             movement_description = ""
             if wan_args.wan_movement_description:
                 movement_description = wan_args.wan_movement_description.split('\n')[0]  # Get first line
-                logger.info(f"📐 Adding movement description: {movement_description}")
+                logger.info(f"{emoji_utils.ruler()} Adding movement description: {movement_description}")
             
             # Re-sort with final prompts
             sorted_prompts = sorted(final_prompts.items(), key=lambda x: int(x[0]))
@@ -1873,27 +1873,27 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     gr.Markdown("---")
 
     # Deforum Integration Info - Shows what settings are used
-    with gr.Accordion("🔗 Deforum Integration Details", open=False):
-        gr.Markdown("""
-        **✅ Wan seamlessly integrates with your Deforum settings:**
+    with gr.Accordion(f"{emoji_utils.link()} Deforum Integration Details", open=False):
+        gr.Markdown(f"""
+        **{emoji_utils.maybe_check()} Wan seamlessly integrates with your Deforum settings:**
 
-        - **📝 Prompts:** Uses prompts from Deforum Prompts tab
-        - **🎬 Movement:** Uses same movement schedules as normal Deforum renders
-        - **🎲 Seed & CFG:** Uses Deforum's seed and CFG schedules
-        - **💪 Strength:** Uses Deforum's strength schedule for I2V continuity
-        - **🎬 FPS:** Uses Output tab FPS setting
+        - **{emoji_utils.memo()} Prompts:** Uses prompts from Deforum Prompts tab
+        - **{emoji_utils.movie_camera()} Movement:** Uses same movement schedules as normal Deforum renders
+        - **{emoji_utils.dice()} Seed & CFG:** Uses Deforum's seed and CFG schedules
+        - **{emoji_utils.muscle()} Strength:** Uses Deforum's strength schedule for I2V continuity
+        - **{emoji_utils.movie_camera()} FPS:** Uses Output tab FPS setting
 
         **Movement Integration:**
-        - ✅ Translation X/Y/Z, Rotation 3D X/Y/Z, Zoom schedules
-        - ✅ **Parseq schedules fully supported**
-        - ✅ Movement descriptions automatically calculated and added
-        - ✅ Motion intensity dynamically adapts to movement complexity
+        - {emoji_utils.maybe_check()} Translation X/Y/Z, Rotation 3D X/Y/Z, Zoom schedules
+        - {emoji_utils.maybe_check()} **Parseq schedules fully supported**
+        - {emoji_utils.maybe_check()} Movement descriptions automatically calculated and added
+        - {emoji_utils.maybe_check()} Motion intensity dynamically adapts to movement complexity
         """)
 
     # DEPRECATED SECTION - Hide old standalone workflow
-    with gr.Accordion(f"{emoji_utils.warn} DEPRECATED: Standalone Wan Workflow (Hidden)", open=False, visible=False):
-        gr.Markdown("""
-        **🎯 Essential for Wan Generation:** These prompts define what video clips will be generated.
+    with gr.Accordion(f"{emoji_utils.maybe_warning()} DEPRECATED: Standalone Wan Workflow (Hidden)", open=False, visible=False):
+        gr.Markdown(f"""
+        **{emoji_utils.target()} Essential for Wan Generation:** These prompts define what video clips will be generated.
         
         **Quick Setup:** Load → Analyze Movement → Enhance → Generate
         """)
@@ -1989,12 +1989,12 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
 
         # GENERATION SECTION
         gr.Markdown("---")
-        gr.Markdown("### 🎬 Generate Flux/Wan")
+        gr.Markdown(f"### {emoji_utils.movie_camera()} Generate Flux/Wan")
 
         # Generate Button with Validation
         with FormRow():
             wan_generate_button = gr.Button(
-                "🎬 Generate Flux/Wan (I2V Chaining)",
+                f"{emoji_utils.movie_camera()} Generate Flux/Wan (I2V Chaining)",
                 variant="primary",
                 size="lg",
                 elem_id="wan_generate_button"
@@ -2005,7 +2005,7 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             label="Generation Status",
             interactive=False,
             lines=5,
-            placeholder="⚠️ Prompts required! Load prompts above first, then click Generate.",
+            placeholder=f"{emoji_utils.maybe_warning()} Prompts required! Load prompts above first, then click Generate.",
             info="Status updates will appear here during generation."
         )
 
@@ -2079,14 +2079,14 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             )
 
     # VRAM OPTIMIZATION SETTINGS
-    with gr.Accordion("💾 VRAM Optimization", open=False):
-        gr.Markdown("""
+    with gr.Accordion(f"{emoji_utils.floppy_disk()} VRAM Optimization", open=False):
+        gr.Markdown(f"""
         **Reduce VRAM usage for 16GB GPUs:**
 
         These settings can help run larger models on GPUs with limited VRAM.
         All settings are OFF by default for maximum compatibility.
 
-        **⚠️ Trade-offs:**
+        **{emoji_utils.maybe_warning()} Trade-offs:**
         - T5 CPU Offload: Slightly slower text encoding, saves ~3-4GB VRAM
         - Gradient Checkpointing: Slower inference (~15-20%), saves ~2-3GB VRAM
         - Both combined: Can reduce peak VRAM by ~5-7GB
@@ -2226,7 +2226,7 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             )
             
             check_flash_attention_btn = gr.Button(
-                "🔍 Check Flash Attention Status",
+                f"{emoji_utils.magnifying_glass()} Check Flash Attention Status",
                 variant="secondary",
                 elem_id="wan_check_flash_attention_btn"
             )
@@ -2302,8 +2302,8 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     )
     
     # Detailed Documentation - Collapsed by default
-    with gr.Accordion("📚 Detailed Documentation", open=False):
-        with gr.Accordion("🎯 How Wan Integrates with Deforum Schedules", open=False):
+    with gr.Accordion(f"{emoji_utils.book()} Detailed Documentation", open=False):
+        with gr.Accordion(f"{emoji_utils.target()} How Wan Integrates with Deforum Schedules", open=False):
             gr.Markdown("""
             ### Prompt Schedule Integration
             - Wan reads your prompts from the **Prompts tab**
@@ -3094,7 +3094,7 @@ Movement descriptions will be added to your existing prompts."""
                 anim_args.angle = "0:(0)"
                 anim_args.max_frames = 120
         else:
-            logger.warning("⚠️ No stored movement schedule references found")
+            logger.warning(f"{emoji_utils.maybe_warning()} No stored movement schedule references found")
             # Use static defaults for testing
             anim_args.translation_x = "0:(0)"
             anim_args.translation_y = "0:(0)"
@@ -3822,67 +3822,83 @@ def load_wan_defaults_handler():
 
 def validate_wan_generation(current_prompts):
     """Validate that Wan generation requirements are met"""
+    # Theme-aware emoji symbols
+    warning = emoji_utils.maybe_warning()
+    cross = emoji_utils.maybe_cross()
+    check = emoji_utils.maybe_check()
+    memo = emoji_utils.memo()
+    movie_camera = emoji_utils.movie_camera()
+    fire = emoji_utils.fire()
+    zap = emoji_utils.zap()
+    wrench = emoji_utils.wrench()
+
     try:
         import json
-        
+
         # Check if prompts are empty
         if not current_prompts or current_prompts.strip() == "":
-            return """⚠️ **Prompts Required**
+            return f"""{warning} **Prompts Required**
 
-📋 **Load prompts to get started:**
+{memo} **Load prompts to get started:**
 • Click "Load from Deforum Prompts" to use your animation prompts
 • Or click "Load Default Wan Prompts" for examples
 • Then optionally enhance with AI or add movement descriptions"""
-        
+
         # Check if it's just placeholder text
         if any(placeholder in current_prompts.lower() for placeholder in ["required:", "load prompts", "placeholder"]):
-            return """⚠️ **Load Real Prompts**
+            return f"""{warning} **Load Real Prompts**
 
-📋 **Replace placeholder text:**
+{memo} **Replace placeholder text:**
 • Click "Load from Deforum Prompts" to copy your animation prompts
 • Or click "Load Default Wan Prompts" for examples"""
-        
+
         # Try to parse as JSON
         try:
             prompts_dict = json.loads(current_prompts)
             if not prompts_dict:
-                return "⚠️ **Empty prompts** - Add some prompts first"
-            
+                return f"{warning} **Empty prompts** - Add some prompts first"
+
             # Check if prompts are just basic placeholders
             first_prompt = list(prompts_dict.values())[0].lower()
             if any(placeholder in first_prompt for placeholder in ["prompt text", "beautiful landscape", "load prompts"]):
-                return """⚠️ **Default/Placeholder Prompts Detected**
+                return f"""{warning} **Default/Placeholder Prompts Detected**
 
-📋 **Load your real prompts:**
+{memo} **Load your real prompts:**
 • Click "Load from Deforum Prompts" to copy your animation prompts
 • Or edit the prompts manually to describe your desired video"""
-                
+
             # All good - ready to generate!
             num_prompts = len(prompts_dict)
-            return f"""✅ **Ready to Generate!** 
+            return f"""{check} **Ready to Generate!**
 
-🎬 **Found {num_prompts} prompt{'s' if num_prompts != 1 else ''}** for Wan video generation
-🔥 **Click "Generate Flux/Wan" above** to start I2V chaining generation
-⚡ **Optional:** Add movement descriptions or AI enhancement first"""
-            
+{movie_camera} **Found {num_prompts} prompt{'s' if num_prompts != 1 else ''}** for Wan video generation
+{fire} **Click "Generate Flux/Wan" above** to start I2V chaining generation
+{zap} **Optional:** Add movement descriptions or AI enhancement first"""
+
         except json.JSONDecodeError:
-            return """❌ **Invalid JSON Format**
+            return f"""{cross} **Invalid JSON Format**
 
-🔧 **Fix the format:**
-• Prompts should be in JSON format like: {"0": "prompt text", "60": "another prompt"}
+{wrench} **Fix the format:**
+• Prompts should be in JSON format like: {{"0": "prompt text", "60": "another prompt"}}
 • Check for missing quotes, commas, or brackets"""
-    
+
     except Exception as e:
-        return f"❌ **Validation Error:** {str(e)}"
+        return f"{cross} **Validation Error:** {str(e)}"
 
 
 def wan_generate_with_validation(*component_args):
     """Wrapper for wan_generate_video that includes validation"""
+    # Theme-aware emoji symbols
+    check = emoji_utils.maybe_check()
+    cross = emoji_utils.maybe_cross()
+    movie_camera = emoji_utils.movie_camera()
+    wrench = emoji_utils.wrench()
+
     try:
         # Get component names to find the wan_enhanced_prompts index
         from deforum.config.args import get_component_names
         component_names = get_component_names()
-        
+
         # Find wan_enhanced_prompts in the component list
         wan_prompts = ""
         try:
@@ -3891,30 +3907,30 @@ def wan_generate_with_validation(*component_args):
             # For now, let's assume it's passed as the first argument to this wrapper
             if len(component_args) > 0:
                 wan_prompts = component_args[0] if component_args[0] else ""
-            
+
             # Validate prompts first
             validation_result = validate_wan_generation(wan_prompts)
-            if validation_result.startswith("❌"):
+            if validation_result.startswith(cross):
                 return validation_result
-            
+
             # If validation passes, call the original generate function
             # But first we need to insert the prompts into the right position in component_args
             # This is a bit complex - we'll need to reconstruct the args properly
-            
+
             # For now, return validation success and instructions
-            return f"""✅ Validation passed! 
+            return f"""{check} Validation passed!
 
 {validation_result}
 
-🎬 **Starting Wan video generation...**
+{movie_camera} **Starting Wan video generation...**
 - Prompts: {len(wan_prompts.split('"')) // 4} clips detected
 - Using I2V chaining for smooth transitions
 - Check console for detailed progress
 
-🔧 **Note**: Full generation integration in progress..."""
-            
+{wrench} **Note**: Full generation integration in progress..."""
+
         except Exception as e:
-            return f"❌ Generation preparation error: {str(e)}"
-            
+            return f"{cross} Generation preparation error: {str(e)}"
+
     except Exception as e:
-        return f"❌ Generation error: {str(e)}"
+        return f"{cross} Generation error: {str(e)}"
