@@ -9,7 +9,7 @@ import traceback
 from typing import Tuple, List
 
 from deforum.utils.zero_hitl import orchestrate_slop, OrchestrationResult
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji as emoji_utils
 
 logger = get_logger()
 
@@ -32,11 +32,15 @@ def handle_slop_it_click(
         - log: Multi-line generation log
         - settings_json_state: JSON settings (for hidden state)
     """
+    # Theme-aware status emojis
+    warning = emoji_utils.maybe_warning()
+    check = emoji_utils.maybe_check()
+    cross = emoji_utils.maybe_cross()
     try:
         # Validate inputs
         if duration < 1.0 or duration > 10.0:
             return (
-                "⚠️ Error: Duration must be between 1 and 10 seconds",
+                f"{warning} Error: Duration must be between 1 and 10 seconds",
                 "Invalid duration provided.",
                 "{}"
             )
@@ -57,17 +61,17 @@ def handle_slop_it_click(
 
         # Format results for UI
         if result.success:
-            status = f"✅ SLOP IT complete! Video: {result.video_path}"
+            status = f"{check} SLOP IT complete! Video: {result.video_path}"
             log = "\n".join(result.slop_log)
             settings = result.settings_json
 
-            logger.info(f"✅ Success: {result.video_path}")
+            logger.info(f"{check} Success: {result.video_path}")
         else:
-            status = f"❌ SLOP IT failed: {result.error_message}"
+            status = f"{cross} SLOP IT failed: {result.error_message}"
             log = "\n".join(result.slop_log)
             settings = "{}"
 
-            logger.error(f"❌ Failure: {result.error_message}")
+            logger.error(f"{cross} Failure: {result.error_message}")
 
         return (status, log, settings)
 
@@ -78,7 +82,7 @@ def handle_slop_it_click(
         logger.error(f"{error_msg}\n{error_trace}")
 
         return (
-            f"❌ Fatal error: {str(e)}",
+            f"{cross} Fatal error: {str(e)}",
             f"💥 UNEXPECTED ERROR\n\n{error_trace}",
             "{}"
         )
@@ -93,8 +97,10 @@ def handle_view_settings_click(settings_json: str) -> str:
     Returns:
         Formatted settings string for display
     """
+    warning = emoji_utils.maybe_warning()
+    check = emoji_utils.maybe_check()
     if not settings_json or settings_json == "{}":
-        return "⚠️ No settings available. Generate a video first!"
+        return f"{warning} No settings available. Generate a video first!"
 
     import json
     try:
@@ -145,7 +151,7 @@ def handle_view_settings_click(settings_json: str) -> str:
         return "\n".join(lines)
 
     except Exception as e:
-        return f"⚠️ Failed to parse settings: {e}"
+        return f"{warning} Failed to parse settings: {e}"
 
 
 def handle_open_output_click() -> str:
@@ -154,6 +160,8 @@ def handle_open_output_click() -> str:
     Returns:
         Status message
     """
+    warning = emoji_utils.maybe_warning()
+    check = emoji_utils.maybe_check()
     import os
     import subprocess
     import platform
@@ -172,7 +180,7 @@ def handle_open_output_click() -> str:
         else:  # Linux
             subprocess.run(["xdg-open", output_dir])
 
-        return f"✅ Opened folder: {output_dir}"
+        return f"{check} Opened folder: {output_dir}"
 
     except Exception as e:
-        return f"⚠️ Failed to open folder: {e}\nPath: {os.path.abspath(output_dir)}"
+        return f"{warning} Failed to open folder: {e}\nPath: {os.path.abspath(output_dir)}"
