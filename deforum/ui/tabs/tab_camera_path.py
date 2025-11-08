@@ -30,8 +30,9 @@ def get_tab_camera_path(da: SimpleNamespace, skip_tabitem=False):
     else:
         # Main tab title respects emoji setting
         tab_emoji = emoji_utils.wan_video() + " " if emoji_utils.wan_video() else ""
-        with gr.TabItem(f"{tab_emoji}Camera Path", elem_id='camera_path_tab'):
+        with gr.TabItem(f"{tab_emoji}Camera Path", elem_id='camera_path_tab') as camera_path_tab:
             _build_camera_path_ui(da, components)
+            components['camera_path_tab'] = camera_path_tab
             return components
 
 
