@@ -261,6 +261,62 @@ def stop():
     return _select(f'\U000023F9{_suffix}')  # ⏹️
 
 
+def memo():
+    return _select('\U0001F4DD')  # 📝
+
+
+def ruler():
+    return _select('\U0001F4D0')  # 📐
+
+
+def hourglass():
+    return _select(f'\U000023F3')  # ⏳
+
+
+def package():
+    return _select('\U0001F4E6')  # 📦
+
+
+def lightning():
+    return _select(f'\U000026A1')  # ⚡
+
+
+def signal():
+    return _select('\U0001F4F6')  # 📶
+
+
+def open_folder():
+    return _select('\U0001F4C2')  # 📂
+
+
+def plus():
+    return _select(f'\U00002795')  # ➕
+
+
+def minus():
+    return _select(f'\U00002796')  # ➖
+
+
+def books():
+    return _select('\U0001F4DA')  # 📚
+
+
+def chart_increasing():
+    return _select('\U0001F4C8')  # 📈
+
+
+def camera():
+    return _select('\U0001F4F7')  # 📷
+
+
+def abacus():
+    return _select('\U0001F9EE')  # 🧮
+
+
+def info():
+    return _select(f'\U00002139{_suffix}')  # ℹ️
+
+
 # Slopcore minimal emojis
 def blue_square():
     return _select('\U0001F7E6')  # 🟦
