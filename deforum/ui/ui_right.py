@@ -459,7 +459,7 @@ def on_ui_tabs():
                         tx, ty, tz, rx, ry, rz  # Only update schedules
                     ]
                 )
-                logger.debug("✅ Camera Path preset button wired to right panel plot")
+                logger.debug(f"{emoji_if_enabled('✅')} Camera Path preset button wired to right panel plot")
 
             if btn_randomize_preset and camera_path_plot and tx:
                 # Wire up randomize button
@@ -489,7 +489,7 @@ def on_ui_tabs():
                         tx, ty, tz, rx, ry, rz  # Only update schedules
                     ]
                 )
-                logger.debug("✅ Camera Path randomize button wired")
+                logger.debug(f"{emoji_if_enabled('✅')} Camera Path randomize button wired")
 
             if btn_generate_custom and camera_path_plot and tx:
                 # Wire up custom spline generation button
@@ -511,7 +511,7 @@ def on_ui_tabs():
                         tx, ty, tz, rx, ry, rz  # Only update schedules
                     ]
                 )
-                logger.debug("✅ Camera Path custom button wired")
+                logger.debug(f"{emoji_if_enabled('✅')} Camera Path custom button wired")
 
             # Wire schedule textboxes to update visualization whenever they change
             def update_viz_from_schedules(tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, prompts_val="", max_frames=333):
@@ -556,7 +556,7 @@ def on_ui_tabs():
                         outputs=[camera_path_plot]
                     )
 
-                logger.debug("✅ Schedule textboxes wired to visualization")
+                logger.debug(f"{emoji_if_enabled('✅')} Schedule textboxes wired to visualization")
 
         except Exception as e:
             logger.error(f"Failed to wire Camera Path buttons to right panel: {e}")
