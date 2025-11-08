@@ -305,18 +305,20 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     gr.Markdown("---")
     gr.Markdown(f"### {emoji_utils.gear()} Generation Settings")
     
-    with gr.Accordion("🎨 T2V / Keyframe Generation", open=True):
+    palette = emoji_utils.palette()
+    with gr.Accordion(f"{palette} T2V / Keyframe Generation", open=True):
         with FormRow():
             wan_strength_override = create_gr_elem(dw.wan_strength_override)
             wan_fixed_strength = create_gr_elem(dw.wan_fixed_strength)
-            
+
         with FormRow():
             wan_guidance_override = create_gr_elem(dw.wan_guidance_override)
             wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
-    
+
+    warning = emoji_utils.maybe_warning()
     with gr.Accordion(f"{emoji_utils.frames()} Wan FLF2V Settings", open=False):
-        gr.Markdown("""
-        **⚠️ These settings only apply when Wan is selected as interpolation method above!**
+        gr.Markdown(f"""
+        **{warning} These settings only apply when Wan is selected as interpolation method above!**
 
         **MODEL REQUIREMENT:** You MUST use a FLF2V-specific model!
         - **TI2V models (e.g., Wan2.2-TI2V-5B) CANNOT do FLF2V** - they will extend the first frame
@@ -326,8 +328,8 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         **IMPORTANT:** FLF2V needs semantic guidance to interpolate correctly!
         - **Guidance Scale:** 3.5 (default) = smooth morphing, 2.5-3.0 = even smoother. **Avoid 5.5+** (causes "mode collapse" - frames stick to first image with sudden transition at end)
         - **Prompt Mode:** **'blend' (RECOMMENDED)** - combines keyframe prompts for semantic guidance
-        - **⚠️ NEVER use guidance_scale=0.0** (breaks last_image conditioning)
-        - **⚠️ 'none' mode may not work** (empty prompts often cause first-frame extension)
+        - **{warning} NEVER use guidance_scale=0.0** (breaks last_image conditioning)
+        - **{warning} 'none' mode may not work** (empty prompts often cause first-frame extension)
         """)
         with FormRow():
             wan_flf2v_guidance_scale = create_gr_elem(dw.wan_flf2v_guidance_scale)
