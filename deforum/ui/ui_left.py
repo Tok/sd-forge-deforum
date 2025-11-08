@@ -64,6 +64,8 @@ def wan_generate_video():
             check = emoji_utils.maybe_check()
             cross = emoji_utils.maybe_cross()
             warning = emoji_utils.maybe_warning()
+            bulb = emoji_utils.bulb()
+            folder = emoji_utils.folder()
 
             if models:
                 return f"""{check} Wan integration is working!
@@ -71,17 +73,17 @@ def wan_generate_video():
 Found {len(models)} model(s):
 {chr(10).join([f"• {model['name']} ({model['size']})" for model in models[:3]])}
 
-💡 Next steps:
+{bulb} Next steps:
 1. Ensure your prompts are configured in the Prompts tab
 2. Set your desired FPS in the Output tab
 3. Choose animation mode 'Flux + Interpolation' in the Keyframes tab
 4. Click the main Generate button in Deforum
 
-📁 Models found in: {models[0]['path']}"""
+{folder} Models found in: {models[0]['path']}"""
             else:
                 return f"""{cross} No Wan models found!
 
-💡 SETUP REQUIRED:
+{bulb} SETUP REQUIRED:
 1. Download a Wan model:
    huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir models/Deforum/wan
 
@@ -101,7 +103,7 @@ The Wan tab is integrated but some dependencies may be missing.
 
 Error: {str(e)}
 
-💡 To complete setup:
+{bulb} To complete setup:
 1. Download Wan models as instructed above
 2. Ensure all Wan dependencies are installed
 3. Check the console for any import errors"""
@@ -109,7 +111,7 @@ Error: {str(e)}
         except Exception as e:
             return f"""{cross} Wan integration error: {str(e)}
 
-💡 Troubleshooting:
+{bulb} Troubleshooting:
 1. Check that Wan models are downloaded and placed correctly
 2. Verify all dependencies are installed
 3. Check console output for detailed error messages
@@ -492,10 +494,12 @@ def setup_deforum_left_side_ui():
 
                         logger.debug("Audio sync buttons connected successfully (main, -5%, +5%)", emoji='sound')
                     else:
-                        logger.error(f"⚠️ Could not connect audio sync buttons: missing button/output components")
+                        warning = emoji_utils.maybe_warning()
+                        logger.error(f"{warning} Could not connect audio sync buttons: missing button/output components")
                         logger.info(f"   Condition checks: audio_sync_button={audio_sync_button is not None}, fewer={audio_sync_fewer_button is not None}, more={audio_sync_more_button is not None}, status={audio_sync_status is not None}, prompts={animation_prompts is not None}")
                 else:
-                    logger.error(f"⚠️ Could not connect audio sync button: missing input components ({len(audio_sync_inputs)}/{len(required_components)})")
+                    warning = emoji_utils.maybe_warning()
+                    logger.error(f"{warning} Could not connect audio sync button: missing input components ({len(audio_sync_inputs)}/{len(required_components)})")
                     logger.info(f"   Missing components: {[comp for comp in required_components if comp not in [c for c in audio_sync_inputs]]}")
 
             # Wire up AI prompt generation button (using extracted handler)
@@ -872,7 +876,8 @@ def setup_deforum_left_side_ui():
             
             logger.debug(f"Found {len(component_inputs)} UI components for Wan generation", emoji='distribution')
             if missing_components:
-                logger.warning(f"⚠️ Missing {len(missing_components)} components: {missing_components[:5]}...")
+                warning = emoji_utils.maybe_warning()
+                logger.warning(f"{warning} Missing {len(missing_components)} components: {missing_components[:5]}...")
             
             # Create a wrapper function with better error handling
             def wan_generate_wrapper(*args):
@@ -883,7 +888,8 @@ def setup_deforum_left_side_ui():
                     logger.debug(f"{emoji_if_enabled('✅')} Wan generation completed: {str(result)[:100]}...")
                     return result
                 except Exception as e:
-                    error_msg = f"❌ Wan generation error: {str(e)}"
+                    cross = emoji_utils.maybe_cross()
+                    error_msg = f"{cross} Wan generation error: {str(e)}"
                     logger.info(error_msg)
                     import traceback
                     traceback.print_exc()
@@ -1122,22 +1128,26 @@ def setup_deforum_left_side_ui():
             cross = emoji_utils.maybe_cross()
             warning = emoji_utils.maybe_warning()
             alert = emoji_utils.maybe_alert()
+            lock = emoji_utils.lock()
+            folder = emoji_utils.folder()
+            chart_increasing = emoji_utils.chart_increasing()
+            bulb = emoji_utils.bulb()
             try:
                 validator = WanModelValidator()
                 models = validator.discover_models()
-                
+
                 if not models:
-                    return "❌ No Wan models found for validation."
-                
+                    return f"{cross} No Wan models found for validation."
+
                 results = []
-                results.append("🔐 WAN MODEL VALIDATION WITH OFFICIAL CHECKSUMS")
+                results.append(f"{lock} WAN MODEL VALIDATION WITH OFFICIAL CHECKSUMS")
                 results.append("=" * 55)
-                
+
                 valid_models = 0
                 total_models = len(models)
-                
+
                 for model in models:
-                    results.append(f"\n📁 {model['name']} ({model['size_formatted']}):")
+                    results.append(f"\n{folder} {model['name']} ({model['size_formatted']}):")
                     
                     from pathlib import Path
                     model_path = Path(model['path'])
@@ -1172,20 +1182,19 @@ def setup_deforum_left_side_ui():
                     if hf_validation['warnings']:
                         for warn_msg in hf_validation['warnings']:
                             results.append(f"   {warning} {warn_msg}")
-                
-                summary = f"📊 SUMMARY: {valid_models}/{total_models} models valid"
+
+                summary = f"{chart_increasing} SUMMARY: {valid_models}/{total_models} models valid"
                 if valid_models == total_models:
                     summary = f"{check} {summary} - All models verified!"
                 else:
                     summary = f"{warning} {summary} - Some models have issues"
-                
+
                 results.append(f"\n{summary}")
-                results.append(f"💡 Using official HuggingFace checksums for maximum reliability")
-                
+                results.append(f"{bulb} Using official HuggingFace checksums for maximum reliability")
+
                 return "\n".join(results)
-                
+
             except Exception as e:
-                cross = emoji_utils.maybe_cross()
                 return f"{cross} Validation error: {str(e)}"
 
         def cleanup_invalid_models():
@@ -1194,17 +1203,19 @@ def setup_deforum_left_side_ui():
             check = emoji_utils.maybe_check()
             cross = emoji_utils.maybe_cross()
             warning = emoji_utils.maybe_warning()
+            magnifying_glass = emoji_utils.magnifying_glass()
+            trash = emoji_utils.trash()
             try:
                 validator = WanModelValidator()
                 models = validator.discover_models()
 
                 if not models:
                     return f"{cross} No models found to validate."
-                
+
                 # Find invalid models
                 invalid_models = []
                 results = []
-                results.append("🔍 Checking all models for corruption...")
+                results.append(f"{magnifying_glass} Checking all models for corruption...")
                 results.append("=" * 50)
                 
                 for model in models:
@@ -1239,37 +1250,43 @@ def setup_deforum_left_side_ui():
                 for i, invalid in enumerate(invalid_models, 1):
                     results.append(f"\n{i}. {invalid['name']} ({invalid['size']})")
                     results.append(f"   Issues: {', '.join(invalid['errors'])}")
-                
-                results.append(f"\n🗑️ Use the 'Clean Up Invalid Models' button to remove these automatically.")
-                results.append("⚠️ This action will permanently delete the invalid model directories!")
-                
+
+                results.append(f"\n{trash} Use the 'Clean Up Invalid Models' button to remove these automatically.")
+                results.append(f"{warning} This action will permanently delete the invalid model directories!")
+
                 return "\n".join(results)
-                
+
             except Exception as e:
-                return f"❌ Cleanup scan error: {str(e)}"
+                return f"{cross} Cleanup scan error: {str(e)}"
         
         def compute_model_checksums():
             """Compute checksums for all model files"""
+            # Theme-aware emoji symbols
+            check = emoji_utils.maybe_check()
+            cross = emoji_utils.maybe_cross()
+            lock = emoji_utils.lock()
+            folder = emoji_utils.folder()
+            save = emoji_utils.save()
             try:
                 validator = WanModelValidator()
                 models = validator.discover_models()
-                
+
                 if not models:
-                    return "❌ No models found to checksum.", {}
-                
+                    return f"{cross} No models found to checksum.", {}
+
                 results = []
-                results.append("🔐 Computing checksums for all models...")
+                results.append(f"{lock} Computing checksums for all models...")
                 results.append("=" * 60)
-                
+
                 checksums = {}
-                
+
                 for model in models:
-                    results.append(f"\n📁 {model['name']}:")
+                    results.append(f"\n{folder} {model['name']}:")
                     model_checksums = {}
-                    
+
                     from pathlib import Path
                     model_path = Path(model['path'])
-                    
+
                     # Compute checksums for important files
                     important_files = [
                         "diffusion_pytorch_model.safetensors",
@@ -1278,53 +1295,62 @@ def setup_deforum_left_side_ui():
                         "Wan2.1_VAE.pth",
                         "config.json"
                     ]
-                    
+
                     for file_name in important_files:
                         file_path = model_path / file_name
                         if file_path.exists():
                             file_hash = validator.compute_file_hash(file_path)
                             if file_hash:
                                 model_checksums[file_name] = file_hash
-                                results.append(f"   ✅ {file_name}: {file_hash[:16]}...")
+                                results.append(f"   {check} {file_name}: {file_hash[:16]}...")
                             else:
-                                results.append(f"   ❌ {file_name}: Failed to compute hash")
-                    
+                                results.append(f"   {cross} {file_name}: Failed to compute hash")
+
                     checksums[model['name']] = model_checksums
-                
-                results.append(f"\n✅ Checksum computation complete!")
-                results.append("💾 Full checksums available in the Model Details output below.")
-                
+
+                results.append(f"\n{check} Checksum computation complete!")
+                results.append(f"{save} Full checksums available in the Model Details output below.")
+
                 return "\n".join(results), checksums
-                
+
             except Exception as e:
-                return f"❌ Checksum error: {str(e)}", {}
+                return f"{cross} Checksum error: {str(e)}", {}
         
         def full_integrity_check():
             """Comprehensive integrity check with HuggingFace checksum validation"""
+            # Theme-aware emoji symbols
+            check = emoji_utils.maybe_check()
+            cross = emoji_utils.maybe_cross()
+            warning = emoji_utils.maybe_warning()
+            alert = emoji_utils.maybe_alert()
+            magnifying_glass = emoji_utils.magnifying_glass()
+            folder = emoji_utils.folder()
+            bulb = emoji_utils.bulb()
+            save = emoji_utils.save()
             try:
                 validator = WanModelValidator()
                 models = validator.discover_models()
-                
+
                 if not models:
-                    return "❌ No models found for integrity check.", {}
-                
+                    return f"{cross} No models found for integrity check.", {}
+
                 results = []
-                results.append("🔍 COMPREHENSIVE INTEGRITY CHECK WITH OFFICIAL CHECKSUMS")
+                results.append(f"{magnifying_glass} COMPREHENSIVE INTEGRITY CHECK WITH OFFICIAL CHECKSUMS")
                 results.append("=" * 70)
-                
+
                 all_details = {}
-                overall_status = "✅ ALL GOOD"
+                overall_status = f"{check} ALL GOOD"
                 
                 for model in models:
-                    results.append(f"\n📁 {model['name']} ({model['size_formatted']}):")
+                    results.append(f"\n{folder} {model['name']} ({model['size_formatted']}):")
                     results.append("-" * 50)
-                    
+
                     from pathlib import Path
                     model_path = Path(model['path'])
-                    
+
                     # Run HuggingFace checksum validation first
                     hf_validation = validator.validate_against_huggingface_checksums(model_path)
-                    
+
                     model_details = {
                         'path': model['path'],
                         'size': model['size_formatted'],
@@ -1332,51 +1358,52 @@ def setup_deforum_left_side_ui():
                         'hf_checksum_validation': hf_validation,
                         'basic_validation': None
                     }
-                    
+
                     # Report HuggingFace validation results
                     if hf_validation['valid']:
                         checked_count = len(hf_validation['checked_files'])
                         valid_count = sum(1 for f in hf_validation['checked_files'].values() if f['status'] == 'valid')
-                        results.append(f"   ✅ HuggingFace Checksum Validation: {valid_count}/{checked_count} files verified")
-                        
+                        results.append(f"   {check} HuggingFace Checksum Validation: {valid_count}/{checked_count} files verified")
+
                         for file_name, file_info in hf_validation['checked_files'].items():
                             if file_info['status'] == 'valid':
-                                results.append(f"      ✅ {file_name}: Official checksum verified")
+                                results.append(f"      {check} {file_name}: Official checksum verified")
                             else:
-                                results.append(f"      ❌ {file_name}: Checksum mismatch")
-                                overall_status = "⚠️ CHECKSUM ISSUES FOUND"
+                                results.append(f"      {cross} {file_name}: Checksum mismatch")
+                                overall_status = f"{warning} CHECKSUM ISSUES FOUND"
                     else:
-                        results.append(f"   ❌ HuggingFace Checksum Validation: FAILED")
-                        overall_status = "⚠️ CHECKSUM ISSUES FOUND"
+                        results.append(f"   {cross} HuggingFace Checksum Validation: FAILED")
+                        overall_status = f"{warning} CHECKSUM ISSUES FOUND"
                         for error in hf_validation['errors']:
-                            results.append(f"      🚨 {error}")
-                    
+                            results.append(f"      {alert} {error}")
+
                     if hf_validation['warnings']:
-                        for warning in hf_validation['warnings']:
-                            results.append(f"      ⚠️ {warning}")
+                        for warn_msg in hf_validation['warnings']:
+                            results.append(f"      {warning} {warn_msg}")
                     
                     # Only run basic validation if HuggingFace validation had issues
                     if not hf_validation['valid'] or hf_validation['warnings']:
                         basic_validation = validator.validate_model_integrity(model_path)
                         model_details['basic_validation'] = basic_validation
-                        
+
                         if basic_validation['valid']:
-                            results.append(f"   ✅ Basic Structure Validation: PASS")
+                            results.append(f"   {check} Basic Structure Validation: PASS")
                         else:
-                            results.append(f"   ❌ Basic Structure Validation: FAIL")
+                            results.append(f"   {cross} Basic Structure Validation: FAIL")
                             for error in basic_validation['errors']:
-                                results.append(f"      🚨 {error}")
-                    
+                                results.append(f"      {alert} {error}")
+
                     all_details[model['name']] = model_details
-                
-                results.insert(1, f"🎯 OVERALL STATUS: {overall_status}")
-                results.append(f"\n💡 **Using Official HuggingFace Checksums for Maximum Reliability**")
-                results.append(f"💾 Detailed results saved to Model Details output.")
-                
+
+                target = emoji_utils.target()
+                results.insert(1, f"{target} OVERALL STATUS: {overall_status}")
+                results.append(f"\n{bulb} **Using Official HuggingFace Checksums for Maximum Reliability**")
+                results.append(f"{save} Detailed results saved to Model Details output.")
+
                 return "\n".join(results), all_details
-                
+
             except Exception as e:
-                return f"❌ Integrity check error: {str(e)}", {}
+                return f"{cross} Integrity check error: {str(e)}", {}
         
         # Connect validation buttons if they exist
         validation_buttons = [
@@ -1406,11 +1433,13 @@ def setup_deforum_left_side_ui():
                 logger.debug(f"{emoji_if_enabled('✅')} Connected {button_name}")
             
         logger.debug(f"{emoji_if_enabled('✅')} All Wan model validation buttons connected")
-        
+
     except ImportError:
-        logger.warning("⚠️ WanModelValidator not available - validation buttons will not work")
+        warning = emoji_utils.maybe_warning()
+        logger.warning(f"{warning} WanModelValidator not available - validation buttons will not work")
     except Exception as e:
-        logger.error(f"⚠️ Failed to set up validation buttons: {e}")
+        warning = emoji_utils.maybe_warning()
+        logger.error(f"{warning} Failed to set up validation buttons: {e}")
 
     # Camera Path button wiring moved to ui_right.py (after camera_path_plot is created)
 
