@@ -403,7 +403,11 @@ def get_tab_init(d, da, dp, dau, dv=None):
         'audio_ai_prompt_count',
         'audio_ai_start_prompt',
         'audio_ai_end_prompt',
-        'audio_sync_prompts'
+        'audio_sync_prompts',
+        'audio_sync_keyframe_count_display',
+        'audio_sync_pseudo_cadence_display',
+        'audio_sync_bpm_display',
+        'audio_sync_duration_display'
     ]
 
     local_scope = locals()
