@@ -19,6 +19,231 @@ from deforum.utils.spline_camera_path import (
 from deforum.utils.system.logging import emoji as emoji_utils
 
 
+# ============================================================================
+# PURE FUNCTIONS - Preset Type Handlers
+# ============================================================================
+
+
+def _generate_rotate_around(
+    num_frames: int, radius: float, height: float, rotation_factor: float
+) -> Tuple[list, str]:
+    """Generate rotate-around preset path."""
+    camera_path = generate_rotate_around_path(
+        num_frames=num_frames,
+        radius=radius,
+        center_x=0.0,
+        center_y=0.0,
+        height=height,
+        rotation_factor=rotation_factor,
+        use_sphere=True
+    )
+    status = (
+        f"{emoji_utils.maybe_check()} Generated rotate-around path ({len(camera_path)} frames)\n"
+        f"Radius: {radius}, Height: {height}, Rotation Factor: {rotation_factor}\n"
+        f"Mode: Random sphere rotation (3D)"
+    )
+    return camera_path, status
+
+
+def _generate_figure_eight(
+    num_frames: int, radius: float, height: float, closed_loop: bool
+) -> Tuple[list, str]:
+    """Generate figure-eight preset path."""
+    control_points = generate_control_points_figure_eight(
+        num_points=12, scale=radius, center_x=0.0, center_y=height, center_z=0.0
+    )
+    config = SplineConfig(
+        num_frames=num_frames,
+        num_control_points=12,
+        spline_type="catmull_rom",
+        closed_loop=closed_loop,
+        smoothness=0.8
+    )
+    camera_path = generate_camera_path(config, control_points, look_at_curve=True)
+    status = (
+        f"{emoji_utils.maybe_check()} Generated figure-8 path ({len(camera_path)} frames)\n"
+        f"Scale: {radius}, Height: {height}, Closed: {closed_loop}"
+    )
+    return camera_path, status
+
+
+def _generate_forward_zoom(num_frames: int, radius: float, height: float) -> Tuple[list, str]:
+    """Generate forward zoom preset path."""
+    camera_path = [
+        CameraPoint(
+            x=0.0,
+            y=height,
+            z=i * (radius / num_frames),
+            rot_x=0.0,
+            rot_y=0.0,
+            rot_z=0.0,
+            frame=i
+        )
+        for i in range(num_frames)
+    ]
+    status = (
+        f"{emoji_utils.maybe_check()} Generated forward zoom ({len(camera_path)} frames)\n"
+        f"Zoom distance: {radius}, Height: {height}"
+    )
+    return camera_path, status
+
+
+def _generate_orbit_up(num_frames: int, radius: float, height: float) -> Tuple[list, str]:
+    """Generate orbit-up preset path (circle while rising)."""
+    num_points = 12
+    control_points = []
+    for i in range(num_points + 1):
+        angle = 2 * np.pi * i / num_points
+        x = radius * np.cos(angle)
+        z = radius * np.sin(angle)
+        y = height + (i / num_points) * radius * 0.8
+        control_points.append((x, y, z))
+
+    config = SplineConfig(
+        num_frames=num_frames,
+        num_control_points=num_points + 1,
+        spline_type="catmull_rom",
+        closed_loop=False,
+        smoothness=0.7
+    )
+    camera_path = generate_camera_path(config, control_points, look_at_curve=True)
+    status = (
+        f"{emoji_utils.maybe_check()} Generated orbit-up path ({len(camera_path)} frames)\n"
+        f"Radius: {radius}, Rise: {radius * 0.8:.1f}\n"
+        f"Note: Orbit-up cannot be closed (rising path)"
+    )
+    return camera_path, status
+
+
+def _calculate_spiral_point(
+    t: float, num_points: int, radius: float, height: float
+) -> Tuple[float, float, float]:
+    """Calculate single point on 3D spiral trajectory."""
+    angle = 6 * np.pi * t
+    r = radius * (1 - t)
+    x = r * np.cos(angle)
+    z = r * np.sin(angle)
+    y = height + radius * 0.8 * np.sin(2 * np.pi * t)
+    return x, y, z
+
+
+def _calculate_look_at_rotation(
+    x: float, y: float, z: float, target_height: float
+) -> Tuple[float, float, float]:
+    """Calculate camera rotation to look at center point."""
+    dx = 0.0 - x
+    dy = target_height - y
+    dz = 0.0 - z
+
+    rot_y = np.degrees(np.arctan2(dx, dz))
+    horizontal_dist = np.sqrt(dx**2 + dz**2)
+    rot_x = np.degrees(np.arctan2(dy, horizontal_dist + 1e-8))
+    rot_z = 0.0
+
+    return rot_x, rot_y, rot_z
+
+
+def _interpolate_spiral_frame(
+    frame_idx: int, num_frames: int, control_points: list, height: float
+) -> CameraPoint:
+    """Interpolate single frame position on spiral path."""
+    t = frame_idx / (num_frames - 1) if num_frames > 1 else 0
+    num_points = len(control_points)
+    point_idx = int(t * (num_points - 1))
+
+    if point_idx >= num_points - 1:
+        x, y, z = control_points[-1]
+    else:
+        local_t = (t * (num_points - 1)) - point_idx
+        p1, p2 = control_points[point_idx], control_points[point_idx + 1]
+        x = p1[0] + local_t * (p2[0] - p1[0])
+        y = p1[1] + local_t * (p2[1] - p1[1])
+        z = p1[2] + local_t * (p2[2] - p1[2])
+
+    rot_x, rot_y, rot_z = _calculate_look_at_rotation(x, y, z, height)
+    return CameraPoint(x=x, y=y, z=z, rot_x=rot_x, rot_y=rot_y, rot_z=rot_z, frame=frame_idx)
+
+
+def _generate_spiral(num_frames: int, radius: float, height: float) -> Tuple[list, str]:
+    """Generate 3D spiral preset path."""
+    num_points = 24
+    control_points = [
+        _calculate_spiral_point(i / (num_points - 1), num_points, radius, height)
+        for i in range(num_points)
+    ]
+
+    camera_path = [
+        _interpolate_spiral_frame(i, num_frames, control_points, height)
+        for i in range(num_frames)
+    ]
+
+    status = (
+        f"{emoji_utils.maybe_check()} Generated 3D spiral path ({len(camera_path)} frames)\n"
+        f"Start radius: {radius}, End radius: 0\n"
+        f"Mode: 3D spiral with look-at center (fits in cube)"
+    )
+    return camera_path, status
+
+
+def _generate_street(num_frames: int, radius: float, height: float) -> Tuple[list, str]:
+    """Generate street/dashcam preset path."""
+    eye_height = height if height != 0 else 10.0
+    camera_path = generate_street_path(
+        num_frames=num_frames,
+        street_length=radius * 5,
+        lane_weave=radius * 0.2,
+        center_x=0.0,
+        center_y=eye_height,
+        center_z=0.0
+    )
+    status = (
+        f"{emoji_utils.maybe_check()} Generated street path ({len(camera_path)} frames)\n"
+        f"Distance: {radius * 5:.0f}, Eye height: {eye_height:.0f}\n"
+        f"Mode: Forward-facing (dashcam/POV)"
+    )
+    return camera_path, status
+
+
+def _generate_dashcam(num_frames: int, radius: float, height: float) -> Tuple[list, str]:
+    """Generate dashcam preset path (faster with more weaving)."""
+    eye_height = height if height != 0 else 8.0
+    camera_path = generate_street_path(
+        num_frames=num_frames,
+        street_length=radius * 8,
+        lane_weave=radius * 0.3,
+        center_x=0.0,
+        center_y=eye_height,
+        center_z=0.0
+    )
+    status = (
+        f"{emoji_utils.maybe_check()} Generated dashcam path ({len(camera_path)} frames)\n"
+        f"Distance: {radius * 8:.0f}, Eye height: {eye_height:.0f}\n"
+        f"Mode: Dashcam (faster, more weaving)\n"
+        f"Tip: Combine with GENTLE_HANDHELD shakify pattern"
+    )
+    return camera_path, status
+
+
+def _generate_bodycam(num_frames: int, radius: float, height: float) -> Tuple[list, str]:
+    """Generate bodycam preset path (slower walking pace)."""
+    eye_height = height if height != 0 else 15.0
+    camera_path = generate_street_path(
+        num_frames=num_frames,
+        street_length=radius * 3,
+        lane_weave=radius * 0.15,
+        center_x=0.0,
+        center_y=eye_height,
+        center_z=0.0
+    )
+    status = (
+        f"{emoji_utils.maybe_check()} Generated bodycam path ({len(camera_path)} frames)\n"
+        f"Distance: {radius * 3:.0f}, Eye height: {eye_height:.0f}\n"
+        f"Mode: Bodycam (walking pace)\n"
+        f"Tip: Combine with INVESTIGATION or GENTLE_HANDHELD shakify pattern"
+    )
+    return camera_path, status
+
+
 def generate_preset_path(
     preset_type: str,
     radius: float,
@@ -29,208 +254,49 @@ def generate_preset_path(
     randomize: float = 0.0,
     random_seed: int = -1
 ) -> Tuple[str, Dict[str, str], list]:
-    """Generate camera path from preset.
+    """Generate camera path from preset using type-specific handlers.
 
     Args:
-        preset_type: Type of preset ("rotate-around", "circle-path", etc.)
+        preset_type: Type of preset ("rotate-around", "figure-eight", etc.)
         radius: Radius/scale of movement
         height: Vertical offset
         rotation_factor: Rotation multiplier for rotate-around
         num_frames: Total frames
-        closed_loop: Whether to loop
+        closed_loop: Whether to loop (for applicable presets)
+        randomize: Random offset amount (not yet implemented)
+        random_seed: Seed for randomization (not yet implemented)
 
     Returns:
-        (status_message, schedules_dict, camera_path)
+        Tuple of (status_message, schedules_dict, camera_path)
     """
     try:
-        camera_path = []
+        # Type-specific handler dispatch
+        num_frames_int = int(num_frames)
 
         if preset_type == "rotate-around":
-            camera_path = generate_rotate_around_path(
-                num_frames=int(num_frames),
-                radius=radius,
-                center_x=0.0,
-                center_y=0.0,
-                height=height,
-                rotation_factor=rotation_factor,
-                use_sphere=True  # Use 3D sphere rotation (not flat circle)
+            camera_path, status = _generate_rotate_around(
+                num_frames_int, radius, height, rotation_factor
             )
-            status = f"{emoji_utils.maybe_check()} Generated rotate-around path ({len(camera_path)} frames)\n"
-            status += f"Radius: {radius}, Height: {height}, Rotation Factor: {rotation_factor}\n"
-            status += "Mode: Random sphere rotation (3D)"
-
         elif preset_type == "figure-eight":
-            control_points = generate_control_points_figure_eight(
-                num_points=12,
-                scale=radius,
-                center_x=0.0,
-                center_y=height,
-                center_z=0.0
+            camera_path, status = _generate_figure_eight(
+                num_frames_int, radius, height, closed_loop
             )
-            config = SplineConfig(
-                num_frames=int(num_frames),
-                num_control_points=12,
-                spline_type="catmull_rom",
-                closed_loop=closed_loop,
-                smoothness=0.8
-            )
-            camera_path = generate_camera_path(config, control_points, look_at_curve=True)
-            status = f"{emoji_utils.maybe_check()} Generated figure-8 path ({len(camera_path)} frames)\n"
-            status += f"Scale: {radius}, Height: {height}, Closed: {closed_loop}"
-
         elif preset_type == "forward-zoom":
-            # Simple linear zoom forward
-            camera_path = [
-                CameraPoint(
-                    x=0.0,
-                    y=height,
-                    z=i * (radius / num_frames),  # Steady zoom
-                    rot_x=0.0,
-                    rot_y=0.0,
-                    rot_z=0.0,
-                    frame=i
-                )
-                for i in range(int(num_frames))
-            ]
-            status = f"{emoji_utils.maybe_check()} Generated forward zoom ({len(camera_path)} frames)\n"
-            status += f"Zoom distance: {radius}, Height: {height}"
-
+            camera_path, status = _generate_forward_zoom(num_frames_int, radius, height)
         elif preset_type == "orbit-up":
-            # Circle while rising - full orbit then return to start
-            control_points = []
-            num_points = 12  # More control points for smoother rise
-            for i in range(num_points + 1):  # +1 to complete the circle
-                angle = 2 * np.pi * i / num_points
-                x = radius * np.cos(angle)
-                z = radius * np.sin(angle)
-                y = height + (i / num_points) * radius * 0.8  # Rise as we orbit
-                control_points.append((x, y, z))
-
-            config = SplineConfig(
-                num_frames=int(num_frames),
-                num_control_points=num_points + 1,
-                spline_type="catmull_rom",
-                closed_loop=False,  # Never close - rising path can't loop
-                smoothness=0.7
-            )
-            camera_path = generate_camera_path(config, control_points, look_at_curve=True)
-            status = f"{emoji_utils.maybe_check()} Generated orbit-up path ({len(camera_path)} frames)\n"
-            status += f"Radius: {radius}, Rise: {radius * 0.8:.1f}\n"
-            status += "Note: Orbit-up cannot be closed (rising path)"
-
+            camera_path, status = _generate_orbit_up(num_frames_int, radius, height)
         elif preset_type == "spiral":
-            # 3D spiral inward - fits in cube, camera looks at center
-            control_points = []
-            num_points = 24  # More points for smoother 3D spiral
-            for i in range(num_points):
-                t = i / (num_points - 1)  # 0 to 1
-                angle = 6 * np.pi * t  # Three full rotations
-
-                # Shrink radius as we spiral in
-                r = radius * (1 - t)
-
-                # Circular motion in XZ plane
-                x = r * np.cos(angle)
-                z = r * np.sin(angle)
-
-                # Vertical motion - rise then fall (creates 3D cube-fitting spiral)
-                # Use sine wave to go up and down within the cube
-                y = height + radius * 0.8 * np.sin(2 * np.pi * t)
-
-                control_points.append((x, y, z))
-
-            # Generate path with camera looking at center (origin)
-            camera_path = []
-            for frame_idx in range(int(num_frames)):
-                # Interpolate position along control points
-                t = frame_idx / (num_frames - 1) if num_frames > 1 else 0
-                point_idx = int(t * (num_points - 1))
-
-                if point_idx >= len(control_points) - 1:
-                    x, y, z = control_points[-1]
-                else:
-                    # Linear interpolation between control points
-                    local_t = (t * (num_points - 1)) - point_idx
-                    p1 = control_points[point_idx]
-                    p2 = control_points[point_idx + 1]
-                    x = p1[0] + local_t * (p2[0] - p1[0])
-                    y = p1[1] + local_t * (p2[1] - p1[1])
-                    z = p1[2] + local_t * (p2[2] - p1[2])
-
-                # Calculate rotation to look at center (0, height, 0)
-                dx = 0.0 - x
-                dy = height - y
-                dz = 0.0 - z
-
-                # Pan angle (rotation_y)
-                rot_y = np.degrees(np.arctan2(dx, dz))
-
-                # Tilt angle (rotation_x)
-                horizontal_dist = np.sqrt(dx**2 + dz**2)
-                rot_x = np.degrees(np.arctan2(dy, horizontal_dist + 1e-8))
-
-                rot_z = 0.0
-
-                camera_path.append(CameraPoint(
-                    x=x, y=y, z=z,
-                    rot_x=rot_x, rot_y=rot_y, rot_z=rot_z,
-                    frame=frame_idx
-                ))
-
-            status = f"{emoji_utils.maybe_check()} Generated 3D spiral path ({len(camera_path)} frames)\n"
-            status += f"Start radius: {radius}, End radius: 0\n"
-            status += f"Mode: 3D spiral with look-at center (fits in cube)"
-
+            camera_path, status = _generate_spiral(num_frames_int, radius, height)
         elif preset_type == "street":
-            # Street/dashcam forward movement with lane weaving
-            camera_path = generate_street_path(
-                num_frames=int(num_frames),
-                street_length=radius * 5,  # Radius maps to street length
-                lane_weave=radius * 0.2,  # 20% of radius for weaving
-                center_x=0.0,
-                center_y=height if height != 0 else 10.0,  # Default eye level at 10
-                center_z=0.0
-            )
-            status = f"{emoji_utils.maybe_check()} Generated street path ({len(camera_path)} frames)\n"
-            status += f"Distance: {radius * 5:.0f}, Eye height: {height if height != 0 else 10.0:.0f}\n"
-            status += "Mode: Forward-facing (dashcam/POV)"
-
+            camera_path, status = _generate_street(num_frames_int, radius, height)
         elif preset_type == "dashcam":
-            # Dashcam preset - faster street movement with more bumps
-            camera_path = generate_street_path(
-                num_frames=int(num_frames),
-                street_length=radius * 8,  # Longer distance (faster movement)
-                lane_weave=radius * 0.3,  # More pronounced lane changes
-                center_x=0.0,
-                center_y=height if height != 0 else 8.0,  # Lower eye level (car seat)
-                center_z=0.0
-            )
-            status = f"{emoji_utils.maybe_check()} Generated dashcam path ({len(camera_path)} frames)\n"
-            status += f"Distance: {radius * 8:.0f}, Eye height: {height if height != 0 else 8.0:.0f}\n"
-            status += "Mode: Dashcam (faster, more weaving)\n"
-            status += "Tip: Combine with GENTLE_HANDHELD shakify pattern"
-
+            camera_path, status = _generate_dashcam(num_frames_int, radius, height)
         elif preset_type == "bodycam":
-            # Bodycam preset - slower, at standing height, subtle wobble
-            camera_path = generate_street_path(
-                num_frames=int(num_frames),
-                street_length=radius * 3,  # Slower walking pace
-                lane_weave=radius * 0.15,  # Less weaving (walking path)
-                center_x=0.0,
-                center_y=height if height != 0 else 15.0,  # Standing eye level
-                center_z=0.0
-            )
-            status = f"{emoji_utils.maybe_check()} Generated bodycam path ({len(camera_path)} frames)\n"
-            status += f"Distance: {radius * 3:.0f}, Eye height: {height if height != 0 else 15.0:.0f}\n"
-            status += "Mode: Bodycam (walking pace)\n"
-            status += "Tip: Combine with INVESTIGATION or GENTLE_HANDHELD shakify pattern"
-
+            camera_path, status = _generate_bodycam(num_frames_int, radius, height)
         else:
             return f"{emoji_utils.maybe_cross()} Unknown preset type: {preset_type}", {}, []
 
-        # Convert to schedules
         schedules = camera_path_to_schedules(camera_path)
-
         return status, schedules, camera_path
 
     except Exception as e:
