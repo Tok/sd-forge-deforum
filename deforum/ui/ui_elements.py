@@ -671,7 +671,7 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             padding_mode = create_gr_elem(da.padding_mode)
             sampling_mode = create_gr_elem(da.sampling_mode)
 
-    with gr.Accordion("🌊 Optical Flow / Cadence", open=False):
+    with gr.Accordion(f"{emoji_utils.wave()} Optical Flow / Cadence", open=False):
         gr.Markdown(f"""
         **Optical flow** estimates motion between frames for smooth in-between (cadence) frames.
         Enable RAFT to generate only keyframes and use motion estimation for tweens (10x speedup).
