@@ -322,6 +322,16 @@ def floppy_disk():
     return _select('\U0001F4BE')  # 💾
 
 
+def muscle():
+    """Flexed bicep emoji - respects emoji toggle."""
+    return _select('\U0001F4AA')  # 💪
+
+
+def book():
+    """Books emoji - respects emoji toggle."""
+    return _select('\U0001F4DA')  # 📚
+
+
 # Slopcore minimal emojis
 def blue_square():
     return _select('\U0001F7E6')  # 🟦
