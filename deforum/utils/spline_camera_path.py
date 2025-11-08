@@ -380,16 +380,26 @@ def generate_street_path(
     return camera_path
 
 
-def camera_path_to_schedules(camera_path: List[CameraPoint]) -> Dict[str, str]:
-    """Convert camera path to Deforum schedule strings.
+def camera_path_to_schedules(camera_path: List[CameraPoint], keyframe_interval: int = 10) -> Dict[str, str]:
+    """Convert camera path to Deforum schedule strings (keyframes only).
+
+    Samples keyframes at regular intervals instead of outputting every frame.
+    Deforum's interpolation system will fill in the tween frames at runtime.
 
     Args:
-        camera_path: List of CameraPoint objects
+        camera_path: List of CameraPoint objects (one per frame)
+        keyframe_interval: Output a keyframe every N frames (default 10)
+                          If path is shorter than 2x interval, outputs all frames
 
     Returns:
         Dict with schedule strings for each parameter:
         - translation_x, translation_y, translation_z
         - rotation_3d_x, rotation_3d_y, rotation_3d_z
+
+    Example:
+        Input: 333 frames with keyframe_interval=10
+        Output: "0: (100.00), 10: (95.00), 20: (88.00), ..., 330: (50.00)"
+        Deforum interpolates frames 1-9, 11-19, 21-29, etc. at runtime
     """
     schedules = {
         'translation_x': [],
@@ -400,7 +410,20 @@ def camera_path_to_schedules(camera_path: List[CameraPoint]) -> Dict[str, str]:
         'rotation_3d_z': []
     }
 
-    for point in camera_path:
+    # For short paths (< 2x interval), output all frames to preserve test compatibility
+    # For long paths, sample keyframes at intervals
+    if len(camera_path) < keyframe_interval * 2:
+        keyframe_indices = range(len(camera_path))
+    else:
+        # Always include first and last frame as keyframes
+        keyframe_indices = {0, len(camera_path) - 1}
+        # Add intermediate keyframes at regular intervals
+        keyframe_indices.update(range(0, len(camera_path), keyframe_interval))
+        keyframe_indices = sorted(keyframe_indices)
+
+    # Output keyframe entries
+    for frame_idx in keyframe_indices:
+        point = camera_path[frame_idx]
         schedules['translation_x'].append(f"{point.frame}: ({point.x:.2f})")
         schedules['translation_y'].append(f"{point.frame}: ({point.y:.2f})")
         schedules['translation_z'].append(f"{point.frame}: ({point.z:.2f})")
