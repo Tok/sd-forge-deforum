@@ -91,13 +91,14 @@ class Model:
             }
 
 def download_rife_model(path, deforum_models_path):
-    # RIFE v4.6 is stable and widely compatible
-    # Google Drive file ID: 1APIzVeI-4ZZCEuIRE1m6WYfSCaOsi_7_
+    # RIFE v4.15 from official Practical-RIFE repository (2024.03.11)
+    # Google Drive file ID: 1xlem7cfKoMaiLzjoeum8KIQTYO-9iqG5
     import hashlib
+    import zipfile
 
-    options = {'RIFE46': (
-               '1da8ec98395d7e8e08e5e13e9a5b92da173159abbeca5c47d020edcd1d3cb0b408fa4cc0005141d57d8d526960a5e1ec8bf4948a73eadbea15b6f289574394a2',
-               '1APIzVeI-4ZZCEuIRE1m6WYfSCaOsi_7_')}
+    options = {'RIFE415': (
+               'bb316b28151b54cd1ab55a3ebabf16f3a455e7dc0e11047f10b56b0e833370939ad47fd74b1c90fea4dc44c9275632d068188c59cb2763cc6516ec9fa8d3dc38',
+               '1xlem7cfKoMaiLzjoeum8KIQTYO-9iqG5')}
     if path in options:
         target_file = f"{path}.pkl"
         target_path = os.path.join(deforum_models_path, target_file)
@@ -105,12 +106,34 @@ def download_rife_model(path, deforum_models_path):
             import gdown
             print(f"Downloading RIFE model {path} from Google Drive...")
 
-            # RIFE v4.6 is distributed as a direct .pkl file (not a ZIP archive)
-            gdown.download(id=options[path][1], output=target_path, quiet=False)
+            # Download ZIP archive
+            temp_zip_path = os.path.join(deforum_models_path, f"{path}_temp.zip")
+            gdown.download(id=options[path][1], output=temp_zip_path, quiet=False)
 
-            # Verify checksum of downloaded file
-            if checksum(target_path, hashlib.sha512) != options[path][0]:
-                os.remove(target_path)
-                raise Exception(f"Checksum mismatch for {target_file}. Please download manually from: https://drive.google.com/file/d/{options[path][1]}/view and place in: " + deforum_models_path)
+            # Extract flownet.pkl from RIFEv4.15/train_log/flownet.pkl
+            print(f"Extracting RIFE model from archive...")
+            try:
+                with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
+                    # Extract the flownet.pkl file
+                    zip_ref.extract('RIFEv4.15/train_log/flownet.pkl', deforum_models_path)
 
-            print(f"Successfully downloaded RIFE model to {target_path}")
+                # Move extracted file to target location
+                extracted_path = os.path.join(deforum_models_path, 'RIFEv4.15/train_log/flownet.pkl')
+                os.rename(extracted_path, target_path)
+
+                # Clean up extracted directory structure
+                import shutil
+                extracted_dir = os.path.join(deforum_models_path, 'RIFEv4.15')
+                if os.path.exists(extracted_dir):
+                    shutil.rmtree(extracted_dir)
+
+                # Verify checksum of extracted file
+                if checksum(target_path, hashlib.sha512) != options[path][0]:
+                    os.remove(target_path)
+                    raise Exception(f"Checksum mismatch for {target_file}. Please download manually from: https://drive.google.com/file/d/{options[path][1]}/view and place in: " + deforum_models_path)
+
+                print(f"Successfully downloaded and extracted RIFE model to {target_path}")
+            finally:
+                # Clean up temporary ZIP file
+                if os.path.exists(temp_zip_path):
+                    os.remove(temp_zip_path)

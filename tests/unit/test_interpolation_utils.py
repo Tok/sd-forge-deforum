@@ -262,7 +262,7 @@ class TestIntegration:
 
     def test_rife_workflow(self):
         """Test complete RIFE interpolation setup."""
-        model_name = "RIFE v4.6"
+        model_name = "RIFE v4.15"
         total_frames = 100
         interp_x = 2
         in_fps = 30.0

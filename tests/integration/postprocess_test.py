@@ -87,7 +87,7 @@ def test_post_process_RIFE(snapshot):
     # Set test-specific batch name for easier output identification
     deforum_settings['batch_name'] = get_test_batch_name('test_post_process_RIFE')
 
-    deforum_settings["frame_interpolation_engine"] = "RIFE v4.6"
+    deforum_settings["frame_interpolation_engine"] = "RIFE v4.15"
     deforum_settings["frame_interpolation_x_amount"] = 3
     deforum_settings["frame_interpolation_slow_mo_enabled"] = False
 

@@ -3,7 +3,7 @@ Flux + Interpolation Mode: Flux Keyframes + Choice of Interpolation
 
 Supports three interpolation methods:
 - Wan FLF2V (default): AI-generated video interpolation with semantic understanding
-- RIFE v4.6: Optical flow-based interpolation for natural motion
+- RIFE v4.15: Optical flow-based interpolation for natural motion
 - FILM: Google's Frame Interpolation for Large Motion model
 
 Architecture:

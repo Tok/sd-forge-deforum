@@ -29,7 +29,7 @@ From `tests/deforum_postprocess_test.py`:
 - Connection refused error (server not running at localhost:7860)
 - Tests in this file:
   1. `test_post_process_FILM` - FILM frame interpolation
-  2. `test_post_process_RIFE` - RIFE v4.6 interpolation
+  2. `test_post_process_RIFE` - RIFE v4.15 interpolation
   3. `test_post_process_UPSCALE` - RealESRGAN upscaling
   4. `test_post_process_UPSCALE_FILM` - Combined upscaling + interpolation
   5. (One more test likely exists)

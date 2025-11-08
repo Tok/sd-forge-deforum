@@ -3,11 +3,13 @@
   '''
   1
   00:00:00,000 --> 00:00:00,000
-  F#: 00000; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  F#: 00000 [KEYFRAME]; Seed: 0000000001; Steps: 25/25; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0;
+  Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus --neg
   
   2
   00:00:00,000 --> 00:00:00,500
-  F#: 00010; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  F#: 00010 [KEYFRAME]; Seed: 0000000002; Steps: 5/25; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0;
+  Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus --neg
   
   
   '''
@@ -16,11 +18,13 @@
   '''
   1
   00:00:00,000 --> 00:00:00,000
-  F#: 00000; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  F#: 00000 [KEYFRAME]; Seed: 0000000001; Steps: 25/25; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0;
+  Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus --neg
   
   2
   00:00:00,000 --> 00:00:00,500
-  F#: 00010; Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus
+  F#: 00010 [KEYFRAME]; Seed: 0000000002; Steps: 5/25; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0;
+  Prompt:  tiny cute swamp bunny, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus --neg
   
   
   '''
@@ -29,11 +33,13 @@
   '''
   1
   00:00:00,000 --> 00:00:00,000
-  F#: 00000; Cadence: False; Seed: 0000000055; SubSeed: 0000000055; Angle: 0; Tr.C.X: 0.500; Tr.C.Y: 0.500; Zoom: 1.002; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0; PerFlT: 0; PerFlP: 0; PerFlG: 0; PerFlFV: 53; Noise: 0.040; StrSch: 0.650; KfrStrSch: 0.150; CtrstSch: 1; CFGSch: 1; DistCFGSch: 3.500; SubSSch: 55; SubSStrSch: 0; CkptSch: model1.ckpt; StepsSch: 25; SeedSch: 55; SamplerSchedule: Euler a; SchedulerSchedule: Simple; ClipskipSchedule: 2; NoiseMultiplierSchedule: 1.050; MaskSchedule: {video_mask}; NoiseMaskSchedule: {video_mask}; AmountSchedule: 0.050; KernelSchedule: 5; SigmaSchedule: 1; ThresholdSchedule: 0; AspectRatioSchedule: 1; FieldOfViewSchedule: 70; NearSchedule: 200; CadenceFlowFactorSchedule: 1; RedoFlowFactorSchedule: 1; FarSchedule: 10000; Prompt: Parseq prompt! --neg neg parseq prompt!
+  F#: 00000 [KEYFRAME]; Seed: 0000000055; Steps: 25/25; SubSeed: 0000000055; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0; SubSSch: 55; SubSStrSch: 0;
+  Prompt: Parseq prompt! --neg neg parseq prompt!
   
   2
   00:00:00,000 --> 00:00:00,166
-  F#: 00010; Cadence: False; Seed: 0000000056; SubSeed: 0000000056; Angle: 25.065; Tr.C.X: 0.500; Tr.C.Y: 0.500; Zoom: 1.004; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0; PerFlT: 0; PerFlP: 0; PerFlG: 0; PerFlFV: 53; Noise: 0.040; StrSch: 0.650; KfrStrSch: 0.150; CtrstSch: 1; CFGSch: 1; DistCFGSch: 3.500; SubSSch: 56; SubSStrSch: 0; CkptSch: model1.ckpt; StepsSch: 25; SeedSch: 56; SamplerSchedule: Euler a; SchedulerSchedule: Simple; ClipskipSchedule: 2; NoiseMultiplierSchedule: 1.050; MaskSchedule: {video_mask}; NoiseMaskSchedule: {video_mask}; AmountSchedule: 0.050; KernelSchedule: 5; SigmaSchedule: 1; ThresholdSchedule: 0; AspectRatioSchedule: 1; FieldOfViewSchedule: 70; NearSchedule: 200; CadenceFlowFactorSchedule: 1; RedoFlowFactorSchedule: 1; FarSchedule: 10000; Prompt: Parseq prompt! --neg neg parseq prompt!
+  F#: 00010 [KEYFRAME]; Seed: 0000000056; Steps: 5/25; SubSeed: 0000000056; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0; SubSSch: 56; SubSStrSch: 0;
+  Prompt: Parseq prompt! --neg neg parseq prompt!
   
   
   '''
@@ -42,11 +48,13 @@
   '''
   1
   00:00:00,000 --> 00:00:00,000
-  F#: 00000; Cadence: False; Seed: 0000000055; SubSeed: 0000000055; Angle: 0; Tr.C.X: 0.500; Tr.C.Y: 0.500; Zoom: 1.002; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0; PerFlT: 0; PerFlP: 0; PerFlG: 0; PerFlFV: 53; Noise: 0.040; StrSch: 0.650; KfrStrSch: 0.150; CtrstSch: 1; CFGSch: 1; DistCFGSch: 3.500; SubSSch: 55; SubSStrSch: 0; CkptSch: model1.ckpt; StepsSch: 25; SeedSch: 55; SamplerSchedule: Euler a; SchedulerSchedule: Simple; ClipskipSchedule: 2; NoiseMultiplierSchedule: 1.050; MaskSchedule: {video_mask}; NoiseMaskSchedule: {video_mask}; AmountSchedule: 0.050; KernelSchedule: 5; SigmaSchedule: 1; ThresholdSchedule: 0; AspectRatioSchedule: 1; FieldOfViewSchedule: 70; NearSchedule: 200; CadenceFlowFactorSchedule: 1; RedoFlowFactorSchedule: 1; FarSchedule: 10000; Prompt: Parseq prompt! --neg neg parseq prompt!
+  F#: 00000 [KEYFRAME]; Seed: 0000000055; Steps: 25/25; SubSeed: 0000000055; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0; SubSSch: 55; SubSStrSch: 0;
+  Prompt: Parseq prompt! --neg neg parseq prompt!
   
   2
   00:00:00,000 --> 00:00:00,500
-  F#: 00010; Cadence: False; Seed: 0000000056; SubSeed: 0000000056; Angle: 25.065; Tr.C.X: 0.500; Tr.C.Y: 0.500; Zoom: 1.004; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0; PerFlT: 0; PerFlP: 0; PerFlG: 0; PerFlFV: 53; Noise: 0.040; StrSch: 0.650; KfrStrSch: 0.150; CtrstSch: 1; CFGSch: 1; DistCFGSch: 3.500; SubSSch: 56; SubSStrSch: 0; CkptSch: model1.ckpt; StepsSch: 25; SeedSch: 56; SamplerSchedule: Euler a; SchedulerSchedule: Simple; ClipskipSchedule: 2; NoiseMultiplierSchedule: 1.050; MaskSchedule: {video_mask}; NoiseMaskSchedule: {video_mask}; AmountSchedule: 0.050; KernelSchedule: 5; SigmaSchedule: 1; ThresholdSchedule: 0; AspectRatioSchedule: 1; FieldOfViewSchedule: 70; NearSchedule: 200; CadenceFlowFactorSchedule: 1; RedoFlowFactorSchedule: 1; FarSchedule: 10000; Prompt: Parseq prompt! --neg neg parseq prompt!
+  F#: 00010 [KEYFRAME]; Seed: 0000000056; Steps: 5/25; SubSeed: 0000000056; TrX: 0; TrY: 0; TrZ: 0; RotX: 0; RotY: 0; RotZ: 0; SubSSch: 56; SubSStrSch: 0;
+  Prompt: Parseq prompt! --neg neg parseq prompt!
   
   
   '''

@@ -137,10 +137,10 @@ One-click AI video generation with **intentional chaos and glitches**. Click **"
 ### 🎞️ **FILM Smearcore Integration** (Google's frame interpolation)
 - **High-Quality Interpolation**: Google Research's FILM model for cinematic motion
 - **Smearcore Aesthetic**: Configurable motion blur and temporal blending
-- **Multi-Method Support**: Choose between Wan FLF2V, RIFE v4.6, or FILM per project
+- **Multi-Method Support**: Choose between Wan FLF2V, RIFE v4.15, or FILM per project
 - **Post-Processing Pipeline**: Apply FILM interpolation after initial render
  
-### 🔄 **Resurrected & Upgraded RIFE v4.6**
+### 🔄 **Resurrected & Upgraded RIFE v4.15**
 - **State-of-Art Interpolation**: Latest RIFE model fully functional
 - **Flux ControlNet V2 Support**: Updated for modern diffusers integration
 - **RAFT Optical Flow**: Fixed and working for precise motion estimation
