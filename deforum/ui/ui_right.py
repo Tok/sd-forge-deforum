@@ -32,17 +32,21 @@ from deforum.utils.system.logging import get_logger, emoji_if_enabled
 logger = get_logger()
 
 
+# State tracking to prevent UI flashing when no previews available
+_last_preview_state = {"frame": None, "depth": None}
+
 def get_latest_frames():
     """Poll for latest frame and depth map preview files during generation.
 
-    Returns None, None if:
-    - No generation in progress (checked via preview file age)
-    - Backend is disconnected
-    - No output directories exist
+    Uses state tracking to prevent UI updates when previews haven't changed.
+    This eliminates blinking/flashing when backend disconnects or no generation active.
+
+    Returns gr.skip() for both outputs if state unchanged to avoid UI updates.
     """
     import glob
     from pathlib import Path
     import time
+    import gradio as gr
 
     try:
         deforum_outdir = os.path.join(os.getcwd(), 'outputs', 'deforum')
@@ -50,6 +54,11 @@ def get_latest_frames():
         # Find most recent directory (Deforum_TIMESTAMP pattern)
         subdirs = [d for d in glob.glob(os.path.join(deforum_outdir, "Deforum_*")) if os.path.isdir(d)]
         if not subdirs:
+            # No output directories - check if state unchanged
+            if _last_preview_state["frame"] is None and _last_preview_state["depth"] is None:
+                return gr.skip(), gr.skip()  # Skip update if already showing nothing
+            _last_preview_state["frame"] = None
+            _last_preview_state["depth"] = None
             return None, None
 
         latest_dir = max(subdirs, key=os.path.getmtime)
@@ -70,15 +79,28 @@ def get_latest_frames():
             (current_time - os.path.getmtime(depth_preview)) < 5.0
         )
 
-        # Return paths only if files are fresh
+        # Determine new preview paths
         latest_frame = frame_preview if frame_is_fresh else None
         latest_depth = depth_preview if depth_is_fresh else None
+
+        # Check if state changed - skip update if unchanged to prevent flashing
+        if (latest_frame == _last_preview_state["frame"] and
+            latest_depth == _last_preview_state["depth"]):
+            return gr.skip(), gr.skip()
+
+        # Update state
+        _last_preview_state["frame"] = latest_frame
+        _last_preview_state["depth"] = latest_depth
 
         return latest_frame, latest_depth
 
     except Exception:
         # Silently handle errors (e.g., backend disconnected, filesystem issues)
-        # This prevents error spam in the UI
+        # Only update UI if state actually changes
+        if _last_preview_state["frame"] is None and _last_preview_state["depth"] is None:
+            return gr.skip(), gr.skip()  # Skip update if already showing nothing
+        _last_preview_state["frame"] = None
+        _last_preview_state["depth"] = None
         return None, None
 
 def on_ui_tabs():
@@ -267,12 +289,12 @@ def on_ui_tabs():
                     i1 = gr.HTML(i1_store, elem_id='deforum_header')
                 id_part = 'deforum'
 
-                # Use Deforum-specific output directory (hidden - only for folder button access)
+                # Use Deforum-specific output directory
                 deforum_outdir = os.path.join(os.getcwd(), 'outputs', 'deforum')
                 os.makedirs(deforum_outdir, exist_ok=True)
 
-                # Create hidden output panel (we only need it for the folder button reference)
-                with gr.Row(visible=False):
+                # Create output panel with gallery for viewing finished videos
+                with gr.Row():
                     res = create_output_panel("deforum", deforum_outdir)
                     generation_info = res.generation_info
                     html_info= res.html_log
