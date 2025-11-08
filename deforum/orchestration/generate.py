@@ -660,6 +660,9 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
             except Exception as e:
                 logger.debug(f"Lumina patch not applied: {e}")
 
+            # Fractional strength: DISABLED (backend patches cause issues)
+            # Checkbox only affects UI slider precision, not actual sampling
+
             with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
                 # Suppress redundant Forge output (info already shown in Deforum's table)
                 # No callback needed for simplified dashboard (would cause recursion)

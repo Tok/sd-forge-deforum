@@ -138,3 +138,13 @@ def get_log_theme():
 def get_log_level():
     """Get minimum log level (DEBUG/INFO/WARNING/ERROR/CRITICAL)."""
     return _get_opts().data.get("deforum_log_level", "INFO")
+
+
+def is_fractional_strength_enabled():
+    """Check if fractional strength interpolation is enabled.
+
+    Note: Fractional strength is now always enabled via monkey patches.
+    This function kept for backward compatibility but always returns True.
+    """
+    # Always enabled (patches applied at extension init)
+    return True

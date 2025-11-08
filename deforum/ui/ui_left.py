@@ -179,6 +179,16 @@ def setup_deforum_left_side_ui():
     with gr.Row(variant='compact'):
         reverse_generation = create_gr_elem(da.reverse_generation)
 
+    # Fractional strength - top-level (UI + backend)
+    with gr.Row(variant='compact'):
+        enable_fractional_strength = gr.Checkbox(
+            label="Fractional Strength (1% precision)",
+            value=True,
+            info="Enables true 1% strength resolution via fractional t_enc (Forge monkey patch). "
+                 "Affects both slider precision AND actual sampling. "
+                 "OFF: discrete 1/steps resolution. ON: continuous 1% precision."
+        )
+
     # Mode-dependent controls row - cadence OR pseudo-cadence (mutually exclusive)
     with gr.Row(variant='compact'):
         with gr.Column(scale=1, visible=True) as cadence_column:
@@ -200,9 +210,9 @@ def setup_deforum_left_side_ui():
                 label="Normal Strength",
                 minimum=0.0,
                 maximum=1.0,
-                step=0.05,  # Will be updated dynamically based on steps
+                step=0.01,  # Initialize with 1% (fractional default enabled)
                 value=0.85,
-                info="Resolution: 1/20 = 0.05. Slider sets constant '0:(value)'. Edit textbox for complex schedules."
+                info="Fractional: 1% precision (0.01) via log-linear interpolation. Slider sets constant '0:(value)'. Edit textbox for complex schedules."
             )
             normal_strength = create_gr_elem(da.strength_schedule)
 
@@ -212,9 +222,9 @@ def setup_deforum_left_side_ui():
                 label="Keyframe Strength",
                 minimum=0.0,
                 maximum=1.0,
-                step=0.05,  # Will be updated dynamically based on steps
+                step=0.01,  # Initialize with 1% (fractional default enabled)
                 value=0.50,
-                info="Resolution: 1/20 = 0.05. Slider sets constant '0:(value)'. Edit textbox for complex schedules."
+                info="Fractional: 1% precision (0.01) via log-linear interpolation. Slider sets constant '0:(value)'. Edit textbox for complex schedules."
             )
             keyframe_strength = create_gr_elem(da.keyframe_strength_schedule)
 
@@ -558,7 +568,7 @@ def setup_deforum_left_side_ui():
 
 
     # Mode change handler - updates all UI based on selected render mode
-    def handle_render_mode_change(mode):
+    def handle_render_mode_change(mode, fractional_enabled):
         """
         Update UI components when render mode changes.
         Returns updates for: tab_depth, tab_shakify, tab_wan, cadence, pseudo_cadence,
@@ -581,9 +591,13 @@ def setup_deforum_left_side_ui():
         show_normal_strength = render_mode_enum.should_show_normal_strength()
         show_keyframe_strength = render_mode_enum.should_show_keyframe_strength()
 
-        # Calculate strength resolution (slider step size) based on steps
-        strength_step = 1.0 / config.default_steps
-        strength_info = f"Resolution: 1/{config.default_steps} = {strength_step:.4f}. Slider sets constant '0:(value)'. Edit textbox for complex schedules."
+        # Calculate strength resolution (slider step size) based on fractional checkbox state
+        if fractional_enabled:
+            strength_step = 0.01
+            strength_info = f"Fractional: 1% precision (0.01). Slider sets constant '0:(value)'. Edit textbox for complex schedules."
+        else:
+            strength_step = 1.0 / config.default_steps
+            strength_info = f"Discrete: 1/{config.default_steps} = {strength_step:.4f}. Slider sets constant '0:(value)'. Edit textbox for complex schedules."
 
         # Mode-specific steps info text
         steps_info_map = {
@@ -616,7 +630,7 @@ def setup_deforum_left_side_ui():
     # Connect render mode change handler
     render_mode.change(
         fn=handle_render_mode_change,
-        inputs=[render_mode],
+        inputs=[render_mode, enable_fractional_strength],
         outputs=[
             tab_depth,
             tab_shakify,
@@ -729,10 +743,25 @@ def setup_deforum_left_side_ui():
     # Smart strength slider handlers - ONE-WAY SYNC to prevent infinite loops
     # Slider -> Textbox ONLY. Textbox is source of truth.
 
-    def update_slider_step_size(steps_value):
-        """Update slider step size based on steps value."""
-        step = 1.0 / max(1, steps_value)
-        info_text = f"Resolution: 1/{steps_value} = {step:.4f}. Slider sets constant '0:(value)'. Edit textbox for complex schedules."
+    def update_slider_step_size(steps_value, fractional_enabled):
+        """Update slider step size based on steps and fractional checkbox state.
+
+        Args:
+            steps_value: Number of sampling steps
+            fractional_enabled: Whether fractional interpolation checkbox is enabled
+
+        Returns:
+            List of gr.update() for [normal_strength_slider, keyframe_strength_slider]
+        """
+        if fractional_enabled:
+            # Fractional interpolation: 1% precision regardless of steps
+            step = 0.01
+            info_text = f"Fractional: 1% precision (0.01). Slider sets constant '0:(value)'. Edit textbox for complex schedules."
+        else:
+            # Discrete: precision = 1/steps
+            step = 1.0 / max(1, steps_value)
+            info_text = f"Discrete: 1/{steps_value} = {step:.4f}. Slider sets constant '0:(value)'. Edit textbox for complex schedules."
+
         return [
             gr.update(step=step, info=info_text),  # normal_strength_slider
             gr.update(step=step, info=info_text),  # keyframe_strength_slider
@@ -742,10 +771,16 @@ def setup_deforum_left_side_ui():
         """Convert slider value to schedule textbox format."""
         return f"0: ({slider_value:.2f})"
 
-    # Connect steps change to update slider step size
+    # Connect steps and fractional checkbox changes to update slider step size
     steps.change(
         fn=update_slider_step_size,
-        inputs=[steps],
+        inputs=[steps, enable_fractional_strength],
+        outputs=[normal_strength_slider, keyframe_strength_slider]
+    )
+
+    enable_fractional_strength.change(
+        fn=update_slider_step_size,
+        inputs=[steps, enable_fractional_strength],
         outputs=[normal_strength_slider, keyframe_strength_slider]
     )
 

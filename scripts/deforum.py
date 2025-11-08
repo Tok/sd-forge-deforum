@@ -33,6 +33,17 @@ def init_deforum():
     except Exception as e:
         print(f"⚠️ Deforum: Failed to apply diffusers compatibility patches: {e}")
 
+    # Fractional img2img patches: RE-ENABLED with debug logging
+    try:
+        from deforum.pipeline.fractional_img2img_patch import apply_fractional_img2img_patch
+        from deforum.pipeline.fractional_sigma_slicer_patch import patch_kdiffusion_sampler_class
+        apply_fractional_img2img_patch()
+        patch_kdiffusion_sampler_class()
+    except Exception as e:
+        print(f"⚠️ Deforum: Failed to apply fractional img2img patches: {e}")
+        import traceback
+        traceback.print_exc()
+
     # create the Models/Deforum folder, where many of the deforum related models/ packages will be downloaded
     os.makedirs(ph.models_path + '/Deforum', exist_ok=True)
 

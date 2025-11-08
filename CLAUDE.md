@@ -248,6 +248,39 @@ The extension now uses a unified `RenderMode` system that replaces the old anima
 - Strength sliders (1 or 2) show/hide based on mode requirements
 - Tab visibility (3D vs Wan) changes automatically
 
+### Strength System
+
+**Deforum uses INVERTED strength semantics** (opposite of standard img2img):
+
+| Deforum Strength | Meaning | Forge Conversion | Actual Steps (20 total) |
+|-----------------|---------|------------------|------------------------|
+| **0.0** | No preservation, full regeneration | `1.0 - 0.0 = 1.0` | 20/20 steps |
+| **0.20** | Low preservation, dramatic changes | `1.0 - 0.2 = 0.8` | 16/20 steps |
+| **0.85** | High preservation, stability | `1.0 - 0.85 = 0.15` | 3/20 steps |
+| **1.0** | Maximum preservation | `1.0 - 1.0 = 0.0` | 0/20 steps |
+
+**Conversion:** `deforum/pipeline/webui_sd_pipeline.py:50`
+```python
+p.denoising_strength = 1 - args.strength
+```
+
+**Why Inverted?**
+- Deforum strength = "how much to preserve from previous frame"
+- Standard img2img = "how much to change"
+- Higher Deforum value = MORE preservation = LESS diffusion work
+
+**Typical Values:**
+- **Keyframes (0.15-0.30):** Low preservation → 14-17/20 steps → Dramatic changes
+- **Cadence (0.80-0.90):** High preservation → 2-4/20 steps → Smooth stability
+- **Default:** Normal=0.85, Keyframe=0.20
+
+**Fractional Interpolation:**
+UI checkbox enables 1% strength precision via log-linear sigma interpolation:
+- Without: Resolution = 1/steps (e.g., 0.05 at 20 steps, 0.25 at 4 steps)
+- With: Resolution = 0.01 (1%) regardless of step count
+- Implementation: `deforum/pipeline/fractional_strength.py`
+- Applied before `processing.process_images()` via `apply_fractional_strength_if_enabled()`
+
 **Keyframe Distribution:**
 - Replaces traditional cadence-based rendering
 - Intelligently places diffusion keyframes at prompt boundaries

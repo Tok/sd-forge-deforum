@@ -86,7 +86,7 @@ class DepthModel:
         Predict depth map from image
 
         Args:
-            prev_img_cv2: Input image as numpy array (RGB, uint8)
+            prev_img_cv2: Input image as numpy array (BGR, uint8) - OpenCV format
             midas_weight: Legacy parameter, ignored (kept for backward compatibility)
             half_precision: Legacy parameter, ignored (kept for backward compatibility)
 
