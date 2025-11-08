@@ -40,7 +40,8 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             sampling_mode = create_gr_elem(da.sampling_mode)
 
     with gr.Accordion(f"{emoji_utils.movie_camera()} Wan FLF2V Tween Mode", open=False):
-        gr.Markdown("""
+        warning = emoji_utils.maybe_warning()
+        gr.Markdown(f"""
         **Use Wan AI video interpolation instead of depth-based tweening for in-between frames.**
 
         **When to use:**
@@ -53,7 +54,7 @@ def get_tab_depth_warping(da, skip_tabitem=False):
         2. Wan FLF2V interpolates smooth video between keyframes
         3. No depth estimation needed for tween frames
 
-        **⚠️ Requirements:**
+        **{warning} Requirements:**
         - **MUST use FLF2V-specific Wan model:** Wan2.1-FLF2V-14B
         - **TI2V models will NOT work** - they extend first frame instead
         - VRAM: ~15-18GB (less than standalone Wan T2V)
@@ -63,12 +64,14 @@ def get_tab_depth_warping(da, skip_tabitem=False):
         with FormRow(visible=is_visible) as wan_flf2v_row:
             enable_wan_flf2v = create_gr_elem(da.enable_wan_flf2v)
 
-    with gr.Accordion("🌊 Optical Flow / Cadence", open=False):
-        gr.Markdown("""
+    wave = emoji_utils.wave()
+    with gr.Accordion(f"{wave} Optical Flow / Cadence", open=False):
+        warning = emoji_utils.maybe_warning()
+        gr.Markdown(f"""
         **Optical flow** estimates motion between frames for smooth in-between (cadence) frames.
         Enable RAFT to generate only keyframes and use motion estimation for tweens (10x speedup).
 
-        ⚠️ **WARNING:** Can produce "smear-core" artifacts with many cadence frames.
+        {warning} **WARNING:** Can produce "smear-core" artifacts with many cadence frames.
         Works best with low cadence (2-3 frames). Experimental feature - disabled by default.
         """)
         with FormRow(visible=is_visible) as optical_flow_cadence_row:
@@ -87,13 +90,15 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             with FormColumn(min_width=220, visible=False) as redo_flow_factor_schedule_column:
                 redo_flow_factor_schedule = create_gr_elem(da.redo_flow_factor_schedule)
 
-    with gr.Accordion("🌐 Flux ControlNet", open=False):
-        gr.Markdown("""
+    globe = emoji_utils.globe()
+    with gr.Accordion(f"{globe} Flux ControlNet", open=False):
+        warning = emoji_utils.maybe_warning()
+        gr.Markdown(f"""
         **Flux ControlNet** adds structural control to keyframe generation using:
         - **Canny edges** from previous frame (preserves shapes and lines)
         - **Depth maps** from Depth-Anything V2 (preserves 3D structure)
 
-        ⚠️ **Only applies to keyframes** (not tween frames). Requires Flux model.
+        {warning} **Only applies to keyframes** (not tween frames). Requires Flux model.
         """)
         with FormRow(visible=is_visible) as flux_controlnet_row_1:
             enable_flux_controlnet = create_gr_elem(da.enable_flux_controlnet)
