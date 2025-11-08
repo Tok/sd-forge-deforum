@@ -1104,39 +1104,55 @@ def wan_generate_video(*component_args):
     Function to handle Wan video generation from the Wan tab
     This function calls the main Deforum generation pipeline with Wan mode
     """
+    # Theme-aware emoji symbols
+    from deforum.utils.system.logging import emoji as emoji_utils
+    check = emoji_utils.maybe_check()
+    cross = emoji_utils.maybe_cross()
+    warning = emoji_utils.maybe_warning()
+    download = emoji_utils.download()
+    trash = emoji_utils.trash()
+    wrench = emoji_utils.wrench()
+    bulb = emoji_utils.bulb()
+    signal = emoji_utils.signal()
+    save = emoji_utils.save()
+    refresh_icon = emoji_utils.refresh_icon()
+    memo = emoji_utils.memo()
+    movie_camera = emoji_utils.movie_camera()
+    target = emoji_utils.target()
+
     try:
         logger.debug(f"Wan video generation button clicked! Received {len(component_args)} arguments", emoji='movie_camera')
-        
+
         # Import the main Deforum run function
         from deforum.orchestration.run_deforum import run_deforum
         from deforum.integrations.wan.wan_simple_integration import WanSimpleIntegration
-        
+
         # Auto-discover models first to validate setup
         integration = WanSimpleIntegration()
         models = integration.discover_models()
-        
+
         # Get wan_args from the components to check auto-download setting
         from deforum.config.args import get_component_names
         component_names = get_component_names()
         wan_auto_download = True  # Default value
-        
+
         try:
             auto_download_index = component_names.index('wan_auto_download')
             if auto_download_index < len(component_args):
                 wan_auto_download = component_args[auto_download_index]
         except (ValueError, IndexError):
-            logger.error("⚠️ Could not find wan_auto_download setting, using default: True")
+            logger.error(f"{warning} Could not find wan_auto_download setting, using default: True")
         
         # If no models found and auto-download is enabled, try to download
         if not models and wan_auto_download:
-            logger.info("📥 No models found and auto-download enabled. Downloading recommended model...")
-            
+            logger.info(f"{download} No models found and auto-download enabled. Downloading recommended model...")
+
             try:
                 from deforum.integrations.wan.wan_model_downloader import WanModelDownloader
                 downloader = WanModelDownloader()
-                
+
                 # Try to download TI2V-5B (Wan 2.2 unified text/image-to-video)
-                logger.info("📥 Downloading Wan 2.2 TI2V-5B model (recommended: 24GB VRAM, RTX 4090)...")
+                logger.info(f"{download} Downloading Wan 2.2 TI2V-5B model (recommended: 24GB VRAM, RTX 4090)...")
                 if downloader.download_model("TI2V-5B"):
                     logger.info(f"{emoji_if_enabled('✅')} TI2V-5B model download completed!")
                     # Re-discover models after download
@@ -1149,16 +1165,16 @@ def wan_generate_video(*component_args):
                         models = integration.discover_models()
                     else:
                         logger.error("All model downloads failed", emoji='off')
-                        
+
             except Exception as e:
                 logger.error(f"Auto-download failed: {e}", emoji='off')
-        
+
         # If we have models but they might be corrupted, validate them
         if models:
             logger.debug(f"{emoji_if_enabled('🔍')} Validating discovered models...")
             valid_models = []
             corrupted_models = []
-            
+
             for model in models:
                 if model['type'] in ['TI2V', 'T2V', 'I2V']:
                     # Legacy T2V/I2V models - check for basic structure
@@ -1179,17 +1195,17 @@ def wan_generate_video(*component_args):
                         any(f.name.startswith("wan") for f in model_path.rglob("*.pth")) or
                         any(f.name.startswith("wan") for f in model_path.rglob("*.safetensors"))
                     )
-                    
+
                     if has_valid_structure:
                         valid_models.append(model)
                         logger.debug(f"{emoji_if_enabled('✅')} {model['name']}: Valid legacy model")
                     else:
                         corrupted_models.append(model)
                         logger.debug(f"{model['name']}: Invalid/leftover files (not a proper Wan model)", emoji='off')
-            
+
             # If we found corrupted models and auto-download is enabled, offer repair
             if corrupted_models and wan_auto_download:
-                logger.warning(f"⚠️ Found {len(corrupted_models)} corrupted model(s)")
+                logger.warning(f"{warning} Found {len(corrupted_models)} corrupted model(s)")
                 logger.info("MANUAL CLEANUP INSTRUCTIONS:", emoji='tools')
                 logger.info("For safety, corrupted models are NOT automatically deleted.")
                 logger.info("If you want to remove them, please:")
@@ -1199,32 +1215,32 @@ def wan_generate_video(*component_args):
                     logger.info(f"{corrupted_model['name']}: {corrupted_model['path']}", emoji='off')
                 
                 logger.info()
-                logger.info("🗑️ To manually remove corrupted models:")
+                logger.info(f"{trash} To manually remove corrupted models:")
                 for corrupted_model in corrupted_models:
                     logger.info(f"   rm -rf \"{corrupted_model['path']}\"")
-                
+
                 logger.info()
-                logger.info("📥 To re-download models:")
+                logger.info(f"{download} To re-download models:")
                 for corrupted_model in corrupted_models:
                     model_name = corrupted_model['name'].lower()
                     if 'ti2v' in model_name and '5b' in model_name:
                         logger.info(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B")
                     elif 'a14b' in model_name or '14b' in model_name:
                         logger.info(f"   huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B")
-                
+
                 logger.info()
                 logger.info("TIP: Enable 'Auto-Download Models' for automatic downloading of missing models", emoji='bulb')
-                logger.warning("⚠️ SAFETY: Always verify corruption before deleting - some errors may be temporary")
+                logger.warning(f"{warning} SAFETY: Always verify corruption before deleting - some errors may be temporary")
             
             # Update models list to only include valid models
             models = valid_models
         
         if not models:
-            auto_download_help = """
+            auto_download_help = f"""
 
-🔧 AUTO-DOWNLOAD OPTIONS:
-1. ✅ Enable "Auto-Download Models" in the Wan tab (recommended)
-2. 📥 Manual download with HuggingFace CLI:
+{wrench} AUTO-DOWNLOAD OPTIONS:
+1. {check} Enable "Auto-Download Models" in the Wan tab (recommended)
+2. {download} Manual download with HuggingFace CLI:
 
    **For TI2V-5B (Recommended - Wan 2.2, 24GB VRAM, RTX 4090):**
    huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-5B
@@ -1232,19 +1248,19 @@ def wan_generate_video(*component_args):
    **For TI2V-A14B (Highest Quality - Wan 2.2 MoE, 32GB+ VRAM):**
    huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B
 
-3. ✅ Restart generation after downloading
+3. {check} Restart generation after downloading
 
-🔧 AUTO-REPAIR: Corrupted models are automatically detected and re-downloaded!""" if not wan_auto_download else """
+{wrench} AUTO-REPAIR: Corrupted models are automatically detected and re-downloaded!""" if not wan_auto_download else f"""
 
-🔧 TROUBLESHOOTING:
-1. 📶 Check internet connection for downloads
-2. 💾 Ensure enough disk space (TI2V-5B: ~30GB, TI2V-A14B: ~60GB)
-3. 🔄 Try manual download with HuggingFace CLI (see Auto-Discovery tab)
-4. 🔧 Corrupted models are detected - follow manual cleanup instructions"""
+{wrench} TROUBLESHOOTING:
+1. {signal} Check internet connection for downloads
+2. {save} Ensure enough disk space (TI2V-5B: ~30GB, TI2V-A14B: ~60GB)
+3. {refresh_icon} Try manual download with HuggingFace CLI (see Auto-Discovery tab)
+4. {wrench} Corrupted models are detected - follow manual cleanup instructions"""
 
-            return f"""❌ No Wan models found!
+            return f"""{cross} No Wan models found!
 
-💡 QUICK SETUP:
+{bulb} QUICK SETUP:
 TI2V models are unified text/image-to-video (Wan 2.2) - recommended!
 
 • **TI2V-5B**: 24GB VRAM, 720P@24fps, RTX 4090 compatible (best for most users)
@@ -1252,7 +1268,7 @@ TI2V models are unified text/image-to-video (Wan 2.2) - recommended!
 
 {auto_download_help}
 
-💡 TI2V models handle both text-to-video and image-to-video in one unified model!"""
+{bulb} TI2V models handle both text-to-video and image-to-video in one unified model!"""
         
         logger.info(f"{emoji_if_enabled('✅')} Found {len(models)} Wan model(s):")
         for i, model in enumerate(models, 1):
@@ -1271,29 +1287,29 @@ TI2V models are unified text/image-to-video (Wan 2.2) - recommended!
             animation_prompts_index = component_names.index('animation_prompts')
             if animation_prompts_index < len(component_args):
                 animation_prompts = component_args[animation_prompts_index]
-                logger.info(f"📝 Found animation_prompts at index {animation_prompts_index}")
+                logger.info(f"{memo} Found animation_prompts at index {animation_prompts_index}")
             else:
-                logger.warning(f"⚠️ animation_prompts index {animation_prompts_index} out of range (have {len(component_args)} args)")
+                logger.warning(f"{warning} animation_prompts index {animation_prompts_index} out of range (have {len(component_args)} args)")
         except ValueError:
-            logger.error("⚠️ Could not find animation_prompts in component names")
-        
+            logger.error(f"{warning} Could not find animation_prompts in component names")
+
         try:
             animation_mode_index = component_names.index('animation_mode')
-            logger.info(f"📝 Found animation_mode at index {animation_mode_index}")
+            logger.info(f"{memo} Found animation_mode at index {animation_mode_index}")
         except ValueError:
-            logger.error("⚠️ Could not find animation_mode in component names")
-        
+            logger.error(f"{warning} Could not find animation_mode in component names")
+
         # Validate prompts
         if not animation_prompts or animation_prompts.strip() == '{"0": "a beautiful landscape"}':
-            return """❌ No prompts configured!
+            return f"""{cross} No prompts configured!
 
-🔧 SETUP REQUIRED:
-1. 📝 Go to the **Prompts tab** and configure your animation prompts
-2. 🎬 Set your desired FPS in the **Output tab**
-3. 🎯 Optionally configure seeds in **Keyframes → Seed & SubSeed tab**
-4. 🎬 Click **Generate Flux/Wan** again
+{wrench} SETUP REQUIRED:
+1. {memo} Go to the **Prompts tab** and configure your animation prompts
+2. {movie_camera} Set your desired FPS in the **Output tab**
+3. {target} Optionally configure seeds in **Keyframes → Seed & SubSeed tab**
+4. {movie_camera} Click **Generate Flux/Wan** again
 
-💡 I2V chaining needs your prompt schedule to know what to generate!
+{bulb} I2V chaining needs your prompt schedule to know what to generate!
 
 Example prompts for seamless I2V chaining:
 {
