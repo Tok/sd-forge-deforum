@@ -594,28 +594,44 @@ def get_tab_qwen(dw: SimpleNamespace):
 
         # Wire animation_prompts to update stats displays on change
         # Note: max_frames not accessible here - will use parsed max frame instead
-        animation_prompts.change(
-            fn=lambda prompts: update_prompt_stats(prompts, 0),
-            inputs=[animation_prompts],
-            outputs=[
-                prompts_keyframe_count_display,
-                prompts_prompt_count_display,
-                prompts_pseudo_cadence_display,
-                prompts_max_frames_display
-            ]
-        )
+        from deforum.utils.system.logging import get_logger
+        logger = get_logger()
 
-        # Calculate stats when Prompts tab is selected (includes initial load)
-        prompts_tab.select(
-            fn=lambda prompts: update_prompt_stats(prompts, 0),
-            inputs=[animation_prompts],
-            outputs=[
-                prompts_keyframe_count_display,
-                prompts_prompt_count_display,
-                prompts_pseudo_cadence_display,
-                prompts_max_frames_display
-            ]
-        )
+        try:
+            logger.debug(f"Wiring prompt statistics events. animation_prompts type: {type(animation_prompts)}")
+            logger.debug(f"  prompts_keyframe_count_display: {prompts_keyframe_count_display is not None}")
+            logger.debug(f"  prompts_prompt_count_display: {prompts_prompt_count_display is not None}")
+            logger.debug(f"  prompts_pseudo_cadence_display: {prompts_pseudo_cadence_display is not None}")
+            logger.debug(f"  prompts_max_frames_display: {prompts_max_frames_display is not None}")
+
+            animation_prompts.change(
+                fn=lambda prompts: update_prompt_stats(prompts, 0),
+                inputs=[animation_prompts],
+                outputs=[
+                    prompts_keyframe_count_display,
+                    prompts_prompt_count_display,
+                    prompts_pseudo_cadence_display,
+                    prompts_max_frames_display
+                ]
+            )
+            logger.debug("animation_prompts.change() event wired successfully")
+
+            # Calculate stats when Prompts tab is selected (includes initial load)
+            prompts_tab.select(
+                fn=lambda prompts: update_prompt_stats(prompts, 0),
+                inputs=[animation_prompts],
+                outputs=[
+                    prompts_keyframe_count_display,
+                    prompts_prompt_count_display,
+                    prompts_pseudo_cadence_display,
+                    prompts_max_frames_display
+                ]
+            )
+            logger.debug("prompts_tab.select() event wired successfully")
+        except Exception as e:
+            logger.error(f"Failed to wire prompt statistics events: {e}")
+            import traceback
+            traceback.print_exc()
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
