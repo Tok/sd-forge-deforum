@@ -36,7 +36,7 @@ def get_tab_prompts(da, dw, dv=None):
         convert_fps_handler
     )
 
-    with gr.TabItem(f"{emoji_utils.prompts()} Prompts"):
+    with gr.TabItem(f"{emoji_utils.prompts()} Prompts") as prompts_tab:
         # PROMPTS INFO ACCORD
         with gr.Accordion(
             label='*Important* notes on Prompts',
@@ -327,5 +327,19 @@ def get_tab_prompts(da, dw, dv=None):
             ]
         )
         print(f"!!! [tabs/tab_prompts.py] Event wired successfully!")
+
+        # Calculate stats when Prompts tab is selected (includes initial load)
+        print(f"!!! [tabs/tab_prompts.py] Wiring prompts_tab.select() event...")
+        prompts_tab.select(
+            fn=lambda prompts: update_prompt_stats(prompts, 0),
+            inputs=[animation_prompts],
+            outputs=[
+                prompts_keyframe_count_display,
+                prompts_prompt_count_display,
+                prompts_pseudo_cadence_display,
+                prompts_max_frames_display
+            ]
+        )
+        print(f"!!! [tabs/tab_prompts.py] Tab select event wired successfully!")
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
