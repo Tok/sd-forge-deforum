@@ -555,12 +555,18 @@ def get_tab_qwen(dw: SimpleNamespace):
             Returns:
                 Tuple of (keyframe_count, prompt_count, pseudo_cadence, max_frame)
             """
+            from deforum.utils.system.logging import get_logger
+            logger = get_logger()
+
             try:
                 import json
                 import re
 
+                logger.debug(f"update_prompt_stats called with prompts_text length: {len(prompts_text) if prompts_text else 0}")
+
                 # Parse prompts JSON
                 if not prompts_text or not prompts_text.strip():
+                    logger.debug("Empty prompts_text, returning zeros")
                     return 0, 0, 0, 0
 
                 # Remove comments and parse
@@ -578,10 +584,12 @@ def get_tab_qwen(dw: SimpleNamespace):
                 max_frame = keyframes[-1] if keyframes else 0
                 pseudo_cadence = max_frame / keyframe_count if keyframe_count > 0 else 0
 
+                logger.debug(f"Calculated stats: keyframes={keyframe_count}, unique={unique_prompts}, cadence={pseudo_cadence:.1f}, max={max_frame}")
                 return keyframe_count, unique_prompts, pseudo_cadence, max_frame
 
             except Exception as e:
                 # Return zeros on parse error
+                logger.error(f"Error parsing prompts: {e}")
                 return 0, 0, 0, 0
 
         # Wire animation_prompts to update stats displays on change
