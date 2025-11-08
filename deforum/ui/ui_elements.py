@@ -3012,32 +3012,50 @@ Model download started automatically. This may take a few minutes.
 
 def analyze_movement_handler(current_prompts, enable_shakify=True, sensitivity_override=False, manual_sensitivity=1.0):
     """Handle movement analysis from Deforum schedules with enhanced Camera Shakify integration and fine-grained sensitivity control"""
+    # Theme-aware emoji symbols
+    from deforum.utils.system.logging import emoji as emoji_utils
+    check = emoji_utils.maybe_check()
+    cross = emoji_utils.maybe_cross()
+    warning = emoji_utils.maybe_warning()
+    wrench = emoji_utils.wrench()
+    memo = emoji_utils.memo()
+    ruler = emoji_utils.ruler()
+    target = emoji_utils.target()
+    distribution = emoji_utils.distribution()
+    sparkles = emoji_utils.sparkles()
+    party = emoji_utils.party()
+    camera = emoji_utils.camera()
+    abacus = emoji_utils.abacus()
+    movie_camera = emoji_utils.movie_camera()
+    chart_increasing = emoji_utils.chart_increasing()
+    bulb = emoji_utils.bulb()
+
     try:
         from deforum.integrations.wan.utils.movement_analyzer import analyze_deforum_movement, generate_wan_motion_intensity_schedule, MovementAnalyzer
         from types import SimpleNamespace
         import json
-        
+
         logger.info("Starting enhanced movement analysis with fine-grained detection...", emoji='movie_camera')
         logger.info(f"Camera Shakify: {'ENABLED' if enable_shakify else 'DISABLED'}", emoji='movie_camera')
-        logger.info(f"🎯 Sensitivity: {'MANUAL ({:.1f})'.format(manual_sensitivity) if sensitivity_override else 'AUTO-CALCULATED'}")
+        logger.info(f"{target} Sensitivity: {'MANUAL ({:.1f})'.format(manual_sensitivity) if sensitivity_override else 'AUTO-CALCULATED'}")
         
         # Validate current prompts
         if not current_prompts or current_prompts.strip() == "":
-            return "", """❌ No prompts to analyze!
+            return "", f"""{cross} No prompts to analyze!
 
-🔧 **Load prompts first:**
-1. 📋 Click "Load from Deforum Prompts" or "Load Default Wan Prompts"
-2. 📐 Then click "Add Movement Descriptions" again
+{wrench} **Load prompts first:**
+1. {memo} Click "Load from Deforum Prompts" or "Load Default Wan Prompts"
+2. {ruler} Then click "Add Movement Descriptions" again
 
 Movement descriptions will be added to your existing prompts."""
-        
+
         # Parse current prompts
         try:
             prompts_dict = json.loads(current_prompts)
             if not prompts_dict:
-                return "", "❌ Empty prompts! Load prompts first before analyzing movement."
+                return "", f"{cross} Empty prompts! Load prompts first before analyzing movement."
         except json.JSONDecodeError:
-            return "", "❌ Invalid JSON format! Please fix the prompts format first."
+            return "", f"{cross} Invalid JSON format! Please fix the prompts format first."
         
         # Create anim_args with actual Deforum schedule values
         anim_args = SimpleNamespace()
@@ -3056,15 +3074,15 @@ Movement descriptions will be added to your existing prompts."""
                 anim_args.zoom = components.get('zoom', "0:(1.0)")
                 anim_args.angle = components.get('angle', "0:(0)")
                 anim_args.max_frames = int(components.get('max_frames', 100))
-                
+
                 logger.info(f"{emoji_if_enabled('✅')} Using actual Deforum movement schedules from UI")
                 logger.info(f"Translation X: {anim_args.translation_x}", emoji='distribution')
                 logger.info(f"Translation Z: {anim_args.translation_z}", emoji='distribution')
                 logger.info(f"Rotation Y: {anim_args.rotation_3d_y}", emoji='distribution')
                 logger.info(f"Zoom: {anim_args.zoom}", emoji='distribution')
-                
+
             except Exception as e:
-                logger.error(f"⚠️ Could not access movement schedules: {e}")
+                logger.error(f"{warning} Could not access movement schedules: {e}")
                 # Use static defaults for testing
                 anim_args.translation_x = "0:(0)"
                 anim_args.translation_y = "0:(0)"
@@ -3116,9 +3134,9 @@ Movement descriptions will be added to your existing prompts."""
                     logger.info(f"   Intensity: {anim_args.shake_intensity}")
                     logger.info(f"   Speed: {anim_args.shake_speed}")
                 else:
-                    logger.info(f"📷 Camera Shakify disabled (shake_name: {anim_args.shake_name})")
+                    logger.info(f"{camera} Camera Shakify disabled (shake_name: {anim_args.shake_name})")
             except Exception as e:
-                logger.error(f"⚠️ Could not read Camera Shakify settings: {e}")
+                logger.error(f"{warning} Could not read Camera Shakify settings: {e}")
                 # Disable Shakify on error
                 anim_args.shake_name = "None"
                 anim_args.shake_intensity = 1.0
@@ -3129,15 +3147,15 @@ Movement descriptions will be added to your existing prompts."""
             anim_args.shake_intensity = 1.0
             anim_args.shake_speed = 1.0
             logger.info(f"Camera Shakify manually disabled via UI checkbox", emoji='movie_camera')
-        
+
         # Determine sensitivity
         if sensitivity_override:
             sensitivity = manual_sensitivity
             sensitivity_reason = f"manual override ({sensitivity:.1f})"
-            logger.info(f"🎯 Using manual sensitivity: {sensitivity}")
+            logger.info(f"{target} Using manual sensitivity: {sensitivity}")
         else:
             # Auto-calculate movement sensitivity from the schedules
-            logger.info("🧮 Auto-calculating movement sensitivity from Deforum schedules...")
+            logger.info(f"{abacus} Auto-calculating movement sensitivity from Deforum schedules...")
             
             # Create a MovementAnalyzer to calculate optimal sensitivity
             analyzer = MovementAnalyzer(sensitivity=1.0)  # Start with baseline
@@ -3190,28 +3208,28 @@ Movement descriptions will be added to your existing prompts."""
                     sensitivity_reason = "low sensitivity for very large movement"
                 
                 logger.info(f"Total movement magnitude: {total_movement:.1f}", emoji='distribution')
-                logger.info(f"🎯 Auto-calculated sensitivity: {sensitivity} ({sensitivity_reason})")
-                
+                logger.info(f"{target} Auto-calculated sensitivity: {sensitivity} ({sensitivity_reason})")
+
             except Exception as e:
-                logger.error(f"⚠️ Could not auto-calculate sensitivity: {e}, using default 2.0")
+                logger.error(f"{warning} Could not auto-calculate sensitivity: {e}, using default 2.0")
                 sensitivity = 2.0
                 sensitivity_reason = "default (calculation failed)"
-        
+
         # Generate movement description using enhanced analysis with Camera Shakify
         movement_desc, average_motion_strength = analyze_deforum_movement(
             anim_args=anim_args,
             sensitivity=sensitivity,
             max_frames=anim_args.max_frames
         )
-        
+
         # Generate Wan motion intensity schedule
         motion_intensity_schedule = generate_wan_motion_intensity_schedule(
             anim_args,
             max_frames=anim_args.max_frames,
             sensitivity=sensitivity
         )
-        
-        logger.info(f"🎯 Enhanced movement analysis result:")
+
+        logger.info(f"{target} Enhanced movement analysis result:")
         logger.info(f"   Description: {movement_desc}")
         logger.info(f"   Strength: {average_motion_strength:.3f}")
         logger.info(f"   Motion Intensity Schedule: {motion_intensity_schedule}")
@@ -3245,58 +3263,58 @@ Movement descriptions will be added to your existing prompts."""
         camera_shakify_status = ""
         if enable_shakify and hasattr(anim_args, 'shake_name') and anim_args.shake_name != "None":
             camera_shakify_status = f"""
-🎬 **Camera Shakify Integration:**
+{movie_camera} **Camera Shakify Integration:**
 - Pattern: {anim_args.shake_name}
 - Intensity: {anim_args.shake_intensity}
 - Speed: {anim_args.shake_speed}
-- Status: ✅ Active and applied to movement schedules"""
+- Status: {check} Active and applied to movement schedules"""
         elif enable_shakify:
             camera_shakify_status = f"""
-🎬 **Camera Shakify Integration:**
-- Status: ⚠️ Enabled but no shake pattern selected
+{movie_camera} **Camera Shakify Integration:**
+- Status: {warning} Enabled but no shake pattern selected
 - Go to Keyframes → Motion → Shakify tab to configure"""
         else:
             camera_shakify_status = f"""
-🎬 **Camera Shakify Integration:**
-- Status: ❌ Disabled via checkbox
+{movie_camera} **Camera Shakify Integration:**
+- Status: {cross} Disabled via checkbox
 - Enable checkbox above to include shake effects"""
-        
-        if average_motion_strength > 0:
-            result_message = f"""✅ Enhanced fine-grained movement analysis complete!
 
-🎯 **Movement Detection:**
+        if average_motion_strength > 0:
+            result_message = f"""{check} Enhanced fine-grained movement analysis complete!
+
+{target} **Movement Detection:**
 "{movement_desc}"
 
-📊 **Analysis Details:**
+{chart_increasing} **Analysis Details:**
 - Motion strength: {average_motion_strength:.3f}
 - Sensitivity: {sensitivity} ({sensitivity_reason})
 - Detection method: Frame-by-frame analysis with enhanced thresholds
 {camera_shakify_status}
 
-📐 **Motion Intensity Schedule for Wan:**
+{ruler} **Motion Intensity Schedule for Wan:**
 {motion_intensity_schedule}
 
-💡 **Copy the schedule above to Wan's Motion Intensity field for synchronized movement effects!**
+{bulb} **Copy the schedule above to Wan's Motion Intensity field for synchronized movement effects!**
 
-✅ Movement descriptions applied to {len(updated_prompts)} prompts.
+{check} Movement descriptions applied to {len(updated_prompts)} prompts.
 Ready for AI enhancement or video generation."""
         else:
-            result_message = f"""✅ Enhanced movement analysis complete!
+            result_message = f"""{check} Enhanced movement analysis complete!
 
-📊 **Analysis Result:**
+{chart_increasing} **Analysis Result:**
 "{movement_desc}"
 
-📊 **Analysis Details:**
+{chart_increasing} **Analysis Details:**
 - Sensitivity: {sensitivity} ({sensitivity_reason})
 - Detection method: Frame-by-frame analysis with enhanced thresholds
 {camera_shakify_status}
 
-📷 Camera appears to be static based on current movement schedules. To add movement:
+{camera} Camera appears to be static based on current movement schedules. To add movement:
 1. Go to Keyframes → Motion tab and configure movement schedules
 2. Or enable Camera Shakify in the Keyframes → Motion → Shakify tab
 3. Then run movement analysis again
 
-✅ Analysis complete for {len(updated_prompts)} prompts."""
+{check} Analysis complete for {len(updated_prompts)} prompts."""
         
         logger.info(f"{emoji_if_enabled('✅')} Updated {len(updated_prompts)} Wan prompts with enhanced movement descriptions")
         logger.info(f"Use this motion intensity schedule in Wan: {motion_intensity_schedule}", emoji='distribution')
@@ -3311,9 +3329,9 @@ Ready for AI enhancement or video generation."""
         logger.error(f"Error in enhanced movement analysis: {str(e)}", emoji='off')
         import traceback
         traceback.print_exc()
-        error_msg = f"""❌ Error in enhanced movement analysis: {str(e)}
+        error_msg = f"""{cross} Error in enhanced movement analysis: {str(e)}
 
-🔧 **Try this:**
+{wrench} **Try this:**
 1. Check that Deforum movement schedules are valid (Keyframes → Motion tab)
 2. Verify Camera Shakify settings if using shake effects
 3. Ensure prompts are in valid JSON format
