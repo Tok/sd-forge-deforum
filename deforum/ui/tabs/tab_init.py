@@ -272,8 +272,14 @@ def get_tab_init(d, da, dp, dau, dv=None):
                     label="Sync Status",
                     value="",
                     interactive=False,
-                    lines=12,
+                    lines=8,
                     info="Status messages will appear here"
+                )
+
+                # Interactive timeline visualization
+                audio_sync_timeline = gr.Plot(
+                    label="Keyframe Timeline",
+                    show_label=True
                 )
 
             # PARSEQ INNER-TAB

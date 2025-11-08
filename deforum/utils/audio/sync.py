@@ -10,7 +10,8 @@ Following Phase 1 of REFACTORING_STRATEGY.md:
 - Docstrings only where needed
 """
 
-from typing import Tuple
+from typing import Tuple, List, Dict
+import plotly.graph_objects as go
 
 
 # ============================================================================
@@ -111,6 +112,143 @@ def build_keyframe_visualization(
     spacing_str = f"0{' ' * (viz_width - len(str(max_frame)) - 1)}{max_frame}"
 
     return viz_str, spacing_str
+
+
+def create_keyframe_timeline_plot(
+    keyframes: List[Dict],
+    total_frames: int,
+    duration: float,
+    fps: int,
+    prompts: List[str] = None
+) -> go.Figure:
+    """Create interactive Plotly timeline visualization of keyframe placement.
+
+    Args:
+        keyframes: List of keyframe dicts with 'frame' and optional 'intensity'
+        total_frames: Total number of frames in animation
+        duration: Audio duration in seconds
+        fps: Frames per second
+        prompts: Optional list of prompts corresponding to keyframes
+
+    Returns:
+        Plotly Figure object with theme-aware timeline visualization
+    """
+    # Get theme for color selection
+    try:
+        from deforum.rendering.options import get_log_theme
+        theme = get_log_theme()
+    except:
+        theme = "slopcore"  # Fallback
+
+    # Theme-aware colors (matching schedule_visualizer.py)
+    if theme == "slopcore":
+        marker_color = '#667EEA'  # Purple (slopcore gradient start)
+        line_color = '#A353A8'    # Deep pink/purple (SLOPCORE_6)
+        bg_color = '#0F172A'      # Tailwind slate-900
+        plot_bg = '#1E293B'       # Tailwind slate-800
+        grid_color = '#334155'    # Tailwind slate-700
+        text_color = '#CBD5E1'    # Tailwind slate-300
+    else:  # classic
+        marker_color = '#3B82F6'  # Bright blue
+        line_color = '#10B981'    # Green
+        bg_color = '#0F172A'
+        plot_bg = '#1E293B'
+        grid_color = '#334155'
+        text_color = '#CBD5E1'
+
+    # Create figure
+    fig = go.Figure()
+
+    # Extract frame numbers and intensities
+    frame_numbers = [kf['frame'] for kf in keyframes]
+    intensities = [kf.get('intensity', 1.0) for kf in keyframes]
+
+    # Normalize intensities to 0-1 range for marker sizing
+    if intensities:
+        max_intensity = max(intensities)
+        min_intensity = min(intensities)
+        intensity_range = max_intensity - min_intensity
+        if intensity_range > 0:
+            normalized_intensities = [
+                (i - min_intensity) / intensity_range for i in intensities
+            ]
+        else:
+            normalized_intensities = [1.0] * len(intensities)
+    else:
+        normalized_intensities = [1.0] * len(frame_numbers)
+
+    # Create marker sizes (6-16 based on intensity)
+    marker_sizes = [6 + (ni * 10) for ni in normalized_intensities]
+
+    # Timestamps for hover
+    timestamps = [f / fps for f in frame_numbers]
+
+    # Build hover text
+    if prompts and len(prompts) == len(keyframes):
+        hover_texts = [
+            f"<b>Frame {f}</b><br>Time: {t:.2f}s<br>Intensity: {i:.2f}<br>Prompt: {p[:50]}{'...' if len(p) > 50 else ''}"
+            for f, t, i, p in zip(frame_numbers, timestamps, intensities, prompts)
+        ]
+    else:
+        hover_texts = [
+            f"<b>Frame {f}</b><br>Time: {t:.2f}s<br>Intensity: {i:.2f}"
+            for f, t, i in zip(frame_numbers, timestamps, intensities)
+        ]
+
+    # Add timeline markers as scatter plot (Y=0.5 for centered positioning)
+    fig.add_trace(go.Scatter(
+        x=frame_numbers,
+        y=[0.5] * len(frame_numbers),
+        mode='markers',
+        marker=dict(
+            size=marker_sizes,
+            color=marker_color,
+            symbol='line-ns-open',  # Vertical line symbol
+            line=dict(color=line_color, width=2),
+            opacity=0.9
+        ),
+        hovertemplate='%{text}<extra></extra>',
+        text=hover_texts,
+        showlegend=False
+    ))
+
+    # Add horizontal reference line (timeline base)
+    fig.add_trace(go.Scatter(
+        x=[0, total_frames],
+        y=[0.5, 0.5],
+        mode='lines',
+        line=dict(color=grid_color, width=1, dash='dot'),
+        hoverinfo='skip',
+        showlegend=False
+    ))
+
+    # Update layout for compact timeline appearance
+    fig.update_layout(
+        paper_bgcolor=bg_color,
+        plot_bgcolor=plot_bg,
+        font=dict(color=text_color, family='system-ui, -apple-system, sans-serif', size=10),
+        xaxis=dict(
+            title=dict(text='Frame Number', font=dict(size=11)),
+            range=[0, total_frames],
+            showgrid=True,
+            gridcolor=grid_color,
+            zeroline=False,
+            tickfont=dict(size=9)
+        ),
+        yaxis=dict(
+            title=None,
+            range=[0, 1],
+            showgrid=False,
+            showticklabels=False,
+            zeroline=False
+        ),
+        margin=dict(l=40, r=20, t=10, b=40),
+        height=200,  # Compact timeline height
+        hovermode='closest',
+        showlegend=False
+    )
+
+    return fig
 
 
 def build_status_message(

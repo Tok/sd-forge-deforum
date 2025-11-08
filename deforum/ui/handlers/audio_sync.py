@@ -65,12 +65,12 @@ def synchronize_prompts_to_audio(
     try:
         # 1. VALIDATION: Check soundtrack path
         if not soundtrack_path_val or not soundtrack_path_val.strip():
-            return gr.update(), gr.update(), "✗ Error: Please provide a soundtrack path or URL"
+            return gr.update(), gr.update(), gr.update(), "✗ Error: Please provide a soundtrack path or URL"
 
         # 2. PARSE PROMPTS: Extract prompts from prompt list
         prompts = parse_prompt_list(audio_sync_prompts_val)
         if not prompts:
-            return gr.update(), gr.update(), "✗ Error: Please enter at least one prompt"
+            return gr.update(), gr.update(), gr.update(), "✗ Error: Please enter at least one prompt"
 
         logger.info(f"{emoji_if_enabled('✅')} Parsed {len(prompts)} prompts from input")
 
@@ -104,7 +104,7 @@ def synchronize_prompts_to_audio(
 
             logger.info(f"{emoji_if_enabled('✅')} Loaded audio: {duration:.2f}s at {sr}Hz")
         except Exception as e:
-            return gr.update(), gr.update(), f"✗ Error loading audio: {str(e)}"
+            return gr.update(), gr.update(), gr.update(), f"✗ Error loading audio: {str(e)}"
 
         # 4. DETECT EVENTS: Detect beats/onsets in audio
         event_times, event_intensities = detect_events(
@@ -115,7 +115,7 @@ def synchronize_prompts_to_audio(
         )
 
         if len(event_times) == 0:
-            return gr.update(), gr.update(), f"✗ Error: No audio events detected. Check your audio file."
+            return gr.update(), gr.update(), gr.update(), f"✗ Error: No audio events detected. Check your audio file."
 
         logger.info(f"{emoji_if_enabled('✅')} Detected {len(event_times)} events using {detection_method} method")
 
@@ -161,8 +161,15 @@ def synchronize_prompts_to_audio(
                 n=resolved_target
             )
 
-            # Convert to keyframes
-            keyframes = [int(t * current_fps) for t in selected_times]
+            # Convert to keyframes (dict format matching generate_keyframes_from_events)
+            keyframes = [
+                {
+                    'frame': int(t * current_fps),
+                    'intensity': float(i),
+                    'time_seconds': float(t)
+                }
+                for t, i in zip(selected_times, selected_intensities)
+            ]
 
             logger.info(f"{emoji_if_enabled('✅')} Selected {len(keyframes)} strongest events")
 
@@ -209,13 +216,13 @@ def synchronize_prompts_to_audio(
 
             keyframes = best_keyframes
             if not keyframes:
-                return gr.update(), gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
+                return gr.update(), gr.update(), gr.update(), "✗ Error: No keyframes generated after filtering. Try reducing min spacing."
 
             logger.info(f"{emoji_if_enabled('✅')} Generated {len(keyframes)} keyframes with spacing ≥{best_spacing} frames")
 
         # Final validation
         if not keyframes:
-            return gr.update(), gr.update(), "✗ Error: No keyframes generated. Try adjusting detection settings."
+            return gr.update(), gr.update(), gr.update(), "✗ Error: No keyframes generated. Try adjusting detection settings."
 
         # 8. DISTRIBUTE PROMPTS: Assign prompts to keyframes
         # Returns JSON string ready for Deforum animation_prompts format
@@ -227,19 +234,29 @@ def synchronize_prompts_to_audio(
 
         logger.info(f"{emoji_if_enabled('✅')} Distributed {len(prompts)} prompts across {len(keyframes)} keyframes")
 
-        # 9. BUILD STATUS MESSAGE: Create visualization and status
-        viz_str, spacing_str = build_keyframe_visualization(keyframes, total_frames)
-        status_msg = build_status_message(
+        # 9. BUILD VISUALIZATIONS: Create both text status and interactive plot
+        from deforum.utils.audio.sync import create_keyframe_timeline_plot
+
+        # Create interactive Plotly timeline
+        timeline_plot = create_keyframe_timeline_plot(
+            keyframes=keyframes,
+            total_frames=total_frames,
             duration=audio_data['duration'],
             fps=current_fps,
-            total_frames=total_frames,
-            bpm=estimated_bpm,
-            events_detected=len(event_times),
-            keyframes_created=len(keyframes),
-            prompts_used=len(prompts),
-            distribution_mode=distribution_mode,
-            viz_str=viz_str,
-            spacing_str=spacing_str
+            prompts=prompts
+        )
+
+        # Build text status (simplified since we have the plot)
+        avg_spacing = total_frames / len(keyframes) if keyframes else 0
+        status_msg = (
+            f"✓ Successfully synchronized!\n"
+            f"• Audio: {audio_data['duration']:.1f}s @ {current_fps} FPS ({total_frames} frames)\n"
+            f"• Detected BPM: {estimated_bpm:.1f}\n"
+            f"• Events detected: {len(event_times)}\n"
+            f"• Keyframes created: {len(keyframes)}\n"
+            f"• Average spacing: {avg_spacing:.1f} frames (~{avg_spacing/current_fps:.2f}s)\n"
+            f"• Prompts used: {len(prompts)} (mode: {distribution_mode})\n\n"
+            f"See interactive timeline below for keyframe placement."
         )
 
         logger.info("="*80)
@@ -253,16 +270,16 @@ def synchronize_prompts_to_audio(
         logger.info(f"   formatted_schedule type: {type(formatted_schedule)}, length: {len(formatted_schedule)}")
         logger.info(f"   formatted_schedule preview: {formatted_schedule[:100]}...")
         logger.info(f"   target_count: {len(keyframes)}")
-        logger.info(f"   status_msg length: {len(status_msg)} chars")
-        logger.info(f"   status_msg first line: {status_msg.split(chr(10))[0]}")
+        logger.info(f"   Returning timeline plot and status")
 
         return (
             gr.update(value=formatted_schedule),
             gr.update(value=len(keyframes)),
-            gr.update(value=status_msg)
+            gr.update(value=status_msg),
+            gr.update(value=timeline_plot)
         )
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return gr.update(), gr.update(), f"✗ Error: {str(e)}"
+        return gr.update(), gr.update(), gr.update(), f"✗ Error: {str(e)}"

@@ -395,11 +395,13 @@ def setup_deforum_left_side_ui():
             audio_sync_fewer_button = tab_init_params.get('audio_sync_fewer_button')
             audio_sync_more_button = tab_init_params.get('audio_sync_more_button')
             audio_sync_status = tab_init_params.get('audio_sync_status')
+            audio_sync_timeline = tab_init_params.get('audio_sync_timeline')
             audio_target_keyframe_count = tab_init_params.get('audio_target_keyframe_count')
             animation_prompts = tab_prompts_params.get('animation_prompts')
 
             logger.debug(f"   Retrieved audio_sync_button: {audio_sync_button is not None}")
             logger.debug(f"   Retrieved audio_sync_status: {audio_sync_status is not None}")
+            logger.debug(f"   Retrieved audio_sync_timeline: {audio_sync_timeline is not None}")
             logger.debug(f"   Retrieved audio_target_keyframe_count: {audio_target_keyframe_count is not None}")
             logger.debug(f"   Retrieved animation_prompts: {animation_prompts is not None}")
 
@@ -450,12 +452,12 @@ def setup_deforum_left_side_ui():
 
                 if len(audio_sync_inputs) == len(required_components):
                     # Buttons already retrieved above, just check they all exist
-                    if all([audio_sync_button, audio_sync_fewer_button, audio_sync_more_button, audio_sync_status, audio_target_keyframe_count, animation_prompts]):
+                    if all([audio_sync_button, audio_sync_fewer_button, audio_sync_more_button, audio_sync_status, audio_sync_timeline, audio_target_keyframe_count, animation_prompts]):
                         # Main sync button (0% adjustment)
                         audio_sync_button.click(
                             fn=synchronize_prompts_to_audio,
                             inputs=audio_sync_inputs,
-                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
+                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_timeline, audio_sync_status]
                         )
 
                         # -5% button (fewer keyframes)
@@ -467,7 +469,7 @@ def setup_deforum_left_side_ui():
                         audio_sync_fewer_button.click(
                             fn=fewer_keyframes_wrapper,
                             inputs=audio_sync_inputs,
-                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
+                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_timeline, audio_sync_status]
                         )
 
                         # +5% button (more keyframes)
@@ -479,7 +481,7 @@ def setup_deforum_left_side_ui():
                         audio_sync_more_button.click(
                             fn=more_keyframes_wrapper,
                             inputs=audio_sync_inputs,
-                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_status]
+                            outputs=[animation_prompts, audio_target_keyframe_count, audio_sync_timeline, audio_sync_status]
                         )
 
                         logger.debug("Audio sync buttons connected successfully (main, -5%, +5%)", emoji='sound')
