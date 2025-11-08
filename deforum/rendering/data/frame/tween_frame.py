@@ -42,8 +42,12 @@ class Tween:
     def _generate(self, data, last_frame, prev_image):
         advanced_image = turbo_utils.advance_optical_flow_cadence_before_animation_warping(
             data, last_frame, self, data.images.before_previous, data.images.previous)
-        self.depth = Tween.calculate_depth_prediction(data, advanced_image)
-        processed_image = img_2_img_tubes.process_tween_tube(data, last_frame, self.i, self.depth)(advanced_image)
+        # Use keyframe's depth map for warping, not tween's own depth
+        # This prevents progressive drift from recalculating depth on each tween
+        processed_image = img_2_img_tubes.process_tween_tube(data, last_frame, self.i, last_frame.depth)(advanced_image)
+
+        # Calculate tween's own depth AFTER warping for optical flow usage
+        self.depth = Tween.calculate_depth_prediction(data, processed_image)
         warped = turbo_utils.do_optical_flow_cadence_after_animation_warping(data, self, prev_image, processed_image)
 
         grayscale_tube = img_2_img_tubes.conditional_force_tween_to_grayscale_tube
