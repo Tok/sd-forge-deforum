@@ -184,6 +184,52 @@ def purple_square():
     return _select('\U0001F7EA')  # 🟪
 
 
+# Status indicators - theme-aware via emoji_if_enabled()
+# Named "maybe_*" because they return empty string when emojis are disabled
+def maybe_check():
+    """Green check mark - theme-aware, returns empty string if emojis disabled.
+
+    In slopcore: ✅ → ✓ (monochrome)
+    In classic: ✅ → ✅ (colored)
+    Disabled: '' (empty string)
+    """
+    from deforum.utils.system.logging import emoji_if_enabled
+    return emoji_if_enabled('\U00002705')  # ✅
+
+
+def maybe_cross():
+    """Red X mark - theme-aware, returns empty string if emojis disabled.
+
+    In slopcore: ❌ → ✗ (monochrome)
+    In classic: ❌ → ❌ (colored)
+    Disabled: '' (empty string)
+    """
+    from deforum.utils.system.logging import emoji_if_enabled
+    return emoji_if_enabled('\U0000274C')  # ❌
+
+
+def maybe_warning():
+    """Warning triangle - theme-aware, returns empty string if emojis disabled.
+
+    In slopcore: ⚠️ → ⚠ (no variation selector)
+    In classic: ⚠️ → ⚠️ (with variation selector)
+    Disabled: '' (empty string)
+    """
+    from deforum.utils.system.logging import emoji_if_enabled
+    return emoji_if_enabled('\U000026A0\U0000FE0F')  # ⚠️
+
+
+def maybe_alert():
+    """Alert/siren - theme-aware, returns empty string if emojis disabled.
+
+    In slopcore: 🚨 → ⚠ (mapped to warning)
+    In classic: 🚨 → 🚨 (siren emoji)
+    Disabled: '' (empty string)
+    """
+    from deforum.utils.system.logging import emoji_if_enabled
+    return emoji_if_enabled('\U0001F6A8')  # 🚨
+
+
 # ============================================================================
 # Theme-based Emoji Mapping
 # ============================================================================

@@ -10,7 +10,7 @@ into sub-components in the future.
 import gradio as gr
 from types import SimpleNamespace
 from modules.ui_components import FormRow
-from deforum.utils.system.logging import emoji as emoji_utils
+from deforum.utils.system.logging import emoji as emoji_utils, emoji_if_enabled
 from deforum.utils.ui.builders import create_gr_elem, create_row
 
 
@@ -45,8 +45,9 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
 
     # Deforum Integration Info - Shows what settings are used
     with gr.Accordion("🔗 Deforum Integration Details", open=False):
-        gr.Markdown("""
-        **✅ Wan seamlessly integrates with your Deforum settings:**
+        check = emoji_utils.maybe_check()
+        gr.Markdown(f"""
+        **{check} Wan seamlessly integrates with your Deforum settings:**
 
         - **📝 Prompts:** Uses prompts from Deforum Prompts tab
         - **🎬 Movement:** Uses same movement schedules as normal Deforum renders
@@ -55,10 +56,10 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         - **🎬 FPS:** Uses Output tab FPS setting
 
         **Movement Integration:**
-        - ✅ Translation X/Y/Z, Rotation 3D X/Y/Z, Zoom schedules
-        - ✅ **Parseq schedules fully supported**
-        - ✅ Movement descriptions automatically calculated and added
-        - ✅ Motion intensity dynamically adapts to movement complexity
+        - {check} Translation X/Y/Z, Rotation 3D X/Y/Z, Zoom schedules
+        - {check} **Parseq schedules fully supported**
+        - {check} Movement descriptions automatically calculated and added
+        - {check} Motion intensity dynamically adapts to movement complexity
         """)
 
     # DEPRECATED SECTION - Standalone Wan Workflow no longer used
@@ -216,7 +217,8 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
 
         # Model Download Buttons
         with gr.Accordion("📥 Download Models", open=True):
-            gr.Markdown("**✅ Recommended for Most Users (16GB+ VRAM)**")
+            check = emoji_utils.maybe_check()
+            gr.Markdown(f"**{check} Recommended for Most Users (16GB+ VRAM)**")
             with FormRow():
                 download_ti2v_5b = gr.Button("📥 TI2V-5B (30GB Download, ~16GB VRAM with offload)", variant="primary", size="sm")
 
@@ -436,14 +438,15 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
 
     # Auto-Discovery and Setup Information
     with gr.Accordion("📥 Model Auto-Discovery & Setup", open=False):
-        gr.Markdown("""
-        **✅ Auto-Discovery System**
-        
+        check = emoji_utils.maybe_check()
+        gr.Markdown(f"""
+        **{check} Auto-Discovery System**
+
         Wan automatically finds models in these locations:
         - `models/Deforum/wan/` (recommended)
         - `models/video/wan/`
         - Custom paths you specify
-        
+
         **✨ Wan 2.2 TI2V Models (Recommended)**
 
         TI2V models are unified text/image-to-video with diffusers format:

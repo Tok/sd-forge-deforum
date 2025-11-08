@@ -60,8 +60,13 @@ def wan_generate_video():
             integration = WanSimpleIntegration()
             models = integration.discover_models()
             
+            # Theme-aware emoji symbols
+            check = emoji_utils.maybe_check()
+            cross = emoji_utils.maybe_cross()
+            warning = emoji_utils.maybe_warning()
+
             if models:
-                return f"""✅ Wan integration is working!
+                return f"""{check} Wan integration is working!
 
 Found {len(models)} model(s):
 {chr(10).join([f"• {model['name']} ({model['size']})" for model in models[:3]])}
@@ -74,7 +79,7 @@ Found {len(models)} model(s):
 
 📁 Models found in: {models[0]['path']}"""
             else:
-                return """❌ No Wan models found!
+                return f"""{cross} No Wan models found!
 
 💡 SETUP REQUIRED:
 1. Download a Wan model:
@@ -88,9 +93,9 @@ Found {len(models)} model(s):
 3. Restart the WebUI after downloading
 
 The auto-discovery will find your models automatically!"""
-                
+
         except ImportError as e:
-            return f"""⚠️ Wan integration partially loaded
+            return f"""{warning} Wan integration partially loaded
 
 The Wan tab is integrated but some dependencies may be missing.
 
@@ -100,19 +105,20 @@ Error: {str(e)}
 1. Download Wan models as instructed above
 2. Ensure all Wan dependencies are installed
 3. Check the console for any import errors"""
-            
+
         except Exception as e:
-            return f"""❌ Wan integration error: {str(e)}
+            return f"""{cross} Wan integration error: {str(e)}
 
 💡 Troubleshooting:
 1. Check that Wan models are downloaded and placed correctly
 2. Verify all dependencies are installed
 3. Check console output for detailed error messages
 4. Try restarting the WebUI"""
-            
+
     except Exception as e:
         logger.error(f"Wan button error: {e}", emoji='off')
-        return f"❌ Error: {str(e)}"
+        cross = emoji_utils.maybe_cross()
+        return f"{cross} Error: {str(e)}"
 
 def setup_deforum_left_side_ui():
     d, da, dp, dau, dv, dr, dw, dloopArgs = set_arg_lists()
@@ -1111,6 +1117,11 @@ def setup_deforum_left_side_ui():
         # Validation functions
         def wan_validate_models():
             """Validate Wan models with HuggingFace checksums when possible"""
+            # Theme-aware emoji symbols
+            check = emoji_utils.maybe_check()
+            cross = emoji_utils.maybe_cross()
+            warning = emoji_utils.maybe_warning()
+            alert = emoji_utils.maybe_alert()
             try:
                 validator = WanModelValidator()
                 models = validator.discover_models()
@@ -1139,34 +1150,34 @@ def setup_deforum_left_side_ui():
                         if hf_validation['valid']:
                             valid_count = len([f for f in hf_validation['checked_files'].values() if f['status'] == 'valid'])
                             total_count = len(hf_validation['checked_files'])
-                            results.append(f"   ✅ VALID - {valid_count}/{total_count} files verified with official checksums")
+                            results.append(f"   {check} VALID - {valid_count}/{total_count} files verified with official checksums")
                             valid_models += 1
                         else:
-                            results.append(f"   ❌ INVALID - Checksum verification failed")
+                            results.append(f"   {cross} INVALID - Checksum verification failed")
                             for error in hf_validation['errors']:
-                                results.append(f"      🚨 {error}")
+                                results.append(f"      {alert} {error}")
                     else:
                         # Fall back to basic validation if HuggingFace validation not possible
-                        results.append(f"   ⚠️ Official checksums not available, using basic validation...")
+                        results.append(f"   {warning} Official checksums not available, using basic validation...")
                         validation_result = validator.validate_model_integrity(model_path)
-                        
+
                         if validation_result['valid']:
-                            results.append(f"   ✅ VALID (basic structure check)")
+                            results.append(f"   {check} VALID (basic structure check)")
                             valid_models += 1
                         else:
-                            results.append(f"   ❌ INVALID")
+                            results.append(f"   {cross} INVALID")
                             for error in validation_result['errors']:
-                                results.append(f"      🚨 {error}")
-                    
+                                results.append(f"      {alert} {error}")
+
                     if hf_validation['warnings']:
-                        for warning in hf_validation['warnings']:
-                            results.append(f"   ⚠️ {warning}")
+                        for warn_msg in hf_validation['warnings']:
+                            results.append(f"   {warning} {warn_msg}")
                 
                 summary = f"📊 SUMMARY: {valid_models}/{total_models} models valid"
                 if valid_models == total_models:
-                    summary = f"✅ {summary} - All models verified!"
+                    summary = f"{check} {summary} - All models verified!"
                 else:
-                    summary = f"⚠️ {summary} - Some models have issues"
+                    summary = f"{warning} {summary} - Some models have issues"
                 
                 results.append(f"\n{summary}")
                 results.append(f"💡 Using official HuggingFace checksums for maximum reliability")
@@ -1174,16 +1185,21 @@ def setup_deforum_left_side_ui():
                 return "\n".join(results)
                 
             except Exception as e:
-                return f"❌ Validation error: {str(e)}"
-        
+                cross = emoji_utils.maybe_cross()
+                return f"{cross} Validation error: {str(e)}"
+
         def cleanup_invalid_models():
             """Clean up invalid models with confirmation"""
+            # Theme-aware emoji symbols
+            check = emoji_utils.maybe_check()
+            cross = emoji_utils.maybe_cross()
+            warning = emoji_utils.maybe_warning()
             try:
                 validator = WanModelValidator()
                 models = validator.discover_models()
-                
+
                 if not models:
-                    return "❌ No models found to validate."
+                    return f"{cross} No models found to validate."
                 
                 # Find invalid models
                 invalid_models = []
@@ -1217,9 +1233,9 @@ def setup_deforum_left_side_ui():
                         })
                 
                 if not invalid_models:
-                    return "✅ All models passed validation! No cleanup needed."
-                
-                results.append(f"\n⚠️ Found {len(invalid_models)} invalid model(s):")
+                    return f"{check} All models passed validation! No cleanup needed."
+
+                results.append(f"\n{warning} Found {len(invalid_models)} invalid model(s):")
                 for i, invalid in enumerate(invalid_models, 1):
                     results.append(f"\n{i}. {invalid['name']} ({invalid['size']})")
                     results.append(f"   Issues: {', '.join(invalid['errors'])}")

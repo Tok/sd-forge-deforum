@@ -298,6 +298,7 @@ def emoji_if_enabled(emoji_str: str) -> str:
             '✅': '✓',  # Green check → White/black check mark
             '❌': '✗',  # Red X → White/black X
             '⚠️': '⚠',  # Warning (remove variation selector for cleaner look)
+            '🚨': '⚠',  # Alert → Warning (simpler)
         }
         return SLOPCORE_EMOJI_MAP.get(emoji_str, emoji_str)
 
