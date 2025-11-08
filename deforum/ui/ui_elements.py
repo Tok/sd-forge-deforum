@@ -1119,6 +1119,8 @@ def wan_generate_video(*component_args):
     memo = emoji_utils.memo()
     movie_camera = emoji_utils.movie_camera()
     target = emoji_utils.target()
+    rocket = emoji_utils.rocket()
+    chart_increasing = emoji_utils.chart_increasing()
 
     try:
         logger.debug(f"Wan video generation button clicked! Received {len(component_args)} arguments", emoji='movie_camera')
@@ -1327,14 +1329,14 @@ Each prompt will be smoothly connected using I2V continuity!"""
             component_args[animation_mode_index] = 'Flux/Wan'
             logger.info(f"{emoji_if_enabled('✅')} Set animation mode to 'Flux/Wan' at index {animation_mode_index}")
         else:
-            logger.error("⚠️ Could not set animation mode - index not found or out of range")
-        
+            logger.error(f"{warning} Could not set animation mode - index not found or out of range")
+
         # Generate a unique job ID
         import uuid
         job_id = str(uuid.uuid4())[:8]
-        
-        logger.info(f"🚀 Starting Wan video generation with job ID: {job_id}")
-        logger.info(f"📝 Using prompts: {str(animation_prompts)[:100]}...")
+
+        logger.info(f"{rocket} Starting Wan video generation with job ID: {job_id}")
+        logger.info(f"{memo} Using prompts: {str(animation_prompts)[:100]}...")
         
         # Call the main Deforum generation function
         # run_deforum expects: job_id, custom_settings_file, *component_values
@@ -1366,16 +1368,16 @@ Each prompt will be smoothly connected using I2V continuity!"""
         if result and len(result) >= 4:
             # run_deforum returns (images, seed, info, comments)
             images, seed, info, comments = result
-            
+
             if comments and "Error" in str(comments):
-                return f"❌ Wan generation failed: {comments}"
+                return f"{cross} Wan generation failed: {comments}"
             else:
-                return f"✅ Wan video generation completed successfully!\n📊 Job ID: {job_id}\n💡 Check the Output tab for your video files."
+                return f"{check} Wan video generation completed successfully!\n{chart_increasing} Job ID: {job_id}\n{bulb} Check the Output tab for your video files."
         else:
-            raise RuntimeError(f"❌ Wan generation failed")
-            
+            raise RuntimeError(f"{cross} Wan generation failed")
+
     except Exception as e:
-        error_msg = f"❌ Wan generation error: {str(e)}"
+        error_msg = f"{cross} Wan generation error: {str(e)}"
         logger.info(error_msg)
         import traceback
         traceback.print_exc()
