@@ -528,8 +528,8 @@ def synchronize_prompts_to_audio(
         return (
             gr.update(value=formatted_schedule),
             gr.update(value=len(keyframes)),
-            gr.update(value=status_msg),
-            gr.update(value=timeline_plot)
+            gr.update(value=timeline_plot),  # 3rd: timeline plot for audio_sync_timeline
+            gr.update(value=status_msg)      # 4th: status message for audio_sync_status
         )
 
     except Exception as e:
