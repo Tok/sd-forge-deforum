@@ -269,7 +269,7 @@ class TestIntegration:
 
         # Extract model folder name
         model_folder = extract_rife_name(model_name)
-        assert model_folder == "RIFE46"
+        assert model_folder == "RIFE43"
 
         # Calculate output FPS
         out_fps = set_interp_out_fps(str(interp_x), False, "1", in_fps)
