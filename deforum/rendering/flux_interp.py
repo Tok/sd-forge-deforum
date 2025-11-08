@@ -1,14 +1,16 @@
 """
 Flux + Interpolation Mode: Flux Keyframes + Choice of Interpolation
 
-Supports three interpolation methods:
+Supports two interpolation methods:
 - Wan FLF2V (default): AI-generated video interpolation with semantic understanding
-- RIFE v4.26: Optical flow-based interpolation for natural motion
-- FILM: Google's Frame Interpolation for Large Motion model
+- FILM: Google's Frame Interpolation for Large Motion (handles dramatic changes)
+
+Note: RIFE is NOT available here (defaults to single frames on dramatic changes).
+      RIFE is available for post-processing smooth videos only.
 
 Architecture:
   Phase 1: Generate ALL keyframes with Flux/SD
-  Phase 2: Batch interpolation between each consecutive keyframe pair (Wan/RIFE/FILM)
+  Phase 2: Batch interpolation between each consecutive keyframe pair (Wan/FILM)
   Phase 3: Stitch final video
 
 This combines the best of both worlds:

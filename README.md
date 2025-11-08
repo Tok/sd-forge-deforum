@@ -137,13 +137,13 @@ One-click AI video generation with **intentional chaos and glitches**. Click **"
 ### 🎞️ **FILM Smearcore Integration** (Google's frame interpolation)
 - **High-Quality Interpolation**: Google Research's FILM model for cinematic motion
 - **Smearcore Aesthetic**: Configurable motion blur and temporal blending
-- **Multi-Method Support**: Choose between Wan FLF2V, RIFE v4.26, or FILM per project
+- **Multi-Method Support**: Choose between Wan FLF2V or FILM for Flux interpolation; RIFE v4.26 available for post-processing
 - **Post-Processing Pipeline**: Apply FILM interpolation after initial render
  
 ### 🔄 **Resurrected & Upgraded RIFE v4.26**
-- **State-of-Art Interpolation**: Latest RIFE model (Sept 2024) fully functional
-- **Flux ControlNet V2 Support**: Updated for modern diffusers integration
-- **RAFT Optical Flow**: Fixed and working for precise motion estimation
+- **Post-Processing Only**: Latest RIFE model (Sept 2024) for smoothing finished videos
+- **Best For**: Framerate doubling on smooth motion (defaults to single frames on dramatic changes)
+- **Not For**: Interpolating between dramatically different keyframes (use FILM instead)
 - **Multi-GPU Support**: Efficient memory management for interpolation tasks
 
 ### ⏪ **Reverse Generation** (Essential for stable forward-motion clips)
