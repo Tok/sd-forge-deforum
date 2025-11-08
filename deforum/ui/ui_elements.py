@@ -1386,379 +1386,90 @@ Each prompt will be smoothly connected using I2V continuity!"""
 
 def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo_preroll, root, animation_prompts, loop_args, parseq_args, parseq_adapter, wan_args, frame_duration):
     """Generate Wan video using the new simple integration approach - called by Deforum internally"""
-    # Theme-aware emoji symbols
-    from deforum.utils.system.logging import emoji as emoji_utils
-    check = emoji_utils.maybe_check()
-    cross = emoji_utils.maybe_cross()
-    warning = emoji_utils.maybe_warning()
-    magnifying_glass = emoji_utils.magnifying_glass()
-    download = emoji_utils.download()
-    folder = emoji_utils.folder()
-    bulb = emoji_utils.bulb()
-    target = emoji_utils.target()
-    memo = emoji_utils.memo()
-    rocket = emoji_utils.rocket()
-    palette = emoji_utils.palette()
-    package = emoji_utils.package()
-    ruler = emoji_utils.ruler()
-    party = emoji_utils.party()
-
     from deforum.integrations.wan.wan_simple_integration import WanSimpleIntegration
+    from deforum.ui.handlers.wan_generation import (
+        _load_emoji_symbols,
+        _cleanup_qwen_models,
+        _discover_and_validate_models,
+        select_wan_model,
+        setup_wan_output_directory,
+        parse_prompts_and_timing,
+        calculate_dynamic_motion_strength,
+        validate_model_resolution_match,
+    )
     import time
 
+    # Load emoji symbols
+    emojis = _load_emoji_symbols()
+
     logger.info("Wan video generation started with AUTO-DISCOVERY (Internal Call)", emoji='movie_camera')
-    logger.info(f"{emoji_utils.magnifying_glass()} Using smart model discovery instead of manual paths")
+    logger.info(f"{emojis['magnifying_glass']} Using smart model discovery instead of manual paths")
 
     # Ensure Qwen models are unloaded before video generation to free VRAM
-    try:
-        from deforum.integrations.wan.utils.qwen_manager import qwen_manager
-        if qwen_manager.is_model_loaded():
-            logger.info("Unloading Qwen models before video generation...", emoji='refresh')
-            qwen_manager.ensure_model_unloaded()
-    except Exception as e:
-        logger.error(f"Could not cleanup Qwen models: {e}")
-    
+    _cleanup_qwen_models()
+
     start_time = time.time()
-    
+
     try:
         # Initialize the simple integration
         integration = WanSimpleIntegration()
-        
-        # Auto-discover models
-        logger.info(f"{emoji_utils.magnifying_glass()} Auto-discovering Wan models...")
-        models = integration.discover_models()
 
-        if not models:
-            raise RuntimeError(f"""
-{cross} No Wan models found automatically!
-
-{bulb} SOLUTIONS:
-1. {download} Download a Wan model using HuggingFace CLI:
-   huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir "models/Deforum/wan"
-
-2. {folder} Or place your model in one of these locations:
-   • models/Deforum/wan/
-   • models/Wan/
-
-3. {check} Restart generation after downloading
-
-The auto-discovery will find your models automatically!
-""")
+        # Auto-discover and validate models
+        _discover_and_validate_models(integration, emojis)
 
         # Select model based on user's choice
-        selected_model = None
-        user_model_choice = wan_args.wan_t2v_model.replace(" (Recommended)", "")
+        selected_model = select_wan_model(integration, wan_args, emojis)
 
-        # Handle different model selection options
-        if user_model_choice == "Auto-Detect":
-            # Auto-detect best model using priority logic (TI2V > T2V > I2V, FP8 > GGUF > FP16)
-            selected_model = integration.get_best_model()
-            if selected_model:
-                logger.info(f"{target} Auto-detected best model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
-            else:
-                raise RuntimeError("No Wan models available! Please download a model first.")
-
-        elif user_model_choice == "Custom Path":
-            # User will provide custom path via wan_model_path
-            custom_path = wan_args.wan_model_path
-            logger.info(f"{folder} Using custom model path: {custom_path}")
-            # TODO: Add custom path validation and loading
-            raise NotImplementedError("Custom path loading not yet implemented. Please use Auto-Detect or specific model selection.")
-
-        else:
-            # User selected specific model size (TI2V-5B or TI2V-A14B)
-            if "5B" in user_model_choice:
-                size_to_match = "5B"
-            elif "A14B" in user_model_choice or "14B" in user_model_choice:
-                size_to_match = "A14B"
-            else:
-                size_to_match = None
-
-            if size_to_match:
-                for model in models:
-                    if size_to_match == model['size']:
-                        selected_model = model
-                        logger.info(f"{emoji_utils.maybe_check()} Using user-selected model: {model['name']} ({model['size']})")
-                        break
-
-                if not selected_model:
-                    logger.warning(f"{warning} Requested {size_to_match} model not found, falling back to auto-detect")
-                    selected_model = integration.get_best_model()
-            else:
-                # Fallback to auto-detect
-                selected_model = integration.get_best_model()
-
-        if not selected_model:
-            raise RuntimeError("No Wan models available! Please download a model first.")
-
-        logger.info(f"{target} Selected model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
-        logger.info(f"{folder} Model path: {selected_model['path']}")
+        logger.info(f"{emojis['target']} Selected model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
+        logger.info(f"{emojis['folder']} Model path: {selected_model['path']}")
 
         # Load the pipeline before generation
         logger.info("Loading Wan pipeline...", emoji='refresh')
         if not integration.load_simple_wan_pipeline(selected_model, wan_args):
             raise RuntimeError(f"Failed to load Wan pipeline for {selected_model['name']}")
-        logger.info(f"{emoji_utils.maybe_check()} Wan pipeline loaded successfully")
+        logger.info(f"{emojis['check']} Wan pipeline loaded successfully")
 
-        # Prepare output directory with proper batch name
-        import os
-        
-        logger.info("="*80)
-        logger.debug("Output Directory Setup")
-        logger.info("="*80)
-        
-        # Log all relevant attributes
-        logger.info(f"{memo} args.outdir exists: {hasattr(args, 'outdir')}")
-        if hasattr(args, 'outdir'):
-            logger.info(f"{memo} args.outdir value: {args.outdir}")
-        logger.info(f"{memo} args.batch_name exists: {hasattr(args, 'batch_name')}")
-        if hasattr(args, 'batch_name'):
-            logger.info(f"{memo} args.batch_name value: {args.batch_name}")
-        logger.info(f"{memo} root.timestring: {root.timestring}")
-        logger.info(f"{memo} root.raw_batch_name exists: {hasattr(root, 'raw_batch_name')}")
-        if hasattr(root, 'raw_batch_name'):
-            logger.info(f"{memo} root.raw_batch_name: {root.raw_batch_name}")
-        logger.info("-"*80)
-
-        # Determine output directory
-        output_directory = None
-
-        # Strategy 1: Use args.outdir if it exists and looks valid
-        if hasattr(args, 'outdir') and args.outdir:
-            # Validate that outdir has a timestring or unique identifier
-            if 'Deforum_' in args.outdir or any(char.isdigit() for char in os.path.basename(args.outdir)):
-                output_directory = args.outdir
-                logger.info(f"{emoji_utils.maybe_check()} Using args.outdir (contains identifier): {output_directory}")
-            else:
-                logger.warning(f"{warning} args.outdir lacks unique identifier: {args.outdir}")
-                logger.warning(f"{warning} Will reconstruct with batch name to avoid collisions")
-        
-        # Strategy 2: Construct from batch_name if outdir not suitable
-        if not output_directory:
-            deforum_outpath = os.path.join(os.getcwd(), 'outputs', 'deforum')
-            
-            # Get batch name with multiple fallbacks
-            batch_name = None
-            
-            # Try args.batch_name first
-            if hasattr(args, 'batch_name') and args.batch_name:
-                batch_name = args.batch_name
-                logger.info(f"{memo} Using args.batch_name: {batch_name}")
-
-            # Try root.raw_batch_name
-            elif hasattr(root, 'raw_batch_name') and root.raw_batch_name:
-                batch_name = root.raw_batch_name
-                logger.info(f"{memo} Using root.raw_batch_name: {batch_name}")
-
-            # Default fallback
-            else:
-                batch_name = 'Deforum_{timestring}'
-                logger.warning(f"{warning} No batch_name found, using default: {batch_name}")
-
-            # Substitute placeholders
-            if '{timestring}' in batch_name or batch_name == 'Deforum':
-                batch_name = batch_name.replace('{timestring}', root.timestring)
-                logger.info(f"Substituted timestring: {batch_name}", emoji='refresh')
-
-            # Final validation: ensure batch_name has unique identifier
-            if not any(char.isdigit() for char in batch_name):
-                batch_name = f"{batch_name}_{root.timestring}"
-                logger.warning(f"{warning} Added timestring for uniqueness: {batch_name}")
-            
-            output_directory = os.path.join(deforum_outpath, batch_name)
-            logger.info(f"{emoji_utils.maybe_check()} Constructed output directory: {output_directory}")
-        
-        # Ensure directory exists
-        os.makedirs(output_directory, exist_ok=True)
-        
-        # Final validation
-        dir_name = os.path.basename(output_directory)
-        if dir_name == 'Deforum' or dir_name == 'deforum':
-            logger.info("="*80)
-            logger.error(f"CRITICAL ERROR: Output directory has no unique identifier!", emoji='off')
-            logger.info(f"Directory: {output_directory}", emoji='off')
-            logger.info(f"This will cause files from different generations to mix!", emoji='off')
-            logger.info("="*80)
-            raise RuntimeError(f"Invalid output directory (no unique ID): {output_directory}")
-        
-        logger.info("="*80)
-        logger.info(f"{emoji_utils.maybe_check()} Final output directory: {output_directory}")
-        logger.info(f"{emoji_utils.maybe_check()} Directory name: {dir_name}")
-        logger.info("="*80)
+        # Setup output directory
+        output_directory = setup_wan_output_directory(args, root, emojis)
 
         # Generate video using direct integration
-        logger.info(f"{rocket} Starting direct Wan integration...")
+        logger.info(f"{emojis['rocket']} Starting direct Wan integration...")
 
         # Parse prompts for Wan scheduling
-        def parse_prompts_and_timing(animation_prompts, wan_args, video_args):
-            """Calculate exact frame counts from prompt schedule for audio sync precision"""
-            prompt_schedule = []
+        clips = parse_prompts_and_timing(animation_prompts, wan_args, video_args, emojis)
 
-            # Sort prompts by frame number
-            sorted_prompts = sorted(animation_prompts.items(), key=lambda x: int(x[0]))
-
-            if not sorted_prompts:
-                return [("a beautiful landscape", 0, 81)]  # Default: 0 start frame, 81 frames
-
-            # Check if enhanced prompts are available and use them
-            final_prompts = animation_prompts.copy()
-
-            if wan_args.wan_enhanced_prompts:
-                try:
-                    # Try to parse enhanced prompts
-                    import json
-                    enhanced_prompts_data = json.loads(wan_args.wan_enhanced_prompts)
-                    if enhanced_prompts_data:
-                        logger.info("Using enhanced prompts from QwenPromptExpander", emoji='palette')
-                        final_prompts = enhanced_prompts_data
-                except (json.JSONDecodeError, ValueError):
-                    logger.error(f"{warning} Could not parse enhanced prompts, using original prompts")
-            
-            # Add movement description if available
-            movement_description = ""
-            if wan_args.wan_movement_description:
-                movement_description = wan_args.wan_movement_description.split('\n')[0]  # Get first line
-                logger.info(f"{emoji_utils.ruler()} Adding movement description: {movement_description}")
-            
-            # Re-sort with final prompts
-            sorted_prompts = sorted(final_prompts.items(), key=lambda x: int(x[0]))
-            
-            # Calculate frame differences between prompts
-            for i, (frame_str, prompt) in enumerate(sorted_prompts):
-                start_frame = int(frame_str)
-                clean_prompt = prompt.split('--neg')[0].strip()
-                
-                # Append movement description if available
-                if movement_description:
-                    clean_prompt = f"{clean_prompt}. {movement_description}"
-                
-                # Calculate end frame (frame count for this clip)
-                if i < len(sorted_prompts) - 1:
-                    # Next prompt exists - calculate difference
-                    next_frame = int(sorted_prompts[i + 1][0])
-                    frame_count = next_frame - start_frame
-                else:
-                    # Last prompt - use default or calculate from total expected frames
-                    # Assume at least 2 seconds worth of frames for the last clip
-                    frame_count = max(2 * video_args.fps, 81)  # Minimum 2 seconds or 81 frames
-                
-                # Ensure minimum frame count for Wan (at least 5 frames)
-                frame_count = max(5, frame_count)
-                
-                # Pad to Wan's 4n+1 requirement if needed (but try to preserve exact timing)
-                if (frame_count - 1) % 4 != 0:
-                    # Calculate closest 4n+1 value
-                    target_4n_plus_1 = ((frame_count - 1) // 4) * 4 + 1
-                    next_4n_plus_1 = target_4n_plus_1 + 4
-                    
-                    # Choose the closest one
-                    if abs(frame_count - target_4n_plus_1) <= abs(frame_count - next_4n_plus_1):
-                        frame_count = target_4n_plus_1
-                    else:
-                        frame_count = next_4n_plus_1
-                
-                # Add to schedule: (prompt, start_frame, frame_count)
-                prompt_schedule.append((clean_prompt, start_frame, frame_count))
-                
-                # Show enhanced/movement prompt info
-                if wan_args.wan_enhanced_prompts or wan_args.wan_movement_description:
-                    logger.info(f"  {emoji_utils.palette()} Enhanced Clip {i+1}: '{clean_prompt[:80]}...' (frames: {frame_count})", emoji='palette')
-                else:
-                    logger.info(f"  Clip {i+1}: '{clean_prompt[:50]}...' (start: frame {start_frame}, frames: {frame_count})")
-            
-            return prompt_schedule
-        
-        clips = parse_prompts_and_timing(animation_prompts, wan_args, video_args)
-        
         # Calculate dynamic motion strength if enabled
-        motion_strength = wan_args.wan_motion_strength  # Default value
-        motion_intensity_schedule = None  # For frame-by-frame motion control
-        
-        if wan_args.wan_movement_description and not wan_args.wan_motion_strength_override:
-            try:
-                from deforum.integrations.wan.utils.movement_analyzer import analyze_deforum_movement, generate_wan_motion_intensity_schedule
-                
-                logger.info("Calculating dynamic motion strength from movement schedules...", emoji='movie_camera')
-                
-                # Generate both description and average strength for backwards compatibility
-                _, dynamic_motion_strength = analyze_deforum_movement(
-                    anim_args=anim_args,
-                    sensitivity=wan_args.wan_movement_sensitivity,
-                    max_frames=min(anim_args.max_frames, 100)
-                )
-                
-                # Generate frame-by-frame motion intensity schedule for Wan
-                motion_intensity_schedule = generate_wan_motion_intensity_schedule(
-                    anim_args=anim_args,
-                    max_frames=min(anim_args.max_frames, 100),
-                    sensitivity=wan_args.wan_movement_sensitivity
-                )
-                
-                motion_strength = dynamic_motion_strength  # Fallback for simple integrations
-                logger.info(f"{emoji_utils.maybe_check()} Dynamic motion strength: {motion_strength:.2f} (average)")
-                logger.info(f"{ruler} Generated motion intensity schedule with frame-by-frame control")
+        motion_strength, motion_intensity_schedule = calculate_dynamic_motion_strength(anim_args, wan_args, emojis)
 
-            except Exception as e:
-                logger.error(f"{warning} Dynamic motion strength calculation failed: {e}, using default: {motion_strength}")
-        elif wan_args.wan_motion_strength_override:
-            logger.info(f"Using manual motion strength override: {motion_strength}", emoji='wrench')
-        else:
-            logger.info(f"Using default motion strength: {motion_strength}", emoji='distribution')
-        
         # Parse resolution - handle both old format (864x480) and new format (864x480 (Landscape))
         resolution_str = wan_args.wan_resolution
         if '(' in resolution_str:
-            # New format: "864x480 (Landscape)" 
             resolution_str = resolution_str.split(' (')[0]
         width, height = map(int, resolution_str.split('x'))
-        
+
         # Model/Resolution validation
-        model_size = selected_model['size']
-        model_name = selected_model['name']
-        is_720p = (width >= 1280 and height >= 720) or (width >= 720 and height >= 1280)
-        is_480p = (width <= 864 and height <= 480) or (width <= 480 and height <= 864)
-        
-        logger.info(f"\n{emoji_utils.magnifying_glass()} Model/Resolution Validation:")
-        logger.info(f"   {package} Model: {model_name} ({model_size})")
-        logger.info(f"   {ruler} Resolution: {width}x{height} ({'720p' if is_720p else '480p' if is_480p else 'Custom'})")
+        validate_model_resolution_match(selected_model, width, height, emojis)
 
-        # Check for resolution/model mismatches and warn
-        if "5B" in model_size and is_720p:
-            logger.info(f"\n{emoji_utils.maybe_check()} Perfect Match: TI2V-5B + 720p")
-            logger.info(f"   {package} Model: {model_name} (optimized for 720p@24fps)")
-            logger.info(f"   {ruler} Resolution: {width}x{height} (720p)")
-            logger.info(f"   {target} Optimal configuration for TI2V-5B!")
 
-        elif "5B" in model_size and is_480p:
-            logger.info(f"\n{emoji_utils.bulb()} INFO: TI2V-5B + 480p Resolution", emoji='bulb')
-            logger.info(f"   {package} Model: {model_name} (optimized for 720p)")
-            logger.info(f"   {ruler} Resolution: {width}x{height} (480p)")
-            logger.info(f"   {emoji_utils.maybe_check()} This works, but you could use 1280x720 for better quality")
-
-        elif "A14B" in model_size and is_720p:
-            logger.info(f"\n{emoji_utils.maybe_check()} Perfect Match: TI2V-A14B + 720p")
-            logger.info(f"   {package} Model: {model_name} (MoE architecture, highest quality)")
-            logger.info(f"   {ruler} Resolution: {width}x{height} (720p)")
-            logger.info(f"   {target} Maximum quality configuration!")
-
-        
         # Prepare clips data for generation
-        clips_data = []
-        for i, (prompt, start_frame, frame_count) in enumerate(clips):
-            clips_data.append({
+        clips_data = [
+            {
                 'prompt': prompt,
                 'start_frame': start_frame,
                 'end_frame': start_frame + frame_count,
                 'num_frames': frame_count
-            })
-        
+            }
+            for prompt, start_frame, frame_count in clips
+        ]
+
         # Add motion intensity schedule to wan_args for use by Wan integration
         if motion_intensity_schedule:
             wan_args.wan_motion_intensity_schedule = motion_intensity_schedule
             logger.info(f"Added motion intensity schedule to wan_args for frame-by-frame control", emoji='bulb')
-        
+
         # Wan 2.2 TI2V models always use unified T2V+I2V (no separate modes)
         mode_description = "unified TI2V generation"
+        from deforum.utils.system.logging import emoji as emoji_utils
         logger.info(f"\n{emoji_utils.movie_camera()} Using Wan 2.2 TI2V unified generation for {len(clips_data)} clips with frame continuity", emoji='movie_camera')
 
         # Generate video using I2V chaining (TI2V supports both T2V and I2V)
@@ -1777,32 +1488,29 @@ The auto-discovery will find your models automatically!
         )
 
         output_file = result.get('output_dir') if result else None
-
         generated_videos = [output_file] if output_file else []
-        
         total_time = time.time() - start_time
-        
-        if generated_videos:
-            logger.info(f"\n{party} Wan {mode_description} generation completed!")
-            logger.info(f"{emoji_utils.maybe_check()} Generated seamless video with {len(clips_data)} clips using {mode_description}")
-            logger.info(f"Total time: {total_time:.1f} seconds", emoji='stopwatch')
-            logger.info(f"{folder} Output file: {generated_videos[0]}")
-            logger.info(f"{emoji_utils.link()} {mode_description} ensures smooth transitions between clips")
 
-            # Return the output directory for Deforum's video processing
+        if generated_videos:
+            logger.info(f"\n{emojis['party']} Wan {mode_description} generation completed!")
+            logger.info(f"{emojis['check']} Generated seamless video with {len(clips_data)} clips using {mode_description}")
+            logger.info(f"Total time: {total_time:.1f} seconds", emoji='stopwatch')
+            logger.info(f"{emojis['folder']} Output file: {generated_videos[0]}")
+            logger.info(f"{emoji_utils.link()} {mode_description} ensures smooth transitions between clips")
             return str(output_directory)
         else:
-            raise RuntimeError(f"{cross} Wan {mode_description} failed")
-            
+            raise RuntimeError(f"{emojis['cross']} Wan {mode_description} failed")
+
     except Exception as e:
         logger.error(f"Wan generation failed: {e}", emoji='off')
-        
+
         # Provide helpful troubleshooting info
+        from deforum.utils.system.logging import emoji as emoji_utils
         logger.info(f"\n{emoji_utils.wrench()} TROUBLESHOOTING:", emoji='wrench')
         logger.info(f"   • Check model availability with: python scripts/deforum_helpers/wan_direct_integration.py")
         logger.info(f"   • Download models: huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir models/Deforum/wan")
         logger.info(f"   • Verify Wan models are in: models/Deforum/wan/ directory")
-        
+
         # Re-raise for Deforum error handling
         raise
 
