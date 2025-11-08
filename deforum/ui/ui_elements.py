@@ -766,7 +766,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
         zero_hitl_tab_emoji = emoji_if_enabled(emoji_utils.dice())
         zero_hitl_title = f"{zero_hitl_tab_emoji} Zero-HITL" if zero_hitl_tab_emoji else "Zero-HITL"
 
-        with gr.Tabs() as init_subtabs:
+        with gr.Tabs(selected="Audio Sync") as init_subtabs:
             with gr.Tab(zero_hitl_title) as zero_hitl_subtab:
                 zero_hitl_params = get_tab_zero_hitl(skip_tabitem=True)
 
