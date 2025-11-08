@@ -2879,69 +2879,51 @@ def load_wan_defaults_handler():
 
 
 def validate_wan_generation(current_prompts):
-    """Validate that Wan generation requirements are met"""
-    # Theme-aware emoji symbols
-    warning = emoji_utils.maybe_warning()
-    cross = emoji_utils.maybe_cross()
-    check = emoji_utils.maybe_check()
-    memo = emoji_utils.memo()
-    movie_camera = emoji_utils.movie_camera()
-    fire = emoji_utils.fire()
-    zap = emoji_utils.zap()
-    wrench = emoji_utils.wrench()
+    """Validate that Wan generation requirements are met."""
+    from deforum.ui.handlers.wan_validation import (
+        _is_empty_prompts,
+        _has_placeholder_text,
+        _parse_prompts_json,
+        _has_default_prompts,
+        _build_validation_message,
+    )
 
     try:
-        import json
+        # Load emojis
+        emojis = {
+            'warning': emoji_utils.maybe_warning(),
+            'cross': emoji_utils.maybe_cross(),
+            'check': emoji_utils.maybe_check(),
+            'memo': emoji_utils.memo(),
+            'movie_camera': emoji_utils.movie_camera(),
+            'fire': emoji_utils.fire(),
+            'zap': emoji_utils.zap(),
+            'wrench': emoji_utils.wrench(),
+        }
 
         # Check if prompts are empty
-        if not current_prompts or current_prompts.strip() == "":
-            return f"""{warning} **Prompts Required**
-
-{memo} **Load prompts to get started:**
-• Click "Load from Deforum Prompts" to use your animation prompts
-• Or click "Load Default Wan Prompts" for examples
-• Then optionally enhance with AI or add movement descriptions"""
+        if _is_empty_prompts(current_prompts):
+            return _build_validation_message("empty", None, emojis)
 
         # Check if it's just placeholder text
-        if any(placeholder in current_prompts.lower() for placeholder in ["required:", "load prompts", "placeholder"]):
-            return f"""{warning} **Load Real Prompts**
+        if _has_placeholder_text(current_prompts):
+            return _build_validation_message("placeholder", None, emojis)
 
-{memo} **Replace placeholder text:**
-• Click "Load from Deforum Prompts" to copy your animation prompts
-• Or click "Load Default Wan Prompts" for examples"""
+        # Parse JSON prompts
+        is_valid, prompts_dict, error_status = _parse_prompts_json(current_prompts)
 
-        # Try to parse as JSON
-        try:
-            prompts_dict = json.loads(current_prompts)
-            if not prompts_dict:
-                return f"{warning} **Empty prompts** - Add some prompts first"
+        if not is_valid:
+            return _build_validation_message(error_status, None, emojis)
 
-            # Check if prompts are just basic placeholders
-            first_prompt = list(prompts_dict.values())[0].lower()
-            if any(placeholder in first_prompt for placeholder in ["prompt text", "beautiful landscape", "load prompts"]):
-                return f"""{warning} **Default/Placeholder Prompts Detected**
+        # Check if prompts are just basic placeholders
+        if _has_default_prompts(prompts_dict):
+            return _build_validation_message("default", None, emojis)
 
-{memo} **Load your real prompts:**
-• Click "Load from Deforum Prompts" to copy your animation prompts
-• Or edit the prompts manually to describe your desired video"""
-
-            # All good - ready to generate!
-            num_prompts = len(prompts_dict)
-            return f"""{check} **Ready to Generate!**
-
-{movie_camera} **Found {num_prompts} prompt{'s' if num_prompts != 1 else ''}** for Wan video generation
-{fire} **Click "Generate Flux/Wan" above** to start I2V chaining generation
-{zap} **Optional:** Add movement descriptions or AI enhancement first"""
-
-        except json.JSONDecodeError:
-            return f"""{cross} **Invalid JSON Format**
-
-{wrench} **Fix the format:**
-• Prompts should be in JSON format like: {{"0": "prompt text", "60": "another prompt"}}
-• Check for missing quotes, commas, or brackets"""
+        # All good - ready to generate!
+        return _build_validation_message("ready", prompts_dict, emojis)
 
     except Exception as e:
-        return f"{cross} **Validation Error:** {str(e)}"
+        return f"{emoji_utils.maybe_cross()} **Validation Error:** {str(e)}"
 
 
 def wan_generate_with_validation(*component_args):
