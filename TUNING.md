@@ -67,22 +67,54 @@ python webui.py --deforum-run-tuning
 4. Repeat until colors degrade to grayscale (saturation < 20)
 5. Measure: iterations until degradation, color score trajectory
 
-**Parameters Tested:**
+**Parameters Tested (Updated with Fractional Precision):**
 
-| Model | Steps | Normal Strength | Keyframe Strength | Notes |
-|-------|-------|----------------|-------------------|-------|
-| Flux Dev | 20 | 0.85 | 0.15 | Current defaults |
-| Flux Dev | 20 | 0.90 | 0.15 | Higher stability |
-| Flux Dev | 20 | 0.80 | 0.15 | Lower stability |
-| Flux Dev | 20 | 0.85 | 0.10 | Lower keyframe strength |
-| Flux Dev | 20 | 0.85 | 0.20 | Higher keyframe strength |
-| Flux Dev | 20 | 0.95 | 0.10 | Very high stability |
-| Flux Dev | 20 | 0.75 | 0.25 | Lower stability, higher keyframe |
-| Flux Schnell | 4 | 0.85 | 0.15 | Default values (viability test) |
-| Flux Schnell | 4 | 0.90 | 0.10 | Tuned for 4 steps |
-| Flux Schnell | 4 | 0.70 | 0.30 | Inverse hypothesis |
+### Flux Dev (20 steps) - Fine-Grained Sweep
 
-**Total:** 10 parameter combinations
+Now using 0.01 (1%) precision instead of 0.05 (5%) thanks to fractional t_enc!
+
+| Model | Steps | Normal Strength | Keyframe Strength | t_enc (actual) | Notes |
+|-------|-------|----------------|-------------------|----------------|-------|
+| Flux Dev | 20 | 0.85 | 0.20 | 3.0 / 16.0 | Current defaults |
+| Flux Dev | 20 | 0.87 | 0.18 | 2.6 / 16.4 | Fractional test +2% |
+| Flux Dev | 20 | 0.83 | 0.22 | 3.4 / 15.6 | Fractional test -2% |
+| Flux Dev | 20 | 0.90 | 0.15 | 2.0 / 17.0 | High stability baseline |
+| Flux Dev | 20 | 0.80 | 0.25 | 4.0 / 15.0 | Low stability baseline |
+| Flux Dev | 20 | 0.92 | 0.12 | 1.6 / 17.6 | Very high stability |
+| Flux Dev | 20 | 0.88 | 0.16 | 2.4 / 16.8 | Fine-tune high |
+| Flux Dev | 20 | 0.82 | 0.24 | 3.6 / 15.2 | Fine-tune low |
+
+### Flux Schnell (4 steps) - Comprehensive I2V Chaining Evaluation
+
+**PRIMARY GOAL:** Determine if Flux Schnell can sustain I2V chaining at 4 steps.
+
+With fractional precision, we can now test fine-grained strength values:
+
+| Model | Steps | Normal Strength | Keyframe Strength | t_enc (actual) | Expected Behavior |
+|-------|-------|----------------|-------------------|----------------|-------------------|
+| Flux Schnell | 4 | 0.85 | 0.25 | 0.6 / 3.0 | Baseline (likely unstable) |
+| Flux Schnell | 4 | 0.90 | 0.20 | 0.4 / 3.2 | Higher stability test |
+| Flux Schnell | 4 | 0.92 | 0.18 | 0.32 / 3.28 | **Fractional precision test** |
+| Flux Schnell | 4 | 0.88 | 0.22 | 0.48 / 3.12 | **Fractional precision test** |
+| Flux Schnell | 4 | 0.93 | 0.15 | 0.28 / 3.4 | Very high stability (may be too rigid) |
+| Flux Schnell | 4 | 0.87 | 0.23 | 0.52 / 3.08 | **Fractional precision test** |
+| Flux Schnell | 4 | 0.95 | 0.10 | 0.2 / 3.6 | Maximum stability (test limit) |
+| Flux Schnell | 4 | 0.80 | 0.30 | 0.8 / 2.8 | Lower stability (viability check) |
+| Flux Schnell | 4 | 0.83 | 0.27 | 0.68 / 2.92 | **Fractional precision test** |
+| Flux Schnell | 4 | 0.77 | 0.33 | 0.92 / 2.68 | **Fractional precision test** |
+
+**Test Objectives:**
+1. Find optimal fractional strength values for stable 4-step I2V chaining
+2. Measure color preservation across 20+ iterations
+3. Identify at what strength values Schnell becomes viable for production
+4. Compare quality/speed tradeoff vs Flux Dev (20 steps)
+
+**Success Criteria:**
+- Sustain 10+ I2V iterations without color degradation
+- Temporal consistency > 70
+- Overall quality score > 65
+
+**Total:** 18 parameter combinations (8 Flux Dev + 10 Flux Schnell)
 
 ### 2. Quality Metrics
 

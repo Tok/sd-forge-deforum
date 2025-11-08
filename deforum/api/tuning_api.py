@@ -28,15 +28,19 @@ class TuningTestType(str, Enum):
 
 
 class TuningTestConfig(BaseModel):
-    """Configuration for a tuning test run."""
+    """Configuration for a tuning test run.
+
+    Now supports fractional strength precision (0.01 resolution) via Forge monkey patches.
+    Default step size changed from 0.05 to 0.01 to leverage fractional interpolation.
+    """
     test_type: TuningTestType = Field(..., description="Type of test to run")
     steps: List[int] = Field([20], description="List of step counts to test")
     strength_min: float = Field(0.80, ge=0.0, le=1.0)
     strength_max: float = Field(0.95, ge=0.0, le=1.0)
-    strength_step: float = Field(0.05, ge=0.01, le=0.1)
+    strength_step: float = Field(0.01, ge=0.001, le=0.1, description="Step size for strength sweep (0.01 = 1% precision)")
     kf_strength_min: float = Field(0.10, ge=0.0, le=0.5)
     kf_strength_max: float = Field(0.25, ge=0.0, le=0.5)
-    kf_strength_step: float = Field(0.05, ge=0.01, le=0.1)
+    kf_strength_step: float = Field(0.01, ge=0.001, le=0.1, description="Step size for keyframe strength sweep (0.01 = 1% precision)")
     max_iterations: int = Field(20, ge=1, le=50)
     grayscale_threshold: float = Field(20.0, ge=0.0, le=50.0)
 
