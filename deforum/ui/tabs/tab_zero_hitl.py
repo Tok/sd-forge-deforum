@@ -77,14 +77,15 @@ def _build_zero_hitl_ui(components: dict):
             info="Describe the vibe, style, or mood you want (or leave empty for full chaos)"
         )
 
-    gr.Markdown("""
+    sparkles = emoji_utils.sparkles()
+    gr.Markdown(f"""
         **Example themes:**
         - `cyberpunk neon city` - Futuristic urban landscapes with neon lights
         - `underwater dreamscape` - Surreal oceanic environments
         - `glitch art chaos` - Digital corruption and artifacts
         - `80s synthwave sunset` - Retro aesthetic with pink/purple gradients
         - `jungle dnb energy` - Fast-paced nature scenes
-        - *Leave empty for pure randomness* ✨
+        - *Leave empty for pure randomness* {sparkles}
     """)
 
     # Random seed
