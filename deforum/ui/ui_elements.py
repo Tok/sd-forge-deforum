@@ -2773,56 +2773,71 @@ def get_tab_output(da, dv):
 # QwenPromptExpander and Movement Analysis Event Handlers - moved outside for proper import
 def enhance_prompts_handler(current_prompts, qwen_model, language, auto_download):
     """Handle prompt enhancement with QwenPromptExpander with progress feedback"""
+    # Theme-aware emoji symbols
+    from deforum.utils.system.logging import emoji as emoji_utils
+    check = emoji_utils.maybe_check()
+    cross = emoji_utils.maybe_cross()
+    warning = emoji_utils.maybe_warning()
+    palette = emoji_utils.palette()
+    memo = emoji_utils.memo()
+    wrench = emoji_utils.wrench()
+    hourglass = emoji_utils.hourglass()
+    download = emoji_utils.download()
+    bulb = emoji_utils.bulb()
+    refresh_icon = emoji_utils.refresh_icon()
+    robot = emoji_utils.robot()
+    magnifying_glass = emoji_utils.magnifying_glass()
+
     try:
         from deforum.integrations.wan.utils.qwen_manager import qwen_manager
         import json
-        
+
         logger.info(f"AI Prompt Enhancement requested for {qwen_model}", emoji='palette')
-        logger.info(f"📝 Received prompts: {str(current_prompts)[:100]}...")
-        
+        logger.info(f"{memo} Received prompts: {str(current_prompts)[:100]}...")
+
         # Progress: Start
-        progress_update = "🎨 Starting AI Prompt Enhancement...\n"
+        progress_update = f"{palette} Starting AI Prompt Enhancement...\n"
         
         # Check if auto-download is enabled for model availability
         if not auto_download:
             # Check if the selected model is available
             if not qwen_manager.is_model_downloaded(qwen_model):
-                return f"""❌ Qwen model not available: {qwen_model}
+                return f"""{cross} Qwen model not available: {qwen_model}
 
-🔧 **Model Download Required:**
-1. ✅ Enable "Auto-Download Qwen Models" checkbox
-2. 🎨 Click "AI Prompt Enhancement" again to auto-download
-3. ⏳ Wait for download to complete
+{wrench} **Model Download Required:**
+1. {check} Enable "Auto-Download Qwen Models" checkbox
+2. {palette} Click "AI Prompt Enhancement" again to auto-download
+3. {hourglass} Wait for download to complete
 
-📥 **Manual Download Alternative:**
+{download} **Manual Download Alternative:**
 1. Use HuggingFace CLI: `huggingface-cli download {qwen_manager.get_model_info(qwen_model).get('huggingface_id', 'model-id')}`
-2. ✅ Enable auto-download for easier setup
+2. {check} Enable auto-download for easier setup
 
-💡 **Auto-download is recommended** for seamless model management.""", progress_update + "❌ Model not available - enable auto-download!"
-        
+{bulb} **Auto-download is recommended** for seamless model management.""", progress_update + f"{cross} Model not available - enable auto-download!"
+
         # Progress: Model check
-        progress_update += "🔍 Checking model availability...\n"
-        
+        progress_update += f"{magnifying_glass} Checking model availability...\n"
+
         # Check if a model is already loaded
         if qwen_manager.is_model_loaded():
             loaded_info = qwen_manager.get_loaded_model_info()
             current_model = loaded_info['name'] if loaded_info else "Unknown"
-            
+
             # If different model requested, cleanup first
             if qwen_model != "Auto-Select" and current_model != qwen_model:
                 logger.info(f"Switching from {current_model} to {qwen_model}", emoji='refresh')
-                progress_update += f"🔄 Switching from {current_model} to {qwen_model}...\n"
+                progress_update += f"{refresh_icon} Switching from {current_model} to {qwen_model}...\n"
                 qwen_manager.cleanup_cache()
-        
+
         # Progress: Model loading
         if not qwen_manager.is_model_loaded():
             if qwen_model == "Auto-Select":
                 selected_model = qwen_manager.auto_select_model()
-                logger.info(f"🤖 Auto-selected model: {selected_model}")
-                progress_update += f"🤖 Auto-selected model: {selected_model}\n"
+                logger.info(f"{robot} Auto-selected model: {selected_model}")
+                progress_update += f"{robot} Auto-selected model: {selected_model}\n"
             else:
-                logger.info(f"📥 Loading Qwen model: {qwen_model}")
-                progress_update += f"📥 Loading Qwen model: {qwen_model}...\n"
+                logger.info(f"{download} Loading Qwen model: {qwen_model}")
+                progress_update += f"{download} Loading Qwen model: {qwen_model}...\n"
         
         # Get wan prompts from the current_prompts parameter (passed directly)
         animation_prompts = None
