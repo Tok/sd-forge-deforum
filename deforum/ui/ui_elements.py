@@ -1386,12 +1386,22 @@ Each prompt will be smoothly connected using I2V continuity!"""
 
 def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo_preroll, root, animation_prompts, loop_args, parseq_args, parseq_adapter, wan_args, frame_duration):
     """Generate Wan video using the new simple integration approach - called by Deforum internally"""
+    # Theme-aware emoji symbols
+    from deforum.utils.system.logging import emoji as emoji_utils
+    check = emoji_utils.maybe_check()
+    cross = emoji_utils.maybe_cross()
+    magnifying_glass = emoji_utils.magnifying_glass()
+    download = emoji_utils.download()
+    folder = emoji_utils.folder()
+    bulb = emoji_utils.bulb()
+    target = emoji_utils.target()
+
     from deforum.integrations.wan.wan_simple_integration import WanSimpleIntegration
     import time
-    
+
     logger.info("Wan video generation started with AUTO-DISCOVERY (Internal Call)", emoji='movie_camera')
     logger.info(f"{emoji_if_enabled('🔍')} Using smart model discovery instead of manual paths")
-    
+
     # Ensure Qwen models are unloaded before video generation to free VRAM
     try:
         from deforum.integrations.wan.utils.qwen_manager import qwen_manager
@@ -1410,24 +1420,24 @@ def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo
         # Auto-discover models
         logger.info(f"{emoji_if_enabled('🔍')} Auto-discovering Wan models...")
         models = integration.discover_models()
-        
-        if not models:
-            raise RuntimeError("""
-❌ No Wan models found automatically!
 
-💡 SOLUTIONS:
-1. 📥 Download a Wan model using HuggingFace CLI:
+        if not models:
+            raise RuntimeError(f"""
+{cross} No Wan models found automatically!
+
+{bulb} SOLUTIONS:
+1. {download} Download a Wan model using HuggingFace CLI:
    huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir "models/Deforum/wan"
 
-2. 📂 Or place your model in one of these locations:
+2. {folder} Or place your model in one of these locations:
    • models/Deforum/wan/
    • models/Wan/
-   
-3. ✅ Restart generation after downloading
+
+3. {check} Restart generation after downloading
 
 The auto-discovery will find your models automatically!
 """)
-        
+
         # Select model based on user's choice
         selected_model = None
         user_model_choice = wan_args.wan_t2v_model.replace(" (Recommended)", "")
@@ -1437,7 +1447,7 @@ The auto-discovery will find your models automatically!
             # Auto-detect best model using priority logic (TI2V > T2V > I2V, FP8 > GGUF > FP16)
             selected_model = integration.get_best_model()
             if selected_model:
-                logger.info(f"🎯 Auto-detected best model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
+                logger.info(f"{target} Auto-detected best model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
             else:
                 raise RuntimeError("No Wan models available! Please download a model first.")
 
