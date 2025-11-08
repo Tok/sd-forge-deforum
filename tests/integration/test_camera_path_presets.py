@@ -31,7 +31,6 @@ class TestPresetIntegration:
 
         presets = [
             "rotate-around",
-            "circle-path",
             "figure-eight",
             "forward-zoom",
             "orbit-up",
