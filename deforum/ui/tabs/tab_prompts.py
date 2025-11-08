@@ -276,7 +276,7 @@ def get_tab_prompts(da, dw, dv=None):
                 max_frames: Maximum frames from animation settings
 
             Returns:
-                Tuple of (keyframe_count, prompt_count, pseudo_cadence, max_frame)
+                Tuple of gr.update() objects for each display component
             """
             try:
                 import json
@@ -284,7 +284,12 @@ def get_tab_prompts(da, dw, dv=None):
 
                 # Parse prompts JSON
                 if not prompts_text or not prompts_text.strip():
-                    return 0, 0, 0, 0
+                    return (
+                        gr.update(value=0),
+                        gr.update(value=0),
+                        gr.update(value=0.0),
+                        gr.update(value=0)
+                    )
 
                 # Remove comments and parse
                 clean_text = re.sub(r'//.*?$', '', prompts_text, flags=re.MULTILINE)
@@ -299,13 +304,23 @@ def get_tab_prompts(da, dw, dv=None):
 
                 # Calculate pseudo-cadence (avg frames between keyframes)
                 max_frame = keyframes[-1] if keyframes else 0
-                pseudo_cadence = max_frame / keyframe_count if keyframe_count > 0 else 0
+                pseudo_cadence = max_frame / keyframe_count if keyframe_count > 0 else 0.0
 
-                return keyframe_count, unique_prompts, pseudo_cadence, max_frame
+                return (
+                    gr.update(value=int(keyframe_count)),
+                    gr.update(value=int(unique_prompts)),
+                    gr.update(value=float(pseudo_cadence)),
+                    gr.update(value=int(max_frame))
+                )
 
             except Exception as e:
                 # Return zeros on parse error
-                return 0, 0, 0, 0
+                return (
+                    gr.update(value=0),
+                    gr.update(value=0),
+                    gr.update(value=0.0),
+                    gr.update(value=0)
+                )
 
         # Wire animation_prompts to update stats displays on change
         animation_prompts.change(
