@@ -70,10 +70,10 @@ def _create_error_response(message: str) -> tuple:
     cross = emoji_utils.maybe_cross()
     return (
         gr.update(),              # animation_prompts
-        gr.update(),              # audio_target_keyframe_count
+        gr.update(value=0),       # audio_target_keyframe_count
         gr.update(value=0),       # audio_sync_keyframe_count_display
-        gr.update(value=0),       # audio_sync_pseudo_cadence_display
-        gr.update(value=0),       # audio_sync_bpm_display
+        gr.update(value=0.0),     # audio_sync_pseudo_cadence_display
+        gr.update(value=0.0),     # audio_sync_bpm_display
         gr.update(value=""),      # audio_sync_duration_display
         gr.update(value=empty_plot),  # audio_sync_timeline
         f"{cross} {message}"      # audio_sync_status
@@ -515,10 +515,10 @@ def synchronize_prompts_to_audio(
 
         return (
             gr.update(value=formatted_schedule),  # animation_prompts
-            gr.update(value=len(keyframes)),      # audio_target_keyframe_count
-            gr.update(value=len(keyframes)),      # audio_sync_keyframe_count_display
-            gr.update(value=pseudo_cadence),      # audio_sync_pseudo_cadence_display
-            gr.update(value=estimated_bpm),       # audio_sync_bpm_display
+            gr.update(value=int(len(keyframes))),      # audio_target_keyframe_count
+            gr.update(value=int(len(keyframes))),      # audio_sync_keyframe_count_display
+            gr.update(value=float(pseudo_cadence)),      # audio_sync_pseudo_cadence_display
+            gr.update(value=float(estimated_bpm)),       # audio_sync_bpm_display
             gr.update(value=duration_str),        # audio_sync_duration_display
             gr.update(value=timeline_plot),       # audio_sync_timeline
             gr.update(value=status_msg)           # audio_sync_status
