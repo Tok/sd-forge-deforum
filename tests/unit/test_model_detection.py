@@ -9,6 +9,16 @@ from types import SimpleNamespace
 # Add parent directory to path to allow direct imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+# Mock the logger before importing modules
+class MockLogger:
+    def error(self, *args, **kwargs): pass
+    def warning(self, *args, **kwargs): pass
+    def info(self, *args, **kwargs): pass
+    def debug(self, *args, **kwargs): pass
+
+sys.modules['deforum.utils.system.logging'] = type(sys)('deforum.utils.system.logging')
+sys.modules['deforum.utils.system.logging'].get_logger = lambda: MockLogger()
+
 from deforum.utils.model_detection import (
     is_lumina_model,
     is_flux_model,
