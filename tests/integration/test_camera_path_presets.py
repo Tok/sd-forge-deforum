@@ -51,8 +51,8 @@ class TestPresetIntegration:
                 closed_loop=False
             )
 
-            # Check that generation succeeded
-            assert "✅" in status, f"Preset {preset_type} failed: {status}"
+            # Check that generation succeeded (✓ is from MockEmojiUtils in conftest)
+            assert ("✅" in status or "✓" in status), f"Preset {preset_type} failed: {status}"
             assert len(camera_path) == 50, f"Preset {preset_type} wrong length"
             assert len(schedules) == 6, f"Preset {preset_type} missing schedules"
 
