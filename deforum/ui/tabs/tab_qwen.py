@@ -28,7 +28,8 @@ def get_tab_qwen(dw: SimpleNamespace):
         cleanup_qwen_cache_handler
     )
 
-    with gr.TabItem(f"🧠 AI Enhancement"):
+    brain = emoji_utils.brain()
+    with gr.TabItem(f"{brain} AI Enhancement"):
         gr.Markdown("""
         ## AI Prompt Enhancement with Qwen
 
@@ -61,25 +62,30 @@ def get_tab_qwen(dw: SimpleNamespace):
             Monitor Qwen model availability and manage downloads:
             """)
 
+            hourglass = emoji_utils.hourglass()
+            magnifying_glass = emoji_utils.magnifying_glass()
+            download = emoji_utils.download()
+            broom = emoji_utils.broom()
+
             qwen_model_status = gr.HTML(
                 label="Qwen Model Status",
-                value="⏳ Checking model availability...",
+                value=f"{hourglass} Checking model availability...",
                 elem_id="wan_qwen_model_status"
             )
 
             with FormRow():
                 check_qwen_models_btn = gr.Button(
-                    "🔍 Check Model Status",
+                    f"{magnifying_glass} Check Model Status",
                     variant="secondary",
                     elem_id="wan_check_qwen_models_btn"
                 )
                 download_qwen_model_btn = gr.Button(
-                    "📥 Download Selected Model",
+                    f"{download} Download Selected Model",
                     variant="primary",
                     elem_id="wan_download_qwen_model_btn"
                 )
                 cleanup_qwen_cache_btn = gr.Button(
-                    "🧹 Cleanup Model Cache",
+                    f"{broom} Cleanup Model Cache",
                     variant="secondary",
                     elem_id="wan_cleanup_qwen_cache_btn"
                 )
