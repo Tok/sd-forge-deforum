@@ -11,7 +11,6 @@ Following Phase 1 of REFACTORING_STRATEGY.md:
 """
 
 from typing import Tuple, List, Dict
-import plotly.graph_objects as go
 
 
 # ============================================================================
@@ -120,7 +119,7 @@ def create_keyframe_timeline_plot(
     duration: float,
     fps: int,
     prompts: List[str] = None
-) -> go.Figure:
+):
     """Create interactive Plotly timeline visualization of keyframe placement.
 
     Args:
@@ -132,7 +131,19 @@ def create_keyframe_timeline_plot(
 
     Returns:
         Plotly Figure object with theme-aware timeline visualization
+
+    Raises:
+        ImportError: If plotly is not installed
     """
+    # Lazy import plotly (optional dependency for visualization)
+    try:
+        import plotly.graph_objects as go
+    except ImportError:
+        raise ImportError(
+            "plotly is required for timeline visualization. "
+            "Install with: pip install plotly"
+        )
+
     # Get theme for color selection
     try:
         from deforum.rendering.options import get_log_theme
