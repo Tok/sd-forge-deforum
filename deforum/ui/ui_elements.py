@@ -1390,11 +1390,18 @@ def generate_wan_video(args, anim_args, video_args, frame_idx, turbo_mode, turbo
     from deforum.utils.system.logging import emoji as emoji_utils
     check = emoji_utils.maybe_check()
     cross = emoji_utils.maybe_cross()
+    warning = emoji_utils.maybe_warning()
     magnifying_glass = emoji_utils.magnifying_glass()
     download = emoji_utils.download()
     folder = emoji_utils.folder()
     bulb = emoji_utils.bulb()
     target = emoji_utils.target()
+    memo = emoji_utils.memo()
+    rocket = emoji_utils.rocket()
+    palette = emoji_utils.palette()
+    package = emoji_utils.package()
+    ruler = emoji_utils.ruler()
+    party = emoji_utils.party()
 
     from deforum.integrations.wan.wan_simple_integration import WanSimpleIntegration
     import time
@@ -1454,7 +1461,7 @@ The auto-discovery will find your models automatically!
         elif user_model_choice == "Custom Path":
             # User will provide custom path via wan_model_path
             custom_path = wan_args.wan_model_path
-            logger.info(f"📁 Using custom model path: {custom_path}")
+            logger.info(f"{folder} Using custom model path: {custom_path}")
             # TODO: Add custom path validation and loading
             raise NotImplementedError("Custom path loading not yet implemented. Please use Auto-Detect or specific model selection.")
 
@@ -1475,7 +1482,7 @@ The auto-discovery will find your models automatically!
                         break
 
                 if not selected_model:
-                    logger.warning(f"⚠️ Requested {size_to_match} model not found, falling back to auto-detect")
+                    logger.warning(f"{warning} Requested {size_to_match} model not found, falling back to auto-detect")
                     selected_model = integration.get_best_model()
             else:
                 # Fallback to auto-detect
@@ -1483,9 +1490,9 @@ The auto-discovery will find your models automatically!
 
         if not selected_model:
             raise RuntimeError("No Wan models available! Please download a model first.")
-            
-        logger.info(f"🎯 Selected model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
-        logger.info(f"📁 Model path: {selected_model['path']}")
+
+        logger.info(f"{target} Selected model: {selected_model['name']} ({selected_model['type']}, {selected_model['size']})")
+        logger.info(f"{folder} Model path: {selected_model['path']}")
 
         # Load the pipeline before generation
         logger.info("Loading Wan pipeline...", emoji='refresh')
@@ -1501,21 +1508,21 @@ The auto-discovery will find your models automatically!
         logger.info("="*80)
         
         # Log all relevant attributes
-        logger.info(f"📋 args.outdir exists: {hasattr(args, 'outdir')}")
+        logger.info(f"{memo} args.outdir exists: {hasattr(args, 'outdir')}")
         if hasattr(args, 'outdir'):
-            logger.info(f"📋 args.outdir value: {args.outdir}")
-        logger.info(f"📋 args.batch_name exists: {hasattr(args, 'batch_name')}")
+            logger.info(f"{memo} args.outdir value: {args.outdir}")
+        logger.info(f"{memo} args.batch_name exists: {hasattr(args, 'batch_name')}")
         if hasattr(args, 'batch_name'):
-            logger.info(f"📋 args.batch_name value: {args.batch_name}")
-        logger.info(f"📋 root.timestring: {root.timestring}")
-        logger.info(f"📋 root.raw_batch_name exists: {hasattr(root, 'raw_batch_name')}")
+            logger.info(f"{memo} args.batch_name value: {args.batch_name}")
+        logger.info(f"{memo} root.timestring: {root.timestring}")
+        logger.info(f"{memo} root.raw_batch_name exists: {hasattr(root, 'raw_batch_name')}")
         if hasattr(root, 'raw_batch_name'):
-            logger.info(f"📋 root.raw_batch_name: {root.raw_batch_name}")
+            logger.info(f"{memo} root.raw_batch_name: {root.raw_batch_name}")
         logger.info("-"*80)
-        
+
         # Determine output directory
         output_directory = None
-        
+
         # Strategy 1: Use args.outdir if it exists and looks valid
         if hasattr(args, 'outdir') and args.outdir:
             # Validate that outdir has a timestring or unique identifier
@@ -1523,8 +1530,8 @@ The auto-discovery will find your models automatically!
                 output_directory = args.outdir
                 logger.info(f"{emoji_if_enabled('✅')} Using args.outdir (contains identifier): {output_directory}")
             else:
-                logger.warning(f"⚠️ args.outdir lacks unique identifier: {args.outdir}")
-                logger.warning(f"⚠️ Will reconstruct with batch name to avoid collisions")
+                logger.warning(f"{warning} args.outdir lacks unique identifier: {args.outdir}")
+                logger.warning(f"{warning} Will reconstruct with batch name to avoid collisions")
         
         # Strategy 2: Construct from batch_name if outdir not suitable
         if not output_directory:
@@ -1536,27 +1543,27 @@ The auto-discovery will find your models automatically!
             # Try args.batch_name first
             if hasattr(args, 'batch_name') and args.batch_name:
                 batch_name = args.batch_name
-                logger.info(f"📝 Using args.batch_name: {batch_name}")
-            
+                logger.info(f"{memo} Using args.batch_name: {batch_name}")
+
             # Try root.raw_batch_name
             elif hasattr(root, 'raw_batch_name') and root.raw_batch_name:
                 batch_name = root.raw_batch_name
-                logger.info(f"📝 Using root.raw_batch_name: {batch_name}")
-            
+                logger.info(f"{memo} Using root.raw_batch_name: {batch_name}")
+
             # Default fallback
             else:
                 batch_name = 'Deforum_{timestring}'
-                logger.warning(f"⚠️ No batch_name found, using default: {batch_name}")
-            
+                logger.warning(f"{warning} No batch_name found, using default: {batch_name}")
+
             # Substitute placeholders
             if '{timestring}' in batch_name or batch_name == 'Deforum':
                 batch_name = batch_name.replace('{timestring}', root.timestring)
                 logger.info(f"Substituted timestring: {batch_name}", emoji='refresh')
-            
+
             # Final validation: ensure batch_name has unique identifier
             if not any(char.isdigit() for char in batch_name):
                 batch_name = f"{batch_name}_{root.timestring}"
-                logger.warning(f"⚠️ Added timestring for uniqueness: {batch_name}")
+                logger.warning(f"{warning} Added timestring for uniqueness: {batch_name}")
             
             output_directory = os.path.join(deforum_outpath, batch_name)
             logger.info(f"{emoji_if_enabled('✅')} Constructed output directory: {output_directory}")
@@ -1578,24 +1585,24 @@ The auto-discovery will find your models automatically!
         logger.info(f"{emoji_if_enabled('✅')} Final output directory: {output_directory}")
         logger.info(f"{emoji_if_enabled('✅')} Directory name: {dir_name}")
         logger.info("="*80)
-        
+
         # Generate video using direct integration
-        logger.info("🚀 Starting direct Wan integration...")
-        
+        logger.info(f"{rocket} Starting direct Wan integration...")
+
         # Parse prompts for Wan scheduling
         def parse_prompts_and_timing(animation_prompts, wan_args, video_args):
             """Calculate exact frame counts from prompt schedule for audio sync precision"""
             prompt_schedule = []
-            
+
             # Sort prompts by frame number
             sorted_prompts = sorted(animation_prompts.items(), key=lambda x: int(x[0]))
-            
+
             if not sorted_prompts:
                 return [("a beautiful landscape", 0, 81)]  # Default: 0 start frame, 81 frames
-            
+
             # Check if enhanced prompts are available and use them
             final_prompts = animation_prompts.copy()
-            
+
             if wan_args.wan_enhanced_prompts:
                 try:
                     # Try to parse enhanced prompts
@@ -1605,7 +1612,7 @@ The auto-discovery will find your models automatically!
                         logger.info("Using enhanced prompts from QwenPromptExpander", emoji='palette')
                         final_prompts = enhanced_prompts_data
                 except (json.JSONDecodeError, ValueError):
-                    logger.error("⚠️ Could not parse enhanced prompts, using original prompts")
+                    logger.error(f"{warning} Could not parse enhanced prompts, using original prompts")
             
             # Add movement description if available
             movement_description = ""
@@ -1689,10 +1696,10 @@ The auto-discovery will find your models automatically!
                 
                 motion_strength = dynamic_motion_strength  # Fallback for simple integrations
                 logger.info(f"{emoji_if_enabled('✅')} Dynamic motion strength: {motion_strength:.2f} (average)")
-                logger.info(f"📐 Generated motion intensity schedule with frame-by-frame control")
-                
+                logger.info(f"{ruler} Generated motion intensity schedule with frame-by-frame control")
+
             except Exception as e:
-                logger.error(f"⚠️ Dynamic motion strength calculation failed: {e}, using default: {motion_strength}")
+                logger.error(f"{warning} Dynamic motion strength calculation failed: {e}, using default: {motion_strength}")
         elif wan_args.wan_motion_strength_override:
             logger.info(f"Using manual motion strength override: {motion_strength}", emoji='wrench')
         else:
@@ -1712,27 +1719,27 @@ The auto-discovery will find your models automatically!
         is_480p = (width <= 864 and height <= 480) or (width <= 480 and height <= 864)
         
         logger.info(f"\n{emoji_if_enabled('🔍')} Model/Resolution Validation:")
-        logger.info(f"   📦 Model: {model_name} ({model_size})")
-        logger.info(f"   📐 Resolution: {width}x{height} ({'720p' if is_720p else '480p' if is_480p else 'Custom'})")
-        
+        logger.info(f"   {package} Model: {model_name} ({model_size})")
+        logger.info(f"   {ruler} Resolution: {width}x{height} ({'720p' if is_720p else '480p' if is_480p else 'Custom'})")
+
         # Check for resolution/model mismatches and warn
         if "5B" in model_size and is_720p:
             logger.info(f"\n{emoji_if_enabled('✅')} Perfect Match: TI2V-5B + 720p")
-            logger.info(f"   📦 Model: {model_name} (optimized for 720p@24fps)")
-            logger.info(f"   📐 Resolution: {width}x{height} (720p)")
-            logger.info(f"   🎯 Optimal configuration for TI2V-5B!")
+            logger.info(f"   {package} Model: {model_name} (optimized for 720p@24fps)")
+            logger.info(f"   {ruler} Resolution: {width}x{height} (720p)")
+            logger.info(f"   {target} Optimal configuration for TI2V-5B!")
 
         elif "5B" in model_size and is_480p:
             logger.info(f"\n{emoji_if_enabled('💡')} INFO: TI2V-5B + 480p Resolution", emoji='bulb')
-            logger.info(f"   📦 Model: {model_name} (optimized for 720p)")
-            logger.info(f"   📐 Resolution: {width}x{height} (480p)")
+            logger.info(f"   {package} Model: {model_name} (optimized for 720p)")
+            logger.info(f"   {ruler} Resolution: {width}x{height} (480p)")
             logger.info(f"   {emoji_if_enabled('✅')} This works, but you could use 1280x720 for better quality")
 
         elif "A14B" in model_size and is_720p:
             logger.info(f"\n{emoji_if_enabled('✅')} Perfect Match: TI2V-A14B + 720p")
-            logger.info(f"   📦 Model: {model_name} (MoE architecture, highest quality)")
-            logger.info(f"   📐 Resolution: {width}x{height} (720p)")
-            logger.info(f"   🎯 Maximum quality configuration!")
+            logger.info(f"   {package} Model: {model_name} (MoE architecture, highest quality)")
+            logger.info(f"   {ruler} Resolution: {width}x{height} (720p)")
+            logger.info(f"   {target} Maximum quality configuration!")
 
         
         # Prepare clips data for generation
@@ -1776,16 +1783,16 @@ The auto-discovery will find your models automatically!
         total_time = time.time() - start_time
         
         if generated_videos:
-            logger.info(f"\n🎉 Wan {mode_description} generation completed!")
+            logger.info(f"\n{party} Wan {mode_description} generation completed!")
             logger.info(f"{emoji_if_enabled('✅')} Generated seamless video with {len(clips_data)} clips using {mode_description}")
             logger.info(f"Total time: {total_time:.1f} seconds", emoji='stopwatch')
-            logger.info(f"📁 Output file: {generated_videos[0]}")
+            logger.info(f"{folder} Output file: {generated_videos[0]}")
             logger.info(f"{emoji_if_enabled('🔗')} {mode_description} ensures smooth transitions between clips")
-                
+
             # Return the output directory for Deforum's video processing
             return str(output_directory)
         else:
-            raise RuntimeError(f"❌ Wan {mode_description} failed")
+            raise RuntimeError(f"{cross} Wan {mode_description} failed")
             
     except Exception as e:
         logger.error(f"Wan generation failed: {e}", emoji='off')
