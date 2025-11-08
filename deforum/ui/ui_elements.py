@@ -2503,99 +2503,52 @@ def analyze_movement_handler(current_prompts, enable_shakify=True, sensitivity_o
         return current_prompts, error_msg
 
 def check_qwen_models_handler(qwen_model):
-    """Check Qwen model status and availability"""
-    # Theme-aware emoji symbols
+    """Check Qwen model status and availability using helper functions."""
+    from deforum.ui.handlers.qwen_status import (
+        _load_qwen_emojis,
+        _build_model_selection_status,
+        _build_model_info_status,
+        _build_download_status,
+        _build_loading_status,
+        _build_quick_setup_instructions,
+    )
     from deforum.utils.system.logging import emoji as emoji_utils
-    check = emoji_utils.maybe_check()
-    cross = emoji_utils.maybe_cross()
-    warning = emoji_utils.maybe_warning()
-    palette = emoji_utils.palette()
-    hourglass = emoji_utils.hourglass()
-    refresh_icon = emoji_utils.refresh_icon()
-    zzz = emoji_utils.zzz()
-    fire = emoji_utils.fire()
+
+    emojis = _load_qwen_emojis()
 
     try:
         from deforum.integrations.wan.utils.qwen_manager import qwen_manager
 
         logger.info(f"{emoji_utils.magnifying_glass()} Checking Qwen model status: {qwen_model}")
-        
-        # Get model information
-        model_info = qwen_manager.get_model_info(qwen_model)
-        
-        # Check if model is downloaded
-        is_downloaded = qwen_manager.is_model_downloaded(qwen_model)
-        
-        # Check if model is currently loaded
+
+        # Get VRAM and model state
+        available_vram = qwen_manager.get_available_vram()
         is_loaded = qwen_manager.is_model_loaded()
         loaded_info = qwen_manager.get_loaded_model_info() if is_loaded else None
-        
-        # Get VRAM information
-        available_vram = qwen_manager.get_available_vram()
-        
-        # Build status HTML
-        status_parts = []
-        
-        # Model Selection Status
-        status_parts.append(f"<strong style='color: #333;'>Selected Model:</strong> {qwen_model}")
-        
-        if qwen_model == "Auto-Select":
-            auto_selected = qwen_manager.auto_select_model()
-            status_parts.append(f"<strong style='color: #333;'>Auto-Selected:</strong> {auto_selected}")
-            status_parts.append(f"<strong style='color: #333;'>Reason:</strong> Best fit for {available_vram:.1f}GB VRAM")
-            qwen_model = auto_selected  # Use auto-selected for further checks
-            model_info = qwen_manager.get_model_info(qwen_model)
-        
-        # Model Info
-        if model_info:
-            status_parts.append(f"<strong style='color: #333;'>Description:</strong> {model_info.get('description', 'N/A')}")
-            status_parts.append(f"<strong style='color: #333;'>VRAM Required:</strong> {model_info.get('vram_gb', 'Unknown')}GB")
-            status_parts.append(f"<strong style='color: #333;'>Available VRAM:</strong> {available_vram:.1f}GB")
-            
-            if model_info.get('vram_gb', 0) <= available_vram:
-                status_parts.append(f"{check} <span style='color: #4CAF50;'>VRAM requirement met</span>")
-            else:
-                status_parts.append(f"{warning} <span style='color: #FF9800;'>May exceed available VRAM</span>")
 
-        # Download Status
-        if is_downloaded:
-            status_parts.append(f"{check} <span style='color: #4CAF50;'>Model downloaded and available</span>")
-        else:
-            status_parts.append(f"{cross} <span style='color: #f44336;'>Model not downloaded</span>")
-            if model_info and 'hf_name' in model_info:
-                status_parts.append(f"<strong style='color: #333;'>HuggingFace ID:</strong> {model_info['hf_name']}")
+        # Build status sections
+        qwen_model, model_info, selection_parts = _build_model_selection_status(
+            qwen_model, qwen_manager, available_vram, emojis
+        )
 
-        # Loading Status
-        if is_loaded:
-            if loaded_info and loaded_info['name'] == qwen_model:
-                status_parts.append(f"{fire} <span style='color: #4CAF50;'>Model currently loaded and ready</span>")
-                estimated_vram = loaded_info.get('vram_usage', 0)
-                if estimated_vram > 0:
-                    status_parts.append(f"<strong style='color: #333;'>Estimated VRAM usage:</strong> {estimated_vram:.1f}GB")
-            else:
-                current_model = loaded_info['name'] if loaded_info else "Unknown"
-                status_parts.append(f"{refresh_icon} <span style='color: #FF9800;'>Different model loaded: {current_model}</span>")
-                status_parts.append("<span style='color: #333;'>Will switch on next enhancement</span>")
-        else:
-            status_parts.append(f"{zzz} <span style='color: #333;'>No model currently loaded</span>")
+        is_downloaded = qwen_manager.is_model_downloaded(qwen_model)
 
-        # Quick Setup Instructions
-        if not is_downloaded:
-            status_parts.append("<br><strong style='color: #333;'>Quick Setup:</strong>")
-            status_parts.append(f"1. {check} Enable 'Auto-Download Qwen Models' above")
-            status_parts.append(f"2. {palette} Click 'AI Prompt Enhancement' for auto-download")
-            status_parts.append(f"3. {hourglass} Wait for download to complete")
-        elif not is_loaded:
-            status_parts.append("<br><strong style='color: #333;'>Ready to Use:</strong>")
-            status_parts.append(f"{palette} Click 'AI Prompt Enhancement' to load and use this model")
-        else:
-            status_parts.append("<br><strong style='color: #333;'>Status:</strong> Ready for prompt enhancement!")
+        info_parts = _build_model_info_status(model_info, available_vram, emojis)
+        download_parts = _build_download_status(is_downloaded, model_info, emojis)
+        loading_parts = _build_loading_status(is_loaded, loaded_info, qwen_model, emojis)
+        setup_parts = _build_quick_setup_instructions(is_downloaded, is_loaded, emojis)
+
+        # Combine all status parts
+        status_parts = selection_parts + info_parts + download_parts + loading_parts + setup_parts
 
         return "<br>".join(status_parts)
 
     except Exception as e:
         logger.error(f"Error checking Qwen model status: {e}", emoji='off')
-        return f"{cross} <span style='color: #f44336;'>Error checking model status: {str(e)}</span>"
+        return (
+            f"{emojis['cross']} <span style='color: #f44336;'>"
+            f"Error checking model status: {str(e)}</span>"
+        )
 
 
 def download_qwen_model_handler(qwen_model, auto_download_enabled):
