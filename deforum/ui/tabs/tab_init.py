@@ -216,14 +216,14 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         ],
                         value="escalating",
                         allow_custom_value=True,
-                        info="Leave empty or type custom. escalating=build intensity, start-to-end=interpolate, varied=random mix, thematic=variations, narrative=story, cyclical=loops, random-walk=related changes"
+                        info="How prompts evolve over time (empty for custom)"
                     )
                     audio_ai_intensity = gr.Dropdown(
                         label="Intensity",
                         choices=["", "subtle", "normal", "crazy", "extreme", "chaotic", "surreal"],
                         value="crazy",
                         allow_custom_value=True,
-                        info="Leave empty or type custom. subtle=minimal, normal=realistic, crazy=over-the-top, extreme=bonkers, chaotic=unpredictable, surreal=dream-like"
+                        info="Variation strength (empty for custom)"
                     )
 
                 # Start/End prompts (visible only in start-to-end mode)
@@ -265,13 +265,13 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         label="Distribution Mode",
                         choices=["cycle", "sequential", "intensity", "random"],
                         value="sequential",
-                        info="How to distribute prompts: sequential=divide evenly, cycle=repeat pattern, intensity=assign by beat strength"
+                        info="How to distribute prompts across keyframes"
                     )
                     audio_target_keyframe_count = gr.Number(
                         label="Target Keyframes (optional)",
                         value=0,
                         precision=0,
-                        info="Leave at 0 for auto-detect based on audio. Or specify desired count."
+                        info="Leave 0 for auto, or specify count"
                     )
 
                 # Synchronize buttons with purple slopecore gradient styling
