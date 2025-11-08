@@ -78,7 +78,8 @@ def get_tab_prompts(da, dw, dv=None):
         )
 
         # PROMPT TIMING SETTINGS
-        with gr.Accordion("⏱️ Prompt Timing", open=False):
+        stopwatch = emoji_utils.stopwatch()
+        with gr.Accordion(f"{stopwatch} Prompt Timing", open=False):
             gr.Markdown("""
             **Prompt Authored FPS:** If you authored prompts at a different FPS (e.g., 60 FPS) but want to render at another (e.g., 24 FPS), set this to auto-convert frame numbers.
 
@@ -89,7 +90,8 @@ def get_tab_prompts(da, dw, dv=None):
                 prompt_authored_fps = create_gr_elem(dv.prompt_authored_fps)
 
         # AI PROMPT ENHANCEMENT - Qwen integration
-        with gr.Accordion("🧠 AI Prompt Enhancement (Qwen)", open=False):
+        brain = emoji_utils.brain()
+        with gr.Accordion(f"{brain} AI Prompt Enhancement (Qwen)", open=False):
             gr.Markdown("""
             **Enhance your prompts using Qwen AI models** for better generation quality:
             - Refines and expands prompt descriptions
@@ -115,25 +117,30 @@ def get_tab_prompts(da, dw, dv=None):
                 Monitor Qwen model availability and manage downloads:
                 """)
 
+                hourglass = emoji_utils.hourglass()
+                magnifying_glass = emoji_utils.magnifying_glass()
+                download = emoji_utils.download()
+                broom = emoji_utils.broom()
+
                 qwen_model_status = gr.HTML(
                     label="Qwen Model Status",
-                    value="⏳ Checking model availability...",
+                    value=f"{hourglass} Checking model availability...",
                     elem_id="wan_qwen_model_status"
                 )
 
                 with FormRow():
                     check_qwen_models_btn = gr.Button(
-                        "🔍 Check Model Status",
+                        f"{magnifying_glass} Check Model Status",
                         variant="secondary",
                         elem_id="wan_check_qwen_models_btn"
                     )
                     download_qwen_model_btn = gr.Button(
-                        "📥 Download Selected Model",
+                        f"{download} Download Selected Model",
                         variant="primary",
                         elem_id="wan_download_qwen_model_btn"
                     )
                     cleanup_qwen_cache_btn = gr.Button(
-                        "🧹 Cleanup Model Cache",
+                        f"{broom} Cleanup Model Cache",
                         variant="secondary",
                         elem_id="wan_cleanup_qwen_cache_btn"
                     )
@@ -197,9 +204,10 @@ def get_tab_prompts(da, dw, dv=None):
                     info="Desired FPS for prompt conversion"
                 )
 
+            refresh = emoji_utils.refresh_icon()
             with FormRow():
                 fps_converter_btn = gr.Button(
-                    "🔄 Convert Prompt Frame Numbers",
+                    f"{refresh} Convert Prompt Frame Numbers",
                     variant="primary",
                     elem_id="fps_converter_btn"
                 )
