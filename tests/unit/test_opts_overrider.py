@@ -1,8 +1,13 @@
 """Unit tests for A1111OptionsOverrider context manager."""
 
 import pytest
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 from types import SimpleNamespace
+
+# Add parent directory to path to allow direct imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from deforum.utils.system.opts_overrider import A1111OptionsOverrider
 
