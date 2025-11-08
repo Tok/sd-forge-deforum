@@ -274,12 +274,18 @@ p.denoising_strength = 1 - args.strength
 - **Cadence (0.80-0.90):** High preservation → 2-4/20 steps → Smooth stability
 - **Default:** Normal=0.85, Keyframe=0.20
 
-**Fractional Interpolation:**
-UI checkbox enables 1% strength precision via log-linear sigma interpolation:
-- Without: Resolution = 1/steps (e.g., 0.05 at 20 steps, 0.25 at 4 steps)
-- With: Resolution = 0.01 (1%) regardless of step count
-- Implementation: `deforum/pipeline/fractional_strength.py`
-- Applied before `processing.process_images()` via `apply_fractional_strength_if_enabled()`
+**Fractional Strength Precision (Always Enabled):**
+Fractional strength interpolation is now **always enabled** via automatic monkey patches applied at extension init, providing 1% precision for all strength values:
+- **Without**: Resolution = 1/steps (e.g., 0.05 at 20 steps, 0.25 at 4 steps) - coarse tuning
+- **With**: Resolution = 0.01 (1%) regardless of step count - fine-grained control
+- **Why it matters**: Enables precise I2V chaining tuning, especially critical for Flux Schnell (4 steps)
+- **Implementation**:
+  - Monkey patches: `deforum/pipeline/fractional_img2img_patch.py`, `fractional_sigma_slicer_patch.py`
+  - Core logic: `deforum/pipeline/fractional_strength.py`
+  - Applied automatically at extension load (no user action needed)
+- **Tuning impact**: All automated tuning tests use 0.01 step size to leverage fractional precision
+  - See `TUNING.md` for comprehensive parameter sweep configurations
+  - Enables meaningful testing of Flux Schnell viability at 4 steps
 
 **Keyframe Distribution:**
 - Replaces traditional cadence-based rendering

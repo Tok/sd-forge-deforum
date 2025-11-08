@@ -76,6 +76,13 @@ One-click AI video generation with **intentional chaos and glitches**. Click **"
 - **Frame-Perfect Timing**: Full integration with Deforum's prompt scheduling system
 - **Auto-Discovery**: Automatic model detection from `models/Deforum/wan/` directory
 
+### ⚙️ **Fractional Strength Precision** (Always Enabled)
+- **1% Precision**: Fine-grained strength control (0.01 resolution) regardless of step count
+- **Auto-Enabled**: Applied via monkey patches at extension load (no configuration needed)
+- **Critical for I2V**: Enables precise tuning for Flux Schnell (4 steps) and all I2V chaining workflows
+- **Tuning-Ready**: Integrated tuning platform uses fractional precision for empirical parameter optimization
+- **See**: `TUNING.md` for comprehensive parameter sweep configurations (18 test cases)
+
 ### 🤖 **Qwen AI Prompt Enhancement & Generation**
 - **5 Model Options**: From 3B (low VRAM) to 14B (maximum quality)
 - **Auto-Selection**: Intelligent model choice based on available VRAM (4GB-28GB)
