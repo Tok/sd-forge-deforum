@@ -115,9 +115,16 @@ def build_conversion_status(
     Returns:
         HTML-formatted status message
     """
+    from deforum.utils.system.logging import emoji as emoji_utils
+
+    # Theme-aware emoji symbols
+    check = emoji_utils.maybe_check()
+    magnifying_glass = emoji_utils.magnifying_glass()
+    pencil = emoji_utils.pencil()
+
     result = []
     result.append(
-        "✅ <span style='color: #4CAF50;'><strong>FPS Conversion Complete</strong></span><br>"
+        f"{check} <span style='color: #4CAF50;'><strong>FPS Conversion Complete</strong></span><br>"
     )
     result.append(
         f"<strong>Source FPS:</strong> {source_fps} → <strong>Target FPS:</strong> {target_fps}<br>"
@@ -127,10 +134,10 @@ def build_conversion_status(
 
     if preview_only:
         result.append(
-            "🔍 <strong style='color: #FF9800;'>PREVIEW MODE</strong> - Prompts not updated<br><br>"
+            f"{magnifying_glass} <strong style='color: #FF9800;'>PREVIEW MODE</strong> - Prompts not updated<br><br>"
         )
     else:
-        result.append("✏️ <strong style='color: #4CAF50;'>Prompts Updated</strong><br><br>")
+        result.append(f"{pencil} <strong style='color: #4CAF50;'>Prompts Updated</strong><br><br>")
 
     # Show conversion table (limited entries)
     result.append("<strong>Frame Conversion:</strong><br>")
