@@ -39,8 +39,8 @@ def get_tab_init(d, da, dp, dau, dv=None):
     logger.info("About to create Init TabItem")
     with gr.TabItem('Init'):
         logger.info("Inside Init TabItem")
-        # Audio Sync tab opens by default (selected by label)
-        with gr.Tabs(selected="Audio Sync") as init_subtabs:
+        # Audio Sync tab opens by default (first tab)
+        with gr.Tabs() as init_subtabs:
             # AUDIO SYNC INNER-TAB - First tab (opens by default)
             with gr.Tab("Audio Sync") as audio_sync_subtab:
                 gr.HTML(

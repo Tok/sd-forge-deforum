@@ -760,17 +760,14 @@ def get_tab_init(d, da, dp, dau, dv=None):
         dv = SimpleNamespace(**DeforumOutputArgs())
 
     with gr.TabItem('Init'):
-        # ZERO-HITL INNER-TAB - First tab for one-click generation
+        # Import Zero-HITL for later (will be last tab)
         from deforum.ui.tabs.tab_zero_hitl import get_tab_zero_hitl
         from deforum.utils.system.logging import emoji_if_enabled
         zero_hitl_tab_emoji = emoji_if_enabled(emoji_utils.dice())
         zero_hitl_title = f"{zero_hitl_tab_emoji} Zero-HITL" if zero_hitl_tab_emoji else "Zero-HITL"
 
-        with gr.Tabs(selected="Audio Sync") as init_subtabs:
-            with gr.Tab(zero_hitl_title) as zero_hitl_subtab:
-                zero_hitl_params = get_tab_zero_hitl(skip_tabitem=True)
-
-            # AUDIO SYNC INNER-TAB - Second tab (DEFAULT)
+        with gr.Tabs() as init_subtabs:
+            # AUDIO SYNC INNER-TAB - First tab (opens by default)
             with gr.Tab("Audio Sync") as audio_sync_subtab:
                 gr.HTML(value="<p>Audio event detection for prompt synchronization and video soundtrack. Upload audio file or enter path/URL below. Disabled when Parseq is active.</p>")
 
@@ -1032,8 +1029,9 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 # NOTE: use_mask_video and video_mask_path moved to dedicated Masking tab
             # NOTE: Mask Init tab moved to dedicated Masking tab
 
-        # Set Audio Sync as default selected subtab (not Zero-HITL)
-        init_subtabs.selected = audio_sync_subtab
+            # ZERO-HITL INNER-TAB - Last tab (for one-click generation)
+            with gr.Tab(zero_hitl_title) as zero_hitl_subtab:
+                zero_hitl_params = get_tab_zero_hitl(skip_tabitem=True)
 
     # Build result dict from locals/vars
     result = {k: v for k, v in {**locals(), **vars()}.items()}
