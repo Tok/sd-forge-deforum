@@ -290,3 +290,83 @@ def discover_and_prepare_models(integration, wan_auto_download: bool, emojis: Di
         return valid_models if valid_models else None
 
     return None
+
+
+def force_animation_mode_to_flux_wan(component_args: tuple, animation_mode_index: Optional[int], emojis: Dict[str, str]) -> list:
+    """Force animation mode to Flux/Wan in component arguments.
+
+    Args:
+        component_args: Tuple of component values
+        animation_mode_index: Index of animation_mode in component_names
+        emojis: Dict of emoji symbols
+
+    Returns:
+        Modified component_args list with Flux/Wan mode set
+    """
+    from deforum.utils.system.logging import get_logger
+    logger = get_logger()
+
+    component_args_list = list(component_args)
+
+    if animation_mode_index is not None and animation_mode_index < len(component_args_list):
+        component_args_list[animation_mode_index] = 'Flux/Wan'
+        logger.info(f"{emojis['check']} Set animation mode to 'Flux/Wan' at index {animation_mode_index}")
+    else:
+        logger.error(f"{emojis['warning']} Could not set animation mode - index not found or out of range")
+
+    return component_args_list
+
+
+def build_deforum_final_args(job_id: str, component_args: list, expected_count: int, emojis: Dict[str, str]) -> list:
+    """Build final args array for run_deforum call.
+
+    Args:
+        job_id: Unique job identifier
+        component_args: Component values list
+        expected_count: Expected number of components
+        emojis: Dict of emoji symbols
+
+    Returns:
+        Final args list: [job_id, custom_settings_file, *component_values]
+    """
+    from deforum.utils.system.logging import get_logger
+    logger = get_logger()
+
+    final_args = [job_id, None]  # job_id and custom_settings_file
+
+    # Add component values, padding with None if needed
+    for i in range(expected_count):
+        if i < len(component_args):
+            final_args.append(component_args[i])
+        else:
+            logger.warning(f"Missing component at index {i}, using None")
+            final_args.append(None)
+
+    logger.info(f"Debug: Final args count: {len(final_args)} (should be {2 + expected_count})", emoji='wrench')
+
+    return final_args
+
+
+def process_wan_generation_result(result, job_id: str, emojis: Dict[str, str]) -> str:
+    """Process result from run_deforum and return status message.
+
+    Args:
+        result: Tuple from run_deforum (images, seed, info, comments)
+        job_id: Job identifier for status message
+        emojis: Dict of emoji symbols
+
+    Returns:
+        Success or error message string
+
+    Raises:
+        RuntimeError: If generation failed
+    """
+    if result and len(result) >= 4:
+        images, seed, info, comments = result
+
+        if comments and "Error" in str(comments):
+            return f"{emojis['cross']} Wan generation failed: {comments}"
+        else:
+            return f"{emojis['check']} Wan video generation completed successfully!\n{emojis['chart_increasing']} Job ID: {job_id}\n{emojis['bulb']} Check the Output tab for your video files."
+    else:
+        raise RuntimeError(f"{emojis['cross']} Wan generation failed")
