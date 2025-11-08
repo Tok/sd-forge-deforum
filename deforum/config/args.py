@@ -1072,14 +1072,14 @@ def AudioSyncArgs():
             "type": "dropdown",
             "choices": ["onset", "beat", "bass"],
             "value": "onset",
-            "info": "How to detect audio events"
+            "info": "Event detection method: 'onset' (general transients/kicks/snares), 'beat' (rhythmic pulse/BPM), 'bass' (low-frequency energy peaks)"
         },
         "audio_frequency_band": {
             "label": "Frequency Band",
             "type": "dropdown",
             "choices": ["bass", "mid", "high", "full"],
             "value": "bass",
-            "info": "Frequency range to analyze"
+            "info": "Frequency range to isolate: 'bass' (20-250Hz for kicks), 'mid' (250-2000Hz for snares/claps), 'high' (2000-8000Hz for hi-hats), 'full' (no filtering)"
         },
         "audio_lowpass_cutoff": {
             "label": "Lowpass Cutoff (Hz)",
@@ -1104,7 +1104,7 @@ def AudioSyncArgs():
             "type": "dropdown",
             "choices": ["tanh", "hard", "arctan"],
             "value": "tanh",
-            "info": "Distortion curve type"
+            "info": "Distortion curve: 'tanh' (smooth soft clipping, musical), 'hard' (aggressive clipping), 'arctan' (gentle compression)\n\u00A0"
         },
         "audio_sensitivity": {
             "label": "Detection Sensitivity",
