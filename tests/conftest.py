@@ -12,6 +12,56 @@ from unittest.mock import MagicMock
 # This must happen BEFORE any imports, including deforum imports
 # Many modules import from 'modules.shared' at the top level
 
+# Mock emoji utilities for consistent test behavior
+class MockEmojiUtils:
+    """Mock emoji utilities with all required emoji functions."""
+    @staticmethod
+    def maybe_check(): return '✓'
+    @staticmethod
+    def maybe_cross(): return '✗'
+    @staticmethod
+    def maybe_warning(): return '⚠'
+    @staticmethod
+    def download(): return '⬇'
+    @staticmethod
+    def trash(): return '🗑'
+    @staticmethod
+    def wrench(): return '🔧'
+    @staticmethod
+    def bulb(): return '💡'
+    @staticmethod
+    def signal(): return '📶'
+    @staticmethod
+    def save(): return '💾'
+    @staticmethod
+    def refresh_icon(): return '🔄'
+    @staticmethod
+    def memo(): return '📝'
+    @staticmethod
+    def movie_camera(): return '🎬'
+    @staticmethod
+    def target(): return '🎯'
+    @staticmethod
+    def rocket(): return '🚀'
+    @staticmethod
+    def chart_increasing(): return '📈'
+    @staticmethod
+    def palette(): return '🎨'
+    @staticmethod
+    def hourglass(): return '⏳'
+    @staticmethod
+    def sleeping(): return '💤'
+    @staticmethod
+    def fire(): return '🔥'
+
+    @staticmethod
+    def get_themed_emoji(emoji_name: str, theme: str = 'classic') -> str:
+        """Get emoji based on theme (mock always returns emoji)."""
+        # Try to call the corresponding method if it exists
+        if hasattr(MockEmojiUtils, emoji_name):
+            return getattr(MockEmojiUtils, emoji_name)()
+        return '📦'  # Default emoji for unknown names
+
 # Create minimal opts mock with data dict
 class MinimalOpts:
     def __init__(self):
@@ -85,6 +135,9 @@ mock_modules.paths = mock_paths
 mock_modules.processing = mock_processing
 mock_modules.ui = mock_ui
 mock_modules.util = mock_util
+
+# Mock deforum emoji utilities
+sys.modules['deforum.utils.system.logging.emoji'] = MockEmojiUtils
 
 # Mock Forge backend modules that aren't available in test environment
 mock_hf_guess = MagicMock()
