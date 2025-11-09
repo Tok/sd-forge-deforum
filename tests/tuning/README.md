@@ -115,14 +115,14 @@ Sweeps translation/rotation factors for orbital camera paths with depth warping.
 
 **Usage:**
 ```bash
-# Run all rotation factor sweeps
+# Run all rotation factor sweeps (auto-starts server)
 ./run-tuning-tests.sh tests/tuning/test_depth_warping_orbit_tuning.py
 
-# Run specific aspect ratio
+# Run specific aspect ratio (auto-starts server)
 ./run-tuning-tests.sh tests/tuning/test_depth_warping_orbit_tuning.py -k "16/9"
 
-# With auto server management
-./run-tuning-tests.sh --start-server tests/tuning/test_depth_warping_orbit_tuning.py
+# Reuse already-running server (skip server start)
+./run-tuning-tests.sh --reuse-server tests/tuning/test_depth_warping_orbit_tuning.py
 ```
 
 **Output:** `outputs/deforum-tuning/depth_warping_orbits/aspect{ratio}_{W}x{H}_factor{N}/`

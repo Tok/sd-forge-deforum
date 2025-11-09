@@ -24,15 +24,11 @@ echo "Forge directory: $FORGE_DIR"
 echo "Extension directory: $EXT_DIR"
 echo -e "${GREEN}========================================${NC}"
 
-# Check if server should be started
-START_SERVER=false
-REUSE_SERVER=false
+# Check if server should be started (default: yes, unless --reuse-server)
+START_SERVER=true
 for arg in "$@"; do
-    if [ "$arg" = "--start-server" ]; then
-        START_SERVER=true
-    fi
     if [ "$arg" = "--reuse-server" ]; then
-        REUSE_SERVER=true
+        START_SERVER=false
     fi
 done
 

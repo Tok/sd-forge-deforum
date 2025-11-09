@@ -16,17 +16,14 @@ echo Forge directory: %FORGE_DIR%
 echo Extension directory: %EXT_DIR%
 echo ========================================
 
-REM Parse arguments
-set START_SERVER=false
-set REUSE_SERVER=false
+REM Parse arguments (default: start server unless --reuse-server)
+set START_SERVER=true
 set PYTEST_ARGS=
 
 :parse_args
 if "%~1"=="" goto args_done
-if "%~1"=="--start-server" (
-    set START_SERVER=true
-) else if "%~1"=="--reuse-server" (
-    set REUSE_SERVER=true
+if "%~1"=="--reuse-server" (
+    set START_SERVER=false
 ) else (
     set PYTEST_ARGS=!PYTEST_ARGS! %~1
 )
