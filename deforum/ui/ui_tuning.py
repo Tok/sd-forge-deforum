@@ -120,8 +120,55 @@ def create_tuning_tab() -> tuple:
                         step=0.01,
                     )
 
-                # Test limits
-                with gr.Group():
+                # Depth Warping Orbit specific parameters
+                with gr.Group(visible=False) as orbit_params_group:
+                    gr.Markdown("**Orbit Parameters**")
+                    aspect_ratios = gr.CheckboxGroup(
+                        label="Aspect ratios to test",
+                        choices=["16:9 (Landscape)", "9:16 (Portrait)", "1:1 (Square)"],
+                        value=["16:9 (Landscape)"],
+                    )
+                    rotation_factor_min = gr.Slider(
+                        label="Min rotation factor",
+                        minimum=-10.0,
+                        maximum=-1.0,
+                        value=-7.0,
+                        step=1.0,
+                        info="More negative = stronger counter-rotation",
+                    )
+                    rotation_factor_max = gr.Slider(
+                        label="Max rotation factor",
+                        minimum=-10.0,
+                        maximum=-1.0,
+                        value=-3.0,
+                        step=1.0,
+                    )
+                    rotation_factor_step = gr.Slider(
+                        label="Step size",
+                        minimum=0.5,
+                        maximum=2.0,
+                        value=1.0,
+                        step=0.5,
+                    )
+                    orbit_radius = gr.Slider(
+                        label="Orbit radius (pixels)",
+                        minimum=20,
+                        maximum=100,
+                        value=50,
+                        step=10,
+                        info="Smaller = tighter orbit, less translation",
+                    )
+                    orbit_iterations = gr.Slider(
+                        label="I2I depth warp iterations",
+                        minimum=10,
+                        maximum=40,
+                        value=20,
+                        step=5,
+                        info="Number of depth warping frames to test",
+                    )
+
+                # Test limits (for color preservation / temporal consistency)
+                with gr.Group(visible=True) as test_limits_group:
                     gr.Markdown("**Test Limits**")
                     max_iterations = gr.Slider(
                         label="Max iterations (I2V chaining)",
@@ -264,6 +311,12 @@ def create_tuning_tab() -> tuple:
             kf_strength_step_val,
             max_iterations_val,
             grayscale_threshold_val,
+            aspect_ratios_val,
+            rotation_factor_min_val,
+            rotation_factor_max_val,
+            rotation_factor_step_val,
+            orbit_radius_val,
+            orbit_iterations_val,
         ):
             """Start tuning tests via API."""
             try:
@@ -282,6 +335,7 @@ def create_tuning_tab() -> tuple:
                     "Color Preservation (I2V Chaining)": "color_preservation",
                     "Temporal Consistency (Frame Stability)": "temporal_consistency",
                     "Flux Parameter Sweep": "flux_parameter_sweep",
+                    "Depth Warping Orbit (Translation/Rotation Factor)": "depth_warping_orbit",
                 }
 
                 # Build API request
@@ -297,6 +351,25 @@ def create_tuning_tab() -> tuple:
                     "max_iterations": int(max_iterations_val),
                     "grayscale_threshold": grayscale_threshold_val,
                 }
+
+                # Add orbit-specific parameters if testing depth warping orbit
+                if test_type_val == "Depth Warping Orbit (Translation/Rotation Factor)":
+                    # Parse aspect ratios
+                    aspect_mapping = {
+                        "16:9 (Landscape)": (16/9, 512, 288),
+                        "9:16 (Portrait)": (9/16, 288, 512),
+                        "1:1 (Square)": (1.0, 512, 512),
+                    }
+                    aspect_configs = [aspect_mapping[ar] for ar in aspect_ratios_val]
+
+                    config.update({
+                        "aspect_ratios": aspect_configs,
+                        "rotation_factor_min": rotation_factor_min_val,
+                        "rotation_factor_max": rotation_factor_max_val,
+                        "rotation_factor_step": rotation_factor_step_val,
+                        "orbit_radius": orbit_radius_val,
+                        "orbit_iterations": int(orbit_iterations_val),
+                    })
 
                 # Submit to API
                 response = requests.post(
@@ -394,6 +467,20 @@ def create_tuning_tab() -> tuple:
                 logger.error(f"Failed to poll test status: {e}")
                 return f"Error polling status: {e}", None, None, None, None
 
+        def on_test_type_change(test_type_val):
+            """Show/hide parameter groups based on test type."""
+            is_orbit = test_type_val == "Depth Warping Orbit (Translation/Rotation Factor)"
+            return {
+                orbit_params_group: gr.update(visible=is_orbit),
+                test_limits_group: gr.update(visible=not is_orbit),
+            }
+
+        test_type.change(
+            fn=on_test_type_change,
+            inputs=[test_type],
+            outputs=[orbit_params_group, test_limits_group],
+        )
+
         run_tests_btn.click(
             fn=on_run_tests,
             inputs=[
@@ -407,6 +494,12 @@ def create_tuning_tab() -> tuple:
                 kf_strength_step,
                 max_iterations,
                 grayscale_threshold,
+                aspect_ratios,
+                rotation_factor_min,
+                rotation_factor_max,
+                rotation_factor_step,
+                orbit_radius,
+                orbit_iterations,
             ],
             outputs=[status_box],
         )
