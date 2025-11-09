@@ -96,6 +96,37 @@ Evaluates Flux Dev vs Schnell with different strength values.
 - What's the ideal strength for Flux Dev (20 steps)?
 - Steps vs strength trade-offs
 
+### 4. Depth Warping Orbit Tuning (`test_depth_warping_orbit_tuning.py`) ✅ IMPLEMENTED
+
+Sweeps translation/rotation factors for orbital camera paths with depth warping.
+
+**Goal:** Find optimal rotation factor that keeps subject centered during ~20 I2I depth warp iterations.
+
+**Metrics:**
+- Subject position drift (centroid tracking with Otsu thresholding)
+- Temporal consistency (frame-to-frame SSIM)
+- Depth map consistency
+- Color preservation
+
+**Parameters Tested:**
+- Aspect ratios: 16:9 (landscape), 9:16 (portrait), 1:1 (square)
+- Rotation factors: -3.0, -4.0, -5.0, -6.0, -7.0
+- Total: 13 parameter combinations
+
+**Usage:**
+```bash
+# Run all rotation factor sweeps
+./run-tuning-tests.sh tests/tuning/test_depth_warping_orbit_tuning.py
+
+# Run specific aspect ratio
+./run-tuning-tests.sh tests/tuning/test_depth_warping_orbit_tuning.py -k "16/9"
+
+# With auto server management
+./run-tuning-tests.sh --start-server tests/tuning/test_depth_warping_orbit_tuning.py
+```
+
+**Output:** `outputs/deforum-tuning/depth_warping_orbits/aspect{ratio}_{W}x{H}_factor{N}/`
+
 ## Test Output
 
 Results are saved to `outputs/deforum-tuning/`:
