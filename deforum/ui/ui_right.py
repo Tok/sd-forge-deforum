@@ -390,14 +390,18 @@ def on_ui_tabs():
                     load_settings_btn = gr.Button(
                         "Load All Settings", elem_id="deforum_load_settings_btn"
                     )
-                    folder_emoji = f"{emoji.open_folder()} " if emoji.open_folder() else ""
+                    folder_emoji = emoji.open_folder()
+                    if folder_emoji:
+                        folder_emoji += " "
                     open_folder_btn = gr.Button(
                         f"{folder_emoji}Open Output Directory", elem_id="deforum_open_folder_btn"
                     )
 
                 # Camera Path Visualization (real-time display)
                 with gr.Row(variant="compact"):
-                    camera_emoji = f"{emoji.movie_camera()} " if emoji.movie_camera() else ""
+                    camera_emoji = emoji.movie_camera()
+                    if camera_emoji:
+                        camera_emoji += " "
                     gr.Markdown(f"### {camera_emoji}Camera Path (3D Spline)")
                     show_shakify_in_camera_path = gr.Checkbox(
                         value=False,
@@ -415,7 +419,9 @@ def on_ui_tabs():
 
                 # Frame Overlap Simulator (shows preservation/novelty metrics)
                 with gr.Row(variant="compact"):
-                    frame_emoji = f"{emoji.purple_square()} " if emoji.purple_square() else ""
+                    frame_emoji = emoji.purple_square()
+                    if frame_emoji:
+                        frame_emoji += " "
                     gr.Markdown(f"### {frame_emoji}Frame Overlap Simulator (Worm Trail)")
                     show_shakify_in_overlap = gr.Checkbox(
                         value=False,
@@ -434,11 +440,17 @@ def on_ui_tabs():
 
                 # Path Analysis & Optimization (depth warping suitability)
                 with gr.Row(variant="compact"):
-                    analysis_emoji = f"{emoji.distribution()} " if emoji.distribution() else ""
+                    analysis_emoji = emoji.distribution()
+                    if analysis_emoji:
+                        analysis_emoji += " "
                     gr.Markdown(f"### {analysis_emoji}Path Analysis & Optimization")
                 with gr.Row(variant="compact"):
-                    analyze_emoji = f"{emoji.distribution()} " if emoji.distribution() else ""
-                    optimize_emoji = f"{emoji.gear()} " if emoji.gear() else ""
+                    analyze_emoji = emoji.distribution()
+                    if analyze_emoji:
+                        analyze_emoji += " "
+                    optimize_emoji = emoji.gear()
+                    if optimize_emoji:
+                        optimize_emoji += " "
                     analyze_path_btn = gr.Button(
                         f"{analyze_emoji}Analyze Camera Path",
                         elem_id="deforum_analyze_path_btn",
