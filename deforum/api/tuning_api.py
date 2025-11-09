@@ -422,7 +422,22 @@ class TuningTestManager:
                 "enable_sampler_scheduling": False,
                 "enable_clipskip_scheduling": False,
                 "enable_checkpoint_scheduling": False,
-                "checkpoint_schedule": "0:(0), 1:(0)",  # Multi-frame schedule to avoid KeyError: -1
+
+                # Override ALL single-keyframe schedules from template to avoid KeyError: -1
+                # Template has many "0:(value)" schedules that cause pandas KeyError when i-1=-1
+                "checkpoint_schedule": "0:(0), 1:(0)",
+                "subseed_schedule": "0:(1), 1:(1)",
+                "subseed_strength_schedule": "0:(0), 1:(0)",
+                "pix2pix_img_cfg_scale_schedule": "0:(1.0), 1:(1.0)",
+                "pix2pix_img_distilled_cfg_scale_schedule": "0:(3.5), 1:(3.5)",
+                "hybrid_comp_alpha_schedule": "0:(0.5), 1:(0.5)",
+                "hybrid_comp_mask_blend_alpha_schedule": "0:(0.5), 1:(0.5)",
+                "hybrid_comp_mask_contrast_schedule": "0:(1), 1:(1)",
+                "hybrid_comp_mask_auto_contrast_cutoff_high_schedule": "0:(100), 1:(100)",
+                "hybrid_comp_mask_auto_contrast_cutoff_low_schedule": "0:(0), 1:(0)",
+                "hybrid_flow_factor_schedule": "0:(1), 1:(1)",
+                "image_strength_schedule": "0:(0.75), 1:(0.75)",
+                "tweening_frames_schedule": "0:(20), 1:(20)",
 
                 # Output directory
                 "batch_name": get_test_batch_name(test_name),
