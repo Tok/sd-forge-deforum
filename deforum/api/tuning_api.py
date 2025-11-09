@@ -304,10 +304,10 @@ class TuningTestManager:
                     status.results.append(result)
 
     def _count_iterations_until_offscreen(self, frames: list, width: int, height: int) -> int:
-        """Count how many iterations until the cylinder goes off-screen.
+        """Count how many iterations until the sphere goes off-screen.
 
-        Detects when the subject (cylinder) leaves the frame boundaries.
-        Higher count = more stable orbital movement.
+        Detects when the subject (sphere) leaves the frame boundaries by tracking
+        its centroid position. Higher count = more stable orbital movement.
 
         Args:
             frames: List of RGB frames as numpy arrays
@@ -315,7 +315,7 @@ class TuningTestManager:
             height: Frame height
 
         Returns:
-            Number of iterations before cylinder goes off-screen (or total if never off-screen)
+            Number of iterations before sphere goes off-screen (or total if never off-screen)
         """
         import cv2
         import numpy as np
@@ -327,13 +327,13 @@ class TuningTestManager:
             # Convert to grayscale
             gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 
-            # Threshold to find bright regions (cylinder)
+            # Threshold to find bright regions (sphere)
             _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
             # Calculate moments to find centroid
             moments = cv2.moments(binary)
             if moments['m00'] == 0:
-                # No features detected - cylinder completely gone
+                # No features detected - sphere completely gone
                 return i
 
             cx = moments['m10'] / moments['m00']
@@ -344,63 +344,69 @@ class TuningTestManager:
                 cy < edge_margin or cy > height - edge_margin):
                 return i
 
-        # Cylinder stayed in frame for all iterations
+        # Sphere stayed in frame for all iterations
         return len(frames)
 
-    def _generate_cylinder_init_image(self, output_path: Path, width: int, height: int):
-        """Generate a 3D cylinder image for orbital depth warping tests.
+    def _generate_sphere_init_image(self, output_path: Path, width: int, height: int):
+        """Generate a synthetic 3D sphere image with proper depth gradients.
+
+        Creates a procedurally rendered sphere with Phong shading that provides
+        clear depth cues for Depth-Anything estimation.
 
         Args:
-            output_path: Where to save the generated cylinder image
+            output_path: Where to save the generated sphere image
             width: Image width
             height: Image height
         """
-        import requests
-        import shutil
-        from integration.utils import API_BASE_URL, wait_for_job_to_complete
+        import numpy as np
+        from PIL import Image
 
-        logger.info("Submitting job to generate 3D cylinder test image...")
+        logger.info(f"Generating synthetic 3D sphere ({width}x{height})...")
 
-        # Submit a single-frame generation job
-        settings = {
-            "deforum_settings": {
-                "W": width,
-                "H": height,
-                "seed": 42,
-                "sampler": "euler",
-                "steps": 20,
-                "cfg_scale": 1.0,
-                "distilled_cfg_scale": 3.5,
-                "animation_mode": "3D",
-                "render_mode": "new_3d",
-                "max_frames": 1,  # Just one frame
-                "animation_prompts": '{"0": "a simple 3D cylinder object perfectly centered in the frame, neutral gray background, dramatic side lighting showing depth and curvature, photorealistic shading, studio photography"}',
-                "batch_name": "cylinder_init",
-                "skip_video_creation": True,  # No need for video
-                "add_soundtrack": "None",
-            },
-            "options_overrides": {
-                "outdir_samples": str(output_path.parent),
-                "deforum_save_gen_info_as_srt": False,
-            }
-        }
+        # Create image array (RGB)
+        img = np.ones((height, width, 3), dtype=np.uint8) * 128  # Gray background
 
-        response = requests.post(f"{API_BASE_URL}/batches", json=settings)
-        response.raise_for_status()
-        job_data = response.json()
-        job_id = job_data["job_ids"][0]
+        # Sphere parameters
+        center_x = width // 2
+        center_y = height // 2
+        radius = min(width, height) * 0.35  # 35% of shortest dimension
 
-        logger.info(f"Waiting for cylinder generation job {job_id}...")
-        job_status = wait_for_job_to_complete(job_id)
+        # Light source position (top-left-front for clear depth gradient)
+        light_pos = np.array([-1.0, -1.0, 2.0])
+        light_pos = light_pos / np.linalg.norm(light_pos)
 
-        # Copy the generated frame to output_path
-        generated_dir = Path(job_status.outdir) / job_status.timestring
-        generated_frames = list(generated_dir.glob("*.png"))
-        if generated_frames:
-            shutil.copy(generated_frames[0], output_path)
-            logger.info(f"Cylinder image generated and saved to {output_path}")
-        else:
-            raise RuntimeError("Failed to generate cylinder init image")
+        # Generate sphere with Phong shading
+        for y in range(height):
+            for x in range(width):
+                # Distance from center
+                dx = x - center_x
+                dy = y - center_y
+                dist_sq = dx*dx + dy*dy
+
+                if dist_sq <= radius*radius:
+                    # Point is inside sphere
+                    # Calculate z coordinate (sphere surface)
+                    z = np.sqrt(radius*radius - dist_sq)
+
+                    # Surface normal (pointing outward)
+                    normal = np.array([dx, dy, z])
+                    normal = normal / np.linalg.norm(normal)
+
+                    # Diffuse lighting (Lambertian)
+                    diffuse = max(0.0, np.dot(normal, light_pos))
+
+                    # Ambient + diffuse
+                    ambient = 0.2
+                    intensity = ambient + (1.0 - ambient) * diffuse
+
+                    # Map to color (white sphere)
+                    color = int(255 * intensity)
+                    img[y, x] = [color, color, color]
+
+        # Save image
+        pil_img = Image.fromarray(img, 'RGB')
+        pil_img.save(output_path)
+        logger.info(f"Synthetic 3D sphere saved to {output_path}")
 
     def _run_orbit_single_test(
         self,
@@ -463,18 +469,18 @@ class TuningTestManager:
 
         logger.info(f"Running orbit test: {test_name}")
 
-        # Use shared init image (3D cylinder) for all tests to ensure comparable metrics
+        # Use shared init image (3D sphere) for all tests to ensure comparable metrics
         # Generate it once on first test, reuse for all 81 tests
-        shared_init_image = output_dir / "shared_cylinder_init.png"
+        shared_init_image = output_dir / "shared_sphere_init.png"
 
         try:
-            # Generate shared cylinder init image if it doesn't exist
+            # Generate shared sphere init image if it doesn't exist
             if not shared_init_image.exists():
-                logger.info("Generating shared 3D cylinder init image (first test only)...")
-                self._generate_cylinder_init_image(shared_init_image, width, height)
-                logger.info(f"Shared cylinder image saved to: {shared_init_image}")
+                logger.info("Generating shared 3D sphere init image (first test only)...")
+                self._generate_sphere_init_image(shared_init_image, width, height)
+                logger.info(f"Shared sphere image saved to: {shared_init_image}")
             else:
-                logger.info(f"Using existing shared cylinder image: {shared_init_image}")
+                logger.info(f"Using existing shared sphere image: {shared_init_image}")
 
             # Generate orbit schedules
             schedules = generate_orbit_schedules(orbit_iterations, orbit_radius, rotation_factor)
@@ -498,12 +504,12 @@ class TuningTestManager:
                 "cfg_scale": 1.0,
                 "distilled_cfg_scale": 3.5,
 
-                # Use static init image (3D cylinder) for ALL orbital tests
+                # Use static init image (3D sphere) for ALL orbital tests
                 # This ensures we measure depth warping quality, not generation randomness
                 "use_init": True,
-                "strength": 0.85,  # High preservation to keep cylinder recognizable
+                "strength": 0.85,  # High preservation to keep sphere recognizable
                 "strength_0_no_init": False,  # Use init on frame 0 too
-                "init_image": str(shared_init_image),  # Path to shared cylinder image
+                "init_image": str(shared_init_image),  # Path to shared sphere image
 
                 # Animation settings
                 "animation_mode": "3D",
@@ -629,10 +635,10 @@ class TuningTestManager:
             frames = [load_image_as_numpy(str(f)) for f in frame_files]
             logger.info(f"  Loaded {len(frames)} frames as numpy arrays")
 
-            # Measure when cylinder goes off-screen (primary metric)
-            logger.info(f"  Checking cylinder visibility in each frame...")
+            # Measure when sphere goes off-screen (primary metric)
+            logger.info(f"  Checking sphere visibility in each frame...")
             iterations_until_offscreen = self._count_iterations_until_offscreen(frames, width, height)
-            logger.info(f"  Cylinder stayed in frame for {iterations_until_offscreen} iterations")
+            logger.info(f"  Sphere stayed in frame for {iterations_until_offscreen} iterations")
 
             # Also measure drift for additional context
             logger.info(f"  Measuring subject position drift...")
