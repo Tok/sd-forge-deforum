@@ -4,7 +4,7 @@ This module contains functions for combining and manipulating Deforum schedule
 strings, following functional programming principles with no side effects.
 """
 
-from typing import List
+from typing import List, Dict, Tuple, Optional
 
 # Import schedule parsing functions
 from .schedules import parse_schedule_string, interpolate_schedule_values
@@ -211,3 +211,145 @@ def offset_schedule(schedule: str, max_frames: int, offset: float) -> str:
         keyframes.append(f"{len(offset_values)-1}:({last_value:.6f})")
 
     return ", ".join(keyframes)
+
+
+def get_shake_values_for_visualization(
+    shake_name: str,
+    shake_intensity: float,
+    shake_speed: float,
+    max_frames: int,
+    target_fps: int = 60
+) -> Dict[str, List[float]]:
+    """Get shake values for visualization without requiring RenderData.
+
+    This is a simplified version of Shaker.create() for visualization purposes only.
+
+    Args:
+        shake_name: Name of shake pattern (e.g., "GENTLE_HANDHELD")
+        shake_intensity: Intensity multiplier (1.0 = normal)
+        shake_speed: Speed multiplier (1.0 = normal)
+        max_frames: Number of frames to generate
+        target_fps: Target FPS for the animation
+
+    Returns:
+        Dict with keys 'translation_x', 'translation_y', 'translation_z',
+        'rotation_3d_x', 'rotation_3d_y', 'rotation_3d_z', each containing
+        a list of shake values (one per frame)
+    """
+    import numpy as np
+    import pandas as pd
+    from scipy.interpolate import CubicSpline
+    from deforum.rendering.data.shakify.shake_data import SHAKE_LIST
+    from deforum.rendering.data.shakify.enum.shakify_key import ShakifyKey as Key
+    from deforum.rendering.data.shakify.enum.xyz import Xyz
+    from deforum.rendering.data.shakify.shaker import Shaker
+
+    # Return zeros if shakify disabled
+    if not shake_name or shake_name == "None" or shake_name == "":
+        return {
+            'translation_x': [0.0] * max_frames,
+            'translation_y': [0.0] * max_frames,
+            'translation_z': [0.0] * max_frames,
+            'rotation_3d_x': [0.0] * max_frames,
+            'rotation_3d_y': [0.0] * max_frames,
+            'rotation_3d_z': [0.0] * max_frames,
+        }
+
+    # Convert shake name to key
+    shake_key = Shaker.shake_name_to_key(shake_name)
+    if shake_key is None or shake_key not in SHAKE_LIST:
+        return {
+            'translation_x': [0.0] * max_frames,
+            'translation_y': [0.0] * max_frames,
+            'translation_z': [0.0] * max_frames,
+            'rotation_3d_x': [0.0] * max_frames,
+            'rotation_3d_y': [0.0] * max_frames,
+            'rotation_3d_z': [0.0] * max_frames,
+        }
+
+    name, source_fps, shake_data = SHAKE_LIST[shake_key]
+
+    def process_axis(shakify_key: Key, xyz: Xyz) -> List[float]:
+        """Process one axis of shake data."""
+        i = xyz.to_i()
+        composite_key = (shakify_key.shakify(), i)
+
+        # Get shake data for this axis
+        if composite_key not in shake_data:
+            if shakify_key == Key.LOC:
+                # 2D shakes don't provide location data
+                return [0.0] * max_frames
+            raise ValueError(f"Missing shakify data for key {composite_key}")
+
+        # Parse frame data
+        df = pd.DataFrame(shake_data[composite_key], columns=['frame', 'value'])
+
+        # Create spline with intensity and speed
+        spline = CubicSpline(df['frame'] * shake_speed, df['value'] * shake_intensity)
+
+        # Stretch to target FPS
+        source_frame_count = len(df) + 1
+        target_frame_count = int(source_frame_count * target_fps / source_fps)
+        frames_target = np.linspace(0, source_frame_count, target_frame_count)
+        stretched_values = spline(frames_target).tolist()
+
+        # Loop/wrap to max_frames (shake data loops)
+        result = []
+        for frame_idx in range(max_frames):
+            wrapped_idx = frame_idx % len(stretched_values)
+            result.append(float(stretched_values[wrapped_idx]))
+
+        return result
+
+    # Generate shake values for all 6 axes
+    return {
+        'translation_x': process_axis(Key.LOC, Xyz.X),
+        'translation_y': process_axis(Key.LOC, Xyz.Y),
+        'translation_z': process_axis(Key.LOC, Xyz.Z),
+        'rotation_3d_x': process_axis(Key.ROT, Xyz.X),
+        'rotation_3d_y': process_axis(Key.ROT, Xyz.Y),
+        'rotation_3d_z': process_axis(Key.ROT, Xyz.Z),
+    }
+
+
+def get_final_schedules_with_shakify(
+    base_schedules: Dict[str, str],
+    shake_name: str,
+    shake_intensity: float,
+    shake_speed: float,
+    max_frames: int,
+    target_fps: int = 60
+) -> Dict[str, str]:
+    """Get final combined schedules (base + shakify overlay).
+
+    This is the centralized function for combining base camera movement
+    with shakify overlay, used by both visualizers.
+
+    Args:
+        base_schedules: Dict with keys 'translation_x', 'translation_y', etc.
+        shake_name: Shakify pattern name (or "None" to disable)
+        shake_intensity: Intensity multiplier
+        shake_speed: Speed multiplier
+        max_frames: Number of frames
+        target_fps: Target FPS
+
+    Returns:
+        Dict of final combined schedule strings
+    """
+    # Get shake values
+    shake_values = get_shake_values_for_visualization(
+        shake_name, shake_intensity, shake_speed, max_frames, target_fps
+    )
+
+    # Apply shake to each schedule
+    final_schedules = {}
+    for axis in ['translation_x', 'translation_y', 'translation_z',
+                 'rotation_3d_x', 'rotation_3d_y', 'rotation_3d_z']:
+        base_schedule = base_schedules.get(axis, "0:(0)")
+        shake_for_axis = shake_values.get(axis, [])
+
+        final_schedules[axis] = apply_shakify_to_schedule(
+            base_schedule, shake_for_axis, max_frames
+        )
+
+    return final_schedules
