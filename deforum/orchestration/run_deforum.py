@@ -374,6 +374,9 @@ def run_deforum(*args):
             ...
 
         if (not shared.state.interrupted):
+            logger.info(f"Job {root.job_id}: Marking as SUCCEEDED")
             JobStatusTracker().complete_job(root.job_id)
+        else:
+            logger.warning(f"Job {root.job_id}: Interrupted, NOT marking as complete!")
 
     return processed.images, root.timestring, generation_info_js, processed.info

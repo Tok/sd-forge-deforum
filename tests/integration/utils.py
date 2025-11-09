@@ -124,18 +124,24 @@ def wait_for_job_to_complete(id : str):
         print(f"Raw response: {response.text}")
         raise
 
-    print(f"Waiting for job {id}: status={jobStatus.status}; phase={jobStatus.phase}; execution_time:{jobStatus.execution_time}s")
+    print(f"[POLL] Job {id}: status={jobStatus.status}; phase={jobStatus.phase}; execution_time:{jobStatus.execution_time}s")
 
     # Raise exception if job failed or cancelled (causes retry to stop)
     if jobStatus.status == DeforumJobStatusCategory.FAILED:
+        print(f"[POLL] Job {id} FAILED: {jobStatus.message}")
         raise AssertionError(f"Job {id} failed: {jobStatus.message}")
     if jobStatus.status == DeforumJobStatusCategory.CANCELLED:
+        print(f"[POLL] Job {id} CANCELLED")
         raise AssertionError(f"Job {id} was cancelled")
 
     # Keep retrying until job succeeds
+    if jobStatus.status != DeforumJobStatusCategory.SUCCEEDED:
+        print(f"[POLL] Job {id} not done yet, will retry in 2s...")
+
     assert jobStatus.status == DeforumJobStatusCategory.SUCCEEDED, \
         f"Job {id} still running (status={jobStatus.status}, phase={jobStatus.phase})"
 
+    print(f"[POLL] Job {id} SUCCEEDED! Returning status.")
     return jobStatus
     
 @retry(wait=wait_fixed(1), stop=stop_after_delay(120))
