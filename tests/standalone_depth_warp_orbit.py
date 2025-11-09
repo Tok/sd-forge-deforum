@@ -13,12 +13,17 @@ from PIL import Image
 from pathlib import Path
 import cv2
 import sys
+import os
 from typing import Tuple, List
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add Forge root to path
+forge_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(forge_root))
 
-from deforum.rendering.util.depth_utils import DepthProcessor
+# Now we can import Forge/Deforum modules
+import torch
+from modules import devices
+from deforum.depth.depth import DepthModel
 
 
 def generate_synthetic_sphere(width: int, height: int) -> np.ndarray:
@@ -134,13 +139,21 @@ def run_orbit_test(
     output_dir.mkdir(parents=True, exist_ok=True)
     Image.fromarray(sphere).save(output_dir / "000000000.png")
 
-    # Initialize depth processor
+    # Initialize depth model
     print("Initializing depth estimation...")
-    depth_proc = DepthProcessor("Depth-Anything-V2-Small")
+    models_path = forge_root / "models" / "Deforum"
+    depth_model = DepthModel(
+        str(models_path),
+        devices.device,
+        keep_in_vram=True,
+        depth_algorithm="Depth-Anything-V2-Small"
+    )
 
     # Get initial depth map
-    depth_map = depth_proc.predict(sphere)
+    sphere_pil = Image.fromarray(sphere)
+    depth_map = depth_model.predict(sphere_pil, width, height)
     depth_viz = (depth_map * 255).astype(np.uint8)
+    (output_dir / "depth_maps").mkdir(parents=True, exist_ok=True)
     Image.fromarray(depth_viz).save(output_dir / "depth_maps" / "000000000_depth.png")
 
     # Generate orbit path
@@ -169,7 +182,8 @@ def run_orbit_test(
         current_frame = warped
 
         # Re-estimate depth for next iteration
-        depth_map = depth_proc.predict(warped)
+        warped_pil = Image.fromarray(warped)
+        depth_map = depth_model.predict(warped_pil, width, height)
 
         if i % 10 == 0:
             print(f"  Frame {i}/{max_iterations}")
