@@ -370,7 +370,8 @@ def on_ui_tabs():
 
                 # Frame Overlap Simulator (shows preservation/novelty metrics)
                 with gr.Row(variant='compact'):
-                    frame_overlap_simulator = gr.Plot(
+                    frame_overlap_simulator = gr.HTML(
+                        value='<div style="padding: 20px; color: #C8C8DC;">Loading frame overlap simulator...</div>',
                         label="Frame Overlap Simulator (Worm Trail Preview)",
                         show_label=True,
                         elem_id="deforum_frame_overlap_sim",

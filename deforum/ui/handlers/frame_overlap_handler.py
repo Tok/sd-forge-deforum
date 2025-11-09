@@ -1,10 +1,9 @@
 """Handler for frame overlap simulator UI integration."""
 
 from typing import Optional
-import plotly.graph_objects as go
 
 from deforum.utils.frame_overlap_simulator import simulate_camera_path
-from deforum.utils.frame_overlap_visualizer import create_worm_trail_visualization
+from deforum.utils.frame_overlap_canvas import create_canvas_html
 from deforum.core.keyframes import FrameInterpolater
 from deforum.utils.system.logging import get_logger
 
@@ -21,7 +20,7 @@ def update_frame_overlap_visualization(
     max_frames: int,
     width: int,
     height: int
-) -> Optional[go.Figure]:
+) -> Optional[str]:
     """Update frame overlap visualization from schedule strings.
 
     Args:
@@ -36,7 +35,7 @@ def update_frame_overlap_visualization(
         height: Viewport height in pixels
 
     Returns:
-        Plotly Figure with worm trail visualization, or None on error
+        HTML string with Canvas visualization, or None on error
     """
     try:
         # Parse schedule strings to get per-frame values
@@ -81,8 +80,8 @@ def update_frame_overlap_visualization(
             viewport_height=float(height)
         )
 
-        # Create visualization
-        fig = create_worm_trail_visualization(
+        # Create Canvas HTML visualization
+        html = create_canvas_html(
             metrics_list=metrics,
             width=800,
             height=600,
@@ -90,7 +89,7 @@ def update_frame_overlap_visualization(
             playback_fps=10
         )
 
-        return fig
+        return html
 
     except Exception as e:
         logger.warning(f"Failed to update frame overlap visualization: {e}")
