@@ -89,14 +89,11 @@ def update_frame_overlap_visualization(
         ry_series = parser.get_inbetweens(ry_keys, integer=False)
 
         # Convert pandas Series to lists
-        tx_values = tx_series.tolist()
-        ty_values = ty_series.tolist()
-        ry_values = ry_series.tolist()
-
-        # Calculate frame-to-frame deltas (what the animation engine actually uses)
-        tx_deltas = [tx_values[i] - tx_values[i - 1] if i > 0 else 0 for i in range(max_frames)]
-        ty_deltas = [ty_values[i] - ty_values[i - 1] if i > 0 else 0 for i in range(max_frames)]
-        ry_deltas = [ry_values[i] - ry_values[i - 1] if i > 0 else 0 for i in range(max_frames)]
+        # IMPORTANT: Schedules are already deltas (from camera_path_to_schedules)
+        # Do NOT calculate deltas again - just use interpolated values directly
+        tx_deltas = tx_series.tolist()
+        ty_deltas = ty_series.tolist()
+        ry_deltas = ry_series.tolist()
 
         # Zoom is always 1.0 for now (no zoom schedule yet)
         zoom_deltas = [1.0] * max_frames
