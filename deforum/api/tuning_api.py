@@ -293,7 +293,7 @@ class TuningTestManager:
                     height=height,
                     rotation_factor=rotation_factor,
                     orbit_radius=config.orbit_radius or 50.0,
-                    orbit_iterations=config.orbit_iterations or 20,
+                    orbit_iterations=config.orbit_iterations or 100,  # Increased to see stability over more iterations
                 )
 
                 # Update progress
@@ -302,6 +302,50 @@ class TuningTestManager:
                     status = self.active_tests[test_id]
                     status.progress = completed_tests / total_tests
                     status.results.append(result)
+
+    def _count_iterations_until_offscreen(self, frames: list, width: int, height: int) -> int:
+        """Count how many iterations until the cylinder goes off-screen.
+
+        Detects when the subject (cylinder) leaves the frame boundaries.
+        Higher count = more stable orbital movement.
+
+        Args:
+            frames: List of RGB frames as numpy arrays
+            width: Frame width
+            height: Frame height
+
+        Returns:
+            Number of iterations before cylinder goes off-screen (or total if never off-screen)
+        """
+        import cv2
+        import numpy as np
+
+        # Define "in bounds" as having significant mass away from edges
+        edge_margin = min(width, height) * 0.15  # 15% margin from edges
+
+        for i, frame in enumerate(frames):
+            # Convert to grayscale
+            gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+
+            # Threshold to find bright regions (cylinder)
+            _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+            # Calculate moments to find centroid
+            moments = cv2.moments(binary)
+            if moments['m00'] == 0:
+                # No features detected - cylinder completely gone
+                return i
+
+            cx = moments['m10'] / moments['m00']
+            cy = moments['m01'] / moments['m00']
+
+            # Check if centroid is too close to edges
+            if (cx < edge_margin or cx > width - edge_margin or
+                cy < edge_margin or cy > height - edge_margin):
+                return i
+
+        # Cylinder stayed in frame for all iterations
+        return len(frames)
 
     def _generate_cylinder_init_image(self, output_path: Path, width: int, height: int):
         """Generate a 3D cylinder image for orbital depth warping tests.
@@ -466,7 +510,7 @@ class TuningTestManager:
                 "render_mode": "new_3d",
                 "max_frames": orbit_iterations,
                 "fps": 24,
-                "save_depth_maps": True,
+                "save_depth_maps": False,  # Don't need depth maps for this test
 
                 # Camera schedules from orbit generation
                 "translation_x": schedules["translation_x"],
@@ -585,38 +629,30 @@ class TuningTestManager:
             frames = [load_image_as_numpy(str(f)) for f in frame_files]
             logger.info(f"  Loaded {len(frames)} frames as numpy arrays")
 
-            # Measure metrics
+            # Measure when cylinder goes off-screen (primary metric)
+            logger.info(f"  Checking cylinder visibility in each frame...")
+            iterations_until_offscreen = self._count_iterations_until_offscreen(frames, width, height)
+            logger.info(f"  Cylinder stayed in frame for {iterations_until_offscreen} iterations")
+
+            # Also measure drift for additional context
             logger.info(f"  Measuring subject position drift...")
             drift_metrics = measure_subject_position_drift(frames)
-            logger.info(f"  Measuring temporal consistency...")
-            temporal_metrics = measure_temporal_consistency(frames)
-            logger.info(f"  Metrics calculated successfully")
-
-            # Calculate overall quality score
-            # Lower drift = better, higher temporal = better
-            # Normalize drift (assume 100px is "very bad")
-            drift_score = max(0, 100 - drift_metrics['max_drift'])
-            temporal_score = temporal_metrics['avg_ssim'] * 100
-
-            overall_score = (drift_score * 0.6) + (temporal_score * 0.4)
 
             result = {
                 "aspect_ratio": round(aspect_ratio, 2),
                 "width": width,
                 "height": height,
-                "rotation_factor": round(rotation_factor, 1),
+                "rotation_factor": round(rotation_factor, 2),
                 "orbit_radius": orbit_radius,
-                "iterations": len(frames),
+                "total_frames": len(frames),
+                "iterations_until_offscreen": iterations_until_offscreen,  # PRIMARY METRIC
                 "max_drift": round(drift_metrics['max_drift'], 1),
                 "avg_drift": round(drift_metrics['avg_drift'], 1),
-                "drift_rate": round(drift_metrics['drift_rate'], 2),
-                "temporal_consistency": round(temporal_score, 1),
-                "overall_score": round(overall_score, 1),
             }
 
             logger.info(
-                f"  Results: drift={drift_metrics['max_drift']:.1f}px, "
-                f"temporal={temporal_score:.1f}, overall={overall_score:.1f}"
+                f"  Results: iterations_until_offscreen={iterations_until_offscreen}, "
+                f"max_drift={drift_metrics['max_drift']:.1f}px"
             )
 
             return result
