@@ -58,10 +58,13 @@ def update_frame_overlap_visualization(
         }
 
         # Apply shakify overlay to get final combined schedules
+        # Scale down intensity to 30% for subtle visualization
+        viz_intensity = shake_intensity * 0.3 if shake_name != "None" else 0.0
+
         final_schedules = get_final_schedules_with_shakify(
             base_schedules=base_schedules,
             shake_name=shake_name,
-            shake_intensity=shake_intensity,
+            shake_intensity=viz_intensity,
             shake_speed=shake_speed,
             max_frames=max_frames,
             target_fps=target_fps

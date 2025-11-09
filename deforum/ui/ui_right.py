@@ -361,38 +361,68 @@ def on_ui_tabs():
 
                 # Camera Path Visualization (real-time display)
                 with gr.Row(variant='compact'):
+                    gr.Markdown("### 🎬 Camera Path (3D Spline)")
+                    show_shakify_in_camera_path = gr.Checkbox(
+                        value=False,
+                        label="Show Shakify Preview",
+                        info="Add subtle camera shake overlay to visualization",
+                        scale=0
+                    )
+                with gr.Row(variant='compact'):
                     camera_path_plot = gr.Plot(
                         label="Camera Path Visualization (Real-time)",
-                        show_label=True,
+                        show_label=False,
                         elem_id="deforum_camera_path_viz",
                         visible=True
                     )
 
                 # Frame Overlap Simulator (shows preservation/novelty metrics)
                 with gr.Row(variant='compact'):
+                    gr.Markdown("### 🔲 Frame Overlap Simulator (Worm Trail)")
+                    show_shakify_in_overlap = gr.Checkbox(
+                        value=False,
+                        label="Show Shakify Preview",
+                        info="Add subtle camera shake overlay to visualization",
+                        scale=0
+                    )
+                with gr.Row(variant='compact'):
                     frame_overlap_simulator = gr.HTML(
                         value='<div style="padding: 20px; color: #C8C8DC;">Loading frame overlap simulator...</div>',
-                        label="Frame Overlap Simulator (Worm Trail Preview)",
-                        show_label=True,
+                        label="Frame Overlap Simulator",
+                        show_label=False,
                         elem_id="deforum_frame_overlap_sim",
                         visible=True
                     )
 
                 components['camera_path_plot'] = camera_path_plot
                 components['frame_overlap_simulator'] = frame_overlap_simulator
+                components['show_shakify_in_camera_path'] = show_shakify_in_camera_path
+                components['show_shakify_in_overlap'] = show_shakify_in_overlap
 
         # Camera Path visualization - load on UI startup (independent of tab selection)
         if camera_path_plot:
             from deforum.utils.schedule_visualizer import visualize_schedules
 
-            def update_camera_path_visualization(tx, ty, tz, rx, ry, rz, prompts):
-                """Update camera path visualization from current schedule values (BASE PATH ONLY)."""
+            def update_camera_path_visualization(tx, ty, tz, rx, ry, rz, prompts,
+                                                   shake_name_val, shake_intensity_val, shake_speed_val,
+                                                   apply_shakify_toggle):
+                """Update camera path visualization with optional shakify overlay."""
                 try:
+                    # Shakify params with defaults
+                    shake_name = shake_name_val if shake_name_val else "None"
+                    shake_intensity = float(shake_intensity_val) if shake_intensity_val else 1.0
+                    shake_speed = float(shake_speed_val) if shake_speed_val else 1.0
+
                     fig, _ = visualize_schedules(
                         tx or "", ty or "", tz or "",
                         rx or "", ry or "", rz or "",
                         333,  # max_frames default
-                        prompts or ""
+                        prompts or "",
+                        shake_name=shake_name,
+                        shake_intensity=shake_intensity,
+                        shake_speed=shake_speed,
+                        target_fps=60,
+                        apply_shakify=apply_shakify_toggle  # Toggle control
                     )
                     return fig
                 except Exception as e:
@@ -410,6 +440,10 @@ def on_ui_tabs():
                     components.get('rotation_3d_y'),
                     components.get('rotation_3d_z'),
                     components.get('animation_prompts'),
+                    components.get('shake_name'),
+                    components.get('shake_intensity'),
+                    components.get('shake_speed'),
+                    components.get('show_shakify_in_camera_path'),
                 ],
                 outputs=[camera_path_plot]
             )
@@ -420,17 +454,22 @@ def on_ui_tabs():
             from deforum.ui.handlers.camera_path_generator import generate_preset_path
 
             def update_overlap_viz(tx, ty, tz, rx, ry, rz, width_val, height_val,
-                                    shake_name_val, shake_intensity_val, shake_speed_val):
-                """Update frame overlap visualization from current schedule values with shakify."""
+                                    shake_name_val, shake_intensity_val, shake_speed_val, apply_shakify_toggle):
+                """Update frame overlap visualization with optional shakify overlay."""
                 # Get max_frames from motion settings if available, otherwise default to 333
                 max_frames = 333
                 width = int(width_val) if width_val else 1920
                 height = int(height_val) if height_val else 1080
 
-                # Shakify params with defaults
-                shake_name = shake_name_val if shake_name_val else "None"
-                shake_intensity = float(shake_intensity_val) if shake_intensity_val else 1.0
-                shake_speed = float(shake_speed_val) if shake_speed_val else 1.0
+                # Shakify params with defaults (only apply if toggle is on)
+                if apply_shakify_toggle:
+                    shake_name = shake_name_val if shake_name_val else "None"
+                    shake_intensity = float(shake_intensity_val) if shake_intensity_val else 1.0
+                    shake_speed = float(shake_speed_val) if shake_speed_val else 1.0
+                else:
+                    shake_name = "None"  # Disable shakify
+                    shake_intensity = 1.0
+                    shake_speed = 1.0
 
                 return update_frame_overlap_visualization(
                     translation_x=tx or "",
@@ -515,6 +554,7 @@ def on_ui_tabs():
                 components.get('shake_name'),
                 components.get('shake_intensity'),
                 components.get('shake_speed'),
+                components.get('show_shakify_in_overlap'),  # Toggle control
             ]
 
             # Wire up change handlers for all schedule fields
@@ -526,8 +566,9 @@ def on_ui_tabs():
                         outputs=[frame_overlap_simulator]
                     )
 
-            # Wire up change handlers for shakify controls
-            for shakify_component in shakify_components:
+            # Wire up change handlers for shakify controls (including toggle)
+            shakify_all_components = shakify_components + [components.get('show_shakify_in_overlap')]
+            for shakify_component in shakify_all_components:
                 if shakify_component:
                     shakify_component.change(
                         fn=update_overlap_viz,
@@ -745,9 +786,24 @@ def on_ui_tabs():
                 )
 
             # Wire schedule textboxes to update visualization whenever they change
-            def update_viz_from_schedules(tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, prompts_val="", max_frames=333):
-                """Update visualization from schedule textbox values (BASE PATH ONLY)."""
-                fig, stats = visualize_schedules(tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, max_frames, prompts_val)
+            def update_viz_from_schedules(tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, prompts_val,
+                                          shake_name_val, shake_intensity_val, shake_speed_val,
+                                          apply_shakify_toggle, max_frames=333):
+                """Update visualization from schedule textbox values with optional shakify."""
+                # Shakify params with defaults
+                shake_name = shake_name_val if shake_name_val else "None"
+                shake_intensity = float(shake_intensity_val) if shake_intensity_val else 1.0
+                shake_speed = float(shake_speed_val) if shake_speed_val else 1.0
+
+                fig, stats = visualize_schedules(
+                    tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
+                    max_frames, prompts_val,
+                    shake_name=shake_name,
+                    shake_intensity=shake_intensity,
+                    shake_speed=shake_speed,
+                    target_fps=60,
+                    apply_shakify=apply_shakify_toggle
+                )
                 return fig
 
             # Each schedule textbox triggers visualization update
@@ -755,6 +811,13 @@ def on_ui_tabs():
                 schedule_inputs = [tx, ty, tz, rx, ry, rz]
                 if animation_prompts:
                     schedule_inputs.append(animation_prompts)
+                # Add shakify params and toggle
+                schedule_inputs.extend([
+                    components.get('shake_name'),
+                    components.get('shake_intensity'),
+                    components.get('shake_speed'),
+                    components.get('show_shakify_in_camera_path'),
+                ])
 
                 for schedule_box in [tx, ty, tz, rx, ry, rz]:
                     if schedule_box:
@@ -771,6 +834,15 @@ def on_ui_tabs():
                         inputs=schedule_inputs,
                         outputs=[camera_path_plot]
                     )
+
+                # Trigger on shakify changes
+                for shakify_comp in [components.get('shake_name'), components.get('shake_intensity'), components.get('shake_speed'), components.get('show_shakify_in_camera_path')]:
+                    if shakify_comp:
+                        shakify_comp.change(
+                            fn=update_viz_from_schedules,
+                            inputs=schedule_inputs,
+                            outputs=[camera_path_plot]
+                        )
 
                 # Trigger visualization on settings load
                 load_settings_btn.click(
