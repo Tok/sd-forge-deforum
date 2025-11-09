@@ -268,8 +268,10 @@ setTimeout(function() {{
 '''
 
     html = f'''
-<script type="text/javascript">{js_code}</script>
 <div style="width: 100%; max-width: {width}px; margin: 0 auto;">
+    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+         onload="(function(){{ {js_code} }})();"
+         style="display:none;">
     <canvas id="{canvas_id}" width="{width}" height="{height}"
             style="width: 100%; height: auto; display: block; margin: 0 auto 10px auto; background-color: {COLOR_BG}; border-radius: 4px;"></canvas>
 
