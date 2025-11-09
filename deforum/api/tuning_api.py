@@ -7,7 +7,7 @@ and retrieving quality metrics.
 import json
 import threading
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
 
@@ -25,6 +25,7 @@ class TuningTestType(str, Enum):
     COLOR_PRESERVATION = "color_preservation"
     TEMPORAL_CONSISTENCY = "temporal_consistency"
     FLUX_PARAMETER_SWEEP = "flux_parameter_sweep"
+    DEPTH_WARPING_ORBIT = "depth_warping_orbit"
 
 
 class TuningTestConfig(BaseModel):
@@ -43,6 +44,16 @@ class TuningTestConfig(BaseModel):
     kf_strength_step: float = Field(0.01, ge=0.001, le=0.1, description="Step size for keyframe strength sweep (0.01 = 1% precision)")
     max_iterations: int = Field(20, ge=1, le=50)
     grayscale_threshold: float = Field(20.0, ge=0.0, le=50.0)
+
+    # Orbit-specific parameters (for depth_warping_orbit test type)
+    aspect_ratios: Optional[List[Tuple[float, int, int]]] = Field(
+        None, description="List of (ratio, width, height) tuples for orbit tests"
+    )
+    rotation_factor_min: Optional[float] = Field(None, ge=-10.0, le=-1.0)
+    rotation_factor_max: Optional[float] = Field(None, ge=-10.0, le=-1.0)
+    rotation_factor_step: Optional[float] = Field(None, ge=0.5, le=2.0)
+    orbit_radius: Optional[float] = Field(None, ge=20.0, le=100.0)
+    orbit_iterations: Optional[int] = Field(None, ge=10, le=40)
 
 
 class TuningTestStatus(BaseModel):
@@ -146,63 +157,17 @@ class TuningTestManager:
             with self.test_lock:
                 self.active_tests[test_id].status = "running"
 
-            # Generate parameter combinations to test
-            from numpy import arange
-
-            strength_values = list(arange(
-                config.strength_min,
-                config.strength_max + 0.001,  # Add small epsilon to include max
-                config.strength_step
-            ))
-            kf_strength_values = list(arange(
-                config.kf_strength_min,
-                config.kf_strength_max + 0.001,
-                config.kf_strength_step
-            ))
-
-            total_tests = len(config.steps) * len(strength_values) * len(kf_strength_values)
-            completed_tests = 0
-
-            logger.info(f"Test {test_id}: {total_tests} parameter combinations to test")
-
-            # Run each parameter combination
-            for steps in config.steps:
-                for normal_strength in strength_values:
-                    for kf_strength in kf_strength_values:
-                        # Check if cancelled
-                        with self.test_lock:
-                            if self.active_tests[test_id].status == "cancelled":
-                                return
-
-                        # Run test with these parameters
-                        logger.info(
-                            f"Testing: steps={steps}, "
-                            f"strength={normal_strength:.2f}, "
-                            f"kf_strength={kf_strength:.2f}"
-                        )
-
-                        # TODO: Actually run the test using pytest/test infrastructure
-                        # For now, just simulate with dummy results
-                        result = self._run_single_test(
-                            test_id,
-                            steps,
-                            normal_strength,
-                            kf_strength,
-                            config.max_iterations,
-                            config.grayscale_threshold,
-                        )
-
-                        # Update progress
-                        completed_tests += 1
-                        with self.test_lock:
-                            status = self.active_tests[test_id]
-                            status.progress = completed_tests / total_tests
-                            status.results.append(result)
+            # Route to appropriate test type
+            if config.test_type == TuningTestType.DEPTH_WARPING_ORBIT:
+                self._run_orbit_tests(test_id, config)
+            else:
+                # Run standard I2V chaining tests (color preservation, temporal, flux)
+                self._run_i2v_chaining_tests(test_id, config)
 
             # Mark as completed
             with self.test_lock:
                 self.active_tests[test_id].status = "completed"
-                logger.info(f"Test {test_id}: Completed all {total_tests} tests")
+                logger.info(f"Test {test_id}: Completed")
 
         except Exception as e:
             import traceback
@@ -211,6 +176,321 @@ class TuningTestManager:
             with self.test_lock:
                 self.active_tests[test_id].status = "failed"
                 self.active_tests[test_id].error = str(e)
+
+    def _run_i2v_chaining_tests(self, test_id: str, config: TuningTestConfig):
+        """Run I2V chaining tests (color preservation, temporal, flux).
+
+        Args:
+            test_id: Test identifier
+            config: Test configuration
+        """
+        # Generate parameter combinations to test
+        from numpy import arange
+
+        strength_values = list(arange(
+            config.strength_min,
+            config.strength_max + 0.001,  # Add small epsilon to include max
+            config.strength_step
+        ))
+        kf_strength_values = list(arange(
+            config.kf_strength_min,
+            config.kf_strength_max + 0.001,
+            config.kf_strength_step
+        ))
+
+        total_tests = len(config.steps) * len(strength_values) * len(kf_strength_values)
+        completed_tests = 0
+
+        logger.info(f"Test {test_id}: {total_tests} parameter combinations to test")
+
+        # Run each parameter combination
+        for steps in config.steps:
+            for normal_strength in strength_values:
+                for kf_strength in kf_strength_values:
+                    # Check if cancelled
+                    with self.test_lock:
+                        if self.active_tests[test_id].status == "cancelled":
+                            return
+
+                    # Run test with these parameters
+                    logger.info(
+                        f"Testing: steps={steps}, "
+                        f"strength={normal_strength:.2f}, "
+                        f"kf_strength={kf_strength:.2f}"
+                    )
+
+                    # TODO: Actually run the test using pytest/test infrastructure
+                    # For now, just simulate with dummy results
+                    result = self._run_single_test(
+                        test_id,
+                        steps,
+                        normal_strength,
+                        kf_strength,
+                        config.max_iterations,
+                        config.grayscale_threshold,
+                    )
+
+                    # Update progress
+                    completed_tests += 1
+                    with self.test_lock:
+                        status = self.active_tests[test_id]
+                        status.progress = completed_tests / total_tests
+                        status.results.append(result)
+
+    def _run_orbit_tests(self, test_id: str, config: TuningTestConfig):
+        """Run depth warping orbit tests with rotation factor sweep.
+
+        Args:
+            test_id: Test identifier
+            config: Test configuration with orbit parameters
+        """
+        from numpy import arange
+
+        # Validate orbit parameters
+        if not config.aspect_ratios:
+            raise ValueError("aspect_ratios required for orbit tests")
+        if config.rotation_factor_min is None or config.rotation_factor_max is None:
+            raise ValueError("rotation_factor_min/max required for orbit tests")
+        if config.rotation_factor_step is None:
+            raise ValueError("rotation_factor_step required for orbit tests")
+
+        # Generate rotation factor values to test
+        rotation_factors = list(arange(
+            config.rotation_factor_min,
+            config.rotation_factor_max + 0.01,  # Small epsilon to include max
+            config.rotation_factor_step
+        ))
+
+        total_tests = len(config.aspect_ratios) * len(rotation_factors)
+        completed_tests = 0
+
+        logger.info(
+            f"Test {test_id}: {total_tests} orbit configurations to test "
+            f"({len(config.aspect_ratios)} aspect ratios × {len(rotation_factors)} factors)"
+        )
+
+        # Run each aspect ratio × rotation factor combination
+        for aspect_ratio, width, height in config.aspect_ratios:
+            for rotation_factor in rotation_factors:
+                # Check if cancelled
+                with self.test_lock:
+                    if self.active_tests[test_id].status == "cancelled":
+                        return
+
+                # Run orbit test with these parameters
+                logger.info(
+                    f"Testing: aspect {aspect_ratio:.2f} ({width}×{height}), "
+                    f"rotation_factor={rotation_factor:.1f}"
+                )
+
+                result = self._run_orbit_single_test(
+                    test_id=test_id,
+                    aspect_ratio=aspect_ratio,
+                    width=width,
+                    height=height,
+                    rotation_factor=rotation_factor,
+                    orbit_radius=config.orbit_radius or 50.0,
+                    orbit_iterations=config.orbit_iterations or 20,
+                )
+
+                # Update progress
+                completed_tests += 1
+                with self.test_lock:
+                    status = self.active_tests[test_id]
+                    status.progress = completed_tests / total_tests
+                    status.results.append(result)
+
+    def _run_orbit_single_test(
+        self,
+        test_id: str,
+        aspect_ratio: float,
+        width: int,
+        height: int,
+        rotation_factor: float,
+        orbit_radius: float,
+        orbit_iterations: int,
+    ) -> Dict[str, Any]:
+        """Run a single orbit test configuration.
+
+        Args:
+            test_id: Test identifier
+            aspect_ratio: Width/height ratio
+            width: Frame width in pixels
+            height: Frame height in pixels
+            rotation_factor: Translation/rotation ratio (negative = counter-rotation)
+            orbit_radius: Orbit radius in pixels
+            orbit_iterations: Number of I2I depth warp iterations
+
+        Returns:
+            Test result dictionary with drift metrics
+        """
+        from pathlib import Path
+        import sys
+        import numpy as np
+
+        # Add tests directory to path
+        tests_dir = Path(__file__).parent.parent.parent / "tests"
+        if str(tests_dir) not in sys.path:
+            sys.path.insert(0, str(tests_dir))
+
+        from integration.test_depth_warping_orbit_tuning import (
+            generate_orbit_schedules,
+            measure_subject_position_drift,
+        )
+        from integration.metrics import (
+            measure_temporal_consistency,
+            load_image_as_numpy,
+        )
+        from integration.utils import (
+            API_BASE_URL,
+            get_test_options_overrides,
+            wait_for_job_to_complete,
+            get_test_batch_name,
+        )
+
+        # Create test output directory
+        output_dir = Path(__file__).parent.parent.parent / "outputs" / "deforum-tuning" / "depth_warping_orbits"
+        aspect_str = f"{int(aspect_ratio*100):03d}"
+        test_name = f"aspect{aspect_str}_{width}x{height}_factor{abs(rotation_factor):.1f}"
+        test_dir = output_dir / test_name
+        test_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Running orbit test: {test_name}")
+
+        try:
+            # Generate orbit schedules
+            schedules = generate_orbit_schedules(orbit_iterations, orbit_radius, rotation_factor)
+
+            # Load base settings template
+            testdata_dir = tests_dir / 'integration' / 'testdata'
+            with open(testdata_dir / 'simple.input_settings.txt', 'r') as f:
+                base_settings = json.load(f)
+
+            # Configure job
+            options_overrides = get_test_options_overrides()
+            options_overrides.update({
+                "deforum_save_gen_info_as_srt": False,
+            })
+
+            # Override specific settings for this test
+            base_settings.update({
+                # Basic settings
+                "W": width,
+                "H": height,
+                "seed": 42,
+                "sampler": "euler",
+                "steps": 20,
+                "cfg_scale": 7.0,
+
+                # Animation settings
+                "animation_mode": "3D",
+                "max_frames": orbit_iterations,
+
+                # Camera schedules from orbit generation
+                "translation_x": schedules["translation_x"],
+                "translation_y": schedules["translation_y"],
+                "translation_z": "0:(0)",
+                "rotation_3d_x": "0:(0)",
+                "rotation_3d_y": schedules["rotation_3d_y"],
+                "rotation_3d_z": "0:(0)",
+
+                # Depth warping enabled
+                "use_depth_warping": True,
+                "midas_weight": 0.3,
+                "padding_mode": "border",
+                "sampling_mode": "bicubic",
+
+                # Disable other features
+                "color_coherence": "None",
+                "enable_subseed_scheduling": False,
+                "enable_sampler_scheduling": False,
+                "enable_clipskip_scheduling": False,
+            })
+
+            # Submit job
+            import requests
+            response = requests.post(
+                f"{API_BASE_URL}/deforum_api/batches",
+                json={
+                    "deforum_settings": base_settings,
+                    "options_overrides": options_overrides,
+                }
+            )
+            response.raise_for_status()
+            job_data = response.json()
+            job_id = job_data["job_id"]
+
+            logger.info(f"  Submitted job {job_id}, waiting for completion...")
+
+            # Wait for completion
+            wait_for_job_to_complete(job_id, timeout=600)
+
+            # Load generated frames
+            batch_name = get_test_batch_name(job_id)
+            frame_pattern = f"{batch_name}_*.png"
+            frame_files = sorted(
+                Path(job_data["outdir_samples"]).glob(frame_pattern),
+                key=lambda p: int(p.stem.split('_')[-1])
+            )
+
+            if not frame_files:
+                raise ValueError(f"No frames generated for job {job_id}")
+
+            frames = [load_image_as_numpy(str(f)) for f in frame_files]
+            logger.info(f"  Loaded {len(frames)} frames")
+
+            # Measure metrics
+            drift_metrics = measure_subject_position_drift(frames)
+            temporal_metrics = measure_temporal_consistency(frames)
+
+            # Calculate overall quality score
+            # Lower drift = better, higher temporal = better
+            # Normalize drift (assume 100px is "very bad")
+            drift_score = max(0, 100 - drift_metrics['max_drift'])
+            temporal_score = temporal_metrics['avg_ssim'] * 100
+
+            overall_score = (drift_score * 0.6) + (temporal_score * 0.4)
+
+            result = {
+                "aspect_ratio": round(aspect_ratio, 2),
+                "width": width,
+                "height": height,
+                "rotation_factor": round(rotation_factor, 1),
+                "orbit_radius": orbit_radius,
+                "iterations": len(frames),
+                "max_drift": round(drift_metrics['max_drift'], 1),
+                "avg_drift": round(drift_metrics['avg_drift'], 1),
+                "drift_rate": round(drift_metrics['drift_rate'], 2),
+                "temporal_consistency": round(temporal_score, 1),
+                "overall_score": round(overall_score, 1),
+            }
+
+            logger.info(
+                f"  Results: drift={drift_metrics['max_drift']:.1f}px, "
+                f"temporal={temporal_score:.1f}, overall={overall_score:.1f}"
+            )
+
+            return result
+
+        except Exception as e:
+            import traceback
+            logger.error(f"Orbit test failed: {e}")
+            logger.error(traceback.format_exc())
+            # Return partial results on error
+            return {
+                "aspect_ratio": round(aspect_ratio, 2),
+                "width": width,
+                "height": height,
+                "rotation_factor": round(rotation_factor, 1),
+                "orbit_radius": orbit_radius,
+                "iterations": 0,
+                "max_drift": 0.0,
+                "avg_drift": 0.0,
+                "drift_rate": 0.0,
+                "temporal_consistency": 0.0,
+                "overall_score": 0.0,
+                "error": str(e),
+            }
 
     def _run_single_test(
         self,
