@@ -2,13 +2,13 @@
 
 ## Quick Start
 
-**Launch Tuning Mode:**
+**Launch Tuning Lab:**
 ```bash
 # Linux/Mac
-./launch-tuning.sh
+./run-tuning-lab.sh
 
-# Windows  
-launch-tuning.bat
+# Windows
+run-tuning-lab.bat
 ```
 
 This starts Forge with the Deforum tuning tab where you can:

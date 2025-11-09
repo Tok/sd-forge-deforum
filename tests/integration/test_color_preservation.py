@@ -26,9 +26,7 @@ from .metrics import (
 
 
 # Import shared test utilities
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from integration.utils import (
+from .utils import (
     API_BASE_URL,
     get_test_options_overrides,
     wait_for_job_to_complete,
