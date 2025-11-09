@@ -250,7 +250,7 @@ def run_i2v_iteration(
             # Basic settings
             "W": 512,
             "H": 512,
-            "seed": 42,
+            "seed": 0,
             "sampler": "euler",
             "steps": steps,
             "cfg_scale": 1.0,  # Flux distilled cfg

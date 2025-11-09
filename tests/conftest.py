@@ -103,7 +103,7 @@ mock_paths = MagicMock()
 mock_paths.models_path = "/tmp/models"
 mock_paths.script_path = "/tmp/forge"
 mock_processing = MagicMock()
-mock_processing.get_fixed_seed = lambda x: x if x != -1 else 42
+mock_processing.get_fixed_seed = lambda x: x if x != -1 else 0
 mock_ui = MagicMock()
 mock_ui.create_output_panel = MagicMock(return_value=[])
 mock_ui.wrap_gradio_call = lambda fn: fn
