@@ -419,13 +419,10 @@ class TuningTestManager:
                 "enable_clipskip_scheduling": False,
                 "enable_checkpoint_scheduling": False,
 
-                # Explicitly set ALL schedule fields to prevent defaults from kicking in
+                # Explicitly set numeric schedule fields to prevent single-keyframe defaults
                 # Must use multi-frame format (not "0:(x)") to avoid KeyError: -1
-                # String-based schedules MUST use quoted strings, not numbers
-                "checkpoint_schedule": '0:("flux1-dev"), 1:("flux1-dev")',
+                # OMIT string schedules (checkpoint, sampler, scheduler, mask) - parsing is buggy
                 "clipskip_schedule": "0:(2), 1:(2)",
-                "sampler_schedule": '0:("euler"), 1:("euler")',
-                "scheduler_schedule": '0:("Simple"), 1:("Simple")',
                 "noise_schedule": "0:(0.02), 1:(0.02)",
                 "strength_schedule": "0:(0.65), 1:(0.65)",
                 "contrast_schedule": "0:(1.0), 1:(1.0)",
@@ -439,8 +436,7 @@ class TuningTestManager:
                 "aspect_ratio_schedule": "0:(1.0), 1:(1.0)",
                 "subseed_schedule": "0:(1), 1:(1)",
                 "subseed_strength_schedule": "0:(0), 1:(0)",
-                "mask_schedule": '0:("{video_mask}"), 1:("{video_mask}")',
-                "noise_mask_schedule": '0:("{video_mask}"), 1:("{video_mask}")',
+                # mask_schedule and noise_mask_schedule omitted - string values cause parsing errors
                 "noise_multiplier_schedule": "0:(1.0), 1:(1.0)",
                 "ddim_eta_schedule": "0:(0), 1:(0)",
                 "ancestral_eta_schedule": "0:(1), 1:(1)",
