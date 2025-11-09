@@ -422,14 +422,28 @@ def camera_path_to_schedules(
         }
 
     # Normalize path so first frame (in timeline) starts at origin
-    # This works for both forward and reverse generation
+    # For positions: subtract first frame position
+    # For rotations: DON'T normalize - they need to point at center in world space
+    #
+    # IMPORTANT: For look-at paths (rotate-around, etc.), rotations must be
+    # recalculated after position offset to maintain correct look-at target.
     first_point = camera_path[0]
     offset_x = first_point.x
     offset_y = first_point.y
     offset_z = first_point.z
-    offset_rot_x = first_point.rot_x
-    offset_rot_y = first_point.rot_y
-    offset_rot_z = first_point.rot_z
+
+    # Calculate the offset center position
+    # Assume center was at (0,0,0) before offset, now at:
+    center_offset_x = -offset_x
+    center_offset_y = -offset_y
+    center_offset_z = -offset_z
+
+    # Detect if this is a look-at path (has non-zero rotations)
+    # If all rotations are near-zero, it's a fixed-rotation path (dashcam/bodycam)
+    has_rotations = any(
+        abs(p.rot_x) > 0.1 or abs(p.rot_y) > 0.1 or abs(p.rot_z) > 0.1
+        for p in camera_path
+    )
 
     schedules = {
         'translation_x': [],
@@ -470,13 +484,23 @@ def camera_path_to_schedules(
         speed_per_frame = None
 
     for idx, point in enumerate(camera_path):
-        # Normalize position and rotation (subtract offset so first frame is at origin)
+        # Normalize position (subtract offset so first frame is at origin)
         norm_x = point.x - offset_x
         norm_y = point.y - offset_y
         norm_z = point.z - offset_z
-        norm_rot_x = point.rot_x - offset_rot_x
-        norm_rot_y = point.rot_y - offset_rot_y
-        norm_rot_z = point.rot_z - offset_rot_z
+
+        # Recalculate rotation to point at offset center (for look-at paths only)
+        # This maintains look-at relationship after position offset
+        if has_rotations:
+            # Look-at path: recalculate rotation to point at offset center
+            camera_pos = (norm_x, norm_y, norm_z)
+            center_pos = (center_offset_x, center_offset_y, center_offset_z)
+            norm_rot_x, norm_rot_y, norm_rot_z = look_at_target(camera_pos, center_pos)
+        else:
+            # Fixed-rotation path (dashcam/bodycam): keep rotation as-is
+            norm_rot_x = point.rot_x
+            norm_rot_y = point.rot_y
+            norm_rot_z = point.rot_z
 
         # Calculate base deltas
         delta_x = norm_x - prev_x
