@@ -372,10 +372,20 @@ def create_tuning_tab() -> tuple:
                     })
 
                 # Submit to API
+                logger.debug(f"Submitting tuning config: {json.dumps(config, indent=2)}")
                 response = requests.post(
                     "http://localhost:7860/deforum_api/tuning/start",
                     json=config,
                 )
+
+                # Log detailed error for 422 validation failures
+                if response.status_code == 422:
+                    try:
+                        error_detail = response.json()
+                        logger.error(f"API validation error (422): {json.dumps(error_detail, indent=2)}")
+                    except:
+                        logger.error(f"API validation error (422): {response.text}")
+
                 response.raise_for_status()
 
                 result = response.json()
