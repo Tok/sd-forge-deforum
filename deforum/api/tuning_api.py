@@ -422,7 +422,7 @@ class TuningTestManager:
                 # Output directory
                 "batch_name": get_test_batch_name(test_name),
                 "outdir": str(test_dir),
-            })
+            }
 
             # Submit job
             import requests
