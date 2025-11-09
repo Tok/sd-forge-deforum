@@ -273,14 +273,15 @@ def generate_rotate_around_path(
         height: Additional height offset
         use_sphere: If True, randomize around sphere; if False, flat circle
         frames_per_loop: Frames for one complete rotation
-                        If None (default), uses num_frames (1 full orbit over animation)
+                        If None (default), uses 120 frames per orbit for visible rotation angles
 
     Returns:
         List of CameraPoint objects with rotations calculated via quaternion look-at
     """
-    # Default: complete exactly 1 orbit over the animation duration
+    # Default: ~120 frames per orbit for sharper rotation angles visible to depth warping
+    # This creates ~3° per frame rotation instead of ~1°, making depth warping work better
     if frames_per_loop is None:
-        frames_per_loop = float(num_frames)
+        frames_per_loop = 120.0
     camera_path = []
 
     for frame_idx in range(num_frames):
