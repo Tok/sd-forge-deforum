@@ -54,6 +54,7 @@ def create_tuning_tab() -> tuple:
                         "Color Preservation (I2V Chaining)",
                         "Temporal Consistency (Frame Stability)",
                         "Flux Parameter Sweep",
+                        "Depth Warping Orbit (Translation/Rotation Factor)",
                     ],
                     value="Color Preservation (I2V Chaining)",
                 )

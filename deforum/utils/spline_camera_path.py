@@ -19,7 +19,7 @@ from typing import List, Tuple, Dict
 import numpy as np
 from scipy import interpolate
 from deforum.utils.math.quaternion import look_at_target
-from deforum.utils.system.logging import log as log_utils
+from deforum.utils.system.logging import log as log_utils, emoji_if_enabled
 
 
 @dataclass(frozen=True)
@@ -418,7 +418,8 @@ def _print_camera_path_analysis(delta_analysis: Dict[str, List[float]], camera_p
     # Expected ratio: rot_y / trans_x ≈ 180 / (π * R) ≈ 57.3 / R
     estimated_radius = 57.3 / ratio_y_to_x if ratio_y_to_x > 0.1 else 0.0
 
-    log_utils.info("📊 Camera Path Analysis:", log_utils.BLUE)
+    chart_emoji = f"{emoji_if_enabled('📊')} " if emoji_if_enabled('📊') else ""
+    log_utils.info(f"{chart_emoji}Camera Path Analysis:", log_utils.BLUE)
     log_utils.info(f"   Frames: {len(camera_path)}", log_utils.BLUE)
     log_utils.info(f"   Avg Translation Deltas: X={avg_trans_x:.3f}, Y={avg_trans_y:.3f}, Z={avg_trans_z:.3f}", log_utils.BLUE)
     log_utils.info(f"   Avg Rotation Deltas: X={avg_rot_x:.3f}°, Y={avg_rot_y:.3f}°, Z={avg_rot_z:.3f}°", log_utils.BLUE)
