@@ -413,7 +413,7 @@ class TuningTestManager:
             # Submit job
             import requests
             response = requests.post(
-                f"{API_BASE_URL}/deforum_api/batches",
+                f"{API_BASE_URL}/batches",
                 json={
                     "deforum_settings": base_settings,
                     "options_overrides": options_overrides,

@@ -273,7 +273,11 @@ def test_orbit_rotation_factor_sweep(aspect_ratio, width, height, rotation_facto
             # Output
             "batch_name": get_test_batch_name(test_name),
             "outdir": str(test_dir),
-        },
+    })
+
+    # Construct settings dict for API
+    settings = {
+        "deforum_settings": base_settings,
         "options_overrides": options_overrides,
     }
 
