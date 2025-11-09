@@ -345,11 +345,11 @@ class TestScheduleConversion:
         schedules = camera_path_to_schedules(camera_path)
 
         # Check that delta values are rounded to 2 decimal places
-        # Frame 0: x=1.5 (delta from 0 = 1.5)
-        # Frame 10: x=4.5 (delta from 1.5 = 3.0)
-        assert '0: (1.50)' in schedules['translation_x']
+        # Frame 0: Normalized to origin = 0.0 (delta)
+        # Frame 10: x=4.5, origin_offset=1.5, normalized=3.0, delta from prev (0) = 3.0
+        assert '0: (0.00)' in schedules['translation_x']
         assert '10: (3.00)' in schedules['translation_x']  # Delta!
-        assert '0: (3.33)' in schedules['translation_z']
+        assert '0: (0.00)' in schedules['translation_z']
 
 
 class TestEdgeCases:
@@ -557,3 +557,57 @@ class TestStreetPath:
         assert path_long[-1].z > path_short[-1].z * 4.0
 
 
+
+
+class TestSpeedMultiplier:
+    """Test speed multiplier functionality."""
+
+    def test_speed_multiplier_scales_deltas(self):
+        """Test speed multiplier scales all deltas proportionally."""
+        camera_path = generate_rotate_around_path(
+            num_frames=10,
+            radius=100.0
+        )
+
+        # Generate schedules with different speeds
+        schedules_normal = camera_path_to_schedules(camera_path, speed_multiplier=1.0)
+        schedules_half = camera_path_to_schedules(camera_path, speed_multiplier=0.5)
+        schedules_double = camera_path_to_schedules(camera_path, speed_multiplier=2.0)
+
+        # Extract frame 1 deltas (frame 0 is always 0)
+        import re
+
+        def extract_delta(schedule_str, frame_num):
+            """Extract delta value from schedule string for specific frame."""
+            frames = schedule_str.split(', ')
+            frame_str = frames[frame_num]
+            match = re.search(r'\(([^)]+)\)', frame_str)
+            return float(match.group(1))
+
+        # Check translation_x scaling
+        tx_normal = extract_delta(schedules_normal['translation_x'], 1)
+        tx_half = extract_delta(schedules_half['translation_x'], 1)
+        tx_double = extract_delta(schedules_double['translation_x'], 1)
+
+        assert abs(tx_half - tx_normal * 0.5) < 0.01, f"Half speed: {tx_half} != {tx_normal * 0.5}"
+        assert abs(tx_double - tx_normal * 2.0) < 0.01, f"Double speed: {tx_double} != {tx_normal * 2.0}"
+
+        # Check rotation_3d_y scaling
+        ry_normal = extract_delta(schedules_normal['rotation_3d_y'], 1)
+        ry_half = extract_delta(schedules_half['rotation_3d_y'], 1)
+        ry_double = extract_delta(schedules_double['rotation_3d_y'], 1)
+
+        assert abs(ry_half - ry_normal * 0.5) < 0.01, f"Half rotation: {ry_half} != {ry_normal * 0.5}"
+        assert abs(ry_double - ry_normal * 2.0) < 0.01, f"Double rotation: {ry_double} != {ry_normal * 2.0}"
+
+    def test_speed_multiplier_works_all_path_types(self):
+        """Test speed multiplier works for all path types."""
+        # Rotate-around
+        path1 = generate_rotate_around_path(num_frames=5, radius=100)
+        sched1 = camera_path_to_schedules(path1, speed_multiplier=2.0)
+        assert sched1['rotation_3d_y'] != ''
+
+        # Street path
+        path2 = generate_street_path(num_frames=5, street_length=500)
+        sched2 = camera_path_to_schedules(path2, speed_multiplier=2.0)
+        assert sched2['translation_z'] != ''

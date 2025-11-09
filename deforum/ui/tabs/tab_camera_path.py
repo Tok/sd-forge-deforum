@@ -69,6 +69,26 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     info="Choose a camera movement pattern"
                 )
 
+            with FormRow(variant="compact"):
+                speed_multiplier = gr.Slider(
+                    minimum=0.1,
+                    maximum=3.0,
+                    value=1.0,
+                    step=0.1,
+                    label="Speed Multiplier",
+                    info="Global speed control (affects ALL deltas). 0.5=half speed, 1.0=normal, 2.0=double"
+                )
+
+            with FormRow(variant="compact"):
+                speed_randomization = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=0.0,
+                    step=0.05,
+                    label="Speed Randomization",
+                    info="Speed variation amount. 0=uniform, 0.5=moderate oscillation (+/-50%), 1.0=maximum"
+                )
+
             gr.Markdown("### Parameters")
 
             with FormRow(variant="compact"):
@@ -320,6 +340,8 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
 
     components.update({
         'preset_type': preset_type,
+        'speed_multiplier': speed_multiplier,
+        'speed_randomization': speed_randomization,
         'preset_radius': preset_radius,
         'preset_height': preset_height,
         'preset_rotation_factor': preset_rotation_factor,

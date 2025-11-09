@@ -500,6 +500,8 @@ def on_ui_tabs():
                     fn=handle_generate_preset,
                     inputs=[
                         components.get('preset_type'),
+                        components.get('speed_multiplier'),
+                        components.get('speed_randomization'),
                         components.get('preset_radius'),
                         components.get('preset_height'),
                         components.get('preset_rotation_factor'),
@@ -520,15 +522,17 @@ def on_ui_tabs():
                 def randomize_preset_wrapper(*args):
                     """Randomize by using current params but with random seed"""
                     args_list = list(args)
-                    args_list[7] = -1  # preset_random_seed index - force new randomization
-                    if args_list[6] == 0:  # preset_randomize
-                        args_list[6] = 0.5
+                    args_list[9] = -1  # preset_random_seed index - force new randomization (shifted +2)
+                    if args_list[8] == 0:  # preset_randomize (shifted +2)
+                        args_list[8] = 0.5
                     return handle_generate_preset(*args_list)
 
                 btn_randomize_preset.click(
                     fn=randomize_preset_wrapper,
                     inputs=[
                         components.get('preset_type'),
+                        components.get('speed_multiplier'),
+                        components.get('speed_randomization'),
                         components.get('preset_radius'),
                         components.get('preset_height'),
                         components.get('preset_rotation_factor'),
@@ -562,6 +566,53 @@ def on_ui_tabs():
                     outputs=[
                         components.get('custom_status'),
                         tx, ty, tz, rx, ry, rz  # Only update schedules
+                    ]
+                )
+
+            # Wire speed sliders to auto-regenerate preset path on change
+            speed_mult = components.get('speed_multiplier')
+            speed_rand = components.get('speed_randomization')
+            if speed_mult and btn_generate_preset and tx:
+                speed_mult.change(
+                    fn=handle_generate_preset,
+                    inputs=[
+                        components.get('preset_type'),
+                        components.get('speed_multiplier'),
+                        components.get('speed_randomization'),
+                        components.get('preset_radius'),
+                        components.get('preset_height'),
+                        components.get('preset_rotation_factor'),
+                        components.get('preset_num_frames'),
+                        components.get('preset_closed_loop'),
+                        components.get('preset_randomize'),
+                        components.get('preset_random_seed'),
+                        tx, ty, tz, rx, ry, rz
+                    ],
+                    outputs=[
+                        components.get('preset_status'),
+                        tx, ty, tz, rx, ry, rz
+                    ]
+                )
+
+            if speed_rand and btn_generate_preset and tx:
+                speed_rand.change(
+                    fn=handle_generate_preset,
+                    inputs=[
+                        components.get('preset_type'),
+                        components.get('speed_multiplier'),
+                        components.get('speed_randomization'),
+                        components.get('preset_radius'),
+                        components.get('preset_height'),
+                        components.get('preset_rotation_factor'),
+                        components.get('preset_num_frames'),
+                        components.get('preset_closed_loop'),
+                        components.get('preset_randomize'),
+                        components.get('preset_random_seed'),
+                        tx, ty, tz, rx, ry, rz
+                    ],
+                    outputs=[
+                        components.get('preset_status'),
+                        tx, ty, tz, rx, ry, rz
                     ]
                 )
 

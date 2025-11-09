@@ -11,13 +11,14 @@ Key concepts:
 - Control points define the path
 - Spline interpolation creates smooth curves
 - Tangent vectors determine camera direction (look-at)
-- Rotate-around uses translation_x with rotation_3d_y at -5x factor
+- Rotate-around uses quaternion-based look-at targeting center point
 """
 
 from dataclasses import dataclass
 from typing import List, Tuple, Dict
 import numpy as np
 from scipy import interpolate
+from deforum.utils.math.quaternion import look_at_target
 
 
 @dataclass(frozen=True)
@@ -259,20 +260,21 @@ def generate_rotate_around_path(
     height: float = 0.0,
     rotation_factor: float = -5.0,
     center_z: float = 0.0,
-    use_sphere: bool = True
+    use_sphere: bool = True,
+    frames_per_loop: float = 1200.0
 ) -> List[CameraPoint]:
     """Generate rotate-around camera path on sphere surface.
 
-    The camera moves randomly around a sphere while rotating to look at center.
-    Uses spherical coordinates with random variation for interesting paths.
+    The camera moves around a sphere while always looking at center.
 
     Args:
-        num_frames: Number of frames
+        num_frames: Number of frames to generate
         radius: Radius of sphere
         center_x, center_y, center_z: Center position
         height: Additional height offset
         rotation_factor: Rotation multiplier (typically -5 for smooth rotate-around)
         use_sphere: If True, randomize around sphere; if False, flat circle
+        frames_per_loop: Frames for one complete rotation (default 1200 = 3 loops/min at 60fps)
 
     Returns:
         List of CameraPoint objects
@@ -281,9 +283,9 @@ def generate_rotate_around_path(
 
     for frame_idx in range(num_frames):
         if use_sphere:
-            # Spherical rotation with random wobble
-            # Theta (azimuth) - horizontal rotation
-            theta = 2 * np.pi * frame_idx / num_frames
+            # Spherical rotation with sinusoidal wobble
+            # Theta (azimuth) - horizontal rotation (slowed to 1 loop/min)
+            theta = 2 * np.pi * frame_idx / frames_per_loop
 
             # Phi (elevation) - varies between -pi/3 and pi/3 (avoid poles)
             # Add sinusoidal variation for interesting paths
@@ -296,26 +298,16 @@ def generate_rotate_around_path(
             y = center_y + height + radius * np.sin(phi)
             z = center_z + radius * np.cos(phi) * np.sin(theta)
         else:
-            # Flat circle (classic mode)
-            angle = 2 * np.pi * frame_idx / num_frames
+            # Flat circle (classic mode) - also slowed to 1 loop/min
+            angle = 2 * np.pi * frame_idx / frames_per_loop
             x = center_x + radius * np.cos(angle)
             z = center_z + radius * np.sin(angle)
             y = center_y + height
 
-        # Rotation to look at center
-        # Calculate angle to look at center point
-        dx = center_x - x
-        dy = (center_y + height) - y
-        dz = center_z - z
-
-        # Pan angle (rotation_y)
-        rot_y = np.degrees(np.arctan2(dx, dz))
-
-        # Tilt angle (rotation_x)
-        horizontal_dist = np.sqrt(dx**2 + dz**2)
-        rot_x = np.degrees(np.arctan2(dy, horizontal_dist))
-
-        rot_z = 0.0
+        # Rotation to look at center (using quaternion-based look-at)
+        target = (center_x, center_y + height, center_z)
+        camera = (x, y, z)
+        rot_x, rot_y, rot_z = look_at_target(camera, target)
 
         camera_path.append(CameraPoint(
             x=x,
@@ -389,20 +381,56 @@ def _normalize_angle_delta(delta: float) -> float:
     return delta
 
 
-def camera_path_to_schedules(camera_path: List[CameraPoint]) -> Dict[str, str]:
-    """Convert camera path to Deforum schedule strings (as DELTAS).
+def camera_path_to_schedules(
+    camera_path: List[CameraPoint],
+    speed_multiplier: float = 1.0,
+    speed_randomization: float = 0.0,
+    random_seed: int = 0
+) -> Dict[str, str]:
+    """Convert camera path to Deforum schedule strings (ALL DELTAS).
 
-    Animation engine expects frame-to-frame deltas, not absolute positions.
-    Outputs delta for EVERY frame to ensure smooth spline curves.
+    Both translation and rotation use frame-to-frame deltas.
+    Animation engine accumulates these deltas each frame.
+
+    Path is normalized so first frame starts at origin (0,0,0) with zero rotation.
 
     Args:
-        camera_path: List of CameraPoint objects (absolute positions along curve)
+        camera_path: List of CameraPoint objects (absolute positions/rotations along curve)
+        speed_multiplier: Global speed control (default 1.0)
+            - 0.5 = half speed (smoother, slower)
+            - 1.0 = normal speed
+            - 2.0 = double speed (faster motion)
+        speed_randomization: Speed variation amount (default 0.0)
+            - 0.0 = uniform frame spacing (no variation)
+            - 0.5 = moderate speed oscillation (+/- 50%)
+            - 1.0 = maximum speed variation (+/- 100%)
+        random_seed: Seed for randomization (default 0 for reproducibility)
 
     Returns:
         Dict with DELTA schedule strings for each parameter:
         - translation_x, translation_y, translation_z (linear deltas)
         - rotation_3d_x, rotation_3d_y, rotation_3d_z (angle-wrapped deltas)
     """
+    if not camera_path:
+        return {
+            'translation_x': '0: (0)',
+            'translation_y': '0: (0)',
+            'translation_z': '0: (0)',
+            'rotation_3d_x': '0: (0)',
+            'rotation_3d_y': '0: (0)',
+            'rotation_3d_z': '0: (0)',
+        }
+
+    # Normalize path so first frame (in timeline) starts at origin
+    # This works for both forward and reverse generation
+    first_point = camera_path[0]
+    offset_x = first_point.x
+    offset_y = first_point.y
+    offset_z = first_point.z
+    offset_rot_x = first_point.rot_x
+    offset_rot_y = first_point.rot_y
+    offset_rot_z = first_point.rot_z
+
     schedules = {
         'translation_x': [],
         'translation_y': [],
@@ -412,7 +440,7 @@ def camera_path_to_schedules(camera_path: List[CameraPoint]) -> Dict[str, str]:
         'rotation_3d_z': []
     }
 
-    # Track previous absolute values to calculate frame-to-frame deltas
+    # Track previous values to calculate frame-to-frame deltas
     prev_x = 0.0
     prev_y = 0.0
     prev_z = 0.0
@@ -420,18 +448,58 @@ def camera_path_to_schedules(camera_path: List[CameraPoint]) -> Dict[str, str]:
     prev_rot_y = 0.0
     prev_rot_z = 0.0
 
-    for point in camera_path:
-        # Calculate translation deltas (linear)
-        delta_x = point.x - prev_x
-        delta_y = point.y - prev_y
-        delta_z = point.z - prev_z
+    # Setup speed randomization if enabled
+    if speed_randomization > 0.0:
+        np.random.seed(random_seed)
+        # Generate smooth speed variation using combination of sine waves
+        # This creates natural acceleration/deceleration patterns
+        num_frames = len(camera_path)
 
-        # Calculate rotation deltas with angle wrapping (shortest path)
-        delta_rot_x = _normalize_angle_delta(point.rot_x - prev_rot_x)
-        delta_rot_y = _normalize_angle_delta(point.rot_y - prev_rot_y)
-        delta_rot_z = _normalize_angle_delta(point.rot_z - prev_rot_z)
+        # Multi-frequency noise for natural variation
+        t = np.linspace(0, 1, num_frames)
+        speed_variation = (
+            np.sin(2 * np.pi * t * 2) * 0.5 +  # Slow wave
+            np.sin(2 * np.pi * t * 5) * 0.3 +  # Medium wave
+            np.sin(2 * np.pi * t * 11) * 0.2   # Fast wave
+        )
+        # Normalize to [-1, 1] range
+        speed_variation = speed_variation / np.max(np.abs(speed_variation))
+        # Scale by randomization amount: 1.0 +/- randomization
+        speed_per_frame = 1.0 + speed_variation * speed_randomization
+    else:
+        speed_per_frame = None
 
-        # Output deltas (frame 0 outputs absolute as delta from origin)
+    for idx, point in enumerate(camera_path):
+        # Normalize position and rotation (subtract offset so first frame is at origin)
+        norm_x = point.x - offset_x
+        norm_y = point.y - offset_y
+        norm_z = point.z - offset_z
+        norm_rot_x = point.rot_x - offset_rot_x
+        norm_rot_y = point.rot_y - offset_rot_y
+        norm_rot_z = point.rot_z - offset_rot_z
+
+        # Calculate base deltas
+        delta_x = norm_x - prev_x
+        delta_y = norm_y - prev_y
+        delta_z = norm_z - prev_z
+        delta_rot_x = _normalize_angle_delta(norm_rot_x - prev_rot_x)
+        delta_rot_y = _normalize_angle_delta(norm_rot_y - prev_rot_y)
+        delta_rot_z = _normalize_angle_delta(norm_rot_z - prev_rot_z)
+
+        # Apply speed multiplier (with per-frame variation if enabled)
+        if speed_per_frame is not None:
+            frame_speed = speed_multiplier * speed_per_frame[idx]
+        else:
+            frame_speed = speed_multiplier
+
+        delta_x *= frame_speed
+        delta_y *= frame_speed
+        delta_z *= frame_speed
+        delta_rot_x *= frame_speed
+        delta_rot_y *= frame_speed
+        delta_rot_z *= frame_speed
+
+        # Output all as deltas (scaled by speed multiplier)
         schedules['translation_x'].append(f"{point.frame}: ({delta_x:.2f})")
         schedules['translation_y'].append(f"{point.frame}: ({delta_y:.2f})")
         schedules['translation_z'].append(f"{point.frame}: ({delta_z:.2f})")
@@ -440,12 +508,12 @@ def camera_path_to_schedules(camera_path: List[CameraPoint]) -> Dict[str, str]:
         schedules['rotation_3d_z'].append(f"{point.frame}: ({delta_rot_z:.2f})")
 
         # Store current as previous for next iteration
-        prev_x = point.x
-        prev_y = point.y
-        prev_z = point.z
-        prev_rot_x = point.rot_x
-        prev_rot_y = point.rot_y
-        prev_rot_z = point.rot_z
+        prev_x = norm_x
+        prev_y = norm_y
+        prev_z = norm_z
+        prev_rot_x = norm_rot_x
+        prev_rot_y = norm_rot_y
+        prev_rot_z = norm_rot_z
 
     # Join with commas
     return {

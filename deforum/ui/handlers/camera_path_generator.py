@@ -252,7 +252,9 @@ def generate_preset_path(
     num_frames: int,
     closed_loop: bool,
     randomize: float = 0.0,
-    random_seed: int = -1
+    random_seed: int = -1,
+    speed_multiplier: float = 1.0,
+    speed_randomization: float = 0.0
 ) -> Tuple[str, Dict[str, str], list]:
     """Generate camera path from preset using type-specific handlers.
 
@@ -296,7 +298,14 @@ def generate_preset_path(
         else:
             return f"{emoji_utils.maybe_cross()} Unknown preset type: {preset_type}", {}, []
 
-        schedules = camera_path_to_schedules(camera_path)
+        # Use random_seed if provided, otherwise use 0 for reproducibility
+        seed = int(random_seed) if random_seed >= 0 else 0
+        schedules = camera_path_to_schedules(
+            camera_path,
+            speed_multiplier=speed_multiplier,
+            speed_randomization=speed_randomization,
+            random_seed=seed
+        )
         return status, schedules, camera_path
 
     except Exception as e:
@@ -563,6 +572,24 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
         hovertemplate='<b>END</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>'
     ))
 
+    # Center point - ORANGE GLOW (rotation center / look-at target)
+    # Shows where rotate-around paths look at
+    fig.add_trace(go.Scatter3d(
+        x=[0.0],
+        y=[0.0],
+        z=[0.0],
+        mode='markers',
+        name='Center (0,0,0)',
+        marker=dict(
+            size=15,
+            color='#F97316',  # Tailwind orange-500
+            symbol='x',
+            line=dict(color='#EA580C', width=3),  # Tailwind orange-600
+            opacity=0.9
+        ),
+        hovertemplate='<b>CENTER</b><br>Origin (0, 0, 0)<br>Rotate-around looks here<extra></extra>'
+    ))
+
     # Keyframe markers - BRIGHT BLUE highlights at regular intervals (SLOPCORE)
     keyframe_indices = _calculate_keyframe_indices(num_points)
     keyframe_interval = max(20, min(40, num_points // 10))
@@ -664,6 +691,8 @@ _current_camera_path = []
 
 def handle_generate_preset(
     preset_type: str,
+    speed_multiplier: float,
+    speed_randomization: float,
     radius: float,
     height: float,
     rotation_factor: float,
@@ -687,7 +716,7 @@ def handle_generate_preset(
 
     status, schedules, camera_path = generate_preset_path(
         preset_type, radius, height, rotation_factor, num_frames, closed_loop,
-        randomize, int(random_seed)
+        randomize, int(random_seed), speed_multiplier, speed_randomization
     )
 
     _current_camera_path = camera_path

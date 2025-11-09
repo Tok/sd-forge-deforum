@@ -2,12 +2,14 @@
 
 Visualizes Deforum animation schedules as 3D camera paths.
 Parses schedule strings from UI textboxes and creates interactive plots.
+Uses quaternion-based rotation for accurate camera direction arrows.
 """
 
 from typing import Dict, List, Tuple, Optional
 import re
 import plotly.graph_objects as go
 from deforum.utils.system.logging import emoji as emoji_utils
+from deforum.utils.math.quaternion import euler_to_forward_vector
 
 
 def parse_schedule_string(schedule_str: str) -> Dict[int, float]:
@@ -182,13 +184,60 @@ def visualize_schedules(
         ry_interp = interpolate_schedule(ry_dict, actual_max_frame)
         rz_interp = interpolate_schedule(rz_dict, actual_max_frame)
 
-        # Extract coordinates
-        x_coords = [val for _, val in tx_interp]
-        y_coords = [val for _, val in ty_interp]
-        z_coords = [val for _, val in tz_interp]
-        rx_coords = [val for _, val in rx_interp]
-        ry_coords = [val for _, val in ry_interp]
-        rz_coords = [val for _, val in rz_interp]
+        # Extract delta values
+        x_deltas = [val for _, val in tx_interp]
+        y_deltas = [val for _, val in ty_interp]
+        z_deltas = [val for _, val in tz_interp]
+        rx_deltas = [val for _, val in rx_interp]
+        ry_deltas = [val for _, val in ry_interp]
+        rz_deltas = [val for _, val in rz_interp]
+
+        # Detect if schedules are dense (every frame defined) = delta mode
+        # Camera paths output: ALL deltas (translation + rotation)
+        # Manual schedules: ALL absolutes (translation + rotation)
+        is_dense_schedule = (
+            len(tx_dict) > (actual_max_frame / 2) or  # More than half frames defined
+            len(ty_dict) > (actual_max_frame / 2) or
+            len(tz_dict) > (actual_max_frame / 2)
+        )
+
+        if is_dense_schedule:
+            # Dense schedule = delta mode (camera paths, Parseq delta)
+            # Accumulate ALL deltas to get absolute positions for visualization
+            x_coords = []
+            y_coords = []
+            z_coords = []
+            rx_coords = []
+            ry_coords = []
+            rz_coords = []
+
+            cum_x, cum_y, cum_z = 0.0, 0.0, 0.0
+            cum_rx, cum_ry, cum_rz = 0.0, 0.0, 0.0
+
+            for i in range(len(x_deltas)):
+                cum_x += x_deltas[i]
+                cum_y += y_deltas[i]
+                cum_z += z_deltas[i]
+                cum_rx += rx_deltas[i]
+                cum_ry += ry_deltas[i]
+                cum_rz += rz_deltas[i]
+
+                x_coords.append(cum_x)
+                y_coords.append(cum_y)
+                z_coords.append(cum_z)
+                rx_coords.append(cum_rx)
+                ry_coords.append(cum_ry)
+                rz_coords.append(cum_rz)
+        else:
+            # Sparse schedule = absolute mode (manual keyframes with interpolation)
+            # Use interpolated values directly for both translation and rotation
+            x_coords = x_deltas
+            y_coords = y_deltas
+            z_coords = z_deltas
+            rx_coords = rx_deltas
+            ry_coords = ry_deltas
+            rz_coords = rz_deltas
+
         num_points = len(x_coords)
 
         # Parse prompt schedule to find actual keyframes (frames with prompts)
@@ -260,16 +309,19 @@ def visualize_schedules(
         arrow_color = '#10B981'  # Fallback to green
 
     for idx in range(num_points):
-        # Calculate forward direction from rotation angles (simplified)
-        rx = np.radians(rx_coords[idx])
-        ry = np.radians(ry_coords[idx])
+        # Calculate forward direction from rotation angles (quaternion-based)
+        pitch = rx_coords[idx]
+        yaw = ry_coords[idx]
+        roll = rz_coords[idx]
 
-        # Forward vector (camera -Z axis after rotation)
-        # Simplified calculation - approximate direction
+        # Get forward vector using quaternion rotation
+        forward = euler_to_forward_vector(pitch, yaw, roll)
+
+        # Scale for visualization
         arrow_length = 10  # Smaller arrows since we show all frames
-        forward_x = np.sin(ry) * arrow_length
-        forward_z = np.cos(ry) * arrow_length
-        forward_y = -np.sin(rx) * arrow_length
+        forward_x = forward.x * arrow_length
+        forward_y = forward.y * arrow_length
+        forward_z = forward.z * arrow_length
 
         # Arrow from camera position pointing in look direction
         fig.add_trace(go.Scatter3d(
