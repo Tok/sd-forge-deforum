@@ -16,8 +16,9 @@ echo "========================================"
 cd "$FORGE_DIR"
 
 # Use webui.sh if available, otherwise fallback to python webui.py
+# Note: --deforum-api is required for tuning tab to work
 if [ -f "webui.sh" ]; then
-    ./webui.sh --deforum-run-tuning "$@"
+    ./webui.sh --deforum-api --deforum-run-tuning "$@"
 else
-    python webui.py --deforum-run-tuning "$@"
+    python webui.py --deforum-api --deforum-run-tuning "$@"
 fi

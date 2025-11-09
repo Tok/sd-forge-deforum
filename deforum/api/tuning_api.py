@@ -51,7 +51,7 @@ class TuningTestConfig(BaseModel):
     )
     rotation_factor_min: Optional[float] = Field(None, ge=-10.0, le=-1.0)
     rotation_factor_max: Optional[float] = Field(None, ge=-10.0, le=-1.0)
-    rotation_factor_step: Optional[float] = Field(None, ge=0.5, le=2.0)
+    rotation_factor_step: Optional[float] = Field(None, ge=0.01, le=2.0, description="Step size for rotation factor sweep (0.01 = fine, 0.5 = coarse)")
     orbit_radius: Optional[float] = Field(None, ge=20.0, le=100.0)
     orbit_iterations: Optional[int] = Field(None, ge=10, le=40)
 

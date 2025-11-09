@@ -16,8 +16,9 @@ echo ========================================
 cd /d "%FORGE_DIR%"
 
 REM Use webui.bat if available, otherwise fallback to python webui.py
+REM Note: --deforum-api is required for tuning tab to work
 if exist "webui.bat" (
-    call webui.bat --deforum-run-tuning %*
+    call webui.bat --deforum-api --deforum-run-tuning %*
 ) else (
-    python webui.py --deforum-run-tuning %*
+    python webui.py --deforum-api --deforum-run-tuning %*
 )
