@@ -507,7 +507,7 @@ class TuningTestManager:
                 # Use static init image (3D sphere) for ALL orbital tests
                 # This ensures we measure depth warping quality, not generation randomness
                 "use_init": True,
-                "strength": 0.95,  # Very high preservation for pure depth warp test (minimal diffusion)
+                "strength": 1.0,  # Perfect preservation = zero diffusion = pure depth warping only
                 "strength_0_no_init": False,  # Use init on frame 0 too
                 "init_image": str(shared_init_image),  # Path to shared sphere image
 
