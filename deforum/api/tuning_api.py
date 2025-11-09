@@ -303,6 +303,61 @@ class TuningTestManager:
                     status.progress = completed_tests / total_tests
                     status.results.append(result)
 
+    def _generate_cylinder_init_image(self, output_path: Path, width: int, height: int):
+        """Generate a 3D cylinder image for orbital depth warping tests.
+
+        Args:
+            output_path: Where to save the generated cylinder image
+            width: Image width
+            height: Image height
+        """
+        import requests
+        import shutil
+        from integration.utils import API_BASE_URL, wait_for_job_to_complete
+
+        logger.info("Submitting job to generate 3D cylinder test image...")
+
+        # Submit a single-frame generation job
+        settings = {
+            "deforum_settings": {
+                "W": width,
+                "H": height,
+                "seed": 42,
+                "sampler": "euler",
+                "steps": 20,
+                "cfg_scale": 1.0,
+                "distilled_cfg_scale": 3.5,
+                "animation_mode": "3D",
+                "render_mode": "new_3d",
+                "max_frames": 1,  # Just one frame
+                "animation_prompts": '{"0": "a simple 3D cylinder object perfectly centered in the frame, neutral gray background, dramatic side lighting showing depth and curvature, photorealistic shading, studio photography"}',
+                "batch_name": "cylinder_init",
+                "skip_video_creation": True,  # No need for video
+                "add_soundtrack": "None",
+            },
+            "options_overrides": {
+                "outdir_samples": str(output_path.parent),
+                "deforum_save_gen_info_as_srt": False,
+            }
+        }
+
+        response = requests.post(f"{API_BASE_URL}/batches", json=settings)
+        response.raise_for_status()
+        job_data = response.json()
+        job_id = job_data["job_ids"][0]
+
+        logger.info(f"Waiting for cylinder generation job {job_id}...")
+        job_status = wait_for_job_to_complete(job_id)
+
+        # Copy the generated frame to output_path
+        generated_dir = Path(job_status.outdir) / job_status.timestring
+        generated_frames = list(generated_dir.glob("*.png"))
+        if generated_frames:
+            shutil.copy(generated_frames[0], output_path)
+            logger.info(f"Cylinder image generated and saved to {output_path}")
+        else:
+            raise RuntimeError("Failed to generate cylinder init image")
+
     def _run_orbit_single_test(
         self,
         test_id: str,
@@ -364,7 +419,19 @@ class TuningTestManager:
 
         logger.info(f"Running orbit test: {test_name}")
 
+        # Use shared init image (3D cylinder) for all tests to ensure comparable metrics
+        # Generate it once on first test, reuse for all 81 tests
+        shared_init_image = output_dir / "shared_cylinder_init.png"
+
         try:
+            # Generate shared cylinder init image if it doesn't exist
+            if not shared_init_image.exists():
+                logger.info("Generating shared 3D cylinder init image (first test only)...")
+                self._generate_cylinder_init_image(shared_init_image, width, height)
+                logger.info(f"Shared cylinder image saved to: {shared_init_image}")
+            else:
+                logger.info(f"Using existing shared cylinder image: {shared_init_image}")
+
             # Generate orbit schedules
             schedules = generate_orbit_schedules(orbit_iterations, orbit_radius, rotation_factor)
 
@@ -381,11 +448,18 @@ class TuningTestManager:
                 # Basic settings
                 "W": width,
                 "H": height,
-                "seed": 42,
+                "seed": 42,  # Fixed seed for consistency
                 "sampler": "euler",
                 "steps": 20,
                 "cfg_scale": 1.0,
                 "distilled_cfg_scale": 3.5,
+
+                # Use static init image (3D cylinder) for ALL orbital tests
+                # This ensures we measure depth warping quality, not generation randomness
+                "use_init": True,
+                "strength": 0.85,  # High preservation to keep cylinder recognizable
+                "strength_0_no_init": False,  # Use init on frame 0 too
+                "init_image": str(shared_init_image),  # Path to shared cylinder image
 
                 # Animation settings
                 "animation_mode": "3D",
