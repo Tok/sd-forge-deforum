@@ -46,8 +46,8 @@ class TuningTestConfig(BaseModel):
     grayscale_threshold: float = Field(20.0, ge=0.0, le=50.0)
 
     # Orbit-specific parameters (for depth_warping_orbit test type)
-    aspect_ratios: Optional[List[Tuple[float, int, int]]] = Field(
-        None, description="List of (ratio, width, height) tuples for orbit tests"
+    aspect_ratios: Optional[List[List[float]]] = Field(
+        None, description="List of [ratio, width, height] arrays for orbit tests"
     )
     rotation_factor_min: Optional[float] = Field(None, ge=-10.0, le=-1.0)
     rotation_factor_max: Optional[float] = Field(None, ge=-10.0, le=-1.0)
@@ -270,7 +270,10 @@ class TuningTestManager:
         )
 
         # Run each aspect ratio × rotation factor combination
-        for aspect_ratio, width, height in config.aspect_ratios:
+        for aspect_config in config.aspect_ratios:
+            aspect_ratio = aspect_config[0]
+            width = int(aspect_config[1])
+            height = int(aspect_config[2])
             for rotation_factor in rotation_factors:
                 # Check if cancelled
                 with self.test_lock:
