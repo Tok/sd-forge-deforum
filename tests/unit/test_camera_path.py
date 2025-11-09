@@ -592,13 +592,14 @@ class TestSpeedMultiplier:
         assert abs(tx_half - tx_normal * 0.5) < 0.01, f"Half speed: {tx_half} != {tx_normal * 0.5}"
         assert abs(tx_double - tx_normal * 2.0) < 0.01, f"Double speed: {tx_double} != {tx_normal * 2.0}"
 
-        # Check rotation_3d_y scaling
+        # Check rotation_3d_y is NOT scaled (must maintain look-at relationship)
+        # Rotation deltas should remain the same regardless of speed_multiplier
         ry_normal = extract_delta(schedules_normal['rotation_3d_y'], 1)
         ry_half = extract_delta(schedules_half['rotation_3d_y'], 1)
         ry_double = extract_delta(schedules_double['rotation_3d_y'], 1)
 
-        assert abs(ry_half - ry_normal * 0.5) < 0.01, f"Half rotation: {ry_half} != {ry_normal * 0.5}"
-        assert abs(ry_double - ry_normal * 2.0) < 0.01, f"Double rotation: {ry_double} != {ry_normal * 2.0}"
+        assert abs(ry_half - ry_normal) < 0.01, f"Rotation should NOT scale: {ry_half} != {ry_normal}"
+        assert abs(ry_double - ry_normal) < 0.01, f"Rotation should NOT scale: {ry_double} != {ry_normal}"
 
     def test_speed_multiplier_works_all_path_types(self):
         """Test speed multiplier works for all path types."""

@@ -516,12 +516,14 @@ def camera_path_to_schedules(
         else:
             frame_speed = speed_multiplier
 
+        # Scale ONLY translation deltas, NOT rotation
+        # Rotation deltas must remain unchanged to maintain look-at relationship
+        # Otherwise, slow speeds cause camera to drift instead of rotate around center
         delta_x *= frame_speed
         delta_y *= frame_speed
         delta_z *= frame_speed
-        delta_rot_x *= frame_speed
-        delta_rot_y *= frame_speed
-        delta_rot_z *= frame_speed
+        # Rotation deltas NOT scaled - they must track center regardless of speed
+        # delta_rot_x, delta_rot_y, delta_rot_z unchanged
 
         # Output all as deltas (scaled by speed multiplier)
         schedules['translation_x'].append(f"{point.frame}: ({delta_x:.2f})")
