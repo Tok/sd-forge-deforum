@@ -21,6 +21,7 @@ from modules.ui import create_output_panel, wrap_gradio_call
 from modules.util import open_folder
 from modules.call_queue import wrap_gradio_gpu_call
 from deforum.orchestration.run_deforum import run_deforum
+from deforum.utils.system.logging import emoji
 from deforum.config.settings import (
     save_settings,
     load_all_settings,
@@ -389,13 +390,15 @@ def on_ui_tabs():
                     load_settings_btn = gr.Button(
                         "Load All Settings", elem_id="deforum_load_settings_btn"
                     )
+                    folder_emoji = f"{emoji.open_folder()} " if emoji.open_folder() else ""
                     open_folder_btn = gr.Button(
-                        "📂 Open Output Directory", elem_id="deforum_open_folder_btn"
+                        f"{folder_emoji}Open Output Directory", elem_id="deforum_open_folder_btn"
                     )
 
                 # Camera Path Visualization (real-time display)
                 with gr.Row(variant="compact"):
-                    gr.Markdown("### 🎬 Camera Path (3D Spline)")
+                    camera_emoji = f"{emoji.movie_camera()} " if emoji.movie_camera() else ""
+                    gr.Markdown(f"### {camera_emoji}Camera Path (3D Spline)")
                     show_shakify_in_camera_path = gr.Checkbox(
                         value=False,
                         label="Show Shakify Preview",
@@ -412,7 +415,8 @@ def on_ui_tabs():
 
                 # Frame Overlap Simulator (shows preservation/novelty metrics)
                 with gr.Row(variant="compact"):
-                    gr.Markdown("### 🔲 Frame Overlap Simulator (Worm Trail)")
+                    frame_emoji = f"{emoji.purple_square()} " if emoji.purple_square() else ""
+                    gr.Markdown(f"### {frame_emoji}Frame Overlap Simulator (Worm Trail)")
                     show_shakify_in_overlap = gr.Checkbox(
                         value=False,
                         label="Show Shakify Preview",
@@ -430,15 +434,18 @@ def on_ui_tabs():
 
                 # Path Analysis & Optimization (depth warping suitability)
                 with gr.Row(variant="compact"):
-                    gr.Markdown("### 📊 Path Analysis & Optimization")
+                    analysis_emoji = f"{emoji.distribution()} " if emoji.distribution() else ""
+                    gr.Markdown(f"### {analysis_emoji}Path Analysis & Optimization")
                 with gr.Row(variant="compact"):
+                    analyze_emoji = f"{emoji.distribution()} " if emoji.distribution() else ""
+                    optimize_emoji = f"{emoji.gear()} " if emoji.gear() else ""
                     analyze_path_btn = gr.Button(
-                        "📊 Analyze Camera Path",
+                        f"{analyze_emoji}Analyze Camera Path",
                         elem_id="deforum_analyze_path_btn",
                         variant="secondary",
                     )
                     optimize_path_btn = gr.Button(
-                        "⚙️ Auto-optimize for Depth Warping",
+                        f"{optimize_emoji}Auto-optimize for Depth Warping",
                         elem_id="deforum_optimize_path_btn",
                         variant="primary",
                     )
