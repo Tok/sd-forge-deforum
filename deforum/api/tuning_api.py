@@ -482,10 +482,15 @@ class TuningTestManager:
 
             logger.info(f"  Submitted job {job_id}, waiting for completion...")
 
-            # Wait for completion
-            logger.info(f"  Waiting for job {job_id} to complete...")
-            job_status = wait_for_job_to_complete(job_id, timeout=600)
-            logger.info(f"  Job {job_id} completed with status: {job_status.status}")
+            # Wait for completion (timeout handled by @retry decorator)
+            logger.info(f"  About to call wait_for_job_to_complete for job {job_id}...")
+            try:
+                job_status = wait_for_job_to_complete(job_id)  # No timeout param - handled by @retry
+                logger.info(f"  wait_for_job_to_complete returned successfully!")
+                logger.info(f"  Job {job_id} completed with status: {job_status.status}")
+            except Exception as e:
+                logger.error(f"  wait_for_job_to_complete raised exception: {e}")
+                raise
 
             # Load generated frames from job output directory
             # Deforum creates subdirectory: batch_name + "_" + timestring

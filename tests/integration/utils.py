@@ -109,10 +109,12 @@ def wait_for_job_to_complete(id : str):
     Raises:
         AssertionError: If job status is FAILED or CANCELLED
     """
+    print(f"[POLL] Attempting to poll job {id}...")
     response = requests.get(
         f"{API_BASE_URL}/jobs/{id}",
         headers={"accept": "application/json"}
     )
+    print(f"[POLL] Got response from API, status code: {response.status_code}")
     response.raise_for_status()
 
     # Parse JSON manually instead of using PydanticSession
