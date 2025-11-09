@@ -461,7 +461,7 @@ def on_ui_tabs():
                     speed_randomization=0.0
                 )
 
-                # Generate visualization with preset schedules
+                # Generate visualization with preset schedules (NO shakify on init)
                 return update_frame_overlap_visualization(
                     translation_x=schedules.get('translation_x', '0:(0)'),
                     translation_y=schedules.get('translation_y', '0:(0)'),
@@ -471,7 +471,11 @@ def on_ui_tabs():
                     rotation_3d_z=schedules.get('rotation_3d_z', '0:(0)'),
                     max_frames=333,
                     width=1920,
-                    height=1080
+                    height=1080,
+                    shake_name="None",  # Explicitly disable shakify on init
+                    shake_intensity=1.0,
+                    shake_speed=1.0,
+                    target_fps=60
                 )
 
             # Load visualization on UI startup with default preset
