@@ -25,22 +25,21 @@ from deforum.utils.system.logging import emoji as emoji_utils
 
 
 def _generate_rotate_around(
-    num_frames: int, radius: float, height: float, rotation_factor: float
+    num_frames: int, radius: float, height: float
 ) -> Tuple[list, str]:
-    """Generate rotate-around preset path."""
+    """Generate rotate-around preset path with quaternion look-at."""
     camera_path = generate_rotate_around_path(
         num_frames=num_frames,
         radius=radius,
         center_x=0.0,
         center_y=0.0,
         height=height,
-        rotation_factor=rotation_factor,
         use_sphere=True
     )
     status = (
         f"{emoji_utils.maybe_check()} Generated rotate-around path ({len(camera_path)} frames)\n"
-        f"Radius: {radius}, Height: {height}, Rotation Factor: {rotation_factor}\n"
-        f"Mode: Random sphere rotation (3D)"
+        f"Radius: {radius}, Height: {height}\n"
+        f"Mode: Sphere rotation with quaternion look-at (always faces center)"
     )
     return camera_path, status
 
@@ -248,7 +247,6 @@ def generate_preset_path(
     preset_type: str,
     radius: float,
     height: float,
-    rotation_factor: float,
     num_frames: int,
     closed_loop: bool,
     randomize: float = 0.0,
@@ -262,11 +260,12 @@ def generate_preset_path(
         preset_type: Type of preset ("rotate-around", "figure-eight", etc.)
         radius: Radius/scale of movement
         height: Vertical offset
-        rotation_factor: Rotation multiplier for rotate-around
         num_frames: Total frames
         closed_loop: Whether to loop (for applicable presets)
         randomize: Random offset amount (not yet implemented)
         random_seed: Seed for randomization (not yet implemented)
+        speed_multiplier: Translation speed control
+        speed_randomization: Speed variation amount
 
     Returns:
         Tuple of (status_message, schedules_dict, camera_path)
@@ -277,7 +276,7 @@ def generate_preset_path(
 
         if preset_type == "rotate-around":
             camera_path, status = _generate_rotate_around(
-                num_frames_int, radius, height, rotation_factor
+                num_frames_int, radius, height
             )
         elif preset_type == "figure-eight":
             camera_path, status = _generate_figure_eight(
@@ -695,7 +694,6 @@ def handle_generate_preset(
     speed_randomization: float,
     radius: float,
     height: float,
-    rotation_factor: float,
     num_frames: float,
     closed_loop: bool,
     randomize: float,
@@ -715,7 +713,7 @@ def handle_generate_preset(
     global _current_camera_path
 
     status, schedules, camera_path = generate_preset_path(
-        preset_type, radius, height, rotation_factor, num_frames, closed_loop,
+        preset_type, radius, height, num_frames, closed_loop,
         randomize, int(random_seed), speed_multiplier, speed_randomization
     )
 

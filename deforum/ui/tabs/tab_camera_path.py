@@ -76,7 +76,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     value=1.0,
                     step=0.1,
                     label="Speed Multiplier",
-                    info="Global speed control (affects ALL deltas). 0.5=half speed, 1.0=normal, 2.0=double"
+                    info="Translation speed (rotation auto-adjusts to track center). 0.5=half speed, 2.0=double"
                 )
 
             with FormRow(variant="compact"):
@@ -109,16 +109,6 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     step=10,
                     label="Height (Y)",
                     info="Vertical position offset"
-                )
-
-            with FormRow(variant="compact"):
-                preset_rotation_factor = gr.Slider(
-                    minimum=-10,
-                    maximum=10,
-                    value=-5,
-                    step=0.1,
-                    label="Rotation Factor",
-                    info="For rotate-around: rotation_y = translation_x * factor (typically -5)"
                 )
 
             with FormRow(variant="compact"):
@@ -344,7 +334,6 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
         'speed_randomization': speed_randomization,
         'preset_radius': preset_radius,
         'preset_height': preset_height,
-        'preset_rotation_factor': preset_rotation_factor,
         'preset_num_frames': preset_num_frames,
         'preset_closed_loop': preset_closed_loop,
         'preset_randomize': preset_randomize,

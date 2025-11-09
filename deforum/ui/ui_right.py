@@ -504,7 +504,6 @@ def on_ui_tabs():
                         components.get('speed_randomization'),
                         components.get('preset_radius'),
                         components.get('preset_height'),
-                        components.get('preset_rotation_factor'),
                         components.get('preset_num_frames'),
                         components.get('preset_closed_loop'),
                         components.get('preset_randomize'),
@@ -522,9 +521,9 @@ def on_ui_tabs():
                 def randomize_preset_wrapper(*args):
                     """Randomize by using current params but with random seed"""
                     args_list = list(args)
-                    args_list[9] = -1  # preset_random_seed index - force new randomization (shifted +2)
-                    if args_list[8] == 0:  # preset_randomize (shifted +2)
-                        args_list[8] = 0.5
+                    args_list[8] = -1  # preset_random_seed index - force new randomization
+                    if args_list[7] == 0:  # preset_randomize
+                        args_list[7] = 0.5
                     return handle_generate_preset(*args_list)
 
                 btn_randomize_preset.click(
@@ -535,7 +534,6 @@ def on_ui_tabs():
                         components.get('speed_randomization'),
                         components.get('preset_radius'),
                         components.get('preset_height'),
-                        components.get('preset_rotation_factor'),
                         components.get('preset_num_frames'),
                         components.get('preset_closed_loop'),
                         components.get('preset_randomize'),
@@ -581,7 +579,6 @@ def on_ui_tabs():
                         components.get('speed_randomization'),
                         components.get('preset_radius'),
                         components.get('preset_height'),
-                        components.get('preset_rotation_factor'),
                         components.get('preset_num_frames'),
                         components.get('preset_closed_loop'),
                         components.get('preset_randomize'),
@@ -603,7 +600,6 @@ def on_ui_tabs():
                         components.get('speed_randomization'),
                         components.get('preset_radius'),
                         components.get('preset_height'),
-                        components.get('preset_rotation_factor'),
                         components.get('preset_num_frames'),
                         components.get('preset_closed_loop'),
                         components.get('preset_randomize'),
