@@ -42,8 +42,9 @@ class Tween:
     def _generate(self, data, last_frame, prev_image):
         advanced_image = turbo_utils.advance_optical_flow_cadence_before_animation_warping(
             data, last_frame, self, data.images.before_previous, data.images.previous)
-        self.depth = Tween.calculate_depth_prediction(data, advanced_image)
-        processed_image = img_2_img_tubes.process_tween_tube(data, last_frame, self.i, self.depth)(advanced_image)
+        # Temporarily calculate depth from input for warping
+        temp_depth = Tween.calculate_depth_prediction(data, advanced_image)
+        processed_image = img_2_img_tubes.process_tween_tube(data, last_frame, self.i, temp_depth)(advanced_image)
         warped = turbo_utils.do_optical_flow_cadence_after_animation_warping(data, self, prev_image, processed_image)
 
         grayscale_tube = img_2_img_tubes.conditional_force_tween_to_grayscale_tube
@@ -52,6 +53,11 @@ class Tween:
         is_tween = True
         overlay_mask_tube = img_2_img_tubes.conditional_add_overlay_mask_tube
         masked = overlay_mask_tube(data, is_tween)(recolored)
+
+        # CRITICAL FIX: Calculate depth from the FINAL OUTPUT, not the input
+        # Next frame needs the depth of THIS frame's actual output to warp correctly
+        self.depth = Tween.calculate_depth_prediction(data, masked)
+
         return masked
 
     def handle_synchronous_status_concerns(self, data):
