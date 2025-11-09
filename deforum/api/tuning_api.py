@@ -421,6 +421,8 @@ class TuningTestManager:
                 "enable_subseed_scheduling": False,
                 "enable_sampler_scheduling": False,
                 "enable_clipskip_scheduling": False,
+                "enable_checkpoint_scheduling": False,
+                "checkpoint_schedule": "0:(0)",  # Override template's model name string
 
                 # Output directory
                 "batch_name": get_test_batch_name(test_name),
