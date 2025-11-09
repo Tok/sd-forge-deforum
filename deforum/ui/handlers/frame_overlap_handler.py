@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 from deforum.utils.frame_overlap_simulator import simulate_camera_path
 from deforum.utils.frame_overlap_visualizer import create_worm_trail_visualization
-from deforum.core.keyframes import get_inbetweens, parse_key_frames
+from deforum.core.keyframes import FrameInterpolater
 from deforum.utils.system.logging import get_logger
 
 logger = get_logger()
@@ -45,15 +45,23 @@ def update_frame_overlap_visualization(
         ty_schedule = translation_y or "0:(0)"
         ry_schedule = rotation_3d_y or "0:(0)"
 
+        # Create parser
+        parser = FrameInterpolater(max_frames=max_frames)
+
         # Parse keyframes
-        tx_keys = parse_key_frames(tx_schedule, max_frames)
-        ty_keys = parse_key_frames(ty_schedule, max_frames)
-        ry_keys = parse_key_frames(ry_schedule, max_frames)
+        tx_keys = parser.parse_key_frames(tx_schedule)
+        ty_keys = parser.parse_key_frames(ty_schedule)
+        ry_keys = parser.parse_key_frames(ry_schedule)
 
         # Interpolate between keyframes to get per-frame values
-        tx_values = get_inbetweens(tx_keys, max_frames)
-        ty_values = get_inbetweens(ty_keys, max_frames)
-        ry_values = get_inbetweens(ry_keys, max_frames)
+        tx_series = parser.get_inbetweens(tx_keys, integer=False)
+        ty_series = parser.get_inbetweens(ty_keys, integer=False)
+        ry_series = parser.get_inbetweens(ry_keys, integer=False)
+
+        # Convert pandas Series to lists
+        tx_values = tx_series.tolist()
+        ty_values = ty_series.tolist()
+        ry_values = ry_series.tolist()
 
         # Calculate frame-to-frame deltas (what the animation engine actually uses)
         tx_deltas = [tx_values[i] - tx_values[i - 1] if i > 0 else 0 for i in range(max_frames)]
