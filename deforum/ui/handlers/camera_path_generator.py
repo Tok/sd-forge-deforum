@@ -27,19 +27,21 @@ from deforum.utils.system.logging import emoji as emoji_utils
 def _generate_rotate_around(
     num_frames: int, radius: float, height: float
 ) -> Tuple[list, str]:
-    """Generate rotate-around preset path with quaternion look-at."""
+    """Generate rotate-around preset path with adaptive curve-following look-at."""
     camera_path = generate_rotate_around_path(
         num_frames=num_frames,
         radius=radius,
         center_x=0.0,
         center_y=0.0,
         height=height,
-        use_sphere=True
+        use_sphere=True,
+        look_at_mode="blend",  # Adaptive: looks inward on curves, forward on straights
+        look_at_blend=0.3  # Base 30% inward, adapts up to 80% on sharp curves
     )
     status = (
         f"{emoji_utils.maybe_check()} Generated rotate-around path ({len(camera_path)} frames)\n"
         f"Radius: {radius}, Height: {height}\n"
-        f"Mode: Sphere rotation with quaternion look-at (always faces center)"
+        f"Mode: Adaptive curve-following (tennis ball seam - looks into curves)"
     )
     return camera_path, status
 
