@@ -364,11 +364,11 @@ class TuningTestManager:
             # Generate orbit schedules
             schedules = generate_orbit_schedules(orbit_iterations, orbit_radius, rotation_factor)
 
-            # Configure job
-            options_overrides = get_test_options_overrides()
-            options_overrides.update({
+            # Configure job - use custom output directory for tuning results
+            options_overrides = {
+                "outdir_samples": str(test_dir),  # Use test-specific directory
                 "deforum_save_gen_info_as_srt": False,
-            })
+            }
 
             # Create minimal settings dict from scratch (no template)
             # Avoids 36+ single-keyframe schedules in template that cause KeyError: -1
