@@ -1,6 +1,7 @@
 """Handler for frame overlap simulator UI integration."""
 
 from typing import Optional
+import numpy as np
 
 from deforum.utils.frame_overlap_simulator import simulate_camera_path
 from deforum.utils.frame_overlap_canvas import create_canvas_html
@@ -73,6 +74,7 @@ def update_frame_overlap_visualization(
         # Parse FINAL schedule strings (base + shakify) to get per-frame values
         tx_schedule = final_schedules['translation_x']
         ty_schedule = final_schedules['translation_y']
+        rx_schedule = final_schedules['rotation_3d_x']
         ry_schedule = final_schedules['rotation_3d_y']
 
         # Create parser
@@ -81,11 +83,13 @@ def update_frame_overlap_visualization(
         # Parse keyframes
         tx_keys = parser.parse_key_frames(tx_schedule)
         ty_keys = parser.parse_key_frames(ty_schedule)
+        rx_keys = parser.parse_key_frames(rx_schedule)
         ry_keys = parser.parse_key_frames(ry_schedule)
 
         # Interpolate between keyframes to get per-frame values
         tx_series = parser.get_inbetweens(tx_keys, integer=False)
         ty_series = parser.get_inbetweens(ty_keys, integer=False)
+        rx_series = parser.get_inbetweens(rx_keys, integer=False)
         ry_series = parser.get_inbetweens(ry_keys, integer=False)
 
         # Convert pandas Series to lists
@@ -93,16 +97,34 @@ def update_frame_overlap_visualization(
         # Do NOT calculate deltas again - just use interpolated values directly
         tx_deltas = tx_series.tolist()
         ty_deltas = ty_series.tolist()
+        rx_deltas = rx_series.tolist()
         ry_deltas = ry_series.tolist()
+
+        # For 2D visualization, combine 3D rotations into effective 2D rotation
+        # Use pythagorean combination of rotation_x (pitch) and rotation_y (yaw)
+        # This approximates the apparent rotation seen in a 2D top-down view
+        combined_rotation_deltas = [
+            np.sqrt(rx**2 + ry**2) * np.sign(ry) if abs(ry) > abs(rx) else np.sqrt(rx**2 + ry**2) * np.sign(rx)
+            for rx, ry in zip(rx_deltas, ry_deltas)
+        ]
+
+        # Debug: Log first 20 frames of delta values
+        logger.debug("Frame overlap delta schedules (first 20 frames):")
+        for i in range(min(20, max_frames)):
+            logger.debug(
+                f"  Frame {i:3d}: tx={tx_deltas[i]:7.2f}, ty={ty_deltas[i]:7.2f}, "
+                f"rx={rx_deltas[i]:7.2f}, ry={ry_deltas[i]:7.2f}, combined_rot={combined_rotation_deltas[i]:7.2f}"
+            )
 
         # Zoom is always 1.0 for now (no zoom schedule yet)
         zoom_deltas = [1.0] * max_frames
 
         # Run frame overlap simulation
+        # Use combined 3D rotation for 2D visualization
         metrics = simulate_camera_path(
             translation_x_schedule=tx_deltas,
             translation_y_schedule=ty_deltas,
-            rotation_3d_y_schedule=ry_deltas,
+            rotation_3d_y_schedule=combined_rotation_deltas,
             zoom_schedule=zoom_deltas,
             viewport_width=float(width),
             viewport_height=float(height)
