@@ -326,5 +326,125 @@ class TestNoveltynMetricsForTuning:
         )
 
 
+class TestTranslationRotationRatios:
+    """Test optimal translation/rotation ratios for depth warping.
+
+    For best depth warping results, rotation should counter-act translation
+    to maintain high preservation. Optimal ratio is around -5.0:
+    - Moving left (+tx) → Rotate right (-ry) to look inward
+    - Moving right (-tx) → Rotate left (+ry) to look inward
+
+    Rule: rotation_delta_y ≈ -translation_delta_x / 5.0
+    """
+
+    def test_counter_rotation_maintains_preservation(self):
+        """Test that counter-rotation improves preservation vs no rotation."""
+        num_frames = 10
+        translation_per_frame = 50.0  # 50px per frame
+
+        # Without counter-rotation (camera drifts out of view)
+        tx_schedule_no_rotation = [translation_per_frame] * num_frames
+        ty_schedule = [0.0] * num_frames
+        ry_schedule_no_rotation = [0.0] * num_frames  # No rotation
+        zoom_schedule = [1.0] * num_frames
+
+        metrics_no_rotation = simulate_camera_path(
+            translation_x_schedule=tx_schedule_no_rotation,
+            translation_y_schedule=ty_schedule,
+            rotation_3d_y_schedule=ry_schedule_no_rotation,
+            zoom_schedule=zoom_schedule,
+            viewport_width=1920,
+            viewport_height=1080
+        )
+
+        # With optimal counter-rotation (camera looks inward)
+        # Rule: rotation_y = -translation_x / 5.0
+        rotation_per_frame = -translation_per_frame / 5.0  # -10 degrees
+        ry_schedule_with_rotation = [rotation_per_frame] * num_frames
+
+        metrics_with_rotation = simulate_camera_path(
+            translation_x_schedule=tx_schedule_no_rotation,
+            translation_y_schedule=ty_schedule,
+            rotation_3d_y_schedule=ry_schedule_with_rotation,
+            zoom_schedule=zoom_schedule,
+            viewport_width=1920,
+            viewport_height=1080
+        )
+
+        # Counter-rotation should maintain MUCH better preservation
+        avg_preservation_no_rotation = sum(m.preservation for m in metrics_no_rotation) / len(metrics_no_rotation)
+        avg_preservation_with_rotation = sum(m.preservation for m in metrics_with_rotation) / len(metrics_with_rotation)
+
+        assert avg_preservation_with_rotation > avg_preservation_no_rotation, (
+            f"Counter-rotation should improve preservation: "
+            f"{avg_preservation_with_rotation:.3f} > {avg_preservation_no_rotation:.3f}"
+        )
+
+    @pytest.mark.parametrize("ratio", [3.0, 5.0, 7.0, 10.0])
+    def test_translation_rotation_ratios(self, ratio):
+        """Test various translation/rotation ratios for preservation.
+
+        Ideal ratio is around 5.0 (5 pixels per degree).
+        """
+        num_frames = 20
+        translation_per_frame = 50.0
+        rotation_per_frame = -translation_per_frame / ratio
+
+        tx_schedule = [translation_per_frame] * num_frames
+        ty_schedule = [0.0] * num_frames
+        ry_schedule = [rotation_per_frame] * num_frames
+        zoom_schedule = [1.0] * num_frames
+
+        metrics = simulate_camera_path(
+            translation_x_schedule=tx_schedule,
+            translation_y_schedule=ty_schedule,
+            rotation_3d_y_schedule=ry_schedule,
+            zoom_schedule=zoom_schedule,
+            viewport_width=1920,
+            viewport_height=1080
+        )
+
+        avg_preservation = sum(m.preservation for m in metrics) / len(metrics)
+
+        # All ratios should maintain reasonable preservation (>70%)
+        # but ratio=5.0 should be optimal
+        assert avg_preservation > 0.70, (
+            f"Ratio {ratio}: preservation {avg_preservation:.3f} too low (<70%)"
+        )
+
+        # Print for analysis
+        print(f"Ratio {ratio:.1f} (tx={translation_per_frame}, ry={rotation_per_frame:.1f}°): "
+              f"Preservation={avg_preservation:.3f}")
+
+    def test_optimal_ratio_is_around_5(self):
+        """Test that ratio=5.0 provides near-optimal preservation."""
+        num_frames = 20
+        translation_per_frame = 50.0
+
+        results = {}
+        for ratio in [3.0, 4.0, 5.0, 6.0, 7.0]:
+            rotation_per_frame = -translation_per_frame / ratio
+
+            metrics = simulate_camera_path(
+                translation_x_schedule=[translation_per_frame] * num_frames,
+                translation_y_schedule=[0.0] * num_frames,
+                rotation_3d_y_schedule=[rotation_per_frame] * num_frames,
+                zoom_schedule=[1.0] * num_frames,
+                viewport_width=1920,
+                viewport_height=1080
+            )
+
+            avg_preservation = sum(m.preservation for m in metrics) / len(metrics)
+            results[ratio] = avg_preservation
+
+        # Ratio 5.0 should be among the best (top 2)
+        sorted_by_preservation = sorted(results.items(), key=lambda x: x[1], reverse=True)
+        best_ratios = [r for r, _ in sorted_by_preservation[:2]]
+
+        assert 5.0 in best_ratios, (
+            f"Ratio 5.0 should be among top 2, but results are: {sorted_by_preservation}"
+        )
+
+
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    pytest.main([__file__, "-v", "-s"])  # -s to show print statements
