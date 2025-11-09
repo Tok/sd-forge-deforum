@@ -541,6 +541,10 @@ def on_ui_tabs():
                 apply_shakify_toggle,
             ):
                 """Update frame overlap visualization with optional shakify overlay."""
+                # Guard against empty inputs during UI initialization
+                if tx is None and ty is None and tz is None:
+                    return '<div style="padding: 20px; color: #C8C8DC;">Loading frame overlap simulator...</div>'
+
                 # Get max_frames from motion settings if available, otherwise default to 333
                 max_frames = 333
                 width = int(width_val) if width_val else 1920
@@ -574,14 +578,14 @@ def on_ui_tabs():
 
             def init_overlap_viz_with_preset():
                 """Initialize frame overlap visualization with default 'rotate-around' preset."""
-                # Generate default rotate-around path
+                # Generate default rotate-around path with smaller radius to reduce rotation
                 _, schedules, _ = generate_preset_path(
                     preset_type="rotate-around",
-                    radius=100.0,
+                    radius=30.0,  # Reduced from 100 to minimize rotation
                     height=0.0,
                     num_frames=333,
                     closed_loop=True,
-                    speed_multiplier=1.0,
+                    speed_multiplier=0.5,  # Slower movement
                     speed_randomization=0.0,
                 )
 
@@ -689,16 +693,24 @@ def on_ui_tabs():
                 except Exception as e:
                     return f"❌ Analysis failed: {str(e)}"
 
-            def handle_optimize_path(tx, ty, tz):
+            def handle_optimize_path(tx, ty, tz, rx, ry, rz, width_val, height_val):
                 """Auto-optimize translation schedules for depth warping."""
                 try:
                     max_frames = 333
+                    width = int(width_val) if width_val else 1920
+                    height = int(height_val) if height_val else 1080
+
                     optimized_tx, optimized_ty, optimized_tz, status = (
                         auto_optimize_for_depth_warping(
                             translation_x=tx or "0:(0)",
                             translation_y=ty or "0:(0)",
                             translation_z=tz or "0:(0)",
+                            rotation_3d_x=rx or "0:(0)",
+                            rotation_3d_y=ry or "0:(0)",
+                            rotation_3d_z=rz or "0:(0)",
                             max_frames=max_frames,
+                            width=width,
+                            height=height,
                         )
                     )
 
@@ -729,6 +741,11 @@ def on_ui_tabs():
                     components.get("translation_x"),
                     components.get("translation_y"),
                     components.get("translation_z"),
+                    components.get("rotation_3d_x"),
+                    components.get("rotation_3d_y"),
+                    components.get("rotation_3d_z"),
+                    components.get("W"),
+                    components.get("H"),
                 ],
                 outputs=[
                     components.get("translation_x"),

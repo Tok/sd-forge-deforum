@@ -162,23 +162,36 @@ def create_canvas_html(
         }}
 
         function drawRectangle(corners, color, opacity, fill) {{
-            ctx.globalAlpha = Math.min(1.0, opacity * 1.2);  // Brighter stroke
+            // Add glow effect for better edge visibility
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 6;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+
+            // Draw thicker, brighter stroke
+            ctx.globalAlpha = Math.min(1.0, opacity * 1.5);  // Even brighter stroke
             ctx.strokeStyle = color;
-            ctx.lineWidth = 2.5;  // Thicker for better visibility
+            ctx.lineWidth = 3.5;  // Thicker for better visibility
             ctx.beginPath();
             ctx.moveTo(corners[0][0], corners[0][1]);
             for (let i = 1; i < corners.length; i++) {{
                 ctx.lineTo(corners[i][0], corners[i][1]);
             }}
             ctx.closePath();
+
+            // Very subtle fill to show overlap
             if (fill) {{
                 ctx.fillStyle = color;
-                ctx.globalAlpha = opacity * 0.08;  // Even lower fill (8% instead of 15%)
+                ctx.shadowBlur = 0;  // No glow on fill
+                ctx.globalAlpha = opacity * 0.04;  // Minimal fill (4% instead of 8%)
                 ctx.fill();
-                ctx.globalAlpha = Math.min(1.0, opacity * 1.2);  // Restore bright stroke
+                ctx.globalAlpha = Math.min(1.0, opacity * 1.5);  // Restore bright stroke
+                ctx.shadowBlur = 6;  // Restore glow for stroke
             }}
+
             ctx.stroke();
             ctx.globalAlpha = 1.0;
+            ctx.shadowBlur = 0;  // Clear glow after drawing
         }}
 
         function worldToCanvas(x, y, centerX, centerY) {{

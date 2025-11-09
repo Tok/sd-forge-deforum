@@ -25,7 +25,7 @@ def analyze_camera_path(
     rotation_3d_z: str,
     max_frames: int,
     width: int,
-    height: int
+    height: int,
 ) -> Tuple[List[FrameMetrics], Dict[str, float]]:
     """Analyze camera path for depth warping suitability.
 
@@ -73,7 +73,7 @@ def analyze_camera_path(
         rotation_3d_y_schedule=ry_deltas,
         zoom_schedule=zoom_deltas,
         viewport_width=float(width),
-        viewport_height=float(height)
+        viewport_height=float(height),
     )
 
     # Analyze results
@@ -84,18 +84,15 @@ def analyze_camera_path(
     frames_below_target = sum(1 for p in preservations if p < TARGET_PRESERVATION)
     frames_below_minimum = sum(1 for p in preservations if p < MIN_ACCEPTABLE_PRESERVATION)
 
-    problem_frames = [
-        i for i, p in enumerate(preservations)
-        if p < MIN_ACCEPTABLE_PRESERVATION
-    ]
+    problem_frames = [i for i, p in enumerate(preservations) if p < MIN_ACCEPTABLE_PRESERVATION]
 
     analysis = {
-        'avg_preservation': float(avg_preservation),
-        'min_preservation': float(min_preservation),
-        'frames_below_target': frames_below_target / len(metrics),
-        'frames_below_minimum': frames_below_minimum / len(metrics),
-        'problem_frames': problem_frames,
-        'total_frames': len(metrics)
+        "avg_preservation": float(avg_preservation),
+        "min_preservation": float(min_preservation),
+        "frames_below_target": frames_below_target / len(metrics),
+        "frames_below_minimum": frames_below_minimum / len(metrics),
+        "problem_frames": problem_frames,
+        "total_frames": len(metrics),
     }
 
     return metrics, analysis
@@ -110,10 +107,10 @@ def generate_optimization_report(analysis: Dict[str, float]) -> str:
     Returns:
         Formatted markdown report with recommendations
     """
-    avg = analysis['avg_preservation']
-    min_pres = analysis['min_preservation']
-    pct_below_target = analysis['frames_below_target'] * 100
-    pct_below_min = analysis['frames_below_minimum'] * 100
+    avg = analysis["avg_preservation"]
+    min_pres = analysis["min_preservation"]
+    pct_below_target = analysis["frames_below_target"] * 100
+    pct_below_min = analysis["frames_below_minimum"] * 100
 
     # Overall assessment
     if avg >= TARGET_PRESERVATION:
@@ -179,21 +176,74 @@ def auto_optimize_for_depth_warping(
     translation_x: str,
     translation_y: str,
     translation_z: str,
+    rotation_3d_x: str,
+    rotation_3d_y: str,
+    rotation_3d_z: str,
     max_frames: int,
-    target_preservation: float = TARGET_PRESERVATION
+    width: int,
+    height: int,
+    target_preservation: float = TARGET_PRESERVATION,
 ) -> Tuple[str, str, str, str]:
     """Automatically optimize translation schedules for depth warping.
 
-    Strategy: Scale down translation values to achieve target preservation.
+    Strategy:
+    1. Analyze current path to get actual preservation metrics
+    2. Calculate optimal scale factor to reach target preservation
+    3. Only scale translation (preserve rotation schedules completely)
 
     Args:
         translation_x/y/z: Original translation schedule strings
+        rotation_3d_x/y/z: Original rotation schedules (preserved, not modified)
         max_frames: Number of frames
+        width/height: Viewport dimensions
         target_preservation: Target preservation (default: 0.90)
 
     Returns:
         (optimized_tx, optimized_ty, optimized_tz, status_message)
     """
+    # First analyze current path to get baseline metrics
+    try:
+        _, analysis = analyze_camera_path(
+            translation_x or "0:(0)",
+            translation_y or "0:(0)",
+            translation_z or "0:(0)",
+            rotation_3d_x or "0:(0)",
+            rotation_3d_y or "0:(0)",
+            rotation_3d_z or "0:(0)",
+            max_frames,
+            width,
+            height,
+        )
+    except Exception as e:
+        return translation_x, translation_y, translation_z, f"❌ Analysis failed: {str(e)}"
+
+    current_preservation = analysis["avg_preservation"]
+
+    # If already at target, no optimization needed
+    if current_preservation >= target_preservation:
+        return (
+            translation_x,
+            translation_y,
+            translation_z,
+            f"""✅ Already Optimized!
+
+**Current Preservation:** {current_preservation:.1%}
+**Target:** {target_preservation:.0%}
+
+No changes needed - your camera path is already suitable for depth warping!
+""",
+        )
+
+    # Calculate scale factor needed to reach target
+    # Preservation is roughly linear with translation magnitude
+    # If we have 80% and want 90%, we need to scale translation by (80/90) = 0.89
+    if current_preservation > 0.3:  # Only if we have reasonable baseline
+        scale_factor = current_preservation / target_preservation
+        scale_factor = max(0.3, min(0.95, scale_factor))  # Clamp to reasonable range
+    else:
+        # Path is too aggressive, use conservative 50% scale
+        scale_factor = 0.5
+
     # Parse original schedules
     tx_dict = parse_schedule_string(translation_x or "0:(0)", max_frames)
     ty_dict = parse_schedule_string(translation_y or "0:(0)", max_frames)
@@ -204,16 +254,12 @@ def auto_optimize_for_depth_warping(
     ty_interp = interpolate_schedule_values(ty_dict, max_frames)
     tz_interp = interpolate_schedule_values(tz_dict, max_frames)
 
-    # Calculate magnitude of movement
+    # Calculate magnitude of movement (for reporting)
     avg_tx = np.mean(np.abs(tx_interp))
     avg_ty = np.mean(np.abs(ty_interp))
     avg_tz = np.mean(np.abs(tz_interp))
 
-    # Scale factor: reduce by 30-50% for better preservation
-    # This is empirical - could be refined with actual metrics
-    scale_factor = 0.6  # 60% of original = 40% reduction
-
-    # Apply scaling
+    # Apply scaling to translation only (preserve rotation completely)
     tx_scaled = [v * scale_factor for v in tx_interp]
     ty_scaled = [v * scale_factor for v in ty_interp]
     tz_scaled = [v * scale_factor for v in tz_interp]
@@ -232,16 +278,21 @@ def auto_optimize_for_depth_warping(
     optimized_ty = values_to_schedule(ty_scaled, max_frames)
     optimized_tz = values_to_schedule(tz_scaled, max_frames)
 
+    # Predict new preservation (rough estimate)
+    predicted_preservation = min(0.99, current_preservation / scale_factor)
+
     status = f"""✅ Optimized for depth warping!
 
-**Changes Applied:**
-- Translation speed reduced to {scale_factor*100:.0f}% of original
-- Original avg movement: X={avg_tx:.1f}px, Y={avg_ty:.1f}px, Z={avg_tz:.1f}px
-- Optimized avg movement: X={avg_tx*scale_factor:.1f}px, Y={avg_ty*scale_factor:.1f}px, Z={avg_tz*scale_factor:.1f}px
+**Before:**
+- Preservation: {current_preservation:.1%}
+- Avg translation: X={avg_tx:.1f}px, Y={avg_ty:.1f}px, Z={avg_tz:.1f}px
 
-**Expected Result:** ~{target_preservation:.0%} frame preservation (great for depth warping)
+**After:**
+- Translation scaled to {scale_factor*100:.0f}% of original
+- Predicted preservation: ~{predicted_preservation:.1%}
+- Avg translation: X={avg_tx*scale_factor:.1f}px, Y={avg_ty*scale_factor:.1f}px, Z={avg_tz*scale_factor:.1f}px
 
-**Note:** This is a conservative optimization. You can manually fine-tune if needed.
+**Note:** Rotation schedules preserved (not modified). Click "Analyze Camera Path" to verify results.
 """
 
     return optimized_tx, optimized_ty, optimized_tz, status
