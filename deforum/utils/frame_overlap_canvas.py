@@ -123,49 +123,62 @@ def create_canvas_html(
     viewport_height = metrics_list[0].curr_viewport_rect.height
     padding_factor = 1.8
 
+    # Generate unique ID to avoid conflicts with multiple instances
+    import random
+    canvas_id = f"frameCanvas_{random.randint(1000, 9999)}"
+
     html = f'''
-    <div style="padding: 0; margin: 0;">
-        <canvas id="frameCanvas" width="{width}" height="{height}"
-                style="display: block; margin: 0 auto 10px auto; background-color: {COLOR_BG}; border-radius: 4px;"></canvas>
+    <div style="width: 100%; max-width: {width}px; margin: 0 auto;">
+        <canvas id="{canvas_id}" width="{width}" height="{height}"
+                style="width: 100%; height: auto; display: block; margin: 0 auto 10px auto; background-color: {COLOR_BG}; border-radius: 4px;"></canvas>
 
         <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-            <button id="playBtn" class="gr-button gr-button-lg gr-button-primary" style="padding: 4px 12px; min-width: 80px;">
+            <button id="{canvas_id}_playBtn"
+                    style="background: linear-gradient(to right, #7c3aed, #a855f7); color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
                 ▶ Play
             </button>
-            <button id="pauseBtn" class="gr-button gr-button-lg gr-button-secondary" style="padding: 4px 12px; min-width: 80px;">
+            <button id="{canvas_id}_pauseBtn"
+                    style="background: transparent; color: var(--body-text-color); border: 1px solid var(--border-color-primary); padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
                 ⏸ Pause
             </button>
-            <span id="frameInfo" style="margin-left: 8px; font-size: 0.875rem;">Frame: 0</span>
+            <span id="{canvas_id}_frameInfo" style="margin-left: 8px; font-size: 14px;">Frame: 0</span>
             <div style="flex: 1;"></div>
-            <div id="metricsInfo" style="font-size: 0.875rem; text-align: right;">
-                <span>Preservation: <span id="preservation">100.0</span>%</span>
-                <span style="margin-left: 12px;">Novelty: <span id="novelty">0.0</span>%</span>
+            <div id="{canvas_id}_metricsInfo" style="font-size: 14px; text-align: right;">
+                <span>Preservation: <span id="{canvas_id}_preservation">100.0</span>%</span>
+                <span style="margin-left: 12px;">Novelty: <span id="{canvas_id}_novelty">0.0</span>%</span>
             </div>
         </div>
 
-        <input type="range" id="frameSlider" min="0" max="{len(metrics_list) - 1}" value="0"
+        <input type="range" id="{canvas_id}_frameSlider" min="0" max="{len(metrics_list) - 1}" value="0"
                style="width: 100%; margin-bottom: 8px; cursor: pointer;">
 
         <div style="display: flex; gap: 8px; align-items: center;">
-            <label style="font-size: 0.875rem; min-width: 50px;">Speed:</label>
-            <input type="range" id="speedSlider" min="1" max="60" value="{playback_fps}"
+            <label style="font-size: 14px; min-width: 50px;">Speed:</label>
+            <input type="range" id="{canvas_id}_speedSlider" min="1" max="60" value="{playback_fps}"
                    style="flex: 1; cursor: pointer;">
-            <span id="speedInfo" style="font-size: 0.875rem; min-width: 50px;">{playback_fps} fps</span>
+            <span id="{canvas_id}_speedInfo" style="font-size: 14px; min-width: 50px;">{playback_fps} fps</span>
         </div>
     </div>
 
-    <script>
+    <script type="text/javascript">
     (function() {{
-        const canvas = document.getElementById('frameCanvas');
+        console.log('Frame overlap simulator script loading...');
+        const canvas = document.getElementById('{canvas_id}');
+        if (!canvas) {{
+            console.error('Canvas element not found: {canvas_id}');
+            return;
+        }}
         const ctx = canvas.getContext('2d');
-        const playBtn = document.getElementById('playBtn');
-        const pauseBtn = document.getElementById('pauseBtn');
-        const slider = document.getElementById('frameSlider');
-        const speedSlider = document.getElementById('speedSlider');
-        const frameInfo = document.getElementById('frameInfo');
-        const speedInfo = document.getElementById('speedInfo');
-        const preservationSpan = document.getElementById('preservation');
-        const noveltySpan = document.getElementById('novelty');
+        const playBtn = document.getElementById('{canvas_id}_playBtn');
+        const pauseBtn = document.getElementById('{canvas_id}_pauseBtn');
+        const slider = document.getElementById('{canvas_id}_frameSlider');
+        const speedSlider = document.getElementById('{canvas_id}_speedSlider');
+        const frameInfo = document.getElementById('{canvas_id}_frameInfo');
+        const speedInfo = document.getElementById('{canvas_id}_speedInfo');
+        const preservationSpan = document.getElementById('{canvas_id}_preservation');
+        const noveltySpan = document.getElementById('{canvas_id}_novelty');
+
+        console.log('All elements found, initializing...');
 
         // Frame data from Python
         const frames = {json.dumps(frames_data)};
@@ -326,10 +339,10 @@ def create_canvas_html(
             requestAnimationFrame(animate);
 
             // Toggle button states
-            playBtn.classList.remove('gr-button-primary');
-            playBtn.classList.add('gr-button-secondary');
-            pauseBtn.classList.remove('gr-button-secondary');
-            pauseBtn.classList.add('gr-button-primary');
+            playBtn.style.background = 'transparent';
+            playBtn.style.border = '1px solid var(--border-color-primary)';
+            pauseBtn.style.background = 'linear-gradient(to right, #7c3aed, #a855f7)';
+            pauseBtn.style.border = 'none';
         }});
 
         pauseBtn.addEventListener('click', () => {{
@@ -337,10 +350,10 @@ def create_canvas_html(
             isPlaying = false;
 
             // Toggle button states
-            pauseBtn.classList.remove('gr-button-primary');
-            pauseBtn.classList.add('gr-button-secondary');
-            playBtn.classList.remove('gr-button-secondary');
-            playBtn.classList.add('gr-button-primary');
+            pauseBtn.style.background = 'transparent';
+            pauseBtn.style.border = '1px solid var(--border-color-primary)';
+            playBtn.style.background = 'linear-gradient(to right, #7c3aed, #a855f7)';
+            playBtn.style.border = 'none';
         }});
 
         slider.addEventListener('input', (e) => {{
@@ -354,7 +367,9 @@ def create_canvas_html(
         }});
 
         // Initial render
+        console.log('Rendering initial frame...');
         renderFrame(0);
+        console.log('Frame overlap simulator initialized successfully!');
     }})();
     </script>
     '''
