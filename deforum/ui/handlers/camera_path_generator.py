@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import numpy as np
 from deforum.utils.spline_camera_path import (
     generate_rotate_around_path,
+    generate_parallax_orbit_path,
     generate_camera_path,
     generate_control_points_circle,
     generate_control_points_figure_eight,
@@ -22,6 +23,27 @@ from deforum.utils.system.logging import emoji as emoji_utils
 # ============================================================================
 # PURE FUNCTIONS - Preset Type Handlers
 # ============================================================================
+
+
+def _generate_parallax_orbit(
+    num_frames: int, radius: float, height: float
+) -> Tuple[list, str]:
+    """Generate parallax orbit preset path with visible rotation."""
+    camera_path = generate_parallax_orbit_path(
+        num_frames=num_frames,
+        radius=radius,
+        height=height,
+        center_x=0.0,
+        center_y=0.0,
+        center_z=0.0
+    )
+    status = (
+        f"{emoji_utils.maybe_check()} Generated parallax orbit ({len(camera_path)} frames)\n"
+        f"Radius: {radius}, Height: {height}\n"
+        f"Mode: Translation orbits, rotation slower (60%) → parallax via depth warping\n"
+        f"Optimized for Deforum's img2img + depth pipeline"
+    )
+    return camera_path, status
 
 
 def _generate_rotate_around(
@@ -274,7 +296,11 @@ def generate_preset_path(
         # Type-specific handler dispatch
         num_frames_int = int(num_frames)
 
-        if preset_type == "rotate-around":
+        if preset_type == "parallax-orbit":
+            camera_path, status = _generate_parallax_orbit(
+                num_frames_int, radius, height
+            )
+        elif preset_type == "rotate-around":
             camera_path, status = _generate_rotate_around(
                 num_frames_int, radius, height
             )

@@ -55,6 +55,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
             with FormRow(variant="compact"):
                 preset_type = gr.Dropdown(
                     choices=[
+                        "parallax-orbit",
                         "rotate-around",
                         "figure-eight",
                         "forward-zoom",
@@ -64,7 +65,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                         "dashcam",
                         "bodycam"
                     ],
-                    value="rotate-around",
+                    value="parallax-orbit",
                     label="Preset Type",
                     info="Choose a camera movement pattern"
                 )

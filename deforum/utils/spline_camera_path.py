@@ -324,6 +324,72 @@ def generate_rotate_around_path(
     return camera_path
 
 
+def generate_parallax_orbit_path(
+    num_frames: int,
+    radius: float,
+    height: float = 0.0,
+    center_x: float = 0.0,
+    center_y: float = 0.0,
+    center_z: float = 0.0
+) -> List[CameraPoint]:
+    """Generate parallax orbit path - optimized for Deforum's depth warping.
+
+    Translation orbits around center, rotation is intentionally slower (60%)
+    to create parallax effect via depth prediction. This makes rotation VISIBLE
+    to img2img (1-2° per frame vs 0.3° for rotate-around).
+
+    Key difference from rotate-around:
+    - Rotate-around: Camera looks AT center (quaternion look-at, tiny rotation deltas)
+    - Parallax-orbit: Camera rotates slower than orbit (creates parallax via depth warp)
+
+    Args:
+        num_frames: Number of frames to generate
+        radius: Radius of circular orbit
+        height: Vertical position (Y offset)
+        center_x, center_y, center_z: Center position
+
+    Returns:
+        List of CameraPoint objects with visible rotation for depth warping
+    """
+    camera_path = []
+
+    # One complete orbit over animation
+    frames_per_orbit = float(num_frames)
+
+    # Rotation is SLOWER than translation to create parallax
+    # This makes depth warping work better - background shifts more than rotation
+    rotation_speed_factor = 0.6  # Rotate 60% as fast as orbit (creates parallax)
+
+    for frame_idx in range(num_frames):
+        # Translation: orbit around center
+        angle = 2 * np.pi * frame_idx / frames_per_orbit
+        x = center_x + radius * np.cos(angle)
+        z = center_z + radius * np.sin(angle)
+        y = center_y + height
+
+        # Rotation: slower than translation (creates parallax via depth warping)
+        # Rotation amount should be VISIBLE (1-2° per frame, not 0.3°)
+        rotation_angle = 360.0 * rotation_speed_factor * frame_idx / frames_per_orbit
+
+        # Simple Y-rotation (pan) - faces roughly forward with gradual turn
+        # This creates the parallax: camera moves around object faster than it rotates
+        rot_y = rotation_angle
+        rot_x = 0.0  # Keep level
+        rot_z = 0.0  # No roll
+
+        camera_path.append(CameraPoint(
+            x=x,
+            y=y,
+            z=z,
+            rot_x=rot_x,
+            rot_y=rot_y,
+            rot_z=rot_z,
+            frame=frame_idx
+        ))
+
+    return camera_path
+
+
 def generate_street_path(
     num_frames: int,
     street_length: float = 500.0,
