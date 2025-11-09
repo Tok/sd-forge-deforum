@@ -162,9 +162,9 @@ def create_canvas_html(
         }}
 
         function drawRectangle(corners, color, opacity, fill) {{
-            ctx.globalAlpha = opacity;
+            ctx.globalAlpha = Math.min(1.0, opacity * 1.2);  // Brighter stroke
             ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;  // Thicker for better visibility
             ctx.beginPath();
             ctx.moveTo(corners[0][0], corners[0][1]);
             for (let i = 1; i < corners.length; i++) {{
@@ -173,9 +173,9 @@ def create_canvas_html(
             ctx.closePath();
             if (fill) {{
                 ctx.fillStyle = color;
-                ctx.globalAlpha = opacity * 0.15;
+                ctx.globalAlpha = opacity * 0.08;  // Even lower fill (8% instead of 15%)
                 ctx.fill();
-                ctx.globalAlpha = opacity;
+                ctx.globalAlpha = Math.min(1.0, opacity * 1.2);  // Restore bright stroke
             }}
             ctx.stroke();
             ctx.globalAlpha = 1.0;
