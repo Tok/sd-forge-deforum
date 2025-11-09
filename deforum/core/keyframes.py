@@ -182,14 +182,15 @@ class FrameInterpolater:
                 try:
                     key_frame_series[i] = (
                         numexpr.evaluate(value) if not is_single_string
-                        else float(sanitized_value)
+                        else sanitized_value  # Store string directly, don't convert to float
                     )
                 except SyntaxError as e:
                     e.filename = f"{filename}@frame#{i}"
                     raise e
             elif is_single_string:
-                # Replicate previous string value
-                key_frame_series[i] = key_frame_series[i-1]
+                # Replicate previous string value (only if not first frame)
+                if i > 0:
+                    key_frame_series[i] = key_frame_series[i-1]
 
         # Convert to appropriate type
         key_frame_series = (
