@@ -419,11 +419,13 @@ class TuningTestManager:
                 "enable_clipskip_scheduling": False,
                 "enable_checkpoint_scheduling": False,
 
-                # Explicitly set all schedule fields to prevent defaults from kicking in
+                # Explicitly set ALL schedule fields to prevent defaults from kicking in
                 # Must use multi-frame format (not "0:(x)") to avoid KeyError: -1
+                # Missing ANY of these causes defaults with single-keyframe format
                 "checkpoint_schedule": "0:(0), 1:(0)",
                 "clipskip_schedule": "0:(2), 1:(2)",
                 "sampler_schedule": '0:("euler"), 1:("euler")',
+                "scheduler_schedule": '0:("Simple"), 1:("Simple")',
                 "noise_schedule": "0:(0.02), 1:(0.02)",
                 "strength_schedule": "0:(0.65), 1:(0.65)",
                 "contrast_schedule": "0:(1.0), 1:(1.0)",
@@ -434,6 +436,26 @@ class TuningTestManager:
                 "fov_schedule": "0:(70), 1:(70)",
                 "near_schedule": "0:(200), 1:(200)",
                 "far_schedule": "0:(10000), 1:(10000)",
+                "aspect_ratio_schedule": "0:(1.0), 1:(1.0)",
+                "subseed_schedule": "0:(1), 1:(1)",
+                "subseed_strength_schedule": "0:(0), 1:(0)",
+                "mask_schedule": '0:("{video_mask}"), 1:("{video_mask}")',
+                "noise_mask_schedule": '0:("{video_mask}"), 1:("{video_mask}")',
+                "noise_multiplier_schedule": "0:(1.0), 1:(1.0)",
+                "ddim_eta_schedule": "0:(0), 1:(0)",
+                "ancestral_eta_schedule": "0:(1), 1:(1)",
+                "amount_schedule": "0:(0), 1:(0)",
+                "kernel_schedule": "0:(5), 1:(5)",
+                "sigma_schedule": "0:(1), 1:(1)",
+                "threshold_schedule": "0:(0), 1:(0)",
+                "cadence_flow_factor_schedule": "0:(1), 1:(1)",
+                "redo_flow_factor_schedule": "0:(1), 1:(1)",
+                "image_strength_schedule": "0:(0.85), 1:(0.85)",
+                "image_keyframe_strength_schedule": "0:(0.20), 1:(0.20)",
+                "blendFactorMax": "0:(0.35), 1:(0.35)",
+                "blendFactorSlope": "0:(0.25), 1:(0.25)",
+                "tweening_frames_schedule": "0:(20), 1:(20)",
+                "color_correction_factor": "0:(0.075), 1:(0.075)",
 
                 # Output directory
                 "batch_name": get_test_batch_name(test_name),
