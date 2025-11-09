@@ -438,7 +438,8 @@ class TuningTestManager:
             )
             response.raise_for_status()
             job_data = response.json()
-            job_id = job_data["job_id"]
+            job_ids = job_data["job_ids"]  # Batches endpoint returns array
+            job_id = job_ids[0]  # Get first job from batch
 
             logger.info(f"  Submitted job {job_id}, waiting for completion...")
 
