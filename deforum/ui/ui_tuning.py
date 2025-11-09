@@ -450,14 +450,26 @@ def create_tuning_tab() -> tuple:
                         create_metrics_plot,
                         create_heatmap_plot,
                         find_best_configuration,
+                        create_orbit_metrics_plot,
+                        create_orbit_heatmap,
+                        find_best_orbit_configuration,
                     )
 
                     df = pd.DataFrame(status["results"])
-                    best_config = find_best_configuration(status["results"])
 
-                    # Generate charts
-                    metrics_fig = create_metrics_plot(status["results"])
-                    heatmap_fig = create_heatmap_plot(status["results"], 'overall_score')
+                    # Detect test type from results structure
+                    is_orbit = 'rotation_factor' in status["results"][0]
+
+                    if is_orbit:
+                        # Orbit test visualization
+                        best_config = find_best_orbit_configuration(status["results"])
+                        metrics_fig = create_orbit_metrics_plot(status["results"])
+                        heatmap_fig = create_orbit_heatmap(status["results"], 'overall_score')
+                    else:
+                        # Standard I2V chaining test visualization
+                        best_config = find_best_configuration(status["results"])
+                        metrics_fig = create_metrics_plot(status["results"])
+                        heatmap_fig = create_heatmap_plot(status["results"], 'overall_score')
 
                     return status_msg, df, best_config, metrics_fig, heatmap_fig
 
