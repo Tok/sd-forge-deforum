@@ -125,9 +125,15 @@ class DeforumLogger:
             msg: Message text
             emoji: Optional emoji name
             **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
+                     exc_info=True will print traceback
         """
         if self._should_log(LogLevel.ERROR):
+            # Extract exc_info if present (print() doesn't support it)
+            exc_info = kwargs.pop('exc_info', False)
             print(self._format_message('error', msg, emoji), **kwargs)
+            if exc_info:
+                import traceback
+                traceback.print_exc()
 
     def critical(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log critical error message.
