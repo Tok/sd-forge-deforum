@@ -19,6 +19,7 @@ from typing import List, Tuple, Dict
 import numpy as np
 from scipy import interpolate
 from deforum.utils.math.quaternion import look_at_target
+from deforum.utils.system.logging import log as log_utils
 
 
 @dataclass(frozen=True)
@@ -384,6 +385,49 @@ def _normalize_angle_delta(delta: float) -> float:
     return delta
 
 
+def _print_camera_path_analysis(delta_analysis: Dict[str, List[float]], camera_path: List[CameraPoint]):
+    """Print translation/rotation ratio analysis to console.
+
+    For circular orbit paths, the expected ratio is: rot_y / trans_x ≈ 57.3 / radius
+    - radius=100: expect ~0.57
+    - radius=50: expect ~1.15
+    - radius=25: expect ~2.29
+
+    Args:
+        delta_analysis: Dict of delta lists for each axis
+        camera_path: Original camera path for frame count
+    """
+    # Calculate average absolute deltas (ignore direction for ratio calc)
+    avg_trans_x = np.mean(np.abs(delta_analysis['translation_x']))
+    avg_trans_y = np.mean(np.abs(delta_analysis['translation_y']))
+    avg_trans_z = np.mean(np.abs(delta_analysis['translation_z']))
+    avg_rot_x = np.mean(np.abs(delta_analysis['rotation_x']))
+    avg_rot_y = np.mean(np.abs(delta_analysis['rotation_y']))
+    avg_rot_z = np.mean(np.abs(delta_analysis['rotation_z']))
+
+    # Calculate ratios (avoid division by zero)
+    def safe_ratio(a, b):
+        return a / b if abs(b) > 0.01 else 0.0
+
+    ratio_y_to_x = safe_ratio(avg_rot_y, avg_trans_x)  # Primary orbit ratio
+    ratio_x_to_y = safe_ratio(avg_rot_x, avg_trans_y)  # Vertical tilt ratio
+    ratio_z_to_z = safe_ratio(avg_rot_z, avg_trans_z)  # Roll ratio
+
+    # Estimate orbit radius from translation magnitude (rough approximation)
+    # For circular orbit: trans ≈ 2πR / frames_per_orbit
+    # Expected ratio: rot_y / trans_x ≈ 180 / (π * R) ≈ 57.3 / R
+    estimated_radius = 57.3 / ratio_y_to_x if ratio_y_to_x > 0.1 else 0.0
+
+    log_utils.info("📊 Camera Path Analysis:", log_utils.BLUE)
+    log_utils.info(f"   Frames: {len(camera_path)}", log_utils.BLUE)
+    log_utils.info(f"   Avg Translation Deltas: X={avg_trans_x:.3f}, Y={avg_trans_y:.3f}, Z={avg_trans_z:.3f}", log_utils.BLUE)
+    log_utils.info(f"   Avg Rotation Deltas: X={avg_rot_x:.3f}°, Y={avg_rot_y:.3f}°, Z={avg_rot_z:.3f}°", log_utils.BLUE)
+    log_utils.info("   Translation/Rotation Ratios:", log_utils.BLUE)
+    log_utils.info(f"      rot_y / trans_x = {ratio_y_to_x:.2f} (estimated orbit radius: ~{estimated_radius:.0f})", log_utils.BLUE)
+    log_utils.info(f"      rot_x / trans_y = {ratio_x_to_y:.2f} (vertical tilt)", log_utils.BLUE)
+    log_utils.info(f"      rot_z / trans_z = {ratio_z_to_z:.2f} (roll)", log_utils.BLUE)
+
+
 def camera_path_to_schedules(
     camera_path: List[CameraPoint],
     speed_multiplier: float = 1.0,
@@ -486,6 +530,16 @@ def camera_path_to_schedules(
     else:
         speed_per_frame = None
 
+    # Track deltas for ratio analysis
+    delta_analysis = {
+        'translation_x': [],
+        'translation_y': [],
+        'translation_z': [],
+        'rotation_x': [],
+        'rotation_y': [],
+        'rotation_z': []
+    }
+
     for idx, point in enumerate(camera_path):
         # Normalize position (subtract offset so first frame is at origin)
         norm_x = point.x - offset_x
@@ -536,6 +590,15 @@ def camera_path_to_schedules(
         schedules['rotation_3d_y'].append(f"{point.frame}: ({delta_rot_y:.2f})")
         schedules['rotation_3d_z'].append(f"{point.frame}: ({delta_rot_z:.2f})")
 
+        # Track deltas for analysis (skip first frame which is all zeros)
+        if idx > 0:
+            delta_analysis['translation_x'].append(delta_x)
+            delta_analysis['translation_y'].append(delta_y)
+            delta_analysis['translation_z'].append(delta_z)
+            delta_analysis['rotation_x'].append(delta_rot_x)
+            delta_analysis['rotation_y'].append(delta_rot_y)
+            delta_analysis['rotation_z'].append(delta_rot_z)
+
         # Store current as previous for next iteration
         prev_x = norm_x
         prev_y = norm_y
@@ -543,6 +606,10 @@ def camera_path_to_schedules(
         prev_rot_x = norm_rot_x
         prev_rot_y = norm_rot_y
         prev_rot_z = norm_rot_z
+
+    # Analyze translation/rotation ratios for look-at paths
+    if has_rotations and len(delta_analysis['translation_x']) > 0:
+        _print_camera_path_analysis(delta_analysis, camera_path)
 
     # Join with commas
     return {
