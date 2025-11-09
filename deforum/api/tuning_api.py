@@ -292,8 +292,8 @@ class TuningTestManager:
                     width=width,
                     height=height,
                     rotation_factor=rotation_factor,
-                    orbit_radius=config.orbit_radius or 10.0,  # Reduced from 50.0 to keep sphere visible longer
-                    orbit_iterations=config.orbit_iterations or 100,  # Increased to see stability over more iterations
+                    orbit_radius=config.orbit_radius or 2.0,  # Very slow orbit to see differences (was 50.0, then 10.0)
+                    orbit_iterations=config.orbit_iterations or 50,  # Reduced to 50 since slower orbit takes longer
                 )
 
                 # Update progress
@@ -302,6 +302,85 @@ class TuningTestManager:
                     status = self.active_tests[test_id]
                     status.progress = completed_tests / total_tests
                     status.results.append(result)
+
+        # Generate visualization graph after all tests complete
+        self._generate_orbit_tuning_graph(test_id)
+
+    def _generate_orbit_tuning_graph(self, test_id: str):
+        """Generate plotly visualization of orbit tuning results.
+
+        Creates interactive graph showing rotation_factor vs iterations_until_offscreen
+        for each aspect ratio tested.
+
+        Args:
+            test_id: Test identifier to get results from
+        """
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        from pathlib import Path
+        import os
+
+        # Get test results
+        with self.test_lock:
+            if test_id not in self.active_tests:
+                logger.warning(f"Test {test_id} not found, skipping graph generation")
+                return
+            results = self.active_tests[test_id].results
+
+        if not results:
+            logger.warning("No results to plot")
+            return
+
+        # Group results by aspect ratio
+        aspect_groups = {}
+        for result in results:
+            aspect = result.get("aspect_ratio", 0)
+            if aspect not in aspect_groups:
+                aspect_groups[aspect] = {"rotation_factors": [], "iterations": []}
+            aspect_groups[aspect]["rotation_factors"].append(result.get("rotation_factor", 0))
+            aspect_groups[aspect]["iterations"].append(result.get("iterations_until_offscreen", 0))
+
+        # Create figure
+        fig = go.Figure()
+
+        # Add trace for each aspect ratio
+        colors = ["blue", "red", "green"]
+        for idx, (aspect, data) in enumerate(sorted(aspect_groups.items())):
+            fig.add_trace(go.Scatter(
+                x=data["rotation_factors"],
+                y=data["iterations"],
+                mode="lines+markers",
+                name=f"Aspect {aspect:.2f}",
+                line=dict(color=colors[idx % len(colors)], width=2),
+                marker=dict(size=8)
+            ))
+
+        # Update layout
+        fig.update_layout(
+            title="Orbit Tuning: Rotation Factor vs. Sphere Visibility",
+            xaxis_title="Rotation Factor (translation/rotation ratio)",
+            yaxis_title="Iterations Until Sphere Off-Screen",
+            hovermode="x unified",
+            template="plotly_white",
+            width=1200,
+            height=600
+        )
+
+        # Add annotation explaining metric
+        fig.add_annotation(
+            text="Higher iterations = more stable orbital movement",
+            xref="paper", yref="paper",
+            x=0.5, y=1.08, showarrow=False,
+            font=dict(size=12, color="gray")
+        )
+
+        # Save graph
+        forge_root = Path(os.getcwd())
+        output_dir = forge_root / "outputs" / "deforum-tuning" / "depth_warping_orbits"
+        output_path = output_dir / f"orbit_tuning_results_{test_id}.html"
+
+        fig.write_html(str(output_path))
+        logger.info(f"Orbit tuning graph saved to: {output_path}")
 
     def _count_iterations_until_offscreen(self, frames: list, width: int, height: int) -> int:
         """Count how many iterations until the sphere goes off-screen.
