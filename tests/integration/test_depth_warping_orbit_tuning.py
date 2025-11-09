@@ -225,14 +225,20 @@ def test_orbit_rotation_factor_sweep(aspect_ratio, width, height, rotation_facto
     # Generate orbit schedules
     schedules = generate_orbit_schedules(num_frames, radius, rotation_factor)
 
+    # Load base settings template
+    from pathlib import Path
+    testdata_dir = Path(__file__).parent.parent / 'integration' / 'testdata'
+    with open(testdata_dir / 'simple.input_settings.txt', 'r') as f:
+        base_settings = json.load(f)
+
     # Configure job
     options_overrides = get_test_options_overrides()
     options_overrides.update({
         "deforum_save_gen_info_as_srt": False,
     })
 
-    settings = {
-        "deforum_settings": {
+    # Override specific settings for this test
+    base_settings.update({
             # Basic settings
             "W": width,
             "H": height,
@@ -285,11 +291,13 @@ def test_orbit_rotation_factor_sweep(aspect_ratio, width, height, rotation_facto
     job_ids = batch_info["job_ids"]
 
     # Wait for completion
+    from deforum.api.models import DeforumJobStatusCategory
     final_status = wait_for_job_to_complete(job_ids[0])
-    assert final_status["status"] == "SUCCEEDED", f"Job failed: {final_status.get('message')}"
+    assert final_status.status == DeforumJobStatusCategory.SUCCEEDED, \
+        f"Job failed: {final_status.message}"
 
     # Get output directory
-    timestring = final_status["timestring"]
+    timestring = final_status.timestring
     output_frames_dir = test_dir / timestring
 
     # Load generated frames

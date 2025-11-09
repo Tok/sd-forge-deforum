@@ -200,12 +200,14 @@ def run_i2v_iteration(
     job_ids = batch_info["job_ids"]
 
     # Wait for completion
+    from deforum.api.models import DeforumJobStatusCategory
     final_status = wait_for_job_to_complete(job_ids[0])
 
-    assert final_status["status"] == "SUCCEEDED", f"Job failed: {final_status.get('message')}"
+    assert final_status.status == DeforumJobStatusCategory.SUCCEEDED, \
+        f"Job failed: {final_status.message}"
 
     # Return path to LAST frame (which will become input for next iteration)
-    timestring = final_status["timestring"]
+    timestring = final_status.timestring
     last_frame_idx = max_frames - 1
     output_frame = output_dir / timestring / f"{last_frame_idx:09d}.png"
 
