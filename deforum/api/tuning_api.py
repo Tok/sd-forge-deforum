@@ -419,6 +419,22 @@ class TuningTestManager:
                 "enable_clipskip_scheduling": False,
                 "enable_checkpoint_scheduling": False,
 
+                # Explicitly set all schedule fields to prevent defaults from kicking in
+                # Must use multi-frame format (not "0:(x)") to avoid KeyError: -1
+                "checkpoint_schedule": "0:(0), 1:(0)",
+                "clipskip_schedule": "0:(2), 1:(2)",
+                "sampler_schedule": '0:("euler"), 1:("euler")',
+                "noise_schedule": "0:(0.02), 1:(0.02)",
+                "strength_schedule": "0:(0.65), 1:(0.65)",
+                "contrast_schedule": "0:(1.0), 1:(1.0)",
+                "cfg_scale_schedule": "0:(1.0), 1:(1.0)",
+                "distilled_cfg_scale_schedule": "0:(3.5), 1:(3.5)",
+                "steps_schedule": "0:(20), 1:(20)",
+                "seed_schedule": "0:(42), 1:(42)",
+                "fov_schedule": "0:(70), 1:(70)",
+                "near_schedule": "0:(200), 1:(200)",
+                "far_schedule": "0:(10000), 1:(10000)",
+
                 # Output directory
                 "batch_name": get_test_batch_name(test_name),
                 "outdir": str(test_dir),
