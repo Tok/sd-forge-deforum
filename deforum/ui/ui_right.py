@@ -417,6 +417,7 @@ def on_ui_tabs():
         # Frame Overlap Simulator - load on UI startup (independent of tab selection)
         if frame_overlap_simulator:
             from deforum.ui.handlers.frame_overlap_handler import update_frame_overlap_visualization
+            from deforum.ui.handlers.camera_path_generator import generate_preset_path
 
             def update_overlap_viz(tx, ty, tz, rx, ry, rz, width_val, height_val):
                 """Update frame overlap visualization from current schedule values."""
@@ -437,21 +438,66 @@ def on_ui_tabs():
                     height=height
                 )
 
-            # Load visualization on UI startup (not on tab selection)
+            def init_overlap_viz_with_preset():
+                """Initialize frame overlap visualization with default 'rotate-around' preset."""
+                # Generate default rotate-around path
+                _, schedules, _ = generate_preset_path(
+                    preset_type="rotate-around",
+                    radius=100.0,
+                    height=0.0,
+                    num_frames=333,
+                    closed_loop=True,
+                    speed_multiplier=1.0,
+                    speed_randomization=0.0
+                )
+
+                # Generate visualization with preset schedules
+                return update_frame_overlap_visualization(
+                    translation_x=schedules.get('translation_x', '0:(0)'),
+                    translation_y=schedules.get('translation_y', '0:(0)'),
+                    translation_z=schedules.get('translation_z', '0:(0)'),
+                    rotation_3d_x=schedules.get('rotation_3d_x', '0:(0)'),
+                    rotation_3d_y=schedules.get('rotation_3d_y', '0:(0)'),
+                    rotation_3d_z=schedules.get('rotation_3d_z', '0:(0)'),
+                    max_frames=333,
+                    width=1920,
+                    height=1080
+                )
+
+            # Load visualization on UI startup with default preset
             deforum_interface.load(
-                fn=update_overlap_viz,
-                inputs=[
-                    components.get('translation_x'),
-                    components.get('translation_y'),
-                    components.get('translation_z'),
-                    components.get('rotation_3d_x'),
-                    components.get('rotation_3d_y'),
-                    components.get('rotation_3d_z'),
-                    components.get('W'),  # Width
-                    components.get('H'),  # Height
-                ],
+                fn=init_overlap_viz_with_preset,
+                inputs=[],
                 outputs=[frame_overlap_simulator]
             )
+
+            # Update visualization when schedules change
+            schedule_components = [
+                components.get('translation_x'),
+                components.get('translation_y'),
+                components.get('translation_z'),
+                components.get('rotation_3d_x'),
+                components.get('rotation_3d_y'),
+                components.get('rotation_3d_z'),
+            ]
+
+            # Wire up change handlers for all schedule fields
+            for schedule_component in schedule_components:
+                if schedule_component:
+                    schedule_component.change(
+                        fn=update_overlap_viz,
+                        inputs=[
+                            components.get('translation_x'),
+                            components.get('translation_y'),
+                            components.get('translation_z'),
+                            components.get('rotation_3d_x'),
+                            components.get('rotation_3d_y'),
+                            components.get('rotation_3d_z'),
+                            components.get('W'),
+                            components.get('H'),
+                        ],
+                        outputs=[frame_overlap_simulator]
+                    )
 
         # Live preview polling - updates every 500ms
         # Smart polling: only shows fresh previews (< 5 sec old), silently handles errors

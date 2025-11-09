@@ -103,14 +103,14 @@ def create_canvas_html(
 <head>
     <meta charset="UTF-8">
     <style>
-        body {{ margin: 0; padding: 20px; background-color: {COLOR_BG}; font-family: system-ui, -apple-system, sans-serif; }}
-        canvas {{ display: block; margin: 0 auto 10px auto; background-color: {COLOR_BG}; border-radius: 4px; }}
-        .controls {{ display: flex; gap: 8px; align-items: center; margin-bottom: 8px; max-width: {width}px; margin-left: auto; margin-right: auto; }}
-        button {{ padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; border: none; }}
+        body {{ margin: 0; padding: 20px; background-color: {COLOR_BG}; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }}
+        canvas {{ display: block; margin: 0 auto 10px auto; background-color: {COLOR_BG}; border-radius: 4px; max-width: 100%; height: auto; }}
+        .controls {{ display: flex; gap: 8px; align-items: center; margin-bottom: 8px; max-width: 100%; margin-left: auto; margin-right: auto; flex-wrap: wrap; }}
+        button {{ padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; border: none; white-space: nowrap; }}
         .btn-play {{ background: linear-gradient(to right, #7c3aed, #a855f7); color: white; font-weight: 500; }}
         .btn-pause {{ background: transparent; color: {COLOR_TEXT}; border: 1px solid {COLOR_GRID}; }}
-        input[type=range] {{ flex: 1; cursor: pointer; }}
-        .info {{ color: {COLOR_TEXT}; font-size: 14px; }}
+        input[type=range] {{ flex: 1; cursor: pointer; min-width: 100px; }}
+        .info {{ color: {COLOR_TEXT}; font-size: 14px; white-space: nowrap; }}
     </style>
 </head>
 <body>
@@ -128,7 +128,7 @@ def create_canvas_html(
     </div>
 
     <input type="range" id="slider" min="0" max="{len(metrics_list) - 1}" value="0" oninput="onSliderChange(event)"
-           style="width: 100%; max-width: {width}px; margin: 0 auto 8px auto; display: block;">
+           style="width: 100%; max-width: 100%; margin: 0 auto 8px auto; display: block;">
 
     <div class="controls">
         <label class="info" style="min-width: 50px;">Speed:</label>
@@ -260,10 +260,14 @@ def create_canvas_html(
             const viewportCorners = frame.viewport.map(c =>
                 worldToCanvas(c[0], c[1], frame.centerX, frame.centerY)
             );
+            if (frameIndex === 0 || frameIndex === 10) {{
+                console.log(`Viewport canvas coords:`, viewportCorners);
+            }}
             drawRectangle(viewportCorners, colors.viewport, 0.8, false);
 
             // Update info
-            document.getElementById('frameInfo').textContent = 'Frame: ' + frameIndex;
+            document.getElementById('frameInfo').textContent = 'Frame: ' + frameIndex +
+                ' | Pos: [' + frame.centerX.toFixed(1) + ', ' + frame.centerY.toFixed(1) + ']';
             document.getElementById('preservation').textContent = frame.preservation.toFixed(1);
             document.getElementById('novelty').textContent = frame.novelty.toFixed(1);
 
@@ -330,5 +334,5 @@ def create_canvas_html(
     html_b64 = base64.b64encode(html_bytes).decode('utf-8')
     data_url = f'data:text/html;base64,{html_b64}'
 
-    # Return iframe
-    return f'<iframe src="{data_url}" style="width: 100%; height: {height + 120}px; border: none; display: block;"></iframe>'
+    # Return iframe scaled to fit container (max 800px width, responsive height)
+    return f'<iframe src="{data_url}" style="width: 100%; max-width: 800px; height: {height + 120}px; border: none; display: block; margin: 0 auto;"></iframe>'
