@@ -422,7 +422,7 @@ class TuningTestManager:
                 "enable_sampler_scheduling": False,
                 "enable_clipskip_scheduling": False,
                 "enable_checkpoint_scheduling": False,
-                "checkpoint_schedule": "0:(0)",  # Override template's model name string
+                "checkpoint_schedule": "0:(0), 1:(0)",  # Multi-frame schedule to avoid KeyError: -1
 
                 # Output directory
                 "batch_name": get_test_batch_name(test_name),
