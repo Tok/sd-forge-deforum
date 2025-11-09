@@ -81,6 +81,17 @@ def create_canvas_html(
     if not metrics_list:
         return '<div style="color: #C8C8DC; padding: 20px;">No metrics to display</div>'
 
+    # Check if there's any actual camera movement
+    has_movement = any(
+        abs(m.prev_frame_rect.center_x) > 0.1 or
+        abs(m.prev_frame_rect.center_y) > 0.1 or
+        abs(m.prev_frame_rect.rotation) > 0.1
+        for m in metrics_list[1:]  # Skip first frame
+    )
+
+    if not has_movement:
+        return '<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">⚠️ No camera movement detected. Use "Rotate Around" preset or enter camera schedules to see frame overlap trail.</div>'
+
     frames_data = serialize_frame_data(metrics_list, trail_length)
     viewport_width = metrics_list[0].curr_viewport_rect.width
     viewport_height = metrics_list[0].curr_viewport_rect.height
@@ -184,6 +195,19 @@ def create_canvas_html(
             const frame = frames[frameIndex];
             if (!frame) return;
 
+            // Debug logging
+            if (frameIndex === 0 || frameIndex === 10) {{
+                console.log(`Frame ${{frameIndex}} data:`, {{
+                    centerX: frame.centerX,
+                    centerY: frame.centerY,
+                    trailLength: frame.trail.length,
+                    preservation: frame.preservation,
+                    novelty: frame.novelty,
+                    viewport: frame.viewport,
+                    trailSample: frame.trail.map(t => ({{ frameIdx: t.frameIndex, age: t.age, center: [t.corners[0][0], t.corners[0][1]] }}))
+                }});
+            }}
+
             ctx.fillStyle = colors.bg;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -213,11 +237,22 @@ def create_canvas_html(
 
             // Draw trail
             const maxAge = frame.trail.length - 1;
+            if (frameIndex === 0 || frameIndex === 10) {{
+                console.log(`Drawing trail for frame ${{frameIndex}}:`, {{
+                    trailLength: frame.trail.length,
+                    maxAge: maxAge,
+                    firstTrailCorners: frame.trail[0].corners,
+                    lastTrailCorners: frame.trail[frame.trail.length - 1].corners
+                }});
+            }}
             for (const trailFrame of frame.trail) {{
                 const corners = trailFrame.corners.map(c =>
                     worldToCanvas(c[0], c[1], frame.centerX, frame.centerY)
                 );
                 const opacity = calculateOpacity(trailFrame.age, maxAge);
+                if (frameIndex === 0 || frameIndex === 10) {{
+                    console.log(`  Trail frame ${{trailFrame.frameIndex}}, age=${{trailFrame.age}}, opacity=${{opacity}}, canvasCorners=${{JSON.stringify(corners)}}`);
+                }}
                 drawRectangle(corners, trailFrame.color, opacity, true);
             }}
 
