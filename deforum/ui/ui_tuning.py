@@ -152,19 +152,19 @@ def create_tuning_tab() -> tuple:
                     )
                     orbit_radius = gr.Slider(
                         label="Orbit radius (pixels)",
-                        minimum=20,
+                        minimum=1,
                         maximum=100,
-                        value=50,
-                        step=10,
-                        info="Smaller = tighter orbit, less translation",
+                        value=2,
+                        step=1,
+                        info="Smaller = tighter orbit, less translation (2 = very slow for meaningful tests)",
                     )
                     orbit_iterations = gr.Slider(
                         label="I2I depth warp iterations",
                         minimum=10,
-                        maximum=40,
-                        value=20,
+                        maximum=200,
+                        value=50,
                         step=5,
-                        info="Number of depth warping frames to test",
+                        info="Number of depth warping frames to test (50 = good for slow orbits)",
                     )
 
                 # Test limits (for color preservation / temporal consistency)
