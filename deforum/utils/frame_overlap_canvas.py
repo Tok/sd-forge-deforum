@@ -124,39 +124,33 @@ def create_canvas_html(
     padding_factor = 1.8
 
     html = f'''
-    <div style="background-color: {COLOR_BG}; padding: 20px; border-radius: 8px;">
-        <div style="text-align: center; color: {COLOR_TEXT}; margin-bottom: 10px; font-size: 14px;">
-            <strong>Frame Overlap Simulator - {len(metrics_list)} frames</strong>
+    <div style="padding: 0; margin: 0;">
+        <canvas id="frameCanvas" width="{width}" height="{height}"
+                style="display: block; margin: 0 auto 10px auto; background-color: {COLOR_BG}; border-radius: 4px;"></canvas>
+
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+            <button id="playBtn" class="gr-button gr-button-lg gr-button-primary" style="padding: 4px 12px; min-width: 80px;">
+                ▶ Play
+            </button>
+            <button id="pauseBtn" class="gr-button gr-button-lg gr-button-secondary" style="padding: 4px 12px; min-width: 80px;">
+                ⏸ Pause
+            </button>
+            <span id="frameInfo" style="margin-left: 8px; font-size: 0.875rem;">Frame: 0</span>
+            <div style="flex: 1;"></div>
+            <div id="metricsInfo" style="font-size: 0.875rem; text-align: right;">
+                <span>Preservation: <span id="preservation">100.0</span>%</span>
+                <span style="margin-left: 12px;">Novelty: <span id="novelty">0.0</span>%</span>
+            </div>
         </div>
 
-        <canvas id="frameCanvas" width="{width}" height="{height}"
-                style="border: 1px solid {COLOR_GRID}; display: block; margin: 0 auto; background-color: {COLOR_BG};"></canvas>
+        <input type="range" id="frameSlider" min="0" max="{len(metrics_list) - 1}" value="0"
+               style="width: 100%; margin-bottom: 8px; cursor: pointer;">
 
-        <div style="margin-top: 15px; padding: 10px; background-color: rgba(60, 60, 80, 0.6); border-radius: 5px;">
-            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-                <button id="playBtn" style="background-color: {COLOR_VIEWPORT}; color: {COLOR_BG}; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">
-                    ▶ Play
-                </button>
-                <button id="pauseBtn" style="background-color: rgba(60, 60, 80, 0.8); color: {COLOR_TEXT}; border: 1px solid {COLOR_GRID}; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">
-                    ⏸ Pause
-                </button>
-                <span id="frameInfo" style="color: {COLOR_TEXT}; margin-left: 10px; font-size: 13px;">Frame: 0</span>
-                <div style="flex: 1;"></div>
-                <div id="metricsInfo" style="color: {COLOR_TEXT}; font-size: 12px; text-align: right;">
-                    <div>Preservation: <span id="preservation">100.0</span>%</div>
-                    <div>Novelty: <span id="novelty">0.0</span>%</div>
-                </div>
-            </div>
-
-            <input type="range" id="frameSlider" min="0" max="{len(metrics_list) - 1}" value="0"
-                   style="width: 100%; height: 6px; background: {COLOR_GRID}; outline: none; border-radius: 3px; cursor: pointer;">
-
-            <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
-                <label style="color: {COLOR_TEXT}; font-size: 12px;">Speed:</label>
-                <input type="range" id="speedSlider" min="1" max="60" value="{playback_fps}"
-                       style="width: 150px; height: 4px; background: {COLOR_GRID}; outline: none; border-radius: 2px; cursor: pointer;">
-                <span id="speedInfo" style="color: {COLOR_TEXT}; font-size: 12px;">{playback_fps} fps</span>
-            </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <label style="font-size: 0.875rem; min-width: 50px;">Speed:</label>
+            <input type="range" id="speedSlider" min="1" max="60" value="{playback_fps}"
+                   style="flex: 1; cursor: pointer;">
+            <span id="speedInfo" style="font-size: 0.875rem; min-width: 50px;">{playback_fps} fps</span>
         </div>
     </div>
 
@@ -326,17 +320,27 @@ def create_canvas_html(
 
         // Event listeners
         playBtn.addEventListener('click', () => {{
+            console.log('Play button clicked');
             isPlaying = true;
             lastFrameTime = performance.now();
             requestAnimationFrame(animate);
-            playBtn.style.backgroundColor = 'rgba(60, 60, 80, 0.8)';
-            pauseBtn.style.backgroundColor = '{COLOR_VIEWPORT}';
+
+            // Toggle button states
+            playBtn.classList.remove('gr-button-primary');
+            playBtn.classList.add('gr-button-secondary');
+            pauseBtn.classList.remove('gr-button-secondary');
+            pauseBtn.classList.add('gr-button-primary');
         }});
 
         pauseBtn.addEventListener('click', () => {{
+            console.log('Pause button clicked');
             isPlaying = false;
-            pauseBtn.style.backgroundColor = 'rgba(60, 60, 80, 0.8)';
-            playBtn.style.backgroundColor = '{COLOR_VIEWPORT}';
+
+            // Toggle button states
+            pauseBtn.classList.remove('gr-button-primary');
+            pauseBtn.classList.add('gr-button-secondary');
+            playBtn.classList.remove('gr-button-secondary');
+            playBtn.classList.add('gr-button-primary');
         }});
 
         slider.addEventListener('input', (e) => {{
