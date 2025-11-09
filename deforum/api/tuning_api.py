@@ -419,13 +419,12 @@ class TuningTestManager:
                 "enable_clipskip_scheduling": False,
                 "enable_checkpoint_scheduling": False,
 
-                # Explicitly set ALL schedule fields to prevent single-keyframe defaults
+                # Explicitly set numeric schedule fields to prevent single-keyframe defaults
                 # Must use multi-frame format (not "0:(x)") to avoid KeyError: -1
-                # For string schedules (checkpoint, sampler, etc.), use NUMERIC placeholders
-                # because the parser tries float() conversion even on string schedules (bug)
-                "checkpoint_schedule": "0:(0), 1:(0)",  # Numeric index, not checkpoint name
-                "sampler_schedule": "0:(0), 1:(0)",      # Numeric index, not sampler name
-                "scheduler_schedule": "0:(0), 1:(0)",    # Numeric index, not scheduler name
+                # OMIT string schedules entirely - parser has unfixable bugs:
+                #   - Bug #1: Tries float() on strings → ValueError
+                #   - Bug #2: Tries i-1 when i=0 → KeyError: -1
+                # Let them use whatever default exists (disabled by enable_*_scheduling=False anyway)
                 "clipskip_schedule": "0:(2), 1:(2)",
                 "noise_schedule": "0:(0.02), 1:(0.02)",
                 "strength_schedule": "0:(0.65), 1:(0.65)",
@@ -440,8 +439,7 @@ class TuningTestManager:
                 "aspect_ratio_schedule": "0:(1.0), 1:(1.0)",
                 "subseed_schedule": "0:(1), 1:(1)",
                 "subseed_strength_schedule": "0:(0), 1:(0)",
-                "mask_schedule": "0:(0), 1:(0)",              # Numeric placeholder, not mask path
-                "noise_mask_schedule": "0:(0), 1:(0)",        # Numeric placeholder, not mask path
+                # mask_schedule and noise_mask_schedule omitted - string schedules with parser bugs
                 "noise_multiplier_schedule": "0:(1.0), 1:(1.0)",
                 "ddim_eta_schedule": "0:(0), 1:(0)",
                 "ancestral_eta_schedule": "0:(1), 1:(1)",
