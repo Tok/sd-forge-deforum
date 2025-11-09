@@ -481,7 +481,9 @@ class TuningTestManager:
             job_status = wait_for_job_to_complete(job_id, timeout=600)
 
             # Load generated frames from job output directory
-            output_dir = Path(job_status.outdir) / job_status.timestring
+            # Deforum creates subdirectory: batch_name + "_" + timestring
+            batch_name = get_test_batch_name(test_name)
+            output_dir = Path(job_status.outdir) / f"{batch_name}_{job_status.timestring}"
             frame_files = sorted(
                 output_dir.glob("*.png"),
                 key=lambda p: int(p.stem.split('_')[-1])
