@@ -413,6 +413,45 @@ def on_ui_tabs():
                 outputs=[camera_path_plot]
             )
 
+        # Frame Overlap Simulator - load on UI startup (independent of tab selection)
+        if frame_overlap_simulator:
+            from deforum.ui.handlers.frame_overlap_handler import update_frame_overlap_visualization
+
+            def update_overlap_viz(tx, ty, tz, rx, ry, rz, width_val, height_val):
+                """Update frame overlap visualization from current schedule values."""
+                # Get max_frames from motion settings if available, otherwise default to 333
+                max_frames = 333
+                width = int(width_val) if width_val else 1920
+                height = int(height_val) if height_val else 1080
+
+                return update_frame_overlap_visualization(
+                    translation_x=tx or "",
+                    translation_y=ty or "",
+                    translation_z=tz or "",
+                    rotation_3d_x=rx or "",
+                    rotation_3d_y=ry or "",
+                    rotation_3d_z=rz or "",
+                    max_frames=max_frames,
+                    width=width,
+                    height=height
+                )
+
+            # Load visualization on UI startup (not on tab selection)
+            deforum_interface.load(
+                fn=update_overlap_viz,
+                inputs=[
+                    components.get('translation_x'),
+                    components.get('translation_y'),
+                    components.get('translation_z'),
+                    components.get('rotation_3d_x'),
+                    components.get('rotation_3d_y'),
+                    components.get('rotation_3d_z'),
+                    components.get('W'),  # Width
+                    components.get('H'),  # Height
+                ],
+                outputs=[frame_overlap_simulator]
+            )
+
         # Live preview polling - updates every 500ms
         # Smart polling: only shows fresh previews (< 5 sec old), silently handles errors
         live_preview_timer = gr.Timer(value=0.5, active=True)
