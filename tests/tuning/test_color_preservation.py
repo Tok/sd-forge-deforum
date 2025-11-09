@@ -193,7 +193,7 @@ def run_i2v_iteration(
 
     # Submit job
     response = requests.post(f"{API_BASE_URL}/batches/", json=settings)
-    assert response.status_code == 200, f"Failed to submit job: {response.text}"
+    assert response.status_code in [200, 202], f"Failed to submit job: {response.text}"
 
     batch_info = response.json()
     batch_id = batch_info["batch_id"]
