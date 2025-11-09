@@ -368,7 +368,17 @@ def on_ui_tabs():
                         visible=True
                     )
 
+                # Frame Overlap Simulator (shows preservation/novelty metrics)
+                with gr.Row(variant='compact'):
+                    frame_overlap_simulator = gr.Plot(
+                        label="Frame Overlap Simulator (Worm Trail Preview)",
+                        show_label=True,
+                        elem_id="deforum_frame_overlap_sim",
+                        visible=True
+                    )
+
                 components['camera_path_plot'] = camera_path_plot
+                components['frame_overlap_simulator'] = frame_overlap_simulator
 
         # Camera Path visualization - load on UI startup (independent of tab selection)
         if camera_path_plot:
