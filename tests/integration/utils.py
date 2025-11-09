@@ -96,8 +96,19 @@ def cleanup_test_output_dir():
     # Recreate empty directory
     os.makedirs(test_dir, exist_ok=True)
 
-@retry(wait=wait_fixed(2), stop=stop_after_delay(900))
+@retry(wait=wait_fixed(2), stop=stop_after_delay(600))
 def wait_for_job_to_complete(id : str):
+    """Poll job status until it reaches SUCCEEDED or FAILED state.
+
+    Args:
+        id: Job ID to wait for
+
+    Returns:
+        Final DeforumJobStatus when job completes
+
+    Raises:
+        AssertionError: If job status is FAILED or CANCELLED
+    """
     response = requests.get(
         f"{API_BASE_URL}/jobs/{id}",
         headers={"accept": "application/json"}
@@ -114,7 +125,17 @@ def wait_for_job_to_complete(id : str):
         raise
 
     print(f"Waiting for job {id}: status={jobStatus.status}; phase={jobStatus.phase}; execution_time:{jobStatus.execution_time}s")
-    assert jobStatus.status != DeforumJobStatusCategory.ACCEPTED
+
+    # Raise exception if job failed or cancelled (causes retry to stop)
+    if jobStatus.status == DeforumJobStatusCategory.FAILED:
+        raise AssertionError(f"Job {id} failed: {jobStatus.message}")
+    if jobStatus.status == DeforumJobStatusCategory.CANCELLED:
+        raise AssertionError(f"Job {id} was cancelled")
+
+    # Keep retrying until job succeeds
+    assert jobStatus.status == DeforumJobStatusCategory.SUCCEEDED, \
+        f"Job {id} still running (status={jobStatus.status}, phase={jobStatus.phase})"
+
     return jobStatus
     
 @retry(wait=wait_fixed(1), stop=stop_after_delay(120))
