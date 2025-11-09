@@ -351,8 +351,11 @@ class TuningTestManager:
             get_test_batch_name,
         )
 
-        # Create test output directory
-        output_dir = Path(__file__).parent.parent.parent / "outputs" / "deforum-tuning" / "depth_warping_orbits"
+        # Create test output directory in Forge root outputs (central location)
+        # Note: Deforum appends batch_name to outdir_samples, so we use parent dir
+        import os
+        forge_root = Path(os.getcwd())  # Forge root directory
+        output_dir = forge_root / "outputs" / "deforum-tuning" / "depth_warping_orbits"
         aspect_str = f"{int(aspect_ratio*100):03d}"
         test_name = f"aspect{aspect_str}_{width}x{height}_factor{abs(rotation_factor):.1f}"
         test_dir = output_dir / test_name
@@ -364,9 +367,10 @@ class TuningTestManager:
             # Generate orbit schedules
             schedules = generate_orbit_schedules(orbit_iterations, orbit_radius, rotation_factor)
 
-            # Configure job - use custom output directory for tuning results
+            # Configure job - Deforum constructs outdir = outdir_samples + batch_name
+            # So we set outdir_samples to parent directory, not test-specific directory
             options_overrides = {
-                "outdir_samples": str(test_dir),  # Use test-specific directory
+                "outdir_samples": str(output_dir),  # Parent dir (Deforum appends batch_name)
                 "deforum_save_gen_info_as_srt": False,
             }
 
@@ -456,9 +460,9 @@ class TuningTestManager:
                 "tweening_frames_schedule": "0:(20), 1:(20)",
                 "color_correction_factor": "0:(0.075), 1:(0.075)",
 
-                # Output directory
-                "batch_name": get_test_batch_name(test_name),
-                "outdir": str(test_dir),
+                # Output - batch_name gets appended to outdir_samples by Deforum
+                "batch_name": test_name,  # Just the test name (aspect177_512x288_factor7.0)
+                # Don't set "outdir" - Deforum constructs it from outdir_samples + batch_name
             }
 
             # Submit job
@@ -482,8 +486,8 @@ class TuningTestManager:
 
             # Load generated frames from job output directory
             # Deforum creates subdirectory: batch_name + "_" + timestring
-            batch_name = get_test_batch_name(test_name)
-            output_dir = Path(job_status.outdir) / f"{batch_name}_{job_status.timestring}"
+            # job_status.outdir already includes batch_name (constructed by Deforum)
+            output_dir = Path(job_status.outdir) / job_status.timestring
             frame_files = sorted(
                 output_dir.glob("*.png"),
                 key=lambda p: int(p.stem.split('_')[-1])
