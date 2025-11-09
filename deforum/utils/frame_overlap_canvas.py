@@ -267,20 +267,24 @@ setTimeout(function() {{
 }}, 100);
 '''
 
+    # Compress JS by removing comments and excess whitespace
+    js_init = js_code.replace('\n', ' ').replace('  ', ' ')
+
     html = f'''
 <div style="width: 100%; max-width: {width}px; margin: 0 auto;">
+    <!-- 1x1 transparent GIF (43 bytes) used to trigger onload event for JavaScript initialization -->
     <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-         onload="(function(){{ {js_code} }})();"
-         style="display:none;">
+         onload="(function(){{ try {{ {js_init} }} catch(e) {{ console.error('Frame simulator init error:', e); }} }})();"
+         style="display:none;" alt="">
     <canvas id="{canvas_id}" width="{width}" height="{height}"
             style="width: 100%; height: auto; display: block; margin: 0 auto 10px auto; background-color: {COLOR_BG}; border-radius: 4px;"></canvas>
 
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-        <button id="{canvas_id}_playBtn" onclick="window.{canvas_id}_play()"
+        <button id="{canvas_id}_playBtn" onclick="if(typeof window.{canvas_id}_play==='function'){{window.{canvas_id}_play();}}else{{alert('Simulator not loaded yet');}}"
                 style="background: linear-gradient(to right, #7c3aed, #a855f7); color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
             ▶ Play
         </button>
-        <button id="{canvas_id}_pauseBtn" onclick="window.{canvas_id}_pause()"
+        <button id="{canvas_id}_pauseBtn" onclick="if(typeof window.{canvas_id}_pause==='function'){{window.{canvas_id}_pause();}}"
                 style="background: transparent; color: var(--body-text-color); border: 1px solid var(--border-color-primary); padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
             ⏸ Pause
         </button>
@@ -293,13 +297,13 @@ setTimeout(function() {{
     </div>
 
     <input type="range" id="{canvas_id}_slider" min="0" max="{len(metrics_list) - 1}" value="0"
-           oninput="window.{canvas_id}_onSliderChange(event)"
+           oninput="if(typeof window.{canvas_id}_onSliderChange==='function'){{window.{canvas_id}_onSliderChange(event);}}"
            style="width: 100%; margin-bottom: 8px; cursor: pointer;">
 
     <div style="display: flex; gap: 8px; align-items: center;">
         <label style="font-size: 14px; min-width: 50px;">Speed:</label>
         <input type="range" id="{canvas_id}_speedSlider" min="1" max="60" value="{playback_fps}"
-               oninput="window.{canvas_id}_onSpeedChange(event)"
+               oninput="if(typeof window.{canvas_id}_onSpeedChange==='function'){{window.{canvas_id}_onSpeedChange(event);}}"
                style="flex: 1; cursor: pointer;">
         <span id="{canvas_id}_speedInfo" style="font-size: 14px; min-width: 50px;">{playback_fps} fps</span>
     </div>
