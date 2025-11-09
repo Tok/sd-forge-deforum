@@ -383,11 +383,15 @@ class TuningTestManager:
                 "seed": 42,
                 "sampler": "euler",
                 "steps": 20,
-                "cfg_scale": 7.0,
+                "cfg_scale": 1.0,
+                "distilled_cfg_scale": 3.5,
 
                 # Animation settings
                 "animation_mode": "3D",
+                "render_mode": "new_3d",
                 "max_frames": orbit_iterations,
+                "fps": 24,
+                "save_depth_maps": True,
 
                 # Camera schedules from orbit generation
                 "translation_x": schedules["translation_x"],
@@ -396,6 +400,15 @@ class TuningTestManager:
                 "rotation_3d_x": "0:(0)",
                 "rotation_3d_y": schedules["rotation_3d_y"],
                 "rotation_3d_z": "0:(0)",
+
+                # Prompt
+                "animation_prompts": json.dumps({
+                    "0": "a detailed 3D render of a colorful geometric sculpture, studio lighting"
+                }),
+
+                # Disable audio
+                "audio_mode": "None",
+                "audio_sync": False,
 
                 # Depth warping enabled
                 "use_depth_warping": True,
@@ -408,6 +421,10 @@ class TuningTestManager:
                 "enable_subseed_scheduling": False,
                 "enable_sampler_scheduling": False,
                 "enable_clipskip_scheduling": False,
+
+                # Output directory
+                "batch_name": get_test_batch_name(test_name),
+                "outdir": str(test_dir),
             })
 
             # Submit job
