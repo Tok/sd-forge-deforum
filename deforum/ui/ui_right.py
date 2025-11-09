@@ -385,24 +385,14 @@ def on_ui_tabs():
         if camera_path_plot:
             from deforum.utils.schedule_visualizer import visualize_schedules
 
-            def update_camera_path_visualization(tx, ty, tz, rx, ry, rz, prompts,
-                                                   shake_name_val, shake_intensity_val, shake_speed_val):
-                """Update camera path visualization from current schedule values with shakify."""
+            def update_camera_path_visualization(tx, ty, tz, rx, ry, rz, prompts):
+                """Update camera path visualization from current schedule values (BASE PATH ONLY)."""
                 try:
-                    # Shakify params with defaults
-                    shake_name = shake_name_val if shake_name_val else "None"
-                    shake_intensity = float(shake_intensity_val) if shake_intensity_val else 1.0
-                    shake_speed = float(shake_speed_val) if shake_speed_val else 1.0
-
                     fig, _ = visualize_schedules(
                         tx or "", ty or "", tz or "",
                         rx or "", ry or "", rz or "",
                         333,  # max_frames default
-                        prompts or "",
-                        shake_name=shake_name,
-                        shake_intensity=shake_intensity,
-                        shake_speed=shake_speed,
-                        target_fps=60
+                        prompts or ""
                     )
                     return fig
                 except Exception as e:
@@ -420,9 +410,6 @@ def on_ui_tabs():
                     components.get('rotation_3d_y'),
                     components.get('rotation_3d_z'),
                     components.get('animation_prompts'),
-                    components.get('shake_name'),
-                    components.get('shake_intensity'),
-                    components.get('shake_speed'),
                 ],
                 outputs=[camera_path_plot]
             )
@@ -754,23 +741,9 @@ def on_ui_tabs():
                 )
 
             # Wire schedule textboxes to update visualization whenever they change
-            def update_viz_from_schedules(tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, prompts_val="",
-                                          shake_name_val="None", shake_intensity_val=1.0, shake_speed_val=1.0,
-                                          max_frames=333):
-                """Update visualization from schedule textbox values with shakify."""
-                # Shakify params with defaults
-                shake_name = shake_name_val if shake_name_val else "None"
-                shake_intensity = float(shake_intensity_val) if shake_intensity_val else 1.0
-                shake_speed = float(shake_speed_val) if shake_speed_val else 1.0
-
-                fig, stats = visualize_schedules(
-                    tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
-                    max_frames, prompts_val,
-                    shake_name=shake_name,
-                    shake_intensity=shake_intensity,
-                    shake_speed=shake_speed,
-                    target_fps=60
-                )
+            def update_viz_from_schedules(tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, prompts_val="", max_frames=333):
+                """Update visualization from schedule textbox values (BASE PATH ONLY)."""
+                fig, stats = visualize_schedules(tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, max_frames, prompts_val)
                 return fig
 
             # Each schedule textbox triggers visualization update
@@ -778,12 +751,6 @@ def on_ui_tabs():
                 schedule_inputs = [tx, ty, tz, rx, ry, rz]
                 if animation_prompts:
                     schedule_inputs.append(animation_prompts)
-                # Add shakify params
-                schedule_inputs.extend([
-                    components.get('shake_name'),
-                    components.get('shake_intensity'),
-                    components.get('shake_speed'),
-                ])
 
                 for schedule_box in [tx, ty, tz, rx, ry, rz]:
                     if schedule_box:
@@ -800,15 +767,6 @@ def on_ui_tabs():
                         inputs=schedule_inputs,
                         outputs=[camera_path_plot]
                     )
-
-                # Trigger on shakify changes
-                for shakify_comp in [components.get('shake_name'), components.get('shake_intensity'), components.get('shake_speed')]:
-                    if shakify_comp:
-                        shakify_comp.change(
-                            fn=update_viz_from_schedules,
-                            inputs=schedule_inputs,
-                            outputs=[camera_path_plot]
-                        )
 
                 # Trigger visualization on settings load
                 load_settings_btn.click(

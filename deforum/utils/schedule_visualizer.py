@@ -135,61 +135,28 @@ def visualize_schedules(
     rotation_3d_y: str,
     rotation_3d_z: str,
     max_frames: int = 333,
-    animation_prompts: str = "",
-    shake_name: str = "None",
-    shake_intensity: float = 1.0,
-    shake_speed: float = 1.0,
-    target_fps: int = 60
+    animation_prompts: str = ""
 ) -> Tuple[go.Figure, str]:
-    """Create 3D visualization from Deforum schedule strings with shakify overlay.
+    """Create 3D visualization from Deforum schedule strings.
+
+    NOTE: This shows the BASE camera path (spline), NOT the final result with shakify.
+    Shakify adds high-frequency jitter that would clutter the 3D path visualization.
+    Use the frame overlap simulator to see the final result with shakify applied.
 
     Args:
-        translation_x: Translation X schedule string (base movement)
-        translation_y: Translation Y schedule string (base movement)
-        translation_z: Translation Z schedule string (base movement)
-        rotation_3d_x: Rotation X schedule string (base rotation)
-        rotation_3d_y: Rotation Y schedule string (base rotation)
-        rotation_3d_z: Rotation Z schedule string (base rotation)
+        translation_x: Translation X schedule string
+        translation_y: Translation Y schedule string
+        translation_z: Translation Z schedule string
+        rotation_3d_x: Rotation X schedule string
+        rotation_3d_y: Rotation Y schedule string
+        rotation_3d_z: Rotation Z schedule string
         max_frames: Maximum number of frames to visualize
         animation_prompts: Prompt schedule string for keyframe markers
-        shake_name: Camera shakify pattern name (default: "None")
-        shake_intensity: Shakify intensity multiplier (default: 1.0)
-        shake_speed: Shakify speed multiplier (default: 1.0)
-        target_fps: Target FPS for shakify interpolation (default: 60)
 
     Returns:
         (plotly_figure, stats_text)
     """
-    from deforum.utils.parsing.schedule_manipulation import get_final_schedules_with_shakify
-
-    # Apply shakify overlay to get final combined schedules
-    base_schedules = {
-        'translation_x': translation_x or "0:(0)",
-        'translation_y': translation_y or "0:(0)",
-        'translation_z': translation_z or "0:(0)",
-        'rotation_3d_x': rotation_3d_x or "0:(0)",
-        'rotation_3d_y': rotation_3d_y or "0:(0)",
-        'rotation_3d_z': rotation_3d_z or "0:(0)",
-    }
-
-    final_schedules = get_final_schedules_with_shakify(
-        base_schedules=base_schedules,
-        shake_name=shake_name,
-        shake_intensity=shake_intensity,
-        shake_speed=shake_speed,
-        max_frames=max_frames,
-        target_fps=target_fps
-    )
-
-    # Use FINAL schedules (base + shakify) for visualization
-    translation_x = final_schedules['translation_x']
-    translation_y = final_schedules['translation_y']
-    translation_z = final_schedules['translation_z']
-    rotation_3d_x = final_schedules['rotation_3d_x']
-    rotation_3d_y = final_schedules['rotation_3d_y']
-    rotation_3d_z = final_schedules['rotation_3d_z']
-
-    # Parse all schedules
+    # Parse all schedules (BASE schedules only, no shakify)
     tx_dict = parse_schedule_string(translation_x)
     ty_dict = parse_schedule_string(translation_y)
     tz_dict = parse_schedule_string(translation_z)
