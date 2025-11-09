@@ -357,7 +357,8 @@ class TuningTestManager:
         forge_root = Path(os.getcwd())  # Forge root directory
         output_dir = forge_root / "outputs" / "deforum-tuning" / "depth_warping_orbits"
         aspect_str = f"{int(aspect_ratio*100):03d}"
-        test_name = f"aspect{aspect_str}_{width}x{height}_factor{abs(rotation_factor):.1f}"
+        # Use 2 decimal places to avoid collisions (-7.0 vs -6.95)
+        test_name = f"aspect{aspect_str}_{width}x{height}_factor{abs(rotation_factor):.2f}"
         test_dir = output_dir / test_name
         test_dir.mkdir(parents=True, exist_ok=True)
 

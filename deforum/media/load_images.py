@@ -59,6 +59,8 @@ def load_image(image_path :str, image_box :Image.Image):
     if isinstance(image_box, Image.Image):
         return image_box
 
+    # Convert Path objects to strings (handle both str and pathlib.Path)
+    image_path = str(image_path) if not isinstance(image_path, str) else image_path
     image_path = clean_gradio_path_strings(image_path)
     image = None
     if image_path.startswith('http://') or image_path.startswith('https://'):
