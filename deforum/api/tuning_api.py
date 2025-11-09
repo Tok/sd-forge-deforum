@@ -292,7 +292,7 @@ class TuningTestManager:
                     width=width,
                     height=height,
                     rotation_factor=rotation_factor,
-                    orbit_radius=config.orbit_radius or 50.0,
+                    orbit_radius=config.orbit_radius or 10.0,  # Reduced from 50.0 to keep sphere visible longer
                     orbit_iterations=config.orbit_iterations or 100,  # Increased to see stability over more iterations
                 )
 
@@ -507,16 +507,16 @@ class TuningTestManager:
                 # Use static init image (3D sphere) for ALL orbital tests
                 # This ensures we measure depth warping quality, not generation randomness
                 "use_init": True,
-                "strength": 0.85,  # High preservation to keep sphere recognizable
+                "strength": 0.95,  # Very high preservation for pure depth warp test (minimal diffusion)
                 "strength_0_no_init": False,  # Use init on frame 0 too
                 "init_image": str(shared_init_image),  # Path to shared sphere image
 
                 # Animation settings
                 "animation_mode": "3D",
-                "render_mode": "new_3d",
+                "render_mode": "keyframes_only",  # Pure depth warping for all tween frames
                 "max_frames": orbit_iterations,
                 "fps": 24,
-                "save_depth_maps": False,  # Don't need depth maps for this test
+                "save_depth_maps": True,  # Save ALL depth maps to verify depth warping on every frame
 
                 # Camera schedules from orbit generation
                 "translation_x": schedules["translation_x"],
@@ -618,14 +618,14 @@ class TuningTestManager:
                 raise
 
             # Load generated frames from job output directory
-            # Deforum creates subdirectory: batch_name + "_" + timestring
-            # job_status.outdir already includes batch_name (constructed by Deforum)
-            output_dir = Path(job_status.outdir) / job_status.timestring
+            # Frames are at root of outdir, not in timestamped subdirectory
+            output_dir = Path(job_status.outdir)
             logger.info(f"  Looking for frames in: {output_dir}")
 
+            # Find frame PNGs (exclude depth maps in subdirectory)
             frame_files = sorted(
-                output_dir.glob("*.png"),
-                key=lambda p: int(p.stem.split('_')[-1])
+                [f for f in output_dir.glob("*.png") if f.stem.isdigit()],
+                key=lambda p: int(p.stem)
             )
             logger.info(f"  Found {len(frame_files)} frames")
 
