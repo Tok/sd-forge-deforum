@@ -370,9 +370,8 @@ def on_ui_tabs():
 
                 components['camera_path_plot'] = camera_path_plot
 
-        # Camera Path visualization - update when tab is selected
-        camera_path_tab = components.get('camera_path_tab')
-        if camera_path_tab and camera_path_plot:
+        # Camera Path visualization - load on UI startup (independent of tab selection)
+        if camera_path_plot:
             from deforum.utils.schedule_visualizer import visualize_schedules
 
             def update_camera_path_visualization(tx, ty, tz, rx, ry, rz, prompts):
@@ -389,7 +388,8 @@ def on_ui_tabs():
                     logger.warning(f"Failed to update camera path visualization: {e}")
                     return None
 
-            camera_path_tab.select(
+            # Load visualization on UI startup (not on tab selection)
+            deforum_interface.load(
                 fn=update_camera_path_visualization,
                 inputs=[
                     components.get('translation_x'),
@@ -739,33 +739,6 @@ def on_ui_tabs():
             should_show = anim_mode == '3D'
             depth_preview_image.visible = should_show
             logger.info(f"Depth preview gallery: visible={should_show} (anim_mode={anim_mode})")
-
-        # Update camera path visualization on startup
-        try:
-            from deforum.utils.schedule_visualizer import visualize_schedules
-            tx = components.get('translation_x')
-            ty = components.get('translation_y')
-            tz = components.get('translation_z')
-            rx = components.get('rotation_3d_x')
-            ry = components.get('rotation_3d_y')
-            rz = components.get('rotation_3d_z')
-            prompts = components.get('animation_prompts')
-
-            if tx and ty and tz and rx and ry and rz and camera_path_plot:
-                fig, _ = visualize_schedules(
-                    tx.value or "",
-                    ty.value or "",
-                    tz.value or "",
-                    rx.value or "",
-                    ry.value or "",
-                    rz.value or "",
-                    333,
-                    prompts.value if prompts else ""
-                )
-                camera_path_plot.value = fig
-                logger.info(f"{emoji_if_enabled('✅')} Camera path visualization initialized on startup")
-        except Exception as e:
-            logger.warning(f"Failed to initialize camera path visualization: {e}")
 
     # Always load settings on startup - either from persistent settings path (if enabled),
     # from webui root, or from the extension's default settings
