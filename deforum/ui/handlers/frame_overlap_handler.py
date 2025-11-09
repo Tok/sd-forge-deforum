@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 from deforum.utils.frame_overlap_simulator import simulate_camera_path
 from deforum.utils.frame_overlap_visualizer import create_worm_trail_visualization
-from deforum.utils.schedule import get_inbetweens, parse_key_frames
+from deforum.core.keyframes import get_inbetweens, parse_key_frames
 from deforum.utils.system.logging import get_logger
 
 logger = get_logger()
