@@ -17,8 +17,15 @@ cd /d "%FORGE_DIR%"
 
 REM Use webui.bat if available, otherwise fallback to python webui.py
 REM Note: --deforum-api is required for tuning tab to work
+REM Ctrl+C should propagate to child process, but if zombie processes persist:
+REM   taskkill /F /IM python.exe /T
 if exist "webui.bat" (
     call webui.bat --deforum-api --deforum-run-tuning %*
 ) else (
     python webui.py --deforum-api --deforum-run-tuning %*
 )
+
+REM Cleanup on exit
+echo.
+echo Shutting down Forge...
+taskkill /F /FI "WINDOWTITLE eq Forge*" /T >nul 2>&1
