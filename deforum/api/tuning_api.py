@@ -421,8 +421,8 @@ class TuningTestManager:
 
                 # Explicitly set ALL schedule fields to prevent defaults from kicking in
                 # Must use multi-frame format (not "0:(x)") to avoid KeyError: -1
-                # Missing ANY of these causes defaults with single-keyframe format
-                "checkpoint_schedule": "0:(0), 1:(0)",
+                # String-based schedules MUST use quoted strings, not numbers
+                "checkpoint_schedule": '0:("flux1-dev"), 1:("flux1-dev")',
                 "clipskip_schedule": "0:(2), 1:(2)",
                 "sampler_schedule": '0:("euler"), 1:("euler")',
                 "scheduler_schedule": '0:("Simple"), 1:("Simple")',
