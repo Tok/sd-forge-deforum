@@ -5,6 +5,7 @@ from typing import Optional
 from deforum.utils.frame_overlap_simulator import simulate_camera_path
 from deforum.utils.frame_overlap_canvas import create_canvas_html
 from deforum.core.keyframes import FrameInterpolater
+from deforum.utils.parsing.schedule_manipulation import get_final_schedules_with_shakify
 from deforum.utils.system.logging import get_logger
 
 logger = get_logger()
@@ -19,9 +20,13 @@ def update_frame_overlap_visualization(
     rotation_3d_z: str,
     max_frames: int,
     width: int,
-    height: int
+    height: int,
+    shake_name: str = "None",
+    shake_intensity: float = 1.0,
+    shake_speed: float = 1.0,
+    target_fps: int = 60
 ) -> Optional[str]:
-    """Update frame overlap visualization from schedule strings.
+    """Update frame overlap visualization from schedule strings with shakify overlay.
 
     Args:
         translation_x: Translation X schedule string
@@ -33,16 +38,39 @@ def update_frame_overlap_visualization(
         max_frames: Maximum number of frames
         width: Viewport width in pixels
         height: Viewport height in pixels
+        shake_name: Camera shakify pattern name (default: "None")
+        shake_intensity: Shakify intensity multiplier (default: 1.0)
+        shake_speed: Shakify speed multiplier (default: 1.0)
+        target_fps: Target FPS for shakify interpolation (default: 60)
 
     Returns:
         HTML string with Canvas visualization, or None on error
     """
     try:
-        # Parse schedule strings to get per-frame values
-        # Default to "0:(0)" if empty
-        tx_schedule = translation_x or "0:(0)"
-        ty_schedule = translation_y or "0:(0)"
-        ry_schedule = rotation_3d_y or "0:(0)"
+        # Build base schedules dict
+        base_schedules = {
+            'translation_x': translation_x or "0:(0)",
+            'translation_y': translation_y or "0:(0)",
+            'translation_z': translation_z or "0:(0)",
+            'rotation_3d_x': rotation_3d_x or "0:(0)",
+            'rotation_3d_y': rotation_3d_y or "0:(0)",
+            'rotation_3d_z': rotation_3d_z or "0:(0)",
+        }
+
+        # Apply shakify overlay to get final combined schedules
+        final_schedules = get_final_schedules_with_shakify(
+            base_schedules=base_schedules,
+            shake_name=shake_name,
+            shake_intensity=shake_intensity,
+            shake_speed=shake_speed,
+            max_frames=max_frames,
+            target_fps=target_fps
+        )
+
+        # Parse FINAL schedule strings (base + shakify) to get per-frame values
+        tx_schedule = final_schedules['translation_x']
+        ty_schedule = final_schedules['translation_y']
+        ry_schedule = final_schedules['rotation_3d_y']
 
         # Create parser
         parser = FrameInterpolater(max_frames=max_frames)
