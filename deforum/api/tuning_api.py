@@ -478,13 +478,12 @@ class TuningTestManager:
             logger.info(f"  Submitted job {job_id}, waiting for completion...")
 
             # Wait for completion
-            wait_for_job_to_complete(job_id, timeout=600)
+            job_status = wait_for_job_to_complete(job_id, timeout=600)
 
-            # Load generated frames
-            batch_name = get_test_batch_name(job_id)
-            frame_pattern = f"{batch_name}_*.png"
+            # Load generated frames from job output directory
+            output_dir = Path(job_status.outdir) / job_status.timestring
             frame_files = sorted(
-                Path(job_data["outdir_samples"]).glob(frame_pattern),
+                output_dir.glob("*.png"),
                 key=lambda p: int(p.stem.split('_')[-1])
             )
 
