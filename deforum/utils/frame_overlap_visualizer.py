@@ -1,16 +1,15 @@
 """Frame Overlap Visualizer - Generate worm trail visualization for camera movements.
 
-This module creates interactive Plotly visualizations showing:
+This module creates Plotly visualizations showing:
 - Worm trail effect: Previous frame positions with fading opacity
 - Preservation/novelty metrics displayed per frame
-- Color-coded frames based on metrics (green = good, yellow = warning, red = problem)
-- Playable timeline to scrub through the animation
+- Color-coded frames based on metrics (purple theme matching Deforum UI)
+- Playable timeline with speed control
 """
 
 from typing import List, Optional
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from deforum.utils.frame_overlap_simulator import (
     FrameMetrics,
@@ -20,11 +19,14 @@ from deforum.utils.frame_overlap_simulator import (
 )
 
 
-# Color constants
-COLOR_GOOD = 'rgb(50, 205, 50)'  # Green
-COLOR_WARNING = 'rgb(255, 215, 0)'  # Gold
-COLOR_PROBLEM = 'rgb(255, 69, 0)'  # Red-orange
-COLOR_VIEWPORT = 'rgb(100, 100, 255)'  # Blue
+# Deforum purple/slopcore dark theme colors
+COLOR_GOOD = 'rgb(150, 100, 255)'  # Purple - good preservation
+COLOR_WARNING = 'rgb(255, 150, 100)'  # Orange - warning
+COLOR_PROBLEM = 'rgb(255, 80, 80)'  # Red - problem
+COLOR_VIEWPORT = 'rgb(180, 140, 255)'  # Light purple - current viewport
+COLOR_BG = 'rgb(20, 20, 30)'  # Dark background
+COLOR_GRID = 'rgb(60, 60, 80)'  # Dark purple grid
+COLOR_TEXT = 'rgb(200, 200, 220)'  # Light text
 
 
 def get_frame_color(metrics: FrameMetrics) -> str:
@@ -57,9 +59,9 @@ def calculate_opacity(age: int, max_trail_length: int) -> float:
     if age == 0:
         return 1.0  # Current frame fully visible
 
-    # Linear fade from 1.0 to 0.1
+    # Exponential fade for smoother worm effect
     min_opacity = 0.1
-    fade = (max_trail_length - age) / max_trail_length
+    fade = ((max_trail_length - age) / max_trail_length) ** 2  # Quadratic fade
     return min_opacity + (1.0 - min_opacity) * fade
 
 
@@ -86,17 +88,20 @@ def create_rectangle_trace(
     x_coords = list(rect_corners[:, 0]) + [rect_corners[0, 0]]
     y_coords = list(rect_corners[:, 1]) + [rect_corners[0, 1]]
 
+    # Convert RGB to RGBA for fill
+    rgba_fill = color.replace('rgb', 'rgba').replace(')', f', {opacity * 0.15})')
+
     return go.Scatter(
         x=x_coords,
         y=y_coords,
         mode='lines',
         line=dict(color=color, width=2),
         fill='toself',
-        fillcolor=color.replace('rgb', 'rgba').replace(')', f', {opacity * 0.2})'),
+        fillcolor=rgba_fill,
         opacity=opacity,
         name=name,
         showlegend=show_legend,
-        hoverinfo='name'
+        hoverinfo='skip'  # Disable hover to reduce clutter
     )
 
 
@@ -104,7 +109,7 @@ def create_worm_trail_frame(
     metrics_list: List[FrameMetrics],
     frame_index: int,
     trail_length: int = DEFAULT_TRAIL_LENGTH
-) -> List[go.Scatter]:
+) -> tuple[List[go.Scatter], tuple[float, float]]:
     """Create worm trail traces for a single frame.
 
     Args:
@@ -113,19 +118,26 @@ def create_worm_trail_frame(
         trail_length: Number of previous frames to show in trail
 
     Returns:
-        List of Plotly traces for this frame
+        Tuple of (list of Plotly traces, (center_x, center_y) for viewport centering)
     """
     traces: List[go.Scatter] = []
 
-    # Current viewport (always shown in blue)
+    # Get current frame position for centering
     current_metrics = metrics_list[frame_index]
+    center_x = current_metrics.prev_frame_rect.center_x
+    center_y = current_metrics.prev_frame_rect.center_y
+
+    # Current viewport (always shown in light purple, fixed at origin)
     viewport_corners = current_metrics.curr_viewport_rect.get_corners()
+    # Translate viewport to follow current frame
+    viewport_corners_translated = viewport_corners + np.array([center_x, center_y])
+
     traces.append(create_rectangle_trace(
-        rect_corners=viewport_corners,
+        rect_corners=viewport_corners_translated,
         color=COLOR_VIEWPORT,
-        opacity=1.0,
+        opacity=0.8,
         name='Current Viewport',
-        show_legend=True
+        show_legend=False
     ))
 
     # Previous frames in trail (worm effect)
@@ -144,16 +156,15 @@ def create_worm_trail_frame(
         prev_corners = metrics.prev_frame_rect.get_corners()
 
         # Create trace
-        label = f'Frame {i}' if age == 0 else f'Frame {i} (-{age})'
         traces.append(create_rectangle_trace(
             rect_corners=prev_corners,
             color=frame_color,
             opacity=opacity,
-            name=label,
-            show_legend=(age == 0)  # Only show current frame in legend
+            name=f'Frame {i}',
+            show_legend=False
         ))
 
-    return traces
+    return traces, (center_x, center_y)
 
 
 def create_metrics_annotation(
@@ -165,17 +176,16 @@ def create_metrics_annotation(
 
     Args:
         metrics: Frame metrics to display
-        x_pos: X position for annotation
-        y_pos: Y position for annotation
+        x_pos: X position for annotation (paper coordinates)
+        y_pos: Y position for annotation (paper coordinates)
 
     Returns:
         Plotly annotation dict
     """
     text = (
-        f"Frame {metrics.frame_index}<br>"
-        f"<b>Preservation:</b> {metrics.preservation * 100:.1f}%<br>"
-        f"<b>Novelty:</b> {metrics.novelty * 100:.1f}%<br>"
-        f"<b>Overlap:</b> {metrics.overlap_area:.0f} px²"
+        f"<b>Frame {metrics.frame_index}</b><br>"
+        f"Preservation: {metrics.preservation * 100:.1f}%<br>"
+        f"Novelty: {metrics.novelty * 100:.1f}%"
     )
 
     return dict(
@@ -186,10 +196,10 @@ def create_metrics_annotation(
         text=text,
         showarrow=False,
         align='left',
-        bgcolor='rgba(255, 255, 255, 0.8)',
+        bgcolor='rgba(40, 40, 60, 0.9)',
         bordercolor=get_frame_color(metrics),
         borderwidth=2,
-        font=dict(size=12)
+        font=dict(size=11, color=COLOR_TEXT)
     )
 
 
@@ -217,8 +227,9 @@ def create_worm_trail_visualization(
         fig = go.Figure()
         fig.update_layout(
             title="No metrics to display",
-            xaxis_title="X (pixels)",
-            yaxis_title="Y (pixels)"
+            paper_bgcolor=COLOR_BG,
+            plot_bgcolor=COLOR_BG,
+            font=dict(color=COLOR_TEXT)
         )
         return fig
 
@@ -226,15 +237,15 @@ def create_worm_trail_visualization(
     viewport_width = metrics_list[0].curr_viewport_rect.width
     viewport_height = metrics_list[0].curr_viewport_rect.height
 
-    # Add some padding
-    padding_factor = 1.5
+    # Fixed range centered on viewport (won't pan - always shows same area)
+    padding_factor = 1.8
     x_range = [-viewport_width * padding_factor / 2, viewport_width * padding_factor / 2]
     y_range = [-viewport_height * padding_factor / 2, viewport_height * padding_factor / 2]
 
     # Create frames for animation
     frames = []
     for frame_idx in range(len(metrics_list)):
-        traces = create_worm_trail_frame(metrics_list, frame_idx, trail_length)
+        traces, (cx, cy) = create_worm_trail_frame(metrics_list, frame_idx, trail_length)
 
         # Create annotation for this frame
         annotation = create_metrics_annotation(
@@ -246,43 +257,60 @@ def create_worm_trail_visualization(
         frames.append(go.Frame(
             data=traces,
             name=str(frame_idx),
-            layout=dict(annotations=[annotation])
+            layout=dict(
+                annotations=[annotation],
+                # Update axis ranges to follow current frame
+                xaxis=dict(range=[cx + x_range[0], cx + x_range[1]]),
+                yaxis=dict(range=[cy + y_range[0], cy + y_range[1]])
+            )
         ))
 
     # Create initial frame (frame 0)
-    initial_traces = create_worm_trail_frame(metrics_list, 0, trail_length)
+    initial_traces, (cx0, cy0) = create_worm_trail_frame(metrics_list, 0, trail_length)
     initial_annotation = create_metrics_annotation(metrics_list[0], x_pos=0.02, y_pos=0.98)
 
     # Create figure with initial frame
     fig = go.Figure(data=initial_traces, frames=frames)
 
-    # Update layout
+    # Update layout with Deforum theme
     fig.update_layout(
         title=dict(
             text=f"Frame Overlap Simulator - {len(metrics_list)} frames",
             x=0.5,
-            xanchor='center'
+            xanchor='center',
+            font=dict(size=14, color=COLOR_TEXT)
         ),
         xaxis=dict(
             title="X (pixels)",
-            range=x_range,
+            range=[cx0 + x_range[0], cx0 + x_range[1]],
             scaleanchor='y',
             scaleratio=1,
             zeroline=True,
             zerolinewidth=1,
-            zerolinecolor='gray'
+            zerolinecolor=COLOR_GRID,
+            gridcolor=COLOR_GRID,
+            showgrid=True,
+            color=COLOR_TEXT
         ),
         yaxis=dict(
             title="Y (pixels)",
-            range=y_range,
+            range=[cy0 + y_range[0], cy0 + y_range[1]],
             zeroline=True,
             zerolinewidth=1,
-            zerolinecolor='gray'
+            zerolinecolor=COLOR_GRID,
+            gridcolor=COLOR_GRID,
+            showgrid=True,
+            color=COLOR_TEXT
         ),
         width=width,
         height=height,
-        hovermode='closest',
+        paper_bgcolor=COLOR_BG,
+        plot_bgcolor=COLOR_BG,
+        font=dict(color=COLOR_TEXT),
+        hovermode=False,  # Disable hover
+        dragmode=False,  # Disable drag/zoom
         annotations=[initial_annotation],
+        # Simplified controls - just play/pause
         updatemenus=[
             dict(
                 type='buttons',
@@ -308,10 +336,14 @@ def create_worm_trail_visualization(
                         )]
                     )
                 ],
-                x=0.1,
-                y=0,
+                x=0.05,
+                y=0.05,
                 xanchor='left',
-                yanchor='top'
+                yanchor='bottom',
+                bgcolor='rgba(60, 60, 80, 0.8)',
+                bordercolor=COLOR_VIEWPORT,
+                borderwidth=1,
+                font=dict(color=COLOR_TEXT)
             )
         ],
         sliders=[
@@ -324,114 +356,35 @@ def create_worm_trail_visualization(
                             mode='immediate',
                             transition=dict(duration=0)
                         )],
-                        label=f"Frame {i}",
+                        label=str(i),
                         method='animate'
                     )
                     for i, f in enumerate(frames)
                 ],
-                x=0.1,
-                y=0,
+                x=0.05,
+                y=0.0,
                 xanchor='left',
-                yanchor='top',
-                len=0.8,
+                yanchor='bottom',
+                len=0.9,
                 currentvalue=dict(
                     prefix='Frame: ',
                     visible=True,
-                    xanchor='left'
-                )
+                    xanchor='left',
+                    font=dict(color=COLOR_TEXT, size=12)
+                ),
+                bgcolor='rgba(60, 60, 80, 0.6)',
+                bordercolor=COLOR_VIEWPORT,
+                borderwidth=1,
+                tickcolor=COLOR_TEXT,
+                font=dict(color=COLOR_TEXT)
             )
         ]
     )
 
-    return fig
-
-
-def create_metrics_timeline_chart(
-    metrics_list: List[FrameMetrics],
-    width: int = 800,
-    height: int = 300
-) -> go.Figure:
-    """Create timeline chart showing preservation/novelty over time.
-
-    Args:
-        metrics_list: List of frame metrics from simulator
-        width: Figure width in pixels
-        height: Figure height in pixels
-
-    Returns:
-        Plotly Figure with timeline chart
-    """
-    if not metrics_list:
-        fig = go.Figure()
-        fig.update_layout(title="No metrics to display")
-        return fig
-
-    frame_indices = [m.frame_index for m in metrics_list]
-    preservations = [m.preservation * 100 for m in metrics_list]
-    novelties = [m.novelty * 100 for m in metrics_list]
-
-    fig = make_subplots(
-        rows=2, cols=1,
-        subplot_titles=('Preservation %', 'Novelty %'),
-        vertical_spacing=0.15
-    )
-
-    # Preservation line
-    fig.add_trace(
-        go.Scatter(
-            x=frame_indices,
-            y=preservations,
-            mode='lines',
-            name='Preservation',
-            line=dict(color=COLOR_GOOD, width=2),
-            hovertemplate='Frame %{x}<br>Preservation: %{y:.1f}%<extra></extra>'
-        ),
-        row=1, col=1
-    )
-
-    # Preservation threshold line
-    fig.add_hline(
-        y=MIN_PRESERVATION_THRESHOLD * 100,
-        line_dash='dash',
-        line_color=COLOR_PROBLEM,
-        annotation_text=f'Min ({MIN_PRESERVATION_THRESHOLD * 100:.0f}%)',
-        row=1, col=1
-    )
-
-    # Novelty line
-    fig.add_trace(
-        go.Scatter(
-            x=frame_indices,
-            y=novelties,
-            mode='lines',
-            name='Novelty',
-            line=dict(color=COLOR_WARNING, width=2),
-            hovertemplate='Frame %{x}<br>Novelty: %{y:.1f}%<extra></extra>'
-        ),
-        row=2, col=1
-    )
-
-    # Novelty threshold line
-    fig.add_hline(
-        y=MAX_NOVELTY_THRESHOLD * 100,
-        line_dash='dash',
-        line_color=COLOR_PROBLEM,
-        annotation_text=f'Max ({MAX_NOVELTY_THRESHOLD * 100:.0f}%)',
-        row=2, col=1
-    )
-
-    fig.update_xaxes(title_text='Frame Index', row=2, col=1)
-    fig.update_yaxes(title_text='%', range=[0, 100], row=1, col=1)
-    fig.update_yaxes(title_text='%', range=[0, 100], row=2, col=1)
-
+    # Remove toolbar (zoom, pan, etc.)
     fig.update_layout(
-        width=width,
-        height=height,
-        showlegend=False,
-        title=dict(
-            text='Preservation/Novelty Timeline',
-            x=0.5,
-            xanchor='center'
+        modebar=dict(
+            remove=['zoom', 'pan', 'select', 'lasso2d', 'zoomIn', 'zoomOut', 'autoScale', 'resetScale']
         )
     )
 
