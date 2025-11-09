@@ -406,9 +406,10 @@ class TuningTestManager:
                     "0": "a detailed 3D render of a colorful geometric sculpture, studio lighting"
                 }),
 
-                # Disable audio
+                # Disable audio for tuning tests (faster, cleaner)
                 "audio_mode": "None",
                 "audio_sync": False,
+                "add_soundtrack": "None",
 
                 # Depth warping enabled
                 "use_depth_warping": True,
@@ -482,26 +483,34 @@ class TuningTestManager:
             logger.info(f"  Submitted job {job_id}, waiting for completion...")
 
             # Wait for completion
+            logger.info(f"  Waiting for job {job_id} to complete...")
             job_status = wait_for_job_to_complete(job_id, timeout=600)
+            logger.info(f"  Job {job_id} completed with status: {job_status.status}")
 
             # Load generated frames from job output directory
             # Deforum creates subdirectory: batch_name + "_" + timestring
             # job_status.outdir already includes batch_name (constructed by Deforum)
             output_dir = Path(job_status.outdir) / job_status.timestring
+            logger.info(f"  Looking for frames in: {output_dir}")
+
             frame_files = sorted(
                 output_dir.glob("*.png"),
                 key=lambda p: int(p.stem.split('_')[-1])
             )
+            logger.info(f"  Found {len(frame_files)} frames")
 
             if not frame_files:
-                raise ValueError(f"No frames generated for job {job_id}")
+                raise ValueError(f"No frames generated for job {job_id} in {output_dir}")
 
             frames = [load_image_as_numpy(str(f)) for f in frame_files]
-            logger.info(f"  Loaded {len(frames)} frames")
+            logger.info(f"  Loaded {len(frames)} frames as numpy arrays")
 
             # Measure metrics
+            logger.info(f"  Measuring subject position drift...")
             drift_metrics = measure_subject_position_drift(frames)
+            logger.info(f"  Measuring temporal consistency...")
             temporal_metrics = measure_temporal_consistency(frames)
+            logger.info(f"  Metrics calculated successfully")
 
             # Calculate overall quality score
             # Lower drift = better, higher temporal = better
