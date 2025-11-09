@@ -314,26 +314,26 @@ def create_worm_trail_visualization(
         updatemenus=[
             dict(
                 type='buttons',
-                showactive=False,
+                showactive=True,
                 buttons=[
                     dict(
                         label='▶ Play',
                         method='animate',
-                        args=[None, dict(
-                            frame=dict(duration=1000 / playback_fps, redraw=True),
-                            fromcurrent=True,
-                            mode='immediate',
-                            transition=dict(duration=0)
-                        )]
+                        args=[None, {
+                            'frame': {'duration': int(1000 / playback_fps), 'redraw': True},
+                            'fromcurrent': True,
+                            'transition': {'duration': 0},
+                            'mode': 'immediate'
+                        }]
                     ),
                     dict(
                         label='⏸ Pause',
                         method='animate',
-                        args=[[None], dict(
-                            frame=dict(duration=0, redraw=False),
-                            mode='immediate',
-                            transition=dict(duration=0)
-                        )]
+                        args=[[None], {
+                            'frame': {'duration': 0, 'redraw': False},
+                            'mode': 'immediate',
+                            'transition': {'duration': 0}
+                        }]
                     )
                 ],
                 x=0.05,
@@ -343,7 +343,7 @@ def create_worm_trail_visualization(
                 bgcolor='rgba(60, 60, 80, 0.8)',
                 bordercolor=COLOR_VIEWPORT,
                 borderwidth=1,
-                font=dict(color=COLOR_TEXT)
+                font=dict(color=COLOR_TEXT, size=12)
             )
         ],
         sliders=[
