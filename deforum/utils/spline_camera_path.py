@@ -260,7 +260,7 @@ def generate_rotate_around_path(
     height: float = 0.0,
     center_z: float = 0.0,
     use_sphere: bool = True,
-    frames_per_loop: float = 1200.0
+    frames_per_loop: float = None
 ) -> List[CameraPoint]:
     """Generate rotate-around camera path on sphere surface.
 
@@ -272,11 +272,15 @@ def generate_rotate_around_path(
         center_x, center_y, center_z: Center position
         height: Additional height offset
         use_sphere: If True, randomize around sphere; if False, flat circle
-        frames_per_loop: Frames for one complete rotation (default 1200 = 3 loops/min at 60fps)
+        frames_per_loop: Frames for one complete rotation
+                        If None (default), uses num_frames (1 full orbit over animation)
 
     Returns:
         List of CameraPoint objects with rotations calculated via quaternion look-at
     """
+    # Default: complete exactly 1 orbit over the animation duration
+    if frames_per_loop is None:
+        frames_per_loop = float(num_frames)
     camera_path = []
 
     for frame_idx in range(num_frames):

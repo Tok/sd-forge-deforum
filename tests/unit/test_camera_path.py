@@ -207,14 +207,13 @@ class TestRotateAroundPath:
     """Test rotate-around path generation."""
 
     def test_rotate_around_basic(self):
-        """Test basic rotate-around path with sphere rotation (default)."""
+        """Test basic rotate-around path with quaternion look-at."""
         camera_path = generate_rotate_around_path(
             num_frames=100,
             radius=50.0,
             center_x=0.0,
             center_y=0.0,
             height=10.0,
-            rotation_factor=-5.0,
             use_sphere=True  # Default behavior
         )
 
@@ -231,19 +230,25 @@ class TestRotateAroundPath:
             distance_3d = np.sqrt(dx**2 + dy**2 + dz**2)
             assert abs(distance_3d - 50.0) < 1.0  # Within tolerance (sphere)
 
-    def test_rotate_around_rotation_factor(self):
-        """Test that camera looks at center (not rotation_y = x * factor in sphere mode)."""
+    def test_rotate_around_quaternion_look_at(self):
+        """Test that camera uses quaternion look-at (always faces center)."""
         camera_path = generate_rotate_around_path(
             num_frames=100,
             radius=50.0,
-            rotation_factor=-5.0,
             use_sphere=True  # Default behavior
         )
 
-        # In sphere mode, camera looks at center, not translation_x * rotation_factor
-        # Check that rotation values are reasonable (pointing toward center)
+        # Verify camera looks at center using quaternion-based calculation
+        from deforum.utils.math.quaternion import validate_look_at
+
+        center = (0.0, 0.0, 0.0)
         for point in camera_path:
-            # Rotations should be within reasonable bounds for looking at center
+            camera_pos = (point.x, point.y, point.z)
+            is_valid, error = validate_look_at(camera_pos, center, tolerance_degrees=1.0)
+            assert is_valid, f"Frame {point.frame}: Camera doesn't face center (error={error:.2f}°)"
+
+        # Rotations should be within reasonable bounds for looking at center
+        for point in camera_path:
             assert -90.0 <= point.rot_x <= 90.0  # Tilt
             assert -180.0 <= point.rot_y <= 180.0  # Pan
 
@@ -406,7 +411,6 @@ class TestSphereRotation:
             center_x=0.0,
             center_y=0.0,
             height=10.0,
-            rotation_factor=-5.0,
             use_sphere=True
         )
 
@@ -439,7 +443,6 @@ class TestSphereRotation:
             center_x=0.0,
             center_y=0.0,
             height=10.0,
-            rotation_factor=-5.0,
             use_sphere=False  # Classic flat circle
         )
 
