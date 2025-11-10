@@ -279,12 +279,12 @@ def create_tuning_tab() -> tuple:
 
                         gr.Markdown("### Orbit Parameters")
                         orbit_orbit_radius = gr.Slider(
-                            label="Orbit radius (pixels)",
+                            label="Movement scale (translation amount)",
                             minimum=1.0,
-                            maximum=100.0,
-                            value=20.0,
-                            step=1.0,
-                            info="Translation distance from center (20px = standard orbit, 2px = very slow, 50px = wide orbit)",
+                            maximum=20.0,
+                            value=5.0,
+                            step=0.5,
+                            info="How much to move per orbit (2-3 = very gentle, 5 = moderate, 10+ = aggressive, may exit frame)",
                         )
                         orbit_orbit_iterations = gr.Slider(
                             label="Depth warp iterations per test",

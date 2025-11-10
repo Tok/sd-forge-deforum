@@ -54,7 +54,7 @@ class TuningTestConfig(BaseModel):
     rotation_factor_min: Optional[float] = Field(None, ge=-20.0, le=-0.1)
     rotation_factor_max: Optional[float] = Field(None, ge=-20.0, le=-0.1)
     rotation_factor_step: Optional[float] = Field(None, ge=0.01, le=2.0, description="Step size for rotation factor sweep (0.01 = fine, 0.5 = coarse)")
-    orbit_radius: Optional[float] = Field(None, ge=1.0, le=100.0, description="Orbit radius in pixels (1.0 = very slow, 100.0 = fast)")
+    orbit_radius: Optional[float] = Field(None, ge=1.0, le=20.0, description="Movement scale / translation amount per orbit (1-3 = gentle, 5 = moderate, 10+ = aggressive)")
     orbit_iterations: Optional[int] = Field(None, ge=10, le=200, description="Number of orbit iterations (max 200 for slow orbits)")
 
     # RAFT-specific parameters (for raft_tuning test type)
@@ -298,7 +298,7 @@ class TuningTestManager:
                         return
 
                 # Run orbit test with these parameters
-                actual_orbit_radius = config.orbit_radius or 2.0
+                actual_orbit_radius = config.orbit_radius or 5.0
                 actual_orbit_iterations = config.orbit_iterations or 50
 
                 logger.info(
@@ -532,6 +532,80 @@ class TuningTestManager:
 
         fig.write_html(str(output_path))
         logger.info(f"Orbit tuning graph saved to: {output_path}")
+
+        # Generate copy-pastable summary
+        self._print_orbit_test_summary(results, output_path)
+
+    def _print_orbit_test_summary(self, results: list, graph_path):
+        """Print copy-pastable summary of orbit test results."""
+        if not results:
+            return
+
+        # Find best result
+        best = max(results, key=lambda r: r.get("iterations_until_offscreen", 0))
+        best_factor = best.get("rotation_factor", 0)
+        best_iters = best.get("iterations_until_offscreen", 0)
+        total_frames = best.get("total_frames", 0)
+
+        # Group by aspect ratio
+        aspect_summaries = {}
+        for r in results:
+            aspect = r.get("aspect_ratio", 0)
+            if aspect not in aspect_summaries:
+                aspect_summaries[aspect] = []
+            aspect_summaries[aspect].append(r)
+
+        # Print formatted summary
+        print("\n" + "=" * 80)
+        print("ORBIT TEST RESULTS SUMMARY (Copy & Paste to Share)")
+        print("=" * 80)
+        print(f"\nGraph: file://{graph_path}")
+        print(f"\n**BEST ROTATION FACTOR:** {best_factor:.2f}")
+        print(f"  Sphere stayed visible: {best_iters}/{total_frames} frames ({100*best_iters/total_frames:.1f}%)")
+
+        print(f"\n**Results by Aspect Ratio:**")
+        for aspect in sorted(aspect_summaries.keys()):
+            aspect_results = aspect_summaries[aspect]
+            width = aspect_results[0].get("width", 0)
+            height = aspect_results[0].get("height", 0)
+            radius = aspect_results[0].get("orbit_radius", 0)
+
+            print(f"\n  Aspect {aspect:.2f} ({width}×{height}), movement scale={radius}")
+
+            # Sort by rotation factor
+            sorted_results = sorted(aspect_results, key=lambda r: r.get("rotation_factor", 0), reverse=True)
+
+            # Show top 5 best performers
+            top_5 = sorted(aspect_results, key=lambda r: r.get("iterations_until_offscreen", 0), reverse=True)[:5]
+            print("  Top 5 rotation factors:")
+            for i, r in enumerate(top_5, 1):
+                factor = r.get("rotation_factor", 0)
+                iters = r.get("iterations_until_offscreen", 0)
+                print(f"    {i}. {factor:6.2f} → {iters:2d} iterations")
+
+        print("\n" + "=" * 80)
+        print("INTERPRETATION:")
+        print("=" * 80)
+        if best_iters < total_frames * 0.2:  # Less than 20% of frames
+            print("⚠️  WARNING: Best result only stayed visible for {:.0f}% of frames!".format(100*best_iters/total_frames))
+            print("   Possible issues:")
+            print("   - Movement scale too large (try 2-5 instead of current value)")
+            print("   - Rotation formula still incorrect")
+            print("   - Detection threshold too sensitive")
+        elif best_iters < total_frames * 0.5:  # Less than 50%
+            print("⚠️  MODERATE: Best result stayed visible for {:.0f}% of frames".format(100*best_iters/total_frames))
+            print("   - Results are meaningful but orbit breaks down quickly")
+            print("   - Consider reducing movement scale for gentler orbit")
+        elif best_iters < total_frames * 0.8:  # Less than 80%
+            print("✓  GOOD: Best result stayed visible for {:.0f}% of frames".format(100*best_iters/total_frames))
+            print("   - Orbit is relatively stable")
+            print("   - Optimal rotation_factor: {:.2f}".format(best_factor))
+        else:  # 80%+ frames
+            print("✓✓ EXCELLENT: Best result stayed visible for {:.0f}% of frames!".format(100*best_iters/total_frames))
+            print("   - Near-perfect orbital stability")
+            print("   - Use rotation_factor={:.2f} as default".format(best_factor))
+
+        print("=" * 80 + "\n")
 
     def _count_iterations_until_offscreen(self, frames: list, width: int, height: int) -> int:
         """Count how many iterations until the sphere goes off-screen.
