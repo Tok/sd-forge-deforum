@@ -14,6 +14,7 @@ from pathlib import Path
 import cv2
 import sys
 import os
+import json
 from typing import Tuple, List
 import argparse
 
@@ -282,4 +283,45 @@ if __name__ == "__main__":
 
     output_html = args.output / "orbit_results.html"
     fig.write_html(str(output_html))
-    print(f"Results saved to: {output_html}")
+    print(f"\nResults saved to: {output_html}")
+
+    # Save summary JSON
+    summary_json = args.output / "orbit_results_summary.json"
+    with open(summary_json, 'w') as f:
+        json.dump(all_results, f, indent=2)
+    print(f"Summary JSON saved to: {summary_json}")
+
+    # Print summary table
+    print("\n" + "="*80)
+    print("SUMMARY TABLE")
+    print("="*80)
+    print(f"{'Rotation Factor':<20} {'Iterations Until Off-Screen':<30} {'Status':<20}")
+    print("-"*80)
+
+    max_iterations_seen = max(r["iterations_until_offscreen"] for r in all_results)
+    optimal_factor = None
+    optimal_iterations = 0
+
+    for r in all_results:
+        iters = r["iterations_until_offscreen"]
+        factor = r["rotation_factor"]
+
+        # Track optimal
+        if iters > optimal_iterations:
+            optimal_iterations = iters
+            optimal_factor = factor
+
+        # Status indicator
+        if iters == max_iterations_seen:
+            status = "✓ BEST"
+        elif iters >= max_iterations_seen * 0.8:
+            status = "Good"
+        else:
+            status = "Poor"
+
+        print(f"{factor:<20.2f} {iters:<30} {status:<20}")
+
+    print("="*80)
+    print(f"\nOPTIMAL ROTATION FACTOR: {optimal_factor:.2f}")
+    print(f"(Sphere stayed visible for {optimal_iterations}/{args.iterations} iterations)")
+    print("="*80)

@@ -257,7 +257,7 @@ def create_tuning_tab() -> tuple:
                             minimum=-30.0,
                             maximum=-0.5,
                             value=-2.0,
-                            step=0.1,
+                            step=0.05,
                             info="More negative = stronger counter-rotation to compensate translation",
                         )
                         orbit_rotation_factor_max = gr.Slider(
@@ -265,16 +265,16 @@ def create_tuning_tab() -> tuple:
                             minimum=-30.0,
                             maximum=-0.5,
                             value=-0.5,
-                            step=0.1,
+                            step=0.05,
                             info="Less negative = weaker counter-rotation (theory: -1.0 = perfect orbit)",
                         )
                         orbit_rotation_factor_step = gr.Slider(
                             label="Step size",
                             minimum=0.01,
                             maximum=2.0,
-                            value=0.1,
+                            value=0.05,
                             step=0.01,
-                            info="0.1 = balanced (16 tests), 0.05 = fine (31 tests), 0.01 = very fine (151 tests)",
+                            info="0.05 = fine (31 tests), 0.1 = coarse (16 tests), 0.01 = very fine (151 tests)",
                         )
 
                         gr.Markdown("### Orbit Parameters")
