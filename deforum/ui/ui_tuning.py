@@ -412,6 +412,191 @@ def create_tuning_tab() -> tuple:
                                     value={},
                                 )
 
+            # RAFT Optical Flow Tuning Tab
+            with gr.Tab("RAFT Tuning"):
+                gr.Markdown("""
+                **RAFT optical flow parameter tuning for depth warping:**
+                - Test different RAFT configurations on orbital camera paths
+                - Compare depth-only vs depth+RAFT warping quality
+                - Find optimal flow_factor for RAFT guidance strength
+                - Measure flow consistency and temporal stability
+
+                **What RAFT Does:**
+                1. Calculates optical flow vectors between keyframes
+                2. Warps the flow field using 3D transforms
+                3. Applies warped flow to depth-warped image
+                4. Flow factor controls how much to trust RAFT vs pure depth
+
+                **Goal:** Find RAFT settings that improve depth warping without artifacts.
+                """)
+
+                with gr.Row():
+                    # Left column: RAFT test configuration
+                    with gr.Column(scale=1):
+                        gr.Markdown("## RAFT Test Configuration")
+
+                        gr.Markdown("### Test Setup")
+                        raft_aspect_ratios = gr.CheckboxGroup(
+                            label="Aspect ratios to test",
+                            choices=["16:9 (Landscape)", "9:16 (Portrait)", "1:1 (Square)"],
+                            value=["16:9 (Landscape)"],
+                        )
+                        raft_rotation_factor = gr.Slider(
+                            label="Rotation factor (fixed)",
+                            minimum=-10.0,
+                            maximum=-1.0,
+                            value=-5.0,
+                            step=0.5,
+                            info="Use a known-good rotation factor from orbit tests",
+                        )
+                        raft_orbit_radius = gr.Slider(
+                            label="Orbit radius (pixels)",
+                            minimum=1.0,
+                            maximum=100.0,
+                            value=2.0,
+                            step=0.5,
+                            info="Translation distance from center",
+                        )
+                        raft_orbit_iterations = gr.Slider(
+                            label="Depth warp iterations per test",
+                            minimum=10,
+                            maximum=200,
+                            value=50,
+                            step=5,
+                            info="How many frames to generate per test",
+                        )
+
+                        gr.Markdown("### RAFT Parameters to Sweep")
+                        raft_model_sizes = gr.CheckboxGroup(
+                            label="RAFT model sizes",
+                            choices=["Small", "Large"],
+                            value=["Small"],
+                            info="Small = faster, Large = potentially better quality",
+                        )
+                        raft_flow_iterations_min = gr.Slider(
+                            label="Min flow iterations",
+                            minimum=6,
+                            maximum=50,
+                            value=12,
+                            step=2,
+                            info="RAFT refinement iterations (lower = faster, less accurate)",
+                        )
+                        raft_flow_iterations_max = gr.Slider(
+                            label="Max flow iterations",
+                            minimum=6,
+                            maximum=50,
+                            value=32,
+                            step=2,
+                            info="Higher iterations = more refinement, slower",
+                        )
+                        raft_flow_iterations_step = gr.Slider(
+                            label="Iterations step size",
+                            minimum=2,
+                            maximum=10,
+                            value=4,
+                            step=2,
+                            info="Step between iteration values (12, 16, 20, ...)",
+                        )
+                        raft_flow_factor_min = gr.Slider(
+                            label="Min flow factor",
+                            minimum=0.0,
+                            maximum=2.0,
+                            value=0.5,
+                            step=0.1,
+                            info="How much to trust RAFT guidance (0=depth-only, 1=normal, 2=strong RAFT)",
+                        )
+                        raft_flow_factor_max = gr.Slider(
+                            label="Max flow factor",
+                            minimum=0.0,
+                            maximum=2.0,
+                            value=1.5,
+                            step=0.1,
+                            info="Upper range for flow factor sweep",
+                        )
+                        raft_flow_factor_step = gr.Slider(
+                            label="Flow factor step size",
+                            minimum=0.1,
+                            maximum=0.5,
+                            value=0.2,
+                            step=0.05,
+                            info="0.2 = balanced (6 tests), 0.1 = fine (11 tests)",
+                        )
+
+                        # RAFT test action buttons
+                        with gr.Row():
+                            raft_run_btn = gr.Button(f"{rocket} Run RAFT Tests", variant="primary", size="lg")
+                            raft_stop_btn = gr.Button(f"{stop} Stop", variant="stop")
+
+                        with gr.Row():
+                            raft_refresh_btn = gr.Button(f"{refresh} Refresh Results", size="sm")
+                            raft_open_dir_btn = gr.Button(f"{folder} Open Results Directory", size="sm")
+
+                        raft_status_box = gr.Textbox(
+                            label="Status",
+                            value="Ready",
+                            interactive=False,
+                            lines=3,
+                        )
+
+                    # Right column: RAFT test results
+                    with gr.Column(scale=2):
+                        gr.Markdown("## RAFT Test Results")
+                        raft_progress_bar = gr.Progress()
+
+                        with gr.Tabs():
+                            with gr.Tab("Graph"):
+                                gr.Markdown("""
+                                ### Flow Factor vs Depth Warping Quality
+
+                                **Y-axis:** Iterations until sphere goes off-screen
+                                **X-axis:** Flow factor (RAFT guidance strength)
+
+                                Compare different RAFT configurations to find optimal settings.
+                                """)
+
+                                raft_graph_html = gr.HTML(
+                                    label="RAFT Tuning Graph",
+                                    value="<p>Run tests to generate graph...</p>",
+                                )
+
+                            with gr.Tab("Results Table"):
+                                gr.Markdown("""
+                                ### All RAFT Test Configurations
+
+                                **RAFT Parameters:**
+                                - Model Size: Small (fast) or Large (quality)
+                                - Flow Iterations: RAFT refinement iterations
+                                - Flow Factor: How much to trust RAFT vs depth-only
+
+                                **Quality Metrics:**
+                                - Iterations Until Off-Screen: Primary stability metric
+                                - Flow Consistency: Are motion vectors coherent? (1.0=perfect)
+                                - Depth+RAFT Improvement: Quality gain over depth-only
+                                """)
+
+                                raft_results_table = gr.DataFrame(
+                                    headers=[
+                                        "Aspect Ratio",
+                                        "Model Size",
+                                        "Flow Iterations",
+                                        "Flow Factor",
+                                        "Iterations Until Off-Screen",
+                                        "Max Drift (px)",
+                                        "Flow Consistency",
+                                        "Improvement vs Depth-Only (%)",
+                                    ],
+                                    label="RAFT Test Results",
+                                    interactive=False,
+                                )
+
+                            with gr.Tab("Best Parameters"):
+                                gr.Markdown("### Optimal RAFT Configuration")
+
+                                raft_best_params = gr.JSON(
+                                    label="Best RAFT Settings for Each Aspect Ratio",
+                                    value={},
+                                )
+
         # Wire up event handlers
         import requests
         import time
@@ -696,6 +881,43 @@ def create_tuning_tab() -> tuple:
             fn=poll_test_status,
             inputs=[],
             outputs=[orbit_status_box, orbit_results_table, orbit_best_params, orbit_graph_html, gr.State(None)],
+        )
+
+        # RAFT Tests button handlers
+        raft_run_btn.click(
+            fn=lambda *args: "RAFT tuning backend not yet implemented. Coming soon!",
+            inputs=[
+                raft_aspect_ratios,
+                raft_rotation_factor,
+                raft_orbit_radius,
+                raft_orbit_iterations,
+                raft_model_sizes,
+                raft_flow_iterations_min,
+                raft_flow_iterations_max,
+                raft_flow_iterations_step,
+                raft_flow_factor_min,
+                raft_flow_factor_max,
+                raft_flow_factor_step,
+            ],
+            outputs=[raft_status_box],
+        )
+
+        raft_stop_btn.click(
+            fn=on_stop_tests,
+            inputs=[],
+            outputs=[raft_status_box],
+        )
+
+        raft_open_dir_btn.click(
+            fn=on_open_tuning_dir,
+            inputs=[],
+            outputs=[raft_status_box],
+        )
+
+        raft_refresh_btn.click(
+            fn=poll_test_status,
+            inputs=[],
+            outputs=[raft_status_box, raft_results_table, raft_best_params, raft_graph_html, gr.State(None)],
         )
 
     return tuning_interface, "Deforum Tuning", "deforum_tuning"
