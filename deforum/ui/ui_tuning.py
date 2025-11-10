@@ -355,7 +355,7 @@ def create_tuning_tab() -> tuple:
                         orbit_progress_bar = gr.Progress()
 
                         with gr.Tabs():
-                            with gr.Tab("Graph"):
+                            with gr.Tab("Metrics Plot"):
                                 gr.Markdown("""
                                 ### Rotation Factor vs Sphere Visibility
 
@@ -365,9 +365,20 @@ def create_tuning_tab() -> tuple:
                                 **Goal:** Find the factor where the sphere stays in frame longest for each aspect ratio.
                                 """)
 
-                                orbit_graph_html = gr.HTML(
-                                    label="Orbit Tuning Graph",
-                                    value="<p>Run tests to generate graph...</p>",
+                                orbit_metrics_plot = gr.Plot(
+                                    label="Stability Metrics",
+                                )
+
+                            with gr.Tab("Heatmap"):
+                                gr.Markdown("""
+                                ### Parameter Heatmap
+
+                                Visual heatmap showing iterations until off-screen for all tested configurations.
+                                Darker colors indicate better stability (sphere stayed in frame longer).
+                                """)
+
+                                orbit_heatmap_plot = gr.Plot(
+                                    label="Parameter Heatmap",
                                 )
 
                             with gr.Tab("Results Table"):
@@ -880,7 +891,7 @@ def create_tuning_tab() -> tuple:
         orbit_refresh_btn.click(
             fn=poll_test_status,
             inputs=[],
-            outputs=[orbit_status_box, orbit_results_table, orbit_best_params, orbit_graph_html, gr.State(None)],
+            outputs=[orbit_status_box, orbit_results_table, orbit_best_params, orbit_metrics_plot, orbit_heatmap_plot],
         )
 
         # RAFT Tests button handlers
