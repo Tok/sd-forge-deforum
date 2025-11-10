@@ -357,6 +357,10 @@ class _LazyLogger:
                 emojis_enabled=emojis_enabled
             )
 
+    def trace(self, msg: str, emoji: Optional[str] = None, **kwargs) -> None:
+        self._ensure_initialized()
+        return self._real_logger.trace(msg, emoji, **kwargs)
+
     def debug(self, msg: str, emoji: Optional[str] = None, **kwargs) -> None:
         self._ensure_initialized()
         return self._real_logger.debug(msg, emoji, **kwargs)
