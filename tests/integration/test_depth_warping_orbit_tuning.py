@@ -151,9 +151,19 @@ def generate_orbit_schedules(
     """
     angles = np.linspace(0, 2 * np.pi, num_frames + 1)[:-1]  # Exclude duplicate endpoint
 
-    # Calculate positions
-    x_positions = radius * np.cos(angles)
-    y_positions = radius * np.sin(angles)
+    # Calculate ABSOLUTE positions first
+    x_positions_abs = radius * np.cos(angles)
+    y_positions_abs = radius * np.sin(angles)
+
+    # Convert to DELTAS (frame-to-frame changes) since Deforum expects per-frame movement
+    # Frame 0 starts at origin, subsequent frames show delta from previous frame
+    x_positions = np.zeros(num_frames)
+    y_positions = np.zeros(num_frames)
+    x_positions[0] = x_positions_abs[0]  # First frame: move to starting position
+    y_positions[0] = y_positions_abs[0]
+    for i in range(1, num_frames):
+        x_positions[i] = x_positions_abs[i] - x_positions_abs[i-1]
+        y_positions[i] = y_positions_abs[i] - y_positions_abs[i-1]
 
     # Calculate rotation angles to look at center
     # Rotation should counter the translation direction
