@@ -789,7 +789,7 @@ class TuningTestManager:
         import numpy as np
         from PIL import Image
 
-        depth_dir = output_dir / "depth_maps"
+        depth_dir = output_dir / "depth-maps"
         if not depth_dir.exists():
             logger.warning(f"Depth maps directory not found: {depth_dir}")
             return self._empty_depth_metrics()

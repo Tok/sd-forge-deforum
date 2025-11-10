@@ -218,42 +218,6 @@ def create_tuning_tab() -> tuple:
                             label="Parameter Heatmap (Overall Score)",
                         )
 
-                    # Image Comparison tab
-                    with gr.Tab("Image Comparison"):
-                        gr.Markdown("### Visual Comparison")
-
-                        comparison_select = gr.Dropdown(
-                            label="Select test configuration",
-                            choices=[],
-                            value=None,
-                        )
-
-                        with gr.Row():
-                            iteration_slider = gr.Slider(
-                                label="Iteration",
-                                minimum=0,
-                                maximum=20,
-                                value=0,
-                                step=1,
-                            )
-
-                        with gr.Row():
-                            comparison_image = gr.Image(
-                                label="Generated Frame",
-                                type="filepath",
-                            )
-
-                            with gr.Column():
-                                color_score_display = gr.Textbox(
-                                    label="Color Score",
-                                    value="--",
-                                    interactive=False,
-                                )
-                                temporal_score_display = gr.Textbox(
-                                    label="Temporal Consistency",
-                                    value="--",
-                                    interactive=False,
-                                )
 
             # Orbit Tests Tab
             with gr.Tab("Orbit Tests"):
