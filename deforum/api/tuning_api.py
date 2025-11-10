@@ -51,14 +51,14 @@ class TuningTestConfig(BaseModel):
     aspect_ratios: Optional[List[List[float]]] = Field(
         None, description="List of [ratio, width, height] arrays for orbit tests"
     )
-    rotation_factor_min: Optional[float] = Field(None, ge=-30.0, le=-0.1)
-    rotation_factor_max: Optional[float] = Field(None, ge=-30.0, le=-0.1)
+    rotation_factor_min: Optional[float] = Field(None, ge=-20.0, le=-0.1)
+    rotation_factor_max: Optional[float] = Field(None, ge=-20.0, le=-0.1)
     rotation_factor_step: Optional[float] = Field(None, ge=0.01, le=2.0, description="Step size for rotation factor sweep (0.01 = fine, 0.5 = coarse)")
     orbit_radius: Optional[float] = Field(None, ge=1.0, le=100.0, description="Orbit radius in pixels (1.0 = very slow, 100.0 = fast)")
     orbit_iterations: Optional[int] = Field(None, ge=10, le=200, description="Number of orbit iterations (max 200 for slow orbits)")
 
     # RAFT-specific parameters (for raft_tuning test type)
-    raft_rotation_factor: Optional[float] = Field(None, ge=-10.0, le=-0.1, description="Fixed rotation factor for RAFT tests")
+    raft_rotation_factor: Optional[float] = Field(None, ge=-20.0, le=-0.1, description="Fixed rotation factor for RAFT tests")
     raft_model_sizes: Optional[List[str]] = Field(None, description="List of RAFT model sizes to test: ['Small', 'Large']")
     raft_flow_iterations_min: Optional[int] = Field(None, ge=6, le=50, description="Min RAFT flow refinement iterations")
     raft_flow_iterations_max: Optional[int] = Field(None, ge=6, le=50, description="Max RAFT flow refinement iterations")
