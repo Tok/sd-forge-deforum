@@ -371,7 +371,20 @@ def create_tuning_tab() -> tuple:
                                 )
 
                             with gr.Tab("Results Table"):
-                                gr.Markdown("### All Test Configurations")
+                                gr.Markdown("""
+                                ### All Test Configurations
+
+                                **Visual Metrics:**
+                                - Iterations Until Off-Screen: Primary stability metric
+                                - Max Drift: Maximum pixel displacement from initial position
+
+                                **Depth Analysis Metrics:**
+                                - Sphere Depth: Mean depth value of sphere (0=far, 1=near)
+                                - Depth Range: Depth variation across sphere surface
+                                - Depth Separation: How well sphere is distinguished from background
+                                - Depth Stability: Frame-to-frame depth consistency (1.0=perfect)
+                                - Gradient Quality: Smoothness of depth gradients (1.0=perfect)
+                                """)
 
                                 orbit_results_table = gr.DataFrame(
                                     headers=[
@@ -381,6 +394,11 @@ def create_tuning_tab() -> tuple:
                                         "Orbit Radius",
                                         "Iterations Until Off-Screen",
                                         "Max Drift (px)",
+                                        "Sphere Depth",
+                                        "Depth Range",
+                                        "Depth Separation",
+                                        "Depth Stability",
+                                        "Gradient Quality",
                                     ],
                                     label="Orbit Test Results",
                                     interactive=False,

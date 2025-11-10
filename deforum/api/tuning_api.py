@@ -494,6 +494,242 @@ class TuningTestManager:
         pil_img.save(output_path)
         logger.info(f"Synthetic 3D sphere saved to {output_path}")
 
+    def _analyze_depth_maps(
+        self,
+        output_dir: Path,
+        width: int,
+        height: int,
+        num_frames: int,
+    ) -> Dict[str, Any]:
+        """Analyze depth maps to verify depth warping quality.
+
+        Extracts depth statistics to ensure:
+        1. Sphere is detected with proper 3D geometry
+        2. Depth estimates are stable across frames
+        3. Depth gradients are smooth (no artifacts)
+        4. Warping is applied correctly based on depth
+
+        Args:
+            output_dir: Directory containing depth_maps subdirectory
+            width: Frame width
+            height: Frame height
+            num_frames: Number of frames to analyze
+
+        Returns:
+            Dictionary with depth analysis metrics
+        """
+        import numpy as np
+        from PIL import Image
+
+        depth_dir = output_dir / "depth_maps"
+        if not depth_dir.exists():
+            logger.warning(f"Depth maps directory not found: {depth_dir}")
+            return self._empty_depth_metrics()
+
+        # Load all depth maps
+        depth_maps = []
+        for i in range(num_frames):
+            depth_file = depth_dir / f"{i:09d}_depth.png"
+            if not depth_file.exists():
+                logger.warning(f"Missing depth map: {depth_file}")
+                continue
+
+            # Load as grayscale (depth is single channel)
+            depth_img = Image.open(depth_file).convert('L')
+            depth_array = np.array(depth_img, dtype=np.float32) / 255.0  # Normalize to [0, 1]
+            depth_maps.append(depth_array)
+
+        if not depth_maps:
+            logger.warning("No depth maps loaded")
+            return self._empty_depth_metrics()
+
+        logger.info(f"  Loaded {len(depth_maps)} depth maps for analysis")
+
+        # Segment sphere from background using first frame
+        # Sphere should be lighter (closer) than background
+        first_depth = depth_maps[0]
+        sphere_mask = self._segment_sphere_from_depth(first_depth, width, height)
+
+        # Calculate sphere depth statistics
+        sphere_depth_stats = []
+        background_depth_stats = []
+
+        for depth_map in depth_maps:
+            # Sphere region
+            sphere_pixels = depth_map[sphere_mask]
+            if len(sphere_pixels) > 0:
+                sphere_depth_stats.append({
+                    'mean': float(np.mean(sphere_pixels)),
+                    'std': float(np.std(sphere_pixels)),
+                    'min': float(np.min(sphere_pixels)),
+                    'max': float(np.max(sphere_pixels)),
+                })
+            else:
+                # Sphere went off-screen
+                sphere_depth_stats.append({
+                    'mean': 0.0,
+                    'std': 0.0,
+                    'min': 0.0,
+                    'max': 0.0,
+                })
+
+            # Background region
+            bg_pixels = depth_map[~sphere_mask]
+            if len(bg_pixels) > 0:
+                background_depth_stats.append({
+                    'mean': float(np.mean(bg_pixels)),
+                    'std': float(np.std(bg_pixels)),
+                })
+
+        # Calculate temporal stability (frame-to-frame depth consistency)
+        temporal_stability = self._calculate_depth_temporal_stability(
+            [s['mean'] for s in sphere_depth_stats]
+        )
+
+        # Calculate depth gradient quality (smoothness of sphere surface)
+        gradient_quality = self._calculate_depth_gradient_quality(depth_maps[0], sphere_mask)
+
+        # Overall sphere depth metrics (frame 0)
+        sphere_mean_depth = sphere_depth_stats[0]['mean']
+        sphere_depth_range = sphere_depth_stats[0]['max'] - sphere_depth_stats[0]['min']
+        bg_mean_depth = background_depth_stats[0]['mean']
+
+        # Separation quality (how well sphere is distinguished from background)
+        depth_separation = sphere_mean_depth - bg_mean_depth
+
+        return {
+            'sphere_mean_depth': round(sphere_mean_depth, 3),
+            'sphere_depth_range': round(sphere_depth_range, 3),
+            'background_mean_depth': round(bg_mean_depth, 3),
+            'depth_separation': round(depth_separation, 3),
+            'temporal_stability': round(temporal_stability, 3),
+            'gradient_quality': round(gradient_quality, 3),
+            'sphere_visible_frames': sum(1 for s in sphere_depth_stats if s['mean'] > 0),
+        }
+
+    def _segment_sphere_from_depth(
+        self,
+        depth_map: np.ndarray,
+        width: int,
+        height: int,
+    ) -> np.ndarray:
+        """Segment sphere from background using depth thresholding.
+
+        Args:
+            depth_map: Depth map as numpy array [0, 1]
+            width: Frame width
+            height: Frame height
+
+        Returns:
+            Boolean mask (True = sphere, False = background)
+        """
+        import numpy as np
+
+        # Sphere should be in center region and have higher depth values (closer)
+        # Use Otsu's method to find optimal threshold
+        from skimage.filters import threshold_otsu
+
+        # Focus on center region where sphere should be
+        center_x, center_y = width // 2, height // 2
+        radius = min(width, height) // 3  # Conservative estimate
+        y_coords, x_coords = np.ogrid[:height, :width]
+        center_mask = ((x_coords - center_x)**2 + (y_coords - center_y)**2) <= radius**2
+
+        # Find threshold using center region
+        center_pixels = depth_map[center_mask]
+        if len(center_pixels) == 0:
+            return np.zeros_like(depth_map, dtype=bool)
+
+        threshold = threshold_otsu(center_pixels)
+
+        # Segment entire image using threshold
+        sphere_mask = depth_map > threshold
+
+        return sphere_mask
+
+    def _calculate_depth_temporal_stability(self, sphere_mean_depths: list) -> float:
+        """Calculate how stable sphere depth is across frames.
+
+        Args:
+            sphere_mean_depths: List of mean sphere depth values per frame
+
+        Returns:
+            Stability score [0, 1] where 1 = perfectly stable
+        """
+        import numpy as np
+
+        if len(sphere_mean_depths) < 2:
+            return 1.0
+
+        # Filter out zeros (sphere off-screen)
+        valid_depths = [d for d in sphere_mean_depths if d > 0]
+        if len(valid_depths) < 2:
+            return 1.0
+
+        # Calculate coefficient of variation (std / mean)
+        mean_depth = np.mean(valid_depths)
+        std_depth = np.std(valid_depths)
+
+        if mean_depth == 0:
+            return 0.0
+
+        cv = std_depth / mean_depth
+
+        # Convert to stability score (lower CV = higher stability)
+        # CV of 0.05 (5% variation) or less = perfect score
+        stability = max(0.0, 1.0 - cv / 0.05)
+
+        return stability
+
+    def _calculate_depth_gradient_quality(self, depth_map: np.ndarray, sphere_mask: np.ndarray) -> float:
+        """Calculate smoothness of depth gradients on sphere surface.
+
+        Smooth gradients indicate proper 3D geometry detection.
+        Noisy gradients indicate depth estimation errors.
+
+        Args:
+            depth_map: Depth map as numpy array [0, 1]
+            sphere_mask: Boolean mask of sphere region
+
+        Returns:
+            Quality score [0, 1] where 1 = perfectly smooth gradients
+        """
+        import numpy as np
+        from scipy.ndimage import sobel
+
+        # Calculate gradients
+        grad_x = sobel(depth_map, axis=1)
+        grad_y = sobel(depth_map, axis=0)
+        gradient_magnitude = np.sqrt(grad_x**2 + grad_y**2)
+
+        # Analyze gradients only on sphere surface
+        sphere_gradients = gradient_magnitude[sphere_mask]
+
+        if len(sphere_gradients) == 0:
+            return 0.0
+
+        # Calculate gradient smoothness
+        # Lower variance = smoother gradients = better quality
+        gradient_variance = np.var(sphere_gradients)
+
+        # Normalize to [0, 1] quality score
+        # Variance of 0.01 or less = perfect score
+        quality = max(0.0, 1.0 - gradient_variance / 0.01)
+
+        return quality
+
+    def _empty_depth_metrics(self) -> Dict[str, Any]:
+        """Return empty depth metrics when analysis fails."""
+        return {
+            'sphere_mean_depth': 0.0,
+            'sphere_depth_range': 0.0,
+            'background_mean_depth': 0.0,
+            'depth_separation': 0.0,
+            'temporal_stability': 0.0,
+            'gradient_quality': 0.0,
+            'sphere_visible_frames': 0,
+        }
+
     def _run_orbit_single_test(
         self,
         test_id: str,
@@ -730,6 +966,15 @@ class TuningTestManager:
             logger.info(f"  Measuring subject position drift...")
             drift_metrics = measure_subject_position_drift(frames)
 
+            # Analyze depth maps to verify warping quality
+            logger.info(f"  Analyzing depth maps...")
+            depth_metrics = self._analyze_depth_maps(
+                output_dir=output_dir,
+                width=width,
+                height=height,
+                num_frames=len(frames),
+            )
+
             result = {
                 "aspect_ratio": round(aspect_ratio, 2),
                 "width": width,
@@ -740,11 +985,20 @@ class TuningTestManager:
                 "iterations_until_offscreen": iterations_until_offscreen,  # PRIMARY METRIC
                 "max_drift": round(drift_metrics['max_drift'], 1),
                 "avg_drift": round(drift_metrics['avg_drift'], 1),
+                # Depth analysis metrics
+                "sphere_mean_depth": depth_metrics['sphere_mean_depth'],
+                "sphere_depth_range": depth_metrics['sphere_depth_range'],
+                "background_depth": depth_metrics['background_mean_depth'],
+                "depth_separation": depth_metrics['depth_separation'],
+                "depth_temporal_stability": depth_metrics['temporal_stability'],
+                "depth_gradient_quality": depth_metrics['gradient_quality'],
             }
 
             logger.info(
                 f"  Results: iterations_until_offscreen={iterations_until_offscreen}, "
-                f"max_drift={drift_metrics['max_drift']:.1f}px"
+                f"max_drift={drift_metrics['max_drift']:.1f}px, "
+                f"depth_quality={depth_metrics['gradient_quality']:.2f}, "
+                f"depth_stability={depth_metrics['temporal_stability']:.2f}"
             )
 
             return result
