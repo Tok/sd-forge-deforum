@@ -51,8 +51,8 @@ class TuningTestConfig(BaseModel):
     aspect_ratios: Optional[List[List[float]]] = Field(
         None, description="List of [ratio, width, height] arrays for orbit tests"
     )
-    rotation_factor_min: Optional[float] = Field(None, ge=-10.0, le=-1.0)
-    rotation_factor_max: Optional[float] = Field(None, ge=-10.0, le=-1.0)
+    rotation_factor_min: Optional[float] = Field(None, ge=-30.0, le=-1.0)
+    rotation_factor_max: Optional[float] = Field(None, ge=-30.0, le=-1.0)
     rotation_factor_step: Optional[float] = Field(None, ge=0.01, le=2.0, description="Step size for rotation factor sweep (0.01 = fine, 0.5 = coarse)")
     orbit_radius: Optional[float] = Field(None, ge=1.0, le=100.0, description="Orbit radius in pixels (1.0 = very slow, 100.0 = fast)")
     orbit_iterations: Optional[int] = Field(None, ge=10, le=200, description="Number of orbit iterations (max 200 for slow orbits)")
