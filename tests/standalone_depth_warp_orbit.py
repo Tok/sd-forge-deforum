@@ -15,10 +15,32 @@ import cv2
 import sys
 import os
 from typing import Tuple, List
+import argparse
 
-# Add Forge root to path
+# PARSE ARGS FIRST - before importing Forge modules that load their own argparse!
+parser = argparse.ArgumentParser(description="Pure depth warp orbit test (NO diffusion)")
+parser.add_argument("--width", type=int, default=512)
+parser.add_argument("--height", type=int, default=288)
+parser.add_argument("--radius", type=float, default=2.0)
+parser.add_argument("--factor-min", type=float, default=-7.0)
+parser.add_argument("--factor-max", type=float, default=-3.0)
+parser.add_argument("--factor-step", type=float, default=0.5)
+parser.add_argument("--iterations", type=int, default=50)
+parser.add_argument("--output", type=Path, default=Path("outputs/depth-warp-orbit"))
+
+args = parser.parse_args()
+
+# CRITICAL: Clear sys.argv BEFORE importing Forge modules!
+# Forge loads its own argparse which conflicts with our args
+sys.argv = [sys.argv[0]]  # Keep script name only
+
+# Add paths for imports
 forge_root = Path(__file__).parent.parent.parent.parent
-sys.path.insert(0, str(forge_root))
+extension_root = Path(__file__).parent.parent
+
+# Add both to sys.path
+sys.path.insert(0, str(forge_root))  # For modules.devices
+sys.path.insert(0, str(extension_root))  # For deforum module
 
 # Now we can import Forge/Deforum modules
 import torch
@@ -150,8 +172,12 @@ def run_orbit_test(
     )
 
     # Get initial depth map
-    sphere_pil = Image.fromarray(sphere)
-    depth_map = depth_model.predict(sphere_pil, width, height)
+    # Convert RGB to BGR for OpenCV format (depth model expects BGR numpy array)
+    sphere_bgr = cv2.cvtColor(sphere, cv2.COLOR_RGB2BGR)
+    depth_tensor = depth_model.predict(sphere_bgr)  # Returns torch.Tensor (1, 1, H, W)
+    depth_map = depth_tensor.cpu().numpy().squeeze()  # Convert to numpy and remove batch/channel dims → (H, W)
+
+    # Save depth visualization
     depth_viz = (depth_map * 255).astype(np.uint8)
     (output_dir / "depth_maps").mkdir(parents=True, exist_ok=True)
     Image.fromarray(depth_viz).save(output_dir / "depth_maps" / "000000000_depth.png")
@@ -182,8 +208,9 @@ def run_orbit_test(
         current_frame = warped
 
         # Re-estimate depth for next iteration
-        warped_pil = Image.fromarray(warped)
-        depth_map = depth_model.predict(warped_pil, width, height)
+        warped_bgr = cv2.cvtColor(warped, cv2.COLOR_RGB2BGR)
+        depth_tensor = depth_model.predict(warped_bgr)
+        depth_map = depth_tensor.cpu().numpy().squeeze()  # Remove batch/channel dims
 
         if i % 10 == 0:
             print(f"  Frame {i}/{max_iterations}")
@@ -208,19 +235,7 @@ def run_orbit_test(
 
 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Pure depth warp orbit test (NO diffusion)")
-    parser.add_argument("--width", type=int, default=512)
-    parser.add_argument("--height", type=int, default=288)
-    parser.add_argument("--radius", type=float, default=2.0)
-    parser.add_argument("--factor-min", type=float, default=-7.0)
-    parser.add_argument("--factor-max", type=float, default=-3.0)
-    parser.add_argument("--factor-step", type=float, default=0.5)
-    parser.add_argument("--iterations", type=int, default=50)
-    parser.add_argument("--output", type=Path, default=Path("outputs/depth-warp-orbit"))
-
-    args = parser.parse_args()
+    # Args already parsed at top of file before imports
 
     # Sweep rotation factors
     rotation_factors = np.arange(args.factor_min, args.factor_max + 0.01, args.factor_step)
