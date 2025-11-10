@@ -884,8 +884,66 @@ def create_tuning_tab() -> tuple:
         )
 
         # RAFT Tests button handlers
+        def on_run_raft_tests(
+            raft_aspect_ratios_val,
+            raft_rotation_factor_val,
+            raft_orbit_radius_val,
+            raft_orbit_iterations_val,
+            raft_model_sizes_val,
+            raft_flow_iterations_min_val,
+            raft_flow_iterations_max_val,
+            raft_flow_iterations_step_val,
+            raft_flow_factor_min_val,
+            raft_flow_factor_max_val,
+            raft_flow_factor_step_val,
+        ):
+            """Start RAFT tuning tests via API."""
+            try:
+                # Parse aspect ratios
+                aspect_configs = []
+                for aspect_str in raft_aspect_ratios_val:
+                    if "16:9" in aspect_str:
+                        aspect_configs.append([1.78, 512, 288])
+                    elif "9:16" in aspect_str:
+                        aspect_configs.append([0.56, 288, 512])
+                    elif "1:1" in aspect_str:
+                        aspect_configs.append([1.0, 512, 512])
+
+                # Create RAFT test config
+                config = {
+                    "test_type": "raft_tuning",
+                    "aspect_ratios": aspect_configs,
+                    "raft_rotation_factor": raft_rotation_factor_val,
+                    "orbit_radius": raft_orbit_radius_val,
+                    "orbit_iterations": int(raft_orbit_iterations_val),
+                    "raft_model_sizes": raft_model_sizes_val,
+                    "raft_flow_iterations_min": int(raft_flow_iterations_min_val),
+                    "raft_flow_iterations_max": int(raft_flow_iterations_max_val),
+                    "raft_flow_iterations_step": int(raft_flow_iterations_step_val),
+                    "raft_flow_factor_min": float(raft_flow_factor_min_val),
+                    "raft_flow_factor_max": float(raft_flow_factor_max_val),
+                    "raft_flow_factor_step": float(raft_flow_factor_step_val),
+                }
+
+                # Submit test
+                response = requests.post(
+                    "http://localhost:7860/deforum_api/tuning/start",
+                    json=config
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                # Store test ID
+                current_test_id["id"] = data["test_id"]
+
+                return f"RAFT tests started. Test ID: {data['test_id']}\nRunning..."
+
+            except Exception as e:
+                logger.error(f"Failed to start RAFT tests: {e}")
+                return f"Error starting RAFT tests: {e}"
+
         raft_run_btn.click(
-            fn=lambda *args: "RAFT tuning backend not yet implemented. Coming soon!",
+            fn=on_run_raft_tests,
             inputs=[
                 raft_aspect_ratios,
                 raft_rotation_factor,

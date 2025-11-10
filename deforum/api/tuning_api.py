@@ -26,6 +26,7 @@ class TuningTestType(str, Enum):
     TEMPORAL_CONSISTENCY = "temporal_consistency"
     FLUX_PARAMETER_SWEEP = "flux_parameter_sweep"
     DEPTH_WARPING_ORBIT = "depth_warping_orbit"
+    RAFT_TUNING = "raft_tuning"
 
 
 class TuningTestConfig(BaseModel):
@@ -54,6 +55,16 @@ class TuningTestConfig(BaseModel):
     rotation_factor_step: Optional[float] = Field(None, ge=0.01, le=2.0, description="Step size for rotation factor sweep (0.01 = fine, 0.5 = coarse)")
     orbit_radius: Optional[float] = Field(None, ge=1.0, le=100.0, description="Orbit radius in pixels (1.0 = very slow, 100.0 = fast)")
     orbit_iterations: Optional[int] = Field(None, ge=10, le=200, description="Number of orbit iterations (max 200 for slow orbits)")
+
+    # RAFT-specific parameters (for raft_tuning test type)
+    raft_rotation_factor: Optional[float] = Field(None, ge=-10.0, le=-1.0, description="Fixed rotation factor for RAFT tests")
+    raft_model_sizes: Optional[List[str]] = Field(None, description="List of RAFT model sizes to test: ['Small', 'Large']")
+    raft_flow_iterations_min: Optional[int] = Field(None, ge=6, le=50, description="Min RAFT flow refinement iterations")
+    raft_flow_iterations_max: Optional[int] = Field(None, ge=6, le=50, description="Max RAFT flow refinement iterations")
+    raft_flow_iterations_step: Optional[int] = Field(None, ge=2, le=10, description="Step size for flow iterations sweep")
+    raft_flow_factor_min: Optional[float] = Field(None, ge=0.0, le=2.0, description="Min flow factor (0=depth-only, 1=normal, 2=strong RAFT)")
+    raft_flow_factor_max: Optional[float] = Field(None, ge=0.0, le=2.0, description="Max flow factor")
+    raft_flow_factor_step: Optional[float] = Field(None, ge=0.05, le=0.5, description="Step size for flow factor sweep")
 
 
 class TuningTestStatus(BaseModel):
@@ -160,6 +171,8 @@ class TuningTestManager:
             # Route to appropriate test type
             if config.test_type == TuningTestType.DEPTH_WARPING_ORBIT:
                 self._run_orbit_tests(test_id, config)
+            elif config.test_type == TuningTestType.RAFT_TUNING:
+                self._run_raft_tests(test_id, config)
             else:
                 # Run standard I2V chaining tests (color preservation, temporal, flux)
                 self._run_i2v_chaining_tests(test_id, config)
@@ -313,6 +326,136 @@ class TuningTestManager:
         # Generate visualization graph after all tests complete
         self._generate_orbit_tuning_graph(test_id)
 
+    def _run_raft_tests(self, test_id: str, config: TuningTestConfig):
+        """Run RAFT optical flow parameter tuning tests.
+
+        Tests different RAFT configurations on fixed orbit paths to find optimal
+        flow settings that improve depth warping quality.
+
+        Args:
+            test_id: Test identifier
+            config: Test configuration with RAFT parameters
+        """
+        from numpy import arange
+
+        # Validate RAFT parameters
+        if not config.aspect_ratios:
+            raise ValueError("aspect_ratios required for RAFT tests")
+        if config.raft_rotation_factor is None:
+            raise ValueError("raft_rotation_factor required (use known-good from orbit tests)")
+        if not config.raft_model_sizes:
+            raise ValueError("raft_model_sizes required (e.g., ['Small', 'Large'])")
+        if config.raft_flow_iterations_min is None or config.raft_flow_iterations_max is None:
+            raise ValueError("raft_flow_iterations_min/max required")
+        if config.raft_flow_factor_min is None or config.raft_flow_factor_max is None:
+            raise ValueError("raft_flow_factor_min/max required")
+
+        # Generate parameter sweep values
+        flow_iterations_values = list(range(
+            config.raft_flow_iterations_min,
+            config.raft_flow_iterations_max + 1,
+            config.raft_flow_iterations_step or 4
+        ))
+        flow_factor_values = list(arange(
+            config.raft_flow_factor_min,
+            config.raft_flow_factor_max + 0.01,
+            config.raft_flow_factor_step or 0.2
+        ))
+
+        total_tests = (
+            len(config.aspect_ratios) *
+            len(config.raft_model_sizes) *
+            len(flow_iterations_values) *
+            len(flow_factor_values)
+        )
+        completed_tests = 0
+
+        logger.info(
+            f"Test {test_id}: {total_tests} RAFT configurations to test "
+            f"({len(config.aspect_ratios)} aspects × {len(config.raft_model_sizes)} models × "
+            f"{len(flow_iterations_values)} iterations × {len(flow_factor_values)} factors)"
+        )
+
+        # Use fixed rotation factor from orbit tests
+        rotation_factor = config.raft_rotation_factor
+        orbit_radius = config.orbit_radius or 2.0
+        orbit_iterations = config.orbit_iterations or 50
+
+        # Run depth-only baseline first (flow_factor=0) for comparison
+        baseline_results = {}
+
+        # Test each combination
+        for aspect_config in config.aspect_ratios:
+            aspect_ratio = aspect_config[0]
+            width = int(aspect_config[1])
+            height = int(aspect_config[2])
+
+            # Run depth-only baseline
+            logger.info(f"Running depth-only baseline for aspect {aspect_ratio:.2f}...")
+            baseline_result = self._run_raft_single_test(
+                test_id=test_id,
+                aspect_ratio=aspect_ratio,
+                width=width,
+                height=height,
+                rotation_factor=rotation_factor,
+                orbit_radius=orbit_radius,
+                orbit_iterations=orbit_iterations,
+                model_size="Small",  # Doesn't matter for depth-only
+                flow_iterations=12,  # Doesn't matter for depth-only
+                flow_factor=0.0,  # CRITICAL: 0=depth-only baseline
+            )
+            baseline_results[aspect_ratio] = baseline_result
+
+            # Now test RAFT configurations
+            for model_size in config.raft_model_sizes:
+                for flow_iterations in flow_iterations_values:
+                    for flow_factor in flow_factor_values:
+                        # Check if cancelled
+                        with self.test_lock:
+                            if self.active_tests[test_id].status == "cancelled":
+                                return
+
+                        # Skip flow_factor=0 (already did baseline)
+                        if flow_factor == 0.0:
+                            continue
+
+                        logger.info(
+                            f"Testing: aspect {aspect_ratio:.2f}, model={model_size}, "
+                            f"iterations={flow_iterations}, flow_factor={flow_factor:.2f}"
+                        )
+
+                        result = self._run_raft_single_test(
+                            test_id=test_id,
+                            aspect_ratio=aspect_ratio,
+                            width=width,
+                            height=height,
+                            rotation_factor=rotation_factor,
+                            orbit_radius=orbit_radius,
+                            orbit_iterations=orbit_iterations,
+                            model_size=model_size,
+                            flow_iterations=flow_iterations,
+                            flow_factor=flow_factor,
+                        )
+
+                        # Calculate improvement vs baseline
+                        baseline_iters = baseline_results[aspect_ratio]['iterations_until_offscreen']
+                        raft_iters = result['iterations_until_offscreen']
+                        if baseline_iters > 0:
+                            improvement = ((raft_iters - baseline_iters) / baseline_iters) * 100.0
+                        else:
+                            improvement = 0.0
+                        result['improvement_vs_depth_only'] = round(improvement, 1)
+
+                        # Update progress
+                        completed_tests += 1
+                        with self.test_lock:
+                            status = self.active_tests[test_id]
+                            status.progress = completed_tests / total_tests
+                            status.results.append(result)
+
+        # Generate visualization graph after all tests complete
+        self._generate_raft_tuning_graph(test_id)
+
     def _generate_orbit_tuning_graph(self, test_id: str):
         """Generate plotly visualization of orbit tuning results.
 
@@ -432,6 +575,79 @@ class TuningTestManager:
 
         # Sphere stayed in frame for all iterations
         return len(frames)
+
+    def _generate_raft_tuning_graph(self, test_id: str):
+        """Generate plotly visualization of RAFT tuning results.
+
+        Creates interactive graph showing flow_factor vs iterations_until_offscreen
+        for each RAFT configuration tested.
+
+        Args:
+            test_id: Test identifier to get results from
+        """
+        import plotly.graph_objects as go
+        from pathlib import Path
+        import os
+
+        # Get test results
+        with self.test_lock:
+            if test_id not in self.active_tests:
+                logger.warning(f"Test {test_id} not found, skipping graph generation")
+                return
+            results = self.active_tests[test_id].results
+
+        if not results:
+            logger.warning("No results to plot")
+            return
+
+        # Group results by aspect ratio and model size
+        # Format: results[aspect][model_size] = {flow_factors: [...], iterations: [...]}
+        grouped_results = {}
+        for result in results:
+            aspect = result.get("aspect_ratio", 0)
+            model = result.get("model_size", "Unknown")
+
+            key = f"{aspect}_{model}"
+            if key not in grouped_results:
+                grouped_results[key] = {"flow_factors": [], "iterations": []}
+
+            grouped_results[key]["flow_factors"].append(result.get("flow_factor", 0))
+            grouped_results[key]["iterations"].append(result.get("iterations_until_offscreen", 0))
+
+        # Create figure
+        fig = go.Figure()
+
+        # Add trace for each aspect+model combination
+        colors = ["blue", "red", "green", "orange", "purple", "brown"]
+        for idx, (key, data) in enumerate(sorted(grouped_results.items())):
+            aspect, model = key.split("_")
+            fig.add_trace(go.Scatter(
+                x=data["flow_factors"],
+                y=data["iterations"],
+                mode="lines+markers",
+                name=f"Aspect {aspect} ({model})",
+                line=dict(color=colors[idx % len(colors)], width=2),
+                marker=dict(size=8)
+            ))
+
+        # Update layout
+        fig.update_layout(
+            title="RAFT Tuning: Flow Factor vs. Depth Warping Stability",
+            xaxis_title="Flow Factor (0=depth-only, 1=normal RAFT, 2=strong RAFT)",
+            yaxis_title="Iterations Until Sphere Off-Screen",
+            hovermode="x unified",
+            showlegend=True,
+            height=600,
+        )
+
+        # Save graph
+        forge_root = Path(os.getcwd())
+        output_dir = forge_root / "outputs" / "deforum-tuning" / "raft_tests"
+        output_path = output_dir / f"raft_tuning_results_{test_id}.html"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        fig.write_html(str(output_path))
+        logger.info(f"RAFT tuning graph saved to: {output_path}")
 
     def _generate_sphere_init_image(self, output_path: Path, width: int, height: int):
         """Generate a synthetic 3D sphere image with proper depth gradients.
@@ -1020,6 +1236,273 @@ class TuningTestManager:
                 "drift_rate": 0.0,
                 "temporal_consistency": 0.0,
                 "overall_score": 0.0,
+                "error": str(e),
+            }
+
+    def _run_raft_single_test(
+        self,
+        test_id: str,
+        aspect_ratio: float,
+        width: int,
+        height: int,
+        rotation_factor: float,
+        orbit_radius: float,
+        orbit_iterations: int,
+        model_size: str,
+        flow_iterations: int,
+        flow_factor: float,
+    ) -> Dict[str, Any]:
+        """Run a single RAFT test configuration.
+
+        Similar to _run_orbit_single_test but with RAFT optical flow enabled.
+
+        Args:
+            test_id: Test identifier
+            aspect_ratio: Width/height ratio
+            width: Frame width
+            height: Frame height
+            rotation_factor: Translation/rotation ratio (fixed, from orbit tests)
+            orbit_radius: Orbit radius in pixels
+            orbit_iterations: Number of depth warp iterations
+            model_size: RAFT model size ('Small' or 'Large')
+            flow_iterations: RAFT refinement iterations
+            flow_factor: Flow guidance strength (0=depth-only, 1=normal, 2=strong)
+
+        Returns:
+            Test result dictionary with RAFT-specific metrics
+        """
+        from pathlib import Path
+        import sys
+        import numpy as np
+
+        # Add tests directory to path
+        tests_dir = Path(__file__).parent.parent.parent / "tests"
+        if str(tests_dir) not in sys.path:
+            sys.path.insert(0, str(tests_dir))
+
+        from integration.test_depth_warping_orbit_tuning import (
+            generate_orbit_schedules,
+            measure_subject_position_drift,
+        )
+        from integration.metrics import (
+            load_image_as_numpy,
+        )
+        from integration.utils import (
+            API_BASE_URL,
+            wait_for_job_to_complete,
+        )
+
+        # Create test output directory
+        import os
+        forge_root = Path(os.getcwd())
+        output_dir = forge_root / "outputs" / "deforum-tuning" / "raft_tests"
+        aspect_str = f"{int(aspect_ratio*100):03d}"
+        test_name = (
+            f"aspect{aspect_str}_{width}x{height}_"
+            f"model{model_size}_iter{flow_iterations}_factor{flow_factor:.2f}"
+        )
+        test_dir = output_dir / test_name
+        test_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Running RAFT test: {test_name}")
+
+        # Use shared init image (same as orbit tests)
+        shared_init_image = output_dir.parent / "depth_warping_orbits" / "shared_sphere_init.png"
+
+        try:
+            # Ensure shared sphere exists
+            if not shared_init_image.exists():
+                logger.info("Generating shared sphere init image...")
+                self._generate_sphere_init_image(shared_init_image, width, height)
+
+            # Generate orbit schedules
+            schedules = generate_orbit_schedules(orbit_iterations, orbit_radius, rotation_factor)
+
+            # Configure job with RAFT enabled
+            options_overrides = {
+                "outdir_samples": str(output_dir),
+                "deforum_save_gen_info_as_srt": False,
+            }
+
+            # Base settings (similar to orbit test)
+            base_settings = {
+                # Basic settings
+                "W": width,
+                "H": height,
+                "seed": 42,
+                "sampler": "euler",
+                "steps": 20,
+                "cfg_scale": 1.0,
+                "distilled_cfg_scale": 3.5,
+
+                # Use static init image
+                "use_init": True,
+                "strength": 1.0,  # Perfect preservation = pure depth/flow warping
+                "strength_0_no_init": False,
+                "init_image": str(shared_init_image),
+
+                # Animation settings
+                "animation_mode": "3D",
+                "render_mode": "keyframes_only",
+                "max_frames": orbit_iterations,
+                "fps": 24,
+                "save_depth_maps": True,
+
+                # Camera schedules
+                "translation_x": schedules["translation_x"],
+                "translation_y": schedules["translation_y"],
+                "translation_z": "0:(0)",
+                "rotation_3d_x": "0:(0)",
+                "rotation_3d_y": schedules["rotation_3d_y"],
+                "rotation_3d_z": "0:(0)",
+
+                # Prompt
+                "animation_prompts": json.dumps({
+                    "0": "a detailed 3D render of a colorful geometric sculpture, studio lighting"
+                }),
+
+                # Disable audio
+                "audio_mode": "None",
+                "audio_sync": False,
+                "add_soundtrack": "None",
+
+                # Depth warping enabled
+                "use_depth_warping": True,
+                "midas_weight": 0.3,
+                "padding_mode": "border",
+                "sampling_mode": "bicubic",
+
+                # RAFT OPTICAL FLOW SETTINGS (KEY DIFFERENCE FROM ORBIT TESTS)
+                "optical_flow_cadence": "RAFT" if flow_factor > 0 else "None",
+                "raft_model_size": model_size,
+                "raft_flow_iterations": flow_iterations,
+                "cadence_flow_factor_schedule": f"0:({flow_factor}), 1:({flow_factor})",
+                "show_flow_arrows": True,  # Visualize flow vectors
+
+                # Disable other features
+                "color_coherence": "None",
+                "enable_subseed_scheduling": False,
+                "enable_sampler_scheduling": False,
+                "enable_clipskip_scheduling": False,
+                "enable_checkpoint_scheduling": False,
+
+                # Required schedules
+                "clipskip_schedule": "0:(2), 1:(2)",
+                "noise_schedule": "0:(0.02), 1:(0.02)",
+                "strength_schedule": "0:(0.65), 1:(0.65)",
+                "contrast_schedule": "0:(1.0), 1:(1.0)",
+                "cfg_scale_schedule": "0:(1.0), 1:(1.0)",
+                "distilled_cfg_scale_schedule": "0:(3.5), 1:(3.5)",
+                "steps_schedule": "0:(20), 1:(20)",
+                "seed_schedule": "0:(42), 1:(42)",
+                "fov_schedule": "0:(70), 1:(70)",
+                "near_schedule": "0:(200), 1:(200)",
+                "far_schedule": "0:(10000), 1:(10000)",
+                "aspect_ratio_schedule": "0:(1.0), 1:(1.0)",
+                "subseed_schedule": "0:(1), 1:(1)",
+                "subseed_strength_schedule": "0:(0), 1:(0)",
+                "noise_multiplier_schedule": "0:(1.0), 1:(1.0)",
+                "ddim_eta_schedule": "0:(0), 1:(0)",
+                "ancestral_eta_schedule": "0:(1), 1:(1)",
+                "amount_schedule": "0:(0), 1:(0)",
+                "kernel_schedule": "0:(5), 1:(5)",
+                "sigma_schedule": "0:(1), 1:(1)",
+                "threshold_schedule": "0:(0), 1:(0)",
+                "redo_flow_factor_schedule": "0:(1), 1:(1)",
+                "image_strength_schedule": "0:(0.85), 1:(0.85)",
+                "image_keyframe_strength_schedule": "0:(0.20), 1:(0.20)",
+                "blendFactorMax": "0:(0.35), 1:(0.35)",
+                "blendFactorSlope": "0:(0.25), 1:(0.25)",
+                "tweening_frames_schedule": "0:(20), 1:(20)",
+                "color_correction_factor": "0:(0.075), 1:(0.075)",
+
+                # Output
+                "batch_name": test_name,
+            }
+
+            # Submit job
+            import requests
+            response = requests.post(
+                f"{API_BASE_URL}/batches",
+                json={
+                    "deforum_settings": base_settings,
+                    "options_overrides": options_overrides,
+                }
+            )
+            response.raise_for_status()
+            job_data = response.json()
+            job_ids = job_data["job_ids"]
+            job_id = job_ids[0]
+
+            logger.info(f"  Submitted RAFT job {job_id}, waiting for completion...")
+
+            # Wait for completion
+            job_status = wait_for_job_to_complete(job_id)
+            logger.info(f"  Job {job_id} completed")
+
+            # Load frames
+            output_dir = Path(job_status.outdir)
+            frame_files = sorted(
+                [f for f in output_dir.glob("*.png") if f.stem.isdigit()],
+                key=lambda p: int(p.stem)
+            )
+
+            if not frame_files:
+                raise ValueError(f"No frames generated for job {job_id}")
+
+            frames = [load_image_as_numpy(str(f)) for f in frame_files]
+
+            # Measure stability
+            iterations_until_offscreen = self._count_iterations_until_offscreen(frames, width, height)
+            drift_metrics = measure_subject_position_drift(frames)
+
+            # Analyze depth maps
+            depth_metrics = self._analyze_depth_maps(
+                output_dir=output_dir,
+                width=width,
+                height=height,
+                num_frames=len(frames),
+            )
+
+            # Calculate flow consistency (placeholder for now)
+            flow_consistency = 0.0  # TODO: Implement flow vector analysis
+
+            result = {
+                "aspect_ratio": round(aspect_ratio, 2),
+                "width": width,
+                "height": height,
+                "rotation_factor": round(rotation_factor, 2),
+                "model_size": model_size,
+                "flow_iterations": flow_iterations,
+                "flow_factor": round(flow_factor, 2),
+                "iterations_until_offscreen": iterations_until_offscreen,
+                "max_drift": round(drift_metrics['max_drift'], 1),
+                "flow_consistency": round(flow_consistency, 3),
+                "sphere_mean_depth": depth_metrics['sphere_mean_depth'],
+                "depth_temporal_stability": depth_metrics['temporal_stability'],
+                "depth_gradient_quality": depth_metrics['gradient_quality'],
+            }
+
+            logger.info(
+                f"  Results: RAFT({model_size}, iter={flow_iterations}, factor={flow_factor:.2f}) → "
+                f"stability={iterations_until_offscreen} frames, drift={drift_metrics['max_drift']:.1f}px"
+            )
+
+            return result
+
+        except Exception as e:
+            import traceback
+            logger.error(f"RAFT test failed: {e}")
+            logger.error(traceback.format_exc())
+            return {
+                "aspect_ratio": round(aspect_ratio, 2),
+                "model_size": model_size,
+                "flow_iterations": flow_iterations,
+                "flow_factor": round(flow_factor, 2),
+                "iterations_until_offscreen": 0,
+                "max_drift": 0.0,
+                "flow_consistency": 0.0,
+                "improvement_vs_depth_only": 0.0,
                 "error": str(e),
             }
 
