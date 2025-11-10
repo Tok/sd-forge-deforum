@@ -255,26 +255,26 @@ def create_tuning_tab() -> tuple:
                         orbit_rotation_factor_min = gr.Slider(
                             label="Min rotation factor (translation_x / rotation_3d_y)",
                             minimum=-30.0,
-                            maximum=-1.0,
-                            value=-25.0,
+                            maximum=-0.5,
+                            value=-2.0,
                             step=0.1,
                             info="More negative = stronger counter-rotation to compensate translation",
                         )
                         orbit_rotation_factor_max = gr.Slider(
                             label="Max rotation factor (translation_x / rotation_3d_y)",
                             minimum=-30.0,
-                            maximum=-1.0,
-                            value=-3.0,
+                            maximum=-0.5,
+                            value=-0.5,
                             step=0.1,
-                            info="Less negative = weaker counter-rotation",
+                            info="Less negative = weaker counter-rotation (theory: -1.0 = perfect orbit)",
                         )
                         orbit_rotation_factor_step = gr.Slider(
                             label="Step size",
-                            minimum=0.05,
+                            minimum=0.01,
                             maximum=2.0,
-                            value=0.5,
-                            step=0.05,
-                            info="0.5 = coarse sweep (45 tests), 0.1 = balanced (221 tests), 0.05 = fine (441 tests)",
+                            value=0.1,
+                            step=0.01,
+                            info="0.1 = balanced (16 tests), 0.05 = fine (31 tests), 0.01 = very fine (151 tests)",
                         )
 
                         gr.Markdown("### Orbit Parameters")
@@ -419,10 +419,10 @@ def create_tuning_tab() -> tuple:
                         raft_rotation_factor = gr.Slider(
                             label="Rotation factor (fixed)",
                             minimum=-10.0,
-                            maximum=-1.0,
-                            value=-5.0,
-                            step=0.5,
-                            info="Use a known-good rotation factor from orbit tests",
+                            maximum=-0.5,
+                            value=-1.0,
+                            step=0.1,
+                            info="Use empirically optimal value from orbit tests (theory: -1.0)",
                         )
                         raft_orbit_radius = gr.Slider(
                             label="Orbit radius (pixels)",

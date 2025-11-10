@@ -186,7 +186,10 @@ def run_orbit_test(
     angles = np.linspace(0, 2 * np.pi, max_iterations + 1)[:-1]
     x_positions = orbit_radius * np.cos(angles)
     y_positions = orbit_radius * np.sin(angles)
-    rotation_angles = -np.degrees(angles) / rotation_factor
+    # Calculate rotation to counter the orbital motion
+    # rotation_factor = -1 means 360° orbit → 360° counter-rotation (perfect)
+    # rotation_factor = -5 means 360° orbit → 72° counter-rotation (under-rotated)
+    rotation_angles = np.degrees(angles) / rotation_factor
 
     # Apply depth warping for each frame
     print(f"Applying depth warping for {max_iterations} iterations...")
