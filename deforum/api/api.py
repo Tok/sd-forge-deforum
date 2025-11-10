@@ -681,8 +681,15 @@ try:
         script_callbacks.on_app_started(deforum_init_batch)
     # Register tuning API if tuning mode enabled
     if getattr(cmd_opts, 'deforum_run_tuning', False) or cmd_opts.deforum_api:
-        from deforum.api.tuning_api import tuning_api
-        script_callbacks.on_app_started(tuning_api)
-        log.info("Registered tuning API endpoints")
-except:
-    pass
+        try:
+            from deforum.api.tuning_api import tuning_api
+            script_callbacks.on_app_started(tuning_api)
+            log.info("Registered tuning API endpoints")
+        except Exception as e:
+            log.error(f"Failed to register tuning API: {e}")
+            import traceback
+            log.error(traceback.format_exc())
+except Exception as e:
+    log.error(f"Failed to setup Deforum API callbacks: {e}")
+    import traceback
+    log.error(traceback.format_exc())
