@@ -778,7 +778,7 @@ def create_tuning_tab() -> tuple:
                         # Orbit test visualization
                         best_config = find_best_orbit_configuration(status["results"])
                         metrics_fig = create_orbit_metrics_plot(status["results"])
-                        heatmap_fig = create_orbit_heatmap(status["results"], 'overall_score')
+                        heatmap_fig = create_orbit_heatmap(status["results"], 'iterations_until_offscreen')
                     else:
                         # Standard I2V chaining test visualization
                         best_config = find_best_configuration(status["results"])
