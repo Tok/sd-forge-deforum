@@ -259,6 +259,29 @@ class TuningTestManager:
             config: Test configuration with orbit parameters
         """
         from numpy import arange
+        from pathlib import Path
+        import shutil
+        import os
+
+        # Clean up old orbit test results before starting new run
+        forge_root = Path(os.getcwd())
+        output_dir = forge_root / "outputs" / "deforum-tuning" / "depth_warping_orbits"
+        if output_dir.exists():
+            logger.info(f"Cleaning up old orbit test results in {output_dir}")
+            # Remove old test directories (aspect*_*x*_factor*.*)
+            for test_dir in output_dir.glob("aspect*_*x*_factor*"):
+                if test_dir.is_dir():
+                    shutil.rmtree(test_dir)
+                    logger.info(f"  Removed {test_dir.name}")
+            # Remove old shared sphere init image
+            shared_sphere = output_dir / "shared_sphere_init.png"
+            if shared_sphere.exists():
+                shared_sphere.unlink()
+                logger.info(f"  Removed shared_sphere_init.png")
+            # Remove old HTML graphs
+            for html_file in output_dir.glob("orbit_tuning_results_*.html"):
+                html_file.unlink()
+                logger.info(f"  Removed {html_file.name}")
 
         # DEBUG: Log what values we received from UI
         logger.info(f"DEBUG orbit_tests: config.orbit_radius={config.orbit_radius}, config.orbit_iterations={config.orbit_iterations}")

@@ -165,12 +165,18 @@ def generate_orbit_schedules(
         x_positions[i] = x_positions_abs[i] - x_positions_abs[i-1]
         y_positions[i] = y_positions_abs[i] - y_positions_abs[i-1]
 
-    # Calculate rotation angles to look at center
+    # Calculate rotation angles to look at center (ABSOLUTE first)
     # Rotation should counter the translation direction
     # For counter-clockwise orbit (positive angles), camera rotates clockwise (negative Y rotation)
     # rotation_factor = -1 gives perfect orbit (360° travel = 360° counter-rotation)
     # rotation_factor = -5 gives under-rotation (360° travel = 72° counter-rotation)
-    rotation_angles = np.degrees(angles) / rotation_factor
+    rotation_angles_abs = np.degrees(angles) / rotation_factor
+
+    # Convert rotation to DELTAS too!
+    rotation_angles = np.zeros(num_frames)
+    rotation_angles[0] = rotation_angles_abs[0]
+    for i in range(1, num_frames):
+        rotation_angles[i] = rotation_angles_abs[i] - rotation_angles_abs[i-1]
 
     # Create schedule strings (sample every few frames)
     sample_interval = max(1, num_frames // 20)
