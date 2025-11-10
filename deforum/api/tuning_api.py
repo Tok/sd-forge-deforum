@@ -1216,31 +1216,28 @@ class TuningTestManager:
                 [f for f in output_dir.glob("*.png") if f.stem.isdigit()],
                 key=lambda p: int(p.stem)
             )
-            logger.info(f"  Found {len(frame_files)} frames")
 
             if not frame_files:
                 raise ValueError(f"No frames generated for job {job_id} in {output_dir}")
 
             frames = [load_image_as_numpy(str(f)) for f in frame_files]
-            logger.info(f"  Loaded {len(frames)} frames as numpy arrays")
 
             # Measure when sphere goes off-screen (primary metric)
-            logger.info(f"  Checking sphere visibility in each frame...")
             iterations_until_offscreen = self._count_iterations_until_offscreen(frames, width, height)
-            logger.info(f"  Sphere stayed in frame for {iterations_until_offscreen} iterations")
-
-            # Also measure drift for additional context
-            logger.info(f"  Measuring subject position drift...")
             drift_metrics = measure_subject_position_drift(frames)
-
-            # Analyze depth maps to verify warping quality
-            logger.info(f"  Analyzing depth maps...")
             depth_metrics = self._analyze_depth_maps(
                 output_dir=output_dir,
                 width=width,
                 height=height,
                 num_frames=len(frames),
             )
+
+            # Log key results with visual prominence
+            logger.info(f"")
+            logger.info(f"{'='*60}")
+            logger.info(f"  🎯 RESULT: Sphere visible for {iterations_until_offscreen} iterations (drift: {drift_metrics['max_drift']:.1f}px)")
+            logger.info(f"{'='*60}")
+            logger.info(f"")
 
             result = {
                 "aspect_ratio": round(aspect_ratio, 2),

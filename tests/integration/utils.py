@@ -109,12 +109,10 @@ def wait_for_job_to_complete(id : str):
     Raises:
         AssertionError: If job status is FAILED or CANCELLED
     """
-    print(f"[POLL] Attempting to poll job {id}...")
     response = requests.get(
         f"{API_BASE_URL}/jobs/{id}",
         headers={"accept": "application/json"}
     )
-    print(f"[POLL] Got response from API, status code: {response.status_code}")
     response.raise_for_status()
 
     # Parse JSON manually instead of using PydanticSession
@@ -126,9 +124,7 @@ def wait_for_job_to_complete(id : str):
         print(f"Raw response: {response.text}")
         raise
 
-    print(f"[POLL] Job {id}: status={jobStatus.status}; phase={jobStatus.phase}; execution_time:{jobStatus.execution_time}s")
-
-    # Raise exception if job failed or cancelled (causes retry to stop)
+    # Only log status changes and completion
     if jobStatus.status == DeforumJobStatusCategory.FAILED:
         print(f"[POLL] Job {id} FAILED: {jobStatus.message}")
         raise AssertionError(f"Job {id} failed: {jobStatus.message}")
@@ -136,14 +132,10 @@ def wait_for_job_to_complete(id : str):
         print(f"[POLL] Job {id} CANCELLED")
         raise AssertionError(f"Job {id} was cancelled")
 
-    # Keep retrying until job succeeds
-    if jobStatus.status != DeforumJobStatusCategory.SUCCEEDED:
-        print(f"[POLL] Job {id} not done yet, will retry in 2s...")
-
+    # Keep retrying until job succeeds (no spam)
     assert jobStatus.status == DeforumJobStatusCategory.SUCCEEDED, \
         f"Job {id} still running (status={jobStatus.status}, phase={jobStatus.phase})"
 
-    print(f"[POLL] Job {id} SUCCEEDED! Returning status.")
     return jobStatus
     
 @retry(wait=wait_fixed(1), stop=stop_after_delay(120))
