@@ -801,7 +801,9 @@ def create_tuning_tab() -> tuple:
                 return status_msg, None, None, None, None
 
             except Exception as e:
+                import traceback
                 logger.error(f"Failed to poll test status: {e}")
+                logger.error(traceback.format_exc())
                 return f"Error polling status: {e}", None, None, None, None
 
         # I2V Chaining Tests button handlers

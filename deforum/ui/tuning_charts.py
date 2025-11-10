@@ -280,36 +280,35 @@ def create_orbit_metrics_plot(results: List[Dict[str, Any]]) -> plt.Figure:
         aspect_results = sorted(aspect_results, key=lambda r: r['rotation_factor'])
 
         rotation_factors = [r['rotation_factor'] for r in aspect_results]
+        iterations = [r['iterations_until_offscreen'] for r in aspect_results]
         max_drifts = [r['max_drift'] for r in aspect_results]
-        overall_scores = [r['overall_score'] for r in aspect_results]
 
         # Color from slopcore gradient
         color = [SLOPCORE_2, SLOPCORE_4, SLOPCORE_6][i % 3]
 
+        # Plot iterations until offscreen (higher is better)
+        ax1.plot(rotation_factors, iterations, 'o-', label=f'Aspect {aspect:.2f}',
+                color=color, linewidth=2, markersize=6)
+
         # Plot drift (lower is better)
-        ax1.plot(rotation_factors, max_drifts, 'o-', label=f'Aspect {aspect:.2f}',
+        ax2.plot(rotation_factors, max_drifts, 'o-', label=f'Aspect {aspect:.2f}',
                 color=color, linewidth=2, markersize=6)
 
-        # Plot overall score (higher is better)
-        ax2.plot(rotation_factors, overall_scores, 'o-', label=f'Aspect {aspect:.2f}',
-                color=color, linewidth=2, markersize=6)
-
-    # Format drift plot
-    ax1.set_xlabel('Rotation Factor')
-    ax1.set_ylabel('Max Drift (pixels)')
-    ax1.set_title('Subject Position Drift vs Rotation Factor')
+    # Format iterations plot
+    ax1.set_xlabel('Rotation Factor (translation_x / rotation_3d_y)')
+    ax1.set_ylabel('Iterations Until Off-Screen')
+    ax1.set_title('Sphere Visibility Duration vs Rotation Factor')
     ax1.legend()
     ax1.grid(True, alpha=0.3)
     ax1.invert_xaxis()  # More negative on right
 
-    # Format score plot
-    ax2.set_xlabel('Rotation Factor')
-    ax2.set_ylabel('Overall Score (0-100)')
-    ax2.set_title('Overall Quality Score vs Rotation Factor')
+    # Format drift plot
+    ax2.set_xlabel('Rotation Factor (translation_x / rotation_3d_y)')
+    ax2.set_ylabel('Max Drift (pixels)')
+    ax2.set_title('Position Stability vs Rotation Factor')
     ax2.legend()
     ax2.grid(True, alpha=0.3)
     ax2.invert_xaxis()  # More negative on right
-    ax2.set_ylim(0, 100)
 
     plt.tight_layout()
     return fig
@@ -347,14 +346,21 @@ def create_orbit_heatmap(results: List[Dict[str, Any]], metric: str = 'overall_s
     fig, ax = plt.subplots(figsize=(10, 8))
 
     # Use appropriate colormap based on metric
-    if metric == 'max_drift' or metric == 'avg_drift' or metric == 'drift_rate':
+    if metric in ['max_drift', 'avg_drift', 'drift_rate']:
         # For drift metrics, invert colormap (lower is better)
         cmap = SLOPCORE_CMAP.reversed()
         vmin, vmax = 0, np.max(matrix) if np.max(matrix) > 0 else 100
+        cbar_label = 'Drift (px)'
+    elif metric == 'iterations_until_offscreen':
+        # For iterations, normal colormap (higher is better)
+        cmap = SLOPCORE_CMAP
+        vmin, vmax = 0, np.max(matrix) if np.max(matrix) > 0 else 50
+        cbar_label = 'Iterations'
     else:
         # For score metrics, normal colormap (higher is better)
         cmap = SLOPCORE_CMAP
         vmin, vmax = 0, 100
+        cbar_label = 'Score'
 
     im = ax.imshow(matrix, cmap=cmap, aspect='auto', vmin=vmin, vmax=vmax)
 
@@ -369,6 +375,7 @@ def create_orbit_heatmap(results: List[Dict[str, Any]], metric: str = 'overall_s
     ax.set_ylabel('Aspect Ratio')
 
     metric_labels = {
+        'iterations_until_offscreen': 'Iterations Until Off-Screen (higher = better)',
         'overall_score': 'Overall Quality Score',
         'max_drift': 'Maximum Drift (pixels)',
         'avg_drift': 'Average Drift (pixels)',
@@ -379,7 +386,7 @@ def create_orbit_heatmap(results: List[Dict[str, Any]], metric: str = 'overall_s
 
     # Add colorbar
     cbar = plt.colorbar(im, ax=ax)
-    cbar.set_label('Score' if 'score' in metric else 'Drift (px)', rotation=270, labelpad=20)
+    cbar.set_label(cbar_label, rotation=270, labelpad=20)
 
     # Add text annotations
     for i in range(len(aspect_ratios)):
@@ -394,7 +401,7 @@ def create_orbit_heatmap(results: List[Dict[str, Any]], metric: str = 'overall_s
 def find_best_orbit_configuration(results: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """Find the best orbit parameter configuration from results.
 
-    Best is defined as highest overall_score (lowest drift + highest temporal).
+    Best is defined as highest iterations_until_offscreen (sphere stays in frame longest).
 
     Args:
         results: List of orbit test result dictionaries
@@ -405,7 +412,7 @@ def find_best_orbit_configuration(results: List[Dict[str, Any]]) -> Optional[Dic
     if not results:
         return None
 
-    return max(results, key=lambda r: r['overall_score'])
+    return max(results, key=lambda r: r['iterations_until_offscreen'])
 
 
 def generate_orbit_summary_stats(results: List[Dict[str, Any]]) -> Dict[str, Any]:
