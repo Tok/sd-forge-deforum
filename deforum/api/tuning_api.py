@@ -11,6 +11,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
 
+import numpy as np
 from fastapi import FastAPI, Response, status, HTTPException
 from pydantic import BaseModel, Field
 import gradio as gr
