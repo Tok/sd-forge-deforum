@@ -255,7 +255,7 @@ def create_tuning_tab() -> tuple:
                         orbit_rotation_factor_min = gr.Slider(
                             label="Min rotation factor (translation_x / rotation_3d_y)",
                             minimum=-30.0,
-                            maximum=-0.5,
+                            maximum=-0.1,
                             value=-2.0,
                             step=0.05,
                             info="More negative = stronger counter-rotation to compensate translation",
@@ -263,7 +263,7 @@ def create_tuning_tab() -> tuple:
                         orbit_rotation_factor_max = gr.Slider(
                             label="Max rotation factor (translation_x / rotation_3d_y)",
                             minimum=-30.0,
-                            maximum=-0.5,
+                            maximum=-0.1,
                             value=-0.5,
                             step=0.05,
                             info="Less negative = weaker counter-rotation (theory: -1.0 = perfect orbit)",
@@ -419,9 +419,9 @@ def create_tuning_tab() -> tuple:
                         raft_rotation_factor = gr.Slider(
                             label="Rotation factor (fixed)",
                             minimum=-10.0,
-                            maximum=-0.5,
+                            maximum=-0.1,
                             value=-1.0,
-                            step=0.1,
+                            step=0.05,
                             info="Use empirically optimal value from orbit tests (theory: -1.0)",
                         )
                         raft_orbit_radius = gr.Slider(

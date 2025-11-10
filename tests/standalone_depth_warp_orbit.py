@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Standalone depth warping orbit test - NO DIFFUSION.
 
+**DEPRECATED:** Use the Tuning Lab UI instead (WebUI → Tuning Lab → Orbit Depth Warping Tests)
+
+This standalone script is kept for backward compatibility and quick CLI testing,
+but the Tuning Lab UI provides the same functionality with better visualization,
+persistence, and integration with other tuning tests.
+
 Tests pure depth warping with orbital camera paths to find optimal
 rotation_factor values WITHOUT loading or using any diffusion models.
 
@@ -240,6 +246,15 @@ def run_orbit_test(
 
 if __name__ == "__main__":
     # Args already parsed at top of file before imports
+
+    # Print deprecation warning
+    print("\n" + "="*80)
+    print("⚠️  DEPRECATION WARNING")
+    print("="*80)
+    print("This standalone script is DEPRECATED.")
+    print("Please use: WebUI → Tuning Lab → Orbit Depth Warping Tests")
+    print("The UI provides better visualization, persistence, and integration.")
+    print("="*80 + "\n")
 
     # Sweep rotation factors
     rotation_factors = np.arange(args.factor_min, args.factor_max + 0.01, args.factor_step)
