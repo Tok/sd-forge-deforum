@@ -1126,9 +1126,8 @@ class TuningTestManager:
                 "audio_sync": False,
                 "add_soundtrack": "None",
 
-                # Depth warping enabled
+                # Depth warping enabled (uses Depth-Anything V2)
                 "use_depth_warping": True,
-                "midas_weight": 0.3,
                 "padding_mode": "border",
                 "sampling_mode": "bicubic",
 
@@ -1418,9 +1417,8 @@ class TuningTestManager:
                 "audio_sync": False,
                 "add_soundtrack": "None",
 
-                # Depth warping enabled
+                # Depth warping enabled (uses Depth-Anything V2)
                 "use_depth_warping": True,
-                "midas_weight": 0.3,
                 "padding_mode": "border",
                 "sampling_mode": "bicubic",
 
