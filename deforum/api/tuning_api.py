@@ -536,8 +536,8 @@ class TuningTestManager:
     def _count_iterations_until_offscreen(self, frames: list, width: int, height: int) -> int:
         """Count how many iterations until the sphere goes off-screen.
 
-        Uses contour detection to find the sphere and track when it crosses frame edges.
-        More robust than centroid-based detection for partial visibility.
+        Uses absolute brightness thresholds and area tracking to robustly detect
+        when the sphere leaves the frame or becomes too faint.
 
         Args:
             frames: List of RGB frames as numpy arrays
@@ -550,46 +550,59 @@ class TuningTestManager:
         import cv2
         import numpy as np
 
-        # Edge margin: sphere must be this far from edges to count as "in frame"
-        edge_margin = min(width, height) * 0.10  # 10% margin (was 15%, too strict)
+        # FIXED thresholds (not adaptive like Otsu)
+        BRIGHTNESS_THRESHOLD = 180  # Sphere is bright white (200-255), background is gray (120-140)
+        MIN_BRIGHT_PIXELS = 100     # Minimum pixels above threshold to count as "sphere visible"
 
-        # Get reference sphere characteristics from first frame
+        # Edge margin: sphere centroid must be this far from edges
+        edge_margin = min(width, height) * 0.08  # 8% margin
+
+        # Get reference sphere from first frame using FIXED threshold
         first_gray = cv2.cvtColor(frames[0], cv2.COLOR_RGB2GRAY)
-        _, first_binary = cv2.threshold(first_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _, first_binary = cv2.threshold(first_gray, BRIGHTNESS_THRESHOLD, 255, cv2.THRESH_BINARY)
         first_contours, _ = cv2.findContours(first_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         if not first_contours:
-            logger.warning("No sphere detected in first frame")
+            logger.warning(f"No bright sphere detected in first frame (threshold={BRIGHTNESS_THRESHOLD})")
             return 0
 
-        # Get largest contour (should be sphere)
+        # Get largest bright contour (should be sphere)
         first_sphere = max(first_contours, key=cv2.contourArea)
         ref_area = cv2.contourArea(first_sphere)
+        ref_M = cv2.moments(first_sphere)
+        ref_cx = ref_M['m10'] / ref_M['m00']
+        ref_cy = ref_M['m01'] / ref_M['m00']
 
-        # Sphere is considered off-screen if:
-        # 1. Visible area drops below 30% of original (mostly off-screen)
-        # 2. Centroid is within edge margin AND area dropped significantly
-        area_threshold = ref_area * 0.30
+        logger.debug(f"Frame 0 reference: area={ref_area:.0f}px, centroid=({ref_cx:.0f}, {ref_cy:.0f})")
 
+        # Track sphere across frames
         for i, frame in enumerate(frames):
             if i == 0:
                 continue  # Skip first frame (reference)
 
-            # Convert to grayscale and threshold
+            # Convert to grayscale
             gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-            _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-            # Find contours
+            # Count bright pixels (absolute threshold)
+            bright_pixels = np.sum(gray > BRIGHTNESS_THRESHOLD)
+
+            if bright_pixels < MIN_BRIGHT_PIXELS:
+                # Too few bright pixels - sphere is gone or too faint
+                logger.debug(f"Frame {i}: Only {bright_pixels} bright pixels (< {MIN_BRIGHT_PIXELS}), sphere off-screen")
+                return i
+
+            # Find bright contours using FIXED threshold
+            _, binary = cv2.threshold(gray, BRIGHTNESS_THRESHOLD, 255, cv2.THRESH_BINARY)
             contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             if not contours:
-                # No bright regions detected - sphere completely gone
-                logger.debug(f"Frame {i}: No contours detected, sphere off-screen")
+                logger.debug(f"Frame {i}: No bright contours found, sphere off-screen")
                 return i
 
-            # Find largest contour (likely sphere or remaining portion)
+            # Find largest bright contour
             largest = max(contours, key=cv2.contourArea)
             area = cv2.contourArea(largest)
+            area_ratio = area / ref_area
 
             # Get centroid
             M = cv2.moments(largest)
@@ -600,18 +613,15 @@ class TuningTestManager:
             cx = M['m10'] / M['m00']
             cy = M['m01'] / M['m00']
 
-            # Check if visible area dropped significantly
-            area_ratio = area / ref_area
-            if area_ratio < 0.30:
-                logger.debug(f"Frame {i}: Area dropped to {area_ratio:.1%} of original, sphere off-screen")
+            # Check if area dropped significantly (sphere mostly off-screen)
+            if area_ratio < 0.25:  # 25% threshold
+                logger.debug(f"Frame {i}: Area={area:.0f} ({area_ratio:.1%} of ref), sphere off-screen")
                 return i
 
-            # Check if centroid near edge AND area dropped (indicates partial visibility)
-            near_edge = (cx < edge_margin or cx > width - edge_margin or
-                        cy < edge_margin or cy > height - edge_margin)
-
-            if near_edge and area_ratio < 0.70:
-                logger.debug(f"Frame {i}: Near edge (cx={cx:.0f}, cy={cy:.0f}) with {area_ratio:.1%} area, sphere off-screen")
+            # Check if centroid is too close to edges (sphere leaving frame)
+            if (cx < edge_margin or cx > width - edge_margin or
+                cy < edge_margin or cy > height - edge_margin):
+                logger.debug(f"Frame {i}: Centroid ({cx:.0f}, {cy:.0f}) near edge (margin={edge_margin:.0f}), sphere off-screen")
                 return i
 
         # Sphere stayed in frame for all iterations
