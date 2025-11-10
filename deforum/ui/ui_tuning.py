@@ -285,38 +285,42 @@ def create_tuning_tab() -> tuple:
                         )
 
                         gr.Markdown("### Rotation Factor Sweep")
+                        gr.Markdown(
+                            "_Find optimal ratio between translation_x and rotation_3d_y for stable orbits_"
+                        )
                         orbit_rotation_factor_min = gr.Slider(
-                            label="Min rotation factor",
+                            label="Min rotation factor (translation_x / rotation_3d_y)",
                             minimum=-10.0,
                             maximum=-1.0,
                             value=-7.0,
                             step=0.05,
-                            info="More negative = stronger counter-rotation",
+                            info="More negative = stronger counter-rotation to compensate translation",
                         )
                         orbit_rotation_factor_max = gr.Slider(
-                            label="Max rotation factor",
+                            label="Max rotation factor (translation_x / rotation_3d_y)",
                             minimum=-10.0,
                             maximum=-1.0,
                             value=-3.0,
                             step=0.05,
+                            info="Less negative = weaker counter-rotation",
                         )
                         orbit_rotation_factor_step = gr.Slider(
                             label="Step size",
                             minimum=0.05,
                             maximum=2.0,
-                            value=0.05,
+                            value=0.10,
                             step=0.05,
-                            info="0.05 = fine sweep (81 tests), 0.5 = coarse (9 tests)",
+                            info="0.10 = balanced sweep (41 tests), 0.05 = fine (81 tests), 0.5 = coarse (9 tests)",
                         )
 
                         gr.Markdown("### Orbit Parameters")
                         orbit_orbit_radius = gr.Slider(
                             label="Orbit radius (pixels)",
-                            minimum=1,
-                            maximum=100,
-                            value=2,
-                            step=1,
-                            info="Smaller = tighter orbit, less translation (2 = very slow for meaningful tests)",
+                            minimum=1.0,
+                            maximum=100.0,
+                            value=2.0,
+                            step=0.5,
+                            info="Translation distance from center (2px = very slow orbit for long tests)",
                         )
                         orbit_orbit_iterations = gr.Slider(
                             label="Depth warp iterations per test",
