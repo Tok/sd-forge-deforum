@@ -34,30 +34,39 @@ def create_tuning_tab() -> tuple:
         # {microscope} Deforum Parameter Tuning Lab
 
         Automated quality assessment for finding optimal Deforum parameters.
-
-        **How it works:**
-        1. Select parameters to test (strength, steps, etc.)
-        2. Define parameter ranges
-        3. Run automated tests
-        4. View quality metrics and comparisons
-        5. Apply best settings to Deforum defaults
         """)
 
-        with gr.Row():
-            # Left column: Parameter selection
-            with gr.Column(scale=1):
-                gr.Markdown("## Test Configuration")
+        # Separate subtabs for different test types
+        with gr.Tabs():
+            # I2V Chaining Tests Tab
+            with gr.Tab("I2V Chaining Tests"):
+                gr.Markdown("""
+                **Tests for image-to-video chaining workflows:**
+                - Color Preservation: How long before colors degrade to grayscale?
+                - Temporal Consistency: How stable are frame-to-frame transitions?
+                - Flux Parameter Sweep: Optimal strength/steps for Flux models
 
-                test_type = gr.Dropdown(
-                    label="Test Type",
-                    choices=[
-                        "Color Preservation (I2V Chaining)",
-                        "Temporal Consistency (Frame Stability)",
-                        "Flux Parameter Sweep",
-                        "Depth Warping Orbit (Translation/Rotation Factor)",
-                    ],
-                    value="Color Preservation (I2V Chaining)",
-                )
+                **Process:**
+                1. Define parameter ranges
+                2. Run automated I2V chaining tests
+                3. View quality metrics
+                4. Apply best settings
+                """)
+
+                with gr.Row():
+                    # Left column: Parameter selection
+                    with gr.Column(scale=1):
+                        gr.Markdown("## Test Configuration")
+
+                        test_type = gr.Dropdown(
+                            label="Test Type",
+                            choices=[
+                                "Color Preservation (I2V Chaining)",
+                                "Temporal Consistency (Frame Stability)",
+                                "Flux Parameter Sweep",
+                            ],
+                            value="Color Preservation (I2V Chaining)",
+                        )
 
                 gr.Markdown("### Parameters to Test")
 
@@ -120,55 +129,8 @@ def create_tuning_tab() -> tuple:
                         step=0.01,
                     )
 
-                # Depth Warping Orbit specific parameters
-                with gr.Group(visible=False) as orbit_params_group:
-                    gr.Markdown("**Orbit Parameters**")
-                    aspect_ratios = gr.CheckboxGroup(
-                        label="Aspect ratios to test",
-                        choices=["16:9 (Landscape)", "9:16 (Portrait)", "1:1 (Square)"],
-                        value=["16:9 (Landscape)"],
-                    )
-                    rotation_factor_min = gr.Slider(
-                        label="Min rotation factor",
-                        minimum=-10.0,
-                        maximum=-1.0,
-                        value=-7.0,
-                        step=1.0,
-                        info="More negative = stronger counter-rotation",
-                    )
-                    rotation_factor_max = gr.Slider(
-                        label="Max rotation factor",
-                        minimum=-10.0,
-                        maximum=-1.0,
-                        value=-3.0,
-                        step=1.0,
-                    )
-                    rotation_factor_step = gr.Slider(
-                        label="Step size",
-                        minimum=0.5,
-                        maximum=2.0,
-                        value=1.0,
-                        step=0.5,
-                    )
-                    orbit_radius = gr.Slider(
-                        label="Orbit radius (pixels)",
-                        minimum=1,
-                        maximum=100,
-                        value=2,
-                        step=1,
-                        info="Smaller = tighter orbit, less translation (2 = very slow for meaningful tests)",
-                    )
-                    orbit_iterations = gr.Slider(
-                        label="I2I depth warp iterations",
-                        minimum=10,
-                        maximum=200,
-                        value=50,
-                        step=5,
-                        info="Number of depth warping frames to test (50 = good for slow orbits)",
-                    )
-
-                # Test limits (for color preservation / temporal consistency)
-                with gr.Group(visible=True) as test_limits_group:
+                # Test limits (for I2V chaining tests)
+                with gr.Group():
                     gr.Markdown("**Test Limits**")
                     max_iterations = gr.Slider(
                         label="Max iterations (I2V chaining)",
@@ -291,6 +253,141 @@ def create_tuning_tab() -> tuple:
                                     label="Temporal Consistency",
                                     value="--",
                                     interactive=False,
+                                )
+
+            # Orbit Tests Tab
+            with gr.Tab("Orbit Tests"):
+                gr.Markdown("""
+                **Depth warping orbital camera path tests:**
+                - Find optimal rotation_factor for stable orbital movement
+                - Test different aspect ratios (16:9, 9:16, 1:1)
+                - Measure iterations until subject goes off-screen
+                - Pure depth warping (NO diffusion) for clean metrics
+
+                **Process:**
+                1. Select aspect ratios to test
+                2. Define rotation factor range
+                3. Set orbit parameters (radius, iterations)
+                4. Run automated orbit tests
+                5. View plotly graph showing optimal factors
+                """)
+
+                with gr.Row():
+                    # Left column: Orbit test configuration
+                    with gr.Column(scale=1):
+                        gr.Markdown("## Orbit Test Configuration")
+
+                        gr.Markdown("### Aspect Ratios")
+                        orbit_aspect_ratios = gr.CheckboxGroup(
+                            label="Aspect ratios to test",
+                            choices=["16:9 (Landscape)", "9:16 (Portrait)", "1:1 (Square)"],
+                            value=["16:9 (Landscape)"],
+                        )
+
+                        gr.Markdown("### Rotation Factor Sweep")
+                        orbit_rotation_factor_min = gr.Slider(
+                            label="Min rotation factor",
+                            minimum=-10.0,
+                            maximum=-1.0,
+                            value=-7.0,
+                            step=0.05,
+                            info="More negative = stronger counter-rotation",
+                        )
+                        orbit_rotation_factor_max = gr.Slider(
+                            label="Max rotation factor",
+                            minimum=-10.0,
+                            maximum=-1.0,
+                            value=-3.0,
+                            step=0.05,
+                        )
+                        orbit_rotation_factor_step = gr.Slider(
+                            label="Step size",
+                            minimum=0.05,
+                            maximum=2.0,
+                            value=0.05,
+                            step=0.05,
+                            info="0.05 = fine sweep (81 tests), 0.5 = coarse (9 tests)",
+                        )
+
+                        gr.Markdown("### Orbit Parameters")
+                        orbit_orbit_radius = gr.Slider(
+                            label="Orbit radius (pixels)",
+                            minimum=1,
+                            maximum=100,
+                            value=2,
+                            step=1,
+                            info="Smaller = tighter orbit, less translation (2 = very slow for meaningful tests)",
+                        )
+                        orbit_orbit_iterations = gr.Slider(
+                            label="Depth warp iterations per test",
+                            minimum=10,
+                            maximum=200,
+                            value=50,
+                            step=5,
+                            info="How many frames to generate per test configuration",
+                        )
+
+                        # Orbit test action buttons
+                        with gr.Row():
+                            orbit_run_btn = gr.Button(f"{rocket} Run Orbit Tests", variant="primary", size="lg")
+                            orbit_stop_btn = gr.Button(f"{stop} Stop", variant="stop")
+
+                        with gr.Row():
+                            orbit_refresh_btn = gr.Button(f"{refresh} Refresh Results", size="sm")
+                            orbit_open_dir_btn = gr.Button(f"{folder} Open Results Directory", size="sm")
+
+                        # Orbit test status
+                        orbit_status_box = gr.Textbox(
+                            label="Status",
+                            value="Ready",
+                            interactive=False,
+                            lines=3,
+                        )
+
+                    # Right column: Orbit test results
+                    with gr.Column(scale=2):
+                        gr.Markdown("## Orbit Test Results")
+
+                        orbit_progress_bar = gr.Progress()
+
+                        with gr.Tabs():
+                            with gr.Tab("Graph"):
+                                gr.Markdown("""
+                                ### Rotation Factor vs Sphere Visibility
+
+                                **Y-axis:** Iterations until sphere goes off-screen (higher = better)
+                                **X-axis:** Rotation factor (translation/rotation ratio)
+
+                                **Goal:** Find the factor where the sphere stays in frame longest for each aspect ratio.
+                                """)
+
+                                orbit_graph_html = gr.HTML(
+                                    label="Orbit Tuning Graph",
+                                    value="<p>Run tests to generate graph...</p>",
+                                )
+
+                            with gr.Tab("Results Table"):
+                                gr.Markdown("### All Test Configurations")
+
+                                orbit_results_table = gr.DataFrame(
+                                    headers=[
+                                        "Aspect Ratio",
+                                        "Width×Height",
+                                        "Rotation Factor",
+                                        "Orbit Radius",
+                                        "Iterations Until Off-Screen",
+                                        "Max Drift (px)",
+                                    ],
+                                    label="Orbit Test Results",
+                                    interactive=False,
+                                )
+
+                            with gr.Tab("Best Parameters"):
+                                gr.Markdown("### Optimal Rotation Factors")
+
+                                orbit_best_params = gr.JSON(
+                                    label="Best Factor for Each Aspect Ratio",
+                                    value={},
                                 )
 
         # Wire up event handlers
@@ -489,20 +586,7 @@ def create_tuning_tab() -> tuple:
                 logger.error(f"Failed to poll test status: {e}")
                 return f"Error polling status: {e}", None, None, None, None
 
-        def on_test_type_change(test_type_val):
-            """Show/hide parameter groups based on test type."""
-            is_orbit = test_type_val == "Depth Warping Orbit (Translation/Rotation Factor)"
-            return {
-                orbit_params_group: gr.update(visible=is_orbit),
-                test_limits_group: gr.update(visible=not is_orbit),
-            }
-
-        test_type.change(
-            fn=on_test_type_change,
-            inputs=[test_type],
-            outputs=[orbit_params_group, test_limits_group],
-        )
-
+        # I2V Chaining Tests button handlers
         run_tests_btn.click(
             fn=on_run_tests,
             inputs=[
@@ -516,20 +600,50 @@ def create_tuning_tab() -> tuple:
                 kf_strength_step,
                 max_iterations,
                 grayscale_threshold,
-                aspect_ratios,
-                rotation_factor_min,
-                rotation_factor_max,
-                rotation_factor_step,
-                orbit_radius,
-                orbit_iterations,
+                gr.State([]),  # Dummy orbit params (not used for I2V tests)
+                gr.State(-7.0),
+                gr.State(-3.0),
+                gr.State(0.05),
+                gr.State(2.0),
+                gr.State(50),
             ],
             outputs=[status_box],
+        )
+
+        # Orbit Tests button handlers
+        orbit_run_btn.click(
+            fn=on_run_tests,
+            inputs=[
+                gr.State("Depth Warping Orbit (Translation/Rotation Factor)"),  # Force orbit test type
+                gr.State(["20 (Dev)"]),  # Dummy steps (not used for orbit)
+                gr.State(0.80),  # Dummy I2V params (not used for orbit)
+                gr.State(0.95),
+                gr.State(0.05),
+                gr.State(0.10),
+                gr.State(0.25),
+                gr.State(0.05),
+                gr.State(20),
+                gr.State(20.0),
+                orbit_aspect_ratios,  # Actual orbit params
+                orbit_rotation_factor_min,
+                orbit_rotation_factor_max,
+                orbit_rotation_factor_step,
+                orbit_orbit_radius,
+                orbit_orbit_iterations,
+            ],
+            outputs=[orbit_status_box],
         )
 
         stop_tests_btn.click(
             fn=on_stop_tests,
             inputs=[],
             outputs=[status_box],
+        )
+
+        orbit_stop_btn.click(
+            fn=on_stop_tests,
+            inputs=[],
+            outputs=[orbit_status_box],
         )
 
         apply_best_btn.click(
@@ -544,10 +658,22 @@ def create_tuning_tab() -> tuple:
             outputs=[status_box],
         )
 
+        orbit_open_dir_btn.click(
+            fn=on_open_tuning_dir,
+            inputs=[],
+            outputs=[orbit_status_box],
+        )
+
         refresh_btn.click(
             fn=poll_test_status,
             inputs=[],
             outputs=[status_box, results_table, best_params_json, metrics_plot, heatmap_plot],
+        )
+
+        orbit_refresh_btn.click(
+            fn=poll_test_status,
+            inputs=[],
+            outputs=[orbit_status_box, orbit_results_table, orbit_best_params, orbit_graph_html, gr.State(None)],
         )
 
     return tuning_interface, "Deforum Tuning", "deforum_tuning"

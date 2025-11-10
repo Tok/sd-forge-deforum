@@ -246,6 +246,9 @@ class TuningTestManager:
         """
         from numpy import arange
 
+        # DEBUG: Log what values we received from UI
+        logger.info(f"DEBUG orbit_tests: config.orbit_radius={config.orbit_radius}, config.orbit_iterations={config.orbit_iterations}")
+
         # Validate orbit parameters
         if not config.aspect_ratios:
             raise ValueError("aspect_ratios required for orbit tests")
@@ -281,9 +284,13 @@ class TuningTestManager:
                         return
 
                 # Run orbit test with these parameters
+                actual_orbit_radius = config.orbit_radius or 2.0
+                actual_orbit_iterations = config.orbit_iterations or 50
+
                 logger.info(
                     f"Testing: aspect {aspect_ratio:.2f} ({width}×{height}), "
-                    f"rotation_factor={rotation_factor:.1f}"
+                    f"rotation_factor={rotation_factor:.1f}, "
+                    f"orbit_radius={actual_orbit_radius}, orbit_iterations={actual_orbit_iterations}"
                 )
 
                 result = self._run_orbit_single_test(
@@ -292,8 +299,8 @@ class TuningTestManager:
                     width=width,
                     height=height,
                     rotation_factor=rotation_factor,
-                    orbit_radius=config.orbit_radius or 2.0,  # Very slow orbit to see differences (was 50.0, then 10.0)
-                    orbit_iterations=config.orbit_iterations or 50,  # Reduced to 50 since slower orbit takes longer
+                    orbit_radius=actual_orbit_radius,  # Very slow orbit to see differences (was 50.0, then 10.0)
+                    orbit_iterations=actual_orbit_iterations,  # Reduced to 50 since slower orbit takes longer
                 )
 
                 # Update progress
