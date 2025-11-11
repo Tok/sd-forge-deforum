@@ -418,27 +418,27 @@ def create_tuning_tab() -> tuple:
                         )
                         raft_rotation_factor = gr.Slider(
                             label="Rotation factor (fixed)",
-                            minimum=-20.0,
-                            maximum=-0.1,
-                            value=-1.0,
+                            minimum=-50.0,
+                            maximum=-1.0,
+                            value=-8.0,
                             step=0.05,
-                            info="Use empirically optimal value from orbit tests (theory: -1.0)",
+                            info="Empirically validated optimal from orbit tests (range: -6 to -9)",
                         )
                         raft_orbit_radius = gr.Slider(
-                            label="Orbit radius (pixels)",
+                            label="Movement scale (translation amount)",
                             minimum=1.0,
-                            maximum=100.0,
-                            value=2.0,
+                            maximum=20.0,
+                            value=5.0,
                             step=0.5,
-                            info="Translation distance from center",
+                            info="Translation per orbit (2-3 = gentle, 5 = moderate, 10+ = aggressive)",
                         )
                         raft_orbit_iterations = gr.Slider(
                             label="Depth warp iterations per test",
                             minimum=10,
                             maximum=200,
-                            value=50,
+                            value=200,
                             step=5,
-                            info="How many frames to generate per test",
+                            info="How many frames to generate per test (200 = comprehensive)",
                         )
 
                         gr.Markdown("### RAFT Parameters to Sweep")
