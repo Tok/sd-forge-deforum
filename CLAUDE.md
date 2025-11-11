@@ -372,6 +372,36 @@ Fractional strength interpolation is now **always enabled** via automatic monkey
   - `deforum/rendering/core.py:72-98` - Tween reassignment logic
   - `deforum/ui/handlers/audio_prompt_generator.py:159-189` - First-person perspective generation mode
 
+**Orbital Camera Rotation Factor (Empirically Validated):**
+- **Purpose:** Optimal counter-rotation for depth warping orbital camera paths
+- **Empirical Optimal:** rotation_factor = **-8.0**
+- **Discovery:** Comprehensive testing (99 configurations, 19,800 frames) across -50 to -1 range
+- **Performance:**
+  - Optimal value: -8.0 (125/200 frames = 62.5% stability)
+  - Optimal range: -6.0 to -8.5 (all within 2% of best)
+  - Stability ceiling: 62.5% over 200 iterations (limited by cumulative depth drift)
+- **Theory vs Practice:**
+  - Theoretical perfect orbit: -1.0 (360° translation → 360° counter-rotation)
+  - Empirical optimal: -8.0 (8× stronger counter-rotation required)
+  - **Why the difference:** Depth warping approximations don't preserve geometric perfection
+- **Performance by Regime:**
+  - Under-rotation (-50 to -10): Insufficient counter-rotation, sphere drifts ~57% stability
+  - Optimal range (-6 to -9): Balanced, sphere stays centered ~62% stability
+  - Over-rotation (-5 to -1): Excessive counter-rotation, faster drift
+- **Technical Details:**
+  - Schedules must use frame-to-frame DELTAS, not absolute positions
+  - Both translation (x/y) AND rotation must be converted to deltas
+  - Movement scale impacts stability: 5.0 = moderate, 2.0 = gentle
+- **Default Values:**
+  - Camera path presets: rotation_factor = -8.0
+  - Tuning Lab UI: Min=-10.0, Max=-6.0 (sweep optimal range)
+- **Implementation Files:**
+  - `tests/integration/test_depth_warping_orbit_tuning.py` - Schedule generation (deltas!)
+  - `tests/integration/test_camera_path_presets.py` - Default -8.0
+  - `deforum/ui/ui_tuning.py` - Tuning Lab UI defaults
+  - `ORBIT_TESTS.md` - Complete empirical results documentation
+- **Related Testing:** See `ORBIT_TESTS.md` for comprehensive sweep results and RAFT integration
+
 ## Common Development Tasks
 
 ### Adding a New Animation Mode
