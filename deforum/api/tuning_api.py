@@ -1686,7 +1686,7 @@ class TuningTestManager:
         if str(tests_dir) not in sys.path:
             sys.path.insert(0, str(tests_dir))
 
-        from tuning.metrics import (
+        from integration.metrics import (
             measure_color_preservation,
             measure_temporal_consistency,
             calculate_comprehensive_quality_score,
