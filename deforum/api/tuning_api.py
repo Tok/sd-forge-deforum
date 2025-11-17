@@ -1704,11 +1704,18 @@ class TuningTestManager:
         logger.info(f"Running real test: {test_name}")
 
         try:
-            # Generate colorful test image (only once, reuse if exists)
-            test_image_path = output_dir / "test_input_rainbow.png"
-            if not test_image_path.exists():
-                test_image_path = create_colorful_test_image(output_dir)
-                logger.info(f"Created test image: {test_image_path}")
+            # Generate shared colorful test image (only once, reuse if exists)
+            shared_test_image = output_dir / "test_input_rainbow.png"
+            if not shared_test_image.exists():
+                shared_test_image = create_colorful_test_image(output_dir)
+                logger.info(f"Created shared test image: {shared_test_image}")
+
+            # Copy clean test image to test-specific directory to prevent contamination
+            # This ensures each test configuration starts fresh
+            test_image_path = test_dir / "test_input_clean.png"
+            import shutil
+            shutil.copy(shared_test_image, test_image_path)
+            logger.info(f"Copied clean test image for this configuration")
 
             # Track metrics
             color_scores = []
@@ -1742,6 +1749,11 @@ class TuningTestManager:
                 color_scores.append(color_score)
 
                 logger.info(f"    Color score: {color_score:.1f}/100")
+
+                # Save copy with iteration number for visual verification
+                import shutil
+                numbered_output = test_dir / f"iteration_{iteration:03d}_color{color_score:.0f}.png"
+                shutil.copy(output_frame, numbered_output)
 
                 # Check if grayscale threshold reached
                 if color_score < grayscale_threshold:
