@@ -452,7 +452,7 @@ def create_tuning_tab() -> tuple:
                             label="Min flow iterations",
                             minimum=6,
                             maximum=50,
-                            value=16,
+                            value=14,
                             step=2,
                             info="RAFT refinement iterations (empirical optimal: 16)",
                         )
@@ -460,9 +460,9 @@ def create_tuning_tab() -> tuple:
                             label="Max flow iterations",
                             minimum=6,
                             maximum=50,
-                            value=20,
+                            value=18,
                             step=2,
-                            info="Higher iterations = more refinement, slower (optimal: 16)",
+                            info="Narrow sweep around optimal 16 (14, 16, 18)",
                         )
                         raft_flow_iterations_step = gr.Slider(
                             label="Iterations step size",
@@ -470,31 +470,31 @@ def create_tuning_tab() -> tuple:
                             maximum=10,
                             value=2,
                             step=2,
-                            info="Step between iteration values (16, 18, 20, ...)",
+                            info="Step between iteration values (14, 16, 18)",
                         )
                         raft_flow_factor_min = gr.Slider(
                             label="Min flow factor",
                             minimum=0.0,
                             maximum=2.0,
-                            value=1.3,
+                            value=1.4,
                             step=0.1,
-                            info="How much to trust RAFT vs depth (empirical optimal: 1.5)",
+                            info="Fine sweep around optimal 1.5 (today: test with rotation_factor=-8.0)",
                         )
                         raft_flow_factor_max = gr.Slider(
                             label="Max flow factor",
                             minimum=0.0,
                             maximum=2.0,
-                            value=1.7,
+                            value=1.8,
                             step=0.1,
-                            info="Upper range for flow factor sweep (optimal: 1.5)",
+                            info="Explore beyond 1.5 to find upper limit (1.4, 1.5, 1.6, 1.7, 1.8)",
                         )
                         raft_flow_factor_step = gr.Slider(
                             label="Flow factor step size",
                             minimum=0.1,
                             maximum=0.5,
-                            value=0.2,
+                            value=0.1,
                             step=0.05,
-                            info="0.2 = balanced (6 tests), 0.1 = fine (11 tests)",
+                            info="0.1 = fine sweep around optimal (5 values)",
                         )
 
                         # RAFT test action buttons
