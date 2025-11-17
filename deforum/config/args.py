@@ -542,8 +542,8 @@ def DeforumAnimArgs():
             "minimum": 6,
             "maximum": 50,
             "step": 1,
-            "value": 12,
-            "info": "Number of flow refinement iterations - Higher values are more accurate but slower (12 is default, 20-30 for best quality)"
+            "value": 20,
+            "info": "Number of flow refinement iterations (20 = empirically validated optimal for orbital stability)"
         },
         "show_flow_arrows": {
             "label": "Show flow arrows on depth preview",
@@ -554,8 +554,8 @@ def DeforumAnimArgs():
         "cadence_flow_factor_schedule": {
             "label": "Cadence flow factor schedule",
             "type": "textbox",
-            "value": "0: (1)",
-            "info": ""
+            "value": "0: (1.6)",
+            "info": "Flow guidance strength (1.6 = empirically validated optimal, 0=depth-only, 1=normal, 2=strong)"
         },
         "optical_flow_redo_generation": {
             "label": "Optical flow generation",
