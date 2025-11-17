@@ -42,15 +42,19 @@ def create_tuning_tab() -> tuple:
             with gr.Tab("I2V Chaining Tests"):
                 gr.Markdown("""
                 **Tests for image-to-video chaining workflows:**
-                - Color Preservation: How long before colors degrade to grayscale?
-                - Temporal Consistency: How stable are frame-to-frame transitions?
-                - Flux Parameter Sweep: Optimal strength/steps for Flux models
 
-                **Process:**
-                1. Define parameter ranges
-                2. Run automated I2V chaining tests
-                3. View quality metrics
-                4. Apply best settings
+                These tests measure BOTH color preservation AND temporal consistency together:
+                - **Color Preservation**: How long before colors degrade to grayscale?
+                - **Temporal Consistency**: How stable are frame-to-frame transitions (SSIM)?
+                - **Degradation Rate**: How fast quality decays per iteration
+
+                **How it works:**
+                1. Start with a colorful rainbow gradient image
+                2. Run img2img repeatedly (output → input chaining)
+                3. Measure color saturation and frame similarity over 20 iterations
+                4. Find optimal strength values that maximize stability
+
+                **Leverages fractional strength:** 0.01 step precision for fine-grained tuning
                 """)
 
                 with gr.Row():
@@ -87,21 +91,24 @@ def create_tuning_tab() -> tuple:
                         minimum=0.0,
                         maximum=1.0,
                         value=0.80,
-                        step=0.05,
+                        step=0.01,
+                        info="Cadence frame stability (higher = more preservation)",
                     )
                     strength_max = gr.Slider(
                         label="Max strength",
                         minimum=0.0,
                         maximum=1.0,
                         value=0.95,
-                        step=0.05,
+                        step=0.01,
+                        info="Upper bound for sweep",
                     )
                     strength_step = gr.Slider(
                         label="Step size",
                         minimum=0.01,
                         maximum=0.1,
-                        value=0.05,
+                        value=0.01,
                         step=0.01,
+                        info="Uses fractional strength (0.01 = 1% precision)",
                     )
 
                 # Keyframe strength configuration
@@ -112,21 +119,24 @@ def create_tuning_tab() -> tuple:
                         minimum=0.0,
                         maximum=0.5,
                         value=0.10,
-                        step=0.05,
+                        step=0.01,
+                        info="Keyframe change amount (lower = more diffusion)",
                     )
                     kf_strength_max = gr.Slider(
                         label="Max keyframe strength",
                         minimum=0.0,
                         maximum=0.5,
                         value=0.25,
-                        step=0.05,
+                        step=0.01,
+                        info="Upper bound for sweep",
                     )
                     kf_strength_step = gr.Slider(
                         label="Step size",
                         minimum=0.01,
                         maximum=0.1,
-                        value=0.05,
+                        value=0.01,
                         step=0.01,
+                        info="Uses fractional strength (0.01 = 1% precision)",
                     )
 
                 # Test limits (for I2V chaining tests)
