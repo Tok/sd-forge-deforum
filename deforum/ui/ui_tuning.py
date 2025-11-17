@@ -435,10 +435,10 @@ def create_tuning_tab() -> tuple:
                         raft_orbit_iterations = gr.Slider(
                             label="Depth warp iterations per test",
                             minimum=10,
-                            maximum=200,
+                            maximum=500,
                             value=200,
                             step=5,
-                            info="How many frames to generate per test (200 = comprehensive)",
+                            info="How many frames to generate per test (200 = standard, 300-500 = extended)",
                         )
 
                         gr.Markdown("### RAFT Parameters to Sweep")
