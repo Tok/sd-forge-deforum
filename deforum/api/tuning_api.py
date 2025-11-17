@@ -1693,8 +1693,10 @@ class TuningTestManager:
             load_image_as_numpy,
         )
 
-        # Create test output directory
-        output_dir = Path(__file__).parent.parent.parent / "outputs" / "deforum-tuning" / "color_preservation"
+        # Create test output directory in Forge root (not extension directory)
+        import os
+        forge_root = Path(os.getcwd())
+        output_dir = forge_root / "outputs" / "deforum-tuning" / "color_preservation"
         test_name = f"steps{steps}_norm{normal_strength:.2f}_kf{kf_strength:.2f}"
         test_dir = output_dir / test_name
         test_dir.mkdir(parents=True, exist_ok=True)
