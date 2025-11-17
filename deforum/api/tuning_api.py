@@ -55,7 +55,7 @@ class TuningTestConfig(BaseModel):
     rotation_factor_max: Optional[float] = Field(None, ge=-50.0, le=-1.0)
     rotation_factor_step: Optional[float] = Field(None, ge=0.01, le=2.0, description="Step size for rotation factor sweep (0.01 = fine, 0.5 = coarse)")
     orbit_radius: Optional[float] = Field(None, ge=1.0, le=20.0, description="Movement scale / translation amount per orbit (1-3 = gentle, 5 = moderate, 10+ = aggressive)")
-    orbit_iterations: Optional[int] = Field(None, ge=10, le=200, description="Number of orbit iterations (max 200 for slow orbits)")
+    orbit_iterations: Optional[int] = Field(None, ge=10, le=500, description="Number of orbit iterations (max 500 for extended testing)")
 
     # RAFT-specific parameters (for raft_tuning test type)
     raft_rotation_factor: Optional[float] = Field(None, ge=-50.0, le=-1.0, description="Fixed rotation factor for RAFT tests")
