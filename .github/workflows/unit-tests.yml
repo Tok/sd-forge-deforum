@@ -38,7 +38,7 @@ jobs:
           # Install test dependencies first
           pip install pytest pytest-cov coverage
           # Install minimal dependencies needed for unit tests (core ML/vision libs)
-          pip install numpy torch torchvision opencv-python-headless pandas pillow einops
+          pip install numpy torch torchvision opencv-python-headless pandas pillow einops scikit-image
           # Install audio processing dependencies
           pip install scipy librosa soundfile
           # Install UI dependencies
