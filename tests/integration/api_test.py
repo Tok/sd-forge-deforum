@@ -78,6 +78,10 @@ def test_api_cancel_active_job():
     # Set test-specific batch name for easier output identification
     deforum_settings['batch_name'] = get_test_batch_name('test_api_cancel_active_job')
 
+    # Override max_frames to ensure GENERATING phase lasts long enough to catch and cancel
+    # Default simple settings has only 11 frames with 1 step each = too fast to catch
+    deforum_settings['max_frames'] = 200  # Longer generation = easier to catch GENERATING phase
+
     response = requests.post(API_BASE_URL+"/batches", json={
         "deforum_settings":[deforum_settings],
         "options_overrides": get_test_options_overrides()
