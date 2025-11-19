@@ -319,9 +319,13 @@ def test_orbit_rotation_factor_sweep(aspect_ratio, width, height, rotation_facto
     assert final_status.status == DeforumJobStatusCategory.SUCCEEDED, \
         f"Job failed: {final_status.message}"
 
-    # Get output directory
+    # Get output directory - need to construct full batch name
+    # get_test_batch_name returns "module-testname_{timestring}" pattern
+    # Deforum replaces {timestring} with actual value, creating the directory name
     timestring = final_status.timestring
-    output_frames_dir = test_dir / timestring
+    batch_name_pattern = get_test_batch_name(test_name)
+    batch_name_actual = batch_name_pattern.replace("{timestring}", timestring)
+    output_frames_dir = test_dir / batch_name_actual
 
     # Load generated frames
     frame_files = sorted(glob.glob(str(output_frames_dir / "*.png")))

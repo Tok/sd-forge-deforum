@@ -154,7 +154,11 @@ def wait_for_job_to_enter_phase(id : str, phase : DeforumJobPhase):
         raise
 
     print(f"Waiting for job {id} to enter phase {phase}. Currently: status={jobStatus.status}; phase={jobStatus.phase}; execution_time:{jobStatus.execution_time}s")
-    assert jobStatus.phase != phase
+    # Assert that job HAS entered desired phase (not that it hasn't!)
+    # When this assertion passes, function returns success
+    # When it fails, @retry will retry until timeout
+    assert jobStatus.phase == phase, \
+        f"Job {id} not yet in phase {phase} (currently: {jobStatus.phase})"
     return jobStatus
     
 @retry(wait=wait_fixed(1), stop=stop_after_delay(120))

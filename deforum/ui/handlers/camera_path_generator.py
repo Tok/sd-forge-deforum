@@ -254,7 +254,8 @@ def generate_preset_path(
     randomize: float = 0.0,
     random_seed: int = -1,
     speed_multiplier: float = 1.0,
-    speed_randomization: float = 0.0
+    speed_randomization: float = 0.0,
+    rotation_factor: float = -8.0
 ) -> Tuple[str, Dict[str, str], list]:
     """Generate camera path from preset using type-specific handlers.
 
@@ -268,6 +269,8 @@ def generate_preset_path(
         random_seed: Seed for randomization (not yet implemented)
         speed_multiplier: Translation speed control
         speed_randomization: Speed variation amount
+        rotation_factor: Orbital camera rotation counter-rotation factor (default: -8.0)
+                        Not used by all preset types. Only applicable to orbital paths.
 
     Returns:
         Tuple of (status_message, schedules_dict, camera_path)
