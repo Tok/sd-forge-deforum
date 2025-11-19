@@ -41,7 +41,7 @@ def _generate_rotate_around(
     status = (
         f"{emoji_utils.maybe_check()} Generated rotate-around path ({len(camera_path)} frames)\n"
         f"Radius: {radius}, Height: {height}\n"
-        f"Mode: Adaptive curve-following (tennis ball seam - looks into curves)"
+        f"Mode: Sphere (3D orbit) with adaptive curve-following look-at"
     )
     return camera_path, status
 

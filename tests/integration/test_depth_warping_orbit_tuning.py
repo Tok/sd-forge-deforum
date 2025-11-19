@@ -250,11 +250,12 @@ def test_orbit_rotation_factor_sweep(aspect_ratio, width, height, rotation_facto
     with open(testdata_dir / 'simple.input_settings.txt', 'r') as f:
         base_settings = json.load(f)
 
-    # Configure job
-    options_overrides = get_test_options_overrides()
-    options_overrides.update({
+    # Configure job - use custom output directory for this specific test
+    # (not the shared test output directory)
+    options_overrides = {
+        "outdir_samples": str(test_dir),  # Direct to test-specific directory
         "deforum_save_gen_info_as_srt": False,
-    })
+    }
 
     # Override specific settings for this test
     base_settings.update({
@@ -289,9 +290,8 @@ def test_orbit_rotation_factor_sweep(aspect_ratio, width, height, rotation_facto
             "audio_mode": "None",
             "audio_sync": False,
 
-            # Output
+            # Output - batch_name will create subdirectory under outdir_samples
             "batch_name": get_test_batch_name(test_name),
-            "outdir": str(test_dir),
     })
 
     # Construct settings dict for API

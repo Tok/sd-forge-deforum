@@ -138,8 +138,23 @@ def wait_for_job_to_complete(id : str):
 
     return jobStatus
     
-@retry(wait=wait_fixed(1), stop=stop_after_delay(120))
+@retry(wait=wait_fixed(0.5), stop=stop_after_delay(120))
 def wait_for_job_to_enter_phase(id : str, phase : DeforumJobPhase):
+    """Wait for job to enter a specific phase.
+
+    Polls every 0.5 seconds (faster than wait_for_job_to_complete)
+    to catch fast-transitioning phases like GENERATING.
+
+    Args:
+        id: Job ID
+        phase: Target phase to wait for
+
+    Returns:
+        JobStatus when job enters desired phase
+
+    Raises:
+        RetryError: If job doesn't enter phase within 120 seconds
+    """
     response = requests.get(
         f"{API_BASE_URL}/jobs/{id}",
         headers={"accept": "application/json"}
@@ -154,7 +169,8 @@ def wait_for_job_to_enter_phase(id : str, phase : DeforumJobPhase):
         raise
 
     print(f"Waiting for job {id} to enter phase {phase}. Currently: status={jobStatus.status}; phase={jobStatus.phase}; execution_time:{jobStatus.execution_time}s")
-    # Assert that job HAS entered desired phase (not that it hasn't!)
+
+    # Check if job has entered desired phase
     # When this assertion passes, function returns success
     # When it fails, @retry will retry until timeout
     assert jobStatus.phase == phase, \

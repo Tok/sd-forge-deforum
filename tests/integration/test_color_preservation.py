@@ -140,10 +140,12 @@ def run_i2v_iteration(
         - Frame 29 is also a keyframe (last frame)
         - This gives us ~27 cadence frames to test normal_strength stability
     """
-    options_overrides = get_test_options_overrides()
-    options_overrides.update({
+    # Use custom output directory for this specific test configuration
+    # (not the shared test output directory)
+    options_overrides = {
+        "outdir_samples": str(output_dir),  # Direct to test-specific directory
         "deforum_save_gen_info_as_srt": False,  # No subtitles needed
-    })
+    }
 
     settings = {
         "deforum_settings": {
@@ -184,9 +186,8 @@ def run_i2v_iteration(
             "audio_mode": "None",
             "audio_sync": False,
 
-            # Output
+            # Output - batch_name will create subdirectory under outdir_samples
             "batch_name": get_test_batch_name(test_name),
-            "outdir": str(output_dir),
         },
         "options_overrides": options_overrides,
     }
