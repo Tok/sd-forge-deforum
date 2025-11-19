@@ -80,7 +80,8 @@ def test_api_cancel_active_job():
 
     # Override max_frames to ensure GENERATING phase lasts long enough to catch and cancel
     # Default simple settings has only 11 frames with 1 step each = too fast to catch
-    deforum_settings['max_frames'] = 200  # Longer generation = easier to catch GENERATING phase
+    # 30 frames is enough to catch GENERATING (with 0.5s polling) without being too slow
+    deforum_settings['max_frames'] = 30
 
     response = requests.post(API_BASE_URL+"/batches", json={
         "deforum_settings":[deforum_settings],
@@ -95,7 +96,9 @@ def test_api_cancel_active_job():
     response.raise_for_status()
     assert response.status_code == 200, f"DELETE request to {cancel_url} failed: {response.status_code}"
 
-    jobStatus = wait_for_job_to_complete(job_id)
+    # Wait for job to enter CANCELLED status (much faster than wait_for_job_to_complete)
+    # wait_for_job_to_complete raises AssertionError on CANCELLED, so use wait_for_job_to_enter_status instead
+    jobStatus = wait_for_job_to_enter_status(job_id, DeforumJobStatusCategory.CANCELLED)
 
     assert jobStatus.status == DeforumJobStatusCategory.CANCELLED, f"Job {job_id} did not cancel: {jobStatus}"
 
