@@ -576,7 +576,8 @@ def camera_path_to_schedules(
     camera_path: List[CameraPoint],
     speed_multiplier: float = 1.0,
     speed_randomization: float = 0.0,
-    random_seed: int = 0
+    random_seed: int = 0,
+    look_at_mode: str = None
 ) -> Dict[str, str]:
     """Convert camera path to Deforum schedule strings (ALL DELTAS).
 
@@ -596,6 +597,9 @@ def camera_path_to_schedules(
             - 0.5 = moderate speed oscillation (+/- 50%)
             - 1.0 = maximum speed variation (+/- 100%)
         random_seed: Seed for randomization (default 0 for reproducibility)
+        look_at_mode: Optional look-at mode ("center", "tangent", "inward", "blend")
+            - If "center": Recalculate rotations to track offset center after position normalization
+            - Otherwise: Preserve original rotations (they're relative to curve)
 
     Returns:
         Dict with DELTA schedule strings for each parameter:
@@ -622,6 +626,12 @@ def camera_path_to_schedules(
     offset_x = first_point.x
     offset_y = first_point.y
     offset_z = first_point.z
+
+    # Calculate offset center position (for center mode rotation recalculation)
+    # Assume center was at (0,0,0) before offset
+    center_offset_x = -offset_x
+    center_offset_y = -offset_y
+    center_offset_z = -offset_z
 
     schedules = {
         'translation_x': [],
@@ -683,14 +693,22 @@ def camera_path_to_schedules(
         norm_y = point.y - offset_y
         norm_z = point.z - offset_z
 
-        # Preserve original rotations from camera path
-        # The camera path generator already calculated correct rotations based on:
-        # - Quaternion mode: tangent, inward, blend, or center look-at
-        # - Empirical mode: rotation_factor formula
-        # We just use them as-is (no recalculation needed)
-        norm_rot_x = point.rot_x
-        norm_rot_y = point.rot_y
-        norm_rot_z = point.rot_z
+        # Handle rotations based on look-at mode
+        if look_at_mode == "center":
+            # Center mode: Recalculate rotations to point at offset center
+            # After position normalization, the center moves relative to camera
+            # Original: camera at (100,0,0) looking at (0,0,0)
+            # After offset: camera at (0,0,0) looking at (-100,0,0)
+            camera_pos = (norm_x, norm_y, norm_z)
+            center_pos = (center_offset_x, center_offset_y, center_offset_z)
+            norm_rot_x, norm_rot_y, norm_rot_z = look_at_target(camera_pos, center_pos)
+        else:
+            # Tangent/Inward/Blend/Empirical modes: Preserve original rotations
+            # These are calculated relative to curve, not world center
+            # They don't need adjustment after position offset
+            norm_rot_x = point.rot_x
+            norm_rot_y = point.rot_y
+            norm_rot_z = point.rot_z
 
         # Normalize rotations: first frame rotation becomes the zero point
         # This ensures first frame has (0, 0, 0) rotation deltas

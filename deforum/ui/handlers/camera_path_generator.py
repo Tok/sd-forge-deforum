@@ -330,11 +330,19 @@ def generate_preset_path(
 
         # Use random_seed if provided, otherwise use 0 for reproducibility
         seed = int(random_seed) if random_seed >= 0 else 0
+
+        # Pass look_at_mode only for rotate-around with quaternion mode
+        # This ensures center mode rotations are recalculated after position offset
+        schedule_look_at_mode = None
+        if preset_type == "rotate-around" and rotation_mode == "quaternion":
+            schedule_look_at_mode = look_at_mode
+
         schedules = camera_path_to_schedules(
             camera_path,
             speed_multiplier=speed_multiplier,
             speed_randomization=speed_randomization,
-            random_seed=seed
+            random_seed=seed,
+            look_at_mode=schedule_look_at_mode
         )
         return status, schedules, camera_path
 
