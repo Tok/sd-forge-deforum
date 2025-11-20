@@ -135,7 +135,7 @@ def update_frame_overlap_visualization(
             metrics_list=metrics,
             width=800,
             height=600,
-            trail_length=15,
+            trail_length=30,  # Show 30 previous frames for longer worm trail
             playback_fps=10
         )
 

@@ -38,7 +38,7 @@ def get_frame_color(metrics: FrameMetrics) -> str:
         return COLOR_GOOD
 
 
-def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int) -> List[Dict[str, Any]]:
+def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, translation_amplify: float = 3.0) -> List[Dict[str, Any]]:
     """Serialize frame metrics to JSON-compatible format.
 
     Visualization concept (dash-cam view):
@@ -47,6 +47,12 @@ def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int) ->
     - Creates "worm" effect showing camera movement history
 
     All positions are RELATIVE to current frame position.
+
+    Args:
+        metrics_list: List of FrameMetrics from simulator
+        trail_length: Number of previous frames to show
+        translation_amplify: Amplification factor for translation (default: 3.0).
+                            Makes small pixel-level movements more visible in preview.
     """
     frames_data = []
     for frame_idx, metrics in enumerate(metrics_list):
@@ -68,8 +74,9 @@ def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int) ->
 
             # Convert to RELATIVE position (where trail frame is relative to current frame)
             # If camera moved RIGHT (+X), previous frames appear LEFT (-X)
-            relative_center_x = trail_center_x - current_center_x
-            relative_center_y = trail_center_y - current_center_y
+            # Apply translation_amplify to make small pixel movements more visible
+            relative_center_x = (trail_center_x - current_center_x) * translation_amplify
+            relative_center_y = (trail_center_y - current_center_y) * translation_amplify
             relative_rotation = trail_rotation - current_rotation
 
             # Create rectangle at relative position
@@ -110,9 +117,19 @@ def create_canvas_html(
     width: int = 800,
     height: int = 600,
     trail_length: int = DEFAULT_TRAIL_LENGTH,
-    playback_fps: int = 10
+    playback_fps: int = 10,
+    translation_amplify: float = 3.0
 ) -> str:
-    """Create iframe with standalone HTML visualization."""
+    """Create iframe with standalone HTML visualization.
+
+    Args:
+        metrics_list: List of FrameMetrics from simulator
+        width: Canvas width in pixels
+        height: Canvas height in pixels
+        trail_length: Number of previous frames to show
+        playback_fps: Playback speed in frames per second
+        translation_amplify: Amplification factor for translation visibility (default: 3.0)
+    """
     if not metrics_list:
         return '<div style="color: #C8C8DC; padding: 20px;">No metrics to display</div>'
 
@@ -127,7 +144,7 @@ def create_canvas_html(
     if not has_movement:
         return '<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">⚠️ No camera movement detected. Use "Rotate Around" preset or enter camera schedules to see frame overlap trail.</div>'
 
-    frames_data = serialize_frame_data(metrics_list, trail_length)
+    frames_data = serialize_frame_data(metrics_list, trail_length, translation_amplify)
     viewport_width = metrics_list[0].curr_viewport_rect.width
     viewport_height = metrics_list[0].curr_viewport_rect.height
     padding_factor = 1.8
@@ -199,14 +216,14 @@ def create_canvas_html(
         function drawRectangle(corners, color, opacity, fill) {{
             // Add glow effect for better edge visibility
             ctx.shadowColor = color;
-            ctx.shadowBlur = 6;
+            ctx.shadowBlur = 4;  // Reduced glow for thinner lines
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 0;
 
-            // Draw thicker, brighter stroke
+            // Draw thinner stroke for more frames visible
             ctx.globalAlpha = Math.min(1.0, opacity * 1.5);  // Even brighter stroke
             ctx.strokeStyle = color;
-            ctx.lineWidth = 3.5;  // Thicker for better visibility
+            ctx.lineWidth = 2.0;  // Thinner for better visibility with more frames
             ctx.beginPath();
             ctx.moveTo(corners[0][0], corners[0][1]);
             for (let i = 1; i < corners.length; i++) {{
@@ -218,10 +235,10 @@ def create_canvas_html(
             if (fill) {{
                 ctx.fillStyle = color;
                 ctx.shadowBlur = 0;  // No glow on fill
-                ctx.globalAlpha = opacity * 0.04;  // Minimal fill (4% instead of 8%)
+                ctx.globalAlpha = opacity * 0.02;  // Minimal fill (2% for thinner frames)
                 ctx.fill();
                 ctx.globalAlpha = Math.min(1.0, opacity * 1.5);  // Restore bright stroke
-                ctx.shadowBlur = 6;  // Restore glow for stroke
+                ctx.shadowBlur = 4;  // Restore glow for stroke
             }}
 
             ctx.stroke();
