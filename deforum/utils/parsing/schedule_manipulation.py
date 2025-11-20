@@ -11,7 +11,7 @@ from .schedules import parse_schedule_string, interpolate_schedule_values
 
 
 def apply_shakify_to_schedule(
-    base_schedule: str, shake_values: List[float], max_frames: int
+    base_schedule: str, shake_values: List[float], max_frames: int, preserve_dense: bool = True
 ) -> str:
     """Apply Camera Shakify values to base movement schedule to create combined schedule.
 
@@ -22,17 +22,18 @@ def apply_shakify_to_schedule(
         base_schedule: Base movement schedule string (e.g., "0:(0), 50:(10)")
         shake_values: List of shake values per frame
         max_frames: Maximum number of frames
+        preserve_dense: If True, preserve all frames (no decimation). Default: True.
 
     Returns:
         Combined schedule string with shake applied
 
     Examples:
         >>> apply_shakify_to_schedule("0:(0), 100:(10)", [0.1] * 100, 100)
-        '0:(0.100000), 5:(0.600000), ..., 95:(9.600000)'
+        '0:(0.100000), 1:(0.190000), 2:(0.280000), ..., 99:(10.100000)'
         >>> apply_shakify_to_schedule("0:(5)", [], 100)
         '0:(5)'
         >>> apply_shakify_to_schedule("0:(1), 50:(5)", [0.0] * 100, 100)
-        '0:(1.000000), 5:(1.400000), ..., 95:(5.000000)'
+        '0:(1.000000), 1:(1.040000), 2:(1.080000), ..., 99:(5.000000)'
     """
     if not shake_values or len(shake_values) == 0:
         return base_schedule
@@ -48,18 +49,22 @@ def apply_shakify_to_schedule(
         combined_values.append(combined_value)
 
     # Create new schedule string from combined values
-    # Sample every few frames to keep schedule reasonable
-    sample_interval = max(1, max_frames // 20)  # Max 20 keyframes
-    keyframes = []
+    if preserve_dense:
+        # Preserve all frames (no decimation) - important for dense camera paths
+        keyframes = [f"{frame}:({value:.6f})" for frame, value in enumerate(combined_values)]
+    else:
+        # Legacy behavior: Sample every few frames to keep schedule reasonable
+        sample_interval = max(1, max_frames // 20)  # Max 20 keyframes
+        keyframes = []
 
-    for frame in range(0, len(combined_values), sample_interval):
-        value = combined_values[frame]
-        keyframes.append(f"{frame}:({value:.6f})")
+        for frame in range(0, len(combined_values), sample_interval):
+            value = combined_values[frame]
+            keyframes.append(f"{frame}:({value:.6f})")
 
-    # Always include the last frame
-    if (len(combined_values) - 1) % sample_interval != 0:
-        last_value = combined_values[-1]
-        keyframes.append(f"{len(combined_values)-1}:({last_value:.6f})")
+        # Always include the last frame
+        if (len(combined_values) - 1) % sample_interval != 0:
+            last_value = combined_values[-1]
+            keyframes.append(f"{len(combined_values)-1}:({last_value:.6f})")
 
     return ", ".join(keyframes)
 
