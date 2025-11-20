@@ -770,6 +770,14 @@ def handle_generate_preset(
 
     _current_camera_path = camera_path
 
+    # Debug: Check first few schedule values
+    tx_schedule = schedules.get('translation_x', '')
+    import re
+    tx_matches = re.findall(r'(\d+)\s*:\s*\(\s*(-?\d+\.?\d*)\s*\)', tx_schedule)
+    if len(tx_matches) >= 5:
+        first_5 = [f"{frame}: ({val})" for frame, val in tx_matches[:5]]
+        print(f"DEBUG: First 5 translation_x schedule values: {', '.join(first_5)}")
+
     # Generate visualization immediately
     try:
         fig, _ = visualize_schedules(
