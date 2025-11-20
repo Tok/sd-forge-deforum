@@ -87,9 +87,9 @@ def update_frame_overlap_visualization(
         ry_keys = parser.parse_key_frames(ry_schedule)
 
         # Debug: Check how many keyframes were parsed
-        logger.debug(f"Parsed keyframes: tx={len(tx_keys)}, ty={len(ty_keys)}, rx={len(rx_keys)}, ry={len(ry_keys)}")
+        print(f"OVERLAP DEBUG: Parsed keyframes: tx={len(tx_keys)}, ty={len(ty_keys)}, rx={len(rx_keys)}, ry={len(ry_keys)}")
         if len(tx_keys) > 0:
-            logger.debug(f"First 5 tx keyframes: {dict(list(tx_keys.items())[:5])}")
+            print(f"OVERLAP DEBUG: First 5 tx keyframes: {dict(list(tx_keys.items())[:5])}")
 
         # Interpolate between keyframes to get per-frame values
         tx_series = parser.get_inbetweens(tx_keys, integer=False)
@@ -98,8 +98,8 @@ def update_frame_overlap_visualization(
         ry_series = parser.get_inbetweens(ry_keys, integer=False)
 
         # Debug: Check interpolated values
-        logger.debug(f"Interpolated series length: tx={len(tx_series)}")
-        logger.debug(f"First 5 tx_series values: {tx_series[:5].tolist() if len(tx_series) >= 5 else []}")
+        print(f"OVERLAP DEBUG: Interpolated series length: tx={len(tx_series)}")
+        print(f"OVERLAP DEBUG: First 5 tx_series values: {tx_series[:5].tolist() if len(tx_series) >= 5 else []}")
 
         # Convert pandas Series to lists
         # IMPORTANT: Schedules are already deltas (from camera_path_to_schedules)
