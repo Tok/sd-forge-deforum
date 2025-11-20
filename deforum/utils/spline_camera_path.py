@@ -265,7 +265,7 @@ def generate_rotate_around_path(
     closed_loop: bool = True,
     rotation_mode: str = "quaternion",
     rotation_factor: float = -8.0,
-    look_at_mode: str = "blend",
+    look_at_mode: str = "center",
     look_at_blend: float = 0.3
 ) -> List[CameraPoint]:
     """Generate rotate-around camera path on sphere surface with configurable rotation.

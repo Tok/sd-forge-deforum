@@ -276,7 +276,7 @@ def generate_preset_path(
     speed_randomization: float = 0.0,
     rotation_mode: str = "quaternion",
     rotation_factor: float = -8.0,
-    look_at_mode: str = "blend",
+    look_at_mode: str = "center",
     look_at_blend: float = 0.3
 ) -> Tuple[str, Dict[str, str], list]:
     """Generate camera path from preset using type-specific handlers.

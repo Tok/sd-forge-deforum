@@ -460,6 +460,7 @@ def on_ui_tabs():
                         f"{optimize_emoji}Auto-optimize for Depth Warping",
                         elem_id="deforum_optimize_path_btn",
                         variant="primary",
+                        elem_classes=["slopcore-button"]
                     )
                 with gr.Row(variant="compact"):
                     path_analysis_output = gr.Markdown(
@@ -539,6 +540,34 @@ def on_ui_tabs():
                 ],
                 outputs=[camera_path_plot],
             )
+
+            # Update visualization when schedules change (e.g., when preset generated)
+            for schedule_component in [
+                components.get("translation_x"),
+                components.get("translation_y"),
+                components.get("translation_z"),
+                components.get("rotation_3d_x"),
+                components.get("rotation_3d_y"),
+                components.get("rotation_3d_z"),
+            ]:
+                if schedule_component:
+                    schedule_component.change(
+                        fn=update_camera_path_visualization,
+                        inputs=[
+                            components.get("translation_x"),
+                            components.get("translation_y"),
+                            components.get("translation_z"),
+                            components.get("rotation_3d_x"),
+                            components.get("rotation_3d_y"),
+                            components.get("rotation_3d_z"),
+                            components.get("animation_prompts"),
+                            components.get("shake_name"),
+                            components.get("shake_intensity"),
+                            components.get("shake_speed"),
+                            components.get("show_shakify_in_camera_path"),
+                        ],
+                        outputs=[camera_path_plot],
+                    )
 
         # Frame Overlap Simulator - load on UI startup (independent of tab selection)
         if frame_overlap_simulator:

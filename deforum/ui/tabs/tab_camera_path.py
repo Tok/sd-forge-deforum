@@ -167,9 +167,9 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
             with FormRow(variant="compact"):
                 preset_look_at_mode = gr.Dropdown(
                     choices=["center", "tangent", "inward", "blend"],
-                    value="blend",
+                    value="center",
                     label="Look-At Mode (Quaternion)",
-                    info="Center=fixed center, Tangent=forward, Inward=tennis ball seam, Blend=adaptive"
+                    info="Center=fixed center (default), Tangent=forward POV, Inward=tennis ball seam, Blend=adaptive"
                 )
 
             with FormRow(variant="compact"):
