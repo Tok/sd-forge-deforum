@@ -144,6 +144,44 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     info="-1 = random seed each time, fixed value = reproducible randomization"
                 )
 
+            gr.Markdown("### Rotation Control")
+
+            with FormRow(variant="compact"):
+                preset_rotation_mode = gr.Dropdown(
+                    choices=["quaternion", "empirical"],
+                    value="quaternion",
+                    label="Rotation Mode",
+                    info="Quaternion = geometric look-at (natural), Empirical = tested optimal formula"
+                )
+
+            with FormRow(variant="compact"):
+                preset_rotation_factor = gr.Slider(
+                    minimum=-10.0,
+                    maximum=-6.0,
+                    value=-8.0,
+                    step=0.1,
+                    label="Rotation Factor (Empirical)",
+                    info="Counter-rotation strength for empirical mode. -8.0 = validated optimal"
+                )
+
+            with FormRow(variant="compact"):
+                preset_look_at_mode = gr.Dropdown(
+                    choices=["center", "tangent", "inward", "blend"],
+                    value="blend",
+                    label="Look-At Mode (Quaternion)",
+                    info="Center=fixed center, Tangent=forward, Inward=tennis ball seam, Blend=adaptive"
+                )
+
+            with FormRow(variant="compact"):
+                preset_look_at_blend = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=0.3,
+                    step=0.05,
+                    label="Look-At Blend (Quaternion)",
+                    info="When blend mode: 0=pure tangent, 1=pure inward. Adapts up to 0.8 on curves"
+                )
+
             # Purple gradient slopcore buttons
             with FormRow(variant="compact"):
                 with gr.Column(scale=2):
@@ -338,6 +376,10 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
         'preset_closed_loop': preset_closed_loop,
         'preset_randomize': preset_randomize,
         'preset_random_seed': preset_random_seed,
+        'preset_rotation_mode': preset_rotation_mode,
+        'preset_rotation_factor': preset_rotation_factor,
+        'preset_look_at_mode': preset_look_at_mode,
+        'preset_look_at_blend': preset_look_at_blend,
         'btn_generate_preset': btn_generate_preset,
         'btn_randomize_preset': btn_randomize_preset,
         'preset_status': preset_status,

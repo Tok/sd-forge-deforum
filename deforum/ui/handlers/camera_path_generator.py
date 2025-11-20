@@ -25,9 +25,16 @@ from deforum.utils.system.logging import emoji as emoji_utils
 
 
 def _generate_rotate_around(
-    num_frames: int, radius: float, height: float
+    num_frames: int,
+    radius: float,
+    height: float,
+    closed_loop: bool,
+    rotation_mode: str,
+    rotation_factor: float,
+    look_at_mode: str,
+    look_at_blend: float
 ) -> Tuple[list, str]:
-    """Generate rotate-around preset path with adaptive curve-following look-at."""
+    """Generate rotate-around preset path with configurable rotation."""
     camera_path = generate_rotate_around_path(
         num_frames=num_frames,
         radius=radius,
@@ -35,13 +42,25 @@ def _generate_rotate_around(
         center_y=0.0,
         height=height,
         use_sphere=True,
-        look_at_mode="blend",  # Adaptive: looks inward on curves, forward on straights
-        look_at_blend=0.3  # Base 30% inward, adapts up to 80% on sharp curves
+        closed_loop=closed_loop,
+        rotation_mode=rotation_mode,
+        rotation_factor=rotation_factor,
+        look_at_mode=look_at_mode,
+        look_at_blend=look_at_blend
     )
+
+    # Build status message based on rotation mode
+    if rotation_mode == "empirical":
+        rotation_desc = f"Empirical (factor={rotation_factor})"
+    else:
+        rotation_desc = f"Quaternion ({look_at_mode}, blend={look_at_blend})"
+
+    loop_desc = f"{num_frames} frames (1 orbit)" if closed_loop else f"{num_frames} frames (multi-orbit)"
+
     status = (
-        f"{emoji_utils.maybe_check()} Generated rotate-around path ({len(camera_path)} frames)\n"
+        f"{emoji_utils.maybe_check()} Generated rotate-around path ({loop_desc})\n"
         f"Radius: {radius}, Height: {height}\n"
-        f"Mode: Sphere (3D orbit) with adaptive curve-following look-at"
+        f"Rotation: {rotation_desc}"
     )
     return camera_path, status
 
@@ -255,7 +274,10 @@ def generate_preset_path(
     random_seed: int = -1,
     speed_multiplier: float = 1.0,
     speed_randomization: float = 0.0,
-    rotation_factor: float = -8.0
+    rotation_mode: str = "quaternion",
+    rotation_factor: float = -8.0,
+    look_at_mode: str = "blend",
+    look_at_blend: float = 0.3
 ) -> Tuple[str, Dict[str, str], list]:
     """Generate camera path from preset using type-specific handlers.
 
@@ -269,8 +291,11 @@ def generate_preset_path(
         random_seed: Seed for randomization (not yet implemented)
         speed_multiplier: Translation speed control
         speed_randomization: Speed variation amount
-        rotation_factor: Orbital camera rotation counter-rotation factor (default: -8.0)
-                        Not used by all preset types. Only applicable to orbital paths.
+        rotation_mode: How to calculate rotation ("quaternion" or "empirical")
+        rotation_factor: When rotation_mode="empirical", counter-rotation strength (default: -8.0)
+        look_at_mode: When rotation_mode="quaternion", camera look-at behavior
+                     ("center", "tangent", "inward", "blend")
+        look_at_blend: When look_at_mode="blend", inward blend amount (0.0-1.0)
 
     Returns:
         Tuple of (status_message, schedules_dict, camera_path)
@@ -281,7 +306,8 @@ def generate_preset_path(
 
         if preset_type == "rotate-around":
             camera_path, status = _generate_rotate_around(
-                num_frames_int, radius, height
+                num_frames_int, radius, height, closed_loop,
+                rotation_mode, rotation_factor, look_at_mode, look_at_blend
             )
         elif preset_type == "figure-eight":
             camera_path, status = _generate_figure_eight(
@@ -703,6 +729,10 @@ def handle_generate_preset(
     closed_loop: bool,
     randomize: float,
     random_seed: float,
+    rotation_mode: str,
+    rotation_factor: float,
+    look_at_mode: str,
+    look_at_blend: float,
     translation_x,
     translation_y,
     translation_z,
@@ -719,7 +749,8 @@ def handle_generate_preset(
 
     status, schedules, camera_path = generate_preset_path(
         preset_type, radius, height, num_frames, closed_loop,
-        randomize, int(random_seed), speed_multiplier, speed_randomization
+        randomize, int(random_seed), speed_multiplier, speed_randomization,
+        rotation_mode, rotation_factor, look_at_mode, look_at_blend
     )
 
     _current_camera_path = camera_path
