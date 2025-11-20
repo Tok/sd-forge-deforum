@@ -570,6 +570,7 @@ def on_ui_tabs():
                     )
 
         # Frame Overlap Simulator - load on UI startup (independent of tab selection)
+        print(f"DEBUG: frame_overlap_simulator exists: {frame_overlap_simulator is not None}")
         if frame_overlap_simulator:
             from deforum.ui.handlers.frame_overlap_handler import update_frame_overlap_visualization
             from deforum.ui.handlers.camera_path_generator import generate_preset_path
@@ -632,34 +633,48 @@ def on_ui_tabs():
 
             def init_overlap_viz_with_preset():
                 """Initialize frame overlap visualization with default 'rotate-around' preset."""
-                # Generate default rotate-around path with smaller radius to reduce rotation
-                _, schedules, _ = generate_preset_path(
-                    preset_type="rotate-around",
-                    radius=30.0,  # Reduced from 100 to minimize rotation
-                    height=0.0,
-                    num_frames=333,
-                    closed_loop=True,
-                    speed_multiplier=0.5,  # Slower movement
-                    speed_randomization=0.0,
-                )
+                try:
+                    print("DEBUG: init_overlap_viz_with_preset called")
 
-                # Generate visualization with preset schedules (NO shakify on init)
-                return update_frame_overlap_visualization(
-                    translation_x=schedules.get("translation_x", "0:(0)"),
-                    translation_y=schedules.get("translation_y", "0:(0)"),
-                    translation_z=schedules.get("translation_z", "0:(0)"),
-                    rotation_3d_x=schedules.get("rotation_3d_x", "0:(0)"),
-                    rotation_3d_y=schedules.get("rotation_3d_y", "0:(0)"),
-                    rotation_3d_z=schedules.get("rotation_3d_z", "0:(0)"),
-                    zoom="",  # No zoom on init
-                    max_frames=333,
-                    width=1920,
-                    height=1080,
-                    shake_name="None",  # Explicitly disable shakify on init
-                    shake_intensity=1.0,
-                    shake_speed=1.0,
-                    target_fps=60,
-                )
+                    # Generate default rotate-around path with smaller radius to reduce rotation
+                    _, schedules, _ = generate_preset_path(
+                        preset_type="rotate-around",
+                        radius=30.0,  # Reduced from 100 to minimize rotation
+                        height=0.0,
+                        num_frames=333,
+                        closed_loop=True,
+                        speed_multiplier=0.5,  # Slower movement
+                        speed_randomization=0.0,
+                    )
+
+                    print(f"DEBUG: Generated schedules, tx has {len(schedules.get('translation_x', ''))} chars")
+
+                    # Generate visualization with preset schedules (NO shakify on init)
+                    result = update_frame_overlap_visualization(
+                        translation_x=schedules.get("translation_x", "0:(0)"),
+                        translation_y=schedules.get("translation_y", "0:(0)"),
+                        translation_z=schedules.get("translation_z", "0:(0)"),
+                        rotation_3d_x=schedules.get("rotation_3d_x", "0:(0)"),
+                        rotation_3d_y=schedules.get("rotation_3d_y", "0:(0)"),
+                        rotation_3d_z=schedules.get("rotation_3d_z", "0:(0)"),
+                        zoom="",  # No zoom on init
+                        max_frames=333,
+                        width=1920,
+                        height=1080,
+                        shake_name="None",  # Explicitly disable shakify on init
+                        shake_intensity=1.0,
+                        shake_speed=1.0,
+                        target_fps=60,
+                    )
+
+                    print(f"DEBUG: Visualization result type: {type(result)}, length: {len(result) if result else 0}")
+                    return result
+
+                except Exception as e:
+                    import traceback
+                    error_msg = f"ERROR in init_overlap_viz_with_preset: {e}\n{traceback.format_exc()}"
+                    print(error_msg)
+                    return f'<div style="color: #FF5050; padding: 20px;">Init Error: {e}</div>'
 
             # Load visualization on UI startup with default preset
             deforum_interface.load(
