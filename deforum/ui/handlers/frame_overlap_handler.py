@@ -150,5 +150,8 @@ def update_frame_overlap_visualization(
         return html
 
     except Exception as e:
-        logger.warning(f"Failed to update frame overlap visualization: {e}")
-        return None
+        import traceback
+        error_msg = f"Failed to update frame overlap visualization: {e}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        print(error_msg)  # Also print to console for visibility
+        return f'<div style="color: #FF5050; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">❌ Error: {e}</div>'

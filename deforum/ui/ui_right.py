@@ -594,6 +594,10 @@ def on_ui_tabs():
                 if tx is None and ty is None and tz is None:
                     return '<div style="padding: 20px; color: #C8C8DC;">Loading frame overlap simulator...</div>'
 
+                # Handle None zoom (might be None during initialization)
+                if zoom is None:
+                    zoom = ""
+
                 # Get max_frames from motion settings if available, otherwise default to 333
                 max_frames = 333
                 width = int(width_val) if width_val else 1920
@@ -647,6 +651,7 @@ def on_ui_tabs():
                     rotation_3d_x=schedules.get("rotation_3d_x", "0:(0)"),
                     rotation_3d_y=schedules.get("rotation_3d_y", "0:(0)"),
                     rotation_3d_z=schedules.get("rotation_3d_z", "0:(0)"),
+                    zoom="",  # No zoom on init
                     max_frames=333,
                     width=1920,
                     height=1080,
