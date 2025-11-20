@@ -39,32 +39,67 @@ def get_frame_color(metrics: FrameMetrics) -> str:
 
 
 def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int) -> List[Dict[str, Any]]:
-    """Serialize frame metrics to JSON-compatible format."""
+    """Serialize frame metrics to JSON-compatible format.
+
+    Visualization concept (dash-cam view):
+    - Current viewport is ALWAYS fixed at center (0, 0)
+    - Previous frames trail AWAY showing where the camera WAS
+    - Creates "worm" effect showing camera movement history
+
+    All positions are RELATIVE to current frame position.
+    """
     frames_data = []
     for frame_idx, metrics in enumerate(metrics_list):
+        # Get current frame's position in world space
+        current_center_x = metrics.prev_frame_rect.center_x
+        current_center_y = metrics.prev_frame_rect.center_y
+        current_rotation = metrics.prev_frame_rect.rotation
+
         trail_start = max(0, frame_idx - trail_length + 1)
         trail_frames = []
         for i in range(trail_start, frame_idx + 1):
             age = frame_idx - i
             trail_metrics = metrics_list[i]
-            corners = trail_metrics.prev_frame_rect.get_corners()
+
+            # Get trail frame's absolute world position
+            trail_center_x = trail_metrics.prev_frame_rect.center_x
+            trail_center_y = trail_metrics.prev_frame_rect.center_y
+            trail_rotation = trail_metrics.prev_frame_rect.rotation
+
+            # Convert to RELATIVE position (where trail frame is relative to current frame)
+            # If camera moved RIGHT (+X), previous frames appear LEFT (-X)
+            relative_center_x = trail_center_x - current_center_x
+            relative_center_y = trail_center_y - current_center_y
+            relative_rotation = trail_rotation - current_rotation
+
+            # Create rectangle at relative position
+            from deforum.utils.frame_overlap_simulator import Rectangle
+            relative_rect = Rectangle(
+                center_x=relative_center_x,
+                center_y=relative_center_y,
+                width=trail_metrics.prev_frame_rect.width,
+                height=trail_metrics.prev_frame_rect.height,
+                rotation=relative_rotation
+            )
+            corners = relative_rect.get_corners()
+
             trail_frames.append({
                 'corners': corners.tolist(),
                 'color': get_frame_color(trail_metrics),
                 'age': age,
                 'frameIndex': i
             })
+
+        # Current viewport is ALWAYS at origin (0, 0) - never moves
         viewport_corners = metrics.curr_viewport_rect.get_corners()
-        center_x = metrics.prev_frame_rect.center_x
-        center_y = metrics.prev_frame_rect.center_y
-        viewport_corners_translated = viewport_corners + np.array([center_x, center_y])
+
         frames_data.append({
             'frameIndex': frame_idx,
-            'centerX': float(center_x),
-            'centerY': float(center_y),
+            'centerX': 0.0,  # Always centered in dash-cam view
+            'centerY': 0.0,  # Always centered in dash-cam view
             'preservation': float(metrics.preservation * 100),
             'novelty': float(metrics.novelty * 100),
-            'viewport': viewport_corners_translated.tolist(),
+            'viewport': viewport_corners.tolist(),  # No translation needed
             'trail': trail_frames
         })
     return frames_data
@@ -81,12 +116,12 @@ def create_canvas_html(
     if not metrics_list:
         return '<div style="color: #C8C8DC; padding: 20px;">No metrics to display</div>'
 
-    # Check if there's any actual camera movement
+    # Check if there's any actual camera movement (check consecutive frame differences)
     has_movement = any(
-        abs(m.prev_frame_rect.center_x) > 0.1 or
-        abs(m.prev_frame_rect.center_y) > 0.1 or
-        abs(m.prev_frame_rect.rotation) > 0.1
-        for m in metrics_list[1:]  # Skip first frame
+        abs(metrics_list[i].prev_frame_rect.center_x - metrics_list[i-1].prev_frame_rect.center_x) > 0.1 or
+        abs(metrics_list[i].prev_frame_rect.center_y - metrics_list[i-1].prev_frame_rect.center_y) > 0.1 or
+        abs(metrics_list[i].prev_frame_rect.rotation - metrics_list[i-1].prev_frame_rect.rotation) > 0.1
+        for i in range(1, len(metrics_list))
     )
 
     if not has_movement:
