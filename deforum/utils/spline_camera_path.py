@@ -650,12 +650,6 @@ def camera_path_to_schedules(
     prev_rot_y = 0.0
     prev_rot_z = 0.0
 
-    # Track first frame rotation offset for normalization
-    # Will be set after processing first frame
-    first_rot_x = None
-    first_rot_y = None
-    first_rot_z = None
-
     # Setup speed randomization if enabled
     if speed_randomization > 0.0:
         np.random.seed(random_seed)
@@ -693,35 +687,13 @@ def camera_path_to_schedules(
         norm_y = point.y - offset_y
         norm_z = point.z - offset_z
 
-        # Handle rotations based on look-at mode
-        if look_at_mode == "center":
-            # Center mode: Recalculate rotations to point at offset center
-            # After position normalization, the center moves relative to camera
-            # Original: camera at (100,0,0) looking at (0,0,0)
-            # After offset: camera at (0,0,0) looking at (-100,0,0)
-            camera_pos = (norm_x, norm_y, norm_z)
-            center_pos = (center_offset_x, center_offset_y, center_offset_z)
-            norm_rot_x, norm_rot_y, norm_rot_z = look_at_target(camera_pos, center_pos)
-        else:
-            # Tangent/Inward/Blend/Empirical modes: Preserve original rotations
-            # These are calculated relative to curve, not world center
-            # They don't need adjustment after position offset
-            norm_rot_x = point.rot_x
-            norm_rot_y = point.rot_y
-            norm_rot_z = point.rot_z
-
-        # Normalize rotations: first frame rotation becomes the zero point
-        # This ensures first frame has (0, 0, 0) rotation deltas
-        if first_rot_x is None:
-            # First frame: capture rotation offset
-            first_rot_x = norm_rot_x
-            first_rot_y = norm_rot_y
-            first_rot_z = norm_rot_z
-
-        # Subtract first frame rotation to normalize (wrap angles correctly)
-        norm_rot_x = _normalize_angle_delta(norm_rot_x - first_rot_x)
-        norm_rot_y = _normalize_angle_delta(norm_rot_y - first_rot_y)
-        norm_rot_z = _normalize_angle_delta(norm_rot_z - first_rot_z)
+        # Handle rotations: always recalculate to maintain look-at relationship after position offset
+        # After position normalization, center moves relative to camera
+        # Original: camera at (100,0,0) looking at (0,0,0)
+        # After offset: camera at (0,0,0) must look at (-100,0,0)
+        camera_pos = (norm_x, norm_y, norm_z)
+        center_pos = (center_offset_x, center_offset_y, center_offset_z)
+        norm_rot_x, norm_rot_y, norm_rot_z = look_at_target(camera_pos, center_pos)
 
         # Calculate base deltas
         delta_x = norm_x - prev_x
