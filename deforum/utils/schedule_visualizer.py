@@ -246,7 +246,7 @@ def visualize_schedules(
 
         if is_dense_schedule:
             # Dense schedule = delta mode (camera paths, Parseq delta)
-            # Accumulate ALL deltas to get absolute positions for visualization
+            # Accumulate translation deltas, but rotations are ABSOLUTE angles
             x_coords = []
             y_coords = []
             z_coords = []
@@ -255,22 +255,22 @@ def visualize_schedules(
             rz_coords = []
 
             cum_x, cum_y, cum_z = 0.0, 0.0, 0.0
-            cum_rx, cum_ry, cum_rz = 0.0, 0.0, 0.0
 
             for i in range(len(x_deltas)):
+                # Accumulate translation deltas
                 cum_x += x_deltas[i]
                 cum_y += y_deltas[i]
                 cum_z += z_deltas[i]
-                cum_rx += rx_deltas[i]
-                cum_ry += ry_deltas[i]
-                cum_rz += rz_deltas[i]
 
                 x_coords.append(cum_x)
                 y_coords.append(cum_y)
                 z_coords.append(cum_z)
-                rx_coords.append(cum_rx)
-                ry_coords.append(cum_ry)
-                rz_coords.append(cum_rz)
+
+                # Rotations are ABSOLUTE angles from camera path generator
+                # Do NOT accumulate - use values directly
+                rx_coords.append(rx_deltas[i])
+                ry_coords.append(ry_deltas[i])
+                rz_coords.append(rz_deltas[i])
         else:
             # Sparse schedule = absolute mode (manual keyframes with interpolation)
             # Use interpolated values directly for both translation and rotation
