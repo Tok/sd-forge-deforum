@@ -194,14 +194,16 @@ def create_canvas_html(
             ctx.shadowBlur = 0;  // Clear glow after drawing
         }}
 
-        function worldToCanvas(x, y, centerX, centerY) {{
+        function worldToCanvas(x, y) {{
             const scale = Math.min(
                 canvas.width / (viewportWidth * paddingFactor),
                 canvas.height / (viewportHeight * paddingFactor)
             );
             const offsetX = canvas.width / 2;
             const offsetY = canvas.height / 2;
-            return [(x - centerX) * scale + offsetX, (y - centerY) * scale + offsetY];
+            // Use world origin (0,0) as reference, not current frame's center
+            // Trail corners already include accumulated position from simulator
+            return [x * scale + offsetX, y * scale + offsetY];
         }}
 
         function renderFrame(frameIndex) {{
@@ -260,7 +262,7 @@ def create_canvas_html(
             }}
             for (const trailFrame of frame.trail) {{
                 const corners = trailFrame.corners.map(c =>
-                    worldToCanvas(c[0], c[1], frame.centerX, frame.centerY)
+                    worldToCanvas(c[0], c[1])
                 );
                 const opacity = calculateOpacity(trailFrame.age, maxAge);
                 if (frameIndex === 0 || frameIndex === 10) {{
@@ -271,7 +273,7 @@ def create_canvas_html(
 
             // Draw viewport
             const viewportCorners = frame.viewport.map(c =>
-                worldToCanvas(c[0], c[1], frame.centerX, frame.centerY)
+                worldToCanvas(c[0], c[1])
             );
             if (frameIndex === 0 || frameIndex === 10) {{
                 console.log(`Viewport canvas coords:`, viewportCorners);
