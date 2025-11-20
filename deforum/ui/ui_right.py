@@ -925,6 +925,7 @@ def on_ui_tabs():
                         rx,
                         ry,
                         rz,
+                        components.get("animation_prompts"),
                     ],
                     outputs=[
                         components.get("preset_status"),
@@ -933,7 +934,8 @@ def on_ui_tabs():
                         tz,
                         rx,
                         ry,
-                        rz,  # Only update schedules
+                        rz,
+                        camera_path_plot,  # Update visualization directly
                     ],
                 )
 

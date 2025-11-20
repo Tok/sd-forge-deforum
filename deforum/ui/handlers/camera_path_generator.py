@@ -746,14 +746,15 @@ def handle_generate_preset(
     translation_z,
     rotation_3d_x,
     rotation_3d_y,
-    rotation_3d_z
+    rotation_3d_z,
+    animation_prompts: str = "",
 ):
     """Handle preset path generation and populate schedules.
 
-    Note: Visualization is now handled by schedule change events.
-    This only updates the schedule textboxes.
+    Also generates visualization immediately to avoid relying on .change() events.
     """
     global _current_camera_path
+    from deforum.utils.schedule_visualizer import visualize_schedules
 
     status, schedules, camera_path = generate_preset_path(
         preset_type, radius, height, num_frames, closed_loop,
@@ -763,7 +764,28 @@ def handle_generate_preset(
 
     _current_camera_path = camera_path
 
-    # Return schedule updates only - visualization will update automatically via .change() events
+    # Generate visualization immediately
+    try:
+        fig, _ = visualize_schedules(
+            schedules.get('translation_x', ''),
+            schedules.get('translation_y', ''),
+            schedules.get('translation_z', ''),
+            schedules.get('rotation_3d_x', ''),
+            schedules.get('rotation_3d_y', ''),
+            schedules.get('rotation_3d_z', ''),
+            int(num_frames),
+            animation_prompts or "",
+            shake_name="None",
+            shake_intensity=1.0,
+            shake_speed=1.0,
+            target_fps=60,
+            apply_shakify=False
+        )
+    except Exception as e:
+        print(f"Failed to generate visualization: {e}")
+        fig = None
+
+    # Return schedule updates AND visualization
     return [
         status,  # preset_status
         schedules.get('translation_x', ''),  # translation_x textbox
@@ -771,7 +793,8 @@ def handle_generate_preset(
         schedules.get('translation_z', ''),  # translation_z textbox
         schedules.get('rotation_3d_x', ''),  # rotation_3d_x textbox
         schedules.get('rotation_3d_y', ''),  # rotation_3d_y textbox
-        schedules.get('rotation_3d_z', '')   # rotation_3d_z textbox
+        schedules.get('rotation_3d_z', ''),  # rotation_3d_z textbox
+        fig  # camera_path_plot
     ]
 
 
