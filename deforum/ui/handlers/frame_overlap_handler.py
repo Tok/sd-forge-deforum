@@ -58,6 +58,10 @@ def update_frame_overlap_visualization(
             'rotation_3d_z': rotation_3d_z or "0:(0)",
         }
 
+        # Debug: Check base schedule before shakify
+        tx_base = base_schedules['translation_x']
+        print(f"OVERLAP DEBUG: BEFORE shakify - tx_schedule first 200 chars: {tx_base[:200]}")
+
         # Apply shakify overlay to get final combined schedules
         # Scale down intensity to 30% for subtle visualization
         viz_intensity = shake_intensity * 0.3 if shake_name != "None" else 0.0
@@ -76,6 +80,9 @@ def update_frame_overlap_visualization(
         ty_schedule = final_schedules['translation_y']
         rx_schedule = final_schedules['rotation_3d_x']
         ry_schedule = final_schedules['rotation_3d_y']
+
+        # Debug: Check raw schedule string
+        print(f"OVERLAP DEBUG: tx_schedule first 200 chars: {tx_schedule[:200]}")
 
         # Create parser
         parser = FrameInterpolater(max_frames=max_frames)
