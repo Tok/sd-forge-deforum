@@ -19,15 +19,16 @@ def update_frame_overlap_visualization(
     rotation_3d_x: str,
     rotation_3d_y: str,
     rotation_3d_z: str,
-    max_frames: int,
-    width: int,
-    height: int,
+    zoom: str = "",
+    max_frames: int = 333,
+    width: int = 1920,
+    height: int = 1080,
     shake_name: str = "None",
     shake_intensity: float = 1.0,
     shake_speed: float = 1.0,
     target_fps: int = 60
 ) -> Optional[str]:
-    """Update frame overlap visualization from schedule strings with shakify overlay.
+    """Update frame overlap visualization from schedule strings with shakify overlay and zoom.
 
     Args:
         translation_x: Translation X schedule string
@@ -36,6 +37,7 @@ def update_frame_overlap_visualization(
         rotation_3d_x: Rotation X schedule string (unused for 2D overlap)
         rotation_3d_y: Rotation Y schedule string (horizontal pan)
         rotation_3d_z: Rotation Z schedule string (unused for 2D overlap)
+        zoom: Zoom schedule string (default: "" = no zoom, uses 1.0)
         max_frames: Maximum number of frames
         width: Viewport width in pixels
         height: Viewport height in pixels
@@ -48,7 +50,7 @@ def update_frame_overlap_visualization(
         HTML string with Canvas visualization, or None on error
     """
     try:
-        # Build base schedules dict
+        # Build base schedules dict (zoom is handled separately, not processed by shakify)
         base_schedules = {
             'translation_x': translation_x or "0:(0)",
             'translation_y': translation_y or "0:(0)",
@@ -116,8 +118,14 @@ def update_frame_overlap_visualization(
                 f"rx={rx_deltas[i]:7.2f}, ry={ry_deltas[i]:7.2f}, combined_rot={combined_rotation_deltas[i]:7.2f}"
             )
 
-        # Zoom is always 1.0 for now (no zoom schedule yet)
-        zoom_deltas = [1.0] * max_frames
+        # Parse zoom schedule (zoom is NOT processed by shakify, use base schedule directly)
+        if zoom and zoom.strip():
+            zoom_keys = parser.parse_key_frames(zoom)
+            zoom_series = parser.get_inbetweens(zoom_keys, integer=False)
+            zoom_deltas = zoom_series.tolist()
+        else:
+            # No zoom schedule provided, use 1.0 (no zoom)
+            zoom_deltas = [1.0] * max_frames
 
         # Run frame overlap simulation
         # Use combined 3D rotation for 2D visualization

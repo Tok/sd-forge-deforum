@@ -581,6 +581,7 @@ def on_ui_tabs():
                 rx,
                 ry,
                 rz,
+                zoom,
                 width_val,
                 height_val,
                 shake_name_val,
@@ -588,7 +589,7 @@ def on_ui_tabs():
                 shake_speed_val,
                 apply_shakify_toggle,
             ):
-                """Update frame overlap visualization with optional shakify overlay."""
+                """Update frame overlap visualization with optional shakify overlay and zoom."""
                 # Guard against empty inputs during UI initialization
                 if tx is None and ty is None and tz is None:
                     return '<div style="padding: 20px; color: #C8C8DC;">Loading frame overlap simulator...</div>'
@@ -615,6 +616,7 @@ def on_ui_tabs():
                     rotation_3d_x=rx or "",
                     rotation_3d_y=ry or "",
                     rotation_3d_z=rz or "",
+                    zoom=zoom or "",
                     max_frames=max_frames,
                     width=width,
                     height=height,
@@ -684,6 +686,7 @@ def on_ui_tabs():
                 components.get("rotation_3d_x"),
                 components.get("rotation_3d_y"),
                 components.get("rotation_3d_z"),
+                components.get("zoom"),  # Zoom schedule for wormtrail
                 components.get("W"),
                 components.get("H"),
                 components.get("shake_name"),
