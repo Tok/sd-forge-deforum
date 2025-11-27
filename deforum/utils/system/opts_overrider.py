@@ -50,12 +50,26 @@ class A1111OptionsOverrider:
         if self.original_opts:
             logger.debug(f"Captured options to override: {self.original_opts}")
 
-        logger.info(f"Setting options: {self.opts_overrides}")
+        # Try to set each option, gracefully skipping any that fail
+        successfully_set = {}
+        failed_to_set = {}
 
-        # Apply overrides to both attribute and data dict
         for key, value in self.opts_overrides.items():
-            setattr(opts, key, value)
-            opts.data[key] = value
+            try:
+                # Try to set the option via setattr (validates option exists in Forge)
+                setattr(opts, key, value)
+                opts.data[key] = value
+                successfully_set[key] = value
+            except (AttributeError, KeyError) as e:
+                # Option doesn't exist or isn't registered properly in Forge
+                failed_to_set[key] = str(e)
+                logger.debug(f"Failed to set option '{key}': {e}")
+
+        if failed_to_set:
+            logger.warning(f"Skipping non-existent options: {list(failed_to_set.keys())}")
+
+        if successfully_set:
+            logger.info(f"Successfully set options: {list(successfully_set.keys())}")
 
         return self
 
@@ -80,7 +94,10 @@ class A1111OptionsOverrider:
             logger.debug(f"Traceback: {traceback}")
 
         if self.original_opts:
-            logger.info(f"Restoring options: {self.original_opts}")
+            logger.info(f"Restoring options: {list(self.original_opts.keys())}")
             for key, value in self.original_opts.items():
-                setattr(opts, key, value)
-                opts.data[key] = value
+                try:
+                    setattr(opts, key, value)
+                    opts.data[key] = value
+                except (AttributeError, KeyError) as e:
+                    logger.warning(f"Failed to restore option '{key}': {e}")
