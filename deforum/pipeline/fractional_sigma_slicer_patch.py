@@ -102,7 +102,7 @@ def patch_kdiffusion_sampler_class():
             from modules.sd_samplers_kdiffusion import sampling_prepare
 
             unet_patcher = self.model_wrap.inner_model.forge_objects.unet
-            sampling_prepare(self.model_wrap.inner_model.forge_objects.unet, x=x, is_img2img=True)
+            sampling_prepare(self.model_wrap.inner_model.forge_objects.unet, x=x)
 
             steps, t_enc = sd_samplers_common.setup_img2img_steps(p, steps)
 
@@ -151,7 +151,7 @@ def patch_kdiffusion_sampler_class():
                 's_min_uncond': self.s_min_uncond
             }, disable=False, callback=self.callback_state, **extra_params_kwargs))
 
-            sampling_prepare(unet_patcher, x=x, is_img2img=False)
+            sampling_prepare(unet_patcher, x=x)
 
             return samples
 
