@@ -54,18 +54,28 @@ def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, tr
         translation_amplify: Amplification factor for translation (default: 3.0).
                             Makes small pixel-level movements more visible in preview.
     """
+    # Sample every Nth frame to reduce data size and stay under browser data URL limits
+    # For 333 frames, sampling every 3rd = ~111 frames = manageable data size
+    sample_interval = max(1, len(metrics_list) // 150)  # Target ~150 frames max
+
     frames_data = []
-    for frame_idx, metrics in enumerate(metrics_list):
+    for sample_idx, frame_idx in enumerate(range(0, len(metrics_list), sample_interval)):
+        metrics = metrics_list[frame_idx]
         # Get current frame's position in world space
         current_center_x = metrics.prev_frame_rect.center_x
         current_center_y = metrics.prev_frame_rect.center_y
         current_rotation = metrics.prev_frame_rect.rotation
 
-        trail_start = max(0, frame_idx - trail_length + 1)
+        # Build trail from sampled frames only (reduces trail density but keeps data manageable)
+        trail_start_sample = max(0, sample_idx - trail_length + 1)
         trail_frames = []
-        for i in range(trail_start, frame_idx + 1):
-            age = frame_idx - i
-            trail_metrics = metrics_list[i]
+        for trail_sample_idx in range(trail_start_sample, sample_idx + 1):
+            trail_frame_idx = trail_sample_idx * sample_interval
+            if trail_frame_idx >= len(metrics_list):
+                break
+
+            age = sample_idx - trail_sample_idx
+            trail_metrics = metrics_list[trail_frame_idx]
 
             # Get trail frame's absolute world position
             trail_center_x = trail_metrics.prev_frame_rect.center_x
@@ -90,23 +100,27 @@ def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, tr
             )
             corners = relative_rect.get_corners()
 
+            # Round coordinates to 1 decimal place to reduce JSON size
+            rounded_corners = [[round(x, 1), round(y, 1)] for x, y in corners]
+
             trail_frames.append({
-                'corners': corners.tolist(),
+                'corners': rounded_corners,
                 'color': get_frame_color(trail_metrics),
                 'age': age,
-                'frameIndex': i
+                'frameIndex': trail_frame_idx
             })
 
         # Current viewport is ALWAYS at origin (0, 0) - never moves
         viewport_corners = metrics.curr_viewport_rect.get_corners()
+        rounded_viewport = [[round(x, 1), round(y, 1)] for x, y in viewport_corners]
 
         frames_data.append({
             'frameIndex': frame_idx,
             'centerX': 0.0,  # Always centered in dash-cam view
             'centerY': 0.0,  # Always centered in dash-cam view
-            'preservation': float(metrics.preservation * 100),
-            'novelty': float(metrics.novelty * 100),
-            'viewport': viewport_corners.tolist(),  # No translation needed
+            'preservation': round(metrics.preservation * 100, 1),
+            'novelty': round(metrics.novelty * 100, 1),
+            'viewport': rounded_viewport,
             'trail': trail_frames
         })
     return frames_data
