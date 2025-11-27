@@ -174,7 +174,7 @@ class FrameInterpolater:
                 sanitized_value = self.sanitize_value(value)
                 value_is_number = check_is_number(sanitized_value)
                 if value_is_number:
-                    key_frame_series[i] = sanitized_value
+                    key_frame_series[i] = float(sanitized_value)
 
             if not value_is_number:
                 t = i
@@ -182,14 +182,15 @@ class FrameInterpolater:
                 try:
                     key_frame_series[i] = (
                         numexpr.evaluate(value) if not is_single_string
-                        else sanitized_value
+                        else sanitized_value  # Store string directly, don't convert to float
                     )
                 except SyntaxError as e:
                     e.filename = f"{filename}@frame#{i}"
                     raise e
             elif is_single_string:
-                # Replicate previous string value
-                key_frame_series[i] = key_frame_series[i-1]
+                # Replicate previous string value (only if not first frame)
+                if i > 0:
+                    key_frame_series[i] = key_frame_series[i-1]
 
         # Convert to appropriate type
         key_frame_series = (

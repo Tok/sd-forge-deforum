@@ -6,6 +6,7 @@ syrupy
 tenacity
 pydantic_requests
 moviepy<2.0  # Tests use moviepy 1.x import syntax (from moviepy.editor import VideoFileClip)
+scikit-image  # Image quality metrics (SSIM for temporal consistency tests)
 
 # Linting and Formatting
 black  # Code formatter (100 char line length)

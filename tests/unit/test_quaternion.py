@@ -310,7 +310,8 @@ class TestRotateAroundLookAt:
             height=0.0,
             center_z=center[2],
             use_sphere=False,  # Flat circle for easier testing
-            frames_per_loop=8.0  # 1 full rotation in 8 frames
+            frames_per_loop=8.0,  # 1 full rotation in 8 frames
+            look_at_mode="center"  # Use legacy fixed-center mode for this test
         )
 
         # Verify each camera position looks at center

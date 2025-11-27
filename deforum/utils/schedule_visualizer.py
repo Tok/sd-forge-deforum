@@ -135,9 +135,14 @@ def visualize_schedules(
     rotation_3d_y: str,
     rotation_3d_z: str,
     max_frames: int = 333,
-    animation_prompts: str = ""
+    animation_prompts: str = "",
+    shake_name: str = "None",
+    shake_intensity: float = 1.0,
+    shake_speed: float = 1.0,
+    target_fps: int = 60,
+    apply_shakify: bool = False
 ) -> Tuple[go.Figure, str]:
-    """Create 3D visualization from Deforum schedule strings.
+    """Create 3D visualization from Deforum schedule strings with optional shakify.
 
     Args:
         translation_x: Translation X schedule string
@@ -147,10 +152,48 @@ def visualize_schedules(
         rotation_3d_y: Rotation Y schedule string
         rotation_3d_z: Rotation Z schedule string
         max_frames: Maximum number of frames to visualize
+        animation_prompts: Prompt schedule string for keyframe markers
+        shake_name: Camera shakify pattern name
+        shake_intensity: Shakify intensity multiplier
+        shake_speed: Shakify speed multiplier
+        target_fps: Target FPS for shakify interpolation
+        apply_shakify: If True, overlay shakify (scaled down 30% for subtlety)
 
     Returns:
         (plotly_figure, stats_text)
     """
+    # Apply shakify if requested (with 30% intensity scaling for visualization)
+    if apply_shakify and shake_name and shake_name != "None":
+        from deforum.utils.parsing.schedule_manipulation import get_final_schedules_with_shakify
+
+        base_schedules = {
+            'translation_x': translation_x or "0:(0)",
+            'translation_y': translation_y or "0:(0)",
+            'translation_z': translation_z or "0:(0)",
+            'rotation_3d_x': rotation_3d_x or "0:(0)",
+            'rotation_3d_y': rotation_3d_y or "0:(0)",
+            'rotation_3d_z': rotation_3d_z or "0:(0)",
+        }
+
+        # Scale down intensity to 30% for subtle visualization
+        viz_intensity = shake_intensity * 0.3
+
+        final_schedules = get_final_schedules_with_shakify(
+            base_schedules=base_schedules,
+            shake_name=shake_name,
+            shake_intensity=viz_intensity,
+            shake_speed=shake_speed,
+            max_frames=max_frames,
+            target_fps=target_fps
+        )
+
+        translation_x = final_schedules['translation_x']
+        translation_y = final_schedules['translation_y']
+        translation_z = final_schedules['translation_z']
+        rotation_3d_x = final_schedules['rotation_3d_x']
+        rotation_3d_y = final_schedules['rotation_3d_y']
+        rotation_3d_z = final_schedules['rotation_3d_z']
+
     # Parse all schedules
     tx_dict = parse_schedule_string(translation_x)
     ty_dict = parse_schedule_string(translation_y)

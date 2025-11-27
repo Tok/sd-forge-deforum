@@ -19,7 +19,7 @@ from typing import List, Tuple, Dict
 import numpy as np
 from scipy import interpolate
 from deforum.utils.math.quaternion import look_at_target
-from deforum.utils.system.logging import log as log_utils
+from deforum.utils.system.logging import log as log_utils, emoji_if_enabled
 
 
 @dataclass(frozen=True)
@@ -261,11 +261,18 @@ def generate_rotate_around_path(
     height: float = 0.0,
     center_z: float = 0.0,
     use_sphere: bool = True,
-    frames_per_loop: float = None
+    frames_per_loop: float = None,
+    closed_loop: bool = True,
+    rotation_mode: str = "quaternion",
+    rotation_factor: float = -8.0,
+    look_at_mode: str = "center",
+    look_at_blend: float = 0.3
 ) -> List[CameraPoint]:
-    """Generate rotate-around camera path on sphere surface.
+    """Generate rotate-around camera path on sphere surface with configurable rotation.
 
-    The camera moves around a sphere while always looking at center (quaternion-based).
+    The camera moves around a sphere/circle. Rotation can be calculated using either:
+    - Quaternion-based geometric look-at (default, most natural)
+    - Empirical rotation factor formula (validated via tuning tests)
 
     Args:
         num_frames: Number of frames to generate
@@ -274,16 +281,37 @@ def generate_rotate_around_path(
         height: Additional height offset
         use_sphere: If True, randomize around sphere; if False, flat circle
         frames_per_loop: Frames for one complete rotation
-                        If None (default), uses 120 frames per orbit for visible rotation angles
+                        If None, auto-calculated based on closed_loop parameter
+        closed_loop: If True, complete exactly 1 orbit per video (frames_per_loop = num_frames)
+                    If False, use 120 frames per orbit for more visible rotation
+        rotation_mode: How to calculate camera rotation:
+            - "quaternion": Geometric look-at using quaternions (natural, adaptive)
+            - "empirical": Use rotation_factor formula (validated optimal = -8.0)
+        rotation_factor: When rotation_mode="empirical", defines counter-rotation strength
+                        Empirically validated optimal: -8.0 (see ORBIT_TESTS.md)
+        look_at_mode: Camera look-at behavior (only for rotation_mode="quaternion"):
+            - "center": Look at fixed 3D center (legacy, causes drift)
+            - "tangent": Look forward along curve (path-following)
+            - "inward": Look toward local curve center (tennis ball seam)
+            - "blend": Adaptive tangent + inward (default, most stable)
+        look_at_blend: When mode="blend", base inward blend amount (0.0-1.0)
+                      Default 0.3 = 30% inward base, adapts up to 80% on sharp curves
 
     Returns:
-        List of CameraPoint objects with rotations calculated via quaternion look-at
+        List of CameraPoint objects with rotations calculated via selected method
     """
-    # Default: ~120 frames per orbit for sharper rotation angles visible to depth warping
-    # This creates ~3° per frame rotation instead of ~1°, making depth warping work better
+    # Calculate frames_per_loop based on closed_loop preference
     if frames_per_loop is None:
-        frames_per_loop = 120.0
-    camera_path = []
+        if closed_loop:
+            # Exactly 1 complete orbit per video length for seamless looping
+            frames_per_loop = float(num_frames)
+        else:
+            # ~120 frames per orbit for sharper rotation angles visible to depth warping
+            # This creates ~3° per frame rotation instead of ~1°
+            frames_per_loop = 120.0
+
+    # First pass: Generate positions only (needed to calculate tangents)
+    positions = []
 
     for frame_idx in range(num_frames):
         if use_sphere:
@@ -308,20 +336,133 @@ def generate_rotate_around_path(
             z = center_z + radius * np.sin(angle)
             y = center_y + height
 
-        # Rotation to look at center (using quaternion-based look-at)
-        target = (center_x, center_y + height, center_z)
-        camera = (x, y, z)
-        rot_x, rot_y, rot_z = look_at_target(camera, target)
+        positions.append((x, y, z))
 
-        camera_path.append(CameraPoint(
-            x=x,
-            y=y,
-            z=z,
-            rot_x=rot_x,
-            rot_y=rot_y,
-            rot_z=rot_z,
-            frame=frame_idx
-        ))
+    # Second pass: Calculate rotations based on rotation_mode
+    camera_path = []
+
+    if rotation_mode == "empirical":
+        # Empirical rotation factor mode (validated via tuning tests)
+        # Calculate rotation as a ratio of translation distance
+        # rotation_factor = -8.0 means: 360° translation = 45° counter-rotation
+
+        for frame_idx in range(num_frames):
+            x, y, z = positions[frame_idx]
+
+            # Calculate angle in orbit (0 to 2π)
+            angle = 2 * np.pi * frame_idx / frames_per_loop
+
+            # Rotation counter to translation direction
+            # Negative factor = clockwise counter-rotation for counter-clockwise orbit
+            rot_y = np.degrees(angle) / rotation_factor
+
+            # No X or Z rotation for flat orbital paths (camera stays level)
+            rot_x = 0.0
+            rot_z = 0.0
+
+            camera_path.append(CameraPoint(
+                x=x,
+                y=y,
+                z=z,
+                rot_x=rot_x,
+                rot_y=rot_y,
+                rot_z=rot_z,
+                frame=frame_idx
+            ))
+
+    else:  # rotation_mode == "quaternion" (default)
+        # Quaternion-based geometric look-at (natural, adaptive)
+        for frame_idx in range(num_frames):
+            x, y, z = positions[frame_idx]
+            camera = (x, y, z)
+
+            # Calculate look-at target based on mode
+            if look_at_mode == "center":
+                # Legacy: Fixed 3D center (causes sideways drift)
+                target = (center_x, center_y + height, center_z)
+
+            elif look_at_mode == "tangent":
+                # Look forward along curve (path-following)
+                # Calculate tangent by looking at next position
+                next_idx = (frame_idx + 1) % num_frames  # Wrap around for closed loop
+                next_pos = positions[next_idx]
+                target = next_pos  # Look toward next point
+
+            elif look_at_mode == "inward":
+                # Look toward local curve center (tennis ball seam)
+                # Average nearby positions to find local center
+                window = min(10, num_frames // 4)  # Use 10 frames or 1/4 of total
+                start_idx = max(0, frame_idx - window // 2)
+                end_idx = min(num_frames, frame_idx + window // 2 + 1)
+
+                local_positions = positions[start_idx:end_idx]
+                avg_x = sum(p[0] for p in local_positions) / len(local_positions)
+                avg_y = sum(p[1] for p in local_positions) / len(local_positions)
+                avg_z = sum(p[2] for p in local_positions) / len(local_positions)
+                target = (avg_x, avg_y, avg_z)
+
+            else:  # "blend" (default) - adaptive based on curve sharpness
+                # Calculate curve curvature to detect sharp turns
+                prev_idx = (frame_idx - 1) % num_frames
+                next_idx = (frame_idx + 1) % num_frames
+                prev_pos = positions[prev_idx]
+                curr_pos = positions[frame_idx]
+                next_pos = positions[next_idx]
+
+                # Vectors: prev→curr and curr→next
+                vec1 = (curr_pos[0] - prev_pos[0], curr_pos[1] - prev_pos[1], curr_pos[2] - prev_pos[2])
+                vec2 = (next_pos[0] - curr_pos[0], next_pos[1] - curr_pos[1], next_pos[2] - curr_pos[2])
+
+                # Normalize vectors
+                len1 = np.sqrt(vec1[0]**2 + vec1[1]**2 + vec1[2]**2)
+                len2 = np.sqrt(vec2[0]**2 + vec2[1]**2 + vec2[2]**2)
+                if len1 > 0.001 and len2 > 0.001:
+                    vec1 = (vec1[0]/len1, vec1[1]/len1, vec1[2]/len1)
+                    vec2 = (vec2[0]/len2, vec2[1]/len2, vec2[2]/len2)
+
+                    # Dot product = cosine of angle between vectors
+                    # -1 = 180° turn (very sharp), 0 = 90° turn, 1 = straight (0° turn)
+                    dot = vec1[0]*vec2[0] + vec1[1]*vec2[1] + vec1[2]*vec2[2]
+                    dot = max(-1.0, min(1.0, dot))  # Clamp to [-1, 1]
+
+                    # Curvature: 0 = straight, 1 = sharp 90° turn, 2 = hairpin 180° turn
+                    curvature = 1.0 - dot  # 0 when straight (dot=1), 2 when reversing (dot=-1)
+
+                    # Adaptive blend: more inward on sharp curves, more tangent on straight sections
+                    # Base blend (0.3) + additional inward lean on curves (up to 0.5 more)
+                    adaptive_blend = look_at_blend + (curvature * 0.25)
+                    adaptive_blend = min(0.8, adaptive_blend)  # Cap at 80% inward
+                else:
+                    adaptive_blend = look_at_blend
+
+                # Calculate local curve center for inward look
+                window = min(10, num_frames // 4)
+                start_idx = max(0, frame_idx - window // 2)
+                end_idx = min(num_frames, frame_idx + window // 2 + 1)
+                local_positions = positions[start_idx:end_idx]
+                avg_x = sum(p[0] for p in local_positions) / len(local_positions)
+                avg_y = sum(p[1] for p in local_positions) / len(local_positions)
+                avg_z = sum(p[2] for p in local_positions) / len(local_positions)
+
+                # Blend tangent (forward) + inward (local center), weighted by curve sharpness
+                target = (
+                    next_pos[0] * (1 - adaptive_blend) + avg_x * adaptive_blend,
+                    next_pos[1] * (1 - adaptive_blend) + avg_y * adaptive_blend,
+                    next_pos[2] * (1 - adaptive_blend) + avg_z * adaptive_blend,
+                )
+
+            # Calculate rotation using quaternion look-at
+            rot_x, rot_y, rot_z = look_at_target(camera, target)
+
+            camera_path.append(CameraPoint(
+                x=x,
+                y=y,
+                z=z,
+                rot_x=rot_x,
+                rot_y=rot_y,
+                rot_z=rot_z,
+                frame=frame_idx
+            ))
 
     return camera_path
 
@@ -418,7 +559,10 @@ def _print_camera_path_analysis(delta_analysis: Dict[str, List[float]], camera_p
     # Expected ratio: rot_y / trans_x ≈ 180 / (π * R) ≈ 57.3 / R
     estimated_radius = 57.3 / ratio_y_to_x if ratio_y_to_x > 0.1 else 0.0
 
-    log_utils.info("📊 Camera Path Analysis:", log_utils.BLUE)
+    chart_emoji = emoji_if_enabled('📊')
+    if chart_emoji:
+        chart_emoji += " "
+    log_utils.info(f"{chart_emoji}Camera Path Analysis:", log_utils.BLUE)
     log_utils.info(f"   Frames: {len(camera_path)}", log_utils.BLUE)
     log_utils.info(f"   Avg Translation Deltas: X={avg_trans_x:.3f}, Y={avg_trans_y:.3f}, Z={avg_trans_z:.3f}", log_utils.BLUE)
     log_utils.info(f"   Avg Rotation Deltas: X={avg_rot_x:.3f}°, Y={avg_rot_y:.3f}°, Z={avg_rot_z:.3f}°", log_utils.BLUE)
@@ -432,7 +576,8 @@ def camera_path_to_schedules(
     camera_path: List[CameraPoint],
     speed_multiplier: float = 1.0,
     speed_randomization: float = 0.0,
-    random_seed: int = 0
+    random_seed: int = 0,
+    look_at_mode: str = None
 ) -> Dict[str, str]:
     """Convert camera path to Deforum schedule strings (ALL DELTAS).
 
@@ -452,6 +597,9 @@ def camera_path_to_schedules(
             - 0.5 = moderate speed oscillation (+/- 50%)
             - 1.0 = maximum speed variation (+/- 100%)
         random_seed: Seed for randomization (default 0 for reproducibility)
+        look_at_mode: Optional look-at mode ("center", "tangent", "inward", "blend")
+            - If "center": Recalculate rotations to track offset center after position normalization
+            - Otherwise: Preserve original rotations (they're relative to curve)
 
     Returns:
         Dict with DELTA schedule strings for each parameter:
@@ -479,18 +627,11 @@ def camera_path_to_schedules(
     offset_y = first_point.y
     offset_z = first_point.z
 
-    # Calculate the offset center position
-    # Assume center was at (0,0,0) before offset, now at:
+    # Calculate offset center position (for center mode rotation recalculation)
+    # Assume center was at (0,0,0) before offset
     center_offset_x = -offset_x
     center_offset_y = -offset_y
     center_offset_z = -offset_z
-
-    # Detect if this is a look-at path (has non-zero rotations)
-    # If all rotations are near-zero, it's a fixed-rotation path (dashcam/bodycam)
-    has_rotations = any(
-        abs(p.rot_x) > 0.1 or abs(p.rot_y) > 0.1 or abs(p.rot_z) > 0.1
-        for p in camera_path
-    )
 
     schedules = {
         'translation_x': [],
@@ -546,18 +687,13 @@ def camera_path_to_schedules(
         norm_y = point.y - offset_y
         norm_z = point.z - offset_z
 
-        # Recalculate rotation to point at offset center (for look-at paths only)
-        # This maintains look-at relationship after position offset
-        if has_rotations:
-            # Look-at path: recalculate rotation to point at offset center
-            camera_pos = (norm_x, norm_y, norm_z)
-            center_pos = (center_offset_x, center_offset_y, center_offset_z)
-            norm_rot_x, norm_rot_y, norm_rot_z = look_at_target(camera_pos, center_pos)
-        else:
-            # Fixed-rotation path (dashcam/bodycam): keep rotation as-is
-            norm_rot_x = point.rot_x
-            norm_rot_y = point.rot_y
-            norm_rot_z = point.rot_z
+        # Handle rotations: always recalculate to maintain look-at relationship after position offset
+        # After position normalization, center moves relative to camera
+        # Original: camera at (100,0,0) looking at (0,0,0)
+        # After offset: camera at (0,0,0) must look at (-100,0,0)
+        camera_pos = (norm_x, norm_y, norm_z)
+        center_pos = (center_offset_x, center_offset_y, center_offset_z)
+        norm_rot_x, norm_rot_y, norm_rot_z = look_at_target(camera_pos, center_pos)
 
         # Calculate base deltas
         delta_x = norm_x - prev_x
@@ -607,8 +743,8 @@ def camera_path_to_schedules(
         prev_rot_y = norm_rot_y
         prev_rot_z = norm_rot_z
 
-    # Analyze translation/rotation ratios for look-at paths
-    if has_rotations and len(delta_analysis['translation_x']) > 0:
+    # Analyze translation/rotation ratios (if data available)
+    if len(delta_analysis['translation_x']) > 0:
         _print_camera_path_analysis(delta_analysis, camera_path)
 
     # Join with commas

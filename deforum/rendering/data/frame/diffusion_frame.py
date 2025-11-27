@@ -196,7 +196,7 @@ class DiffusionFrame:
     def create(data: RenderData, i, keyframe_type="tween"):
         initial_index = i  # replaced once keyframes are arranged.
         frame_data = DiffusionFrameData.create(data, initial_index)
-        return DiffusionFrame(initial_index, False, -1, -1, 1.0, 0.0, frame_data, None, "", 0, list(), keyframe_type)
+        return DiffusionFrame(initial_index, False, -1, -1, 1.0, 0.0, frame_data, None, None, 0, list(), keyframe_type)
 
     @staticmethod
     def apply_color_matching(data: RenderData, image):

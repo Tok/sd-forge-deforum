@@ -25,21 +25,42 @@ from deforum.utils.system.logging import emoji as emoji_utils
 
 
 def _generate_rotate_around(
-    num_frames: int, radius: float, height: float
+    num_frames: int,
+    radius: float,
+    height: float,
+    closed_loop: bool,
+    rotation_mode: str,
+    rotation_factor: float,
+    look_at_mode: str,
+    look_at_blend: float
 ) -> Tuple[list, str]:
-    """Generate rotate-around preset path with quaternion look-at."""
+    """Generate rotate-around preset path with configurable rotation."""
     camera_path = generate_rotate_around_path(
         num_frames=num_frames,
         radius=radius,
         center_x=0.0,
         center_y=0.0,
         height=height,
-        use_sphere=True
+        use_sphere=True,
+        closed_loop=closed_loop,
+        rotation_mode=rotation_mode,
+        rotation_factor=rotation_factor,
+        look_at_mode=look_at_mode,
+        look_at_blend=look_at_blend
     )
+
+    # Build status message based on rotation mode
+    if rotation_mode == "empirical":
+        rotation_desc = f"Empirical (factor={rotation_factor})"
+    else:
+        rotation_desc = f"Quaternion ({look_at_mode}, blend={look_at_blend})"
+
+    loop_desc = f"{num_frames} frames (1 orbit)" if closed_loop else f"{num_frames} frames (multi-orbit)"
+
     status = (
-        f"{emoji_utils.maybe_check()} Generated rotate-around path ({len(camera_path)} frames)\n"
+        f"{emoji_utils.maybe_check()} Generated rotate-around path ({loop_desc})\n"
         f"Radius: {radius}, Height: {height}\n"
-        f"Mode: Sphere rotation with quaternion look-at (always faces center)"
+        f"Rotation: {rotation_desc}"
     )
     return camera_path, status
 
@@ -252,7 +273,11 @@ def generate_preset_path(
     randomize: float = 0.0,
     random_seed: int = -1,
     speed_multiplier: float = 1.0,
-    speed_randomization: float = 0.0
+    speed_randomization: float = 0.0,
+    rotation_mode: str = "quaternion",
+    rotation_factor: float = -8.0,
+    look_at_mode: str = "center",
+    look_at_blend: float = 0.3
 ) -> Tuple[str, Dict[str, str], list]:
     """Generate camera path from preset using type-specific handlers.
 
@@ -266,17 +291,26 @@ def generate_preset_path(
         random_seed: Seed for randomization (not yet implemented)
         speed_multiplier: Translation speed control
         speed_randomization: Speed variation amount
+        rotation_mode: How to calculate rotation ("quaternion" or "empirical")
+        rotation_factor: When rotation_mode="empirical", counter-rotation strength (default: -8.0)
+        look_at_mode: When rotation_mode="quaternion", camera look-at behavior
+                     ("center", "tangent", "inward", "blend")
+        look_at_blend: When look_at_mode="blend", inward blend amount (0.0-1.0)
 
     Returns:
         Tuple of (status_message, schedules_dict, camera_path)
     """
+    # Debug logging
+    print(f"DEBUG generate_preset_path: preset_type={preset_type}, radius={radius}, speed_multiplier={speed_multiplier}")
+
     try:
         # Type-specific handler dispatch
         num_frames_int = int(num_frames)
 
         if preset_type == "rotate-around":
             camera_path, status = _generate_rotate_around(
-                num_frames_int, radius, height
+                num_frames_int, radius, height, closed_loop,
+                rotation_mode, rotation_factor, look_at_mode, look_at_blend
             )
         elif preset_type == "figure-eight":
             camera_path, status = _generate_figure_eight(
@@ -299,11 +333,19 @@ def generate_preset_path(
 
         # Use random_seed if provided, otherwise use 0 for reproducibility
         seed = int(random_seed) if random_seed >= 0 else 0
+
+        # Pass look_at_mode only for rotate-around with quaternion mode
+        # This ensures center mode rotations are recalculated after position offset
+        schedule_look_at_mode = None
+        if preset_type == "rotate-around" and rotation_mode == "quaternion":
+            schedule_look_at_mode = look_at_mode
+
         schedules = camera_path_to_schedules(
             camera_path,
             speed_multiplier=speed_multiplier,
             speed_randomization=speed_randomization,
-            random_seed=seed
+            random_seed=seed,
+            look_at_mode=schedule_look_at_mode
         )
         return status, schedules, camera_path
 
@@ -698,28 +740,66 @@ def handle_generate_preset(
     closed_loop: bool,
     randomize: float,
     random_seed: float,
+    rotation_mode: str,
+    rotation_factor: float,
+    look_at_mode: str,
+    look_at_blend: float,
     translation_x,
     translation_y,
     translation_z,
     rotation_3d_x,
     rotation_3d_y,
-    rotation_3d_z
+    rotation_3d_z,
+    animation_prompts: str = "",
 ):
     """Handle preset path generation and populate schedules.
 
-    Note: Visualization is now handled by schedule change events.
-    This only updates the schedule textboxes.
+    Also generates visualization immediately to avoid relying on .change() events.
     """
     global _current_camera_path
+    from deforum.utils.schedule_visualizer import visualize_schedules
+
+    # Debug logging
+    print(f"DEBUG handle_generate_preset: radius={radius}, speed_multiplier={speed_multiplier}, num_frames={num_frames}")
 
     status, schedules, camera_path = generate_preset_path(
         preset_type, radius, height, num_frames, closed_loop,
-        randomize, int(random_seed), speed_multiplier, speed_randomization
+        randomize, int(random_seed), speed_multiplier, speed_randomization,
+        rotation_mode, rotation_factor, look_at_mode, look_at_blend
     )
 
     _current_camera_path = camera_path
 
-    # Return schedule updates only - visualization will update automatically via .change() events
+    # Debug: Check first few schedule values
+    tx_schedule = schedules.get('translation_x', '')
+    import re
+    tx_matches = re.findall(r'(\d+)\s*:\s*\(\s*(-?\d+\.?\d*)\s*\)', tx_schedule)
+    if len(tx_matches) >= 5:
+        first_5 = [f"{frame}: ({val})" for frame, val in tx_matches[:5]]
+        print(f"DEBUG: First 5 translation_x schedule values: {', '.join(first_5)}")
+
+    # Generate visualization immediately
+    try:
+        fig, _ = visualize_schedules(
+            schedules.get('translation_x', ''),
+            schedules.get('translation_y', ''),
+            schedules.get('translation_z', ''),
+            schedules.get('rotation_3d_x', ''),
+            schedules.get('rotation_3d_y', ''),
+            schedules.get('rotation_3d_z', ''),
+            int(num_frames),
+            animation_prompts or "",
+            shake_name="None",
+            shake_intensity=1.0,
+            shake_speed=1.0,
+            target_fps=60,
+            apply_shakify=False
+        )
+    except Exception as e:
+        print(f"Failed to generate visualization: {e}")
+        fig = None
+
+    # Return schedule updates AND visualization
     return [
         status,  # preset_status
         schedules.get('translation_x', ''),  # translation_x textbox
@@ -727,7 +807,8 @@ def handle_generate_preset(
         schedules.get('translation_z', ''),  # translation_z textbox
         schedules.get('rotation_3d_x', ''),  # rotation_3d_x textbox
         schedules.get('rotation_3d_y', ''),  # rotation_3d_y textbox
-        schedules.get('rotation_3d_z', '')   # rotation_3d_z textbox
+        schedules.get('rotation_3d_z', ''),  # rotation_3d_z textbox
+        fig  # camera_path_plot
     ]
 
 

@@ -6,7 +6,7 @@ They verify the metric calculations work correctly.
 
 import numpy as np
 import pytest
-from .metrics import (
+from ..integration.metrics import (
     measure_color_preservation,
     measure_temporal_consistency,
     measure_perceptual_hash_distance,

@@ -125,13 +125,14 @@ def get_theme_colors(theme: str) -> dict:
     """
     if theme == 'slopcore':
         return {
-            'debug': SLOPCORE_1,        # Bright blue (lightest)
-            'info': SLOPCORE_3,          # Light purple
+            'trace': SLOPCORE_1,         # Brightest purple-blue (ultra-verbose internals)
+            'debug': SLOPCORE_2,         # Blue-purple (debugging info)
+            'info': SLOPCORE_7,          # Bright cyan (normal operation, stands out)
             'warning': FUNCTIONAL_YELLOW, # Yellow (NOT slopcore - functional color)
             'error': FUNCTIONAL_RED,      # Red (NOT slopcore - functional color)
-            'critical': SLOPCORE_7,      # Darkest purple
-            'header': SLOPCORE_2,       # Blue-purple
-            'emphasis': SLOPCORE_4,     # Mid purple
+            'critical': SLOPCORE_5,      # Purple (critical failures)
+            'header': SLOPCORE_3,        # Light purple
+            'emphasis': SLOPCORE_4,      # Mid purple
             'reset': RESET_COLOR,
             'bold': BOLD,
             # All 7 shades available for gradients
@@ -145,11 +146,12 @@ def get_theme_colors(theme: str) -> dict:
         }
     elif theme == 'classic':
         return {
-            'debug': CLASSIC_YELLOW,
-            'info': CLASSIC_BLUE,
-            'warning': CLASSIC_ORANGE,
-            'error': CLASSIC_RED,
-            'critical': CLASSIC_RED,
+            'trace': CLASSIC_PURPLE,     # Purple (ultra-verbose)
+            'debug': CLASSIC_YELLOW,     # Yellow (debugging)
+            'info': CLASSIC_BLUE,        # Blue (normal operation)
+            'warning': CLASSIC_ORANGE,   # Orange (warnings)
+            'error': CLASSIC_RED,        # Red (errors)
+            'critical': CLASSIC_RED,     # Red (critical)
             'header': CLASSIC_BLUE,
             'emphasis': CLASSIC_PURPLE,
             'reset': RESET_COLOR,
@@ -157,6 +159,7 @@ def get_theme_colors(theme: str) -> dict:
         }
     else:  # simple
         return {
+            'trace': '',
             'debug': '',
             'info': '',
             'warning': '',

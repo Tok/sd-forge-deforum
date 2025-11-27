@@ -96,8 +96,19 @@ def cleanup_test_output_dir():
     # Recreate empty directory
     os.makedirs(test_dir, exist_ok=True)
 
-@retry(wait=wait_fixed(2), stop=stop_after_delay(900))
+@retry(wait=wait_fixed(2), stop=stop_after_delay(600))
 def wait_for_job_to_complete(id : str):
+    """Poll job status until it reaches SUCCEEDED or FAILED state.
+
+    Args:
+        id: Job ID to wait for
+
+    Returns:
+        Final DeforumJobStatus when job completes
+
+    Raises:
+        AssertionError: If job status is FAILED or CANCELLED
+    """
     response = requests.get(
         f"{API_BASE_URL}/jobs/{id}",
         headers={"accept": "application/json"}
@@ -113,12 +124,37 @@ def wait_for_job_to_complete(id : str):
         print(f"Raw response: {response.text}")
         raise
 
-    print(f"Waiting for job {id}: status={jobStatus.status}; phase={jobStatus.phase}; execution_time:{jobStatus.execution_time}s")
-    assert jobStatus.status != DeforumJobStatusCategory.ACCEPTED
+    # Only log status changes and completion
+    if jobStatus.status == DeforumJobStatusCategory.FAILED:
+        print(f"[POLL] Job {id} FAILED: {jobStatus.message}")
+        raise AssertionError(f"Job {id} failed: {jobStatus.message}")
+    if jobStatus.status == DeforumJobStatusCategory.CANCELLED:
+        print(f"[POLL] Job {id} CANCELLED")
+        raise AssertionError(f"Job {id} was cancelled")
+
+    # Keep retrying until job succeeds (no spam)
+    assert jobStatus.status == DeforumJobStatusCategory.SUCCEEDED, \
+        f"Job {id} still running (status={jobStatus.status}, phase={jobStatus.phase})"
+
     return jobStatus
     
-@retry(wait=wait_fixed(1), stop=stop_after_delay(120))
+@retry(wait=wait_fixed(0.5), stop=stop_after_delay(120))
 def wait_for_job_to_enter_phase(id : str, phase : DeforumJobPhase):
+    """Wait for job to enter a specific phase.
+
+    Polls every 0.5 seconds (faster than wait_for_job_to_complete)
+    to catch fast-transitioning phases like GENERATING.
+
+    Args:
+        id: Job ID
+        phase: Target phase to wait for
+
+    Returns:
+        JobStatus when job enters desired phase
+
+    Raises:
+        RetryError: If job doesn't enter phase within 120 seconds
+    """
     response = requests.get(
         f"{API_BASE_URL}/jobs/{id}",
         headers={"accept": "application/json"}
@@ -133,7 +169,12 @@ def wait_for_job_to_enter_phase(id : str, phase : DeforumJobPhase):
         raise
 
     print(f"Waiting for job {id} to enter phase {phase}. Currently: status={jobStatus.status}; phase={jobStatus.phase}; execution_time:{jobStatus.execution_time}s")
-    assert jobStatus.phase != phase
+
+    # Check if job has entered desired phase
+    # When this assertion passes, function returns success
+    # When it fails, @retry will retry until timeout
+    assert jobStatus.phase == phase, \
+        f"Job {id} not yet in phase {phase} (currently: {jobStatus.phase})"
     return jobStatus
     
 @retry(wait=wait_fixed(1), stop=stop_after_delay(120))

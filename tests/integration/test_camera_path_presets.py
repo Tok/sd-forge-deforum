@@ -45,7 +45,7 @@ class TestPresetIntegration:
                 preset_type=preset_type,
                 radius=100.0,
                 height=10.0,
-                rotation_factor=-5.0,
+                rotation_factor=-8.0,
                 num_frames=50,  # Small number for fast tests
                 closed_loop=False
             )

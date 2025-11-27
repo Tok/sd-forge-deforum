@@ -26,9 +26,7 @@ from .metrics import (
 
 
 # Import shared test utilities
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from integration.utils import (
+from .utils import (
     API_BASE_URL,
     get_test_options_overrides,
     wait_for_job_to_complete,
@@ -118,6 +116,7 @@ def run_i2v_iteration(
     keyframe_strength: float,
     steps: int,
     output_dir: Path,
+    test_name: str = "color_preservation_test",
     max_frames: int = 30,  # Enough frames to test cadence/normal strength
 ) -> Path:
     """Run a single I2V generation iteration.
@@ -128,6 +127,7 @@ def run_i2v_iteration(
         keyframe_strength: Keyframe strength (LOW = 0.15 = change)
         steps: Number of sampling steps
         output_dir: Where to save output
+        test_name: Name for batch identification (default: "color_preservation_test")
         max_frames: Total frames to generate (default 30 for good cadence coverage)
 
     Returns:
@@ -140,10 +140,12 @@ def run_i2v_iteration(
         - Frame 29 is also a keyframe (last frame)
         - This gives us ~27 cadence frames to test normal_strength stability
     """
-    options_overrides = get_test_options_overrides()
-    options_overrides.update({
+    # Use custom output directory for this specific test configuration
+    # (not the shared test output directory)
+    options_overrides = {
+        "outdir_samples": str(output_dir),  # Direct to test-specific directory
         "deforum_save_gen_info_as_srt": False,  # No subtitles needed
-    })
+    }
 
     settings = {
         "deforum_settings": {
@@ -184,30 +186,35 @@ def run_i2v_iteration(
             "audio_mode": "None",
             "audio_sync": False,
 
-            # Output
-            "batch_name": get_test_batch_name(),
-            "outdir": str(output_dir),
+            # Output - batch_name will create subdirectory under outdir_samples
+            "batch_name": get_test_batch_name(test_name),
         },
         "options_overrides": options_overrides,
     }
 
     # Submit job
     response = requests.post(f"{API_BASE_URL}/batches/", json=settings)
-    assert response.status_code == 200, f"Failed to submit job: {response.text}"
+    assert response.status_code in [200, 202], f"Failed to submit job: {response.text}"
 
     batch_info = response.json()
     batch_id = batch_info["batch_id"]
     job_ids = batch_info["job_ids"]
 
     # Wait for completion
+    from deforum.api.models import DeforumJobStatusCategory
     final_status = wait_for_job_to_complete(job_ids[0])
 
-    assert final_status["status"] == "SUCCEEDED", f"Job failed: {final_status.get('message')}"
+    assert final_status.status == DeforumJobStatusCategory.SUCCEEDED, \
+        f"Job failed: {final_status.message}"
 
     # Return path to LAST frame (which will become input for next iteration)
-    timestring = final_status["timestring"]
+    # get_test_batch_name returns "module-testname_{timestring}" pattern
+    # Deforum replaces {timestring} with actual value, creating the directory name
+    timestring = final_status.timestring
+    batch_name_pattern = get_test_batch_name(test_name)
+    batch_name_actual = batch_name_pattern.replace("{timestring}", timestring)
     last_frame_idx = max_frames - 1
-    output_frame = output_dir / timestring / f"{last_frame_idx:09d}.png"
+    output_frame = output_dir / batch_name_actual / f"{last_frame_idx:09d}.png"
 
     assert output_frame.exists(), f"Output frame not found: {output_frame}"
 
@@ -291,6 +298,7 @@ def test_color_preservation_sweep(steps, normal_strength, keyframe_strength):
             keyframe_strength=keyframe_strength,
             steps=steps,
             output_dir=test_dir,
+            test_name=f"{test_name}_iter{iteration:02d}",
         )
 
         # Load and measure

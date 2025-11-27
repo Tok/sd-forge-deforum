@@ -33,7 +33,7 @@ def fractional_sigma_slice(sigmas: torch.Tensor, steps: int, t_enc: float) -> to
     check = emoji_utils.maybe_check()
     warning = emoji_utils.maybe_warning()
 
-    logger.debug(f"{magnifying_glass} FRACTIONAL SIGMA: sigmas.shape={sigmas.shape}, steps={steps}, t_enc={t_enc:.4f}")
+    logger.trace(f"{magnifying_glass} FRACTIONAL SIGMA: sigmas.shape={sigmas.shape}, steps={steps}, t_enc={t_enc:.4f}")
 
     # Calculate fractional index
     frac_idx = steps - t_enc - 1
@@ -42,7 +42,7 @@ def fractional_sigma_slice(sigmas: torch.Tensor, steps: int, t_enc: float) -> to
     # If already integer, use normal slicing
     if isinstance(t_enc, int) or frac_idx == int(frac_idx):
         result = sigmas[int(frac_idx):]
-        logger.debug(f"   {check} INTEGER case: result.shape={result.shape}")
+        logger.trace(f"   {check} INTEGER case: result.shape={result.shape}")
         return result
 
     # Fractional case: interpolate starting sigma
@@ -50,7 +50,7 @@ def fractional_sigma_slice(sigmas: torch.Tensor, steps: int, t_enc: float) -> to
     high_idx = int(torch.ceil(torch.tensor(frac_idx)).item())
     weight = frac_idx - low_idx
 
-    logger.debug(f"   FRACTIONAL: low={low_idx}, high={high_idx}, weight={weight:.4f}")
+    logger.trace(f"   FRACTIONAL: low={low_idx}, high={high_idx}, weight={weight:.4f}")
 
     # Bound check
     if high_idx >= len(sigmas):

@@ -27,6 +27,7 @@ from deforum.utils.system.logging.emoji import get_themed_emoji
 
 class LogLevel(Enum):
     """Log verbosity levels."""
+    TRACE = -1
     DEBUG = 0
     INFO = 1
     WARNING = 2
@@ -47,7 +48,7 @@ class DeforumLogger:
 
         Args:
             theme: Output theme ('slopcore', 'classic', 'simple')
-            log_level: Minimum log level ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+            log_level: Minimum log level ('TRACE', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
             emojis_enabled: Whether to show emojis
         """
         self.theme = theme
@@ -63,7 +64,7 @@ class DeforumLogger:
         """Format log message with colors and optional emoji.
 
         Args:
-            level: Log level name ('debug', 'info', 'warning', 'error', 'critical')
+            level: Log level name ('trace', 'debug', 'info', 'warning', 'error', 'critical')
             msg: Message text
             emoji: Optional emoji name (e.g., 'run', 'key')
 
@@ -85,8 +86,19 @@ class DeforumLogger:
         level_label = level.upper()
         return f"{color}{bold}{level_label}:{reset} {emoji_str}{msg}"
 
+    def trace(self, msg: str, emoji: Optional[str] = None, **kwargs):
+        """Log trace message (ultra-verbose internal details, algorithm steps).
+
+        Args:
+            msg: Message text
+            emoji: Optional emoji name
+            **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
+        """
+        if self._should_log(LogLevel.TRACE):
+            print(self._format_message('trace', msg, emoji), **kwargs)
+
     def debug(self, msg: str, emoji: Optional[str] = None, **kwargs):
-        """Log debug message (verbose internal details).
+        """Log debug message (debugging information, function entry/exit).
 
         Args:
             msg: Message text
@@ -125,9 +137,15 @@ class DeforumLogger:
             msg: Message text
             emoji: Optional emoji name
             **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
+                     exc_info=True will print traceback
         """
         if self._should_log(LogLevel.ERROR):
+            # Extract exc_info if present (print() doesn't support it)
+            exc_info = kwargs.pop('exc_info', False)
             print(self._format_message('error', msg, emoji), **kwargs)
+            if exc_info:
+                import traceback
+                traceback.print_exc()
 
     def critical(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log critical error message.
@@ -338,6 +356,10 @@ class _LazyLogger:
                 log_level=log_level,
                 emojis_enabled=emojis_enabled
             )
+
+    def trace(self, msg: str, emoji: Optional[str] = None, **kwargs) -> None:
+        self._ensure_initialized()
+        return self._real_logger.trace(msg, emoji, **kwargs)
 
     def debug(self, msg: str, emoji: Optional[str] = None, **kwargs) -> None:
         self._ensure_initialized()

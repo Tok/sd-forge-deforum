@@ -46,7 +46,7 @@ def fractional_setup_img2img_steps(p, steps=None):
         # FRACTIONAL CHANGE: Remove int() to keep fractional precision
         t_enc = min(p.denoising_strength, 0.999) * steps
         discrete = int(t_enc)
-        logger.debug(f"{magnifying_glass} FRACTIONAL SETUP: denoising={p.denoising_strength:.4f}, steps={steps}")
+        logger.trace(f"{magnifying_glass} FRACTIONAL SETUP: denoising={p.denoising_strength:.4f}, steps={steps}")
         logger.debug(f"   t_enc = {t_enc:.4f} (discrete would be {discrete})")
 
     return steps, t_enc

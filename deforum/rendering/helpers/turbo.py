@@ -55,7 +55,10 @@ def do_optical_flow_cadence_after_animation_warping(data, tween_frame, prev_imag
 
         # Warp the FLOW FIELD itself using 3D animation transforms
         # This is critical - the flow needs to follow the same 3D motion as the image
-        cadence_flow, _ = call_anim_frame_warp(data, tween_frame.i, cadence_flow, tween_frame.depth)
+        # Only warp flow if we have valid depth (can't calculate depth from a 2-channel flow field)
+        if tween_frame.depth is not None:
+            cadence_flow, _ = call_anim_frame_warp(data, tween_frame.i, cadence_flow, tween_frame.depth)
+        # If no depth, use flow as-is (unwarped)
 
         # Convert back to absolute coordinates and scale by tween position
         cadence_flow_inc = rel_flow_to_abs_flow(cadence_flow, data.width(), data.height()) * tween_frame.value
