@@ -68,9 +68,11 @@ def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, tr
         current_rotation = metrics.prev_frame_rect.rotation
 
         # Build trail from sampled frames only (reduces trail density but keeps data manageable)
-        trail_start_sample = max(0, sample_idx - trail_length + 1)
+        # Trail should only show PREVIOUS frames (not including current frame)
+        # Current frame is represented by the viewport at (0, 0)
+        trail_start_sample = max(0, sample_idx - trail_length)
         trail_frames = []
-        for trail_sample_idx in range(trail_start_sample, sample_idx + 1):
+        for trail_sample_idx in range(trail_start_sample, sample_idx):
             trail_frame_idx = trail_sample_idx * sample_interval
             if trail_frame_idx >= len(metrics_list):
                 break
