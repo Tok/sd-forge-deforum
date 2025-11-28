@@ -38,7 +38,7 @@ def get_frame_color(metrics: FrameMetrics) -> str:
         return COLOR_GOOD
 
 
-def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, translation_amplify: float = 3.0) -> List[Dict[str, Any]]:
+def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, translation_amplify: float = 15.0) -> List[Dict[str, Any]]:
     """Serialize frame metrics to JSON-compatible format.
 
     Visualization concept (dash-cam view):
@@ -51,8 +51,9 @@ def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, tr
     Args:
         metrics_list: List of FrameMetrics from simulator
         trail_length: Number of previous frames to show
-        translation_amplify: Amplification factor for translation (default: 3.0).
+        translation_amplify: Amplification factor for translation (default: 15.0).
                             Makes small pixel-level movements more visible in preview.
+                            Higher values = longer, more visible worm trail for orbital paths.
     """
     # Sample every Nth frame to reduce data size and stay under browser data URL limits
     # For 333 frames, sampling every 3rd = ~111 frames = manageable data size
@@ -132,7 +133,7 @@ def create_canvas_html(
     height: int = 600,
     trail_length: int = DEFAULT_TRAIL_LENGTH,
     playback_fps: int = 10,
-    translation_amplify: float = 3.0
+    translation_amplify: float = 15.0
 ) -> str:
     """Create iframe with standalone HTML visualization.
 
@@ -142,7 +143,8 @@ def create_canvas_html(
         height: Canvas height in pixels
         trail_length: Number of previous frames to show
         playback_fps: Playback speed in frames per second
-        translation_amplify: Amplification factor for translation visibility (default: 3.0)
+        translation_amplify: Amplification factor for translation visibility (default: 15.0).
+                            Higher values = more visible translation in orbital camera paths.
     """
     if not metrics_list:
         return '<div style="color: #C8C8DC; padding: 20px;">No metrics to display</div>'
