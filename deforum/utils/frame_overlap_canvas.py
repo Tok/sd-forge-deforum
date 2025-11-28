@@ -81,6 +81,7 @@ def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, tr
             immediate_prev_metrics = metrics_list[immediate_prev_idx]
 
             # Calculate relative position for immediate previous frame
+            # prev_frame_rect accumulates transformations, so this is world-space positions
             relative_center_x = (immediate_prev_metrics.prev_frame_rect.center_x - current_center_x) * translation_amplify
             relative_center_y = (immediate_prev_metrics.prev_frame_rect.center_y - current_center_y) * translation_amplify
             relative_rotation = immediate_prev_metrics.prev_frame_rect.rotation - current_rotation
