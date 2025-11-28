@@ -151,8 +151,8 @@ class TestA1111OptionsOverrider:
         with A1111OptionsOverrider(overrides):
             pass
 
-        # Check restoration was logged
-        mock_logger.info.assert_any_call("Restoring options: {'option1': 'original'}")
+        # Check restoration was logged (logs list of keys, not full dict)
+        mock_logger.info.assert_any_call("Restoring options: ['option1']")
 
     @patch('deforum.utils.system.opts_overrider.opts')
     @patch('deforum.utils.system.opts_overrider.logger')

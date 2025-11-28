@@ -70,7 +70,8 @@ class TestApplyShakifyToSchedule:
         """Should sample at intervals to create max 20 keyframes."""
         schedule = "0:(0)"
         shake_values = [0.1] * 1000  # 1000 frames
-        result = apply_shakify_to_schedule(schedule, shake_values, 1000)
+        # Use preserve_dense=False to enable sampling behavior
+        result = apply_shakify_to_schedule(schedule, shake_values, 1000, preserve_dense=False)
 
         # Should have ~20 keyframes + last frame
         keyframes = result.split(", ")
