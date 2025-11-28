@@ -183,7 +183,7 @@ def look_at_target(
         return (pitch, yaw, roll)
 
     # Stabilized look-at: construct orthonormal basis to minimize roll
-    # Forward direction (normalized)
+    # Forward direction (normalized) - direction FROM camera TO target
     forward_length = np.sqrt(dx**2 + dy**2 + dz**2)
     forward = Vector3(dx / forward_length, dy / forward_length, dz / forward_length)
 
@@ -191,14 +191,15 @@ def look_at_target(
     world_up = Vector3(0.0, 1.0, 0.0)
 
     # Calculate right vector (perpendicular to forward and world up)
-    right = forward.cross(world_up)
+    # Use world_up × forward (not forward × world_up) for correct handedness
+    right = world_up.cross(forward)
     right_length = np.sqrt(right.x**2 + right.y**2 + right.z**2)
 
     # Handle case where forward is parallel to world up (looking straight up/down)
     if right_length < 1e-8:
-        # Use fallback right vector (world forward × world up)
+        # Use fallback right vector (world_up × world forward)
         world_forward = Vector3(0.0, 0.0, 1.0)
-        right = world_forward.cross(world_up)
+        right = world_up.cross(world_forward)
         right_length = np.sqrt(right.x**2 + right.y**2 + right.z**2)
 
     # Normalize right vector
@@ -206,14 +207,15 @@ def look_at_target(
 
     # Calculate stabilized up vector (perpendicular to right and forward)
     # This ensures orthonormality: up is exactly perpendicular to both right and forward
-    up = right.cross(forward)
+    # Use forward × right (not right × forward) for correct handedness
+    up = forward.cross(right)
 
     # Build rotation matrix from orthonormal basis
-    # Camera space: X=right, Y=up, Z=-forward (camera looks down -Z in OpenGL convention)
-    # Matrix columns: [right, up, -forward]
-    m11, m12, m13 = right.x, up.x, -forward.x
-    m21, m22, m23 = right.y, up.y, -forward.y
-    m31, m32, m33 = right.z, up.z, -forward.z
+    # Camera space: X=right, Y=up, Z=forward (pointing toward target)
+    # Matrix columns: [right, up, forward]
+    m11, m12, m13 = right.x, up.x, forward.x
+    m21, m22, m23 = right.y, up.y, forward.y
+    m31, m32, m33 = right.z, up.z, forward.z
 
     # Extract euler angles from rotation matrix (YXZ order)
     # Reference: https://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToEuler/
@@ -222,7 +224,9 @@ def look_at_target(
     # Pitch (rotation around X axis)
     # sin(pitch) = -m23 (clamp to avoid arcsin domain errors)
     sin_pitch = max(-1.0, min(1.0, -m23))
-    pitch = np.degrees(np.arcsin(sin_pitch))
+    # Negate pitch for Deforum's inverted pitch convention
+    # (positive = look up, negative = look down)
+    pitch = -np.degrees(np.arcsin(sin_pitch))
 
     # Check for gimbal lock (pitch near ±90 degrees)
     if abs(abs(sin_pitch) - 1.0) < 1e-6:
