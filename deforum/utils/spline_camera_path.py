@@ -381,11 +381,8 @@ def generate_rotate_around_path(
             camera = (x, y, z)
 
             # Calculate look-at target based on mode
-            # For center mode, use simple look-at (stabilize=False) to match legacy behavior
-            use_stabilization = stabilize_camera and look_at_mode != "center"
-
             if look_at_mode == "center":
-                # Fixed 3D center - legacy behavior with simple look-at
+                # Fixed 3D center
                 target = (center_x, center_y + height, center_z)
 
             elif look_at_mode == "tangent":
@@ -459,7 +456,7 @@ def generate_rotate_around_path(
                 )
 
             # Calculate rotation using quaternion look-at
-            rot_x, rot_y, rot_z = look_at_target(camera, target, stabilize=use_stabilization)
+            rot_x, rot_y, rot_z = look_at_target(camera, target, stabilize=stabilize_camera)
 
             camera_path.append(CameraPoint(
                 x=x,

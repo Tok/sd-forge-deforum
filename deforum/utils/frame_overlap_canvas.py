@@ -70,14 +70,51 @@ def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, tr
         # Build trail from sampled frames only (reduces trail density but keeps data manageable)
         # Trail should only show PREVIOUS frames (not including current frame)
         # Current frame is represented by the viewport at (0, 0)
-        trail_start_sample = max(0, sample_idx - trail_length)
+
+        # Always include the immediately previous frame to avoid visual disconnect
+        # Then add sampled frames going backwards
         trail_frames = []
+
+        # First, add the frame immediately before current (if it exists)
+        if frame_idx > 0:
+            immediate_prev_idx = frame_idx - 1
+            immediate_prev_metrics = metrics_list[immediate_prev_idx]
+
+            # Calculate relative position for immediate previous frame
+            relative_center_x = (immediate_prev_metrics.prev_frame_rect.center_x - current_center_x) * translation_amplify
+            relative_center_y = (immediate_prev_metrics.prev_frame_rect.center_y - current_center_y) * translation_amplify
+            relative_rotation = immediate_prev_metrics.prev_frame_rect.rotation - current_rotation
+
+            from deforum.utils.frame_overlap_simulator import Rectangle
+            relative_rect = Rectangle(
+                center_x=relative_center_x,
+                center_y=relative_center_y,
+                width=immediate_prev_metrics.prev_frame_rect.width,
+                height=immediate_prev_metrics.prev_frame_rect.height,
+                rotation=relative_rotation
+            )
+            corners = relative_rect.get_corners()
+            rounded_corners = [[round(x, 1), round(y, 1)] for x, y in corners]
+
+            trail_frames.append({
+                'corners': rounded_corners,
+                'color': get_frame_color(immediate_prev_metrics),
+                'age': 1,  # Most recent previous frame
+                'frameIndex': immediate_prev_idx
+            })
+
+        # Then add sampled trail frames (skip if they're the same as immediate previous)
+        trail_start_sample = max(0, sample_idx - trail_length)
         for trail_sample_idx in range(trail_start_sample, sample_idx):
             trail_frame_idx = trail_sample_idx * sample_interval
             if trail_frame_idx >= len(metrics_list):
                 break
 
-            age = sample_idx - trail_sample_idx
+            # Skip if this is the same as the immediate previous frame we already added
+            if frame_idx > 0 and trail_frame_idx == frame_idx - 1:
+                continue
+
+            age = sample_idx - trail_sample_idx + 1  # +1 because age=1 is now the immediate previous
             trail_metrics = metrics_list[trail_frame_idx]
 
             # Get trail frame's absolute world position
