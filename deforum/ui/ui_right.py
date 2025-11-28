@@ -926,9 +926,30 @@ def on_ui_tabs():
 
             if btn_generate_preset and camera_path_plot and tx:
                 # Wire up preset generation button
+                def handle_preset_with_overlap(*args):
+                    """Handle preset generation and update both visualizations."""
+                    # First 20 args are for handle_generate_preset, rest are for overlap viz
+                    preset_args = args[:20]
+                    overlap_args = args[20:]  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
+
+                    # Generate preset schedules
+                    result = handle_generate_preset(*preset_args)
+
+                    # Extract schedule values from result
+                    status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot = result
+
+                    # Update frame overlap visualization with new schedules
+                    overlap_html = update_overlap_viz(
+                        tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
+                        *overlap_args  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
+                    )
+
+                    return (status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot, overlap_html)
+
                 btn_generate_preset.click(
-                    fn=handle_generate_preset,
+                    fn=handle_preset_with_overlap,
                     inputs=[
+                        # Preset generation inputs (20 args)
                         components.get("preset_type"),
                         components.get("speed_multiplier"),
                         components.get("speed_randomization"),
@@ -949,6 +970,14 @@ def on_ui_tabs():
                         ry,
                         rz,
                         components.get("animation_prompts"),
+                        # Overlap viz inputs (7 args)
+                        components.get("zoom"),
+                        components.get("W"),
+                        components.get("H"),
+                        components.get("shake_name"),
+                        components.get("shake_intensity"),
+                        components.get("shake_speed"),
+                        components.get("show_shakify_in_overlap"),
                     ],
                     outputs=[
                         components.get("preset_status"),
@@ -959,6 +988,7 @@ def on_ui_tabs():
                         ry,
                         rz,
                         camera_path_plot,  # Update visualization directly
+                        frame_overlap_simulator,  # Update worm trail
                     ],
                 )
 

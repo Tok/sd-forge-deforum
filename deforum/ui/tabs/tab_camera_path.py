@@ -156,10 +156,10 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
 
             with FormRow(variant="compact"):
                 preset_rotation_factor = gr.Slider(
-                    minimum=-10.0,
-                    maximum=-6.0,
+                    minimum=-50.0,
+                    maximum=-1.0,
                     value=-8.0,
-                    step=0.1,
+                    step=0.5,
                     label="Rotation Factor (Empirical)",
                     info="Counter-rotation strength for empirical mode. -8.0 = validated optimal"
                 )
