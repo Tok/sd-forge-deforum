@@ -193,7 +193,8 @@ def tangent_to_rotation(tangent: np.ndarray) -> Tuple[float, float, float]:
 def generate_camera_path(
     config: SplineConfig,
     control_points: List[Tuple[float, float, float]],
-    look_at_curve: bool = True
+    look_at_curve: bool = True,
+    stabilize_camera: bool = True
 ) -> List[CameraPoint]:
     """Generate complete camera path with positions and orientations.
 
@@ -201,6 +202,7 @@ def generate_camera_path(
         config: Spline configuration
         control_points: List of (x, y, z) waypoints
         look_at_curve: If True, camera looks tangent to curve (forward along path)
+        stabilize_camera: If True, minimize camera roll by aligning up vector with world up (default: True)
 
     Returns:
         List of CameraPoint objects, one per frame
@@ -266,7 +268,8 @@ def generate_rotate_around_path(
     rotation_mode: str = "quaternion",
     rotation_factor: float = -8.0,
     look_at_mode: str = "center",
-    look_at_blend: float = 0.3
+    look_at_blend: float = 0.3,
+    stabilize_camera: bool = True
 ) -> List[CameraPoint]:
     """Generate rotate-around camera path on sphere surface with configurable rotation.
 
@@ -296,6 +299,7 @@ def generate_rotate_around_path(
             - "blend": Adaptive tangent + inward (default, most stable)
         look_at_blend: When mode="blend", base inward blend amount (0.0-1.0)
                       Default 0.3 = 30% inward base, adapts up to 80% on sharp curves
+        stabilize_camera: If True, minimize camera roll by aligning up vector with world up (default: True)
 
     Returns:
         List of CameraPoint objects with rotations calculated via selected method
@@ -452,7 +456,7 @@ def generate_rotate_around_path(
                 )
 
             # Calculate rotation using quaternion look-at
-            rot_x, rot_y, rot_z = look_at_target(camera, target)
+            rot_x, rot_y, rot_z = look_at_target(camera, target, stabilize=stabilize_camera)
 
             camera_path.append(CameraPoint(
                 x=x,
@@ -577,7 +581,8 @@ def camera_path_to_schedules(
     speed_multiplier: float = 1.0,
     speed_randomization: float = 0.0,
     random_seed: int = 0,
-    look_at_mode: str = None
+    look_at_mode: str = None,
+    stabilize_camera: bool = True
 ) -> Dict[str, str]:
     """Convert camera path to Deforum schedule strings (ALL DELTAS).
 
@@ -693,7 +698,7 @@ def camera_path_to_schedules(
         # After offset: camera at (0,0,0) must look at (-100,0,0)
         camera_pos = (norm_x, norm_y, norm_z)
         center_pos = (center_offset_x, center_offset_y, center_offset_z)
-        norm_rot_x, norm_rot_y, norm_rot_z = look_at_target(camera_pos, center_pos)
+        norm_rot_x, norm_rot_y, norm_rot_z = look_at_target(camera_pos, center_pos, stabilize=stabilize_camera)
 
         # Calculate base deltas
         delta_x = norm_x - prev_x

@@ -148,13 +148,16 @@ def euler_to_forward_vector(pitch: float, yaw: float, roll: float) -> Vector3:
 
 def look_at_target(
     camera_pos: Tuple[float, float, float],
-    target_pos: Tuple[float, float, float]
+    target_pos: Tuple[float, float, float],
+    stabilize: bool = True
 ) -> Tuple[float, float, float]:
     """Calculate euler angles to make camera look at target.
 
     Args:
         camera_pos: Camera position (x, y, z)
         target_pos: Target position to look at (x, y, z)
+        stabilize: If True, stabilize camera to minimize roll (default: True).
+                   Uses world up vector (0, 1, 0) to keep camera level.
 
     Returns:
         (pitch, yaw, roll) in degrees - rotation angles to face target
@@ -168,17 +171,68 @@ def look_at_target(
     if abs(dx) < 1e-8 and abs(dy) < 1e-8 and abs(dz) < 1e-8:
         return (0.0, 0.0, 0.0)
 
-    # Yaw: horizontal angle (rotation around Y axis)
-    # arctan2(x, z) gives angle in XZ plane
-    yaw = np.degrees(np.arctan2(dx, dz))
+    if not stabilize:
+        # Simple look-at without stabilization (legacy behavior)
+        # Yaw: horizontal angle (rotation around Y axis)
+        yaw = np.degrees(np.arctan2(dx, dz))
+        # Pitch: vertical angle (rotation around X axis)
+        horizontal_dist = np.sqrt(dx**2 + dz**2)
+        pitch = np.degrees(np.arctan2(dy, horizontal_dist))
+        # Roll: always 0 (but may introduce visual roll in curved paths)
+        roll = 0.0
+        return (pitch, yaw, roll)
 
-    # Pitch: vertical angle (rotation around X axis)
-    # arctan2(y, horizontal_distance)
-    horizontal_dist = np.sqrt(dx**2 + dz**2)
-    pitch = np.degrees(np.arctan2(dy, horizontal_dist))
+    # Stabilized look-at: construct orthonormal basis to minimize roll
+    # Forward direction (normalized)
+    forward_length = np.sqrt(dx**2 + dy**2 + dz**2)
+    forward = Vector3(dx / forward_length, dy / forward_length, dz / forward_length)
 
-    # Roll: typically 0 for cameras (no rotation around forward axis)
-    roll = 0.0
+    # World up vector (preferred up direction)
+    world_up = Vector3(0.0, 1.0, 0.0)
+
+    # Calculate right vector (perpendicular to forward and world up)
+    right = forward.cross(world_up)
+    right_length = np.sqrt(right.x**2 + right.y**2 + right.z**2)
+
+    # Handle case where forward is parallel to world up (looking straight up/down)
+    if right_length < 1e-8:
+        # Use fallback right vector (world forward × world up)
+        world_forward = Vector3(0.0, 0.0, 1.0)
+        right = world_forward.cross(world_up)
+        right_length = np.sqrt(right.x**2 + right.y**2 + right.z**2)
+
+    # Normalize right vector
+    right = Vector3(right.x / right_length, right.y / right_length, right.z / right_length)
+
+    # Calculate stabilized up vector (perpendicular to right and forward)
+    # This ensures orthonormality: up is exactly perpendicular to both right and forward
+    up = right.cross(forward)
+
+    # Build rotation matrix from orthonormal basis
+    # Camera space: X=right, Y=up, Z=-forward (camera looks down -Z in OpenGL convention)
+    # Matrix columns: [right, up, -forward]
+    m11, m12, m13 = right.x, up.x, -forward.x
+    m21, m22, m23 = right.y, up.y, -forward.y
+    m31, m32, m33 = right.z, up.z, -forward.z
+
+    # Extract euler angles from rotation matrix (YXZ order)
+    # Reference: https://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToEuler/
+    # YXZ order: first Y (yaw), then X (pitch), then Z (roll)
+
+    # Pitch (rotation around X axis)
+    # sin(pitch) = -m23 (clamp to avoid arcsin domain errors)
+    sin_pitch = max(-1.0, min(1.0, -m23))
+    pitch = np.degrees(np.arcsin(sin_pitch))
+
+    # Check for gimbal lock (pitch near ±90 degrees)
+    if abs(abs(sin_pitch) - 1.0) < 1e-6:
+        # Gimbal lock: set roll=0 and calculate yaw from m11 and m31
+        roll = 0.0
+        yaw = np.degrees(np.arctan2(-m31, m11))
+    else:
+        # Normal case: calculate yaw and roll
+        yaw = np.degrees(np.arctan2(m13, m33))
+        roll = np.degrees(np.arctan2(m21, m22))
 
     return (pitch, yaw, roll)
 
