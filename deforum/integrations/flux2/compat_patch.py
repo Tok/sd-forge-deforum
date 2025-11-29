@@ -76,12 +76,14 @@ def is_flux2_model(depth: int, depth_single_blocks: int) -> bool:
 
 
 def apply_flux2_loader_patch():
-    """Monkey patch Forge's model loader to add Flux 2 compatibility.
+    """Monkey patch to add vec_in_dim for Flux GGUF models.
 
-    This patches the model __init__ to:
-    1. Detect Flux 2 vs Flux 1 by transformer block counts
-    2. Add missing vec_in_dim parameter (768 for both)
-    3. Adjust in_channels and patch_size for Flux 2
+    GGUF models may not have the vector_in.in_layer.weight key, so vec_in_dim
+    can't be detected. We add it as a fallback (768 for both Flux 1 and 2).
+
+    Works for both Flux 1 and Flux 2 without requiring restarts when switching.
+    The GGUF file's own architecture parameters (in_channels, patch_size) are
+    trusted as they're derived from actual weight shapes.
     """
     global _flux2_patch_applied
 
@@ -95,15 +97,10 @@ def apply_flux2_loader_patch():
         original_init = IntegratedFluxTransformer2DModel.__init__
 
         def patched_init(self, *args, **kwargs):
-            """Patched __init__ that detects Flux 2 and adjusts parameters."""
-            # Forge loader passes config as kwargs via: IntegratedFluxTransformer2DModel(**c)
-            # So we extract depth from kwargs to detect Flux version
-
-            # Get depth parameters to detect Flux version
-            depth = kwargs.get('depth', 19)  # Default to Flux 1
+            """Patched __init__ that adds vec_in_dim if missing and logs Flux version."""
+            # Get depth parameters to detect Flux version (for logging only)
+            depth = kwargs.get('depth', 19)
             depth_single_blocks = kwargs.get('depth_single_blocks', 38)
-
-            # Detect Flux 2
             is_flux2 = is_flux2_model(depth, depth_single_blocks)
 
             # Add missing vec_in_dim (required for both Flux 1 and 2)
@@ -111,31 +108,23 @@ def apply_flux2_loader_patch():
                 kwargs['vec_in_dim'] = 768
                 logger.info(f"Added default vec_in_dim=768 for Flux model")
 
-            # Adjust in_channels and patch_size for Flux 2
+            # Log detection (for diagnostic purposes)
             if is_flux2:
                 logger.info("🔍 Flux 2 model detected (depth=8, depth_single_blocks=48)")
-
-                # Adjust in_channels
-                current_in_channels = kwargs.get('in_channels', 16)
-                if current_in_channels != 64:
-                    kwargs['in_channels'] = 64
-                    logger.info(f"  → Corrected in_channels: {current_in_channels} → 64 for Flux 2")
-
-                # Adjust patch_size
-                current_patch_size = kwargs.get('patch_size', 2)
-                if current_patch_size != 1:
-                    kwargs['patch_size'] = 1
-                    logger.info(f"  → Corrected patch_size: {current_patch_size} → 1 for Flux 2")
+                in_ch = kwargs.get('in_channels', '?')
+                patch = kwargs.get('patch_size', '?')
+                logger.info(f"  → Architecture: in_channels={in_ch}, patch_size={patch}")
+                logger.info(f"  → Note: GGUF file may use non-standard parameters")
             else:
-                logger.debug(f"Flux 1 model detected (depth={depth}, depth_single_blocks={depth_single_blocks})")
+                logger.debug(f"Flux 1 model (depth={depth}, single_blocks={depth_single_blocks})")
 
-            # Call original init with patched kwargs
+            # Call original init with parameters as-is (trust GGUF detection)
             return original_init(self, *args, **kwargs)
 
         # Apply the monkey patch
         IntegratedFluxTransformer2DModel.__init__ = patched_init
 
-        logger.info("✓ Flux 2 compatibility patch applied - auto-detection enabled")
+        logger.info("✓ Flux 2 compatibility patch applied (vec_in_dim fallback)")
         _flux2_patch_applied = True
 
     except Exception as e:
