@@ -504,16 +504,21 @@ Located in the extension root:
 
 **`start-forge.sh` / `start-forge.bat`** - Launch Forge with optimizations
 ```bash
-./start-forge.sh           # Start with --sage --fast-fp16 --cuda-malloc --cuda-stream
+./start-forge.sh           # Start with --fast-fp16 --cuda-malloc --cuda-stream
 ./start-forge.sh --no-opt  # Start without optimizations
+./start-forge.sh --sage    # Add --sage flag (must install SageAttention first)
 ./start-forge.sh --listen  # Add custom flags (keeps optimizations)
 ```
 
-**Optimization Flags:**
-- `--sage`: SageAttention (auto-installs on first run, RTX 30/40/50 GPUs)
+**Optimization Flags (enabled by default):**
 - `--fast-fp16`: Fast FP16 accumulation (requires PyTorch 2.7+)
 - `--cuda-malloc`: CUDA malloc optimization
 - `--cuda-stream`: CUDA stream optimization
+
+**Optional Optimization (not enabled by default):**
+- `--sage`: SageAttention (RTX 30/40/50 GPUs)
+  - Not enabled by default due to build issues on first run
+  - To use: First run without --sage, then `pip install sageattention`, then add `--sage` flag
 
 ### Model Downloads
 
