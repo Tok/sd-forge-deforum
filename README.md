@@ -395,57 +395,30 @@ hf download neta-art/Neta-Lumina --local-dir models/Stable-diffusion/Lumina
 - VAE: FLUX-VAE-16CH (shared with Flux)
 - License: Apache-2.0 (fully open source)
 
-### Run Flux 2 on Forge Neo (GGUF Incompatible)
+### Run Flux 2 on Forge Neo
 
-**❌ NOT WORKING** - The available GGUF conversion is incompatible with Forge Neo.
+**⚠️ EXPERIMENTAL** - Flux 2 is not currently working with Deforum on Forge Neo.
 
-Flux 2 is Black Forest Labs' latest model with:
-- **8 double-stream blocks + 48 single-stream blocks** (vs Flux 1's 19/38)
-- **Single text encoder**: Mistral Small 3.1 (vs Flux 1's dual T5-XXL + CLIP-L)
-- **Same quality, faster inference** due to reduced blocks
+Flux 2 is Black Forest Labs' latest model with improved efficiency:
+- 8 double-stream blocks + 48 single-stream blocks (vs Flux 1's 19/38)
+- Single text encoder: Mistral Small 3.1
+- Same quality, faster inference
 
-**Why It Doesn't Work:**
+**Current Status:**
+- ❌ Not working with current GGUF models (architecture mismatch)
+- ✅ Flux 1 GGUF works great with compatibility patch
+- 🔧 Infrastructure in place for future Flux 2 support
 
-The GGUF conversion at `city96/FLUX.2-dev-gguf` uses incorrect architecture parameters:
+**What Works:**
+- Model loads successfully
+- Architecture auto-detected
+- Diagnostic logging available
 
-| Parameter | Flux 2 Standard | GGUF Conversion | Result |
-|-----------|----------------|-----------------|--------|
-| `in_channels` | 64 | 32 | ❌ Mismatch |
-| `patch_size` | 1 | 2 | ❌ Mismatch |
-| `self.in_channels` | 64 | 128 | ❌ Weight shape wrong |
+**What Doesn't:**
+- Generation fails with dimension mismatch
+- See [FLUX2_STATUS.md](docs/FLUX2_STATUS.md) for technical details
 
-**Error:**
-```
-RuntimeError: mat1 and mat2 shapes cannot be multiplied (3600x64 and 128x6144)
-```
-
-**Root Cause:**
-- Expected input features: 64 (from VAE latent)
-- GGUF weight matrix expects: 128 (from `32 * 2 * 2`)
-- These dimensions are fundamentally incompatible
-
-**What We've Tried:**
-1. ✅ Added `vec_in_dim` fallback (fixes model loading)
-2. ✅ Auto-detection of Flux 2 vs Flux 1 (works correctly)
-3. ❌ Cannot fix weight shape mismatch (requires re-conversion)
-
-**Possible Solutions:**
-1. **Wait for correct GGUF conversion** with `in_channels=64, patch_size=1`
-2. **Use non-quantized Flux 2** if Forge Neo adds native support
-3. **Request re-conversion** from GGUF maintainer with correct parameters
-
-**Branch:** `flux2-experimental` - Documents findings and adds diagnostic logging
-
-**Compatibility Patch Status:**
-- Works correctly for Flux 1 GGUF models
-- Detects Flux 2 and logs architecture parameters
-- Cannot fix incompatible weight shapes in GGUF file
-
-**For GGUF Maintainers:**
-If re-converting Flux 2 to GGUF, please use:
-- `in_channels=64` (not 32)
-- `patch_size=1` (not 2)
-- Reference: [Flux 2 Architecture](https://huggingface.co/blog/flux-2)
+The compatibility work done for Flux 2 improves Flux 1 GGUF support and prepares Deforum for when proper Flux 2 compatibility becomes available
 
 ### Run Z-Image-Turbo on Forge Neo (Ultra-Fast)
 
