@@ -395,38 +395,50 @@ hf download neta-art/Neta-Lumina --local-dir models/Stable-diffusion/Lumina
 - VAE: FLUX-VAE-16CH (shared with Flux)
 - License: Apache-2.0 (fully open source)
 
-### Run Flux 2 on Forge Neo (Experimental)
+### Run Flux 2 on Forge Neo (Experimental - Not Working Yet)
 
-**⚠️ EXPERIMENTAL** - Flux 2 support is in development on the `flux2-experimental` branch.
+**⚠️ NOT YET WORKING** - Flux 2 support is actively being developed on the `flux2-experimental` branch.
 
 Flux 2 is Black Forest Labs' latest model with:
 - **8 double-stream blocks + 48 single-stream blocks** (vs Flux 1's 19/38)
 - **Single text encoder**: Mistral Small 3.1 (vs Flux 1's dual T5-XXL + CLIP-L)
+- **64 input channels** (vs Flux 1's 16) - **[architectural incompatibility]**
 - **Same quality, faster inference** due to reduced blocks
 
-**Installation:**
+**Current Status:**
+- ✅ Model loads (vec_in_dim patch working)
+- ❌ **Matrix shape mismatch during sampling** - Flux 2 uses different input channel dimensions
+- 🔧 **In Progress:** Need to detect Flux 2 vs Flux 1 and adjust in_channels/patch_size accordingly
+- 📚 **Research:** [Architectural differences documented](https://huggingface.co/blog/flux-2)
+
+**Known Issues:**
+```
+RuntimeError: mat1 and mat2 shapes cannot be multiplied (3600x64 and 128x6144)
+```
+This occurs because Flux 2 uses **in_channels = 64** (with patch_size = 1), while Flux 1 uses **in_channels = 16** (with patch_size = 2). The GGUF conversion may not preserve these architectural differences correctly.
+
+**Installation (For Testing):**
 ```bash
-# Download Flux 2 GGUF quantized model (recommended for VRAM efficiency)
+# Download Flux 2 GGUF quantized model
 # See: https://huggingface.co/city96/FLUX.2-dev-gguf
 cd /path/to/forge-neo/models/Stable-diffusion
-wget https://huggingface.co/city96/FLUX.2-dev-gguf/resolve/main/flux2-dev-Q4_K.gguf
+wget https://huggingface.co/city96/FLUX.2-dev-gguf/resolve/main/flux2-dev-Q2_K.gguf
 
 # Flux 2 uses same VAE and text encoders as Flux 1
 # If you already have Flux 1 setup, you're good to go!
 ```
 
-**Deforum Compatibility:**
-- ✅ **Automatic Patch Applied**: Deforum detects Flux 2 and adds missing `vec_in_dim` parameter (768)
-- ✅ All render modes supported (Classic 3D, New 3D, Keyframes Only, Flux + Interpolation)
-- ✅ GGUF quantization supported (Q2_K, Q4_K, Q8_K, etc.)
-- ⚠️ Parameter tuning may differ from Flux 1
-
 **Technical Details:**
-- `vec_in_dim`: 768 (pooled projection dimension, same as Flux 1)
-- `joint_attention_dim`: 4096
+- Architecture: [Different from Flux 1](https://huggingface.co/blog/flux-2)
+  - **in_channels**: 64 (vs 16 for Flux 1)
+  - **patch_size**: 1 (vs 2 for Flux 1)
+  - **vec_in_dim**: 768 (same as Flux 1)
+  - **Transformer blocks**: 8 double + 48 single (vs 19 + 38)
 - Compatibility patch: `deforum/integrations/flux2/compat_patch.py`
-- Applied automatically at extension load
-- **Branch**: `flux2-experimental`
+- **Branch**: `flux2-experimental` (active development)
+
+**Contributing:**
+If you have insights into making Flux 2 work with Forge Neo, please open an issue on GitHub!
 
 ### Run Z-Image-Turbo on Forge Neo (Ultra-Fast)
 
