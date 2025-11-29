@@ -280,6 +280,60 @@ esac
 echo ""
 
 # =====================================
+# 7. Lumina 2.0 (Anime-Optimized)
+# =====================================
+echo -e "${BLUE}=== Lumina 2.0 (Anime-Optimized Fine-Tune) ===${NC}"
+echo "Lumina 2.0 is a 2B parameter model with 1024x1024 native resolution"
+echo "This is the neta-art anime-optimized fine-tune of Alpha-VLLM/Lumina-Image-2.0"
+echo ""
+read -p "Download Lumina 2.0? [y/N]: " download_lumina
+if [[ $download_lumina =~ ^[Yy]$ ]]; then
+    LUMINA_PATH="models/Stable-diffusion/Lumina/neta-lumina-v1.0-all-in-one.safetensors"
+    if [ -f "$LUMINA_PATH" ]; then
+        echo -e "${GREEN}✓ Lumina 2.0 already exists${NC}"
+    else
+        echo -e "${YELLOW}Downloading Lumina 2.0 all-in-one checkpoint (~9.9GB)...${NC}"
+        echo "Repository: neta-art/Neta-Lumina"
+        mkdir -p models/Stable-diffusion/Lumina
+        huggingface-cli download neta-art/Neta-Lumina \
+            neta-lumina-v1.0-all-in-one.safetensors \
+            --local-dir models/Stable-diffusion/Lumina \
+            --resume-download
+        echo -e "${GREEN}✓ Lumina 2.0 downloaded${NC}"
+        echo ""
+        echo -e "${BLUE}Note:${NC} Lumina uses FLUX-VAE (16 channels) and Gemma-2-2B text encoder"
+        echo "Both are included in the all-in-one checkpoint"
+    fi
+else
+    echo -e "${YELLOW}Skipping Lumina 2.0${NC}"
+fi
+echo ""
+
+# =====================================
+# 8. Z-Image-Turbo
+# =====================================
+echo -e "${BLUE}=== Z-Image-Turbo ===${NC}"
+echo "Z-Image-Turbo is a fast image generation model based on SD3"
+echo ""
+read -p "Download Z-Image-Turbo? [y/N]: " download_zimage
+if [[ $download_zimage =~ ^[Yy]$ ]]; then
+    ZIMAGE_PATH="models/Stable-diffusion/Z-Image/diffusion_pytorch_model.safetensors"
+    if [ -f "$ZIMAGE_PATH" ]; then
+        echo -e "${GREEN}✓ Z-Image-Turbo already exists${NC}"
+    else
+        echo -e "${YELLOW}Downloading Z-Image-Turbo...${NC}"
+        mkdir -p models/Stable-diffusion/Z-Image
+        huggingface-cli download stabilityai/stable-diffusion-3-medium \
+            --local-dir models/Stable-diffusion/Z-Image \
+            --resume-download
+        echo -e "${GREEN}✓ Z-Image-Turbo downloaded${NC}"
+    fi
+else
+    echo -e "${YELLOW}Skipping Z-Image-Turbo${NC}"
+fi
+echo ""
+
+# =====================================
 # Summary
 # =====================================
 echo ""
@@ -289,6 +343,8 @@ echo "========================================${NC}"
 echo ""
 echo "Downloaded models are located in:"
 echo "  • Flux: models/Stable-diffusion/Flux/"
+echo "  • Lumina: models/Stable-diffusion/Lumina/"
+echo "  • Z-Image: models/Stable-diffusion/Z-Image/"
 echo "  • VAE & Text Encoders: models/VAE/"
 echo "  • ControlNet: models/ControlNet/"
 echo "  • FILM: models/Deforum/film_interpolation/"
