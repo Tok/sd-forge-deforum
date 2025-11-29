@@ -472,9 +472,105 @@ pip install -r requirements.txt
 find . -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 ```
 
-**Forge Neo Compatibility:** This extension is fully compatible with [Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo). Flux models and Wan 2.1 FLF2V are automatically downloaded on first startup if not present.
+**Forge Neo Compatibility:** This extension is fully compatible with [Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo).
 
-### Update Deforum Settings
+**For Forge Setup & Base Models:** See the [Forge Neo README](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo) and [Model Download Wiki](https://github.com/Haoming02/sd-webui-forge-classic/wiki/Download-Models) for setting up Forge WebUI itself and downloading SD/SDXL/Flux base models.
+
+## Helper Scripts
+
+This extension includes comprehensive helper scripts for common tasks. All scripts have both Linux/Mac (`.sh`) and Windows (`.bat`) versions.
+
+### Setup & Dependencies
+
+Located in the extension root:
+
+**`setup.sh` / `setup.bat`** - Unified setup and migration tool
+```bash
+./setup.sh              # Interactive menu
+./setup.sh --check      # Check Python version, dependencies, optimizations
+./setup.sh --install    # Install Deforum requirements.txt
+./setup.sh --migrate    # Migrate venv to Python 3.11.9 (Linux only)
+```
+
+**Features:**
+- Python version check (3.11.9 recommended, 3.12 supported)
+- Dependency verification (pandas, rich, librosa, etc.)
+- Optimization check (SageAttention, FlashAttention)
+- Full venv migration with backup (Linux only)
+
+### Launching Forge
+
+Located in the extension root:
+
+**`start-forge.sh` / `start-forge.bat`** - Launch Forge with optimizations
+```bash
+./start-forge.sh           # Start with --sage --fast-fp16 --cuda-malloc --cuda-stream
+./start-forge.sh --no-opt  # Start without optimizations
+./start-forge.sh --listen  # Add custom flags (keeps optimizations)
+```
+
+**Optimization Flags:**
+- `--sage`: SageAttention (auto-installs on first run, RTX 30/40/50 GPUs)
+- `--fast-fp16`: Fast FP16 accumulation (requires PyTorch 2.7+)
+- `--cuda-malloc`: CUDA malloc optimization
+- `--cuda-stream`: CUDA stream optimization
+
+### Model Downloads
+
+Located in `scripts/`:
+
+**`download-all-models.sh` / `.bat`** - Download Deforum-specific models
+```bash
+./scripts/download-all-models.sh
+```
+
+**Downloads:**
+1. Flux.1 Dev BNB NF4 v2 (~10GB, 4-bit quantized)
+2. Flux VAE and text encoders (CLIP-L, T5-XXL)
+3. Flux ControlNet V2 (Canny, Depth) - optional
+4. FILM interpolation model
+5. Wan AI Video models (FLF2V-14B, TI2V-5B, TI2V-A14B) - optional
+6. Qwen prompt enhancement models (3B/7B/14B) - optional
+
+**`download-forge-models.sh` / `.bat`** - Download base Forge models
+```bash
+./scripts/download-forge-models.sh
+```
+
+**Downloads:**
+- SD1 VAE (vae-ft-mse-840000)
+- SDXL VAE (sdxl-vae-fp16-fix)
+- Links to CivitAI for SD1.5/SDXL checkpoints
+
+### Testing
+
+Located in `scripts/`:
+
+**`run-unit-tests.sh` / `.bat`** - Run unit tests
+```bash
+./scripts/run-unit-tests.sh        # Run all unit tests
+./scripts/run-unit-tests.sh -v     # Verbose output
+```
+
+**`run-api-tests.sh` / `.bat`** - Run API integration tests
+```bash
+./scripts/run-api-tests.sh         # Run against existing server
+./scripts/run-api-tests.sh --start # Start server, run tests, stop server
+```
+
+### Tuning Lab
+
+Located in `scripts/`:
+
+**`run-tuning-lab.sh` / `.bat`** - Launch Forge with tuning tab
+```bash
+./scripts/run-tuning-lab.sh           # Start with optimizations + tuning tab
+./scripts/run-tuning-lab.sh --no-opt  # Start without optimizations
+```
+
+The tuning tab provides empirical parameter optimization tools for I2V chaining, orbital camera paths, and more. See `docs/TUNING.md` for comprehensive tuning documentation.
+
+## Update Deforum Settings
 
 ⚠️ **CRITICAL**: Old settings files will NOT work. Download the new format:
 
