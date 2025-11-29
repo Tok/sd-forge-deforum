@@ -212,10 +212,11 @@ do_prepare() {
 
     # Step 2: Install SageAttention (now that torch is available)
     echo -e "${YELLOW}Step 2/3: Installing SageAttention...${NC}"
+    echo -e "${BLUE}Using --no-build-isolation to access torch during build${NC}"
     if [ -f "venv/bin/pip" ]; then
-        ./venv/bin/pip install sageattention
+        ./venv/bin/pip install --no-build-isolation sageattention
     else
-        pip install sageattention
+        pip install --no-build-isolation sageattention
     fi
     echo -e "${GREEN}✓ SageAttention installed${NC}"
     echo ""
