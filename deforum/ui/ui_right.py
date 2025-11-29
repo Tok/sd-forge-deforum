@@ -958,6 +958,10 @@ def on_ui_tabs():
                     preset_args = args[:20]
                     overlap_args = args[20:]  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
 
+                    # Extract prompts and max_frames from preset args for overlap viz
+                    prompts = args[19]  # animation_prompts
+                    max_frames_val = args[5]  # preset_num_frames
+
                     # Generate preset schedules
                     result = handle_generate_preset(*preset_args)
 
@@ -967,7 +971,9 @@ def on_ui_tabs():
                     # Update frame overlap visualization with new schedules
                     overlap_html = update_overlap_viz(
                         tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
-                        *overlap_args  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
+                        *overlap_args,  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
+                        prompts,  # animation_prompts
+                        max_frames_val  # preset_num_frames
                     )
 
                     return (status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot, overlap_html)
