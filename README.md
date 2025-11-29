@@ -9,7 +9,7 @@
 **Other Forge versions:** May work but remain untested
 
 Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum),
-completely refactored and modernized to work with Flux.1, Wan 2.1/2.2 AI Video Generation, and advanced workflow automation.
+completely refactored and modernized to work with **Flux.1/2**, **Lumina 2.0**, **Z-Image-Turbo**, **Wan 2.1/2.2 AI Video Generation**, and advanced workflow automation.
 
 ## ⚡ Major New Features
 
@@ -394,6 +394,66 @@ hf download neta-art/Neta-Lumina --local-dir models/Stable-diffusion/Lumina
 - Text Encoder: Gemma-2-2B (vs Flux's T5-XXL)
 - VAE: FLUX-VAE-16CH (shared with Flux)
 - License: Apache-2.0 (fully open source)
+
+### Run Flux 2 on Forge Neo (Experimental)
+
+**⚠️ EXPERIMENTAL** - Flux 2 support is in development on the `flux2-experimental` branch.
+
+Flux 2 is Black Forest Labs' latest model with:
+- **8 double-stream blocks + 48 single-stream blocks** (vs Flux 1's 19/38)
+- **Single text encoder**: Mistral Small 3.1 (vs Flux 1's dual T5-XXL + CLIP-L)
+- **Same quality, faster inference** due to reduced blocks
+
+**Installation:**
+```bash
+# Download Flux 2 GGUF quantized model (recommended for VRAM efficiency)
+# See: https://huggingface.co/city96/FLUX.2-dev-gguf
+cd /path/to/forge-neo/models/Stable-diffusion
+wget https://huggingface.co/city96/FLUX.2-dev-gguf/resolve/main/flux2-dev-Q4_K.gguf
+
+# Flux 2 uses same VAE and text encoders as Flux 1
+# If you already have Flux 1 setup, you're good to go!
+```
+
+**Deforum Compatibility:**
+- ✅ **Automatic Patch Applied**: Deforum detects Flux 2 and adds missing `vec_in_dim` parameter (768)
+- ✅ All render modes supported (Classic 3D, New 3D, Keyframes Only, Flux + Interpolation)
+- ✅ GGUF quantization supported (Q2_K, Q4_K, Q8_K, etc.)
+- ⚠️ Parameter tuning may differ from Flux 1
+
+**Technical Details:**
+- `vec_in_dim`: 768 (pooled projection dimension, same as Flux 1)
+- `joint_attention_dim`: 4096
+- Compatibility patch: `deforum/integrations/flux2/compat_patch.py`
+- Applied automatically at extension load
+- **Branch**: `flux2-experimental`
+
+### Run Z-Image-Turbo on Forge Neo (Ultra-Fast)
+
+**⚠️ Forge Neo Only** - Z-Image-Turbo is only supported in [Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo).
+
+Z-Image-Turbo is Tongyi MAI's ultra-fast image generation model with:
+- **3.8B parameters** (smaller than Flux, larger than Lumina)
+- **BFloat16 precision** - fast inference with good quality
+- **Optimized for speed** - designed for rapid generation
+
+**Installation:**
+```bash
+# Download from Hugging Face (see download guide)
+# https://github.com/Haoming02/sd-webui-forge-classic/wiki/Download-Models
+cd /path/to/forge-neo/models/Stable-diffusion
+# Follow Forge Neo's model download guide for Z-Image-Turbo
+```
+
+**Deforum Compatibility:**
+- ✅ Works with current dev branch
+- ✅ All render modes supported
+- ⚠️ **Tuning needed** - optimal parameters still being discovered
+- ⚠️ Different architecture may require adjusted CFG/steps
+
+**Resources:**
+- Model: [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)
+- Download Guide: [Forge Neo Wiki](https://github.com/Haoming02/sd-webui-forge-classic/wiki/Download-Models)
 
 ## Installation
 
