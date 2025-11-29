@@ -190,11 +190,12 @@ do_prepare() {
     echo -e "${BLUE}This will install PyTorch and dependencies (may take a few minutes)${NC}"
 
     # Use launch.py which installs dependencies without starting the UI
+    # Pipe 'yes' to automatically answer any prompts
     if [ -f "venv/bin/python" ]; then
-        ./venv/bin/python launch.py --skip-torch-cuda-test --exit
+        echo "" | ./venv/bin/python launch.py --skip-torch-cuda-test --exit
     elif [ -f "webui.sh" ]; then
         # Create venv if it doesn't exist
-        ./webui.sh --exit
+        echo "" | ./webui.sh --exit
     else
         echo -e "${RED}Error: No Python found${NC}"
         exit 1
