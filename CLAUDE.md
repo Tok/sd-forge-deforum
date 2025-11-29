@@ -53,8 +53,46 @@ pytest tests/
 **Install/update dependencies:**
 ```bash
 cd extensions/sd-forge-deforum
-pip install -r requirements.txt
+./setup.sh --prepare  # First-time setup (PyTorch + SageAttention + Deforum deps)
+# OR
+./setup.sh --install  # Just install Deforum requirements.txt
 ```
+
+### Setup Scripts
+
+**Location:** Root directory and `shell_scripts/`
+
+**First-Time Setup:**
+```bash
+./setup.sh --prepare
+```
+This automated script:
+1. Installs PyTorch via Forge (using `launch.py --exit`)
+2. Attempts to install SageAttention (requires CUDA toolkit, optional)
+3. Installs all Deforum dependencies
+
+**Manual SageAttention Installation:**
+```bash
+./shell_scripts/install-cuda-toolkit.sh    # Install CUDA toolkit (~3GB)
+source ~/.bashrc                           # Reload environment
+./shell_scripts/install-sageattention.sh   # Compile SageAttention
+```
+
+**SageAttention Details:**
+- Requires CUDA toolkit (nvcc compiler) to build from source
+- `setup.sh --prepare` attempts installation but continues if it fails
+- Manual installation scripts handle full CUDA toolkit setup + compilation
+- Enables `--sage` optimization flag for RTX 30/40/50 GPUs
+
+**Model Downloads:**
+```bash
+./shell_scripts/download-all-models.sh     # Interactive: Flux, Lumina, Z-Image, Wan, etc.
+```
+
+**Script Organization:**
+- **Root:** `setup.sh/bat`, `start-forge.sh/bat` (quick access)
+- **`shell_scripts/`:** Download, install, test, and launch scripts
+- **`scripts/`:** Python development tools only
 
 ## Architecture
 
@@ -542,21 +580,47 @@ Core dependencies (from `requirements.txt`):
 - `transformers>=4.36.0,<4.46.0` - For Wan and Qwen models
 - `accelerate>=0.25.0,<0.31.0` - For model acceleration
 
-**Model Requirements:**
-- **Flux:** Requires `flux1-dev-bnb-nf4-v2.safetensors` and VAE files (see README.md)
-- **Lumina 2.0:** (Forge Neo only) Downloaded via HuggingFace CLI
-  - Repository: `neta-art/Neta-Lumina` (anime-optimized fine-tune of Alpha-VLLM/Lumina-Image-2.0)
-  - Model size: 2B parameters
-  - Native resolution: 1024x1024
-  - All-in-one checkpoint: `neta-lumina-v1.0-all-in-one.safetensors` (9.9GB)
-  - Uses FLUX-VAE (16 channels) for encoding/decoding
-  - Uses Gemma-2-2B for text encoding
-  - **Full img2img support** - works with all Deforum render modes
-  - Compatible modes: Classic 3D, New 3D, Keyframes Only, Flux + Interpolation (if Lumina selected as base model)
-  - Download: `hf download neta-art/Neta-Lumina --local-dir models/Stable-diffusion/Lumina`
-- **Wan:** Downloaded via `huggingface-cli download Wan-AI/Wan2.1-VACE-1.3B --local-dir models/Deforum/wan`
-- **Qwen:** Auto-downloaded to `models/Deforum/qwen/` when first used (3B/7B/14B variants)
-- **Depth:** Auto-downloaded to `models/Deforum/` on first use per selected model
+**Model Requirements and Directory Structure:**
+
+**Shared Components (used by multiple models):**
+- **FLUX VAE** (`models/VAE/ae.safetensors`, ~320MB)
+  - Shared by: Flux, Lumina, Z-Image
+  - Repository: `black-forest-labs/FLUX.1-dev`
+
+**Flux Models:**
+- **Checkpoint:** `models/Stable-diffusion/Flux/flux1-dev-bnb-nf4-v2.safetensors` (~12GB, 4-bit quantized)
+- **Text Encoders:**
+  - `models/text_encoder/clip_l.safetensors` (~235MB)
+  - `models/text_encoder/t5xxl_fp16.safetensors` (~9.2GB)
+- **Repository:** `lllyasviel/flux1-dev-bnb-nf4`, `comfyanonymous/flux_text_encoders`
+
+**Lumina 2.0 (Anime-Optimized):**
+- **UNet:** `models/Stable-diffusion/Lumina/Unet/neta-lumina-v1.0.safetensors` (~4.9GB)
+- **Text Encoder:** `models/Stable-diffusion/Lumina/Text Encoder/gemma_2_2b_fp16.safetensors` (~4.9GB)
+- **VAE:** `models/Stable-diffusion/Lumina/VAE/ae.safetensors` (symlinked to shared FLUX VAE)
+- **Repository:** `neta-art/Neta-Lumina`
+- **Full img2img support** - works with all Deforum render modes
+
+**Z-Image-Turbo:**
+- **DiT Model:** `models/Stable-diffusion/Z-Image/diffusion_pytorch_model.safetensors`
+- **Text Encoder:** `models/text_encoder/qwen_3_4b.safetensors` (~7.5GB)
+- **VAE:** Shares `models/VAE/ae.safetensors` (FLUX VAE)
+- **Repository:** `stabilityai/stable-diffusion-3-medium`
+
+**Wan AI Video:**
+- **FLF2V:** `models/Deforum/wan/Wan2.1-FLF2V-14B/` (~14GB)
+- **TI2V:** `models/Deforum/wan/Wan2.2-TI2V-5B/` (~5GB)
+- **Repository:** `Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers`, `Wan-AI/Wan2.2-TI2V-5B-Diffusers`
+
+**Auto-Downloaded Models:**
+- **Qwen:** `models/Deforum/qwen/` (3B/7B/14B variants, lazy-loaded)
+- **Depth:** `models/Deforum/` (Depth-Anything V2, auto-downloaded on first use)
+- **FILM:** `models/Deforum/film_interpolation/film_net_fp16.pt`
+
+**Download Script:**
+```bash
+./shell_scripts/download-all-models.sh  # Interactive download with dependency checks
+```
 
 ## Known Limitations
 

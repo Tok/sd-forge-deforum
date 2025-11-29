@@ -11,63 +11,20 @@
 Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum),
 completely refactored and modernized to work with **Flux.1/2**, **Lumina 2.0**, **Z-Image-Turbo**, **Wan 2.1/2.2 AI Video Generation**, and advanced workflow automation.
 
+## 📖 Table of Contents
+
+- [⚡ Major New Features](#-major-new-features)
+- [🚀 Quick Start](#-quick-start)
+- [💿 Installation](#-installation)
+- [📥 Model Downloads](#-model-downloads)
+- [🎛️ Render Modes](#️-render-modes)
+- [🎨 Keyframe Scheduling](#-keyframe-scheduling)
+- [🧪 Camera Path Tuning Lab](#-camera-path-tuning-lab)
+- [🔧 Helper Scripts](#-helper-scripts)
+- [🏛️ Architecture & Documentation](#️-architecture--documentation)
+- [🤝 Contributing](#-contributing)
+
 ## ⚡ Major New Features
-
-### 🔥 **Zero-HITL Slopcore Generator** (Qwen-Spec'd, Zero Human-In-The-Loop)
-*Specifications and review by Qwen3-Next-80B-A3B. Implementation was practically zero-HITL too (copy-paste driven development).*
-
-⚠️ **EXPERIMENTAL - CURRENTLY MISTUNED**: The Qwen AI Creative Director component is functional but produces suboptimal results. The chaos parameters (audio sabotage, RGB inversion, glitch effects) work as intended, but prompt generation needs retuning. Expect interesting failures.
-
-One-click AI video generation with **intentional chaos and glitches**. Click **"🔥 SLOP IT! 🔥"** and walk away.
-
-**Complete Pipeline:**
-1. **Intentionally Sabotaged Audio** (Stable Audio Open Small 341M)
-   - 20% tempo chaos (0.5x/2x speed with pitch shift)
-   - 15% micro-loop glitch (1s loops with jump cuts)
-   - 10% vinyl crackle at 120% volume
-   - 5% corrupted WAV header (white noise intro)
-   - Special: "random" theme → malfunctioning microwave sounds
-
-2. **Curated Chaos Parameters**
-   - Randomized render settings with slopcore aesthetics
-   - 20% RGB inversion, 25% style combinations
-   - 10% seed=0 (glitch art mode)
-   - 7 blue/purple gradient shades + neon pink palette
-
-3. **Qwen AI Creative Director** (Camera-Aware)
-   - Makes ALL artistic decisions
-   - 25% contradiction prompts ("serene beach with neon tornado")
-   - Responds to camera movement (spin → vortex prompts)
-   - Structured JSON creative direction
-
-4. **Camera Chaos**
-   - 30% camera jitter (±5-20px random shifts)
-   - 10% 360° spin during calm scenes
-   - Informs Qwen's prompt generation
-
-5. **VHS Scan Lines** (Always Applied)
-   - Dual approach: Per-frame (1-3px) + FFmpeg post-processing
-   - Randomized parameters: degrade, chroma, noise, jitter
-   - Left-side degradation (realistic VHS tape wear)
-   - Mandatory for authentic glitch aesthetic
-
-6. **Accidental Masterpiece Mode** (Always Enabled)
-   - Detects "too good" outputs via broken heuristics
-   - Applies 2-5 glitch effects: RGB invert, datamosh, scanline overdrive, color shift
-   - **Healing Glitches**: If too broken (3+ effects), applies motion blur for "accidental beauty"
-
-7. **Slopcore Confidence Score**
-   - Calculated from triggered chaos events
-   - 90-100% = GLITCHED (desirable)
-   - 0-50% = TOO GOOD (rejects, needs more chaos)
-
-**Features:**
-- Zero configuration (all decisions automated)
-- Full transparency (detailed slop log with emoji storytelling)
-- Settings export (JSON of all generated parameters)
-- Isolated to dedicated tab (normal Deforum unaffected)
-
-**See:** `docs/ZERO_HITL_DESIGN.md` for Qwen's complete specifications
 
 ### 🎬 **Wan AI Video Generation** (Alibaba's state-of-the-art T2V/I2V)
 - **FLF2V Integration** (Wan 2.1): First-Last-Frame-to-Video interpolation with guidance_scale=3.5
@@ -447,6 +404,63 @@ cd /path/to/forge-neo/models/Stable-diffusion
 - Model: [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)
 - Download Guide: [Forge Neo Wiki](https://github.com/Haoming02/sd-webui-forge-classic/wiki/Download-Models)
 
+### 🔥 **Zero-HITL Slopcore Generator** (Qwen-Spec'd, Zero Human-In-The-Loop)
+*Specifications and review by Qwen3-Next-80B-A3B. Implementation was practically zero-HITL too (copy-paste driven development).*
+
+⚠️ **EXPERIMENTAL - CURRENTLY MISTUNED**: The Qwen AI Creative Director component is functional but produces suboptimal results. The chaos parameters (audio sabotage, RGB inversion, glitch effects) work as intended, but prompt generation needs retuning. Expect interesting failures.
+
+One-click AI video generation with **intentional chaos and glitches**. Click **"🔥 SLOP IT! 🔥"** and walk away.
+
+**Complete Pipeline:**
+1. **Intentionally Sabotaged Audio** (Stable Audio Open Small 341M)
+   - 20% tempo chaos (0.5x/2x speed with pitch shift)
+   - 15% micro-loop glitch (1s loops with jump cuts)
+   - 10% vinyl crackle at 120% volume
+   - 5% corrupted WAV header (white noise intro)
+   - Special: "random" theme → malfunctioning microwave sounds
+
+2. **Curated Chaos Parameters**
+   - Randomized render settings with slopcore aesthetics
+   - 20% RGB inversion, 25% style combinations
+   - 10% seed=0 (glitch art mode)
+   - 7 blue/purple gradient shades + neon pink palette
+
+3. **Qwen AI Creative Director** (Camera-Aware)
+   - Makes ALL artistic decisions
+   - 25% contradiction prompts ("serene beach with neon tornado")
+   - Responds to camera movement (spin → vortex prompts)
+   - Structured JSON creative direction
+
+4. **Camera Chaos**
+   - 30% camera jitter (±5-20px random shifts)
+   - 10% 360° spin during calm scenes
+   - Informs Qwen's prompt generation
+
+5. **VHS Scan Lines** (Always Applied)
+   - Dual approach: Per-frame (1-3px) + FFmpeg post-processing
+   - Randomized parameters: degrade, chroma, noise, jitter
+   - Left-side degradation (realistic VHS tape wear)
+   - Mandatory for authentic glitch aesthetic
+
+6. **Accidental Masterpiece Mode** (Always Enabled)
+   - Detects "too good" outputs via broken heuristics
+   - Applies 2-5 glitch effects: RGB invert, datamosh, scanline overdrive, color shift
+   - **Healing Glitches**: If too broken (3+ effects), applies motion blur for "accidental beauty"
+
+7. **Slopcore Confidence Score**
+   - Calculated from triggered chaos events
+   - 90-100% = GLITCHED (desirable)
+   - 0-50% = TOO GOOD (rejects, needs more chaos)
+
+**Features:**
+- Zero configuration (all decisions automated)
+- Full transparency (detailed slop log with emoji storytelling)
+- Settings export (JSON of all generated parameters)
+- Isolated to dedicated tab (normal Deforum unaffected)
+
+**See:** `docs/ZERO_HITL_DESIGN.md` for Qwen's complete specifications
+
+
 ## Installation
 
 ### Directly in Forge (recommended)
@@ -480,9 +494,24 @@ find . -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
 This extension includes comprehensive helper scripts for common tasks. All scripts have both Linux/Mac (`.sh`) and Windows (`.bat`) versions.
 
+### Script Organization
+
+**Extension Root** (quick access):
+- `setup.sh` / `setup.bat` - Dependency installation and venv management
+- `start-forge.sh` / `start-forge.bat` - Launch Forge with optimizations
+
+**`shell_scripts/`** (organized utilities):
+- Model downloads (`download-all-models.sh`, `download-forge-models.sh`)
+- Installation scripts (`install-cuda-toolkit.sh`, `install-sageattention.sh`)
+- Test runners (`run-unit-tests.sh`, `run-api-tests.sh`)
+- Tuning lab launcher (`run-tuning-lab.sh`)
+
+**`scripts/`** (development tools):
+- Python-only development utilities (migrate_prints_to_logger.py, etc.)
+
 ### Setup & Dependencies
 
-Located in the extension root:
+Located in the **extension root**:
 
 **`setup.sh` / `setup.bat`** - Unified setup and migration tool
 ```bash
