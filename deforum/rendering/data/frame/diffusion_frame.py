@@ -223,7 +223,8 @@ class DiffusionFrame:
     def precalculate_diffusion_frame_count(data: RenderData, keyframe_distribution, start_index, max_frames):
         # TODO change implementation so KeyFrames can be instantiated without any pre-calculations.
         if keyframe_distribution is KeyFrameDistribution.OFF:
-            return 0  # not relevant
+            # Classic 3D mode: uniform distribution based on cadence
+            return 1 + int((max_frames - start_index) / data.cadence())
         elif keyframe_distribution is KeyFrameDistribution.KEYFRAMES_ONLY:
             if data.parseq_adapter.use_parseq:
                 return len(data.parseq_adapter.parseq_json['keyframes'])

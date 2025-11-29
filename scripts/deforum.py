@@ -33,6 +33,15 @@ def init_deforum():
     except Exception as e:
         print(f"⚠️ Deforum: Failed to apply diffusers compatibility patches: {e}")
 
+    # Flux 2 compatibility patch: Add vec_in_dim fallback for GGUF models
+    try:
+        from deforum.integrations.flux2.compat_patch import ensure_flux2_compatibility
+        ensure_flux2_compatibility()
+    except Exception as e:
+        print(f"⚠️ Deforum: Failed to apply Flux 2 compatibility patch: {e}")
+        import traceback
+        traceback.print_exc()
+
     # Fractional img2img patches: RE-ENABLED with debug logging
     try:
         from deforum.pipeline.fractional_img2img_patch import apply_fractional_img2img_patch
