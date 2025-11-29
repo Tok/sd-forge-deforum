@@ -24,6 +24,33 @@ completely refactored and modernized to work with **Flux.1/2**, **Lumina 2.0**, 
 - [🏛️ Architecture & Documentation](#️-architecture--documentation)
 - [🤝 Contributing](#-contributing)
 
+## 🚀 Quick Start
+
+**Minimum Steps to Get Running:**
+
+```bash
+# 1. Clone into Forge Neo extensions
+cd extensions && git clone https://github.com/Tok/sd-forge-deforum.git
+cd sd-forge-deforum
+
+# 2. Automated setup (PyTorch + SageAttention + Deforum deps)
+./setup.sh --prepare
+
+# 3. Download models (interactive)
+./shell_scripts/download-all-models.sh
+
+# 4. Launch Forge with optimizations
+./start-forge.sh
+```
+
+**First Test:**
+1. Navigate to Deforum tab
+2. Set "Distribution" → "Keyframes Only"
+3. Set "Animation Mode" → "3D"
+4. Click Generate (runs 333-frame bunny test at 60 FPS)
+
+**See below for:** [Installation](#-installation), [Helper Scripts](#-helper-scripts), [Model Downloads](#-model-downloads)
+
 ## ⚡ Major New Features
 
 ### 🎬 **Wan AI Video Generation** (Alibaba's state-of-the-art T2V/I2V)
