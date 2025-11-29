@@ -40,7 +40,7 @@ goto :parse_args
 
 :done_parsing
 
-REM Build command with optimization flags
+REM Build flags with optimization
 if "%USE_OPT%"=="1" (
     echo Starting with optimizations:
     echo   --sage              SageAttention ^(RTX 30/40/50^)
@@ -49,18 +49,18 @@ if "%USE_OPT%"=="1" (
     echo   --cuda-stream       CUDA stream optimization
     echo.
 
-    set CMD=python webui.py --sage --fast-fp16 --cuda-malloc --cuda-stream
+    set FLAGS=--sage --fast-fp16 --cuda-malloc --cuda-stream
 ) else (
     echo Starting without optimizations
     echo.
-    set CMD=python webui.py
+    set FLAGS=
 )
 
 REM Add extra args
 if not "%EXTRA_ARGS%"=="" (
     echo Extra flags: !EXTRA_ARGS!
     echo.
-    set CMD=!CMD! !EXTRA_ARGS!
+    set FLAGS=!FLAGS! !EXTRA_ARGS!
 )
 
 echo ========================================
@@ -68,5 +68,15 @@ echo Launching Forge...
 echo ========================================
 echo.
 
-REM Execute
-!CMD!
+REM Execute - use webui-user.bat if available, otherwise venv\Scripts\python.exe
+if exist "webui-user.bat" (
+    REM webui-user.bat handles venv activation
+    call webui-user.bat !FLAGS!
+) else if exist "venv\Scripts\python.exe" (
+    REM Use venv python directly
+    venv\Scripts\python.exe webui.py !FLAGS!
+) else (
+    echo ERROR: Neither webui-user.bat nor venv\Scripts\python.exe found!
+    echo Please run from Forge root directory with a valid venv.
+    exit /b 1
+)

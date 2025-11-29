@@ -67,14 +67,26 @@ cleanup() {
 # Trap Ctrl+C and other termination signals
 trap cleanup SIGINT SIGTERM
 
-# Build full command
+# Build flags
 # Note: --deforum-api and --deforum-run-tuning are required for tuning tab
-CMD="python webui.py $OPT_FLAGS --deforum-api --deforum-run-tuning $EXTRA_ARGS"
+FLAGS="$OPT_FLAGS --deforum-api --deforum-run-tuning $EXTRA_ARGS"
 
 echo -e "${GREEN}Launching Forge...${NC}"
 echo ""
 
-# Execute
-eval $CMD &
-WEBUI_PID=$!
-wait $WEBUI_PID
+# Execute - use webui.sh if available, otherwise venv/bin/python
+if [ -f "webui.sh" ]; then
+    # webui.sh handles venv activation
+    ./webui.sh $FLAGS &
+    WEBUI_PID=$!
+    wait $WEBUI_PID
+elif [ -f "venv/bin/python" ]; then
+    # Use venv python directly
+    ./venv/bin/python webui.py $FLAGS &
+    WEBUI_PID=$!
+    wait $WEBUI_PID
+else
+    echo -e "${RED}Error: Neither webui.sh nor venv/bin/python found!${NC}"
+    echo "Please run from Forge root directory with a valid venv."
+    exit 1
+fi

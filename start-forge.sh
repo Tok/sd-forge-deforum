@@ -51,18 +51,18 @@ if [ "$USE_OPTIMIZATIONS" = true ]; then
     echo -e "  ${BLUE}--cuda-stream${NC}       CUDA stream optimization"
     echo ""
 
-    CMD="python webui.py --sage --fast-fp16 --cuda-malloc --cuda-stream"
+    FLAGS="--sage --fast-fp16 --cuda-malloc --cuda-stream"
 else
     echo -e "${BLUE}Starting without optimizations${NC}"
     echo ""
-    CMD="python webui.py"
+    FLAGS=""
 fi
 
 # Add extra args
 if [ -n "$EXTRA_ARGS" ]; then
     echo -e "${BLUE}Extra flags:${NC} $EXTRA_ARGS"
     echo ""
-    CMD="$CMD $EXTRA_ARGS"
+    FLAGS="$FLAGS $EXTRA_ARGS"
 fi
 
 echo -e "${CYAN}========================================${NC}"
@@ -80,7 +80,19 @@ cleanup() {
 
 trap cleanup SIGINT SIGTERM
 
-# Execute
-eval $CMD &
-WEBUI_PID=$!
-wait $WEBUI_PID
+# Execute - use webui.sh if available, otherwise venv/bin/python
+if [ -f "webui.sh" ]; then
+    # webui.sh handles venv activation
+    ./webui.sh $FLAGS &
+    WEBUI_PID=$!
+    wait $WEBUI_PID
+elif [ -f "venv/bin/python" ]; then
+    # Use venv python directly
+    ./venv/bin/python webui.py $FLAGS &
+    WEBUI_PID=$!
+    wait $WEBUI_PID
+else
+    echo -e "${RED}Error: Neither webui.sh nor venv/bin/python found!${NC}"
+    echo "Please run from Forge root directory with a valid venv."
+    exit 1
+fi
