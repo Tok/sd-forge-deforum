@@ -214,12 +214,24 @@ do_prepare() {
     # Step 2: Install SageAttention (now that torch is available)
     echo -e "${YELLOW}Step 2/3: Installing SageAttention...${NC}"
     echo -e "${BLUE}Using --no-build-isolation to access torch during build${NC}"
+
+    # Try to install SageAttention, but don't fail if CUDA toolkit missing
     if [ -f "venv/bin/pip" ]; then
-        ./venv/bin/pip install --no-build-isolation sageattention
+        if ./venv/bin/pip install --no-build-isolation sageattention 2>/dev/null; then
+            echo -e "${GREEN}✓ SageAttention installed${NC}"
+        else
+            echo -e "${YELLOW}⚠ SageAttention install failed (CUDA toolkit required for compilation)${NC}"
+            echo -e "${YELLOW}  This is optional - you can still use other optimizations${NC}"
+            echo -e "${YELLOW}  To use --sage flag, install CUDA toolkit and run: pip install sageattention${NC}"
+        fi
     else
-        pip install --no-build-isolation sageattention
+        if pip install --no-build-isolation sageattention 2>/dev/null; then
+            echo -e "${GREEN}✓ SageAttention installed${NC}"
+        else
+            echo -e "${YELLOW}⚠ SageAttention install failed (CUDA toolkit required)${NC}"
+            echo -e "${YELLOW}  This is optional - continuing without it${NC}"
+        fi
     fi
-    echo -e "${GREEN}✓ SageAttention installed${NC}"
     echo ""
 
     # Step 3: Install Deforum dependencies
