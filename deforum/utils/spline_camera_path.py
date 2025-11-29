@@ -531,7 +531,7 @@ def _normalize_angle_delta(delta: float) -> float:
 
 
 def _print_camera_path_analysis(delta_analysis: Dict[str, List[float]], camera_path: List[CameraPoint]):
-    """Print translation/rotation ratio analysis to console.
+    """Print comprehensive translation/rotation analysis to console.
 
     For circular orbit paths, the expected ratio is: rot_y / trans_x ≈ 57.3 / radius
     - radius=100: expect ~0.57
@@ -542,13 +542,34 @@ def _print_camera_path_analysis(delta_analysis: Dict[str, List[float]], camera_p
         delta_analysis: Dict of delta lists for each axis
         camera_path: Original camera path for frame count
     """
-    # Calculate average absolute deltas (ignore direction for ratio calc)
-    avg_trans_x = np.mean(np.abs(delta_analysis['translation_x']))
-    avg_trans_y = np.mean(np.abs(delta_analysis['translation_y']))
-    avg_trans_z = np.mean(np.abs(delta_analysis['translation_z']))
-    avg_rot_x = np.mean(np.abs(delta_analysis['rotation_x']))
-    avg_rot_y = np.mean(np.abs(delta_analysis['rotation_y']))
-    avg_rot_z = np.mean(np.abs(delta_analysis['rotation_z']))
+    # Convert to numpy arrays for easier stats
+    tx = np.abs(delta_analysis['translation_x'])
+    ty = np.abs(delta_analysis['translation_y'])
+    tz = np.abs(delta_analysis['translation_z'])
+    rx = np.abs(delta_analysis['rotation_x'])
+    ry = np.abs(delta_analysis['rotation_y'])
+    rz = np.abs(delta_analysis['rotation_z'])
+
+    # Calculate comprehensive statistics
+    # Mean (average)
+    avg_trans_x, avg_trans_y, avg_trans_z = np.mean(tx), np.mean(ty), np.mean(tz)
+    avg_rot_x, avg_rot_y, avg_rot_z = np.mean(rx), np.mean(ry), np.mean(rz)
+
+    # Median (middle value, more robust to outliers)
+    med_trans_x, med_trans_y, med_trans_z = np.median(tx), np.median(ty), np.median(tz)
+    med_rot_x, med_rot_y, med_rot_z = np.median(rx), np.median(ry), np.median(rz)
+
+    # Max (peak movement)
+    max_trans_x, max_trans_y, max_trans_z = np.max(tx), np.max(ty), np.max(tz)
+    max_rot_x, max_rot_y, max_rot_z = np.max(rx), np.max(ry), np.max(rz)
+
+    # Standard deviation (variability indicator)
+    std_trans_x, std_trans_y, std_trans_z = np.std(tx), np.std(ty), np.std(tz)
+    std_rot_x, std_rot_y, std_rot_z = np.std(rx), np.std(ry), np.std(rz)
+
+    # Total cumulative movement
+    total_trans = np.sum(tx) + np.sum(ty) + np.sum(tz)
+    total_rot = np.sum(rx) + np.sum(ry) + np.sum(rz)
 
     # Calculate ratios (avoid division by zero)
     def safe_ratio(a, b):
@@ -566,14 +587,34 @@ def _print_camera_path_analysis(delta_analysis: Dict[str, List[float]], camera_p
     chart_emoji = emoji_if_enabled('📊')
     if chart_emoji:
         chart_emoji += " "
+
     log_utils.info(f"{chart_emoji}Camera Path Analysis:", log_utils.BLUE)
     log_utils.info(f"   Frames: {len(camera_path)}", log_utils.BLUE)
-    log_utils.info(f"   Avg Translation Deltas: X={avg_trans_x:.3f}, Y={avg_trans_y:.3f}, Z={avg_trans_z:.3f}", log_utils.BLUE)
-    log_utils.info(f"   Avg Rotation Deltas: X={avg_rot_x:.3f}°, Y={avg_rot_y:.3f}°, Z={avg_rot_z:.3f}°", log_utils.BLUE)
+    log_utils.info("", log_utils.BLUE)
+
+    # Translation statistics
+    log_utils.info("   Translation Deltas (per frame):", log_utils.BLUE)
+    log_utils.info(f"      Mean:   X={avg_trans_x:6.3f}  Y={avg_trans_y:6.3f}  Z={avg_trans_z:6.3f}", log_utils.BLUE)
+    log_utils.info(f"      Median: X={med_trans_x:6.3f}  Y={med_trans_y:6.3f}  Z={med_trans_z:6.3f}", log_utils.BLUE)
+    log_utils.info(f"      Max:    X={max_trans_x:6.3f}  Y={max_trans_y:6.3f}  Z={max_trans_z:6.3f}", log_utils.BLUE)
+    log_utils.info(f"      StdDev: X={std_trans_x:6.3f}  Y={std_trans_y:6.3f}  Z={std_trans_z:6.3f}", log_utils.BLUE)
+    log_utils.info(f"      Total Distance: {total_trans:.1f} units", log_utils.BLUE)
+    log_utils.info("", log_utils.BLUE)
+
+    # Rotation statistics
+    log_utils.info("   Rotation Deltas (per frame):", log_utils.BLUE)
+    log_utils.info(f"      Mean:   X={avg_rot_x:6.3f}°  Y={avg_rot_y:6.3f}°  Z={avg_rot_z:6.3f}°", log_utils.BLUE)
+    log_utils.info(f"      Median: X={med_rot_x:6.3f}°  Y={med_rot_y:6.3f}°  Z={med_rot_z:6.3f}°", log_utils.BLUE)
+    log_utils.info(f"      Max:    X={max_rot_x:6.3f}°  Y={max_rot_y:6.3f}°  Z={max_rot_z:6.3f}°", log_utils.BLUE)
+    log_utils.info(f"      StdDev: X={std_rot_x:6.3f}°  Y={std_rot_y:6.3f}°  Z={std_rot_z:6.3f}°", log_utils.BLUE)
+    log_utils.info(f"      Total Rotation: {total_rot:.1f}°", log_utils.BLUE)
+    log_utils.info("", log_utils.BLUE)
+
+    # Ratios and orbit estimation
     log_utils.info("   Translation/Rotation Ratios:", log_utils.BLUE)
     log_utils.info(f"      rot_y / trans_x = {ratio_y_to_x:.2f} (estimated orbit radius: ~{estimated_radius:.0f})", log_utils.BLUE)
     log_utils.info(f"      rot_x / trans_y = {ratio_x_to_y:.2f} (vertical tilt)", log_utils.BLUE)
-    log_utils.info(f"      rot_z / trans_z = {ratio_z_to_z:.2f} (roll)", log_utils.BLUE)
+    log_utils.info(f"      rot_z / trans_z = {ratio_z_to_z:.2f} (roll - 0.0 = stabilized)", log_utils.BLUE)
 
 
 def camera_path_to_schedules(
