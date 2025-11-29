@@ -185,16 +185,28 @@ do_prepare() {
 
     cd "$FORGE_DIR"
 
-    # Step 1: Create venv if needed and install PyTorch
+    # Step 1: Install PyTorch via launch.py (doesn't start UI, just installs deps)
     echo -e "${YELLOW}Step 1/3: Installing PyTorch via Forge...${NC}"
-    if [ -f "webui.sh" ]; then
+    echo -e "${BLUE}This will install PyTorch and dependencies (may take a few minutes)${NC}"
+
+    # Use launch.py which installs dependencies without starting the UI
+    if [ -f "venv/bin/python" ]; then
+        ./venv/bin/python launch.py --skip-torch-cuda-test --exit
+    elif [ -f "webui.sh" ]; then
+        # Create venv if it doesn't exist
         ./webui.sh --exit
-    elif [ -f "venv/bin/python" ]; then
-        ./venv/bin/python webui.py --exit
     else
-        echo -e "${RED}Error: No launcher found (webui.sh or venv/bin/python)${NC}"
+        echo -e "${RED}Error: No Python found${NC}"
         exit 1
     fi
+
+    # Verify PyTorch is now installed
+    if ! ./venv/bin/python -c "import torch" 2>/dev/null; then
+        echo -e "${RED}Error: PyTorch not installed after Forge launch${NC}"
+        echo -e "${YELLOW}You may need to run Forge manually once to complete setup${NC}"
+        exit 1
+    fi
+
     echo -e "${GREEN}✓ PyTorch installed${NC}"
     echo ""
 
