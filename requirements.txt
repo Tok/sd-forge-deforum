@@ -8,8 +8,8 @@ rich
 gdown
 easydict
 git+https://github.com/huggingface/diffusers.git
-transformers>=4.36.0,<4.46.0
-accelerate>=0.25.0,<0.31.0
+transformers>=4.36.0,<5.0.0
+accelerate>=0.25.0,<2.0.0
 
 # Audio sync dependencies
 librosa>=0.10.0
