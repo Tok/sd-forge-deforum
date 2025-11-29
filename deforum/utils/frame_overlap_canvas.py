@@ -211,8 +211,13 @@ def create_canvas_html(
         translation_amplify: Amplification factor for translation visibility (default: 15.0).
                             Higher values = more visible translation in orbital camera paths.
     """
+    from deforum.utils.system.logging import get_logger
+    logger = get_logger()
+
     if not metrics_list:
         return '<div style="color: #C8C8DC; padding: 20px;">No metrics to display</div>'
+
+    logger.debug(f"create_canvas_html: metrics_list has {len(metrics_list)} frames")
 
     # Check if there's any actual camera movement (check consecutive frame differences)
     has_movement = any(
@@ -232,6 +237,9 @@ def create_canvas_html(
     viewport_width = metrics_list[0].curr_viewport_rect.width
     viewport_height = metrics_list[0].curr_viewport_rect.height
     padding_factor = 1.8
+
+    logger.debug(f"create_canvas_html: Serialized {len(frames_data)} frames for visualization")
+    logger.debug(f"create_canvas_html: Slider will have max={len(metrics_list) - 1} (frames 0-{len(metrics_list) - 1})")
 
     # Create complete standalone HTML page
     standalone_html = f'''<!DOCTYPE html>
