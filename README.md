@@ -9,7 +9,7 @@
 **Other Forge versions:** May work but remain untested
 
 Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum),
-completely refactored and modernized to work with Flux.1, Wan 2.1/2.2 AI Video Generation, and advanced workflow automation.
+completely refactored and modernized to work with **Flux.1/2**, **Lumina 2.0**, **Z-Image-Turbo**, **Wan 2.1/2.2 AI Video Generation**, and advanced workflow automation.
 
 ## ⚡ Major New Features
 
@@ -394,6 +394,85 @@ hf download neta-art/Neta-Lumina --local-dir models/Stable-diffusion/Lumina
 - Text Encoder: Gemma-2-2B (vs Flux's T5-XXL)
 - VAE: FLUX-VAE-16CH (shared with Flux)
 - License: Apache-2.0 (fully open source)
+
+### Run Flux 2 on Forge Neo (GGUF Incompatible)
+
+**❌ NOT WORKING** - The available GGUF conversion is incompatible with Forge Neo.
+
+Flux 2 is Black Forest Labs' latest model with:
+- **8 double-stream blocks + 48 single-stream blocks** (vs Flux 1's 19/38)
+- **Single text encoder**: Mistral Small 3.1 (vs Flux 1's dual T5-XXL + CLIP-L)
+- **Same quality, faster inference** due to reduced blocks
+
+**Why It Doesn't Work:**
+
+The GGUF conversion at `city96/FLUX.2-dev-gguf` uses incorrect architecture parameters:
+
+| Parameter | Flux 2 Standard | GGUF Conversion | Result |
+|-----------|----------------|-----------------|--------|
+| `in_channels` | 64 | 32 | ❌ Mismatch |
+| `patch_size` | 1 | 2 | ❌ Mismatch |
+| `self.in_channels` | 64 | 128 | ❌ Weight shape wrong |
+
+**Error:**
+```
+RuntimeError: mat1 and mat2 shapes cannot be multiplied (3600x64 and 128x6144)
+```
+
+**Root Cause:**
+- Expected input features: 64 (from VAE latent)
+- GGUF weight matrix expects: 128 (from `32 * 2 * 2`)
+- These dimensions are fundamentally incompatible
+
+**What We've Tried:**
+1. ✅ Added `vec_in_dim` fallback (fixes model loading)
+2. ✅ Auto-detection of Flux 2 vs Flux 1 (works correctly)
+3. ❌ Cannot fix weight shape mismatch (requires re-conversion)
+
+**Possible Solutions:**
+1. **Wait for correct GGUF conversion** with `in_channels=64, patch_size=1`
+2. **Use non-quantized Flux 2** if Forge Neo adds native support
+3. **Request re-conversion** from GGUF maintainer with correct parameters
+
+**Branch:** `flux2-experimental` - Documents findings and adds diagnostic logging
+
+**Compatibility Patch Status:**
+- Works correctly for Flux 1 GGUF models
+- Detects Flux 2 and logs architecture parameters
+- Cannot fix incompatible weight shapes in GGUF file
+
+**For GGUF Maintainers:**
+If re-converting Flux 2 to GGUF, please use:
+- `in_channels=64` (not 32)
+- `patch_size=1` (not 2)
+- Reference: [Flux 2 Architecture](https://huggingface.co/blog/flux-2)
+
+### Run Z-Image-Turbo on Forge Neo (Ultra-Fast)
+
+**⚠️ Forge Neo Only** - Z-Image-Turbo is only supported in [Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo).
+
+Z-Image-Turbo is Tongyi MAI's ultra-fast image generation model with:
+- **3.8B parameters** (smaller than Flux, larger than Lumina)
+- **BFloat16 precision** - fast inference with good quality
+- **Optimized for speed** - designed for rapid generation
+
+**Installation:**
+```bash
+# Download from Hugging Face (see download guide)
+# https://github.com/Haoming02/sd-webui-forge-classic/wiki/Download-Models
+cd /path/to/forge-neo/models/Stable-diffusion
+# Follow Forge Neo's model download guide for Z-Image-Turbo
+```
+
+**Deforum Compatibility:**
+- ✅ Works with current dev branch
+- ✅ All render modes supported
+- ⚠️ **Tuning needed** - optimal parameters still being discovered
+- ⚠️ Different architecture may require adjusted CFG/steps
+
+**Resources:**
+- Model: [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)
+- Download Guide: [Forge Neo Wiki](https://github.com/Haoming02/sd-webui-forge-classic/wiki/Download-Models)
 
 ## Installation
 
