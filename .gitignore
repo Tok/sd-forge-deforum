@@ -84,3 +84,4 @@ serverlog.txt
 
 # Vendored dependencies
 .vendored/
+venv-backup-*/

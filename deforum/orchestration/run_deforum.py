@@ -86,27 +86,13 @@ def run_deforum(*args):
         timestring = args_dict.get('resume_timestring', '').strip()
         
         if timestring:
-            # Try multiple possible paths for settings file
-            possible_paths = [
-                # Standard Deforum output paths
-                f"outputs/deforum/Deforum_{timestring}/{timestring}_settings.txt",
-                f"outputs/deforum/{timestring}/{timestring}_settings.txt",
-                # Legacy/alternative paths
-                os.path.join(outdir, f"{timestring}_settings.txt"),
-                f"{outdir}/{timestring}/{timestring}_settings.txt",
-                f"output/{timestring}/{timestring}_settings.txt",
-                f"outputs/{timestring}/{timestring}_settings.txt",
-            ]
-            
+            from deforum.utils.output_paths import OutputPaths
             logger.info(f"Resume mode: Searching for settings file for timestring '{timestring}'...", emoji='refresh')
-            settings_file = None
-            for path in possible_paths:
-                if os.path.exists(path):
-                    settings_file = path
-                    logger.debug(f"  {emoji_if_enabled('✓')} Found: {path}")
-                    break
-            
+            settings_file_path = OutputPaths.find_settings_file(timestring, outdir)
+            settings_file = str(settings_file_path) if settings_file_path else None
+
             if settings_file:
+                logger.debug(f"  {emoji_if_enabled('✓')} Found: {settings_file}")
                 try:
                     with open(settings_file, 'r') as f:
                         saved_settings = json.load(f)

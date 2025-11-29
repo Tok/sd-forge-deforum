@@ -50,13 +50,15 @@ class QwenOrchestrator:
     PROB_CAMERA_SPIN_360 = 0.10  # Spin camera 360° for no reason
     PROB_CRF_51 = 0.05  # Invalid CRF value → black screen
 
-    def __init__(self, output_dir: str = "outputs/deforum"):
+    def __init__(self, output_dir: str | None = None):
         """Initialize orchestrator.
 
         Args:
             output_dir: Where to save generated files (batch subdirs will be created here)
+                       If None, uses OutputPaths.DEFORUM default
         """
-        self.output_dir = Path(output_dir)
+        from deforum.utils.output_paths import OutputPaths
+        self.output_dir = Path(output_dir) if output_dir else Path(OutputPaths.DEFORUM)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.slop_log: List[str] = []

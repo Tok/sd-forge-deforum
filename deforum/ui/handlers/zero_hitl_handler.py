@@ -52,11 +52,12 @@ def handle_slop_it_click(
         logger.info("=" * 60)
 
         # Execute orchestration
+        from deforum.utils.output_paths import OutputPaths
         result = orchestrate_slop(
             duration_seconds=duration,
             theme=theme.strip() if theme else "",
             random_seed=int(seed) if seed != -1 else -1,
-            output_dir="outputs/deforum"
+            output_dir=OutputPaths.DEFORUM
         )
 
         # Format results for UI

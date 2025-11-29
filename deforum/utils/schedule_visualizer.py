@@ -374,7 +374,7 @@ def visualize_schedules(
             z=[z_coords[idx], z_coords[idx] + forward_z],
             mode='lines',
             line=dict(color=arrow_color, width=arrow_width),
-            hovertemplate=f'<b>{'KEYFRAME' if is_keyframe else 'Frame'} {idx}</b><extra></extra>',
+            hovertemplate=f"<b>{'KEYFRAME' if is_keyframe else 'Frame'} {idx}</b><extra></extra>",
             showlegend=False,
             hoverinfo='text'
         ))

@@ -841,7 +841,7 @@ def DeforumArgs():
             "label": "Batch name",
             "type": "textbox",
             "value": "Deforum_{timestring}",
-            "info": "output images will be placed in a folder with this name ({timestring} token will be replaced) inside the outputs/deforum folder. Supports params placeholders. e.g {seed}, {w}, {h}, {prompts}"
+            "info": "output images will be placed in a folder with this name ({timestring} token will be replaced) inside the output/deforum folder. Supports params placeholders. e.g {seed}, {w}, {h}, {prompts}"
         },
         "seed_behavior": {
             "label": "Seed behavior",
