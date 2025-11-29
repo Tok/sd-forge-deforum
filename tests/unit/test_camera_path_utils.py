@@ -6,10 +6,19 @@ from typing import List
 
 from deforum.utils.spline_camera_path import (
     CameraPoint,
+    SplineConfig,
     generate_rotate_around_path,
     camera_path_to_schedules,
     _calculate_frames_per_loop,
     _generate_orbital_positions,
+    generate_control_points_circle,
+    generate_control_points_figure_eight,
+    catmull_rom_spline,
+    calculate_tangent_vectors,
+    tangent_to_rotation,
+    generate_camera_path,
+    generate_street_path,
+    _normalize_angle_delta,
 )
 
 
@@ -273,3 +282,209 @@ class TestCameraPoint:
 
         with pytest.raises(AttributeError):
             point.x = 5.0  # Should raise error (frozen dataclass)
+
+
+class TestControlPoints:
+    """Tests for control point generation functions."""
+
+    def test_generate_control_points_circle(self):
+        """Should generate circular control points."""
+        points = generate_control_points_circle(radius=10.0, num_points=4)
+
+        assert len(points) == 4
+        # All points should be on a circle of radius 10
+        for point in points:
+            distance = np.sqrt(point[0]**2 + point[2]**2)
+            assert distance == pytest.approx(10.0, abs=0.01)
+            # Y should be 0 for circle
+            assert point[1] == pytest.approx(0.0, abs=0.01)
+
+    def test_generate_control_points_figure_eight(self):
+        """Should generate figure-eight control points."""
+        points = generate_control_points_figure_eight(num_points=8, scale=5.0)
+
+        assert len(points) == 8
+        # Figure-eight should have varying X and Z
+        x_values = [p[0] for p in points]
+        z_values = [p[2] for p in points]
+        assert max(x_values) - min(x_values) > 0.1
+        assert max(z_values) - min(z_values) > 0.1
+
+
+class TestSplineGeneration:
+    """Tests for spline generation functions."""
+
+    def test_catmull_rom_spline_basic(self):
+        """Should generate spline from control points."""
+        control_points = np.array([
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [10.0, 10.0, 0.0],
+            [0.0, 10.0, 0.0]
+        ])
+
+        spline = catmull_rom_spline(control_points, num_samples=20)
+
+        assert len(spline) == 20
+        assert spline.shape == (20, 3)
+        # Spline should pass through or near control points
+        assert np.linalg.norm(spline[0] - control_points[0]) < 1.0
+
+    def test_catmull_rom_spline_open_loop(self):
+        """Should generate open loop spline."""
+        control_points = np.array([
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [5.0, 10.0, 0.0]
+        ])
+
+        spline = catmull_rom_spline(control_points, num_samples=15, closed=False)
+
+        assert len(spline) == 15
+        # Open loop: first and last points should differ
+        assert np.linalg.norm(spline[0] - spline[-1]) > 1.0
+
+
+class TestTangentFunctions:
+    """Tests for tangent vector and rotation functions."""
+
+    def test_calculate_tangent_vectors(self):
+        """Should calculate tangent vectors from spline points."""
+        spline_points = np.array([
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0]
+        ])
+
+        tangents = calculate_tangent_vectors(spline_points)
+
+        assert tangents.shape == spline_points.shape
+        # For straight line in X, tangents should point in X direction
+        for tangent in tangents:
+            assert tangent[0] > 0  # Pointing in positive X
+            assert abs(tangent[1]) < 0.1  # Minimal Y component
+            assert abs(tangent[2]) < 0.1  # Minimal Z component
+
+    def test_tangent_to_rotation_forward(self):
+        """Should convert forward tangent to rotation."""
+        # Forward tangent (along +X axis)
+        tangent = np.array([1.0, 0.0, 0.0])
+
+        rot_x, rot_y, rot_z = tangent_to_rotation(tangent)
+
+        # Forward motion should have minimal rotation
+        assert abs(rot_x) < 1.0
+        assert abs(rot_y - 90.0) < 1.0  # Looking forward (90° in Y)
+        assert abs(rot_z) < 1.0
+
+    def test_tangent_to_rotation_upward(self):
+        """Should convert upward tangent to rotation."""
+        # Upward tangent (along +Y axis)
+        tangent = np.array([0.0, 1.0, 0.0])
+
+        rot_x, rot_y, rot_z = tangent_to_rotation(tangent)
+
+        # Upward motion should have pitch
+        assert abs(rot_x + 90.0) < 5.0  # Pitched up (-90°)
+
+
+class TestGenerateCameraPath:
+    """Tests for generate_camera_path function."""
+
+    def test_generate_camera_path_basic(self):
+        """Should generate camera path from control points."""
+        control_points = generate_control_points_circle(num_points=4, radius=5.0)
+        config = SplineConfig(
+            num_frames=20,
+            num_control_points=4,
+            spline_type="catmull_rom",
+            closed_loop=False,
+            smoothness=0.5
+        )
+
+        path = generate_camera_path(
+            config=config,
+            control_points=control_points
+        )
+
+        assert len(path) == 20
+        assert all(isinstance(p, CameraPoint) for p in path)
+
+    def test_generate_camera_path_figure_eight(self):
+        """Should generate figure-eight camera path."""
+        control_points = generate_control_points_figure_eight(num_points=8, scale=10.0)
+        config = SplineConfig(
+            num_frames=40,
+            num_control_points=8,
+            spline_type="catmull_rom",
+            closed_loop=False,
+            smoothness=0.5
+        )
+
+        path = generate_camera_path(
+            config=config,
+            control_points=control_points
+        )
+
+        assert len(path) == 40
+        # Path should follow figure-eight pattern
+        x_values = [p.x for p in path]
+        assert max(x_values) - min(x_values) > 1.0
+
+
+class TestGenerateStreetPath:
+    """Tests for generate_street_path function."""
+
+    def test_generate_street_path_basic(self):
+        """Should generate street path."""
+        path = generate_street_path(num_frames=30)
+
+        assert len(path) == 30
+        assert all(isinstance(p, CameraPoint) for p in path)
+
+    def test_generate_street_path_with_params(self):
+        """Should generate street path with custom parameters."""
+        path = generate_street_path(
+            num_frames=20,
+            street_length=150.0,
+            center_y=2.0
+        )
+
+        assert len(path) == 20
+        # Path should have varying positions
+        x_values = [p.x for p in path]
+        z_values = [p.z for p in path]
+        assert max(x_values) - min(x_values) > 0.1
+        assert max(z_values) - min(z_values) > 0.1
+
+
+class TestNormalizeAngleDelta:
+    """Tests for _normalize_angle_delta helper function."""
+
+    def test_normalize_small_angle(self):
+        """Should not modify small angles."""
+        assert _normalize_angle_delta(10.0) == 10.0
+        assert _normalize_angle_delta(-10.0) == -10.0
+        assert _normalize_angle_delta(0.0) == 0.0
+
+    def test_normalize_large_positive_angle(self):
+        """Should normalize large positive angles."""
+        # 200° should become -160°
+        assert _normalize_angle_delta(200.0) == pytest.approx(-160.0, abs=0.01)
+        # 350° should become -10°
+        assert _normalize_angle_delta(350.0) == pytest.approx(-10.0, abs=0.01)
+
+    def test_normalize_large_negative_angle(self):
+        """Should normalize large negative angles."""
+        # -200° should become 160°
+        assert _normalize_angle_delta(-200.0) == pytest.approx(160.0, abs=0.01)
+        # -350° should become 10°
+        assert _normalize_angle_delta(-350.0) == pytest.approx(10.0, abs=0.01)
+
+    def test_normalize_full_rotation(self):
+        """Should handle full rotations."""
+        # 360° should become 0°
+        assert _normalize_angle_delta(360.0) == pytest.approx(0.0, abs=0.01)
+        # -360° should become 0°
+        assert _normalize_angle_delta(-360.0) == pytest.approx(0.0, abs=0.01)
