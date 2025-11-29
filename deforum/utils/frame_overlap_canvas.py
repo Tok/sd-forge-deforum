@@ -18,14 +18,15 @@ from deforum.utils.frame_overlap_simulator import (
 )
 
 
-# Deforum purple/slopcore dark theme colors
-COLOR_GOOD = '#9664FF'
-COLOR_WARNING = '#FF9664'
-COLOR_PROBLEM = '#FF5050'
-COLOR_VIEWPORT = '#B48CFF'
-COLOR_BG = '#14141E'
-COLOR_GRID = '#3C3C50'
-COLOR_TEXT = '#C8C8DC'
+# Authentic BB0 Slopcore colors (from BLANK BANSHEE 0 album cover)
+# See docs/SLOPCORE.md for full palette documentation
+COLOR_GOOD = '#5606FF'       # BB0_VOID - Deep purple-blue (good preservation)
+COLOR_WARNING = '#3757FF'    # BB0_MIDNIGHT - Mid blue (warning)
+COLOR_PROBLEM = '#FF1493'    # BB0_GLITCH - Neon pink (problem)
+COLOR_VIEWPORT = '#17A7FE'   # BB0_ZENITH - Cyan (current viewport)
+COLOR_BG = '#0F172A'         # Tailwind slate-900 (dark background)
+COLOR_GRID = '#334155'       # Tailwind slate-700 (grid)
+COLOR_TEXT = '#CBD5E1'       # Tailwind slate-300 (light text)
 
 
 def get_frame_color(metrics: FrameMetrics) -> str:

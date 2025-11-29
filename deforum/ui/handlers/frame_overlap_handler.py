@@ -102,6 +102,23 @@ def update_frame_overlap_visualization(
         rx_deltas = rx_series.tolist()
         ry_deltas = ry_series.tolist()
 
+        # IMPORTANT: Frame 0 often has a large initial rotation (e.g., -90°) that represents
+        # the camera's starting orientation to face center, NOT a per-frame movement delta.
+        # For frame overlap visualization, we need actual per-frame movements, so we:
+        # 1. Zero out frame 0's rotation (it's just initial orientation, not movement)
+        # 2. Use subsequent frames' rotations as actual movement deltas
+        # This prevents the "rotating like crazy" issue in the wormtrail visualization.
+        if len(rx_deltas) > 0:
+            rx_deltas[0] = 0.0
+        if len(ry_deltas) > 0:
+            ry_deltas[0] = 0.0
+
+        # Similarly, zero out frame 0's translation (start from rest)
+        if len(tx_deltas) > 0:
+            tx_deltas[0] = 0.0
+        if len(ty_deltas) > 0:
+            ty_deltas[0] = 0.0
+
         # For 2D visualization, combine 3D rotations into effective 2D rotation
         # Use pythagorean combination of rotation_x (pitch) and rotation_y (yaw)
         # This approximates the apparent rotation seen in a 2D top-down view

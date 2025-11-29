@@ -295,50 +295,16 @@ def visualize_schedules(
     # Create 3D plot - AUTHENTIC BB0 SLOPCORE AESTHETIC
     # Colors from BLANK BANSHEE 0 album cover (pipetted from source)
     # See docs/SLOPCORE.md for full palette documentation
+    # Using solid colors from the palette (not gradient-over-time)
     fig = go.Figure()
 
-    # BB0 Slopcore gradient palette (authentic, not Tailwind approximation)
-    BB0_VOID = '#5606FF'      # Deep purple-blue (album top)
-    BB0_DUSK = '#4C21FF'      # Purple-blue
-    BB0_TWILIGHT = '#413CFF'  # Blue-purple
-    BB0_MIDNIGHT = '#3757FF'  # Mid blue
-    BB0_DAWN = '#2C71FE'      # Blue
-    BB0_HORIZON = '#228CFE'   # Bright blue
-    BB0_ZENITH = '#17A7FE'    # Cyan (album bottom)
-    BB0_GLITCH = '#FF1493'    # Neon pink (the single permitted heresy)
+    # BB0 Slopcore palette - solid colors (authentic, not Tailwind approximation)
+    BB0_VOID = '#5606FF'      # Deep purple-blue (album top) - path line
+    BB0_MIDNIGHT = '#3757FF'  # Mid blue - arrows
+    BB0_ZENITH = '#17A7FE'    # Cyan (album bottom) - keyframes
+    BB0_GLITCH = '#FF1493'    # Neon pink - arrowheads, keyframe borders
 
-    # Path line - BB0 GRADIENT (authentic purple-to-cyan)
-    # Interpolate through the 7-shade palette based on frame position
-    import numpy as np
-    bb0_colors = [BB0_VOID, BB0_DUSK, BB0_TWILIGHT, BB0_MIDNIGHT, BB0_DAWN, BB0_HORIZON, BB0_ZENITH]
-
-    def hex_to_rgb(hex_color):
-        """Convert hex color to RGB tuple."""
-        h = hex_color.lstrip('#')
-        return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
-
-    def interpolate_bb0_color(t):
-        """Get color from BB0 gradient at position t (0.0-1.0)."""
-        if t <= 0:
-            return BB0_VOID
-        if t >= 1:
-            return BB0_ZENITH
-        # Map t to palette index
-        idx = t * (len(bb0_colors) - 1)
-        low_idx = int(idx)
-        high_idx = min(low_idx + 1, len(bb0_colors) - 1)
-        frac = idx - low_idx
-        # Interpolate between adjacent colors
-        r1, g1, b1 = hex_to_rgb(bb0_colors[low_idx])
-        r2, g2, b2 = hex_to_rgb(bb0_colors[high_idx])
-        r = int(r1 + (r2 - r1) * frac)
-        g = int(g1 + (g2 - g1) * frac)
-        b = int(b1 + (b2 - b1) * frac)
-        return f'rgb({r}, {g}, {b})'
-
-    # Create color array for path gradient
-    path_colors = [interpolate_bb0_color(i / max(1, num_points - 1)) for i in range(num_points)]
-
+    # Path line - solid BB0_VOID (deep purple)
     fig.add_trace(go.Scatter3d(
         x=x_coords,
         y=y_coords,
@@ -346,7 +312,7 @@ def visualize_schedules(
         mode='lines',
         name='Path',
         line=dict(
-            color=path_colors,
+            color=BB0_VOID,
             width=4,
         ),
         hoverinfo='skip',
@@ -368,9 +334,9 @@ def visualize_schedules(
             name='Keyframes',
             marker=dict(
                 size=12,
-                color=BB0_ZENITH,  # Cyan from BB0 (album bottom)
+                color=BB0_ZENITH,  # Cyan (album bottom)
                 symbol='circle',
-                line=dict(color=BB0_GLITCH, width=2),  # Neon pink border (the glitch)
+                line=dict(color=BB0_GLITCH, width=2),  # Neon pink border
                 opacity=1.0
             ),
             hovertemplate='<b>KEYFRAME %{text}</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>',
@@ -378,7 +344,7 @@ def visualize_schedules(
             showlegend=False
         ))
 
-    # Camera direction arrows - BB0 DEEP PURPLE
+    # Camera direction arrows - solid BB0_MIDNIGHT (mid blue)
     for idx in range(num_points):
         # Calculate forward direction from rotation angles (quaternion-based)
         pitch = rx_coords[idx]
@@ -394,16 +360,13 @@ def visualize_schedules(
         forward_y = forward.y * arrow_length
         forward_z = forward.z * arrow_length
 
-        # Color arrows based on position in path (matches path gradient)
-        arrow_color = interpolate_bb0_color(idx / max(1, num_points - 1))
-
         # Arrow from camera position pointing in look direction
         fig.add_trace(go.Scatter3d(
             x=[x_coords[idx], x_coords[idx] + forward_x],
             y=[y_coords[idx], y_coords[idx] + forward_y],
             z=[z_coords[idx], z_coords[idx] + forward_z],
             mode='lines',
-            line=dict(color=arrow_color, width=2),
+            line=dict(color=BB0_MIDNIGHT, width=2),
             hovertemplate=f'<b>Frame {idx}</b><extra></extra>',
             showlegend=False,
             hoverinfo='text'
