@@ -9,6 +9,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EXTENSION_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FORGE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Colors

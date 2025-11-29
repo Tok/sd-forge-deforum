@@ -512,7 +512,7 @@ This runs a complete first-time setup:
 
 **Manual SageAttention Installation (if `--prepare` fails):**
 
-Located in `scripts/`:
+Located in `shell_scripts/`:
 
 **`install-cuda-toolkit.sh` / `.bat`** - Install CUDA Toolkit (required for SageAttention)
 ```bash
@@ -553,7 +553,7 @@ Located in the extension root:
 
 ### Model Downloads
 
-Located in `scripts/`:
+Located in `shell_scripts/`:
 
 **`download-all-models.sh` / `.bat`** - Download Deforum-specific models
 ```bash
@@ -580,7 +580,7 @@ Located in `scripts/`:
 
 ### Testing
 
-Located in `scripts/`:
+Located in `shell_scripts/`:
 
 **`run-unit-tests.sh` / `.bat`** - Run unit tests
 ```bash
@@ -596,7 +596,7 @@ Located in `scripts/`:
 
 ### Tuning Lab
 
-Located in `scripts/`:
+Located in `shell_scripts/`:
 
 **`run-tuning-lab.sh` / `.bat`** - Launch Forge with tuning tab
 ```bash

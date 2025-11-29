@@ -20,6 +20,7 @@ NC='\033[0m' # No Color
 
 # Get script directory (extension root)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EXTENSION_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$SCRIPT_DIR"
 
 # Navigate to Forge root (two levels up)

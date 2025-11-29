@@ -11,7 +11,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FORGE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+EXTENSION_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+FORGE_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # Colors
 RED='\033[0;31m'
@@ -28,12 +29,18 @@ echo ""
 
 # Check if already installed
 if "$FORGE_DIR/venv/bin/python" -c "import sageattention" 2>/dev/null; then
-    SAGE_VERSION=$("$FORGE_DIR/venv/bin/python" -c "import sageattention; print(sageattention.__version__)" 2>/dev/null || echo "unknown")
-    echo -e "${GREEN}✓ SageAttention already installed (version $SAGE_VERSION)${NC}"
+    echo -e "${GREEN}✓ SageAttention already installed${NC}"
     exit 0
 fi
 
 echo -e "${BLUE}Prerequisites check:${NC}"
+
+# Set CUDA_HOME if it exists but not exported yet
+if [ -z "$CUDA_HOME" ] && [ -d "/usr/local/cuda-12.6" ]; then
+    export CUDA_HOME=/usr/local/cuda-12.6
+    export PATH=$CUDA_HOME/bin:$PATH
+    export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+fi
 
 # Check PyTorch
 if ! "$FORGE_DIR/venv/bin/python" -c "import torch" 2>/dev/null; then
@@ -72,6 +79,13 @@ fi
 
 echo ""
 echo -e "${CYAN}Installing SageAttention...${NC}"
+
+# Step 1: Install build dependencies
+echo -e "${BLUE}Step 1/2: Installing build dependencies (wheel, ninja)...${NC}"
+"$FORGE_DIR/venv/bin/pip" install wheel ninja -q
+
+# Step 2: Compile SageAttention
+echo -e "${BLUE}Step 2/2: Compiling SageAttention...${NC}"
 echo -e "${BLUE}Using --no-build-isolation to access torch during build${NC}"
 echo -e "${YELLOW}This may take 5-10 minutes to compile...${NC}"
 echo ""
@@ -82,13 +96,9 @@ cd "$FORGE_DIR"
 if "$FORGE_DIR/venv/bin/pip" install --no-build-isolation sageattention; then
     echo ""
     echo -e "${GREEN}✓ SageAttention installed successfully!${NC}"
-
-    # Verify
-    SAGE_VERSION=$("$FORGE_DIR/venv/bin/python" -c "import sageattention; print(sageattention.__version__)")
-    echo -e "${GREEN}Version: $SAGE_VERSION${NC}"
     echo ""
     echo -e "${BLUE}You can now use --sage flag when launching Forge:${NC}"
-    echo -e "${GREEN}./start-forge.sh${NC}"
+    echo -e "${GREEN}../../start-forge.sh${NC}"
 else
     echo ""
     echo -e "${RED}✗ Installation failed${NC}"
