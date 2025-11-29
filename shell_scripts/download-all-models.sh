@@ -24,7 +24,8 @@ EXTENSION_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$SCRIPT_DIR"
 
 # Navigate to Forge root (two levels up)
-FORGE_ROOT="$(cd ../.. && pwd)"
+EXTENSION_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+FORGE_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 cd "$FORGE_ROOT"
 
 echo -e "${BLUE}Working from Forge root: $FORGE_ROOT${NC}"
@@ -91,46 +92,55 @@ fi
 echo ""
 
 # =====================================
-# 2. Flux VAE and Text Encoders
+# 2. Shared VAE (ae.safetensors)
 # =====================================
-echo -e "${BLUE}=== Flux VAE and Text Encoders ===${NC}"
+echo -e "${BLUE}=== Shared FLUX VAE ===${NC}"
+echo "This VAE is shared by Flux, Lumina, and Z-Image"
+echo ""
 
-# VAE (ae.safetensors)
 VAE_PATH="models/VAE/ae.safetensors"
 if [ -f "$VAE_PATH" ]; then
-    echo -e "${GREEN}✓ VAE already exists${NC}"
+    echo -e "${GREEN}✓ FLUX VAE already exists (shared)${NC}"
 else
-    echo -e "${YELLOW}Downloading Flux VAE (ae.safetensors)...${NC}"
+    echo -e "${YELLOW}Downloading FLUX VAE (ae.safetensors, ~320MB)...${NC}"
     huggingface-cli download black-forest-labs/FLUX.1-dev \
         ae.safetensors \
         --local-dir models/VAE \
         --resume-download
-    echo -e "${GREEN}✓ VAE downloaded${NC}"
+    echo -e "${GREEN}✓ FLUX VAE downloaded${NC}"
 fi
+echo ""
+
+# =====================================
+# 3. Flux Text Encoders
+# =====================================
+echo -e "${BLUE}=== Flux Text Encoders ===${NC}"
+echo "Required for Flux models"
+echo ""
 
 # CLIP-L text encoder
-CLIP_L_PATH="models/VAE/clip_l.safetensors"
+CLIP_L_PATH="models/text_encoder/clip_l.safetensors"
 if [ -f "$CLIP_L_PATH" ]; then
     echo -e "${GREEN}✓ CLIP-L already exists${NC}"
 else
-    echo -e "${YELLOW}Downloading CLIP-L text encoder...${NC}"
+    echo -e "${YELLOW}Downloading CLIP-L text encoder (~235MB)...${NC}"
     huggingface-cli download comfyanonymous/flux_text_encoders \
         clip_l.safetensors \
-        --local-dir models/VAE \
+        --local-dir models/text_encoder \
         --local-dir-use-symlinks False \
         --resume-download
     echo -e "${GREEN}✓ CLIP-L downloaded${NC}"
 fi
 
 # T5-XXL text encoder
-T5_PATH="models/VAE/t5xxl_fp16.safetensors"
+T5_PATH="models/text_encoder/t5xxl_fp16.safetensors"
 if [ -f "$T5_PATH" ]; then
     echo -e "${GREEN}✓ T5-XXL already exists${NC}"
 else
-    echo -e "${YELLOW}Downloading T5-XXL text encoder (fp16)...${NC}"
+    echo -e "${YELLOW}Downloading T5-XXL text encoder (fp16, ~9.2GB)...${NC}"
     huggingface-cli download comfyanonymous/flux_text_encoders \
         t5xxl_fp16.safetensors \
-        --local-dir models/VAE \
+        --local-dir models/text_encoder \
         --local-dir-use-symlinks False \
         --resume-download
     echo -e "${GREEN}✓ T5-XXL downloaded${NC}"
@@ -138,7 +148,7 @@ fi
 echo ""
 
 # =====================================
-# 3. Flux ControlNet V2
+# 4. Flux ControlNet V2
 # =====================================
 echo -e "${BLUE}=== Flux ControlNet V2 ===${NC}"
 echo "Choose which Flux ControlNet models to download:"
@@ -173,7 +183,7 @@ esac
 echo ""
 
 # =====================================
-# 4. FILM Interpolation Model
+# 5. FILM Interpolation Model
 # =====================================
 echo -e "${BLUE}=== FILM Interpolation Model ===${NC}"
 FILM_PATH="models/Deforum/film_interpolation/film_net_fp16.pt"
@@ -188,7 +198,7 @@ fi
 echo ""
 
 # =====================================
-# 5. Wan Models (HuggingFace)
+# 6. Wan Models (HuggingFace)
 # =====================================
 echo -e "${BLUE}=== Wan AI Video Models ===${NC}"
 echo "Choose which Wan models to download:"
@@ -234,7 +244,7 @@ esac
 echo ""
 
 # =====================================
-# 6. Qwen AI Prompt Enhancement Models
+# 7. Qwen AI Prompt Enhancement Models
 # =====================================
 echo -e "${BLUE}=== Qwen Prompt Enhancement Models ===${NC}"
 echo "Choose which Qwen model to download (for AI prompt enhancement):"
@@ -280,54 +290,108 @@ esac
 echo ""
 
 # =====================================
-# 7. Lumina 2.0 (Anime-Optimized)
+# 8. Lumina 2.0 (Anime-Optimized)
 # =====================================
 echo -e "${BLUE}=== Lumina 2.0 (Anime-Optimized Fine-Tune) ===${NC}"
 echo "Lumina 2.0 is a 2B parameter model with 1024x1024 native resolution"
 echo "This is the neta-art anime-optimized fine-tune of Alpha-VLLM/Lumina-Image-2.0"
 echo ""
+echo -e "${YELLOW}Dependencies: Shares FLUX VAE (models/VAE/ae.safetensors)${NC}"
+echo ""
 read -p "Download Lumina 2.0? [y/N]: " download_lumina
 if [[ $download_lumina =~ ^[Yy]$ ]]; then
-    LUMINA_PATH="models/Stable-diffusion/Lumina/neta-lumina-v1.0-all-in-one.safetensors"
-    if [ -f "$LUMINA_PATH" ]; then
-        echo -e "${GREEN}✓ Lumina 2.0 already exists${NC}"
+    # Create Lumina subdirectories
+    mkdir -p models/Stable-diffusion/Lumina/Unet
+    mkdir -p "models/Stable-diffusion/Lumina/Text Encoder"
+    mkdir -p models/Stable-diffusion/Lumina/VAE
+
+    # Download UNet
+    LUMINA_UNET_PATH="models/Stable-diffusion/Lumina/Unet/neta-lumina-v1.0.safetensors"
+    if [ -f "$LUMINA_UNET_PATH" ]; then
+        echo -e "${GREEN}✓ Lumina UNet already exists${NC}"
     else
-        echo -e "${YELLOW}Downloading Lumina 2.0 all-in-one checkpoint (~9.9GB)...${NC}"
-        echo "Repository: neta-art/Neta-Lumina"
-        mkdir -p models/Stable-diffusion/Lumina
+        echo -e "${YELLOW}Downloading Lumina UNet (~4.9GB)...${NC}"
         huggingface-cli download neta-art/Neta-Lumina \
-            neta-lumina-v1.0-all-in-one.safetensors \
-            --local-dir models/Stable-diffusion/Lumina \
+            neta-lumina-v1.0.safetensors \
+            --local-dir models/Stable-diffusion/Lumina/Unet \
             --resume-download
-        echo -e "${GREEN}✓ Lumina 2.0 downloaded${NC}"
-        echo ""
-        echo -e "${BLUE}Note:${NC} Lumina uses FLUX-VAE (16 channels) and Gemma-2-2B text encoder"
-        echo "Both are included in the all-in-one checkpoint"
+        echo -e "${GREEN}✓ Lumina UNet downloaded${NC}"
     fi
+
+    # Download Gemma-2-2B text encoder
+    GEMMA_PATH="models/Stable-diffusion/Lumina/Text Encoder/gemma_2_2b_fp16.safetensors"
+    if [ -f "$GEMMA_PATH" ]; then
+        echo -e "${GREEN}✓ Gemma-2-2B text encoder already exists${NC}"
+    else
+        echo -e "${YELLOW}Downloading Gemma-2-2B text encoder (~4.9GB)...${NC}"
+        huggingface-cli download neta-art/Neta-Lumina \
+            gemma_2_2b_fp16.safetensors \
+            --local-dir "models/Stable-diffusion/Lumina/Text Encoder" \
+            --resume-download
+        echo -e "${GREEN}✓ Gemma-2-2B downloaded${NC}"
+    fi
+
+    # Symlink or copy shared FLUX VAE
+    LUMINA_VAE_PATH="models/Stable-diffusion/Lumina/VAE/ae.safetensors"
+    if [ -f "$LUMINA_VAE_PATH" ]; then
+        echo -e "${GREEN}✓ Lumina VAE already exists${NC}"
+    else
+        if [ -f "$VAE_PATH" ]; then
+            echo -e "${YELLOW}Creating symlink to shared FLUX VAE...${NC}"
+            ln -s "../../../VAE/ae.safetensors" "$LUMINA_VAE_PATH" 2>/dev/null || cp "$VAE_PATH" "$LUMINA_VAE_PATH"
+            echo -e "${GREEN}✓ Lumina VAE linked (shared with Flux)${NC}"
+        else
+            echo -e "${RED}✗ FLUX VAE not found, please download it first${NC}"
+        fi
+    fi
+    echo ""
+    echo -e "${GREEN}✓ Lumina 2.0 setup complete${NC}"
 else
     echo -e "${YELLOW}Skipping Lumina 2.0${NC}"
 fi
 echo ""
 
 # =====================================
-# 8. Z-Image-Turbo
+# 9. Z-Image-Turbo
 # =====================================
 echo -e "${BLUE}=== Z-Image-Turbo ===${NC}"
 echo "Z-Image-Turbo is a fast image generation model based on SD3"
 echo ""
+echo -e "${YELLOW}Dependencies: Shares FLUX VAE (models/VAE/ae.safetensors)${NC}"
+echo -e "${YELLOW}              Requires Qwen-3-4B text encoder${NC}"
+echo ""
 read -p "Download Z-Image-Turbo? [y/N]: " download_zimage
 if [[ $download_zimage =~ ^[Yy]$ ]]; then
+    # Download DiT model
     ZIMAGE_PATH="models/Stable-diffusion/Z-Image/diffusion_pytorch_model.safetensors"
     if [ -f "$ZIMAGE_PATH" ]; then
-        echo -e "${GREEN}✓ Z-Image-Turbo already exists${NC}"
+        echo -e "${GREEN}✓ Z-Image DiT already exists${NC}"
     else
-        echo -e "${YELLOW}Downloading Z-Image-Turbo...${NC}"
+        echo -e "${YELLOW}Downloading Z-Image DiT model...${NC}"
         mkdir -p models/Stable-diffusion/Z-Image
         huggingface-cli download stabilityai/stable-diffusion-3-medium \
             --local-dir models/Stable-diffusion/Z-Image \
             --resume-download
-        echo -e "${GREEN}✓ Z-Image-Turbo downloaded${NC}"
+        echo -e "${GREEN}✓ Z-Image DiT downloaded${NC}"
     fi
+
+    # Download Qwen-3-4B text encoder
+    QWEN_PATH="models/text_encoder/qwen_3_4b.safetensors"
+    if [ -f "$QWEN_PATH" ]; then
+        echo -e "${GREEN}✓ Qwen-3-4B text encoder already exists${NC}"
+    else
+        echo -e "${YELLOW}Downloading Qwen-3-4B text encoder (~7.5GB)...${NC}"
+        echo "Required for Z-Image-Turbo"
+        huggingface-cli download stabilityai/stable-diffusion-3-medium \
+            text_encoders/qwen_3_4b.safetensors \
+            --local-dir models/text_encoder \
+            --resume-download
+        echo -e "${GREEN}✓ Qwen-3-4B downloaded${NC}"
+    fi
+
+    echo ""
+    echo -e "${GREEN}✓ Z-Image-Turbo setup complete${NC}"
+    echo -e "${BLUE}Note:${NC} Z-Image shares FLUX VAE from models/VAE/ae.safetensors"
 else
     echo -e "${YELLOW}Skipping Z-Image-Turbo${NC}"
 fi
@@ -343,9 +407,10 @@ echo "========================================${NC}"
 echo ""
 echo "Downloaded models are located in:"
 echo "  • Flux: models/Stable-diffusion/Flux/"
-echo "  • Lumina: models/Stable-diffusion/Lumina/"
+echo "  • Lumina: models/Stable-diffusion/Lumina/ (UNet, Text Encoder, VAE)"
 echo "  • Z-Image: models/Stable-diffusion/Z-Image/"
-echo "  • VAE & Text Encoders: models/VAE/"
+echo "  • Text Encoders: models/text_encoder/ (clip_l, t5xxl, qwen_3_4b, gemma)"
+echo "  • VAE (shared): models/VAE/ (ae.safetensors used by Flux, Lumina, Z-Image)"
 echo "  • ControlNet: models/ControlNet/"
 echo "  • FILM: models/Deforum/film_interpolation/"
 echo "  • Wan AI Video: models/Deforum/wan/"
