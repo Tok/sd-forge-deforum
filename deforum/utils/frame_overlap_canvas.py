@@ -75,8 +75,8 @@ def serialize_frame_data(
                             Higher values = longer, more visible worm trail for orbital paths.
     """
     # Sample every Nth frame to reduce data size and stay under browser data URL limits
-    # For 333 frames, sampling every 3rd = ~111 frames = manageable data size
-    sample_interval = max(1, len(metrics_list) // 150)  # Target ~150 frames max
+    # Increased target to 400 frames to show more detail while staying under data URL limits
+    sample_interval = max(1, len(metrics_list) // 400)  # Target ~400 frames max
 
     if prompt_keyframes is None:
         prompt_keyframes = set()
@@ -268,7 +268,7 @@ def create_canvas_html(
 
     <div class="controls">
         <label class="info" style="min-width: 50px;">Speed:</label>
-        <input type="range" id="speedSlider" min="1" max="60" value="{playback_fps}" oninput="onSpeedChange(event)">
+        <input type="range" id="speedSlider" min="6" max="60" value="{playback_fps}" oninput="onSpeedChange(event)">
         <span id="speedInfo" class="info" style="min-width: 50px;">{playback_fps} fps</span>
     </div>
 

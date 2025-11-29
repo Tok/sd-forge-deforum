@@ -494,6 +494,7 @@ def on_ui_tabs():
                 shake_intensity_val,
                 shake_speed_val,
                 apply_shakify_toggle,
+                max_frames_val,
             ):
                 """Update camera path visualization with optional shakify overlay."""
                 try:
@@ -502,6 +503,9 @@ def on_ui_tabs():
                     shake_intensity = float(shake_intensity_val) if shake_intensity_val else 1.0
                     shake_speed = float(shake_speed_val) if shake_speed_val else 1.0
 
+                    # Get max_frames from component or use sensible default (100 frames = ~1.67 sec at 60fps)
+                    max_frames = int(max_frames_val) if max_frames_val else 100
+
                     fig, _ = visualize_schedules(
                         tx or "",
                         ty or "",
@@ -509,7 +513,7 @@ def on_ui_tabs():
                         rx or "",
                         ry or "",
                         rz or "",
-                        333,  # max_frames default
+                        max_frames,
                         prompts or "",
                         shake_name=shake_name,
                         shake_intensity=shake_intensity,
@@ -537,6 +541,7 @@ def on_ui_tabs():
                     components.get("shake_intensity"),
                     components.get("shake_speed"),
                     components.get("show_shakify_in_camera_path"),
+                    components.get("max_frames"),
                 ],
                 outputs=[camera_path_plot],
             )
@@ -565,6 +570,7 @@ def on_ui_tabs():
                             components.get("shake_intensity"),
                             components.get("shake_speed"),
                             components.get("show_shakify_in_camera_path"),
+                            components.get("max_frames"),
                         ],
                         outputs=[camera_path_plot],
                     )
@@ -590,6 +596,7 @@ def on_ui_tabs():
                 shake_speed_val,
                 apply_shakify_toggle,
                 prompts,
+                max_frames_val,
             ):
                 """Update frame overlap visualization with optional shakify overlay and zoom."""
                 # Guard against empty inputs during UI initialization
@@ -604,8 +611,8 @@ def on_ui_tabs():
                 if prompts is None:
                     prompts = ""
 
-                # Get max_frames from motion settings if available, otherwise default to 333
-                max_frames = 333
+                # Get max_frames from component or use sensible default
+                max_frames = int(max_frames_val) if max_frames_val else 100
                 width = int(width_val) if width_val else 1920
                 height = int(height_val) if height_val else 1080
 
@@ -642,12 +649,15 @@ def on_ui_tabs():
                 try:
                     print("DEBUG: init_overlap_viz_with_preset called")
 
+                    # Sensible default: 100 frames (~1.67 sec at 60fps)
+                    default_frames = 100
+
                     # Generate default rotate-around path with smaller radius to reduce rotation
                     _, schedules, _ = generate_preset_path(
                         preset_type="rotate-around",
                         radius=30.0,  # Reduced from 100 to minimize rotation
                         height=0.0,
-                        num_frames=333,
+                        num_frames=default_frames,
                         closed_loop=True,
                         speed_multiplier=0.5,  # Slower movement
                         speed_randomization=0.0,
@@ -664,7 +674,7 @@ def on_ui_tabs():
                         rotation_3d_y=schedules.get("rotation_3d_y", "0:(0)"),
                         rotation_3d_z=schedules.get("rotation_3d_z", "0:(0)"),
                         zoom="",  # No zoom on init
-                        max_frames=333,
+                        max_frames=default_frames,
                         width=1920,
                         height=1080,
                         shake_name="None",  # Explicitly disable shakify on init
@@ -720,6 +730,7 @@ def on_ui_tabs():
                 components.get("shake_speed"),
                 components.get("show_shakify_in_overlap"),  # Toggle control
                 components.get("animation_prompts"),  # For keyframe detection
+                components.get("max_frames"),  # Actual frame count
             ]
 
             # Wire up change handlers for all schedule fields
@@ -753,10 +764,10 @@ def on_ui_tabs():
                 auto_optimize_for_depth_warping,
             )
 
-            def handle_analyze_path(tx, ty, tz, rx, ry, rz, width_val, height_val):
+            def handle_analyze_path(tx, ty, tz, rx, ry, rz, width_val, height_val, max_frames_val):
                 """Analyze camera path and show preservation metrics."""
                 try:
-                    max_frames = 333
+                    max_frames = int(max_frames_val) if max_frames_val else 100
                     width = int(width_val) if width_val else 1920
                     height = int(height_val) if height_val else 1080
 
@@ -777,10 +788,10 @@ def on_ui_tabs():
                 except Exception as e:
                     return f"❌ Analysis failed: {str(e)}"
 
-            def handle_optimize_path(tx, ty, tz, rx, ry, rz, width_val, height_val):
+            def handle_optimize_path(tx, ty, tz, rx, ry, rz, width_val, height_val, max_frames_val):
                 """Auto-optimize translation schedules for depth warping."""
                 try:
-                    max_frames = 333
+                    max_frames = int(max_frames_val) if max_frames_val else 100
                     width = int(width_val) if width_val else 1920
                     height = int(height_val) if height_val else 1080
 
@@ -814,6 +825,7 @@ def on_ui_tabs():
                     components.get("rotation_3d_z"),
                     components.get("W"),
                     components.get("H"),
+                    components.get("max_frames"),
                 ],
                 outputs=[components["path_analysis_output"]],
             )
@@ -830,6 +842,7 @@ def on_ui_tabs():
                     components.get("rotation_3d_z"),
                     components.get("W"),
                     components.get("H"),
+                    components.get("max_frames"),
                 ],
                 outputs=[
                     components.get("translation_x"),
@@ -1138,7 +1151,7 @@ def on_ui_tabs():
                 shake_intensity_val,
                 shake_speed_val,
                 apply_shakify_toggle,
-                max_frames=333,
+                max_frames=100,
             ):
                 """Update visualization from schedule textbox values with optional shakify."""
                 # Shakify params with defaults
@@ -1175,6 +1188,7 @@ def on_ui_tabs():
                         components.get("shake_intensity"),
                         components.get("shake_speed"),
                         components.get("show_shakify_in_camera_path"),
+                        components.get("max_frames"),
                     ]
                 )
 
