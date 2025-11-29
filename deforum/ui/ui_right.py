@@ -1098,51 +1098,76 @@ def on_ui_tabs():
             # Wire speed sliders to auto-regenerate preset path on change
             speed_mult = components.get("speed_multiplier")
             speed_rand = components.get("speed_randomization")
-            if speed_mult and btn_generate_preset and tx:
-                speed_mult.change(
-                    fn=handle_generate_preset,
-                    inputs=[
-                        components.get("preset_type"),
-                        components.get("speed_multiplier"),
-                        components.get("speed_randomization"),
-                        components.get("preset_radius"),
-                        components.get("preset_height"),
-                        components.get("preset_num_frames"),
-                        components.get("preset_closed_loop"),
-                        components.get("preset_randomize"),
-                        components.get("preset_random_seed"),
-                        tx,
-                        ty,
-                        tz,
-                        rx,
-                        ry,
-                        rz,
-                    ],
-                    outputs=[components.get("preset_status"), tx, ty, tz, rx, ry, rz],
-                )
 
-            if speed_rand and btn_generate_preset and tx:
-                speed_rand.change(
-                    fn=handle_generate_preset,
-                    inputs=[
-                        components.get("preset_type"),
-                        components.get("speed_multiplier"),
-                        components.get("speed_randomization"),
-                        components.get("preset_radius"),
-                        components.get("preset_height"),
-                        components.get("preset_num_frames"),
-                        components.get("preset_closed_loop"),
-                        components.get("preset_randomize"),
-                        components.get("preset_random_seed"),
-                        tx,
-                        ty,
-                        tz,
-                        rx,
-                        ry,
-                        rz,
-                    ],
-                    outputs=[components.get("preset_status"), tx, ty, tz, rx, ry, rz],
-                )
+            # Wire ALL preset sliders to update both camera path and wormtrail
+            # This prevents "No camera movement detected" and avoids multiple reloads
+            preset_slider_components = [
+                components.get("preset_type"),
+                components.get("speed_multiplier"),
+                components.get("speed_randomization"),
+                components.get("preset_radius"),
+                components.get("preset_height"),
+                components.get("preset_num_frames"),
+                components.get("preset_closed_loop"),
+                components.get("preset_rotation_mode"),
+                components.get("preset_rotation_factor"),
+                components.get("preset_look_at_mode"),
+                components.get("preset_look_at_blend"),
+            ]
+
+            preset_inputs = [
+                # Preset generation inputs (20 args)
+                components.get("preset_type"),
+                components.get("speed_multiplier"),
+                components.get("speed_randomization"),
+                components.get("preset_radius"),
+                components.get("preset_height"),
+                components.get("preset_num_frames"),
+                components.get("preset_closed_loop"),
+                components.get("preset_randomize"),
+                components.get("preset_random_seed"),
+                components.get("preset_rotation_mode"),
+                components.get("preset_rotation_factor"),
+                components.get("preset_look_at_mode"),
+                components.get("preset_look_at_blend"),
+                tx,
+                ty,
+                tz,
+                rx,
+                ry,
+                rz,
+                components.get("animation_prompts"),
+                # Overlap viz inputs (7 args)
+                components.get("zoom"),
+                components.get("W"),
+                components.get("H"),
+                components.get("shake_name"),
+                components.get("shake_intensity"),
+                components.get("shake_speed"),
+                components.get("show_shakify_in_overlap"),
+            ]
+
+            preset_outputs = [
+                components.get("preset_status"),
+                tx,
+                ty,
+                tz,
+                rx,
+                ry,
+                rz,
+                camera_path_plot,
+                frame_overlap_simulator,
+            ]
+
+            # Wire each preset slider to auto-regenerate on change
+            if btn_generate_preset and tx and frame_overlap_simulator:
+                for slider in preset_slider_components:
+                    if slider:
+                        slider.change(
+                            fn=handle_preset_with_overlap,
+                            inputs=preset_inputs,
+                            outputs=preset_outputs,
+                        )
 
             # Wire schedule textboxes to update visualization whenever they change
             def update_viz_from_schedules(
