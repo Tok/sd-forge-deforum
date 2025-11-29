@@ -32,6 +32,7 @@ for arg in "$@"; do
     case $arg in
         --check) MODE="check" ;;
         --install) MODE="install" ;;
+        --prepare) MODE="prepare" ;;
         --migrate) MODE="migrate" ;;
         --help)
             cat << 'HELP'
@@ -41,19 +42,23 @@ Usage:
   ./setup.sh              Interactive menu
   ./setup.sh --check      Check current status
   ./setup.sh --install    Install Deforum dependencies
+  ./setup.sh --prepare    Prepare for first launch (PyTorch + SageAttention)
   ./setup.sh --migrate    Migrate venv to Python 3.11.9
   ./setup.sh --help       Show this help
 
 Modes:
   check     - Display Python version, dependencies, optimizations
   install   - Install Deforum requirements.txt only
+  prepare   - First-time setup: Install PyTorch, SageAttention, and Deforum deps
+              (Recommended for new installations)
   migrate   - Full venv recreation with Python 3.11
               (backups current venv, deletes it, recreates with 3.11,
                reinstalls everything)
 
 Examples:
   ./setup.sh --check      # Quick status check
-  ./setup.sh --install    # Install missing deps
+  ./setup.sh --prepare    # First-time setup (recommended)
+  ./setup.sh --install    # Install missing deps only
   ./setup.sh --migrate    # Full Python 3.11 migration
 
 Documentation:
@@ -158,6 +163,71 @@ do_install() {
     echo -e "${GREEN}✓ Dependencies installed${NC}"
 }
 
+# Function: Prepare Forge for first launch (install PyTorch + SageAttention)
+do_prepare() {
+    echo -e "${CYAN}========================================${NC}"
+    echo -e "${CYAN}Prepare Forge for First Launch${NC}"
+    echo -e "${CYAN}========================================${NC}"
+    echo ""
+    echo -e "${BLUE}This will:${NC}"
+    echo -e "  1. Ensure Forge venv exists"
+    echo -e "  2. Install PyTorch via Forge (quick launch with --exit)"
+    echo -e "  3. Install SageAttention"
+    echo -e "  4. Install Deforum dependencies"
+    echo ""
+
+    # Check we're in extension dir
+    if [ ! -f "../../webui.py" ]; then
+        echo -e "${RED}Error: Not in Forge extension directory${NC}"
+        echo "Please run from extensions/sd-forge-deforum/"
+        exit 1
+    fi
+
+    cd "$FORGE_DIR"
+
+    # Step 1: Create venv if needed and install PyTorch
+    echo -e "${YELLOW}Step 1/3: Installing PyTorch via Forge...${NC}"
+    if [ -f "webui.sh" ]; then
+        ./webui.sh --exit
+    elif [ -f "venv/bin/python" ]; then
+        ./venv/bin/python webui.py --exit
+    else
+        echo -e "${RED}Error: No launcher found (webui.sh or venv/bin/python)${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ PyTorch installed${NC}"
+    echo ""
+
+    # Step 2: Install SageAttention (now that torch is available)
+    echo -e "${YELLOW}Step 2/3: Installing SageAttention...${NC}"
+    if [ -f "venv/bin/pip" ]; then
+        ./venv/bin/pip install sageattention
+    else
+        pip install sageattention
+    fi
+    echo -e "${GREEN}✓ SageAttention installed${NC}"
+    echo ""
+
+    # Step 3: Install Deforum dependencies
+    echo -e "${YELLOW}Step 3/3: Installing Deforum dependencies...${NC}"
+    cd "$EXTENSION_DIR"
+    if [ -f "$FORGE_DIR/venv/bin/pip" ]; then
+        "$FORGE_DIR/venv/bin/pip" install -r requirements.txt
+    else
+        pip install -r requirements.txt
+    fi
+    echo -e "${GREEN}✓ Deforum dependencies installed${NC}"
+    echo ""
+
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}✓ Preparation Complete!${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo ""
+    echo -e "${BLUE}You can now launch Forge with full optimizations:${NC}"
+    echo -e "  ${GREEN}./start-forge.sh --sage${NC}"
+    echo ""
+}
+
 # Function: Migrate venv
 do_migrate() {
     echo -e "${CYAN}========================================${NC}"
@@ -255,6 +325,9 @@ if [ "$MODE" = "check" ]; then
 elif [ "$MODE" = "install" ]; then
     do_install
     exit 0
+elif [ "$MODE" = "prepare" ]; then
+    do_prepare
+    exit 0
 elif [ "$MODE" = "migrate" ]; then
     do_migrate
     exit 0
@@ -267,17 +340,19 @@ else
     echo "What would you like to do?"
     echo ""
     echo "  1) Check status"
-    echo "  2) Install Deforum dependencies"
-    echo "  3) Migrate venv to Python 3.11.9"
-    echo "  4) Exit"
+    echo "  2) Install Deforum dependencies only"
+    echo "  3) Prepare for first launch (PyTorch + SageAttention)"
+    echo "  4) Migrate venv to Python 3.11.9"
+    echo "  5) Exit"
     echo ""
-    read -p "Choose [1-4]: " choice
+    read -p "Choose [1-5]: " choice
 
     case $choice in
         1) do_check ;;
         2) do_install ;;
-        3) do_migrate ;;
-        4) echo "Goodbye!"; exit 0 ;;
+        3) do_prepare ;;
+        4) do_migrate ;;
+        5) echo "Goodbye!"; exit 0 ;;
         *) echo -e "${RED}Invalid choice${NC}"; exit 1 ;;
     esac
 fi

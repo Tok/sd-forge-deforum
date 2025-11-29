@@ -38,15 +38,15 @@ goto :parse_args
 REM Build flags with optimization
 if "%USE_OPT%"=="1" (
     echo Starting with optimizations:
+    echo   --sage              SageAttention ^(RTX 30/40/50^)
     echo   --fast-fp16         Fast FP16 accumulation
     echo   --cuda-malloc       CUDA malloc optimization
     echo   --cuda-stream       CUDA stream optimization
     echo.
-    echo Note: --sage flag removed from defaults ^(fails on first run^)
-    echo       Install manually: pip install sageattention
+    echo Note: If --sage fails, run: setup.bat
     echo.
 
-    set FLAGS=--fast-fp16 --cuda-malloc --cuda-stream --deforum-api --deforum-run-tuning
+    set FLAGS=--sage --fast-fp16 --cuda-malloc --cuda-stream --deforum-api --deforum-run-tuning
 ) else (
     echo Starting without optimizations
     echo.

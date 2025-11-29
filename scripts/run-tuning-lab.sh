@@ -38,14 +38,14 @@ done
 # Build optimization flags
 if [ "$USE_OPTIMIZATIONS" = true ]; then
     echo -e "${GREEN}Starting with optimizations:${NC}"
+    echo -e "  ${BLUE}--sage${NC}              SageAttention (RTX 30/40/50)"
     echo -e "  ${BLUE}--fast-fp16${NC}         Fast FP16 accumulation"
     echo -e "  ${BLUE}--cuda-malloc${NC}       CUDA malloc optimization"
     echo -e "  ${BLUE}--cuda-stream${NC}       CUDA stream optimization"
     echo ""
-    echo -e "${YELLOW}Note: --sage flag removed from defaults (fails on first run)${NC}"
-    echo -e "${YELLOW}      Install manually: pip install sageattention${NC}"
+    echo -e "${YELLOW}Note: If --sage fails, run: ./setup.sh --prepare${NC}"
     echo ""
-    OPT_FLAGS="--fast-fp16 --cuda-malloc --cuda-stream"
+    OPT_FLAGS="--sage --fast-fp16 --cuda-malloc --cuda-stream"
 else
     echo -e "${BLUE}Starting without optimizations${NC}"
     echo ""
