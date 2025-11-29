@@ -131,10 +131,10 @@ def update_frame_overlap_visualization(
         # The translation deltas alone show the camera path correctly
         combined_rotation_deltas = [0.0] * max_frames
 
-        # Debug: Log first 20 frames of delta values
-        logger.debug("Frame overlap delta schedules (first 20 frames):")
+        # Trace: Log first 20 frames of delta values (verbose diagnostic)
+        logger.trace("Frame overlap delta schedules (first 20 frames):")
         for i in range(min(20, max_frames)):
-            logger.debug(
+            logger.trace(
                 f"  Frame {i:3d}: tx={tx_deltas[i]:7.2f}, ty={ty_deltas[i]:7.2f}, "
                 f"rx={rx_deltas[i]:7.2f}, ry={ry_deltas[i]:7.2f}, combined_rot={combined_rotation_deltas[i]:7.2f}"
             )
