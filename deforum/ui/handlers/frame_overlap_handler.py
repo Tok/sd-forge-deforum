@@ -119,13 +119,15 @@ def update_frame_overlap_visualization(
         if len(ty_deltas) > 0:
             ty_deltas[0] = 0.0
 
-        # For 2D visualization, combine 3D rotations into effective 2D rotation
-        # Use pythagorean combination of rotation_x (pitch) and rotation_y (yaw)
-        # This approximates the apparent rotation seen in a 2D top-down view
-        combined_rotation_deltas = [
-            np.sqrt(rx**2 + ry**2) * np.sign(ry) if abs(ry) > abs(rx) else np.sqrt(rx**2 + ry**2) * np.sign(rx)
-            for rx, ry in zip(rx_deltas, ry_deltas)
-        ]
+        # IMPORTANT: For camera path visualization (rotate-around, orbits, etc.):
+        # - Rotation deltas represent where the camera LOOKS (yaw/pitch to track center)
+        # - They do NOT represent frame rectangle rotation in 2D top-down view
+        # - In actual render: rotation changes look direction, translation moves position
+        # - In 2D frame overlap: we want to see the TRANSLATION path (circle), not frame spinning
+        #
+        # Solution: Disable rotation for frame overlap visualization
+        # The translation deltas alone show the camera path correctly
+        combined_rotation_deltas = [0.0] * max_frames
 
         # Debug: Log first 20 frames of delta values
         logger.debug("Frame overlap delta schedules (first 20 frames):")
