@@ -488,14 +488,26 @@ Located in the extension root:
 ```bash
 ./setup.sh              # Interactive menu
 ./setup.sh --check      # Check Python version, dependencies, optimizations
-./setup.sh --install    # Install Deforum requirements.txt
+./setup.sh --prepare    # First-time setup (PyTorch + SageAttention + Deforum deps)
+./setup.sh --install    # Install Deforum requirements.txt only
 ./setup.sh --migrate    # Migrate venv to Python 3.11.9 (Linux only)
 ```
+
+**First-Time Setup (Recommended):**
+```bash
+./setup.sh --prepare
+```
+This runs a complete first-time setup:
+1. Launches Forge once with `--exit` to install PyTorch
+2. Installs SageAttention (now that torch is available)
+3. Installs all Deforum dependencies
+4. Ready to launch with full optimizations
 
 **Features:**
 - Python version check (3.11.9 recommended, 3.12 supported)
 - Dependency verification (pandas, rich, librosa, etc.)
 - Optimization check (SageAttention, FlashAttention)
+- First-time setup mode handles PyTorch → SageAttention dependency chain
 - Full venv migration with backup (Linux only)
 
 ### Launching Forge
@@ -504,21 +516,18 @@ Located in the extension root:
 
 **`start-forge.sh` / `start-forge.bat`** - Launch Forge with optimizations
 ```bash
-./start-forge.sh           # Start with --fast-fp16 --cuda-malloc --cuda-stream
+./start-forge.sh           # Start with --sage --fast-fp16 --cuda-malloc --cuda-stream
 ./start-forge.sh --no-opt  # Start without optimizations
-./start-forge.sh --sage    # Add --sage flag (must install SageAttention first)
 ./start-forge.sh --listen  # Add custom flags (keeps optimizations)
 ```
 
-**Optimization Flags (enabled by default):**
+**Optimization Flags (all enabled by default):**
+- `--sage`: SageAttention (RTX 30/40/50 GPUs) - Run `./setup.sh --prepare` first if this fails
 - `--fast-fp16`: Fast FP16 accumulation (requires PyTorch 2.7+)
 - `--cuda-malloc`: CUDA malloc optimization
 - `--cuda-stream`: CUDA stream optimization
 
-**Optional Optimization (not enabled by default):**
-- `--sage`: SageAttention (RTX 30/40/50 GPUs)
-  - Not enabled by default due to build issues on first run
-  - To use: First run without --sage, then `pip install sageattention`, then add `--sage` flag
+**Note:** If you get a SageAttention build error on first launch, run `./setup.sh --prepare` to properly install PyTorch and SageAttention in the correct order.
 
 ### Model Downloads
 
