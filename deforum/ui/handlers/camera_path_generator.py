@@ -3,7 +3,7 @@
 Functions to generate camera paths and populate schedules.
 """
 
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, List
 import plotly.graph_objects as go
 import numpy as np
 from deforum.utils.spline_camera_path import (

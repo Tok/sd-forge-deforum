@@ -527,7 +527,7 @@ def generate_rotate_around_path(
     height: float = 0.0,
     center_z: float = 0.0,
     use_sphere: bool = True,
-    frames_per_loop: float = None,
+    frames_per_loop: float | None = None,
     closed_loop: bool = True,
     rotation_mode: str = "quaternion",
     rotation_factor: float = -8.0,
@@ -728,7 +728,7 @@ def camera_path_to_schedules(
     speed_multiplier: float = 1.0,
     speed_randomization: float = 0.0,
     random_seed: int = 0,
-    look_at_mode: str = None,
+    look_at_mode: str | None = None,
     stabilize_camera: bool = True
 ) -> Dict[str, str]:
     """Convert camera path to Deforum schedule strings (ALL DELTAS).
@@ -785,7 +785,7 @@ def camera_path_to_schedules(
     center_offset_y = -offset_y
     center_offset_z = -offset_z
 
-    schedules = {
+    schedules: Dict[str, List[str]] = {
         'translation_x': [],
         'translation_y': [],
         'translation_z': [],
@@ -824,7 +824,7 @@ def camera_path_to_schedules(
         speed_per_frame = None
 
     # Track deltas for ratio analysis
-    delta_analysis = {
+    delta_analysis: Dict[str, List[float]] = {
         'translation_x': [],
         'translation_y': [],
         'translation_z': [],
