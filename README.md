@@ -510,6 +510,28 @@ This runs a complete first-time setup:
 - First-time setup mode handles PyTorch → SageAttention dependency chain
 - Full venv migration with backup (Linux only)
 
+**Manual SageAttention Installation (if `--prepare` fails):**
+
+Located in `scripts/`:
+
+**`install-cuda-toolkit.sh` / `.bat`** - Install CUDA Toolkit (required for SageAttention)
+```bash
+./scripts/install-cuda-toolkit.sh    # Linux: Install CUDA 12.6 via apt
+./scripts/install-cuda-toolkit.bat   # Windows: Installation instructions
+```
+
+**`install-sageattention.sh` / `.bat`** - Install SageAttention optimization
+```bash
+./scripts/install-sageattention.sh   # Compile SageAttention from source
+```
+
+**Why separate scripts?** SageAttention requires the CUDA toolkit (nvcc compiler) to compile from source. Most users only have PyTorch with CUDA support, not the full CUDA development toolkit. These scripts:
+1. Install CUDA toolkit (~3GB)
+2. Set CUDA_HOME environment variable
+3. Compile SageAttention with access to torch during build
+
+**Note:** The `--prepare` mode attempts SageAttention installation but continues if it fails (CUDA toolkit missing). Use these scripts if you want to install CUDA toolkit and SageAttention manually.
+
 ### Launching Forge
 
 Located in the extension root:
