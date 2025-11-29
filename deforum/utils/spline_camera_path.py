@@ -255,6 +255,270 @@ def generate_camera_path(
     return camera_path
 
 
+# ============================================================================
+# Helper Functions for Camera Path Generation (Complexity Reduction)
+# ============================================================================
+
+def _calculate_frames_per_loop(
+    frames_per_loop: float | None,
+    closed_loop: bool,
+    num_frames: int
+) -> float:
+    """Calculate frames per orbit loop.
+
+    Args:
+        frames_per_loop: Explicit frames per loop (None = auto-calculate)
+        closed_loop: If True, exactly 1 orbit per video
+        num_frames: Total frames in animation
+
+    Returns:
+        Frames required for one complete orbit
+    """
+    if frames_per_loop is not None:
+        return frames_per_loop
+    return float(num_frames) if closed_loop else 120.0
+
+
+def _generate_orbital_positions(
+    num_frames: int,
+    frames_per_loop: float,
+    radius: float,
+    center_x: float,
+    center_y: float,
+    center_z: float,
+    height: float,
+    use_sphere: bool
+) -> List[Tuple[float, float, float]]:
+    """Generate 3D positions for orbital camera path.
+
+    Args:
+        num_frames: Number of frames to generate
+        frames_per_loop: Frames for one complete rotation
+        radius: Orbit radius
+        center_x, center_y, center_z: Center position
+        height: Additional height offset
+        use_sphere: If True, spherical wobble; if False, flat circle
+
+    Returns:
+        List of (x, y, z) positions
+    """
+    positions = []
+    for frame_idx in range(num_frames):
+        theta = 2 * np.pi * frame_idx / frames_per_loop
+
+        if use_sphere:
+            # Spherical rotation with sinusoidal wobble
+            phi_base = np.sin(3 * theta) * (np.pi / 4)
+            phi_noise = np.sin(7 * theta) * (np.pi / 8)
+            phi = phi_base + phi_noise
+
+            x = center_x + radius * np.cos(phi) * np.cos(theta)
+            y = center_y + height + radius * np.sin(phi)
+            z = center_z + radius * np.cos(phi) * np.sin(theta)
+        else:
+            # Flat circle
+            x = center_x + radius * np.cos(theta)
+            y = center_y + height
+            z = center_z + radius * np.sin(theta)
+
+        positions.append((x, y, z))
+
+    return positions
+
+
+def _calculate_local_curve_center(
+    positions: List[Tuple[float, float, float]],
+    frame_idx: int,
+    num_frames: int
+) -> Tuple[float, float, float]:
+    """Calculate local center of curve using nearby positions.
+
+    Args:
+        positions: All position tuples
+        frame_idx: Current frame index
+        num_frames: Total frames
+
+    Returns:
+        (avg_x, avg_y, avg_z) local center
+    """
+    window = min(10, num_frames // 4)
+    start_idx = max(0, frame_idx - window // 2)
+    end_idx = min(num_frames, frame_idx + window // 2 + 1)
+
+    local_positions = positions[start_idx:end_idx]
+    avg_x = sum(p[0] for p in local_positions) / len(local_positions)
+    avg_y = sum(p[1] for p in local_positions) / len(local_positions)
+    avg_z = sum(p[2] for p in local_positions) / len(local_positions)
+
+    return (avg_x, avg_y, avg_z)
+
+
+def _calculate_curve_curvature(
+    positions: List[Tuple[float, float, float]],
+    frame_idx: int,
+    num_frames: int
+) -> float:
+    """Calculate local curve curvature for adaptive blending.
+
+    Args:
+        positions: All position tuples
+        frame_idx: Current frame index
+        num_frames: Total frames
+
+    Returns:
+        Curvature value (0=straight, 1=90° turn, 2=180° hairpin)
+    """
+    prev_idx = (frame_idx - 1) % num_frames
+    next_idx = (frame_idx + 1) % num_frames
+    prev_pos, curr_pos, next_pos = positions[prev_idx], positions[frame_idx], positions[next_idx]
+
+    # Vectors: prev→curr and curr→next
+    vec1 = (curr_pos[0] - prev_pos[0], curr_pos[1] - prev_pos[1], curr_pos[2] - prev_pos[2])
+    vec2 = (next_pos[0] - curr_pos[0], next_pos[1] - curr_pos[1], next_pos[2] - curr_pos[2])
+
+    # Normalize
+    len1 = np.sqrt(vec1[0]**2 + vec1[1]**2 + vec1[2]**2)
+    len2 = np.sqrt(vec2[0]**2 + vec2[1]**2 + vec2[2]**2)
+
+    if len1 < 0.001 or len2 < 0.001:
+        return 0.0
+
+    vec1 = (vec1[0]/len1, vec1[1]/len1, vec1[2]/len1)
+    vec2 = (vec2[0]/len2, vec2[1]/len2, vec2[2]/len2)
+
+    # Dot product = cosine of angle between vectors
+    dot = vec1[0]*vec2[0] + vec1[1]*vec2[1] + vec1[2]*vec2[2]
+    dot = max(-1.0, min(1.0, dot))  # Clamp to [-1, 1]
+
+    # Curvature: 0 = straight, 1 = sharp 90° turn, 2 = hairpin 180° turn
+    return 1.0 - dot
+
+
+def _calculate_look_at_target(
+    positions: List[Tuple[float, float, float]],
+    frame_idx: int,
+    num_frames: int,
+    center_x: float,
+    center_y: float,
+    center_z: float,
+    height: float,
+    look_at_mode: str,
+    look_at_blend: float
+) -> Tuple[float, float, float]:
+    """Calculate camera look-at target based on mode.
+
+    Args:
+        positions: All position tuples
+        frame_idx: Current frame index
+        num_frames: Total frames
+        center_x, center_y, center_z: Fixed center coords
+        height: Height offset
+        look_at_mode: "center", "tangent", "inward", or "blend"
+        look_at_blend: Base inward blend amount (0.0-1.0)
+
+    Returns:
+        (target_x, target_y, target_z) to look at
+    """
+    if look_at_mode == "center":
+        return (center_x, center_y + height, center_z)
+
+    next_idx = (frame_idx + 1) % num_frames
+    next_pos = positions[next_idx]
+
+    if look_at_mode == "tangent":
+        return next_pos
+
+    local_center = _calculate_local_curve_center(positions, frame_idx, num_frames)
+
+    if look_at_mode == "inward":
+        return local_center
+
+    # "blend" mode - adaptive based on curve sharpness
+    curvature = _calculate_curve_curvature(positions, frame_idx, num_frames)
+    adaptive_blend = look_at_blend + (curvature * 0.25)
+    adaptive_blend = min(0.8, adaptive_blend)  # Cap at 80% inward
+
+    # Blend tangent (forward) + inward (local center)
+    return (
+        next_pos[0] * (1 - adaptive_blend) + local_center[0] * adaptive_blend,
+        next_pos[1] * (1 - adaptive_blend) + local_center[1] * adaptive_blend,
+        next_pos[2] * (1 - adaptive_blend) + local_center[2] * adaptive_blend,
+    )
+
+
+def _create_camera_points_empirical(
+    positions: List[Tuple[float, float, float]],
+    frames_per_loop: float,
+    rotation_factor: float
+) -> List[CameraPoint]:
+    """Create camera points using empirical rotation factor.
+
+    Args:
+        positions: Position tuples (x, y, z)
+        frames_per_loop: Frames for one orbit
+        rotation_factor: Counter-rotation strength (validated optimal: -8.0)
+
+    Returns:
+        List of CameraPoint with empirical rotations
+    """
+    camera_path = []
+    for frame_idx, (x, y, z) in enumerate(positions):
+        angle = 2 * np.pi * frame_idx / frames_per_loop
+        rot_y = np.degrees(angle) / rotation_factor
+
+        camera_path.append(CameraPoint(
+            x=x, y=y, z=z,
+            rot_x=0.0, rot_y=rot_y, rot_z=0.0,
+            frame=frame_idx
+        ))
+
+    return camera_path
+
+
+def _create_camera_points_quaternion(
+    positions: List[Tuple[float, float, float]],
+    center_x: float,
+    center_y: float,
+    center_z: float,
+    height: float,
+    look_at_mode: str,
+    look_at_blend: float,
+    stabilize_camera: bool
+) -> List[CameraPoint]:
+    """Create camera points using quaternion-based look-at.
+
+    Args:
+        positions: Position tuples (x, y, z)
+        center_x, center_y, center_z: Fixed center coords
+        height: Height offset
+        look_at_mode: "center", "tangent", "inward", or "blend"
+        look_at_blend: Base inward blend (0.0-1.0)
+        stabilize_camera: Minimize roll by aligning with world up
+
+    Returns:
+        List of CameraPoint with quaternion rotations
+    """
+    num_frames = len(positions)
+    camera_path = []
+
+    for frame_idx, (x, y, z) in enumerate(positions):
+        target = _calculate_look_at_target(
+            positions, frame_idx, num_frames,
+            center_x, center_y, center_z, height,
+            look_at_mode, look_at_blend
+        )
+
+        rot_x, rot_y, rot_z = look_at_target((x, y, z), target, stabilize=stabilize_camera)
+
+        camera_path.append(CameraPoint(
+            x=x, y=y, z=z,
+            rot_x=rot_x, rot_y=rot_y, rot_z=rot_z,
+            frame=frame_idx
+        ))
+
+    return camera_path
+
+
 def generate_rotate_around_path(
     num_frames: int,
     radius: float,
@@ -283,192 +547,34 @@ def generate_rotate_around_path(
         center_x, center_y, center_z: Center position
         height: Additional height offset
         use_sphere: If True, randomize around sphere; if False, flat circle
-        frames_per_loop: Frames for one complete rotation
-                        If None, auto-calculated based on closed_loop parameter
-        closed_loop: If True, complete exactly 1 orbit per video (frames_per_loop = num_frames)
-                    If False, use 120 frames per orbit for more visible rotation
-        rotation_mode: How to calculate camera rotation:
-            - "quaternion": Geometric look-at using quaternions (natural, adaptive)
-            - "empirical": Use rotation_factor formula (validated optimal = -8.0)
-        rotation_factor: When rotation_mode="empirical", defines counter-rotation strength
-                        Empirically validated optimal: -8.0 (see ORBIT_TESTS.md)
-        look_at_mode: Camera look-at behavior (only for rotation_mode="quaternion"):
-            - "center": Look at fixed 3D center (legacy, causes drift)
-            - "tangent": Look forward along curve (path-following)
-            - "inward": Look toward local curve center (tennis ball seam)
-            - "blend": Adaptive tangent + inward (default, most stable)
-        look_at_blend: When mode="blend", base inward blend amount (0.0-1.0)
-                      Default 0.3 = 30% inward base, adapts up to 80% on sharp curves
-        stabilize_camera: If True, minimize camera roll by aligning up vector with world up (default: True)
+        frames_per_loop: Frames for one complete rotation (None = auto-calculate)
+        closed_loop: If True, complete exactly 1 orbit per video
+        rotation_mode: "quaternion" (geometric look-at) or "empirical" (rotation_factor)
+        rotation_factor: Counter-rotation strength (empirical mode, optimal: -8.0)
+        look_at_mode: "center", "tangent", "inward", or "blend" (quaternion mode)
+        look_at_blend: Base inward blend amount 0.0-1.0 (blend mode)
+        stabilize_camera: Minimize camera roll (quaternion mode)
 
     Returns:
         List of CameraPoint objects with rotations calculated via selected method
     """
-    # Calculate frames_per_loop based on closed_loop preference
-    if frames_per_loop is None:
-        if closed_loop:
-            # Exactly 1 complete orbit per video length for seamless looping
-            frames_per_loop = float(num_frames)
-        else:
-            # ~120 frames per orbit for sharper rotation angles visible to depth warping
-            # This creates ~3° per frame rotation instead of ~1°
-            frames_per_loop = 120.0
+    # Calculate frames per loop
+    loop_frames = _calculate_frames_per_loop(frames_per_loop, closed_loop, num_frames)
 
-    # First pass: Generate positions only (needed to calculate tangents)
-    positions = []
+    # Generate positions
+    positions = _generate_orbital_positions(
+        num_frames, loop_frames, radius,
+        center_x, center_y, center_z, height, use_sphere
+    )
 
-    for frame_idx in range(num_frames):
-        if use_sphere:
-            # Spherical rotation with sinusoidal wobble
-            # Theta (azimuth) - horizontal rotation (slowed to 1 loop/min)
-            theta = 2 * np.pi * frame_idx / frames_per_loop
-
-            # Phi (elevation) - varies between -pi/3 and pi/3 (avoid poles)
-            # Add sinusoidal variation for interesting paths
-            phi_base = np.sin(3 * theta) * (np.pi / 4)  # Oscillate elevation
-            phi_noise = np.sin(7 * theta) * (np.pi / 8)  # Add higher frequency wobble
-            phi = phi_base + phi_noise
-
-            # Spherical to Cartesian coordinates
-            x = center_x + radius * np.cos(phi) * np.cos(theta)
-            y = center_y + height + radius * np.sin(phi)
-            z = center_z + radius * np.cos(phi) * np.sin(theta)
-        else:
-            # Flat circle (classic mode) - also slowed to 1 loop/min
-            angle = 2 * np.pi * frame_idx / frames_per_loop
-            x = center_x + radius * np.cos(angle)
-            z = center_z + radius * np.sin(angle)
-            y = center_y + height
-
-        positions.append((x, y, z))
-
-    # Second pass: Calculate rotations based on rotation_mode
-    camera_path = []
-
+    # Calculate rotations based on mode
     if rotation_mode == "empirical":
-        # Empirical rotation factor mode (validated via tuning tests)
-        # Calculate rotation as a ratio of translation distance
-        # rotation_factor = -8.0 means: 360° translation = 45° counter-rotation
-
-        for frame_idx in range(num_frames):
-            x, y, z = positions[frame_idx]
-
-            # Calculate angle in orbit (0 to 2π)
-            angle = 2 * np.pi * frame_idx / frames_per_loop
-
-            # Rotation counter to translation direction
-            # Negative factor = clockwise counter-rotation for counter-clockwise orbit
-            rot_y = np.degrees(angle) / rotation_factor
-
-            # No X or Z rotation for flat orbital paths (camera stays level)
-            rot_x = 0.0
-            rot_z = 0.0
-
-            camera_path.append(CameraPoint(
-                x=x,
-                y=y,
-                z=z,
-                rot_x=rot_x,
-                rot_y=rot_y,
-                rot_z=rot_z,
-                frame=frame_idx
-            ))
-
-    else:  # rotation_mode == "quaternion" (default)
-        # Quaternion-based geometric look-at (natural, adaptive)
-        for frame_idx in range(num_frames):
-            x, y, z = positions[frame_idx]
-            camera = (x, y, z)
-
-            # Calculate look-at target based on mode
-            if look_at_mode == "center":
-                # Fixed 3D center
-                target = (center_x, center_y + height, center_z)
-
-            elif look_at_mode == "tangent":
-                # Look forward along curve (path-following)
-                # Calculate tangent by looking at next position
-                next_idx = (frame_idx + 1) % num_frames  # Wrap around for closed loop
-                next_pos = positions[next_idx]
-                target = next_pos  # Look toward next point
-
-            elif look_at_mode == "inward":
-                # Look toward local curve center (tennis ball seam)
-                # Average nearby positions to find local center
-                window = min(10, num_frames // 4)  # Use 10 frames or 1/4 of total
-                start_idx = max(0, frame_idx - window // 2)
-                end_idx = min(num_frames, frame_idx + window // 2 + 1)
-
-                local_positions = positions[start_idx:end_idx]
-                avg_x = sum(p[0] for p in local_positions) / len(local_positions)
-                avg_y = sum(p[1] for p in local_positions) / len(local_positions)
-                avg_z = sum(p[2] for p in local_positions) / len(local_positions)
-                target = (avg_x, avg_y, avg_z)
-
-            else:  # "blend" (default) - adaptive based on curve sharpness
-                # Calculate curve curvature to detect sharp turns
-                prev_idx = (frame_idx - 1) % num_frames
-                next_idx = (frame_idx + 1) % num_frames
-                prev_pos = positions[prev_idx]
-                curr_pos = positions[frame_idx]
-                next_pos = positions[next_idx]
-
-                # Vectors: prev→curr and curr→next
-                vec1 = (curr_pos[0] - prev_pos[0], curr_pos[1] - prev_pos[1], curr_pos[2] - prev_pos[2])
-                vec2 = (next_pos[0] - curr_pos[0], next_pos[1] - curr_pos[1], next_pos[2] - curr_pos[2])
-
-                # Normalize vectors
-                len1 = np.sqrt(vec1[0]**2 + vec1[1]**2 + vec1[2]**2)
-                len2 = np.sqrt(vec2[0]**2 + vec2[1]**2 + vec2[2]**2)
-                if len1 > 0.001 and len2 > 0.001:
-                    vec1 = (vec1[0]/len1, vec1[1]/len1, vec1[2]/len1)
-                    vec2 = (vec2[0]/len2, vec2[1]/len2, vec2[2]/len2)
-
-                    # Dot product = cosine of angle between vectors
-                    # -1 = 180° turn (very sharp), 0 = 90° turn, 1 = straight (0° turn)
-                    dot = vec1[0]*vec2[0] + vec1[1]*vec2[1] + vec1[2]*vec2[2]
-                    dot = max(-1.0, min(1.0, dot))  # Clamp to [-1, 1]
-
-                    # Curvature: 0 = straight, 1 = sharp 90° turn, 2 = hairpin 180° turn
-                    curvature = 1.0 - dot  # 0 when straight (dot=1), 2 when reversing (dot=-1)
-
-                    # Adaptive blend: more inward on sharp curves, more tangent on straight sections
-                    # Base blend (0.3) + additional inward lean on curves (up to 0.5 more)
-                    adaptive_blend = look_at_blend + (curvature * 0.25)
-                    adaptive_blend = min(0.8, adaptive_blend)  # Cap at 80% inward
-                else:
-                    adaptive_blend = look_at_blend
-
-                # Calculate local curve center for inward look
-                window = min(10, num_frames // 4)
-                start_idx = max(0, frame_idx - window // 2)
-                end_idx = min(num_frames, frame_idx + window // 2 + 1)
-                local_positions = positions[start_idx:end_idx]
-                avg_x = sum(p[0] for p in local_positions) / len(local_positions)
-                avg_y = sum(p[1] for p in local_positions) / len(local_positions)
-                avg_z = sum(p[2] for p in local_positions) / len(local_positions)
-
-                # Blend tangent (forward) + inward (local center), weighted by curve sharpness
-                target = (
-                    next_pos[0] * (1 - adaptive_blend) + avg_x * adaptive_blend,
-                    next_pos[1] * (1 - adaptive_blend) + avg_y * adaptive_blend,
-                    next_pos[2] * (1 - adaptive_blend) + avg_z * adaptive_blend,
-                )
-
-            # Calculate rotation using quaternion look-at
-            rot_x, rot_y, rot_z = look_at_target(camera, target, stabilize=stabilize_camera)
-
-            camera_path.append(CameraPoint(
-                x=x,
-                y=y,
-                z=z,
-                rot_x=rot_x,
-                rot_y=rot_y,
-                rot_z=rot_z,
-                frame=frame_idx
-            ))
-
-    return camera_path
+        return _create_camera_points_empirical(positions, loop_frames, rotation_factor)
+    else:
+        return _create_camera_points_quaternion(
+            positions, center_x, center_y, center_z, height,
+            look_at_mode, look_at_blend, stabilize_camera
+        )
 
 
 def generate_street_path(

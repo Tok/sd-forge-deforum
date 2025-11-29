@@ -267,6 +267,35 @@ def _generate_bodycam(num_frames: int, radius: float, height: float) -> Tuple[li
     return camera_path, status
 
 
+# Preset handler map - reduces complexity by eliminating if-elif chain
+_PRESET_HANDLERS = {
+    "rotate-around": lambda n, r, h, cl, rm, rf, lm, lb: _generate_rotate_around(n, r, h, cl, rm, rf, lm, lb),
+    "figure-eight": lambda n, r, h, cl, *_: _generate_figure_eight(n, r, h, cl),
+    "forward-zoom": lambda n, r, h, *_: _generate_forward_zoom(n, r, h),
+    "orbit-up": lambda n, r, h, *_: _generate_orbit_up(n, r, h),
+    "spiral": lambda n, r, h, *_: _generate_spiral(n, r, h),
+    "street": lambda n, r, h, *_: _generate_street(n, r, h),
+    "dashcam": lambda n, r, h, *_: _generate_dashcam(n, r, h),
+    "bodycam": lambda n, r, h, *_: _generate_bodycam(n, r, h),
+}
+
+
+def _get_schedule_look_at_mode(preset_type: str, rotation_mode: str, look_at_mode: str) -> str | None:
+    """Determine if look_at_mode should be passed to schedule generation.
+
+    Args:
+        preset_type: Preset type name
+        rotation_mode: Rotation calculation mode
+        look_at_mode: Camera look-at behavior
+
+    Returns:
+        look_at_mode if applicable, None otherwise
+    """
+    if preset_type == "rotate-around" and rotation_mode == "quaternion":
+        return look_at_mode
+    return None
+
+
 def generate_preset_path(
     preset_type: str,
     radius: float,
@@ -295,53 +324,30 @@ def generate_preset_path(
         speed_multiplier: Translation speed control
         speed_randomization: Speed variation amount
         rotation_mode: How to calculate rotation ("quaternion" or "empirical")
-        rotation_factor: When rotation_mode="empirical", counter-rotation strength (default: -8.0)
-        look_at_mode: When rotation_mode="quaternion", camera look-at behavior
-                     ("center", "tangent", "inward", "blend")
-        look_at_blend: When look_at_mode="blend", inward blend amount (0.0-1.0)
+        rotation_factor: Counter-rotation strength (empirical mode, default: -8.0)
+        look_at_mode: Camera look-at behavior (quaternion mode)
+        look_at_blend: Inward blend amount (blend mode, 0.0-1.0)
 
     Returns:
         Tuple of (status_message, schedules_dict, camera_path)
     """
-    # Debug logging
     logger.debug(f"generate_preset_path: preset_type={preset_type}, radius={radius}, speed_multiplier={speed_multiplier}")
 
     try:
-        # Type-specific handler dispatch
-        num_frames_int = int(num_frames)
-
-        if preset_type == "rotate-around":
-            camera_path, status = _generate_rotate_around(
-                num_frames_int, radius, height, closed_loop,
-                rotation_mode, rotation_factor, look_at_mode, look_at_blend
-            )
-        elif preset_type == "figure-eight":
-            camera_path, status = _generate_figure_eight(
-                num_frames_int, radius, height, closed_loop
-            )
-        elif preset_type == "forward-zoom":
-            camera_path, status = _generate_forward_zoom(num_frames_int, radius, height)
-        elif preset_type == "orbit-up":
-            camera_path, status = _generate_orbit_up(num_frames_int, radius, height)
-        elif preset_type == "spiral":
-            camera_path, status = _generate_spiral(num_frames_int, radius, height)
-        elif preset_type == "street":
-            camera_path, status = _generate_street(num_frames_int, radius, height)
-        elif preset_type == "dashcam":
-            camera_path, status = _generate_dashcam(num_frames_int, radius, height)
-        elif preset_type == "bodycam":
-            camera_path, status = _generate_bodycam(num_frames_int, radius, height)
-        else:
+        # Dispatch to preset handler
+        handler = _PRESET_HANDLERS.get(preset_type)
+        if not handler:
             return f"{emoji_utils.maybe_cross()} Unknown preset type: {preset_type}", {}, []
 
-        # Use random_seed if provided, otherwise use 0 for reproducibility
-        seed = int(random_seed) if random_seed >= 0 else 0
+        num_frames_int = int(num_frames)
+        camera_path, status = handler(
+            num_frames_int, radius, height, closed_loop,
+            rotation_mode, rotation_factor, look_at_mode, look_at_blend
+        )
 
-        # Pass look_at_mode only for rotate-around with quaternion mode
-        # This ensures center mode rotations are recalculated after position offset
-        schedule_look_at_mode = None
-        if preset_type == "rotate-around" and rotation_mode == "quaternion":
-            schedule_look_at_mode = look_at_mode
+        # Convert to schedules
+        seed = int(random_seed) if random_seed >= 0 else 0
+        schedule_look_at_mode = _get_schedule_look_at_mode(preset_type, rotation_mode, look_at_mode)
 
         schedules = camera_path_to_schedules(
             camera_path,
@@ -536,31 +542,12 @@ def _calculate_path_statistics(camera_path: list, x_coords: list, y_coords: list
 """
 
 
-def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
-    """Create 3D visualization of camera path.
-
-    Args:
-        camera_path: List of CameraPoint objects
-
-    Returns:
-        (plotly_figure, stats_text)
-    """
-    if not camera_path:
-        return _create_empty_camera_plot()
-
-    # Extract coordinates
-    x_coords = [p.x for p in camera_path]
-    y_coords = [p.y for p in camera_path]
-    z_coords = [p.z for p in camera_path]
-
-    # Create 3D line plot - SLOPCORE GRIFTWAVE AESTHETIC
-    fig = go.Figure()
-
-    # Path line - PURPLE GRADIENT VIBES (simulate gradient with multiple segments)
+def _create_path_trace(x_coords: List[float], y_coords: List[float], z_coords: List[float]) -> go.Scatter3d:
+    """Create main path line trace with gradient colors."""
     num_points = len(x_coords)
     colors = _generate_gradient_colors(num_points)
 
-    fig.add_trace(go.Scatter3d(
+    return go.Scatter3d(
         x=x_coords,
         y=y_coords,
         z=z_coords,
@@ -569,7 +556,7 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
         line=dict(
             color=colors if num_points > 1 else ['#667EEA'],
             width=6,
-            colorscale=[[0, '#667EEA'], [1, '#764BA2']],  # Blue to purple gradient
+            colorscale=[[0, '#667EEA'], [1, '#764BA2']],
         ),
         marker=dict(
             size=4,
@@ -580,10 +567,12 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
         ),
         hovertemplate='<b>Frame %{text}</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>',
         text=[str(i) for i in range(num_points)]
-    ))
+    )
 
-    # Start point - CYAN GLOW (SaaS brand color)
-    fig.add_trace(go.Scatter3d(
+
+def _create_start_marker_trace(x_coords: List[float], y_coords: List[float], z_coords: List[float]) -> go.Scatter3d:
+    """Create start point marker (cyan diamond)."""
+    return go.Scatter3d(
         x=[x_coords[0]],
         y=[y_coords[0]],
         z=[z_coords[0]],
@@ -591,16 +580,18 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
         name='Start',
         marker=dict(
             size=12,
-            color='#06B6D4',  # Tailwind cyan-500
+            color='#06B6D4',
             symbol='diamond',
-            line=dict(color='#0891B2', width=2),  # Tailwind cyan-600
+            line=dict(color='#0891B2', width=2),
             opacity=1.0
         ),
         hovertemplate='<b>START</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>'
-    ))
+    )
 
-    # End point - PINK/PURPLE GLOW (startup gradient end)
-    fig.add_trace(go.Scatter3d(
+
+def _create_end_marker_trace(x_coords: List[float], y_coords: List[float], z_coords: List[float]) -> go.Scatter3d:
+    """Create end point marker (pink square)."""
+    return go.Scatter3d(
         x=[x_coords[-1]],
         y=[y_coords[-1]],
         z=[z_coords[-1]],
@@ -608,17 +599,18 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
         name='End',
         marker=dict(
             size=12,
-            color='#EC4899',  # Tailwind pink-500
+            color='#EC4899',
             symbol='square',
-            line=dict(color='#BE185D', width=2),  # Tailwind pink-700
+            line=dict(color='#BE185D', width=2),
             opacity=1.0
         ),
         hovertemplate='<b>END</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>'
-    ))
+    )
 
-    # Center point - ORANGE GLOW (rotation center / look-at target)
-    # Shows where rotate-around paths look at
-    fig.add_trace(go.Scatter3d(
+
+def _create_center_marker_trace() -> go.Scatter3d:
+    """Create center point marker (orange X at origin)."""
+    return go.Scatter3d(
         x=[0.0],
         y=[0.0],
         z=[0.0],
@@ -626,25 +618,31 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
         name='Center (0,0,0)',
         marker=dict(
             size=15,
-            color='#F97316',  # Tailwind orange-500
+            color='#F97316',
             symbol='x',
-            line=dict(color='#EA580C', width=3),  # Tailwind orange-600
+            line=dict(color='#EA580C', width=3),
             opacity=0.9
         ),
         hovertemplate='<b>CENTER</b><br>Origin (0, 0, 0)<br>Rotate-around looks here<extra></extra>'
-    ))
+    )
 
-    # Keyframe markers - BRIGHT BLUE highlights at regular intervals (SLOPCORE)
+
+def _create_keyframe_trace(
+    x_coords: List[float],
+    y_coords: List[float],
+    z_coords: List[float],
+    num_points: int
+) -> go.Scatter3d:
+    """Create keyframe markers at regular intervals."""
     keyframe_indices = _calculate_keyframe_indices(num_points)
     keyframe_interval = max(20, min(40, num_points // 10))
 
-    # Extract keyframe coordinates
     keyframe_x = [x_coords[i] for i in keyframe_indices]
     keyframe_y = [y_coords[i] for i in keyframe_indices]
     keyframe_z = [z_coords[i] for i in keyframe_indices]
     keyframe_labels = [str(i) for i in keyframe_indices]
 
-    fig.add_trace(go.Scatter3d(
+    return go.Scatter3d(
         x=keyframe_x,
         y=keyframe_y,
         z=keyframe_z,
@@ -652,17 +650,18 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
         name=f'Keyframes (every {keyframe_interval})',
         marker=dict(
             size=8,
-            color='#3B82F6',  # Tailwind blue-500 (bright blue, slopcore aesthetic)
+            color='#3B82F6',
             symbol='circle',
-            line=dict(color='#2563EB', width=2),  # Tailwind blue-600
+            line=dict(color='#2563EB', width=2),
             opacity=0.9
         ),
         hovertemplate='<b>KEYFRAME %{text}</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>',
         text=keyframe_labels
-    ))
+    )
 
-    # Update layout - FULL DARKMODE SLOPCORE
-    # Respect emoji toggle setting
+
+def _configure_plot_layout(fig: go.Figure) -> None:
+    """Configure dark mode SLOPCORE layout for plot."""
     title_emoji = f"{emoji_utils.wan_video()} " if emoji_utils.wan_video() else ""
     fig.update_layout(
         title=dict(
@@ -671,8 +670,8 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
             x=0.5,
             xanchor='center'
         ),
-        paper_bgcolor='#0F172A',  # Tailwind slate-900 - DARK AF
-        plot_bgcolor='#1E293B',   # Tailwind slate-800
+        paper_bgcolor='#0F172A',
+        plot_bgcolor='#1E293B',
         font=dict(color='#CBD5E1', family='system-ui, -apple-system, sans-serif', size=12),
         scene=dict(
             xaxis_title="<b>X</b> (Left/Right)",
@@ -681,11 +680,11 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
             aspectmode='data',
             xaxis=dict(
                 backgroundcolor='#1E293B',
-                gridcolor='#334155',  # Tailwind slate-700
+                gridcolor='#334155',
                 showbackground=True,
-                zerolinecolor='#475569',  # Tailwind slate-600
-                title=dict(font=dict(color='#94A3B8', size=14)),  # Tailwind slate-400
-                tickfont=dict(color='#64748B')  # Tailwind slate-500
+                zerolinecolor='#475569',
+                title=dict(font=dict(color='#94A3B8', size=14)),
+                tickfont=dict(color='#64748B')
             ),
             yaxis=dict(
                 backgroundcolor='#1E293B',
@@ -704,7 +703,7 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
                 tickfont=dict(color='#64748B')
             ),
             camera=dict(
-                eye=dict(x=1.5, y=1.5, z=1.5)  # Better default viewing angle
+                eye=dict(x=1.5, y=1.5, z=1.5)
             )
         ),
         height=600,
@@ -722,6 +721,36 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
             bordercolor='#667EEA'
         )
     )
+
+
+def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
+    """Create 3D visualization of camera path.
+
+    Args:
+        camera_path: List of CameraPoint objects
+
+    Returns:
+        (plotly_figure, stats_text)
+    """
+    if not camera_path:
+        return _create_empty_camera_plot()
+
+    # Extract coordinates
+    x_coords = [p.x for p in camera_path]
+    y_coords = [p.y for p in camera_path]
+    z_coords = [p.z for p in camera_path]
+    num_points = len(x_coords)
+
+    # Create figure and add all traces
+    fig = go.Figure()
+    fig.add_trace(_create_path_trace(x_coords, y_coords, z_coords))
+    fig.add_trace(_create_start_marker_trace(x_coords, y_coords, z_coords))
+    fig.add_trace(_create_end_marker_trace(x_coords, y_coords, z_coords))
+    fig.add_trace(_create_center_marker_trace())
+    fig.add_trace(_create_keyframe_trace(x_coords, y_coords, z_coords, num_points))
+
+    # Configure layout
+    _configure_plot_layout(fig)
 
     # Calculate statistics
     stats = _calculate_path_statistics(camera_path, x_coords, y_coords, z_coords)
