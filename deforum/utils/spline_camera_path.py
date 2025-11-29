@@ -686,19 +686,34 @@ def camera_path_to_schedules(
         'rotation_z': []
     }
 
+    # For non-center modes, we need the first point's rotation to normalize
+    first_rot_x = camera_path[0].rot_x
+    first_rot_y = camera_path[0].rot_y
+    first_rot_z = camera_path[0].rot_z
+
     for idx, point in enumerate(camera_path):
         # Normalize position (subtract offset so first frame is at origin)
         norm_x = point.x - offset_x
         norm_y = point.y - offset_y
         norm_z = point.z - offset_z
 
-        # Handle rotations: always recalculate to maintain look-at relationship after position offset
-        # After position normalization, center moves relative to camera
-        # Original: camera at (100,0,0) looking at (0,0,0)
-        # After offset: camera at (0,0,0) must look at (-100,0,0)
-        camera_pos = (norm_x, norm_y, norm_z)
-        center_pos = (center_offset_x, center_offset_y, center_offset_z)
-        norm_rot_x, norm_rot_y, norm_rot_z = look_at_target(camera_pos, center_pos, stabilize=stabilize_camera)
+        # Handle rotations based on look_at_mode
+        # - "center": Recalculate rotations to track offset center (default for rotate-around)
+        # - Other modes (tangent, inward, blend) or None: Preserve original rotations from camera path
+        if look_at_mode == "center":
+            # Recalculate look-at to maintain relationship after position offset
+            # Original: camera at (100,0,0) looking at (0,0,0)
+            # After offset: camera at (0,0,0) must look at (-100,0,0)
+            camera_pos = (norm_x, norm_y, norm_z)
+            center_pos = (center_offset_x, center_offset_y, center_offset_z)
+            norm_rot_x, norm_rot_y, norm_rot_z = look_at_target(camera_pos, center_pos, stabilize=stabilize_camera)
+        else:
+            # Preserve original rotations from camera path (relative to first frame)
+            # This allows tangent, inward, blend modes to show their unique rotation patterns
+            # Normalize so first frame starts at zero rotation
+            norm_rot_x = point.rot_x - first_rot_x
+            norm_rot_y = point.rot_y - first_rot_y
+            norm_rot_z = point.rot_z - first_rot_z
 
         # Calculate base deltas
         delta_x = norm_x - prev_x

@@ -292,12 +292,52 @@ def visualize_schedules(
         # Fallback for empty data
         return _create_empty_plot(), "No schedule data"
 
-    # Create 3D plot - SLOPCORE AESTHETIC
+    # Create 3D plot - AUTHENTIC BB0 SLOPCORE AESTHETIC
+    # Colors from BLANK BANSHEE 0 album cover (pipetted from source)
+    # See docs/SLOPCORE.md for full palette documentation
     fig = go.Figure()
 
-    # Path line - PURPLE GRADIENT (thin, subtle)
-    colors = [f'rgb({int(102 + (118-102)*i/num_points)}, {int(126 + (75-126)*i/num_points)}, {int(234 + (162-234)*i/num_points)})'
-              for i in range(num_points)]
+    # BB0 Slopcore gradient palette (authentic, not Tailwind approximation)
+    BB0_VOID = '#5606FF'      # Deep purple-blue (album top)
+    BB0_DUSK = '#4C21FF'      # Purple-blue
+    BB0_TWILIGHT = '#413CFF'  # Blue-purple
+    BB0_MIDNIGHT = '#3757FF'  # Mid blue
+    BB0_DAWN = '#2C71FE'      # Blue
+    BB0_HORIZON = '#228CFE'   # Bright blue
+    BB0_ZENITH = '#17A7FE'    # Cyan (album bottom)
+    BB0_GLITCH = '#FF1493'    # Neon pink (the single permitted heresy)
+
+    # Path line - BB0 GRADIENT (authentic purple-to-cyan)
+    # Interpolate through the 7-shade palette based on frame position
+    import numpy as np
+    bb0_colors = [BB0_VOID, BB0_DUSK, BB0_TWILIGHT, BB0_MIDNIGHT, BB0_DAWN, BB0_HORIZON, BB0_ZENITH]
+
+    def hex_to_rgb(hex_color):
+        """Convert hex color to RGB tuple."""
+        h = hex_color.lstrip('#')
+        return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+    def interpolate_bb0_color(t):
+        """Get color from BB0 gradient at position t (0.0-1.0)."""
+        if t <= 0:
+            return BB0_VOID
+        if t >= 1:
+            return BB0_ZENITH
+        # Map t to palette index
+        idx = t * (len(bb0_colors) - 1)
+        low_idx = int(idx)
+        high_idx = min(low_idx + 1, len(bb0_colors) - 1)
+        frac = idx - low_idx
+        # Interpolate between adjacent colors
+        r1, g1, b1 = hex_to_rgb(bb0_colors[low_idx])
+        r2, g2, b2 = hex_to_rgb(bb0_colors[high_idx])
+        r = int(r1 + (r2 - r1) * frac)
+        g = int(g1 + (g2 - g1) * frac)
+        b = int(b1 + (b2 - b1) * frac)
+        return f'rgb({r}, {g}, {b})'
+
+    # Create color array for path gradient
+    path_colors = [interpolate_bb0_color(i / max(1, num_points - 1)) for i in range(num_points)]
 
     fig.add_trace(go.Scatter3d(
         x=x_coords,
@@ -306,14 +346,14 @@ def visualize_schedules(
         mode='lines',
         name='Path',
         line=dict(
-            color='#667EEA',
-            width=3,
+            color=path_colors,
+            width=4,
         ),
         hoverinfo='skip',
         showlegend=False
     ))
 
-    # Prompt keyframes - BRIGHT BLUE (frames with prompt entries)
+    # Prompt keyframes - BB0 CYAN with GLITCH border
     if prompt_keyframes:
         keyframe_x = [x_coords[f] for f in prompt_keyframes if f < len(x_coords)]
         keyframe_y = [y_coords[f] for f in prompt_keyframes if f < len(y_coords)]
@@ -327,10 +367,10 @@ def visualize_schedules(
             mode='markers',
             name='Keyframes',
             marker=dict(
-                size=10,
-                color='#3B82F6',  # Bright blue (slopcore)
+                size=12,
+                color=BB0_ZENITH,  # Cyan from BB0 (album bottom)
                 symbol='circle',
-                line=dict(color='#2563EB', width=2),
+                line=dict(color=BB0_GLITCH, width=2),  # Neon pink border (the glitch)
                 opacity=1.0
             ),
             hovertemplate='<b>KEYFRAME %{text}</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>',
@@ -338,19 +378,7 @@ def visualize_schedules(
             showlegend=False
         ))
 
-    # Camera direction arrows - GREEN (classic) or PINK/PURPLE (slopcore)
-    import numpy as np
-
-    # Get theme-aware arrow color
-    try:
-        from deforum.rendering.options import get_log_theme
-        theme = get_log_theme()
-        # Slopcore: Deep purple/pink (#A353A8 = SLOPCORE_6)
-        # Classic: Green (#10B981)
-        arrow_color = '#A353A8' if theme == 'slopcore' else '#10B981'
-    except:
-        arrow_color = '#10B981'  # Fallback to green
-
+    # Camera direction arrows - BB0 DEEP PURPLE
     for idx in range(num_points):
         # Calculate forward direction from rotation angles (quaternion-based)
         pitch = rx_coords[idx]
@@ -366,25 +394,28 @@ def visualize_schedules(
         forward_y = forward.y * arrow_length
         forward_z = forward.z * arrow_length
 
+        # Color arrows based on position in path (matches path gradient)
+        arrow_color = interpolate_bb0_color(idx / max(1, num_points - 1))
+
         # Arrow from camera position pointing in look direction
         fig.add_trace(go.Scatter3d(
             x=[x_coords[idx], x_coords[idx] + forward_x],
             y=[y_coords[idx], y_coords[idx] + forward_y],
             z=[z_coords[idx], z_coords[idx] + forward_z],
             mode='lines',
-            line=dict(color=arrow_color, width=2),  # Thinner for all frames
+            line=dict(color=arrow_color, width=2),
             hovertemplate=f'<b>Frame {idx}</b><extra></extra>',
             showlegend=False,
             hoverinfo='text'
         ))
 
-        # Arrowhead (small marker at end)
+        # Arrowhead - NEON PINK (the glitch)
         fig.add_trace(go.Scatter3d(
             x=[x_coords[idx] + forward_x],
             y=[y_coords[idx] + forward_y],
             z=[z_coords[idx] + forward_z],
             mode='markers',
-            marker=dict(size=2, color='#10B981', symbol='diamond'),
+            marker=dict(size=3, color=BB0_GLITCH, symbol='diamond'),
             hoverinfo='skip',
             showlegend=False
         ))
