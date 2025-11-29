@@ -29,17 +29,35 @@ COLOR_GRID = '#334155'       # Tailwind slate-700 (grid)
 COLOR_TEXT = '#CBD5E1'       # Tailwind slate-300 (light text)
 
 
-def get_frame_color(metrics: FrameMetrics) -> str:
-    """Get hex color for frame based on preservation/novelty metrics."""
+def get_frame_color(metrics: FrameMetrics, is_keyframe: bool = False) -> str:
+    """Get hex color for frame based on type and preservation/novelty metrics.
+
+    Args:
+        metrics: Frame metrics to evaluate
+        is_keyframe: Whether this frame is a prompt keyframe
+
+    Returns:
+        Hex color string
+    """
+    # Keyframes always show in cyan (BB0_ZENITH)
+    if is_keyframe:
+        return COLOR_VIEWPORT  # BB0_ZENITH cyan
+
+    # Non-keyframes show based on preservation
     if metrics.preservation < MIN_PRESERVATION_THRESHOLD:
-        return COLOR_PROBLEM
+        return COLOR_PROBLEM  # BB0_GLITCH pink
     elif metrics.novelty > MAX_NOVELTY_THRESHOLD:
-        return COLOR_WARNING
+        return COLOR_WARNING  # BB0_MIDNIGHT mid blue
     else:
-        return COLOR_GOOD
+        return COLOR_GOOD  # BB0_VOID deep purple
 
 
-def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, translation_amplify: float = 15.0) -> List[Dict[str, Any]]:
+def serialize_frame_data(
+    metrics_list: List[FrameMetrics],
+    trail_length: int,
+    translation_amplify: float = 15.0,
+    prompt_keyframes: set = None
+) -> List[Dict[str, Any]]:
     """Serialize frame metrics to JSON-compatible format.
 
     Visualization concept (dash-cam view):
@@ -59,6 +77,9 @@ def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, tr
     # Sample every Nth frame to reduce data size and stay under browser data URL limits
     # For 333 frames, sampling every 3rd = ~111 frames = manageable data size
     sample_interval = max(1, len(metrics_list) // 150)  # Target ~150 frames max
+
+    if prompt_keyframes is None:
+        prompt_keyframes = set()
 
     frames_data = []
     for sample_idx, frame_idx in enumerate(range(0, len(metrics_list), sample_interval)):
@@ -98,9 +119,10 @@ def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, tr
             corners = relative_rect.get_corners()
             rounded_corners = [[round(x, 1), round(y, 1)] for x, y in corners]
 
+            is_keyframe = immediate_prev_idx in prompt_keyframes
             trail_frames.append({
                 'corners': rounded_corners,
-                'color': get_frame_color(immediate_prev_metrics),
+                'color': get_frame_color(immediate_prev_metrics, is_keyframe),
                 'age': 1,  # Most recent previous frame
                 'frameIndex': immediate_prev_idx
             })
@@ -145,9 +167,10 @@ def serialize_frame_data(metrics_list: List[FrameMetrics], trail_length: int, tr
             # Round coordinates to 1 decimal place to reduce JSON size
             rounded_corners = [[round(x, 1), round(y, 1)] for x, y in corners]
 
+            is_keyframe = trail_frame_idx in prompt_keyframes
             trail_frames.append({
                 'corners': rounded_corners,
-                'color': get_frame_color(trail_metrics),
+                'color': get_frame_color(trail_metrics, is_keyframe),
                 'age': age,
                 'frameIndex': trail_frame_idx
             })
@@ -174,7 +197,8 @@ def create_canvas_html(
     height: int = 600,
     trail_length: int = DEFAULT_TRAIL_LENGTH,
     playback_fps: int = 10,
-    translation_amplify: float = 15.0
+    translation_amplify: float = 15.0,
+    prompt_keyframes: set = None
 ) -> str:
     """Create iframe with standalone HTML visualization.
 
@@ -201,7 +225,10 @@ def create_canvas_html(
     if not has_movement:
         return '<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">⚠️ No camera movement detected. Use "Rotate Around" preset or enter camera schedules to see frame overlap trail.</div>'
 
-    frames_data = serialize_frame_data(metrics_list, trail_length, translation_amplify)
+    if prompt_keyframes is None:
+        prompt_keyframes = set()
+
+    frames_data = serialize_frame_data(metrics_list, trail_length, translation_amplify, prompt_keyframes)
     viewport_width = metrics_list[0].curr_viewport_rect.width
     viewport_height = metrics_list[0].curr_viewport_rect.height
     padding_factor = 1.8

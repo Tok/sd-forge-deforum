@@ -299,10 +299,11 @@ def visualize_schedules(
     fig = go.Figure()
 
     # BB0 Slopcore palette - solid colors (authentic, not Tailwind approximation)
-    BB0_VOID = '#5606FF'      # Deep purple-blue (album top) - path line
-    BB0_MIDNIGHT = '#3757FF'  # Mid blue - arrows
-    BB0_ZENITH = '#17A7FE'    # Cyan (album bottom) - keyframes
-    BB0_GLITCH = '#FF1493'    # Neon pink - arrowheads, keyframe borders
+    BB0_VOID = '#5606FF'      # Deep purple-blue - path line, non-keyframe arrows
+    BB0_DUSK = '#4C21FF'      # Purple-blue - (reserved for cadence diffusion frames)
+    BB0_MIDNIGHT = '#3757FF'  # Mid blue - (reserved for tween frames)
+    BB0_ZENITH = '#17A7FE'    # Cyan - keyframes, keyframe arrows
+    BB0_GLITCH = '#FF1493'    # Neon pink - arrowheads
 
     # Path line - solid BB0_VOID (deep purple)
     fig.add_trace(go.Scatter3d(
@@ -334,7 +335,7 @@ def visualize_schedules(
             name='Keyframes',
             marker=dict(
                 size=12,
-                color=BB0_ZENITH,  # Cyan (album bottom)
+                color=BB0_ZENITH,  # Cyan
                 symbol='circle',
                 line=dict(color=BB0_GLITCH, width=2),  # Neon pink border
                 opacity=1.0
@@ -344,7 +345,8 @@ def visualize_schedules(
             showlegend=False
         ))
 
-    # Camera direction arrows - solid BB0_MIDNIGHT (mid blue)
+    # Camera direction arrows - color-coded by frame type
+    # Keyframes (cyan) vs non-keyframes (purple)
     for idx in range(num_points):
         # Calculate forward direction from rotation angles (quaternion-based)
         pitch = rx_coords[idx]
@@ -360,14 +362,19 @@ def visualize_schedules(
         forward_y = forward.y * arrow_length
         forward_z = forward.z * arrow_length
 
+        # Color arrows by frame type
+        is_keyframe = idx in prompt_keyframes
+        arrow_color = BB0_ZENITH if is_keyframe else BB0_VOID  # Cyan for keyframes, purple for others
+        arrow_width = 3 if is_keyframe else 2  # Thicker for keyframes
+
         # Arrow from camera position pointing in look direction
         fig.add_trace(go.Scatter3d(
             x=[x_coords[idx], x_coords[idx] + forward_x],
             y=[y_coords[idx], y_coords[idx] + forward_y],
             z=[z_coords[idx], z_coords[idx] + forward_z],
             mode='lines',
-            line=dict(color=BB0_MIDNIGHT, width=2),
-            hovertemplate=f'<b>Frame {idx}</b><extra></extra>',
+            line=dict(color=arrow_color, width=arrow_width),
+            hovertemplate=f'<b>{'KEYFRAME' if is_keyframe else 'Frame'} {idx}</b><extra></extra>',
             showlegend=False,
             hoverinfo='text'
         ))

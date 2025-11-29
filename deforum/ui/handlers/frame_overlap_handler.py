@@ -26,7 +26,8 @@ def update_frame_overlap_visualization(
     shake_name: str = "None",
     shake_intensity: float = 1.0,
     shake_speed: float = 1.0,
-    target_fps: int = 60
+    target_fps: int = 60,
+    animation_prompts: str = ""
 ) -> Optional[str]:
     """Update frame overlap visualization from schedule strings with shakify overlay and zoom.
 
@@ -45,6 +46,7 @@ def update_frame_overlap_visualization(
         shake_intensity: Shakify intensity multiplier (default: 1.0)
         shake_speed: Shakify speed multiplier (default: 1.0)
         target_fps: Target FPS for shakify interpolation (default: 60)
+        animation_prompts: Prompt schedule string (optional, for keyframe detection)
 
     Returns:
         HTML string with Canvas visualization, or None on error
@@ -146,6 +148,15 @@ def update_frame_overlap_visualization(
             # No zoom schedule provided, use 1.0 (no zoom)
             zoom_deltas = [1.0] * max_frames
 
+        # Parse prompt keyframes (frames with prompt entries)
+        prompt_keyframes = set()
+        if animation_prompts:
+            try:
+                from deforum.utils.schedule_visualizer import parse_prompt_schedule
+                prompt_keyframes = parse_prompt_schedule(animation_prompts)
+            except Exception as e:
+                logger.warning(f"Failed to parse prompts for keyframe detection: {e}")
+
         # Run frame overlap simulation
         # Use combined 3D rotation for 2D visualization
         metrics = simulate_camera_path(
@@ -163,7 +174,8 @@ def update_frame_overlap_visualization(
             width=800,
             height=600,
             trail_length=30,  # Show 30 previous frames for longer worm trail
-            playback_fps=10
+            playback_fps=10,
+            prompt_keyframes=prompt_keyframes  # Pass keyframes for color-coding
         )
 
         return html

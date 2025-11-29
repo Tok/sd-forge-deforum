@@ -589,6 +589,7 @@ def on_ui_tabs():
                 shake_intensity_val,
                 shake_speed_val,
                 apply_shakify_toggle,
+                prompts,
             ):
                 """Update frame overlap visualization with optional shakify overlay and zoom."""
                 # Guard against empty inputs during UI initialization
@@ -598,6 +599,10 @@ def on_ui_tabs():
                 # Handle None zoom (might be None during initialization)
                 if zoom is None:
                     zoom = ""
+
+                # Handle None prompts
+                if prompts is None:
+                    prompts = ""
 
                 # Get max_frames from motion settings if available, otherwise default to 333
                 max_frames = 333
@@ -629,6 +634,7 @@ def on_ui_tabs():
                     shake_intensity=shake_intensity,
                     shake_speed=shake_speed,
                     target_fps=60,
+                    animation_prompts=prompts or "",
                 )
 
             def init_overlap_viz_with_preset():
@@ -713,6 +719,7 @@ def on_ui_tabs():
                 components.get("shake_intensity"),
                 components.get("shake_speed"),
                 components.get("show_shakify_in_overlap"),  # Toggle control
+                components.get("animation_prompts"),  # For keyframe detection
             ]
 
             # Wire up change handlers for all schedule fields
@@ -731,6 +738,12 @@ def on_ui_tabs():
                     shakify_component.change(
                         fn=update_overlap_viz, inputs=viz_inputs, outputs=[frame_overlap_simulator]
                     )
+
+            # Wire up change handler for prompts (for keyframe color-coding)
+            if components.get("animation_prompts"):
+                components.get("animation_prompts").change(
+                    fn=update_overlap_viz, inputs=viz_inputs, outputs=[frame_overlap_simulator]
+                )
 
         # Path Analysis & Optimization handlers
         if components.get("analyze_path_btn") and components.get("optimize_path_btn"):
