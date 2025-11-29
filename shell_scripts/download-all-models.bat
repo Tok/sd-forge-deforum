@@ -5,7 +5,8 @@ REM This ensures a complete installation of Flux, Wan, Qwen, and other Deforum m
 setlocal enabledelayedexpansion
 
 set SCRIPT_DIR=%~dp0
-set FORGE_ROOT=%SCRIPT_DIR%..\..\\
+set EXTENSION_DIR=%SCRIPT_DIR%..\
+set FORGE_ROOT=%SCRIPT_DIR%..\..\..\
 
 echo ========================================
 echo Deforum Model Download Script

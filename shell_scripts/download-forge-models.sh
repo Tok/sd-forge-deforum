@@ -18,7 +18,7 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXTENSION_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-FORGE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+FORGE_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 echo -e "${CYAN}========================================"
 echo "Forge Base Models Download Script"

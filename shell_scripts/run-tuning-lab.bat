@@ -8,9 +8,10 @@ REM   run-tuning-lab.bat --no-opt  Start without optimizations
 
 setlocal enabledelayedexpansion
 
-REM Get Forge directory (two levels up from scripts/)
+REM Get Forge directory (three levels up from shell_scripts/)
 set SCRIPT_DIR=%~dp0
-set FORGE_DIR=%SCRIPT_DIR%..\..\\
+set EXTENSION_DIR=%SCRIPT_DIR%..\
+set FORGE_DIR=%SCRIPT_DIR%..\..\..\
 
 echo ========================================
 echo Deforum Tuning Lab

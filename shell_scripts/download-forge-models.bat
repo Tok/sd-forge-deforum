@@ -9,7 +9,7 @@ REM Reference: https://github.com/Haoming02/sd-webui-forge-classic/wiki/Download
 setlocal enabledelayedexpansion
 
 set SCRIPT_DIR=%~dp0
-set FORGE_ROOT=%SCRIPT_DIR%..\..\\
+set FORGE_ROOT=%SCRIPT_DIR%..\..\..\
 
 echo ========================================
 echo Forge Base Models Download Script

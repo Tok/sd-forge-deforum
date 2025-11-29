@@ -8,7 +8,8 @@ REM   - CUDA toolkit (nvcc, CUDA_HOME) for compilation
 setlocal enabledelayedexpansion
 
 set SCRIPT_DIR=%~dp0
-set FORGE_DIR=%SCRIPT_DIR%..\..
+set EXTENSION_DIR=%SCRIPT_DIR%..\
+set FORGE_DIR=%SCRIPT_DIR%..\..\..\
 
 echo ========================================
 echo SageAttention Installation

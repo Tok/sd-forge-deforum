@@ -19,8 +19,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-FORGE_DIR="$(cd "../../" && pwd)"
-EXTENSION_DIR="$(pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EXTENSION_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+FORGE_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SERVER_URL="http://localhost:7860"
 DEFORUM_API_URL="${SERVER_URL}/deforum_api/jobs"
 MAX_WAIT=300  # Maximum seconds to wait for server (5 minutes)

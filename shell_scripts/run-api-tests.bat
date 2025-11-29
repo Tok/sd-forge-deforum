@@ -10,8 +10,8 @@ REM   run-api-tests.bat --start      Start server, run tests, stop server
 setlocal enabledelayedexpansion
 
 set SCRIPT_DIR=%~dp0
-set EXTENSION_DIR=%SCRIPT_DIR%..\\
-set FORGE_DIR=%EXTENSION_DIR%..\..\\
+set EXTENSION_DIR=%SCRIPT_DIR%..\
+set FORGE_DIR=%SCRIPT_DIR%..\..\..\
 
 echo ========================================
 echo Deforum API Tests
@@ -22,7 +22,7 @@ REM Check if we need to start the server
 if "%~1"=="--start" (
     echo Starting Forge server...
     cd /d "%FORGE_DIR%"
-    start "Forge Server" /B python webui.py --deforum-api --api --nowebui
+    start "Forge Server" /B "%FORGE_DIR%\venv\Scripts\python.exe" webui.py --deforum-api --api --nowebui
 
     echo Waiting for server to start ^(30 seconds^)...
     timeout /t 30 /nobreak >nul
@@ -38,7 +38,7 @@ echo Running API tests...
 echo.
 
 cd /d "%EXTENSION_DIR%"
-python -m pytest tests/ -v -k "not unit" %*
+"%FORGE_DIR%\venv\Scripts\python.exe" -m pytest tests/ -v -k "not unit" %*
 
 set TEST_RESULT=%ERRORLEVEL%
 
