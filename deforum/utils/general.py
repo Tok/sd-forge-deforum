@@ -70,28 +70,96 @@ def debug_print(message: str) -> None:
 # get_os imported from deforum.utils.parsing.strings
 
 
+def _is_valid_frame_file(filename, img_batch_id):
+    """Check if filename is a valid frame file for processing.
+
+    Args:
+        filename: Name of file to check
+        img_batch_id: Batch ID to match, or None to match all
+
+    Returns:
+        True if file should be processed as a frame
+    """
+    if not filename:
+        return False
+
+    # Check file extension
+    is_image = 'png' in filename or 'jpg' in filename
+    if not is_image:
+        return False
+
+    # Exclude depth and intermediate files
+    if '-' in filename or '_depth_' in filename:
+        return False
+
+    # Match batch ID or numeric frame names
+    matches_batch = (img_batch_id is not None and filename.startswith(img_batch_id))
+    matches_numeric = filename[0].isdigit()
+    is_valid_id = img_batch_id is None or matches_batch or matches_numeric
+
+    return is_valid_id
+
+
+def _copy_frame(original_path, dest_dir):
+    """Copy frame file to destination (for video input).
+
+    Args:
+        original_path: Source file path
+        dest_dir: Destination directory
+    """
+    shutil.copy(original_path, dest_dir)
+
+
+def _reencode_frame(original_path, dest_dir, filename):
+    """Reencode frame with CV2 to normalize bit depth (for deforum input).
+
+    Args:
+        original_path: Source file path
+        dest_dir: Destination directory
+        filename: Filename for output
+    """
+    import cv2
+    image = cv2.imread(original_path)
+    new_path = os.path.join(dest_dir, filename)
+    cv2.imwrite(new_path, image, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+
+
 # used in src/rife/inference_video.py and more, soon
 def duplicate_pngs_from_folder(from_folder, to_folder, img_batch_id, orig_vid_name):
-    import cv2
-    # TODO: don't copy-paste at all if the input is a video (now it copy-pastes, and if input is deforum run is also converts to make sure no errors rise cuz of 24-32 bit depth differences)
+    """Duplicate PNG/JPG frames from folder, with optional re-encoding.
+
+    For video input, frames are copied directly. For deforum runs, frames are
+    re-encoded with CV2 to normalize bit depth (24-32 bit differences).
+
+    Args:
+        from_folder: Source directory containing frames
+        to_folder: Destination directory name (created inside from_folder)
+        img_batch_id: Batch ID prefix to match, or None to match all
+        orig_vid_name: Original video name (if from video, enables copy mode)
+
+    Returns:
+        Number of frames processed
+    """
+    # TODO: don't copy-paste at all if the input is a video (now it copy-pastes,
+    # and if input is deforum run is also converts to make sure no errors rise
+    # cuz of 24-32 bit depth differences)
     temp_convert_raw_png_path = os.path.join(from_folder, to_folder)
     os.makedirs(temp_convert_raw_png_path, exist_ok=True)
 
     frames_handled = 0
     for f in os.listdir(from_folder):
-        # Match files that: start with batch ID, OR batch ID is None, OR start with a digit (numeric frame names)
-        is_frame = (img_batch_id is not None and f.startswith(img_batch_id)) or \
-                   (img_batch_id is None) or \
-                   (f[0].isdigit() if f else False)
-        if ('png' in f or 'jpg' in f) and '-' not in f and '_depth_' not in f and is_frame:
-            frames_handled += 1
-            original_img_path = os.path.join(from_folder, f)
-            if orig_vid_name is not None:
-                shutil.copy(original_img_path, temp_convert_raw_png_path)
-            else:
-                image = cv2.imread(original_img_path)
-                new_path = os.path.join(temp_convert_raw_png_path, f)
-                cv2.imwrite(new_path, image, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+        if not _is_valid_frame_file(f, img_batch_id):
+            continue
+
+        frames_handled += 1
+        original_img_path = os.path.join(from_folder, f)
+
+        # Video input: copy directly, Deforum run: re-encode to normalize bit depth
+        if orig_vid_name is not None:
+            _copy_frame(original_img_path, temp_convert_raw_png_path)
+        else:
+            _reencode_frame(original_img_path, temp_convert_raw_png_path, f)
+
     return frames_handled
 
 
@@ -176,34 +244,104 @@ def get_max_path_length(base_folder_path: str) -> int:
     return _get_max_path_length(base_folder_path, os_name, supports_long_paths)
 
 
-def substitute_placeholders(template, arg_list, base_folder_path):
-    import re
-    # Find and update timestring values if resume_from_timestring is True
+def _find_resume_timestring(arg_list):
+    """Find resume timestring settings from argument list.
+
+    Args:
+        arg_list: List of argument objects
+
+    Returns:
+        Tuple of (resume_from_timestring bool, resume_timestring str or None)
+    """
     resume_from_timestring = next(
-        (arg_obj.resume_from_timestring for arg_obj in arg_list if hasattr(arg_obj, 'resume_from_timestring')), False)
+        (arg_obj.resume_from_timestring for arg_obj in arg_list
+         if hasattr(arg_obj, 'resume_from_timestring')), False)
     resume_timestring = next(
-        (arg_obj.resume_timestring for arg_obj in arg_list if hasattr(arg_obj, 'resume_timestring')), None)
+        (arg_obj.resume_timestring for arg_obj in arg_list
+         if hasattr(arg_obj, 'resume_timestring')), None)
+    return resume_from_timestring, resume_timestring
 
+
+def _update_timestrings_for_resume(arg_list, resume_timestring):
+    """Update timestring attributes for resume mode (SIDE EFFECT).
+
+    Args:
+        arg_list: List of argument objects (modified in place)
+        resume_timestring: Timestring value to set
+    """
+    for arg_obj in arg_list:
+        if hasattr(arg_obj, 'timestring'):
+            arg_obj.timestring = resume_timestring
+
+
+def _build_values_dict(arg_list):
+    """Build dictionary of all non-callable attributes from argument objects.
+
+    Args:
+        arg_list: List of argument objects
+
+    Returns:
+        Dictionary mapping lowercase attribute names to values
+    """
+    return {
+        attr.lower(): getattr(arg_obj, attr)
+        for arg_obj in arg_list
+        for attr in dir(arg_obj)
+        if not callable(getattr(arg_obj, attr)) and not attr.startswith('__')
+    }
+
+
+def _substitute_and_clean_template(template, values):
+    """Substitute placeholders and clean invalid characters from template.
+
+    Args:
+        template: Template string with {placeholder} patterns
+        values: Dictionary of placeholder values
+
+    Returns:
+        Cleaned string with placeholders substituted
+    """
+    import re
+    # Substitute valid placeholders
+    formatted = re.sub(
+        r"{(\w+)}",
+        lambda m: custom_placeholder_format(values, m),
+        template
+    )
+    # Remove any remaining braces
+    formatted = re.sub(r'[{}]+', '', formatted)
+    # Replace invalid filename characters with underscores
+    formatted = re.sub(r'[<>:"/\\|?*\s,]', '_', formatted)
+    # Clean up trailing underscores
+    return formatted.rstrip('_')
+
+
+def substitute_placeholders(template, arg_list, base_folder_path):
+    """Substitute placeholders in template string with values from arguments.
+
+    Handles resume mode by updating timestrings if needed, builds a dictionary
+    of all argument attributes, performs placeholder substitution, cleans
+    invalid characters, and truncates to OS max path length.
+
+    Args:
+        template: Template string with {placeholder} patterns
+        arg_list: List of argument objects containing values
+        base_folder_path: Base folder path for max length calculation
+
+    Returns:
+        Formatted string with substituted values, cleaned and truncated
+    """
+    # Handle resume mode
+    resume_from_timestring, resume_timestring = _find_resume_timestring(arg_list)
     if resume_from_timestring and resume_timestring:
-        for arg_obj in arg_list:
-            if hasattr(arg_obj, 'timestring'):
-                arg_obj.timestring = resume_timestring
+        _update_timestrings_for_resume(arg_list, resume_timestring)
 
+    # Build values and perform substitution
+    values = _build_values_dict(arg_list)
+    formatted_string = _substitute_and_clean_template(template, values)
+
+    # Truncate to max path length
     max_length = get_max_path_length(base_folder_path)
-    values = {attr.lower(): getattr(arg_obj, attr)
-              for arg_obj in arg_list
-              for attr in dir(arg_obj) if not callable(getattr(arg_obj, attr)) and not attr.startswith('__')}
-    
-    # FIXED: Properly handle placeholder substitution without leaving stray characters
-    # First, substitute valid placeholders
-    formatted_string = re.sub(r"{(\w+)}", lambda m: custom_placeholder_format(values, m), template)
-    # Then, clean up any remaining invalid placeholders or stray braces
-    # Remove any remaining braces entirely instead of replacing with underscores
-    formatted_string = re.sub(r'[{}]+', '', formatted_string)  # Remove any remaining braces completely
-    formatted_string = re.sub(r'[<>:"/\\|?*\s,]', '_', formatted_string)
-    # Clean up any trailing underscores that might result from the cleaning process
-    formatted_string = formatted_string.rstrip('_')
-    
     return formatted_string[:max_length]
 
 
