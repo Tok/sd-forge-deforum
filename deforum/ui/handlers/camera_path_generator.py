@@ -17,6 +17,9 @@ from deforum.utils.spline_camera_path import (
     CameraPoint
 )
 from deforum.utils.system.logging import emoji as emoji_utils
+from deforum.utils.system.logging import get_logger
+
+logger = get_logger()
 
 
 # ============================================================================
@@ -301,7 +304,7 @@ def generate_preset_path(
         Tuple of (status_message, schedules_dict, camera_path)
     """
     # Debug logging
-    print(f"DEBUG generate_preset_path: preset_type={preset_type}, radius={radius}, speed_multiplier={speed_multiplier}")
+    logger.debug(f"generate_preset_path: preset_type={preset_type}, radius={radius}, speed_multiplier={speed_multiplier}")
 
     try:
         # Type-specific handler dispatch
@@ -760,7 +763,7 @@ def handle_generate_preset(
     from deforum.utils.schedule_visualizer import visualize_schedules
 
     # Debug logging
-    print(f"DEBUG handle_generate_preset: radius={radius}, speed_multiplier={speed_multiplier}, num_frames={num_frames}")
+    logger.debug(f"handle_generate_preset: radius={radius}, speed_multiplier={speed_multiplier}, num_frames={num_frames}")
 
     status, schedules, camera_path = generate_preset_path(
         preset_type, radius, height, num_frames, closed_loop,
@@ -776,7 +779,7 @@ def handle_generate_preset(
     tx_matches = re.findall(r'(\d+)\s*:\s*\(\s*(-?\d+\.?\d*)\s*\)', tx_schedule)
     if len(tx_matches) >= 5:
         first_5 = [f"{frame}: ({val})" for frame, val in tx_matches[:5]]
-        print(f"DEBUG: First 5 translation_x schedule values: {', '.join(first_5)}")
+        logger.debug(f"First 5 translation_x schedule values: {', '.join(first_5)}")
 
     # Generate visualization immediately
     try:
