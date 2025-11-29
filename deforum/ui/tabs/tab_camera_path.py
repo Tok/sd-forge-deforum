@@ -74,9 +74,9 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     minimum=0.01,
                     maximum=3.0,
                     value=1.0,
-                    step=0.01,
+                    step=0.001,
                     label="Speed Multiplier",
-                    info="Translation speed (rotation auto-adjusts to track center). 0.1=slow, 0.5=half, 2.0=double"
+                    info="Translation speed (rotation auto-adjusts to track center). 0.01=very slow, 0.1=slow, 0.5=half, 2.0=double"
                 )
 
             with FormRow(variant="compact"):
