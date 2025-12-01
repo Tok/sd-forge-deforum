@@ -52,14 +52,26 @@ def update_frame_overlap_visualization(
         HTML string for visualization (or error/skip message)
     """
     try:
+        # Strip truncation indicators from schedules (if present)
+        # Truncated schedules have format: "0: (1.0), 100: (2.0) ... [truncated at frame 1000, full schedule in settings.json]"
+        def strip_truncation_text(schedule_str: str) -> str:
+            """Remove truncation indicator text from schedule string."""
+            if not schedule_str:
+                return schedule_str
+            # Remove everything after " ... [truncated" marker
+            if " ... [truncated" in schedule_str:
+                return schedule_str.split(" ... [truncated")[0].strip()
+            return schedule_str
+
         # Build base schedules dict (zoom is handled separately, not processed by shakify)
+        # Strip truncation text so parser can handle partial schedules correctly
         base_schedules = {
-            'translation_x': translation_x or "0:(0)",
-            'translation_y': translation_y or "0:(0)",
-            'translation_z': translation_z or "0:(0)",
-            'rotation_3d_x': rotation_3d_x or "0:(0)",
-            'rotation_3d_y': rotation_3d_y or "0:(0)",
-            'rotation_3d_z': rotation_3d_z or "0:(0)",
+            'translation_x': strip_truncation_text(translation_x or "0:(0)"),
+            'translation_y': strip_truncation_text(translation_y or "0:(0)"),
+            'translation_z': strip_truncation_text(translation_z or "0:(0)"),
+            'rotation_3d_x': strip_truncation_text(rotation_3d_x or "0:(0)"),
+            'rotation_3d_y': strip_truncation_text(rotation_3d_y or "0:(0)"),
+            'rotation_3d_z': strip_truncation_text(rotation_3d_z or "0:(0)"),
         }
 
         # Apply shakify overlay to get final combined schedules
