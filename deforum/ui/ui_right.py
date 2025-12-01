@@ -960,7 +960,7 @@ def on_ui_tabs():
 
                     # Extract prompts and max_frames from preset args for overlap viz
                     prompts = args[19]  # animation_prompts
-                    max_frames_val = args[5]  # preset_num_frames
+                    max_frames_val = args[5]  # max_frames (from Run tab)
 
                     # Generate preset schedules
                     result = handle_generate_preset(*preset_args)
@@ -973,7 +973,7 @@ def on_ui_tabs():
                         tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
                         *overlap_args,  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
                         prompts,  # animation_prompts
-                        max_frames_val  # preset_num_frames
+                        max_frames_val  # max_frames (from Run tab)
                     )
 
                     return (status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot, overlap_html)
@@ -987,7 +987,7 @@ def on_ui_tabs():
                         components.get("speed_randomization"),
                         components.get("preset_radius"),
                         components.get("preset_height"),
-                        components.get("preset_num_frames"),
+                        components.get("max_frames"),  # Use main max_frames from Run tab, not preset_num_frames
                         components.get("preset_closed_loop"),
                         components.get("preset_randomize"),
                         components.get("preset_random_seed"),
@@ -1042,7 +1042,7 @@ def on_ui_tabs():
                         components.get("speed_randomization"),
                         components.get("preset_radius"),
                         components.get("preset_height"),
-                        components.get("preset_num_frames"),
+                        components.get("max_frames"),  # Use main max_frames from Run tab
                         components.get("preset_closed_loop"),
                         components.get("preset_randomize"),
                         components.get("preset_random_seed"),
@@ -1073,7 +1073,7 @@ def on_ui_tabs():
                         components.get("spline_type"),
                         components.get("spline_smoothness"),
                         components.get("look_at_curve"),
-                        components.get("custom_num_frames"),
+                        components.get("max_frames"),  # Use main max_frames from Run tab
                         components.get("custom_closed_loop"),
                         components.get("control_point_pattern"),
                         components.get("control_pattern_scale"),
@@ -1107,7 +1107,7 @@ def on_ui_tabs():
                 components.get("speed_randomization"),
                 components.get("preset_radius"),
                 components.get("preset_height"),
-                components.get("preset_num_frames"),
+                components.get("max_frames"),  # Use main max_frames from Run tab
                 components.get("preset_closed_loop"),
                 components.get("preset_rotation_mode"),
                 components.get("preset_rotation_factor"),
@@ -1122,7 +1122,7 @@ def on_ui_tabs():
                 components.get("speed_randomization"),
                 components.get("preset_radius"),
                 components.get("preset_height"),
-                components.get("preset_num_frames"),
+                components.get("max_frames"),  # Use main max_frames from Run tab
                 components.get("preset_closed_loop"),
                 components.get("preset_randomize"),
                 components.get("preset_random_seed"),

@@ -217,7 +217,9 @@ def visualize_schedules(
         num_points = 1
         prompt_keyframes = set()
     else:
-        actual_max_frame = min(max(all_frames), max_frames)
+        # Use max_frames from UI - interpolate/extrapolate schedules to full animation length
+        # Note: interpolate_schedule will hold last keyframe value constant after last keyframe
+        actual_max_frame = max_frames
 
         # Interpolate all schedules
         tx_interp = interpolate_schedule(tx_dict, actual_max_frame)
@@ -292,11 +294,10 @@ def visualize_schedules(
         # Fallback for empty data
         return _create_empty_plot(), "No schedule data"
 
-    # Create 3D plot - AUTHENTIC BB0 SLOPCORE AESTHETIC
+    # Create animated 3D plot - AUTHENTIC BB0 SLOPCORE AESTHETIC
     # Colors from BLANK BANSHEE 0 album cover (pipetted from source)
     # See docs/SLOPCORE.md for full palette documentation
     # Using solid colors from the palette (not gradient-over-time)
-    fig = go.Figure()
 
     # BB0 Slopcore palette - solid colors (authentic, not Tailwind approximation)
     BB0_VOID = '#5606FF'      # Deep purple-blue - path line, non-keyframe arrows
@@ -305,92 +306,153 @@ def visualize_schedules(
     BB0_ZENITH = '#17A7FE'    # Cyan - keyframes, keyframe arrows
     BB0_GLITCH = '#FF1493'    # Neon pink - arrowheads
 
-    # Path line - solid BB0_VOID (deep purple)
-    fig.add_trace(go.Scatter3d(
-        x=x_coords,
-        y=y_coords,
-        z=z_coords,
-        mode='lines',
-        name='Path',
-        line=dict(
-            color=BB0_VOID,
-            width=4,
-        ),
-        hoverinfo='skip',
-        showlegend=False
-    ))
+    # Frame sampling for animation to prevent browser crashes
+    # Read max frames from settings (default 400 if not set)
+    try:
+        from modules.shared import opts
+        MAX_ANIMATION_FRAMES = getattr(opts, 'deforum_max_viz_animation_frames', 400)
+    except Exception:
+        MAX_ANIMATION_FRAMES = 400  # Fallback if settings not available
 
-    # Prompt keyframes - BB0 CYAN with GLITCH border
-    if prompt_keyframes:
-        keyframe_x = [x_coords[f] for f in prompt_keyframes if f < len(x_coords)]
-        keyframe_y = [y_coords[f] for f in prompt_keyframes if f < len(y_coords)]
-        keyframe_z = [z_coords[f] for f in prompt_keyframes if f < len(z_coords)]
-        keyframe_labels = [str(f) for f in sorted(prompt_keyframes) if f < len(x_coords)]
+    sample_interval = max(1, num_points // MAX_ANIMATION_FRAMES)
 
-        fig.add_trace(go.Scatter3d(
-            x=keyframe_x,
-            y=keyframe_y,
-            z=keyframe_z,
-            mode='markers',
-            name='Keyframes',
-            marker=dict(
-                size=12,
-                color=BB0_ZENITH,  # Cyan
-                symbol='circle',
-                line=dict(color=BB0_GLITCH, width=2),  # Neon pink border
-                opacity=1.0
+    # Build list of frames to animate (sampled uniformly)
+    animation_frames = list(range(0, num_points, sample_interval))
+    if animation_frames[-1] != num_points - 1:
+        animation_frames.append(num_points - 1)  # Always include last frame
+
+    num_displayed = len(animation_frames)
+
+    # Build initial frame data (frame 0)
+    idx = animation_frames[0]
+    pitch = rx_coords[idx]
+    yaw = ry_coords[idx]
+    roll = rz_coords[idx]
+    forward = euler_to_forward_vector(pitch, yaw, roll)
+    arrow_length = 10
+    forward_x = forward.x * arrow_length
+    forward_y = forward.y * arrow_length
+    forward_z = forward.z * arrow_length
+
+    # Create figure with initial traces
+    fig = go.Figure(
+        data=[
+            # Trace 0: Static path line (always visible)
+            go.Scatter3d(
+                x=x_coords,
+                y=y_coords,
+                z=z_coords,
+                mode='lines',
+                name='Path',
+                line=dict(color=BB0_VOID, width=4),
+                hoverinfo='skip',
+                showlegend=False
             ),
-            hovertemplate='<b>KEYFRAME %{text}</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>',
-            text=keyframe_labels,
-            showlegend=False
-        ))
+            # Trace 1: Static keyframe markers (always visible)
+            go.Scatter3d(
+                x=[x_coords[f] for f in prompt_keyframes if f < len(x_coords)],
+                y=[y_coords[f] for f in prompt_keyframes if f < len(y_coords)],
+                z=[z_coords[f] for f in prompt_keyframes if f < len(z_coords)],
+                mode='markers',
+                name='Keyframes',
+                marker=dict(
+                    size=12,
+                    color=BB0_ZENITH,
+                    symbol='circle',
+                    line=dict(color=BB0_GLITCH, width=2),
+                    opacity=1.0
+                ),
+                text=[str(f) for f in sorted(prompt_keyframes) if f < len(x_coords)],
+                hovertemplate='<b>KEYFRAME %{text}</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>',
+                showlegend=False
+            ) if prompt_keyframes else go.Scatter3d(x=[], y=[], z=[], mode='markers', showlegend=False),
+            # Trace 2: Animated camera position marker
+            go.Scatter3d(
+                x=[x_coords[idx]],
+                y=[y_coords[idx]],
+                z=[z_coords[idx]],
+                mode='markers',
+                name='Camera',
+                marker=dict(
+                    size=15,
+                    color=BB0_GLITCH,
+                    symbol='diamond',
+                    opacity=1.0
+                ),
+                hovertemplate=f'<b>Frame {idx}</b><br>X: {x_coords[idx]:.2f}<br>Y: {y_coords[idx]:.2f}<br>Z: {z_coords[idx]:.2f}<extra></extra>',
+                showlegend=False
+            ),
+            # Trace 3: Animated forward arrow
+            go.Scatter3d(
+                x=[x_coords[idx], x_coords[idx] + forward_x],
+                y=[y_coords[idx], y_coords[idx] + forward_y],
+                z=[z_coords[idx], z_coords[idx] + forward_z],
+                mode='lines',
+                name='Forward',
+                line=dict(color=BB0_GLITCH, width=4),
+                hoverinfo='skip',
+                showlegend=False
+            ),
+            # Trace 4: Animated arrowhead
+            go.Scatter3d(
+                x=[x_coords[idx] + forward_x],
+                y=[y_coords[idx] + forward_y],
+                z=[z_coords[idx] + forward_z],
+                mode='markers',
+                marker=dict(size=8, color=BB0_GLITCH, symbol='diamond'),
+                hoverinfo='skip',
+                showlegend=False
+            )
+        ]
+    )
 
-    # Camera direction arrows - color-coded by frame type
-    # Keyframes (cyan) vs non-keyframes (purple)
-    for idx in range(num_points):
-        # Calculate forward direction from rotation angles (quaternion-based)
+    # Build animation frames (update traces 2, 3, 4 for each frame)
+    plotly_frames = []
+    for idx in animation_frames:
         pitch = rx_coords[idx]
         yaw = ry_coords[idx]
         roll = rz_coords[idx]
-
-        # Get forward vector using quaternion rotation
         forward = euler_to_forward_vector(pitch, yaw, roll)
-
-        # Scale for visualization
-        arrow_length = 10  # Smaller arrows since we show all frames
         forward_x = forward.x * arrow_length
         forward_y = forward.y * arrow_length
         forward_z = forward.z * arrow_length
 
-        # Color arrows by frame type
         is_keyframe = idx in prompt_keyframes
-        arrow_color = BB0_ZENITH if is_keyframe else BB0_VOID  # Cyan for keyframes, purple for others
-        arrow_width = 3 if is_keyframe else 2  # Thicker for keyframes
+        marker_color = BB0_ZENITH if is_keyframe else BB0_GLITCH
 
-        # Arrow from camera position pointing in look direction
-        fig.add_trace(go.Scatter3d(
-            x=[x_coords[idx], x_coords[idx] + forward_x],
-            y=[y_coords[idx], y_coords[idx] + forward_y],
-            z=[z_coords[idx], z_coords[idx] + forward_z],
-            mode='lines',
-            line=dict(color=arrow_color, width=arrow_width),
-            hovertemplate=f"<b>{'KEYFRAME' if is_keyframe else 'Frame'} {idx}</b><extra></extra>",
-            showlegend=False,
-            hoverinfo='text'
+        plotly_frames.append(go.Frame(
+            data=[
+                {},  # Trace 0: Static path (no update)
+                {},  # Trace 1: Static keyframes (no update)
+                # Trace 2: Camera position
+                go.Scatter3d(
+                    x=[x_coords[idx]],
+                    y=[y_coords[idx]],
+                    z=[z_coords[idx]],
+                    marker=dict(size=15, color=marker_color, symbol='diamond', opacity=1.0),
+                    hovertemplate=f'<b>Frame {idx}</b><br>X: {x_coords[idx]:.2f}<br>Y: {y_coords[idx]:.2f}<br>Z: {z_coords[idx]:.2f}<extra></extra>'
+                ),
+                # Trace 3: Forward arrow
+                go.Scatter3d(
+                    x=[x_coords[idx], x_coords[idx] + forward_x],
+                    y=[y_coords[idx], y_coords[idx] + forward_y],
+                    z=[z_coords[idx], z_coords[idx] + forward_z],
+                    line=dict(color=marker_color, width=4)
+                ),
+                # Trace 4: Arrowhead
+                go.Scatter3d(
+                    x=[x_coords[idx] + forward_x],
+                    y=[y_coords[idx] + forward_y],
+                    z=[z_coords[idx] + forward_z],
+                    marker=dict(size=8, color=marker_color, symbol='diamond')
+                )
+            ],
+            name=str(idx)
         ))
 
-        # Arrowhead - NEON PINK (the glitch)
-        fig.add_trace(go.Scatter3d(
-            x=[x_coords[idx] + forward_x],
-            y=[y_coords[idx] + forward_y],
-            z=[z_coords[idx] + forward_z],
-            mode='markers',
-            marker=dict(size=3, color=BB0_GLITCH, symbol='diamond'),
-            hoverinfo='skip',
-            showlegend=False
-        ))
+    fig.frames = plotly_frames
 
-    # Update layout - DARKMODE SLOPCORE, MAXIMUM SPACE
+    # Add animation controls (play/pause buttons + slider)
     fig.update_layout(
         paper_bgcolor='#0F172A',  # Tailwind slate-900
         plot_bgcolor='#1E293B',   # Tailwind slate-800
@@ -426,10 +488,77 @@ def visualize_schedules(
             )
         ),
         showlegend=False,
-        margin=dict(l=0, r=0, t=0, b=0),  # Zero margins for maximum space
+        margin=dict(l=0, r=0, t=20, b=0),  # Small top margin for controls
         height=650,  # Taller plot
         autosize=True,
-        hovermode='closest'
+        hovermode='closest',
+        # Animation controls
+        updatemenus=[
+            dict(
+                type='buttons',
+                showactive=False,
+                buttons=[
+                    dict(
+                        label='▶',
+                        method='animate',
+                        args=[None, dict(
+                            frame=dict(duration=50, redraw=True),  # 20 fps
+                            fromcurrent=True,
+                            mode='immediate',
+                            transition=dict(duration=0)
+                        )]
+                    ),
+                    dict(
+                        label='⏸',
+                        method='animate',
+                        args=[[None], dict(
+                            frame=dict(duration=0, redraw=False),
+                            mode='immediate',
+                            transition=dict(duration=0)
+                        )]
+                    )
+                ],
+                x=0.5,
+                xanchor='center',
+                y=1.02,
+                yanchor='bottom',
+                bgcolor='#1E293B',
+                bordercolor='#334155',
+                borderwidth=1,
+                font=dict(color='#CBD5E1', size=12)
+            )
+        ],
+        sliders=[dict(
+            active=0,
+            yanchor='top',
+            y=0,
+            xanchor='left',
+            x=0,
+            currentvalue=dict(
+                prefix='Frame: ',
+                visible=True,
+                xanchor='left',
+                font=dict(color='#CBD5E1', size=10)
+            ),
+            pad=dict(b=10, t=0),
+            len=1.0,
+            bgcolor='#1E293B',
+            bordercolor='#334155',
+            borderwidth=1,
+            font=dict(color='#CBD5E1', size=8),
+            steps=[
+                dict(
+                    args=[[f.name], dict(
+                        frame=dict(duration=0, redraw=True),
+                        mode='immediate',
+                        transition=dict(duration=0)
+                    )],
+                    method='animate',
+                    label=str(idx)
+                )
+                for idx, f in enumerate(plotly_frames)
+            ]
+        )]
     )
 
     # Calculate stats
@@ -446,6 +575,11 @@ def visualize_schedules(
     y_range = max(y_coords) - min(y_coords) if y_coords else 0
     z_range = max(z_coords) - min(z_coords) if z_coords else 0
 
+    # Add sampling info if frames were sampled
+    sampling_info = ""
+    if num_displayed < num_points:
+        sampling_info = f"\n⚠️ Displaying {num_displayed} of {num_points} frames (sampled every {sample_interval} frames to prevent browser crash)"
+
     stats = f"""Path Statistics (from schedules):
 - Frames: {num_points}
 - Keyframes: {len(prompt_keyframes)} (with prompts)
@@ -454,7 +588,7 @@ def visualize_schedules(
 - Y Range: {y_range:.2f} (up/down)
 - Z Range: {z_range:.2f} (forward/back)
 - Start: ({x_coords[0]:.2f}, {y_coords[0]:.2f}, {z_coords[0]:.2f})
-- End: ({x_coords[-1]:.2f}, {y_coords[-1]:.2f}, {z_coords[-1]:.2f})
+- End: ({x_coords[-1]:.2f}, {y_coords[-1]:.2f}, {z_coords[-1]:.2f}){sampling_info}
 """
 
     return fig, stats

@@ -111,12 +111,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     info="Vertical position offset"
                 )
 
-            with FormRow(variant="compact"):
-                preset_num_frames = gr.Number(
-                    value=333,
-                    label="Number of Frames",
-                    info="Total frames for animation"
-                )
+            # NOTE: Number of Frames removed - uses max_frames from Run tab instead
 
             with FormRow(variant="compact"):
                 preset_closed_loop = gr.Checkbox(
@@ -249,11 +244,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
                     info="Camera looks tangent to curve (forward direction)"
                 )
 
-            with FormRow(variant="compact"):
-                custom_num_frames = gr.Number(
-                    value=333,
-                    label="Number of Frames"
-                )
+            # NOTE: Number of Frames removed - uses max_frames from Run tab instead
 
             with FormRow(variant="compact"):
                 custom_closed_loop = gr.Checkbox(
@@ -372,7 +363,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
         'speed_randomization': speed_randomization,
         'preset_radius': preset_radius,
         'preset_height': preset_height,
-        'preset_num_frames': preset_num_frames,
+        # 'preset_num_frames': removed - uses max_frames from Run tab
         'preset_closed_loop': preset_closed_loop,
         'preset_randomize': preset_randomize,
         'preset_random_seed': preset_random_seed,
@@ -387,7 +378,7 @@ def _build_camera_path_ui(da: SimpleNamespace, components: dict):
         'spline_type': spline_type,
         'spline_smoothness': spline_smoothness,
         'look_at_curve': look_at_curve,
-        'custom_num_frames': custom_num_frames,
+        # 'custom_num_frames': removed - uses max_frames from Run tab
         'custom_closed_loop': custom_closed_loop,
         'control_point_pattern': control_point_pattern,
         'control_pattern_scale': control_pattern_scale,
