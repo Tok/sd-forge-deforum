@@ -905,8 +905,6 @@ def on_ui_tabs():
                     """Handle preset generation and update both visualizations."""
                     import deforum.ui.handlers.camera_path_generator as cpg
                     from deforum.utils.spline_camera_path import camera_path_to_schedules
-                    from deforum.utils.system.logging import get_logger
-                    logger = get_logger()
 
                     # First 20 args are for handle_generate_preset, rest are for overlap viz
                     preset_args = args[:20]
@@ -919,18 +917,15 @@ def on_ui_tabs():
                     random_seed = args[8]
                     prompts = args[19]  # animation_prompts
 
-                    # Generate preset schedules (truncated for UI) and visualization
+                    # Generate preset schedules (FULL, not truncated) and visualization
                     result = handle_generate_preset(*preset_args)
 
                     # Extract schedule values from result
                     status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot = result
 
-                    # Debug: Check if camera_path was stored
-                    logger.debug(f"handle_preset_with_overlap: _current_camera_path has {len(cpg._current_camera_path) if cpg._current_camera_path else 0} points")
-
-                    # Generate FULL schedules for wormtrail (bypass truncation)
+                    # Generate FULL schedules for wormtrail from cached camera_path
+                    # This is more efficient than parsing 30k+ frame schedule strings
                     # Use the camera_path that was just generated (stored in global)
-                    # Only do this if animation is large enough to need it
                     if max_frames_val > 1000 and cpg._current_camera_path:
                         # Regenerate full schedules from cached camera_path
                         full_schedules = camera_path_to_schedules(

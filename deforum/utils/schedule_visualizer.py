@@ -305,17 +305,12 @@ def visualize_schedules(
 
     if num_points > LARGE_ANIMATION_THRESHOLD:
         from deforum.utils.system.logging import get_logger
-        import traceback
         logger = get_logger()
 
         # Adaptive downsampling: calculate rate to target MAX_VISUALIZATION_FRAMES
         DOWNSAMPLE_RATE = max(1, num_points // MAX_VISUALIZATION_FRAMES)
         downsample_rate_used = DOWNSAMPLE_RATE
         logger.info(f"Downsampling camera path visualization: {num_points:,} frames → every {DOWNSAMPLE_RATE}th frame + keyframes")
-
-        # Debug: Show stack trace to see who's calling this
-        stack = ''.join(traceback.format_stack()[-5:-1])
-        logger.debug(f"visualize_schedules called from:\n{stack}")
 
         # Build downsampled list: every Nth frame + all keyframes + first/last
         downsampled_indices = set()

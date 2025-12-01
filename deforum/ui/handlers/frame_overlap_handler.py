@@ -54,48 +54,17 @@ def update_frame_overlap_visualization(
     try:
         # Strip truncation indicators from schedules (if present)
         # Truncated schedules have format: "0: (1.0), 100: (2.0) ... [truncated at frame 1000, full schedule in settings.json]"
-        def strip_truncation_text(schedule_str: str) -> str:
-            """Remove truncation/downsampling indicator text from schedule string."""
-            if not schedule_str:
-                return schedule_str
-            # Remove everything after downsampling/truncation markers
-            if " ... [downsampled" in schedule_str:
-                return schedule_str.split(" ... [downsampled")[0].strip()
-            if " ... [truncated" in schedule_str:
-                return schedule_str.split(" ... [truncated")[0].strip()
-            return schedule_str
-
-        # Check if schedules are downsampled (contain downsampling marker)
-        schedules_downsampled = " ... [downsampled" in (translation_x or "") or " ... [truncated" in (translation_x or "")
-
-        # Downsampled schedules are fine - they cover the full timeline, just sampled
-        # No need to show warning - the downsampled data is representative
-        # Old truncated schedules (if any) would show error
-        if False:  # Disabled - downsampled schedules work fine
-            logger.warning(f"Wormtrail visualization unavailable: schedules truncated at 1000 frames but animation has {max_frames:,} frames")
-            return f'''<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">
-⚠️ Wormtrail Preview Unavailable
-
-Animation: {max_frames:,} frames
-Schedules: Truncated to 1,000 frames for display
-
-Cannot generate accurate preview from truncated schedule data.
-
-✅ Your full {max_frames:,} frame animation will render perfectly with complete schedules.
-✅ This only affects the interactive preview, not the actual rendering.
-
-<i>Note: Full visualization support for large animations coming soon (sliding window feature).</i>
-</div>'''
+        # No need to strip markers - schedules are now always full
+        # (Downsampling was removed - textboxes contain full data for generation)
 
         # Build base schedules dict (zoom is handled separately, not processed by shakify)
-        # Strip truncation text so parser can handle partial schedules correctly
         base_schedules = {
-            'translation_x': strip_truncation_text(translation_x or "0:(0)"),
-            'translation_y': strip_truncation_text(translation_y or "0:(0)"),
-            'translation_z': strip_truncation_text(translation_z or "0:(0)"),
-            'rotation_3d_x': strip_truncation_text(rotation_3d_x or "0:(0)"),
-            'rotation_3d_y': strip_truncation_text(rotation_3d_y or "0:(0)"),
-            'rotation_3d_z': strip_truncation_text(rotation_3d_z or "0:(0)"),
+            'translation_x': translation_x or "0:(0)",
+            'translation_y': translation_y or "0:(0)",
+            'translation_z': translation_z or "0:(0)",
+            'rotation_3d_x': rotation_3d_x or "0:(0)",
+            'rotation_3d_y': rotation_3d_y or "0:(0)",
+            'rotation_3d_z': rotation_3d_z or "0:(0)",
         }
 
         # Apply shakify overlay to get final combined schedules

@@ -18,7 +18,6 @@ from deforum.utils.spline_camera_path import (
     CameraPoint
 )
 from deforum.utils.schedule_truncation import (
-    downsample_schedule_for_display,
     should_truncate_schedules,
     get_truncation_info_message
 )
@@ -307,31 +306,29 @@ def _apply_schedule_truncation(
     num_frames: int,
     status: str
 ) -> Tuple[Dict[str, str], str]:
-    """Apply schedule downsampling for large animations.
+    """Add info message for large animations (schedules NOT modified).
+
+    IMPORTANT: We do NOT downsample schedules for textboxes. The textboxes must
+    contain FULL schedules so they're used correctly during generation. We only
+    add an informational message to the status.
 
     Args:
-        schedules: Full schedule strings dict
+        schedules: Full schedule strings dict (UNCHANGED)
         num_frames: Total number of frames
         status: Current status message
 
     Returns:
-        Tuple of (downsampled_schedules, updated_status)
+        Tuple of (FULL_schedules, updated_status)
     """
-    # Get truncation threshold from settings
+    # Get threshold from settings
     max_display = shared.opts.data.get("deforum_max_schedule_display_frames", 1000)
 
     if should_truncate_schedules(num_frames, max_display):
-        # Downsample schedules for UI display (not truncate - preserves full timeline)
-        downsampled = {
-            key: downsample_schedule_for_display(value, max_display, num_frames)
-            for key, value in schedules.items()
-        }
+        # Add info message (schedules are NOT modified - they remain full)
+        status += f"\n\n📊 Large Animation Detected:\n- Total frames: {num_frames:,}\n- Schedule textboxes contain FULL data for accurate generation\n- Textboxes may be large but can be collapsed"
 
-        # Add downsampling info to status
-        status += f"\n\n📊 Schedule Display Downsampled:\n- Total frames: {num_frames:,}\n- Showing: ~{max_display:,} sampled keyframes\n- Full schedule preserved in settings.json"
-
-        logger.info(f"Schedule display downsampled: {num_frames:,} frames → ~{max_display:,} keyframes shown")
-        return downsampled, status
+        logger.info(f"Large animation: {num_frames:,} frames - textboxes will contain full schedules")
+        return schedules, status  # Return FULL schedules unchanged
     else:
         return schedules, status
 
@@ -837,7 +834,6 @@ def handle_generate_preset(
     from deforum.utils.schedule_visualizer import visualize_schedules
 
     logger.info(f"Generating camera path preset: {preset_type}, frames={num_frames}, radius={radius}")
-    logger.debug(f"handle_generate_preset called")
 
     status, schedules, camera_path = generate_preset_path(
         preset_type, radius, height, num_frames, closed_loop,
