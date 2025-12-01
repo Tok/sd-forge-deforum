@@ -76,6 +76,7 @@ def on_ui_settings():
            "slopcore", ["slopcore", "classic", "simple"])
     add_cb("deforum_enable_emojis", "Enable emojis in UI and console output", default_value=False)
     add_sl("deforum_max_viz_animation_frames", "Max Visualization Animation Frames - Limits animated camera path frames to prevent browser crash (100-1000)", 400, 100, 1000)
+    add_sl("deforum_max_schedule_display_frames", "Max Schedule Display Frames - Limits schedule string length in UI textboxes (full schedules saved to settings.json). Range: 100-5000", 1000, 100, 5000)
 
     add_subsection("Deforum FFmpeg Settings")
     add("deforum_ffmpeg_location", "FFmpeg path/ location", find_ffmpeg_binary())

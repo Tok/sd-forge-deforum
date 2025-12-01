@@ -6,6 +6,7 @@ Functions to generate camera paths and populate schedules.
 from typing import Dict, Any, Tuple, List
 import plotly.graph_objects as go
 import numpy as np
+import modules.shared as shared
 from deforum.utils.spline_camera_path import (
     generate_rotate_around_path,
     generate_camera_path,
@@ -15,6 +16,11 @@ from deforum.utils.spline_camera_path import (
     camera_path_to_schedules,
     SplineConfig,
     CameraPoint
+)
+from deforum.utils.schedule_truncation import (
+    truncate_schedules_dict,
+    should_truncate_schedules,
+    get_truncation_info_message
 )
 from deforum.utils.system.logging import emoji as emoji_utils
 from deforum.utils.system.logging import get_logger
@@ -296,6 +302,37 @@ def _get_schedule_look_at_mode(preset_type: str, rotation_mode: str, look_at_mod
     return None
 
 
+def _apply_schedule_truncation(
+    schedules: Dict[str, str],
+    num_frames: int,
+    status: str
+) -> Tuple[Dict[str, str], str]:
+    """Apply schedule truncation for large animations.
+
+    Args:
+        schedules: Full schedule strings dict
+        num_frames: Total number of frames
+        status: Current status message
+
+    Returns:
+        Tuple of (truncated_schedules, updated_status)
+    """
+    # Get truncation threshold from settings
+    max_display = shared.opts.data.get("deforum_max_schedule_display_frames", 1000)
+
+    if should_truncate_schedules(num_frames, max_display):
+        # Truncate schedules for UI display
+        truncated = truncate_schedules_dict(schedules, max_display)
+
+        # Add truncation info to status
+        status += f"\n\n{get_truncation_info_message(num_frames, max_display)}"
+
+        logger.info(f"Schedule display truncated: {num_frames:,} frames → {max_display:,} frames shown")
+        return truncated, status
+    else:
+        return schedules, status
+
+
 def generate_preset_path(
     preset_type: str,
     radius: float,
@@ -356,6 +393,10 @@ def generate_preset_path(
             random_seed=seed,
             look_at_mode=schedule_look_at_mode
         )
+
+        # Apply truncation for large animations
+        schedules, status = _apply_schedule_truncation(schedules, num_frames_int, status)
+
         return status, schedules, camera_path
 
     except Exception as e:
@@ -443,6 +484,9 @@ def generate_custom_spline_path(
         status = f"{emoji_utils.maybe_check()} Generated custom spline path ({len(camera_path)} frames)\n"
         status += f"Control points: {num_control_points}, Type: {spline_type}\n"
         status += f"Pattern: {control_point_pattern}, Scale: {pattern_scale}, Closed: {closed_loop}"
+
+        # Apply truncation for large animations
+        schedules, status = _apply_schedule_truncation(schedules, int(num_frames), status)
 
         return status, schedules, camera_path
 
