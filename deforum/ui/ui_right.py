@@ -297,7 +297,6 @@ def on_ui_tabs():
             with gr.Column(scale=1.618, variant="panel"):  # Golden ratio - more space for controls
                 # setting the left side of the ui:
                 components = setup_deforum_left_side_ui()
-                logger.debug(f"Components dict has 'max_frames': {('max_frames' in components)}, value={components.get('max_frames')}")
             with gr.Column(scale=1, variant="compact"):  # Right side preview column
                 with gr.Row(variant="compact"):
                     i1 = gr.HTML(i1_store, elem_id="deforum_header")
@@ -936,7 +935,6 @@ def on_ui_tabs():
                     # Extract prompts and max_frames from preset args for overlap viz
                     prompts = args[19]  # animation_prompts
                     max_frames_val = args[5]  # max_frames (from Run tab)
-                    logger.debug(f"handle_preset_with_overlap: received max_frames_val={max_frames_val} (type={type(max_frames_val)})")
 
                     # Generate preset schedules
                     result = handle_generate_preset(*preset_args)
