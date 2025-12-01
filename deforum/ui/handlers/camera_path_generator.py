@@ -368,8 +368,6 @@ def generate_preset_path(
     Returns:
         Tuple of (status_message, schedules_dict, camera_path)
     """
-    logger.debug(f"generate_preset_path: preset_type={preset_type}, radius={radius}, speed_multiplier={speed_multiplier}")
-
     try:
         # Dispatch to preset handler
         handler = _PRESET_HANDLERS.get(preset_type)
@@ -835,8 +833,7 @@ def handle_generate_preset(
     global _current_camera_path
     from deforum.utils.schedule_visualizer import visualize_schedules
 
-    # Debug logging
-    logger.debug(f"handle_generate_preset: radius={radius}, speed_multiplier={speed_multiplier}, num_frames={num_frames}")
+    logger.info(f"Generating camera path preset: {preset_type}, frames={num_frames}, radius={radius}")
 
     status, schedules, camera_path = generate_preset_path(
         preset_type, radius, height, num_frames, closed_loop,

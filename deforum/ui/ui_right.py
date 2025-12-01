@@ -576,7 +576,6 @@ def on_ui_tabs():
                     )
 
         # Frame Overlap Simulator - load on UI startup (independent of tab selection)
-        logger.debug(f"frame_overlap_simulator exists: {frame_overlap_simulator is not None}")
         if frame_overlap_simulator:
             from deforum.ui.handlers.frame_overlap_handler import update_frame_overlap_visualization
             from deforum.ui.handlers.camera_path_generator import generate_preset_path
@@ -647,8 +646,6 @@ def on_ui_tabs():
             def init_overlap_viz_with_preset():
                 """Initialize frame overlap visualization with default 'rotate-around' preset."""
                 try:
-                    logger.debug("init_overlap_viz_with_preset called")
-
                     # Sensible default: 100 frames (~1.67 sec at 60fps)
                     default_frames = 100
 
@@ -662,8 +659,6 @@ def on_ui_tabs():
                         speed_multiplier=0.5,  # Slower movement
                         speed_randomization=0.0,
                     )
-
-                    logger.debug(f"Generated schedules, tx has {len(schedules.get('translation_x', ''))} chars")
 
                     # Generate visualization with preset schedules (NO shakify on init)
                     result = update_frame_overlap_visualization(
@@ -682,8 +677,6 @@ def on_ui_tabs():
                         shake_speed=1.0,
                         target_fps=60,
                     )
-
-                    logger.debug(f"Visualization result type: {type(result)}, length: {len(result) if result else 0}")
                     return result
 
                 except Exception as e:

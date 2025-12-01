@@ -76,7 +76,7 @@
         "324": "The ultimate drip bunny, transcending all dimensions with infinite swag and cosmic bling"
     },
     "animation_mode": "3D",
-    "max_frames": 334,
+    "max_frames": 300,
     "border": "wrap",
     "angle": "0: (0)",
     "zoom": "0: (1.0025+0.002*sin(1.25*3.14*t/120))",

@@ -403,10 +403,6 @@ def setup_deforum_left_side_ui():
             # Wire up audio sync button to synchronize prompts with audio events
             # Get buttons from tab_init_params (they're in Init tab, not Prompts tab!)
             # Get animation_prompts from tab_prompts_params (it's in Prompts tab)
-            logger.debug("Attempting to retrieve audio sync components...")
-            logger.debug(f"   tab_init_params type: {type(tab_init_params)}")
-            logger.debug(f"   tab_prompts_params type: {type(tab_prompts_params)}")
-
             audio_sync_button = tab_init_params.get('audio_sync_button')
             audio_sync_fewer_button = tab_init_params.get('audio_sync_fewer_button')
             audio_sync_more_button = tab_init_params.get('audio_sync_more_button')
@@ -457,7 +453,6 @@ def setup_deforum_left_side_ui():
                     if not found:
                         logger.warning(f"Audio sync component '{comp_name}' not found")
 
-                logger.debug(f"Audio sync wiring: {len(audio_sync_inputs)}/{len(required_components)} inputs collected")
                 if len(audio_sync_inputs) == len(required_components):
                     # Buttons already retrieved above, just check they all exist
                     required_outputs = all([
@@ -733,7 +728,6 @@ def setup_deforum_left_side_ui():
                     inputs=component_inputs,  # Pass all UI component values
                     outputs=[wan_generation_status]
                 )
-                logger.debug(f"{emoji_if_enabled('✅')} Wan generate button connected successfully")
             else:
                 logger.warning(f"Wan generate button or status not found - skipping connection")
         except Exception as e:
@@ -800,7 +794,6 @@ def setup_deforum_left_side_ui():
                     ],
                     outputs=[locals()['keyframe_type_schedule']]
                 )
-                logger.debug(f"{emoji_if_enabled('✅')} Auto-assign keyframe types button connected successfully")
             else:
                 logger.warning("animation_prompts or wan_flf2v_chunk_size not found in locals()")
         except Exception as e:

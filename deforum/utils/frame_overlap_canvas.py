@@ -280,9 +280,6 @@ Unable to generate downsampled preview (no frames after sampling).
     viewport_height = metrics_list[0].curr_viewport_rect.height
     padding_factor = 1.8
 
-    logger.debug(f"create_canvas_html: Serialized {len(frames_data)} frames for visualization")
-    logger.debug(f"create_canvas_html: Slider will have max={len(metrics_list) - 1} (frames 0-{len(metrics_list) - 1})")
-
     # Create complete standalone HTML page
     standalone_html = f'''<!DOCTYPE html>
 <html>
