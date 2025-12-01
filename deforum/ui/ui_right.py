@@ -928,23 +928,65 @@ def on_ui_tabs():
                 # Wire up preset generation button
                 def handle_preset_with_overlap(*args):
                     """Handle preset generation and update both visualizations."""
+                    from deforum.ui.handlers.camera_path_generator import generate_preset_path
+                    from deforum.utils.spline_camera_path import camera_path_to_schedules
+
                     # First 20 args are for handle_generate_preset, rest are for overlap viz
                     preset_args = args[:20]
                     overlap_args = args[20:]  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
 
-                    # Extract prompts and max_frames from preset args for overlap viz
+                    # Extract params for wormtrail
+                    preset_type = args[0]
+                    speed_multiplier = args[1]
+                    speed_randomization = args[2]
+                    radius = args[3]
+                    height = args[4]
+                    max_frames_val = args[5]
+                    closed_loop = args[6]
+                    randomize = args[7]
+                    random_seed = args[8]
+                    rotation_mode = args[9]
+                    rotation_factor = args[10]
+                    look_at_mode = args[11]
+                    look_at_blend = args[12]
                     prompts = args[19]  # animation_prompts
-                    max_frames_val = args[5]  # max_frames (from Run tab)
 
-                    # Generate preset schedules
+                    # Generate preset schedules (truncated for UI)
                     result = handle_generate_preset(*preset_args)
 
                     # Extract schedule values from result
                     status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot = result
 
-                    # Update frame overlap visualization with new schedules
+                    # Generate FULL schedules for wormtrail (bypass truncation)
+                    # Only do this if animation is large enough to need it
+                    if max_frames_val > 1000:
+                        _, _, camera_path = generate_preset_path(
+                            preset_type, radius, height, max_frames_val, closed_loop,
+                            randomize, int(random_seed), speed_multiplier, speed_randomization,
+                            rotation_mode, rotation_factor, look_at_mode, look_at_blend
+                        )
+                        # Regenerate full schedules from camera_path
+                        full_schedules = camera_path_to_schedules(
+                            camera_path,
+                            speed_multiplier=speed_multiplier,
+                            speed_randomization=speed_randomization,
+                            random_seed=int(random_seed) if random_seed >= 0 else 0,
+                            look_at_mode="original"  # Use original camera path rotations
+                        )
+                        tx_full = full_schedules.get('translation_x', tx_val)
+                        ty_full = full_schedules.get('translation_y', ty_val)
+                        tz_full = full_schedules.get('translation_z', tz_val)
+                        rx_full = full_schedules.get('rotation_3d_x', rx_val)
+                        ry_full = full_schedules.get('rotation_3d_y', ry_val)
+                        rz_full = full_schedules.get('rotation_3d_z', rz_val)
+                    else:
+                        # Use truncated schedules if animation is small
+                        tx_full, ty_full, tz_full = tx_val, ty_val, tz_val
+                        rx_full, ry_full, rz_full = rx_val, ry_val, rz_val
+
+                    # Update frame overlap visualization with FULL schedules
                     overlap_html = update_overlap_viz(
-                        tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
+                        tx_full, ty_full, tz_full, rx_full, ry_full, rz_full,
                         *overlap_args,  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
                         prompts,  # animation_prompts
                         max_frames_val  # max_frames (from Run tab)
@@ -1181,64 +1223,15 @@ def on_ui_tabs():
                 )
                 return fig
 
-            # Each schedule textbox triggers visualization update
-            if tx and camera_path_plot:
-                schedule_inputs = [tx, ty, tz, rx, ry, rz]
-                if animation_prompts:
-                    schedule_inputs.append(animation_prompts)
-                # Add shakify params and toggle
-                schedule_inputs.extend(
-                    [
-                        components.get("shake_name"),
-                        components.get("shake_intensity"),
-                        components.get("shake_speed"),
-                        components.get("show_shakify_in_camera_path"),
-                        components.get("max_frames"),
-                    ]
-                )
-
-                for schedule_box in [tx, ty, tz, rx, ry, rz]:
-                    if schedule_box:
-                        schedule_box.change(
-                            fn=update_viz_from_schedules,
-                            inputs=schedule_inputs,
-                            outputs=[camera_path_plot],
-                        )
-
-                # Also trigger on prompt changes (for keyframe markers)
-                if animation_prompts:
-                    animation_prompts.change(
-                        fn=update_viz_from_schedules,
-                        inputs=schedule_inputs,
-                        outputs=[camera_path_plot],
-                    )
-
-                # Trigger on shakify changes
-                for shakify_comp in [
-                    components.get("shake_name"),
-                    components.get("shake_intensity"),
-                    components.get("shake_speed"),
-                    components.get("show_shakify_in_camera_path"),
-                ]:
-                    if shakify_comp:
-                        shakify_comp.change(
-                            fn=update_viz_from_schedules,
-                            inputs=schedule_inputs,
-                            outputs=[camera_path_plot],
-                        )
-
-                # Trigger visualization on settings load
-                load_settings_btn.click(
-                    fn=update_viz_from_schedules, inputs=schedule_inputs, outputs=[camera_path_plot]
-                )
-
-                # Also trigger on video upload (metadata extraction)
-                if "video_upload" in components:
-                    components["video_upload"].upload(
-                        fn=update_viz_from_schedules,
-                        inputs=schedule_inputs,
-                        outputs=[camera_path_plot],
-                    )
+            # NOTE: Schedule textbox .change() handlers removed to prevent infinite loops
+            # Visualization is generated directly by preset buttons, so real-time updates
+            # on textbox changes are redundant and cause 6+ simultaneous visualization calls
+            # when a preset updates all 6 textboxes at once.
+            # Users can regenerate visualization by clicking preset buttons again.
+            #
+            # Shakify .change() handlers also removed for same reason - they trigger
+            # visualization updates on every parameter change, but preset buttons already
+            # handle this. Users can click preset buttons to regenerate with new settings.
 
         except Exception as e:
             logger.error(f"Failed to wire Camera Path buttons to right panel: {e}")
