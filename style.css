@@ -82,8 +82,8 @@ Contact the authors: https://deforum.github.io/
   max-height: 60px;
 }
 
-/* Slopcore gradient for audio sync and AI prompt buttons */
-/* Authentic BLANK BANSHEE 0 gradient (pipetted from album cover) */
+/* BB0 Slopcore gradient for audio sync and AI prompt buttons */
+/* See docs/SLOPCORE.md for palette documentation */
 #audio_sync_button,
 #audio_sync_fewer_button,
 #audio_sync_more_button,

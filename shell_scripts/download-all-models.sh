@@ -11,11 +11,11 @@ echo "Deforum Model Download Script"
 echo "========================================"
 echo ""
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
+# BB0 Slopcore colors (see docs/SLOPCORE.md)
+BB0_ZENITH='\033[38;2;23;167;254m'    # #17A7FE - Cyan (info, success)
+BB0_GLITCH='\033[38;2;255;20;147m'    # #FF1493 - Neon pink (warning, error)
+BB0_VOID='\033[38;2;86;6;255m'        # #5606FF - Deep purple (emphasis)
+BB0_MIDNIGHT='\033[38;2;55;87;255m'   # #3757FF - Mid blue (secondary)
 NC='\033[0m' # No Color
 
 # Get script directory (extension root)
@@ -28,11 +28,11 @@ EXTENSION_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FORGE_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 cd "$FORGE_ROOT"
 
-echo -e "${BLUE}Working from Forge root: $FORGE_ROOT${NC}"
+echo -e "${BB0_MIDNIGHT}Working from Forge root: $FORGE_ROOT${NC}"
 echo ""
 
 # Create model directories
-echo -e "${YELLOW}Creating model directories...${NC}"
+echo -e "${BB0_GLITCH}Creating model directories...${NC}"
 mkdir -p models/Stable-diffusion/Flux
 mkdir -p models/VAE
 mkdir -p models/text_encoder
@@ -40,12 +40,12 @@ mkdir -p models/ControlNet
 mkdir -p models/Deforum/film_interpolation
 mkdir -p models/Deforum/wan
 mkdir -p models/Deforum/qwen
-echo -e "${GREEN}✓ Directories created${NC}"
+echo -e "${BB0_ZENITH}✓ Directories created${NC}"
 echo ""
 
 # Check for HuggingFace CLI
 if ! command -v huggingface-cli &> /dev/null; then
-    echo -e "${RED}❌ huggingface-cli not found!${NC}"
+    echo -e "${BB0_GLITCH}❌ huggingface-cli not found!${NC}"
     echo ""
     echo "Please install it with:"
     echo "  pip install huggingface-hub"
@@ -59,16 +59,16 @@ download_file() {
     local dest=$2
     local name=$3
 
-    echo -e "${YELLOW}Downloading $name...${NC}"
+    echo -e "${BB0_GLITCH}Downloading $name...${NC}"
     python -c "
 import sys
 from torch.hub import download_url_to_file
 download_url_to_file('$url', '$dest', progress=True)
 "
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ $name downloaded successfully${NC}"
+        echo -e "${BB0_ZENITH}✓ $name downloaded successfully${NC}"
     else
-        echo -e "${RED}❌ Failed to download $name${NC}"
+        echo -e "${BB0_GLITCH}❌ Failed to download $name${NC}"
         return 1
     fi
 }
@@ -76,81 +76,81 @@ download_url_to_file('$url', '$dest', progress=True)
 # =====================================
 # 1. Flux.1 Dev BNB NF4 v2 (MOST IMPORTANT)
 # =====================================
-echo -e "${BLUE}=== Flux.1 Dev Checkpoint (Quantized) ===${NC}"
+echo -e "${BB0_MIDNIGHT}=== Flux.1 Dev Checkpoint (Quantized) ===${NC}"
 FLUX_PATH="models/Stable-diffusion/Flux/flux1-dev-bnb-nf4-v2.safetensors"
 if [ -f "$FLUX_PATH" ]; then
-    echo -e "${GREEN}✓ Flux checkpoint already exists${NC}"
+    echo -e "${BB0_ZENITH}✓ Flux checkpoint already exists${NC}"
 else
-    echo -e "${YELLOW}Downloading Flux.1 Dev BNB NF4 v2 (~10GB quantized)...${NC}"
+    echo -e "${BB0_GLITCH}Downloading Flux.1 Dev BNB NF4 v2 (~10GB quantized)...${NC}"
     echo "Note: This is a 4-bit quantized version optimized for lower VRAM usage"
     huggingface-cli download lllyasviel/flux1-dev-bnb-nf4 \
         flux1-dev-bnb-nf4-v2.safetensors \
         --local-dir models/Stable-diffusion/Flux \
         --resume-download
-    echo -e "${GREEN}✓ Flux checkpoint downloaded${NC}"
+    echo -e "${BB0_ZENITH}✓ Flux checkpoint downloaded${NC}"
 fi
 echo ""
 
 # =====================================
 # 2. Shared VAE (ae.safetensors)
 # =====================================
-echo -e "${BLUE}=== Shared FLUX VAE ===${NC}"
+echo -e "${BB0_MIDNIGHT}=== Shared FLUX VAE ===${NC}"
 echo "This VAE is shared by Flux, Lumina, and Z-Image"
 echo ""
 
 VAE_PATH="models/VAE/ae.safetensors"
 if [ -f "$VAE_PATH" ]; then
-    echo -e "${GREEN}✓ FLUX VAE already exists (shared)${NC}"
+    echo -e "${BB0_ZENITH}✓ FLUX VAE already exists (shared)${NC}"
 else
-    echo -e "${YELLOW}Downloading FLUX VAE (ae.safetensors, ~320MB)...${NC}"
+    echo -e "${BB0_GLITCH}Downloading FLUX VAE (ae.safetensors, ~320MB)...${NC}"
     huggingface-cli download black-forest-labs/FLUX.1-dev \
         ae.safetensors \
         --local-dir models/VAE \
         --resume-download
-    echo -e "${GREEN}✓ FLUX VAE downloaded${NC}"
+    echo -e "${BB0_ZENITH}✓ FLUX VAE downloaded${NC}"
 fi
 echo ""
 
 # =====================================
 # 3. Flux Text Encoders
 # =====================================
-echo -e "${BLUE}=== Flux Text Encoders ===${NC}"
+echo -e "${BB0_MIDNIGHT}=== Flux Text Encoders ===${NC}"
 echo "Required for Flux models"
 echo ""
 
 # CLIP-L text encoder
 CLIP_L_PATH="models/text_encoder/clip_l.safetensors"
 if [ -f "$CLIP_L_PATH" ]; then
-    echo -e "${GREEN}✓ CLIP-L already exists${NC}"
+    echo -e "${BB0_ZENITH}✓ CLIP-L already exists${NC}"
 else
-    echo -e "${YELLOW}Downloading CLIP-L text encoder (~235MB)...${NC}"
+    echo -e "${BB0_GLITCH}Downloading CLIP-L text encoder (~235MB)...${NC}"
     huggingface-cli download comfyanonymous/flux_text_encoders \
         clip_l.safetensors \
         --local-dir models/text_encoder \
         --local-dir-use-symlinks False \
         --resume-download
-    echo -e "${GREEN}✓ CLIP-L downloaded${NC}"
+    echo -e "${BB0_ZENITH}✓ CLIP-L downloaded${NC}"
 fi
 
 # T5-XXL text encoder
 T5_PATH="models/text_encoder/t5xxl_fp16.safetensors"
 if [ -f "$T5_PATH" ]; then
-    echo -e "${GREEN}✓ T5-XXL already exists${NC}"
+    echo -e "${BB0_ZENITH}✓ T5-XXL already exists${NC}"
 else
-    echo -e "${YELLOW}Downloading T5-XXL text encoder (fp16, ~9.2GB)...${NC}"
+    echo -e "${BB0_GLITCH}Downloading T5-XXL text encoder (fp16, ~9.2GB)...${NC}"
     huggingface-cli download comfyanonymous/flux_text_encoders \
         t5xxl_fp16.safetensors \
         --local-dir models/text_encoder \
         --local-dir-use-symlinks False \
         --resume-download
-    echo -e "${GREEN}✓ T5-XXL downloaded${NC}"
+    echo -e "${BB0_ZENITH}✓ T5-XXL downloaded${NC}"
 fi
 echo ""
 
 # =====================================
 # 4. Flux ControlNet V2
 # =====================================
-echo -e "${BLUE}=== Flux ControlNet V2 ===${NC}"
+echo -e "${BB0_MIDNIGHT}=== Flux ControlNet V2 ===${NC}"
 echo "Choose which Flux ControlNet models to download:"
 echo "  1) Canny (Edge detection, ~3.5GB)"
 echo "  2) Depth (Depth conditioning, ~3.5GB)"
@@ -160,24 +160,24 @@ read -p "Enter choice [1-4]: " controlnet_choice
 
 case $controlnet_choice in
     1|3)
-        echo -e "${YELLOW}Downloading Flux ControlNet Canny...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Flux ControlNet Canny...${NC}"
         huggingface-cli download InstantX/FLUX.1-dev-Controlnet-Canny \
             --local-dir models/ControlNet/FLUX.1-dev-Controlnet-Canny \
             --resume-download
-        echo -e "${GREEN}✓ ControlNet Canny downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ ControlNet Canny downloaded${NC}"
         ;&  # Fall through if choice was 3
 esac
 
 case $controlnet_choice in
     2|3)
-        echo -e "${YELLOW}Downloading Flux ControlNet Depth...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Flux ControlNet Depth...${NC}"
         huggingface-cli download Shakker-Labs/FLUX.1-dev-ControlNet-Depth \
             --local-dir models/ControlNet/FLUX.1-dev-ControlNet-Depth \
             --resume-download
-        echo -e "${GREEN}✓ ControlNet Depth downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ ControlNet Depth downloaded${NC}"
         ;;
     4)
-        echo -e "${YELLOW}Skipping ControlNet models${NC}"
+        echo -e "${BB0_GLITCH}Skipping ControlNet models${NC}"
         ;;
 esac
 echo ""
@@ -185,10 +185,10 @@ echo ""
 # =====================================
 # 5. FILM Interpolation Model
 # =====================================
-echo -e "${BLUE}=== FILM Interpolation Model ===${NC}"
+echo -e "${BB0_MIDNIGHT}=== FILM Interpolation Model ===${NC}"
 FILM_PATH="models/Deforum/film_interpolation/film_net_fp16.pt"
 if [ -f "$FILM_PATH" ]; then
-    echo -e "${GREEN}✓ FILM model already exists${NC}"
+    echo -e "${BB0_ZENITH}✓ FILM model already exists${NC}"
 else
     download_file \
         "https://github.com/hithereai/frame-interpolation-pytorch/releases/download/film_net_fp16.pt/film_net_fp16.pt" \
@@ -200,7 +200,7 @@ echo ""
 # =====================================
 # 6. Wan Models (HuggingFace)
 # =====================================
-echo -e "${BLUE}=== Wan AI Video Models ===${NC}"
+echo -e "${BB0_MIDNIGHT}=== Wan AI Video Models ===${NC}"
 echo "Choose which Wan models to download:"
 echo "  1) FLF2V-14B (Required for FLF2V interpolation, ~14GB)"
 echo "  2) TI2V-5B (Recommended for T2V/I2V, 24GB VRAM, ~5GB)"
@@ -211,34 +211,34 @@ read -p "Enter choice [1-5]: " wan_choice
 
 case $wan_choice in
     1|4)
-        echo -e "${YELLOW}Downloading Wan2.1-FLF2V-14B...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Wan2.1-FLF2V-14B...${NC}"
         huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers \
             --local-dir models/Deforum/wan/Wan2.1-FLF2V-14B \
             --resume-download
-        echo -e "${GREEN}✓ FLF2V-14B downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ FLF2V-14B downloaded${NC}"
         ;&  # Fall through if choice was 4
 esac
 
 case $wan_choice in
     2|4)
-        echo -e "${YELLOW}Downloading Wan2.2-TI2V-5B...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Wan2.2-TI2V-5B...${NC}"
         huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers \
             --local-dir models/Deforum/wan/Wan2.2-TI2V-5B \
             --resume-download
-        echo -e "${GREEN}✓ TI2V-5B downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ TI2V-5B downloaded${NC}"
         ;&  # Fall through if choice was 4
 esac
 
 case $wan_choice in
     3|4)
-        echo -e "${YELLOW}Downloading Wan2.2-TI2V-A14B...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Wan2.2-TI2V-A14B...${NC}"
         huggingface-cli download Wan-AI/Wan2.2-TI2V-A14B-Diffusers \
             --local-dir models/Deforum/wan/Wan2.2-TI2V-A14B \
             --resume-download
-        echo -e "${GREEN}✓ TI2V-A14B downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ TI2V-A14B downloaded${NC}"
         ;;
     5)
-        echo -e "${YELLOW}Skipping Wan models${NC}"
+        echo -e "${BB0_GLITCH}Skipping Wan models${NC}"
         ;;
 esac
 echo ""
@@ -246,7 +246,7 @@ echo ""
 # =====================================
 # 7. Qwen AI Prompt Enhancement Models
 # =====================================
-echo -e "${BLUE}=== Qwen Prompt Enhancement Models ===${NC}"
+echo -e "${BB0_MIDNIGHT}=== Qwen Prompt Enhancement Models ===${NC}"
 echo "Choose which Qwen model to download (for AI prompt enhancement):"
 echo "  1) Qwen2.5-3B-Instruct (Recommended for low VRAM, ~3GB)"
 echo "  2) Qwen2.5-7B-Instruct (Better quality, ~7GB)"
@@ -257,34 +257,34 @@ read -p "Enter choice [1-5]: " qwen_choice
 
 case $qwen_choice in
     1|4)
-        echo -e "${YELLOW}Downloading Qwen2.5-3B-Instruct...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Qwen2.5-3B-Instruct...${NC}"
         huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
             --local-dir models/Deforum/qwen/Qwen2.5-3B-Instruct \
             --resume-download
-        echo -e "${GREEN}✓ Qwen2.5-3B-Instruct downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ Qwen2.5-3B-Instruct downloaded${NC}"
         ;&  # Fall through if choice was 4
 esac
 
 case $qwen_choice in
     2|4)
-        echo -e "${YELLOW}Downloading Qwen2.5-7B-Instruct...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Qwen2.5-7B-Instruct...${NC}"
         huggingface-cli download Qwen/Qwen2.5-7B-Instruct \
             --local-dir models/Deforum/qwen/Qwen2.5-7B-Instruct \
             --resume-download
-        echo -e "${GREEN}✓ Qwen2.5-7B-Instruct downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ Qwen2.5-7B-Instruct downloaded${NC}"
         ;&  # Fall through if choice was 4
 esac
 
 case $qwen_choice in
     3|4)
-        echo -e "${YELLOW}Downloading Qwen2.5-14B-Instruct...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Qwen2.5-14B-Instruct...${NC}"
         huggingface-cli download Qwen/Qwen2.5-14B-Instruct \
             --local-dir models/Deforum/qwen/Qwen2.5-14B-Instruct \
             --resume-download
-        echo -e "${GREEN}✓ Qwen2.5-14B-Instruct downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ Qwen2.5-14B-Instruct downloaded${NC}"
         ;;
     5)
-        echo -e "${YELLOW}Skipping Qwen models${NC}"
+        echo -e "${BB0_GLITCH}Skipping Qwen models${NC}"
         ;;
 esac
 echo ""
@@ -292,11 +292,11 @@ echo ""
 # =====================================
 # 8. Lumina 2.0 (Anime-Optimized)
 # =====================================
-echo -e "${BLUE}=== Lumina 2.0 (Anime-Optimized Fine-Tune) ===${NC}"
+echo -e "${BB0_MIDNIGHT}=== Lumina 2.0 (Anime-Optimized Fine-Tune) ===${NC}"
 echo "Lumina 2.0 is a 2B parameter model with 1024x1024 native resolution"
 echo "This is the neta-art anime-optimized fine-tune of Alpha-VLLM/Lumina-Image-2.0"
 echo ""
-echo -e "${YELLOW}Dependencies: Shares FLUX VAE (models/VAE/ae.safetensors)${NC}"
+echo -e "${BB0_GLITCH}Dependencies: Shares FLUX VAE (models/VAE/ae.safetensors)${NC}"
 echo ""
 read -p "Download Lumina 2.0? [y/N]: " download_lumina
 if [[ $download_lumina =~ ^[Yy]$ ]]; then
@@ -308,92 +308,92 @@ if [[ $download_lumina =~ ^[Yy]$ ]]; then
     # Download UNet
     LUMINA_UNET_PATH="models/Stable-diffusion/Lumina/Unet/neta-lumina-v1.0.safetensors"
     if [ -f "$LUMINA_UNET_PATH" ]; then
-        echo -e "${GREEN}✓ Lumina UNet already exists${NC}"
+        echo -e "${BB0_ZENITH}✓ Lumina UNet already exists${NC}"
     else
-        echo -e "${YELLOW}Downloading Lumina UNet (~4.9GB)...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Lumina UNet (~4.9GB)...${NC}"
         huggingface-cli download neta-art/Neta-Lumina \
             neta-lumina-v1.0.safetensors \
             --local-dir models/Stable-diffusion/Lumina/Unet \
             --resume-download
-        echo -e "${GREEN}✓ Lumina UNet downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ Lumina UNet downloaded${NC}"
     fi
 
     # Download Gemma-2-2B text encoder
     GEMMA_PATH="models/Stable-diffusion/Lumina/Text Encoder/gemma_2_2b_fp16.safetensors"
     if [ -f "$GEMMA_PATH" ]; then
-        echo -e "${GREEN}✓ Gemma-2-2B text encoder already exists${NC}"
+        echo -e "${BB0_ZENITH}✓ Gemma-2-2B text encoder already exists${NC}"
     else
-        echo -e "${YELLOW}Downloading Gemma-2-2B text encoder (~4.9GB)...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Gemma-2-2B text encoder (~4.9GB)...${NC}"
         huggingface-cli download neta-art/Neta-Lumina \
             gemma_2_2b_fp16.safetensors \
             --local-dir "models/Stable-diffusion/Lumina/Text Encoder" \
             --resume-download
-        echo -e "${GREEN}✓ Gemma-2-2B downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ Gemma-2-2B downloaded${NC}"
     fi
 
     # Symlink or copy shared FLUX VAE
     LUMINA_VAE_PATH="models/Stable-diffusion/Lumina/VAE/ae.safetensors"
     if [ -f "$LUMINA_VAE_PATH" ]; then
-        echo -e "${GREEN}✓ Lumina VAE already exists${NC}"
+        echo -e "${BB0_ZENITH}✓ Lumina VAE already exists${NC}"
     else
         if [ -f "$VAE_PATH" ]; then
-            echo -e "${YELLOW}Creating symlink to shared FLUX VAE...${NC}"
+            echo -e "${BB0_GLITCH}Creating symlink to shared FLUX VAE...${NC}"
             ln -s "../../../VAE/ae.safetensors" "$LUMINA_VAE_PATH" 2>/dev/null || cp "$VAE_PATH" "$LUMINA_VAE_PATH"
-            echo -e "${GREEN}✓ Lumina VAE linked (shared with Flux)${NC}"
+            echo -e "${BB0_ZENITH}✓ Lumina VAE linked (shared with Flux)${NC}"
         else
-            echo -e "${RED}✗ FLUX VAE not found, please download it first${NC}"
+            echo -e "${BB0_GLITCH}✗ FLUX VAE not found, please download it first${NC}"
         fi
     fi
     echo ""
-    echo -e "${GREEN}✓ Lumina 2.0 setup complete${NC}"
+    echo -e "${BB0_ZENITH}✓ Lumina 2.0 setup complete${NC}"
 else
-    echo -e "${YELLOW}Skipping Lumina 2.0${NC}"
+    echo -e "${BB0_GLITCH}Skipping Lumina 2.0${NC}"
 fi
 echo ""
 
 # =====================================
 # 9. Z-Image-Turbo
 # =====================================
-echo -e "${BLUE}=== Z-Image-Turbo ===${NC}"
+echo -e "${BB0_MIDNIGHT}=== Z-Image-Turbo ===${NC}"
 echo "Z-Image-Turbo is a fast image generation model based on SD3"
 echo ""
-echo -e "${YELLOW}Dependencies: Shares FLUX VAE (models/VAE/ae.safetensors)${NC}"
-echo -e "${YELLOW}              Requires Qwen-3-4B text encoder${NC}"
+echo -e "${BB0_GLITCH}Dependencies: Shares FLUX VAE (models/VAE/ae.safetensors)${NC}"
+echo -e "${BB0_GLITCH}              Requires Qwen-3-4B text encoder${NC}"
 echo ""
 read -p "Download Z-Image-Turbo? [y/N]: " download_zimage
 if [[ $download_zimage =~ ^[Yy]$ ]]; then
     # Download DiT model
     ZIMAGE_PATH="models/Stable-diffusion/Z-Image/diffusion_pytorch_model.safetensors"
     if [ -f "$ZIMAGE_PATH" ]; then
-        echo -e "${GREEN}✓ Z-Image DiT already exists${NC}"
+        echo -e "${BB0_ZENITH}✓ Z-Image DiT already exists${NC}"
     else
-        echo -e "${YELLOW}Downloading Z-Image DiT model...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Z-Image DiT model...${NC}"
         mkdir -p models/Stable-diffusion/Z-Image
         huggingface-cli download stabilityai/stable-diffusion-3-medium \
             --local-dir models/Stable-diffusion/Z-Image \
             --resume-download
-        echo -e "${GREEN}✓ Z-Image DiT downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ Z-Image DiT downloaded${NC}"
     fi
 
     # Download Qwen-3-4B text encoder
     QWEN_PATH="models/text_encoder/qwen_3_4b.safetensors"
     if [ -f "$QWEN_PATH" ]; then
-        echo -e "${GREEN}✓ Qwen-3-4B text encoder already exists${NC}"
+        echo -e "${BB0_ZENITH}✓ Qwen-3-4B text encoder already exists${NC}"
     else
-        echo -e "${YELLOW}Downloading Qwen-3-4B text encoder (~7.5GB)...${NC}"
+        echo -e "${BB0_GLITCH}Downloading Qwen-3-4B text encoder (~7.5GB)...${NC}"
         echo "Required for Z-Image-Turbo"
         huggingface-cli download stabilityai/stable-diffusion-3-medium \
             text_encoders/qwen_3_4b.safetensors \
             --local-dir models/text_encoder \
             --resume-download
-        echo -e "${GREEN}✓ Qwen-3-4B downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ Qwen-3-4B downloaded${NC}"
     fi
 
     echo ""
-    echo -e "${GREEN}✓ Z-Image-Turbo setup complete${NC}"
-    echo -e "${BLUE}Note:${NC} Z-Image shares FLUX VAE from models/VAE/ae.safetensors"
+    echo -e "${BB0_ZENITH}✓ Z-Image-Turbo setup complete${NC}"
+    echo -e "${BB0_MIDNIGHT}Note:${NC} Z-Image shares FLUX VAE from models/VAE/ae.safetensors"
 else
-    echo -e "${YELLOW}Skipping Z-Image-Turbo${NC}"
+    echo -e "${BB0_GLITCH}Skipping Z-Image-Turbo${NC}"
 fi
 echo ""
 
@@ -401,7 +401,7 @@ echo ""
 # Summary
 # =====================================
 echo ""
-echo -e "${GREEN}========================================"
+echo -e "${BB0_ZENITH}========================================"
 echo "✅ Model Download Complete!"
 echo "========================================${NC}"
 echo ""
@@ -416,8 +416,8 @@ echo "  • FILM: models/Deforum/film_interpolation/"
 echo "  • Wan AI Video: models/Deforum/wan/"
 echo "  • Qwen Prompts: models/Deforum/qwen/"
 echo ""
-echo -e "${BLUE}Note:${NC} Depth models (Depth-Anything V2) will be auto-downloaded"
+echo -e "${BB0_MIDNIGHT}Note:${NC} Depth models (Depth-Anything V2) will be auto-downloaded"
 echo "on first use. Gifski and Real-ESRGAN binaries are also auto-downloaded."
 echo ""
-echo -e "${GREEN}✅ You can now use Deforum with Flux + Interpolation mode!${NC}"
+echo -e "${BB0_ZENITH}✅ You can now use Deforum with Flux + Interpolation mode!${NC}"
 echo ""

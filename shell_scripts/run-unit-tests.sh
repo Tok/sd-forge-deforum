@@ -8,11 +8,11 @@
 
 set -e  # Exit on error
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
+# BB0 Slopcore colors (see docs/SLOPCORE.md)
+BB0_ZENITH='\033[38;2;23;167;254m'    # #17A7FE - Cyan (info, success)
+BB0_GLITCH='\033[38;2;255;20;147m'    # #FF1493 - Neon pink (warning, error)
+BB0_VOID='\033[38;2;86;6;255m'        # #5606FF - Deep purple (emphasis)
+BB0_MIDNIGHT='\033[38;2;55;87;255m'   # #3757FF - Mid blue (secondary)
 NC='\033[0m' # No Color
 
 # Configuration
@@ -36,11 +36,11 @@ done
 if [ -z "$TEST_ARGS" ]; then
     if [ -d "$UNIT_TEST_DIR" ]; then
         TEST_ARGS="$UNIT_TEST_DIR/"
-        echo -e "${BLUE}Running all unit tests from ${UNIT_TEST_DIR}/${NC}"
+        echo -e "${BB0_MIDNIGHT}Running all unit tests from ${UNIT_TEST_DIR}/${NC}"
     else
-        echo -e "${YELLOW}Warning: ${UNIT_TEST_DIR}/ does not exist yet${NC}"
-        echo -e "${YELLOW}Create unit tests in ${UNIT_TEST_DIR}/ directory${NC}"
-        echo -e "\n${BLUE}Example structure:${NC}"
+        echo -e "${BB0_GLITCH}Warning: ${UNIT_TEST_DIR}/ does not exist yet${NC}"
+        echo -e "${BB0_GLITCH}Create unit tests in ${UNIT_TEST_DIR}/ directory${NC}"
+        echo -e "\n${BB0_MIDNIGHT}Example structure:${NC}"
         echo -e "  tests/unit/"
         echo -e "    ├── test_keyframes.py"
         echo -e "    ├── test_prompts.py"
@@ -52,42 +52,42 @@ fi
 
 # Check if we're in the extension directory
 if [ ! -f "scripts/deforum.py" ]; then
-    echo -e "${RED}Error: Must run from sd-forge-deforum extension directory${NC}"
+    echo -e "${BB0_GLITCH}Error: Must run from sd-forge-deforum extension directory${NC}"
     echo -e "Current directory: $(pwd)"
     exit 1
 fi
 
 # Check if venv exists
 if [ ! -d "$FORGE_DIR/venv" ]; then
-    echo -e "${RED}Error: Forge venv not found at $FORGE_DIR/venv${NC}"
+    echo -e "${BB0_GLITCH}Error: Forge venv not found at $FORGE_DIR/venv${NC}"
     echo -e "Please run this from the Forge installation"
     exit 1
 fi
 
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Deforum Unit Test Runner${NC}"
-echo -e "${GREEN}========================================${NC}"
+echo -e "${BB0_ZENITH}========================================${NC}"
+echo -e "${BB0_ZENITH}Deforum Unit Test Runner${NC}"
+echo -e "${BB0_ZENITH}========================================${NC}"
 echo -e "Extension directory: ${EXTENSION_DIR}"
 echo -e "Test arguments: ${TEST_ARGS}"
 if [ "$COVERAGE_MODE" = true ]; then
-    echo -e "Coverage reporting: ${GREEN}ENABLED${NC}"
+    echo -e "Coverage reporting: ${BB0_ZENITH}ENABLED${NC}"
 fi
-echo -e "${GREEN}========================================${NC}\n"
+echo -e "${BB0_ZENITH}========================================${NC}\n"
 
 # Check test dependencies
-echo -e "${BLUE}Checking test dependencies...${NC}"
+echo -e "${BB0_MIDNIGHT}Checking test dependencies...${NC}"
 if ! "$FORGE_DIR/venv/bin/python" -c "import pytest" 2>/dev/null; then
-    echo -e "${YELLOW}Installing test dependencies...${NC}"
+    echo -e "${BB0_GLITCH}Installing test dependencies...${NC}"
     "$FORGE_DIR/venv/bin/pip" install -q pytest pytest-cov
-    echo -e "${GREEN}✓ Test dependencies installed${NC}"
+    echo -e "${BB0_ZENITH}✓ Test dependencies installed${NC}"
 else
-    echo -e "${GREEN}✓ Test dependencies OK${NC}"
+    echo -e "${BB0_ZENITH}✓ Test dependencies OK${NC}"
 fi
 
 # Run tests
-echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}Running Unit Tests (Integration tests excluded)${NC}"
-echo -e "${GREEN}========================================${NC}\n"
+echo -e "\n${BB0_ZENITH}========================================${NC}"
+echo -e "${BB0_ZENITH}Running Unit Tests (Integration tests excluded)${NC}"
+echo -e "${BB0_ZENITH}========================================${NC}\n"
 
 # Build pytest command
 # Explicitly ignore integration tests to keep unit test suite separate
@@ -104,15 +104,15 @@ TEST_EXIT_CODE=$?
 set -e
 
 # Print results
-echo -e "\n${GREEN}========================================${NC}"
+echo -e "\n${BB0_ZENITH}========================================${NC}"
 if [ $TEST_EXIT_CODE -eq 0 ]; then
-    echo -e "${GREEN}✓ All unit tests passed!${NC}"
+    echo -e "${BB0_ZENITH}✓ All unit tests passed!${NC}"
     if [ "$COVERAGE_MODE" = true ]; then
-        echo -e "${BLUE}Coverage report: htmlcov/index.html${NC}"
+        echo -e "${BB0_MIDNIGHT}Coverage report: htmlcov/index.html${NC}"
     fi
 else
-    echo -e "${RED}✗ Some unit tests failed${NC}"
+    echo -e "${BB0_GLITCH}✗ Some unit tests failed${NC}"
 fi
-echo -e "${GREEN}========================================${NC}"
+echo -e "${BB0_ZENITH}========================================${NC}"
 
 exit $TEST_EXIT_CODE

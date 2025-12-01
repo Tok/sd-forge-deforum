@@ -327,12 +327,10 @@ Note: Camera path schedules work perfectly regardless of visualization display.
 """
         return _create_empty_plot(), stats
 
-    # Create animated 3D plot - AUTHENTIC BB0 SLOPCORE AESTHETIC
-    # Colors from BLANK BANSHEE 0 album cover (pipetted from source)
+    # Create animated 3D plot with BB0 Slopcore gradient
     # See docs/SLOPCORE.md for full palette documentation
-    # Using solid colors from the palette (not gradient-over-time)
 
-    # BB0 Slopcore palette - solid colors (authentic, not Tailwind approximation)
+    # BB0 Slopcore palette (solid colors, not gradient-over-time)
     BB0_VOID = '#5606FF'      # Deep purple-blue - path line, non-keyframe arrows
     BB0_DUSK = '#4C21FF'      # Purple-blue - (reserved for cadence diffusion frames)
     BB0_MIDNIGHT = '#3757FF'  # Mid blue - (reserved for tween frames)

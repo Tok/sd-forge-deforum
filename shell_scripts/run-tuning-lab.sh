@@ -12,13 +12,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXTENSION_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FORGE_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
-# Colors
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+# BB0 Slopcore colors (see docs/SLOPCORE.md)
+BB0_ZENITH='\033[38;2;23;167;254m'    # #17A7FE - Cyan (info, success)
+BB0_GLITCH='\033[38;2;255;20;147m'    # #FF1493 - Neon pink (warning, error)
+BB0_VOID='\033[38;2;86;6;255m'        # #5606FF - Deep purple (emphasis)
+BB0_MIDNIGHT='\033[38;2;55;87;255m'   # #3757FF - Mid blue (secondary)
+NC='\033[0m' # No Color
 
-echo -e "${CYAN}========================================"
+echo -e "${BB0_ZENITH}========================================"
 echo "Deforum Tuning Lab"
 echo "========================================${NC}"
 
@@ -38,22 +39,22 @@ done
 
 # Build optimization flags
 if [ "$USE_OPTIMIZATIONS" = true ]; then
-    echo -e "${GREEN}Starting with optimizations:${NC}"
-    echo -e "  ${BLUE}--sage${NC}              SageAttention (RTX 30/40/50)"
-    echo -e "  ${BLUE}--fast-fp16${NC}         Fast FP16 accumulation"
-    echo -e "  ${BLUE}--cuda-malloc${NC}       CUDA malloc optimization"
-    echo -e "  ${BLUE}--cuda-stream${NC}       CUDA stream optimization"
+    echo -e "${BB0_ZENITH}Starting with optimizations:${NC}"
+    echo -e "  ${BB0_MIDNIGHT}--sage${NC}              SageAttention (RTX 30/40/50)"
+    echo -e "  ${BB0_MIDNIGHT}--fast-fp16${NC}         Fast FP16 accumulation"
+    echo -e "  ${BB0_MIDNIGHT}--cuda-malloc${NC}       CUDA malloc optimization"
+    echo -e "  ${BB0_MIDNIGHT}--cuda-stream${NC}       CUDA stream optimization"
     echo ""
-    echo -e "${YELLOW}Note: If --sage fails, run: ./setup.sh --prepare${NC}"
+    echo -e "${BB0_GLITCH}Note: If --sage fails, run: ./setup.sh --prepare${NC}"
     echo ""
     OPT_FLAGS="--sage --fast-fp16 --cuda-malloc --cuda-stream"
 else
-    echo -e "${BLUE}Starting without optimizations${NC}"
+    echo -e "${BB0_MIDNIGHT}Starting without optimizations${NC}"
     echo ""
     OPT_FLAGS=""
 fi
 
-echo -e "${CYAN}========================================${NC}"
+echo -e "${BB0_ZENITH}========================================${NC}"
 echo ""
 
 # Cleanup function to kill child processes
@@ -74,7 +75,7 @@ trap cleanup SIGINT SIGTERM
 # Note: --deforum-api and --deforum-run-tuning are required for tuning tab
 FLAGS="$OPT_FLAGS --deforum-api --deforum-run-tuning $EXTRA_ARGS"
 
-echo -e "${GREEN}Launching Forge...${NC}"
+echo -e "${BB0_ZENITH}Launching Forge...${NC}"
 echo ""
 
 # Execute - use webui.sh if available, otherwise venv/bin/python
