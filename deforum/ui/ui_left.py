@@ -180,9 +180,18 @@ def setup_deforum_left_side_ui():
         lines=4
     )
 
+    # Animation settings row - FPS, max_frames, steps, duration
     with gr.Row(variant='compact'):
         fps = create_gr_elem(dv.fps)
+        max_frames = create_gr_elem(da.max_frames)
         steps = create_gr_elem(d.steps)
+
+    # Duration display (calculated from fps and max_frames)
+    with gr.Row(variant='compact'):
+        duration_display = gr.Markdown(
+            value="**Duration:** 5.55s",  # Default: 333 frames @ 60fps
+            elem_id="duration_display"
+        )
 
     # Reverse generation checkbox - top-level
     with gr.Row(variant='compact'):
@@ -303,7 +312,7 @@ def setup_deforum_left_side_ui():
 
             # Explicitly unpack components needed for Reset to Defaults button
             soundtrack_path = tab_init_params.get('soundtrack_path')
-            max_frames = tab_keyframes_params.get('max_frames')
+            # max_frames now created at top-level (not in tab_keyframes)
             rotation_3d_y = tab_keyframes_params.get('rotation_3d_y')
             translation_z = tab_keyframes_params.get('translation_z')
             zoom = tab_keyframes_params.get('zoom')
@@ -320,6 +329,8 @@ def setup_deforum_left_side_ui():
             locals()['animation_mode'] = animation_mode
             locals()['keyframe_distribution'] = keyframe_distribution
             locals()['fps'] = fps
+            locals()['max_frames'] = max_frames
+            locals()['duration_display'] = duration_display
             locals()['steps'] = steps
             locals()['cadence'] = cadence
             locals()['diffusion_cadence'] = cadence  # Alias for backward compatibility with gradio_funcs
@@ -1236,6 +1247,42 @@ def setup_deforum_left_side_ui():
     except Exception as e:
         warning = emoji_utils.maybe_warning()
         logger.error(f"{warning} Failed to set up validation buttons: {e}")
+
+    # Update duration display when fps or max_frames changes
+    def update_duration(fps_val, frames_val):
+        """Calculate and format duration from fps and max_frames."""
+        try:
+            if not fps_val or fps_val <= 0:
+                fps_val = 60  # Default FPS
+            if not frames_val or frames_val <= 0:
+                frames_val = 333  # Default max_frames
+
+            duration_seconds = frames_val / fps_val
+
+            # Format as min:sec for durations >= 1 minute, otherwise just seconds
+            if duration_seconds >= 60:
+                minutes = int(duration_seconds // 60)
+                seconds = duration_seconds % 60
+                duration_str = f"{minutes}:{seconds:05.2f}"
+            else:
+                duration_str = f"{duration_seconds:.2f}s"
+
+            return f"**Duration:** {duration_str}"
+        except Exception:
+            return "**Duration:** 0.00s"
+
+    # Wire up duration calculation
+    if 'fps' in locals() and 'max_frames' in locals() and 'duration_display' in locals():
+        fps.change(
+            fn=update_duration,
+            inputs=[fps, max_frames],
+            outputs=[duration_display]
+        )
+        max_frames.change(
+            fn=update_duration,
+            inputs=[fps, max_frames],
+            outputs=[duration_display]
+        )
 
     # Camera Path button wiring moved to ui_right.py (after camera_path_plot is created)
 

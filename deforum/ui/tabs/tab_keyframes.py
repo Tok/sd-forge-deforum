@@ -26,9 +26,9 @@ def get_tab_keyframes(d, da, dloopArgs):
 
     with gr.TabItem(f"{emoji_utils.key()} Keyframes"):
         # NOTE: animation_mode, cadence, strength_schedule, keyframe_strength_schedule moved to top-level in ui_left.py
+        # NOTE: max_frames moved to top-level in ui_left.py (with FPS and duration display)
         with FormRow():
             border = create_gr_elem(da.border)
-            max_frames = create_gr_elem(da.max_frames)
 
         # GUIDED IMAGES ACCORD
         with gr.Accordion('Guided Images', open=False, elem_id='guided_images_accord') as guided_images_accord:
