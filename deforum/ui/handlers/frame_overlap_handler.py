@@ -63,6 +63,27 @@ def update_frame_overlap_visualization(
                 return schedule_str.split(" ... [truncated")[0].strip()
             return schedule_str
 
+        # Check if schedules are truncated (contain truncation marker)
+        schedules_truncated = " ... [truncated" in (translation_x or "")
+
+        # If schedules are truncated and max_frames is large, show informative message
+        # instead of trying to visualize with incomplete data
+        if schedules_truncated and max_frames > 5000:
+            logger.warning(f"Wormtrail visualization unavailable: schedules truncated at 1000 frames but animation has {max_frames:,} frames")
+            return f'''<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">
+⚠️ Wormtrail Preview Unavailable
+
+Animation: {max_frames:,} frames
+Schedules: Truncated to 1,000 frames for display
+
+Cannot generate accurate preview from truncated schedule data.
+
+✅ Your full {max_frames:,} frame animation will render perfectly with complete schedules.
+✅ This only affects the interactive preview, not the actual rendering.
+
+<i>Note: Full visualization support for large animations coming soon (sliding window feature).</i>
+</div>'''
+
         # Build base schedules dict (zoom is handled separately, not processed by shakify)
         # Strip truncation text so parser can handle partial schedules correctly
         base_schedules = {
