@@ -546,34 +546,9 @@ def on_ui_tabs():
                 outputs=[camera_path_plot],
             )
 
-            # Update visualization when schedules change (e.g., when preset generated)
-            for schedule_component in [
-                components.get("translation_x"),
-                components.get("translation_y"),
-                components.get("translation_z"),
-                components.get("rotation_3d_x"),
-                components.get("rotation_3d_y"),
-                components.get("rotation_3d_z"),
-            ]:
-                if schedule_component:
-                    schedule_component.change(
-                        fn=update_camera_path_visualization,
-                        inputs=[
-                            components.get("translation_x"),
-                            components.get("translation_y"),
-                            components.get("translation_z"),
-                            components.get("rotation_3d_x"),
-                            components.get("rotation_3d_y"),
-                            components.get("rotation_3d_z"),
-                            components.get("animation_prompts"),
-                            components.get("shake_name"),
-                            components.get("shake_intensity"),
-                            components.get("shake_speed"),
-                            components.get("show_shakify_in_camera_path"),
-                            components.get("max_frames"),
-                        ],
-                        outputs=[camera_path_plot],
-                    )
+            # NOTE: Schedule textbox .change() handlers removed to prevent infinite loops
+            # When preset buttons update all 6 textboxes, each .change() triggers a visualization,
+            # causing 6+ simultaneous calls. Preset buttons already return the visualization directly.
 
         # Frame Overlap Simulator - load on UI startup (independent of tab selection)
         if frame_overlap_simulator:

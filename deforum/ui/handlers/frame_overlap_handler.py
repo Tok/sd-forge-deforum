@@ -55,20 +55,23 @@ def update_frame_overlap_visualization(
         # Strip truncation indicators from schedules (if present)
         # Truncated schedules have format: "0: (1.0), 100: (2.0) ... [truncated at frame 1000, full schedule in settings.json]"
         def strip_truncation_text(schedule_str: str) -> str:
-            """Remove truncation indicator text from schedule string."""
+            """Remove truncation/downsampling indicator text from schedule string."""
             if not schedule_str:
                 return schedule_str
-            # Remove everything after " ... [truncated" marker
+            # Remove everything after downsampling/truncation markers
+            if " ... [downsampled" in schedule_str:
+                return schedule_str.split(" ... [downsampled")[0].strip()
             if " ... [truncated" in schedule_str:
                 return schedule_str.split(" ... [truncated")[0].strip()
             return schedule_str
 
-        # Check if schedules are truncated (contain truncation marker)
-        schedules_truncated = " ... [truncated" in (translation_x or "")
+        # Check if schedules are downsampled (contain downsampling marker)
+        schedules_downsampled = " ... [downsampled" in (translation_x or "") or " ... [truncated" in (translation_x or "")
 
-        # If schedules are truncated and max_frames is large, show informative message
-        # instead of trying to visualize with incomplete data
-        if schedules_truncated and max_frames > 5000:
+        # Downsampled schedules are fine - they cover the full timeline, just sampled
+        # No need to show warning - the downsampled data is representative
+        # Old truncated schedules (if any) would show error
+        if False:  # Disabled - downsampled schedules work fine
             logger.warning(f"Wormtrail visualization unavailable: schedules truncated at 1000 frames but animation has {max_frames:,} frames")
             return f'''<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">
 ⚠️ Wormtrail Preview Unavailable

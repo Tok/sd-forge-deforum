@@ -18,7 +18,7 @@ from deforum.utils.spline_camera_path import (
     CameraPoint
 )
 from deforum.utils.schedule_truncation import (
-    truncate_schedules_dict,
+    downsample_schedule_for_display,
     should_truncate_schedules,
     get_truncation_info_message
 )
@@ -307,7 +307,7 @@ def _apply_schedule_truncation(
     num_frames: int,
     status: str
 ) -> Tuple[Dict[str, str], str]:
-    """Apply schedule truncation for large animations.
+    """Apply schedule downsampling for large animations.
 
     Args:
         schedules: Full schedule strings dict
@@ -315,20 +315,23 @@ def _apply_schedule_truncation(
         status: Current status message
 
     Returns:
-        Tuple of (truncated_schedules, updated_status)
+        Tuple of (downsampled_schedules, updated_status)
     """
     # Get truncation threshold from settings
     max_display = shared.opts.data.get("deforum_max_schedule_display_frames", 1000)
 
     if should_truncate_schedules(num_frames, max_display):
-        # Truncate schedules for UI display
-        truncated = truncate_schedules_dict(schedules, max_display)
+        # Downsample schedules for UI display (not truncate - preserves full timeline)
+        downsampled = {
+            key: downsample_schedule_for_display(value, max_display, num_frames)
+            for key, value in schedules.items()
+        }
 
-        # Add truncation info to status
-        status += f"\n\n{get_truncation_info_message(num_frames, max_display)}"
+        # Add downsampling info to status
+        status += f"\n\n📊 Schedule Display Downsampled:\n- Total frames: {num_frames:,}\n- Showing: ~{max_display:,} sampled keyframes\n- Full schedule preserved in settings.json"
 
-        logger.info(f"Schedule display truncated: {num_frames:,} frames → {max_display:,} frames shown")
-        return truncated, status
+        logger.info(f"Schedule display downsampled: {num_frames:,} frames → ~{max_display:,} keyframes shown")
+        return downsampled, status
     else:
         return schedules, status
 
