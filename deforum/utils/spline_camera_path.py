@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from typing import List, Tuple, Dict
 import numpy as np
 from scipy import interpolate
+from tqdm import tqdm
+import modules.shared as shared
 from deforum.utils.math.quaternion import look_at_target
 from deforum.utils.system.logging import log as log_utils, emoji_if_enabled
 
@@ -234,7 +236,24 @@ def generate_camera_path(
 
     # Generate camera points
     camera_path = []
-    for frame_idx in range(config.num_frames):
+
+    # Show progress bar for large animations (>1000 frames)
+    show_progress = config.num_frames > 1000
+    disable_tqdm = not show_progress or getattr(shared.cmd_opts, 'disable_console_progressbars', False)
+
+    frame_range = range(config.num_frames)
+    if show_progress:
+        frame_range = tqdm(
+            frame_range,
+            desc="Generating camera path",
+            unit="frame",
+            dynamic_ncols=True,
+            file=shared.progress_print_out,
+            disable=disable_tqdm,
+            colour="#5606FF"  # BB0 Slopcore purple
+        )
+
+    for frame_idx in frame_range:
         x, y, z = spline_points[frame_idx]
 
         if look_at_curve:
@@ -838,7 +857,24 @@ def camera_path_to_schedules(
     first_rot_y = camera_path[0].rot_y
     first_rot_z = camera_path[0].rot_z
 
-    for idx, point in enumerate(camera_path):
+    # Show progress bar for large animations (>1000 frames)
+    show_progress = len(camera_path) > 1000
+    disable_tqdm = not show_progress or getattr(shared.cmd_opts, 'disable_console_progressbars', False)
+
+    path_iterator = enumerate(camera_path)
+    if show_progress:
+        path_iterator = tqdm(
+            enumerate(camera_path),
+            total=len(camera_path),
+            desc="Converting to schedules",
+            unit="frame",
+            dynamic_ncols=True,
+            file=shared.progress_print_out,
+            disable=disable_tqdm,
+            colour="#17A7FE"  # BB0 Slopcore cyan
+        )
+
+    for idx, point in path_iterator:
         # Normalize position (subtract offset so first frame is at origin)
         norm_x = point.x - offset_x
         norm_y = point.y - offset_y
