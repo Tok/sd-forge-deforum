@@ -313,21 +313,19 @@ def visualize_schedules(
             for i in range(1, len(x_coords))
         )
 
-        stats = f"""⚠️ Animation Too Large for Auto-Visualization
+        stats = f"""⚠️ Camera Path Visualization Disabled
 
-Frames: {num_points:,} (exceeds {LARGE_ANIMATION_THRESHOLD:,} frame threshold)
+Frames: {num_points:,} (exceeds {LARGE_ANIMATION_THRESHOLD:,} threshold)
 Keyframes: {len(prompt_keyframes)}
 Total Distance: {total_distance:.2f}
 
-✅ Schedules have been generated and populated correctly in the textboxes above.
+Visualization skipped to prevent browser freeze - the 3D interactive preview would be too slow to be useful.
 
-⚠️ Visualization skipped to prevent browser freeze (would take several minutes to load).
+✅ Your {num_points:,} frame camera path is fully supported and will render perfectly.
+✅ All schedules have been generated and populated correctly in the textboxes above.
+✅ Only the interactive 3D preview is disabled for performance.
 
-To view visualization:
-• Reduce Max Frames to <{LARGE_ANIMATION_THRESHOLD:,} and regenerate path, OR
-• Use visualization for design/preview, then increase Max Frames for final render
-
-Note: Camera path schedules work perfectly regardless of visualization display.
+This is a display-only limitation, not a rendering limitation.
 """
         return _create_empty_plot(), stats
 

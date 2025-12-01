@@ -57,17 +57,17 @@ def update_frame_overlap_visualization(
     if max_frames > LARGE_ANIMATION_THRESHOLD:
         logger.warning(f"Skipping wormtrail visualization: {max_frames:,} frames exceeds {LARGE_ANIMATION_THRESHOLD:,} threshold")
         return f'''<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">
-⚠️ Animation Too Large for Wormtrail Visualization
+⚠️ Wormtrail Visualization Disabled
 
-Frames: {max_frames:,} (exceeds {LARGE_ANIMATION_THRESHOLD:,} frame threshold)
+Frames: {max_frames:,} (exceeds {LARGE_ANIMATION_THRESHOLD:,} threshold)
 
-Visualization skipped to prevent browser freeze and reduce UI lag.
+Visualization skipped to prevent browser freeze - the interactive preview would be too slow to be useful.
 
-To view wormtrail:
-• Reduce Max Frames to <{LARGE_ANIMATION_THRESHOLD:,} and regenerate path, OR
-• Use visualization for design/preview, then increase Max Frames for final render
+✅ Your {max_frames:,} frame animation is fully supported and will render perfectly.
+✅ All schedules, frame overlap calculations, and depth warping work normally.
+✅ Only the interactive preview is disabled for performance.
 
-Note: Frame overlap calculations and rendering work perfectly regardless of visualization display.
+This is a display-only limitation, not a rendering limitation.
 </div>'''
 
     try:
