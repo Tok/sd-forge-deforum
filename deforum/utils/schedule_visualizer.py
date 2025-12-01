@@ -334,6 +334,18 @@ def visualize_schedules(
         rx_coords = [rx_coords[i] for i in sorted_indices]
         ry_coords = [ry_coords[i] for i in sorted_indices]
         rz_coords = [rz_coords[i] for i in sorted_indices]
+
+        # Keep mapping from new_index -> original_frame_number
+        frame_index_map = {i: orig_idx for i, orig_idx in enumerate(sorted_indices)}
+
+        # Remap prompt_keyframes to new indices
+        if prompt_keyframes:
+            old_keyframes = prompt_keyframes.copy()
+            prompt_keyframes = set()
+            for new_idx, orig_idx in frame_index_map.items():
+                if orig_idx in old_keyframes:
+                    prompt_keyframes.add(new_idx)
+
         num_points = len(x_coords)
         downsampled = True
 
@@ -451,6 +463,33 @@ def visualize_schedules(
             )
         ]
     )
+
+    # Add static view direction arrows for all frames (sampled to prevent clutter)
+    # Use same sampling as animation frames
+    for idx in animation_frames:
+        pitch = rx_coords[idx]
+        yaw = ry_coords[idx]
+        roll = rz_coords[idx]
+        forward = euler_to_forward_vector(pitch, yaw, roll)
+        fwd_x = forward.x * arrow_length
+        fwd_y = forward.y * arrow_length
+        fwd_z = forward.z * arrow_length
+
+        is_keyframe = idx in prompt_keyframes
+        arrow_color = BB0_ZENITH if is_keyframe else BB0_VOID
+        arrow_width = 3 if is_keyframe else 2
+
+        # Arrow showing view direction
+        fig.add_trace(go.Scatter3d(
+            x=[x_coords[idx], x_coords[idx] + fwd_x],
+            y=[y_coords[idx], y_coords[idx] + fwd_y],
+            z=[z_coords[idx], z_coords[idx] + fwd_z],
+            mode='lines',
+            line=dict(color=arrow_color, width=arrow_width),
+            hovertemplate=f'<b>{'KEYFRAME' if is_keyframe else 'Frame'} {idx}</b><extra></extra>',
+            showlegend=False,
+            hoverinfo='text'
+        ))
 
     # Build animation frames (update traces 2, 3, 4 for each frame)
     plotly_frames = []
