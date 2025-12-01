@@ -297,14 +297,19 @@ def visualize_schedules(
     # Downsample for very large animations (>5000 frames)
     # Show every Nth frame to prevent browser freeze while still providing useful preview
     LARGE_ANIMATION_THRESHOLD = 5000
-    DOWNSAMPLE_RATE = 20  # Show every 20th frame for large animations
+    MAX_VISUALIZATION_FRAMES = 400  # Target maximum frames for browser performance
 
     original_frame_count = num_points
     downsampled = False
+    downsample_rate_used = None  # Track for status message
 
     if num_points > LARGE_ANIMATION_THRESHOLD:
         from deforum.utils.system.logging import get_logger
         logger = get_logger()
+
+        # Adaptive downsampling: calculate rate to target MAX_VISUALIZATION_FRAMES
+        DOWNSAMPLE_RATE = max(1, num_points // MAX_VISUALIZATION_FRAMES)
+        downsample_rate_used = DOWNSAMPLE_RATE
         logger.info(f"Downsampling camera path visualization: {num_points:,} frames → every {DOWNSAMPLE_RATE}th frame + keyframes")
 
         # Build downsampled list: every Nth frame + all keyframes + first/last
@@ -674,8 +679,8 @@ def visualize_schedules(
 
     # Add downsampling info if frames were downsampled
     downsample_info = ""
-    if downsampled:
-        downsample_info = f"\n\nℹ️ Preview Downsampled:\n- Original: {original_frame_count:,} frames\n- Showing: {num_points:,} frames (every {DOWNSAMPLE_RATE}th + keyframes)\n- This is preview-only; full animation will render all {original_frame_count:,} frames"
+    if downsampled and downsample_rate_used:
+        downsample_info = f"\n\nℹ️ Preview Downsampled:\n- Original: {original_frame_count:,} frames\n- Showing: {num_points:,} frames (every {downsample_rate_used}th + keyframes)\n- This is preview-only; full animation will render all {original_frame_count:,} frames"
 
     stats = f"""Path Statistics (from schedules):
 - Frames: {original_frame_count if downsampled else num_points}

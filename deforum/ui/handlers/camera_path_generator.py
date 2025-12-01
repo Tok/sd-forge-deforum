@@ -841,6 +841,7 @@ def handle_generate_preset(
         rotation_mode, rotation_factor, look_at_mode, look_at_blend
     )
 
+    global _current_camera_path
     _current_camera_path = camera_path
 
     # Debug: Check first few schedule values
