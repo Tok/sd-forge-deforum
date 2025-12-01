@@ -492,6 +492,8 @@ def visualize_schedules(
         ))
 
     # Build animation frames (update traces 2, 3, 4 for each frame)
+    # Note: Must include empty {} for all static arrow traces (traces 5+)
+    num_static_arrows = len(animation_frames)
     plotly_frames = []
     for idx in animation_frames:
         pitch = rx_coords[idx]
@@ -505,33 +507,38 @@ def visualize_schedules(
         is_keyframe = idx in prompt_keyframes
         marker_color = BB0_ZENITH if is_keyframe else BB0_GLITCH
 
+        frame_data = [
+            {},  # Trace 0: Static path (no update)
+            {},  # Trace 1: Static keyframes (no update)
+            # Trace 2: Camera position
+            go.Scatter3d(
+                x=[x_coords[idx]],
+                y=[y_coords[idx]],
+                z=[z_coords[idx]],
+                marker=dict(size=15, color=marker_color, symbol='diamond', opacity=1.0),
+                hovertemplate=f'<b>Frame {idx}</b><br>X: {x_coords[idx]:.2f}<br>Y: {y_coords[idx]:.2f}<br>Z: {z_coords[idx]:.2f}<extra></extra>'
+            ),
+            # Trace 3: Forward arrow
+            go.Scatter3d(
+                x=[x_coords[idx], x_coords[idx] + forward_x],
+                y=[y_coords[idx], y_coords[idx] + forward_y],
+                z=[z_coords[idx], z_coords[idx] + forward_z],
+                line=dict(color=marker_color, width=4)
+            ),
+            # Trace 4: Arrowhead
+            go.Scatter3d(
+                x=[x_coords[idx] + forward_x],
+                y=[y_coords[idx] + forward_y],
+                z=[z_coords[idx] + forward_z],
+                marker=dict(size=8, color=marker_color, symbol='diamond')
+            )
+        ]
+
+        # Add empty {} for all static arrow traces (traces 5 to 5+N-1)
+        frame_data.extend([{}] * num_static_arrows)
+
         plotly_frames.append(go.Frame(
-            data=[
-                {},  # Trace 0: Static path (no update)
-                {},  # Trace 1: Static keyframes (no update)
-                # Trace 2: Camera position
-                go.Scatter3d(
-                    x=[x_coords[idx]],
-                    y=[y_coords[idx]],
-                    z=[z_coords[idx]],
-                    marker=dict(size=15, color=marker_color, symbol='diamond', opacity=1.0),
-                    hovertemplate=f'<b>Frame {idx}</b><br>X: {x_coords[idx]:.2f}<br>Y: {y_coords[idx]:.2f}<br>Z: {z_coords[idx]:.2f}<extra></extra>'
-                ),
-                # Trace 3: Forward arrow
-                go.Scatter3d(
-                    x=[x_coords[idx], x_coords[idx] + forward_x],
-                    y=[y_coords[idx], y_coords[idx] + forward_y],
-                    z=[z_coords[idx], z_coords[idx] + forward_z],
-                    line=dict(color=marker_color, width=4)
-                ),
-                # Trace 4: Arrowhead
-                go.Scatter3d(
-                    x=[x_coords[idx] + forward_x],
-                    y=[y_coords[idx] + forward_y],
-                    z=[z_coords[idx] + forward_z],
-                    marker=dict(size=8, color=marker_color, symbol='diamond')
-                )
-            ],
+            data=frame_data,
             name=str(idx)
         ))
 
