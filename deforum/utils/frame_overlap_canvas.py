@@ -219,6 +219,24 @@ def create_canvas_html(
 
     logger.debug(f"create_canvas_html: metrics_list has {len(metrics_list)} frames")
 
+    # Skip visualization for very large animations (>5000 frames)
+    # Generating wormtrail for 30k+ frames freezes the browser for minutes
+    LARGE_ANIMATION_THRESHOLD = 5000
+    if len(metrics_list) > LARGE_ANIMATION_THRESHOLD:
+        return f'''<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">
+⚠️ Animation Too Large for Wormtrail Visualization
+
+Frames: {len(metrics_list):,} (exceeds {LARGE_ANIMATION_THRESHOLD:,} frame threshold)
+
+Visualization skipped to prevent browser freeze (would take several minutes to load).
+
+To view wormtrail:
+• Reduce Max Frames to <{LARGE_ANIMATION_THRESHOLD:,} and regenerate path, OR
+• Use visualization for design/preview, then increase Max Frames for final render
+
+Note: Frame overlap calculations and rendering work perfectly regardless of visualization display.
+</div>'''
+
     # Check if there's any actual camera movement (check consecutive frame differences)
     has_movement = any(
         abs(metrics_list[i].prev_frame_rect.center_x - metrics_list[i-1].prev_frame_rect.center_x) > 0.1 or

@@ -294,6 +294,39 @@ def visualize_schedules(
         # Fallback for empty data
         return _create_empty_plot(), "No schedule data"
 
+    # Skip visualization for very large animations (>5000 frames)
+    # Generating visualization for 30k+ frames freezes the browser for minutes
+    LARGE_ANIMATION_THRESHOLD = 5000
+    if num_points > LARGE_ANIMATION_THRESHOLD:
+        # Calculate basic stats for user feedback
+        import numpy as np
+        total_distance = sum(
+            np.sqrt(
+                (x_coords[i] - x_coords[i-1])**2 +
+                (y_coords[i] - y_coords[i-1])**2 +
+                (z_coords[i] - z_coords[i-1])**2
+            )
+            for i in range(1, len(x_coords))
+        )
+
+        stats = f"""⚠️ Animation Too Large for Auto-Visualization
+
+Frames: {num_points:,} (exceeds {LARGE_ANIMATION_THRESHOLD:,} frame threshold)
+Keyframes: {len(prompt_keyframes)}
+Total Distance: {total_distance:.2f}
+
+✅ Schedules have been generated and populated correctly in the textboxes above.
+
+⚠️ Visualization skipped to prevent browser freeze (would take several minutes to load).
+
+To view visualization:
+• Reduce Max Frames to <{LARGE_ANIMATION_THRESHOLD:,} and regenerate path, OR
+• Use visualization for design/preview, then increase Max Frames for final render
+
+Note: Camera path schedules work perfectly regardless of visualization display.
+"""
+        return _create_empty_plot(), stats
+
     # Create animated 3D plot - AUTHENTIC BB0 SLOPCORE AESTHETIC
     # Colors from BLANK BANSHEE 0 album cover (pipetted from source)
     # See docs/SLOPCORE.md for full palette documentation
