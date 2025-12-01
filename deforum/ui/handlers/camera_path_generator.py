@@ -834,6 +834,7 @@ def handle_generate_preset(
     from deforum.utils.schedule_visualizer import visualize_schedules
 
     logger.info(f"Generating camera path preset: {preset_type}, frames={num_frames}, radius={radius}")
+    logger.debug(f"handle_generate_preset called")
 
     status, schedules, camera_path = generate_preset_path(
         preset_type, radius, height, num_frames, closed_loop,
