@@ -55,7 +55,7 @@ def update_frame_overlap_visualization(
     # This prevents multiple expensive calls when populating schedules in UI
     LARGE_ANIMATION_THRESHOLD = 5000
     if max_frames > LARGE_ANIMATION_THRESHOLD:
-        logger.debug(f"Skipping wormtrail simulation for {max_frames} frames (exceeds {LARGE_ANIMATION_THRESHOLD} threshold)")
+        logger.warning(f"Skipping wormtrail visualization: {max_frames:,} frames exceeds {LARGE_ANIMATION_THRESHOLD:,} threshold")
         return f'''<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">
 ⚠️ Animation Too Large for Wormtrail Visualization
 

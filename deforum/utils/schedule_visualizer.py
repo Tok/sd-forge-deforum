@@ -298,6 +298,10 @@ def visualize_schedules(
     # Generating visualization for 30k+ frames freezes the browser for minutes
     LARGE_ANIMATION_THRESHOLD = 5000
     if num_points > LARGE_ANIMATION_THRESHOLD:
+        from deforum.utils.system.logging import get_logger
+        logger = get_logger()
+        logger.warning(f"Skipping camera path visualization: {num_points:,} frames exceeds {LARGE_ANIMATION_THRESHOLD:,} threshold")
+
         # Calculate basic stats for user feedback
         import numpy as np
         total_distance = sum(
