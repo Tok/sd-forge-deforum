@@ -17,15 +17,16 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FORGE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Colors
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+# BB0 Slopcore colors (see docs/SLOPCORE.md)
+BB0_ZENITH='\033[38;2;23;167;254m'    # #17A7FE - Cyan (info, success)
+BB0_GLITCH='\033[38;2;255;20;147m'    # #FF1493 - Neon pink (warning, error)
+BB0_VOID='\033[38;2;86;6;255m'        # #5606FF - Deep purple (emphasis)
+BB0_MIDNIGHT='\033[38;2;55;87;255m'   # #3757FF - Mid blue (secondary)
+NC='\033[0m' # No Color
 
-echo -e "${CYAN}========================================${NC}"
-echo -e "${CYAN}Forge WebUI + Deforum${NC}"
-echo -e "${CYAN}========================================${NC}"
+echo -e "${BB0_ZENITH}========================================${NC}"
+echo -e "${BB0_ZENITH}Forge WebUI + Deforum${NC}"
+echo -e "${BB0_ZENITH}========================================${NC}"
 echo ""
 
 cd "$FORGE_DIR"
@@ -44,32 +45,32 @@ done
 
 # Build command with optimization flags
 if [ "$USE_OPTIMIZATIONS" = true ]; then
-    echo -e "${GREEN}Starting with optimizations:${NC}"
-    echo -e "  ${BLUE}--sage${NC}              SageAttention (RTX 30/40/50)"
-    echo -e "  ${BLUE}--fast-fp16${NC}         Fast FP16 accumulation"
-    echo -e "  ${BLUE}--cuda-malloc${NC}       CUDA malloc optimization"
-    echo -e "  ${BLUE}--cuda-stream${NC}       CUDA stream optimization"
+    echo -e "${BB0_ZENITH}Starting with optimizations:${NC}"
+    echo -e "  ${BB0_MIDNIGHT}--sage${NC}              SageAttention (RTX 30/40/50)"
+    echo -e "  ${BB0_MIDNIGHT}--fast-fp16${NC}         Fast FP16 accumulation"
+    echo -e "  ${BB0_MIDNIGHT}--cuda-malloc${NC}       CUDA malloc optimization"
+    echo -e "  ${BB0_MIDNIGHT}--cuda-stream${NC}       CUDA stream optimization"
     echo ""
-    echo -e "${YELLOW}Note: If --sage fails, run: ./setup.sh --prepare${NC}"
+    echo -e "${BB0_GLITCH}Note: If --sage fails, run: ./setup.sh --prepare${NC}"
     echo ""
 
     FLAGS="--sage --fast-fp16 --cuda-malloc --cuda-stream"
 else
-    echo -e "${BLUE}Starting without optimizations${NC}"
+    echo -e "${BB0_MIDNIGHT}Starting without optimizations${NC}"
     echo ""
     FLAGS=""
 fi
 
 # Add extra args
 if [ -n "$EXTRA_ARGS" ]; then
-    echo -e "${BLUE}Extra flags:${NC} $EXTRA_ARGS"
+    echo -e "${BB0_MIDNIGHT}Extra flags:${NC} $EXTRA_ARGS"
     echo ""
     FLAGS="$FLAGS $EXTRA_ARGS"
 fi
 
-echo -e "${CYAN}========================================${NC}"
-echo -e "${GREEN}Launching Forge...${NC}"
-echo -e "${CYAN}========================================${NC}"
+echo -e "${BB0_ZENITH}========================================${NC}"
+echo -e "${BB0_ZENITH}Launching Forge...${NC}"
+echo -e "${BB0_ZENITH}========================================${NC}"
 echo ""
 
 # Cleanup function
