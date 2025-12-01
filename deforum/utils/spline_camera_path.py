@@ -713,33 +713,33 @@ def _print_camera_path_analysis(delta_analysis: Dict[str, List[float]], camera_p
     if chart_emoji:
         chart_emoji += " "
 
-    log_utils.debug(f"{chart_emoji}Camera Path Analysis:", log_utils.BLUE)
-    log_utils.debug(f"   Frames: {len(camera_path)}", log_utils.BLUE)
-    log_utils.debug("", log_utils.BLUE)
+    log_utils.debug(f"{chart_emoji}Camera Path Analysis:")
+    log_utils.debug(f"   Frames: {len(camera_path)}")
+    log_utils.debug("")
 
     # Translation statistics
-    log_utils.debug("   Translation Deltas (per frame):", log_utils.BLUE)
-    log_utils.debug(f"      Mean:   X={avg_trans_x:6.3f}  Y={avg_trans_y:6.3f}  Z={avg_trans_z:6.3f}", log_utils.BLUE)
-    log_utils.debug(f"      Median: X={med_trans_x:6.3f}  Y={med_trans_y:6.3f}  Z={med_trans_z:6.3f}", log_utils.BLUE)
-    log_utils.debug(f"      Max:    X={max_trans_x:6.3f}  Y={max_trans_y:6.3f}  Z={max_trans_z:6.3f}", log_utils.BLUE)
-    log_utils.debug(f"      StdDev: X={std_trans_x:6.3f}  Y={std_trans_y:6.3f}  Z={std_trans_z:6.3f}", log_utils.BLUE)
-    log_utils.debug(f"      Total Distance: {total_trans:.1f} units", log_utils.BLUE)
-    log_utils.debug("", log_utils.BLUE)
+    log_utils.debug("   Translation Deltas (per frame):")
+    log_utils.debug(f"      Mean:   X={avg_trans_x:6.3f}  Y={avg_trans_y:6.3f}  Z={avg_trans_z:6.3f}")
+    log_utils.debug(f"      Median: X={med_trans_x:6.3f}  Y={med_trans_y:6.3f}  Z={med_trans_z:6.3f}")
+    log_utils.debug(f"      Max:    X={max_trans_x:6.3f}  Y={max_trans_y:6.3f}  Z={max_trans_z:6.3f}")
+    log_utils.debug(f"      StdDev: X={std_trans_x:6.3f}  Y={std_trans_y:6.3f}  Z={std_trans_z:6.3f}")
+    log_utils.debug(f"      Total Distance: {total_trans:.1f} units")
+    log_utils.debug("")
 
     # Rotation statistics
-    log_utils.debug("   Rotation Deltas (per frame):", log_utils.BLUE)
-    log_utils.debug(f"      Mean:   X={avg_rot_x:6.3f}°  Y={avg_rot_y:6.3f}°  Z={avg_rot_z:6.3f}°", log_utils.BLUE)
-    log_utils.debug(f"      Median: X={med_rot_x:6.3f}°  Y={med_rot_y:6.3f}°  Z={med_rot_z:6.3f}°", log_utils.BLUE)
-    log_utils.debug(f"      Max:    X={max_rot_x:6.3f}°  Y={max_rot_y:6.3f}°  Z={max_rot_z:6.3f}°", log_utils.BLUE)
-    log_utils.debug(f"      StdDev: X={std_rot_x:6.3f}°  Y={std_rot_y:6.3f}°  Z={std_rot_z:6.3f}°", log_utils.BLUE)
-    log_utils.debug(f"      Total Rotation: {total_rot:.1f}°", log_utils.BLUE)
-    log_utils.debug("", log_utils.BLUE)
+    log_utils.debug("   Rotation Deltas (per frame):")
+    log_utils.debug(f"      Mean:   X={avg_rot_x:6.3f}°  Y={avg_rot_y:6.3f}°  Z={avg_rot_z:6.3f}°")
+    log_utils.debug(f"      Median: X={med_rot_x:6.3f}°  Y={med_rot_y:6.3f}°  Z={med_rot_z:6.3f}°")
+    log_utils.debug(f"      Max:    X={max_rot_x:6.3f}°  Y={max_rot_y:6.3f}°  Z={max_rot_z:6.3f}°")
+    log_utils.debug(f"      StdDev: X={std_rot_x:6.3f}°  Y={std_rot_y:6.3f}°  Z={std_rot_z:6.3f}°")
+    log_utils.debug(f"      Total Rotation: {total_rot:.1f}°")
+    log_utils.debug("")
 
     # Ratios and orbit estimation
-    log_utils.debug("   Translation/Rotation Ratios:", log_utils.BLUE)
-    log_utils.debug(f"      rot_y / trans_x = {ratio_y_to_x:.2f} (estimated orbit radius: ~{estimated_radius:.0f})", log_utils.BLUE)
-    log_utils.debug(f"      rot_x / trans_y = {ratio_x_to_y:.2f} (vertical tilt)", log_utils.BLUE)
-    log_utils.debug(f"      rot_z / trans_z = {ratio_z_to_z:.2f} (roll - 0.0 = stabilized)", log_utils.BLUE)
+    log_utils.debug("   Translation/Rotation Ratios:")
+    log_utils.debug(f"      rot_y / trans_x = {ratio_y_to_x:.2f} (estimated orbit radius: ~{estimated_radius:.0f})")
+    log_utils.debug(f"      rot_x / trans_y = {ratio_x_to_y:.2f} (vertical tilt)")
+    log_utils.debug(f"      rot_z / trans_z = {ratio_z_to_z:.2f} (roll - 0.0 = stabilized)")
 
 
 def camera_path_to_schedules(
