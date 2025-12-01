@@ -928,7 +928,7 @@ def on_ui_tabs():
                 # Wire up preset generation button
                 def handle_preset_with_overlap(*args):
                     """Handle preset generation and update both visualizations."""
-                    from deforum.ui.handlers.camera_path_generator import generate_preset_path
+                    from deforum.ui.handlers.camera_path_generator import _current_camera_path
                     from deforum.utils.spline_camera_path import camera_path_to_schedules
 
                     # First 20 args are for handle_generate_preset, rest are for overlap viz
@@ -936,38 +936,25 @@ def on_ui_tabs():
                     overlap_args = args[20:]  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
 
                     # Extract params for wormtrail
-                    preset_type = args[0]
                     speed_multiplier = args[1]
                     speed_randomization = args[2]
-                    radius = args[3]
-                    height = args[4]
                     max_frames_val = args[5]
-                    closed_loop = args[6]
-                    randomize = args[7]
                     random_seed = args[8]
-                    rotation_mode = args[9]
-                    rotation_factor = args[10]
-                    look_at_mode = args[11]
-                    look_at_blend = args[12]
                     prompts = args[19]  # animation_prompts
 
-                    # Generate preset schedules (truncated for UI)
+                    # Generate preset schedules (truncated for UI) and visualization
                     result = handle_generate_preset(*preset_args)
 
                     # Extract schedule values from result
                     status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot = result
 
                     # Generate FULL schedules for wormtrail (bypass truncation)
+                    # Use the camera_path that was just generated (stored in global)
                     # Only do this if animation is large enough to need it
-                    if max_frames_val > 1000:
-                        _, _, camera_path = generate_preset_path(
-                            preset_type, radius, height, max_frames_val, closed_loop,
-                            randomize, int(random_seed), speed_multiplier, speed_randomization,
-                            rotation_mode, rotation_factor, look_at_mode, look_at_blend
-                        )
-                        # Regenerate full schedules from camera_path
+                    if max_frames_val > 1000 and _current_camera_path:
+                        # Regenerate full schedules from cached camera_path
                         full_schedules = camera_path_to_schedules(
-                            camera_path,
+                            _current_camera_path,
                             speed_multiplier=speed_multiplier,
                             speed_randomization=speed_randomization,
                             random_seed=int(random_seed) if random_seed >= 0 else 0,

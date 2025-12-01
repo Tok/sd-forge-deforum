@@ -464,36 +464,36 @@ def visualize_schedules(
         ]
     )
 
-    # Add static view direction arrows for all frames (sampled to prevent clutter)
-    # Use same sampling as animation frames
+    # Add static view direction arrows for keyframes only (to prevent browser freeze)
+    # For large animations, showing arrows for all 1500+ animation_frames creates too many traces
+    # The animated arrow will show view direction as it plays through
+    static_arrow_frames = []
     for idx in animation_frames:
-        pitch = rx_coords[idx]
-        yaw = ry_coords[idx]
-        roll = rz_coords[idx]
-        forward = euler_to_forward_vector(pitch, yaw, roll)
-        fwd_x = forward.x * arrow_length
-        fwd_y = forward.y * arrow_length
-        fwd_z = forward.z * arrow_length
+        if idx in prompt_keyframes:
+            pitch = rx_coords[idx]
+            yaw = ry_coords[idx]
+            roll = rz_coords[idx]
+            forward = euler_to_forward_vector(pitch, yaw, roll)
+            fwd_x = forward.x * arrow_length
+            fwd_y = forward.y * arrow_length
+            fwd_z = forward.z * arrow_length
 
-        is_keyframe = idx in prompt_keyframes
-        arrow_color = BB0_ZENITH if is_keyframe else BB0_VOID
-        arrow_width = 3 if is_keyframe else 2
-
-        # Arrow showing view direction
-        fig.add_trace(go.Scatter3d(
-            x=[x_coords[idx], x_coords[idx] + fwd_x],
-            y=[y_coords[idx], y_coords[idx] + fwd_y],
-            z=[z_coords[idx], z_coords[idx] + fwd_z],
-            mode='lines',
-            line=dict(color=arrow_color, width=arrow_width),
-            hovertemplate=f'<b>{'KEYFRAME' if is_keyframe else 'Frame'} {idx}</b><extra></extra>',
-            showlegend=False,
-            hoverinfo='text'
-        ))
+            # Arrow showing view direction at keyframes
+            fig.add_trace(go.Scatter3d(
+                x=[x_coords[idx], x_coords[idx] + fwd_x],
+                y=[y_coords[idx], y_coords[idx] + fwd_y],
+                z=[z_coords[idx], z_coords[idx] + fwd_z],
+                mode='lines',
+                line=dict(color=BB0_ZENITH, width=3),
+                hovertemplate=f'<b>KEYFRAME {idx}</b><extra></extra>',
+                showlegend=False,
+                hoverinfo='text'
+            ))
+            static_arrow_frames.append(idx)
 
     # Build animation frames (update traces 2, 3, 4 for each frame)
     # Note: Must include empty {} for all static arrow traces (traces 5+)
-    num_static_arrows = len(animation_frames)
+    num_static_arrows = len(static_arrow_frames)
     plotly_frames = []
     for idx in animation_frames:
         pitch = rx_coords[idx]
