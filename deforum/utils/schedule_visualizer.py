@@ -294,40 +294,50 @@ def visualize_schedules(
         # Fallback for empty data
         return _create_empty_plot(), "No schedule data"
 
-    # Skip visualization for very large animations (>5000 frames)
-    # Generating visualization for 30k+ frames freezes the browser for minutes
+    # Downsample for very large animations (>5000 frames)
+    # Show every Nth frame to prevent browser freeze while still providing useful preview
     LARGE_ANIMATION_THRESHOLD = 5000
+    DOWNSAMPLE_RATE = 20  # Show every 20th frame for large animations
+
+    original_frame_count = num_points
+    downsampled = False
+
     if num_points > LARGE_ANIMATION_THRESHOLD:
         from deforum.utils.system.logging import get_logger
         logger = get_logger()
-        logger.warning(f"Skipping camera path visualization: {num_points:,} frames exceeds {LARGE_ANIMATION_THRESHOLD:,} threshold")
+        logger.info(f"Downsampling camera path visualization: {num_points:,} frames → every {DOWNSAMPLE_RATE}th frame + keyframes")
 
-        # Calculate basic stats for user feedback
-        import numpy as np
-        total_distance = sum(
-            np.sqrt(
-                (x_coords[i] - x_coords[i-1])**2 +
-                (y_coords[i] - y_coords[i-1])**2 +
-                (z_coords[i] - z_coords[i-1])**2
-            )
-            for i in range(1, len(x_coords))
-        )
+        # Build downsampled list: every Nth frame + all keyframes + first/last
+        downsampled_indices = set()
 
-        stats = f"""⚠️ Camera Path Visualization Disabled
+        # Add every Nth frame
+        for i in range(0, num_points, DOWNSAMPLE_RATE):
+            downsampled_indices.add(i)
 
-Frames: {num_points:,} (exceeds {LARGE_ANIMATION_THRESHOLD:,} threshold)
-Keyframes: {len(prompt_keyframes)}
-Total Distance: {total_distance:.2f}
+        # Add all keyframes (from prompt boundaries)
+        if prompt_keyframes:
+            for kf in prompt_keyframes:
+                if 0 <= kf < num_points:
+                    downsampled_indices.add(kf)
 
-Visualization skipped to prevent browser freeze - the 3D interactive preview would be too slow to be useful.
+        # Always include first and last frame
+        downsampled_indices.add(0)
+        downsampled_indices.add(num_points - 1)
 
-✅ Your {num_points:,} frame camera path is fully supported and will render perfectly.
-✅ All schedules have been generated and populated correctly in the textboxes above.
-✅ Only the interactive 3D preview is disabled for performance.
+        # Sort indices
+        sorted_indices = sorted(downsampled_indices)
 
-This is a display-only limitation, not a rendering limitation.
-"""
-        return _create_empty_plot(), stats
+        # Downsample all coordinate arrays
+        x_coords = [x_coords[i] for i in sorted_indices]
+        y_coords = [y_coords[i] for i in sorted_indices]
+        z_coords = [z_coords[i] for i in sorted_indices]
+        num_points = len(x_coords)
+        downsampled = True
+
+        logger.info(f"Camera path downsampled to {num_points:,} frames ({num_points/original_frame_count*100:.1f}%)")
+
+    if num_points == 0:
+        return _create_empty_plot(), "No frames after downsampling"
 
     # Create animated 3D plot with BB0 Slopcore gradient
     # See docs/SLOPCORE.md for full palette documentation
@@ -613,15 +623,20 @@ This is a display-only limitation, not a rendering limitation.
     if num_displayed < num_points:
         sampling_info = f"\n⚠️ Displaying {num_displayed} of {num_points} frames (sampled every {sample_interval} frames to prevent browser crash)"
 
+    # Add downsampling info if frames were downsampled
+    downsample_info = ""
+    if downsampled:
+        downsample_info = f"\n\nℹ️ Preview Downsampled:\n- Original: {original_frame_count:,} frames\n- Showing: {num_points:,} frames (every {DOWNSAMPLE_RATE}th + keyframes)\n- This is preview-only; full animation will render all {original_frame_count:,} frames"
+
     stats = f"""Path Statistics (from schedules):
-- Frames: {num_points}
+- Frames: {original_frame_count if downsampled else num_points}
 - Keyframes: {len(prompt_keyframes)} (with prompts)
 - Total Distance: {total_distance:.2f}
 - X Range: {x_range:.2f} (left/right)
 - Y Range: {y_range:.2f} (up/down)
 - Z Range: {z_range:.2f} (forward/back)
 - Start: ({x_coords[0]:.2f}, {y_coords[0]:.2f}, {z_coords[0]:.2f})
-- End: ({x_coords[-1]:.2f}, {y_coords[-1]:.2f}, {z_coords[-1]:.2f}){sampling_info}
+- End: ({x_coords[-1]:.2f}, {y_coords[-1]:.2f}, {z_coords[-1]:.2f}){sampling_info}{downsample_info}
 """
 
     return fig, stats

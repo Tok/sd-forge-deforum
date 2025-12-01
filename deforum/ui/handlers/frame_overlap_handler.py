@@ -51,25 +51,6 @@ def update_frame_overlap_visualization(
     Returns:
         HTML string for visualization (or error/skip message)
     """
-    # Skip expensive simulation for very large animations (>5000 frames)
-    # This prevents multiple expensive calls when populating schedules in UI
-    LARGE_ANIMATION_THRESHOLD = 5000
-    if max_frames > LARGE_ANIMATION_THRESHOLD:
-        logger.warning(f"Skipping wormtrail visualization: {max_frames:,} frames exceeds {LARGE_ANIMATION_THRESHOLD:,} threshold")
-        return f'''<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">
-⚠️ Wormtrail Visualization Disabled
-
-Frames: {max_frames:,} (exceeds {LARGE_ANIMATION_THRESHOLD:,} threshold)
-
-Visualization skipped to prevent browser freeze - the interactive preview would be too slow to be useful.
-
-✅ Your {max_frames:,} frame animation is fully supported and will render perfectly.
-✅ All schedules, frame overlap calculations, and depth warping work normally.
-✅ Only the interactive preview is disabled for performance.
-
-This is a display-only limitation, not a rendering limitation.
-</div>'''
-
     try:
         # Build base schedules dict (zoom is handled separately, not processed by shakify)
         base_schedules = {

@@ -219,22 +219,46 @@ def create_canvas_html(
 
     logger.debug(f"create_canvas_html: metrics_list has {len(metrics_list)} frames")
 
-    # Skip visualization for very large animations (>5000 frames)
-    # Generating wormtrail for 30k+ frames freezes the browser for minutes
+    # Downsample for very large animations (>5000 frames)
+    # Show every Nth frame to prevent browser freeze while still providing useful preview
     LARGE_ANIMATION_THRESHOLD = 5000
-    if len(metrics_list) > LARGE_ANIMATION_THRESHOLD:
+    DOWNSAMPLE_RATE = 20  # Show every 20th frame for large animations
+
+    original_frame_count = len(metrics_list)
+    downsampled = False
+
+    if original_frame_count > LARGE_ANIMATION_THRESHOLD:
+        logger.info(f"Downsampling wormtrail visualization: {original_frame_count:,} frames → every {DOWNSAMPLE_RATE}th frame + keyframes")
+
+        # Build downsampled list: every Nth frame + all keyframes + first/last
+        downsampled_indices = set()
+
+        # Add every Nth frame
+        for i in range(0, original_frame_count, DOWNSAMPLE_RATE):
+            downsampled_indices.add(i)
+
+        # Add all keyframes (from prompt boundaries)
+        if prompt_keyframes:
+            for kf in prompt_keyframes:
+                if 0 <= kf < original_frame_count:
+                    downsampled_indices.add(kf)
+
+        # Always include first and last frame
+        downsampled_indices.add(0)
+        downsampled_indices.add(original_frame_count - 1)
+
+        # Sort and filter metrics
+        sorted_indices = sorted(downsampled_indices)
+        metrics_list = [metrics_list[i] for i in sorted_indices]
+        downsampled = True
+
+        logger.info(f"Wormtrail downsampled to {len(metrics_list):,} frames ({len(metrics_list)/original_frame_count*100:.1f}%)")
+
+    if len(metrics_list) == 0:
         return f'''<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">
-⚠️ Animation Too Large for Wormtrail Visualization
+⚠️ Wormtrail Visualization Error
 
-Frames: {len(metrics_list):,} (exceeds {LARGE_ANIMATION_THRESHOLD:,} frame threshold)
-
-Visualization skipped to prevent browser freeze (would take several minutes to load).
-
-To view wormtrail:
-• Reduce Max Frames to <{LARGE_ANIMATION_THRESHOLD:,} and regenerate path, OR
-• Use visualization for design/preview, then increase Max Frames for final render
-
-Note: Frame overlap calculations and rendering work perfectly regardless of visualization display.
+Unable to generate downsampled preview (no frames after sampling).
 </div>'''
 
     # Check if there's any actual camera movement (check consecutive frame differences)
@@ -297,6 +321,10 @@ Note: Frame overlap calculations and rendering work perfectly regardless of visu
         <input type="range" id="speedSlider" min="6" max="60" value="{playback_fps}" oninput="onSpeedChange(event)">
         <span id="speedInfo" class="info" style="min-width: 50px;">{playback_fps} fps</span>
     </div>
+
+    {"" if not downsampled else f'''<div style="margin-top: 12px; padding: 8px 12px; background: rgba(255,150,100,0.15); border-left: 3px solid #FF9664; border-radius: 4px; color: #FF9664; font-size: 13px;">
+        ℹ️ Preview Downsampled: Showing {len(metrics_list):,} of {original_frame_count:,} frames (every {DOWNSAMPLE_RATE}th frame + keyframes)
+    </div>'''}
 
     <script>
         const canvas = document.getElementById('canvas');
