@@ -216,7 +216,7 @@ def get_tab_prompts(da, dw, dv=None):
             - Adjust timing when changing video output FPS
             - Rescale animation timing to different frame rates
 
-            **Example:** Prompts synced to amen break at 60 FPS → Convert to 24 FPS for Wan video generation
+            **Example:** Animation at 60 FPS → Convert to 24 FPS for Wan video generation
 
             **Formula:** `new_frame = old_frame × (target_fps / source_fps)`
             """)

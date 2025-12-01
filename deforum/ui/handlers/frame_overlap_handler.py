@@ -20,7 +20,7 @@ def update_frame_overlap_visualization(
     rotation_3d_y: str,
     rotation_3d_z: str,
     zoom: str = "",
-    max_frames: int = 333,
+    max_frames: int = 300,
     width: int = 1920,
     height: int = 1080,
     shake_name: str = "None",

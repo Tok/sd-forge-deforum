@@ -189,7 +189,7 @@ def setup_deforum_left_side_ui():
     # Duration display (calculated from fps and max_frames)
     with gr.Row(variant='compact'):
         duration_display = gr.Markdown(
-            value="**Duration:** 5.55s",  # Default: 333 frames @ 60fps
+            value="**Duration:** 5.00s",  # Default: 300 frames @ 60fps
             elem_id="duration_display"
         )
 
@@ -1255,7 +1255,7 @@ def setup_deforum_left_side_ui():
             if not fps_val or fps_val <= 0:
                 fps_val = 60  # Default FPS
             if not frames_val or frames_val <= 0:
-                frames_val = 333  # Default max_frames
+                frames_val = 300  # Default max_frames
 
             duration_seconds = frames_val / fps_val
 

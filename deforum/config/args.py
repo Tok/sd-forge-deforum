@@ -84,7 +84,7 @@ def DeforumAnimArgs():
             "label": "Max frames",
             "type": "number",
             "precision": 0,
-            "value": 333,
+            "value": 300,
             "info": "end the animation at this frame number",
         },
         "border": {
@@ -1441,7 +1441,7 @@ def DeforumOutputArgs():
         "soundtrack_path": {
             "label": "Soundtrack path",
             "type": "textbox",
-            "value": "https://ia801303.us.archive.org/26/items/amen-breaks/cw_amen13_173.mp3",
+            "value": "",
             "info": "abs. path or url to audio file"
         },
         "r_upscale_video": {

@@ -55,8 +55,7 @@ def get_camera_shake_list():
     }
 
 def DeforumAnimPrompts():
-    # Keyframes are synchronized to line up at 60 FPS with amen13 from https://archive.org/details/amen-breaks/:
-    # Direct link: https://ia801303.us.archive.org/26/items/amen-breaks/cw_amen13_173.mp3
+    # Keyframes synchronized for 300 frames at 60 FPS (5 seconds)
     return r"""{
         "0": "A sterile hallway, brightly lit with fluorescent lights and empty",
         "12": "A sterile hallway, illuminated and overlooking a construction site through large windows",

@@ -23,7 +23,7 @@ logger = get_logger()
 BUNNY_DEFAULT_AUDIO_CONFIG = {
     "prompt": "synthetic amen break",  # Simple prompt, let Meta interpret
     "target_duration_seconds": 5.0,    # Aim for ~5 seconds
-    "bpm": 173,                        # Amen break BPM (not always respected by model)
+    "bpm": 173,                        # Amen break BPM
     "enable_chaos": False,             # Clean audio for defaults (no glitches)
 }
 
