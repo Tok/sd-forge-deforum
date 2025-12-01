@@ -327,10 +327,13 @@ def visualize_schedules(
         # Sort indices
         sorted_indices = sorted(downsampled_indices)
 
-        # Downsample all coordinate arrays
+        # Downsample all coordinate arrays (translation AND rotation)
         x_coords = [x_coords[i] for i in sorted_indices]
         y_coords = [y_coords[i] for i in sorted_indices]
         z_coords = [z_coords[i] for i in sorted_indices]
+        rx_coords = [rx_coords[i] for i in sorted_indices]
+        ry_coords = [ry_coords[i] for i in sorted_indices]
+        rz_coords = [rz_coords[i] for i in sorted_indices]
         num_points = len(x_coords)
         downsampled = True
 
