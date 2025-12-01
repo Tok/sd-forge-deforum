@@ -297,6 +297,7 @@ def on_ui_tabs():
             with gr.Column(scale=1.618, variant="panel"):  # Golden ratio - more space for controls
                 # setting the left side of the ui:
                 components = setup_deforum_left_side_ui()
+                logger.debug(f"Components dict has 'max_frames': {('max_frames' in components)}, value={components.get('max_frames')}")
             with gr.Column(scale=1, variant="compact"):  # Right side preview column
                 with gr.Row(variant="compact"):
                     i1 = gr.HTML(i1_store, elem_id="deforum_header")
@@ -726,28 +727,9 @@ def on_ui_tabs():
                 components.get("max_frames"),  # Actual frame count
             ]
 
-            # Wire up change handlers for all schedule fields
-            for schedule_component in schedule_components:
-                if schedule_component:
-                    schedule_component.change(
-                        fn=update_overlap_viz, inputs=viz_inputs, outputs=[frame_overlap_simulator]
-                    )
-
-            # Wire up change handlers for shakify controls (including toggle)
-            shakify_all_components = shakify_components + [
-                components.get("show_shakify_in_overlap")
-            ]
-            for shakify_component in shakify_all_components:
-                if shakify_component:
-                    shakify_component.change(
-                        fn=update_overlap_viz, inputs=viz_inputs, outputs=[frame_overlap_simulator]
-                    )
-
-            # Wire up change handler for prompts (for keyframe color-coding)
-            if components.get("animation_prompts"):
-                components.get("animation_prompts").change(
-                    fn=update_overlap_viz, inputs=viz_inputs, outputs=[frame_overlap_simulator]
-                )
+            # Note: .change() handlers removed to prevent duplicate updates
+            # The preset button already returns frame_overlap_simulator as output (line 1016)
+            # Manual changes to schedules don't need auto-update (user can re-click preset button)
 
         # Path Analysis & Optimization handlers
         if components.get("analyze_path_btn") and components.get("optimize_path_btn"):
@@ -954,6 +936,7 @@ def on_ui_tabs():
                     # Extract prompts and max_frames from preset args for overlap viz
                     prompts = args[19]  # animation_prompts
                     max_frames_val = args[5]  # max_frames (from Run tab)
+                    logger.debug(f"handle_preset_with_overlap: received max_frames_val={max_frames_val} (type={type(max_frames_val)})")
 
                     # Generate preset schedules
                     result = handle_generate_preset(*preset_args)
