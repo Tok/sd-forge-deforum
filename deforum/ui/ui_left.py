@@ -569,7 +569,7 @@ def setup_deforum_left_side_ui():
                 dummy_component = gr.Textbox(visible=False)
 
                 settings_component_list = [
-                    components.get(name, dummy_component) or dummy_component
+                    locals().get(name, dummy_component) or dummy_component
                     for name in get_settings_component_names()
                 ]
 
