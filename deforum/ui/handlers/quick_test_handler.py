@@ -221,18 +221,49 @@ def execute_quick_test(
 
         log.append("")
 
-        # Phase 2: Generate prompts with Qwen
-        log.append("🤖 Phase 2: Generating escalating synthwave prompts with Qwen...")
+        # Phase 2: Detect audio events (BPM-aware)
+        log.append("🎵 Phase 2: Analyzing audio events...")
+
+        try:
+            import librosa
+            from deforum.audio import detect_events_bpm_aware
+
+            # Load audio
+            y, sr = librosa.load(audio_path, sr=None)
+            actual_duration = librosa.get_duration(y=y, sr=sr)
+
+            # Update max_frames based on actual audio duration
+            total_frames = int(actual_duration * fps)
+            log.append(f"Actual audio duration: {actual_duration:.2f}s → {total_frames} frames @ {fps} FPS")
+
+            # Detect events with BPM-aware sensitivity
+            event_times, event_intensities, detected_bpm = detect_events_bpm_aware(
+                audio=y,
+                sample_rate=sr,
+                method="onset",  # Onset detection for transients
+                target_bpm=173,  # Amen break BPM
+                tolerance=0.15,   # ±15% acceptable
+                prefer_under_detection=True  # Prefer missing weak events over false positives
+            )
+
+            log.append(f"✓ Detected {len(event_times)} events at {detected_bpm:.1f} BPM")
+
+        except Exception as e:
+            log.append(f"⚠️ Event detection failed: {e}")
+            # Fallback: evenly spaced events every 4 beats
+            beats_per_second = 173 / 60
+            event_interval = 4.0 / beats_per_second  # 4 beats
+            event_times = [i * event_interval for i in range(int(actual_duration / event_interval))]
+            event_intensities = [0.5] * len(event_times)
+            log.append(f"Using {len(event_times)} evenly-spaced fallback events")
+
+        log.append("")
+
+        # Phase 3: Generate prompts with Qwen
+        log.append(f"🤖 Phase 3: Generating {len(event_times)} escalating synthwave prompts with Qwen...")
 
         try:
             from deforum.ui.handlers.audio_prompt_generator import generate_prompts_with_ai
-
-            # Generate escalating synthwave prompts
-            # Calculate how many prompts we need (one per beat roughly)
-            beats_per_second = 173 / 60  # BPM to beats per second
-            prompt_count = max(3, int(duration_seconds * beats_per_second / 4))  # One prompt every 4 beats
-
-            log.append(f"Generating {prompt_count} escalating prompts...")
 
             # Call Qwen with escalating mode and synthwave style
             prompt_result = generate_prompts_with_ai(
@@ -240,7 +271,7 @@ def execute_quick_test(
                 intensity="crazy",  # Escalating intensity
                 style="synthwave",
                 theme=prompt_theme,
-                count=prompt_count,
+                count=len(event_times),  # One prompt per detected event
                 start_prompt="",  # Not used in escalating mode
                 end_prompt="",
                 soundtrack_path=audio_path
@@ -252,29 +283,62 @@ def execute_quick_test(
             else:
                 prompt_lines = str(prompt_result).strip().split('\n')
 
-            # Distribute prompts evenly across frames
-            generated_prompts = {}
-            for i, prompt in enumerate(prompt_lines):
-                if prompt.strip():
-                    frame_num = int((i / len(prompt_lines)) * total_frames)
-                    generated_prompts[str(frame_num)] = prompt.strip()
+            # Take only requested count
+            prompts = [line.strip() for line in prompt_lines if line.strip()][:len(event_times)]
 
-            log.append(f"✓ Generated {len(generated_prompts)} escalating synthwave prompts")
+            log.append(f"✓ Generated {len(prompts)} escalating synthwave prompts")
 
         except Exception as e:
             log.append(f"⚠️ Qwen generation failed, using fallback escalation: {e}")
             # Fallback escalating prompts
-            generated_prompts = {
-                "0": f"A {prompt_theme}, synthwave aesthetic, photorealistic",
-                str(total_frames // 3): f"A {prompt_theme} with neon lights, cyberpunk synthwave, dynamic",
-                str(2 * total_frames // 3): f"A synthwave {prompt_theme} with holographic effects, glowing neon, cyberpunk city",
-                str(total_frames - 1): f"An epic synthwave {prompt_theme} deity, mandelbulb fractals, neon universe, transcendent"
-            }
+            num_prompts = len(event_times)
+            prompts = [
+                f"{prompt_theme} {action}"
+                for action in ["resting peacefully", "hopping gently", "moving actively",
+                              "leaping dynamically", "racing wildly", "GOING ABSOLUTELY BONKERS"]
+            ][:num_prompts]
 
         log.append("")
 
-        # Phase 3: Build test settings
-        log.append("⚙️ Phase 3: Building test settings...")
+        # Phase 4: Sync prompts to audio events
+        log.append("🎬 Phase 4: Syncing prompts to audio events...")
+
+        try:
+            from deforum.audio import distribute_prompts_across_keyframes
+
+            # Convert event times to keyframe dicts (required format for distribution)
+            keyframes = [
+                {
+                    'frame': int(t * fps),
+                    'intensity': intensity,
+                    'time_seconds': t
+                }
+                for t, intensity in zip(event_times, event_intensities)
+            ]
+
+            # Distribute prompts (sequential mode - first prompt → first keyframe)
+            prompt_schedule_json = distribute_prompts_across_keyframes(
+                keyframes=keyframes,
+                user_prompts=prompts,
+                mode="sequential"
+            )
+
+            # Parse JSON string to dict
+            generated_prompts = json.loads(prompt_schedule_json)
+
+            log.append(f"✓ Synced {len(prompts)} prompts to {len(keyframes)} keyframes")
+
+        except Exception as e:
+            log.append(f"⚠️ Prompt sync failed: {e}")
+            import traceback
+            traceback.print_exc()
+            # Create simple sequential schedule as fallback
+            generated_prompts = {str(int(t * fps)): prompt for t, prompt in zip(event_times, prompts)}
+
+        log.append("")
+
+        # Phase 5: Build test settings
+        log.append("⚙️ Phase 5: Building test settings...")
 
         # Map sampler names (Forge backend naming)
         sampler_map = {
@@ -321,8 +385,8 @@ def execute_quick_test(
         log.append(f"  - Strength: {settings['strength']} (normal), {settings['keyframe_strength']} (keyframe)")
         log.append("")
 
-        # Phase 4: Save settings file for manual loading
-        log.append("💾 Phase 4: Saving Quick Test settings...")
+        # Phase 6: Save settings file as backup
+        log.append("💾 Phase 6: Saving Quick Test settings...")
         log.append("")
 
         try:

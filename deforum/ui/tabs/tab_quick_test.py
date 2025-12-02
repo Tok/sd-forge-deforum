@@ -36,10 +36,14 @@ def get_tab_quick_test(skip_tabitem=False):
 
 def _build_quick_test_ui(components: dict):
     """Build the Quick Test UI components."""
-    gr.HTML(value="""
+    # Respect global emoji settings
+    rocket = emoji_if_enabled(emoji_utils.rocket())
+    warning_emoji = emoji_if_enabled(emoji_utils.warning())
+
+    gr.HTML(value=f"""
         <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     padding: 20px; border-radius: 10px; margin-bottom: 20px; color: white;'>
-            <h2 style='margin: 0 0 10px 0; font-size: 24px;'>🚀 Quick Test Setup</h2>
+            <h2 style='margin: 0 0 10px 0; font-size: 24px;'>{rocket or ''} Quick Test Setup</h2>
             <p style='margin: 0; font-size: 14px; opacity: 0.9;'>
                 Generates optimized test animation settings for your current model.
                 Creates audio, AI prompts, and camera movement, then <strong>loads them into the UI automatically</strong>.
@@ -47,12 +51,12 @@ def _build_quick_test_ui(components: dict):
         </div>
     """)
 
-    gr.HTML(value="""
+    gr.HTML(value=f"""
         <div style='background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
                     border-left: 4px solid #ff1493; padding: 12px; margin-bottom: 15px;
                     border-radius: 5px; color: white;'>
             <p style='margin: 0; font-size: 13px; font-weight: 500;'>
-                ⚠️ <strong>Warning:</strong> Clicking "Prepare Quick Test Settings" will replace your current prompts,
+                {warning_emoji or '⚠️'} <strong>Warning:</strong> Clicking "Prepare Quick Test Settings" will replace your current prompts,
                 audio path, camera movement, and other settings in the UI. A backup JSON file is saved automatically.
             </p>
         </div>
