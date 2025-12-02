@@ -15,6 +15,12 @@ from deforum.utils.system.logging import get_logger, emoji_if_enabled
 # Initialize logger
 logger = get_logger()
 
+# Module-level log to verify this file is being loaded
+print("=" * 80)
+print("DEFORUM DEBUG: tab_init.py module loaded!")
+print(f"DEFORUM DEBUG: File location: {__file__}")
+print("=" * 80)
+logger.info("tab_init.py module imported")
 
 
 def get_tab_init(d, da, dp, dau, dv=None):
