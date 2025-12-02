@@ -86,7 +86,7 @@ def _build_quick_test_ui(components: dict):
     movie_camera = emoji_utils.movie_camera()
     with FormRow(variant="compact"):
         btn_generate_test = gr.Button(
-            f"{movie_camera} Generate Test" if movie_camera else "Generate Test",
+            f"{movie_camera} Generate Test Clip" if movie_camera else "Generate Test Clip",
             variant="primary",
             size="lg",
             elem_id="btn_generate_test",
