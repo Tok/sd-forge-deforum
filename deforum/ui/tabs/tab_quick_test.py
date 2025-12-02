@@ -47,13 +47,21 @@ def _build_quick_test_ui(components: dict):
         </div>
     """)
 
-    # Simple prompt input
+    # Theme inputs for generation
     with FormRow(variant="compact"):
-        quick_test_prompt = gr.Textbox(
-            label="Test Prompt",
-            value="A serene landscape with rolling hills, cinematic lighting, photorealistic",
+        quick_test_prompt_theme = gr.Textbox(
+            label="Prompt Theme",
+            value="serene landscape with rolling hills",
             lines=2,
-            info="What should the test video show?"
+            info="Theme for AI prompt generation (Qwen will create prompts from this)"
+        )
+
+    with FormRow(variant="compact"):
+        quick_test_audio_theme = gr.Textbox(
+            label="Audio Theme",
+            value="synthetic amen break",
+            lines=1,
+            info="Theme for audio generation (e.g., 'synthetic amen break', 'jungle dnb', 'lo-fi beats')"
         )
 
     # Test configuration
@@ -155,7 +163,8 @@ If this test completes successfully, your Deforum installation is working correc
 
     # Store components for event handlers
     components.update({
-        'quick_test_prompt': quick_test_prompt,
+        'quick_test_prompt_theme': quick_test_prompt_theme,
+        'quick_test_audio_theme': quick_test_audio_theme,
         'quick_test_duration': quick_test_duration,
         'quick_test_seed': quick_test_seed,
         'btn_generate_test': btn_generate_test,

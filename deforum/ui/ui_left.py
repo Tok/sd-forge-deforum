@@ -566,7 +566,8 @@ def setup_deforum_left_side_ui():
                 locals()['btn_generate_test'].click(
                     fn=handle_generate_test_click,
                     inputs=[
-                        locals()['quick_test_prompt'],
+                        locals()['quick_test_prompt_theme'],
+                        locals()['quick_test_audio_theme'],
                         locals()['quick_test_duration'],
                         locals()['quick_test_seed']
                     ],

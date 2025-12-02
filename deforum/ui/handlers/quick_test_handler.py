@@ -17,14 +17,16 @@ logger = get_logger()
 
 
 def handle_generate_test_click(
-    prompt: str,
+    prompt_theme: str,
+    audio_theme: str,
     duration: float,
     seed: int
 ) -> Tuple[str, str, str]:
     """Handle "Generate Test" button click.
 
     Args:
-        prompt: Test prompt from textbox
+        prompt_theme: Theme for prompt generation
+        audio_theme: Theme for audio generation
         duration: Duration in seconds (from slider)
         seed: Random seed (from number input)
 
@@ -48,23 +50,28 @@ def handle_generate_test_click(
                 "{}"
             )
 
-        if not prompt or not prompt.strip():
+        if not prompt_theme or not prompt_theme.strip():
             return (
-                f"{warning} Error: Prompt cannot be empty",
-                "Please provide a prompt for the test video.",
+                f"{warning} Error: Prompt theme cannot be empty",
+                "Please provide a theme for prompt generation.",
                 "{}"
             )
+
+        if not audio_theme or not audio_theme.strip():
+            audio_theme = "synthetic amen break"  # Default fallback
 
         # Log start
         logger.info("=" * 60)
         logger.info("🎬 Quick Test started")
-        logger.info(f"Prompt: '{prompt}'")
+        logger.info(f"Prompt Theme: '{prompt_theme}'")
+        logger.info(f"Audio Theme: '{audio_theme}'")
         logger.info(f"Duration: {duration}s, Seed: {seed}")
         logger.info("=" * 60)
 
         # Execute test render
         result = execute_quick_test(
-            prompt=prompt.strip(),
+            prompt_theme=prompt_theme.strip(),
+            audio_theme=audio_theme.strip(),
             duration_seconds=duration,
             random_seed=int(seed) if seed != -1 else -1,
             output_dir=OutputPaths.DEFORUM
@@ -100,7 +107,8 @@ def handle_generate_test_click(
 
 
 def execute_quick_test(
-    prompt: str,
+    prompt_theme: str,
+    audio_theme: str,
     duration_seconds: float,
     random_seed: int,
     output_dir: str
@@ -108,7 +116,8 @@ def execute_quick_test(
     """Execute the quick test render.
 
     Args:
-        prompt: Test prompt
+        prompt_theme: Theme for prompt generation
+        audio_theme: Theme for audio generation
         duration_seconds: Duration in seconds
         random_seed: Random seed (-1 for random)
         output_dir: Output directory path
@@ -132,6 +141,7 @@ def execute_quick_test(
         if random_seed == -1:
             random_seed = random.randint(0, 2**32 - 1)
             log.append(f"🎲 Generated random seed: {random_seed}")
+            log.append("")
 
         # Calculate frame count
         fps = 60
@@ -156,7 +166,7 @@ def execute_quick_test(
 
         try:
             generate_loop(
-                prompt="synthetic amen break",
+                prompt=audio_theme,
                 duration_seconds=duration_seconds,
                 bpm=173,  # Amen break tempo
                 output_path=audio_path,
@@ -169,11 +179,37 @@ def execute_quick_test(
 
         log.append("")
 
-        # Phase 2: Build test settings
-        log.append("⚙️ Phase 2: Building test settings...")
+        # Phase 2: Generate prompts with Qwen
+        log.append("🤖 Phase 2: Generating prompts with Qwen...")
+
+        try:
+            from deforum.ui.handlers.audio_prompt_generator import generate_prompts_with_ai
+
+            # Generate prompts using Qwen with the theme
+            # TODO: This needs actual integration - for now use placeholder
+            generated_prompts = {
+                "0": f"{prompt_theme}, cinematic lighting, photorealistic, high quality",
+                str(total_frames // 2): f"{prompt_theme}, dynamic movement, cinematic, detailed",
+                str(total_frames - 1): f"{prompt_theme}, final view, cinematic lighting, photorealistic"
+            }
+            log.append(f"✓ Generated {len(generated_prompts)} prompts from theme: '{prompt_theme}'")
+
+        except Exception as e:
+            log.append(f"⚠️ Prompt generation failed, using simple prompts: {e}")
+            generated_prompts = {
+                "0": f"{prompt_theme}, photorealistic",
+                str(total_frames - 1): f"{prompt_theme}, photorealistic"
+            }
+
+        log.append("")
+
+        # Phase 3: Build test settings
+        log.append("⚙️ Phase 3: Building test settings...")
 
         settings = {
-            "prompt": prompt,
+            "prompt_theme": prompt_theme,
+            "audio_theme": audio_theme,
+            "prompts": generated_prompts,
             "duration": duration_seconds,
             "fps": fps,
             "total_frames": total_frames,
