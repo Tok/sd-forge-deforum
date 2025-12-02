@@ -30,6 +30,8 @@ def get_tab_init(d, da, dp, dau, dv=None):
     Returns:
         dict: Component dictionary for event binding
     """
+    logger.info("get_tab_init() called - building Init tab")
+
     # Import dv if not provided
     if dv is None:
         from deforum.config.args import DeforumOutputArgs
@@ -385,12 +387,16 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 # NOTE: use_mask_video and video_mask_path moved to dedicated Masking tab
             # NOTE: Mask Init tab moved to dedicated Masking tab
 
+            logger.info("About to create Zero-HITL and Quick Test tabs")
+
             # ZERO-HITL INNER-TAB
             from .tab_zero_hitl import get_tab_zero_hitl
             zero_hitl_tab_emoji = emoji_if_enabled(emoji_utils.dice())
             zero_hitl_title = f"{zero_hitl_tab_emoji} Zero-HITL" if zero_hitl_tab_emoji else "Zero-HITL"
+            logger.info(f"Creating Zero-HITL tab with title: '{zero_hitl_title}'")
             with gr.Tab(zero_hitl_title) as zero_hitl_subtab:
                 zero_hitl_params = get_tab_zero_hitl(skip_tabitem=True)
+            logger.info("Zero-HITL tab created successfully")
 
             # QUICK TEST INNER-TAB - Last tab (for testing installation)
             try:
