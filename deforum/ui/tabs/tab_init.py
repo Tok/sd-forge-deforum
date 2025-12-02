@@ -396,8 +396,10 @@ def get_tab_init(d, da, dp, dau, dv=None):
             from .tab_quick_test import get_tab_quick_test
             quick_test_tab_emoji = emoji_if_enabled(emoji_utils.rocket())
             quick_test_title = f"{quick_test_tab_emoji} Quick Test" if quick_test_tab_emoji else "Quick Test"
+            logger.info(f"Creating Quick Test tab with title: '{quick_test_title}'")
             with gr.Tab(quick_test_title) as quick_test_subtab:
                 quick_test_params = get_tab_quick_test(skip_tabitem=True)
+                logger.info(f"Quick Test tab created with {len(quick_test_params)} components")
 
     # Build result dict from locals/vars
     result = {k: v for k, v in {**locals(), **vars()}.items()}
