@@ -38,7 +38,7 @@ def _build_quick_test_ui(components: dict):
     """Build the Quick Test UI components."""
     # Respect global emoji settings
     rocket = emoji_if_enabled(emoji_utils.rocket())
-    warning_emoji = emoji_if_enabled(emoji_utils.warning())
+    warning_emoji = emoji_utils.maybe_warning()  # Already respects emoji settings
 
     gr.HTML(value=f"""
         <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
