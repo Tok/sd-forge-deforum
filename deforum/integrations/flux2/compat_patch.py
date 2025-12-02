@@ -124,11 +124,11 @@ def apply_flux2_loader_patch():
         # Apply the monkey patch
         IntegratedFluxTransformer2DModel.__init__ = patched_init
 
-        logger.info("✓ Flux 2 compatibility patch applied (vec_in_dim fallback)")
+        logger.debug("✓ Flux compatibility patch applied (vec_in_dim fallback)")
         _flux2_patch_applied = True
 
     except Exception as e:
-        logger.warning(f"Failed to apply Flux 2 compatibility patch: {e}")
+        logger.warning(f"Failed to apply Flux compatibility patch: {e}")
         import traceback
         logger.debug(traceback.format_exc())
 
