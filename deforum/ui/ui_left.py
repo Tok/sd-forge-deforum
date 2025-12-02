@@ -562,7 +562,16 @@ def setup_deforum_left_side_ui():
                     handle_open_test_output_click
                 )
 
-                # Main Generate Test button
+                # Collect UI components to update from Quick Test generation
+                animation_prompts = tab_prompts_params.get('animation_prompts')
+                soundtrack_path = tab_init_params.get('soundtrack_path')
+                fps = tab_output_params.get('fps')
+                max_frames = tab_output_params.get('max_frames')
+                translation_z = tab_keyframes_params.get('translation_z')
+                rotation_3d_y = tab_keyframes_params.get('rotation_3d_y')
+                strength_schedule = tab_keyframes_params.get('strength_schedule')
+
+                # Main Generate Test button - loads settings into UI automatically
                 locals()['btn_generate_test'].click(
                     fn=handle_generate_test_click,
                     inputs=[
@@ -572,9 +581,16 @@ def setup_deforum_left_side_ui():
                         locals()['quick_test_seed']
                     ],
                     outputs=[
-                        locals()['quick_test_status'],
-                        locals()['quick_test_log'],
-                        locals()['quick_test_generated_settings']
+                        locals()['quick_test_status'],  # Status message
+                        locals()['quick_test_log'],  # Generation log
+                        locals()['quick_test_generated_settings'],  # Settings JSON (hidden state)
+                        animation_prompts,  # Update prompts textbox
+                        soundtrack_path,  # Update audio path
+                        fps,  # Update FPS
+                        max_frames,  # Update max frames
+                        translation_z,  # Update camera Z movement
+                        rotation_3d_y,  # Update camera Y rotation
+                        strength_schedule  # Update strength schedule
                     ]
                 )
 

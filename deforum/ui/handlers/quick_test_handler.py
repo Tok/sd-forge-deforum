@@ -21,8 +21,11 @@ def handle_generate_test_click(
     audio_theme: str,
     duration: float,
     seed: int
-) -> Tuple[str, str, str]:
+) -> Tuple[str, str, str, str, str, int, int, str, str, str]:
     """Handle "Generate Test" button click.
+
+    Generates audio, prompts, and schedules, then LOADS them into the UI automatically.
+    User just needs to click Generate to render.
 
     Args:
         prompt_theme: Theme for prompt generation
@@ -31,10 +34,17 @@ def handle_generate_test_click(
         seed: Random seed (from number input)
 
     Returns:
-        Tuple of (status, log, settings_json_state)
+        Tuple of (status, log, settings_json, prompts, audio_path, fps, max_frames, translation_z, rotation_y, strength_schedule)
         - status: Single-line status message
         - log: Multi-line generation log
-        - settings_json_state: JSON settings (for hidden state)
+        - settings_json_state: JSON settings (for hidden state/saving)
+        - prompts: Generated prompts as JSON string (loaded into prompts textbox)
+        - audio_path: Path to generated audio (loaded into soundtrack_path)
+        - fps: FPS value (loaded into FPS control)
+        - max_frames: Frame count (loaded into max_frames)
+        - translation_z: Camera Z movement (loaded into translation_z)
+        - rotation_y: Camera Y rotation (loaded into rotation_3d_y)
+        - strength_schedule: Strength schedule (loaded into strength textbox)
     """
     # Theme-aware status emojis
     warning = emoji_utils.maybe_warning()
@@ -47,14 +57,28 @@ def handle_generate_test_click(
             return (
                 f"{warning} Error: Duration must be between 3 and 10 seconds",
                 "Invalid duration provided.",
-                "{}"
+                "{}",  # settings_json
+                "{}",  # prompts
+                "",    # audio_path
+                60,    # fps
+                120,   # max_frames
+                "0:(0)",  # translation_z
+                "0:(0)",  # rotation_y
+                "0:(0.85)"  # strength_schedule
             )
 
         if not prompt_theme or not prompt_theme.strip():
             return (
                 f"{warning} Error: Prompt theme cannot be empty",
                 "Please provide a theme for prompt generation.",
-                "{}"
+                "{}",  # settings_json
+                "{}",  # prompts
+                "",    # audio_path
+                60,    # fps
+                120,   # max_frames
+                "0:(0)",  # translation_z
+                "0:(0)",  # rotation_y
+                "0:(0.85)"  # strength_schedule
             )
 
         if not audio_theme or not audio_theme.strip():
@@ -360,16 +384,16 @@ def execute_quick_test(
             log.append(f"✓ Settings saved to: {settings_file}")
             log.append("")
             log.append("=" * 60)
-            log.append("✅ QUICK TEST PREPARATION COMPLETE!")
+            log.append("✅ QUICK TEST READY!")
             log.append("=" * 60)
             log.append("")
-            log.append("Next steps:")
-            log.append("  1. Go to the 'Run' tab")
-            log.append("  2. Click 'Load All Settings'")
-            log.append(f"  3. Select: {settings_file}")
-            log.append("  4. Click 'Generate' to start rendering")
+            log.append("Settings have been loaded into the UI automatically.")
+            log.append("")
+            log.append("Next step:")
+            log.append("  → Click 'Generate' in the Run tab to start rendering!")
             log.append("")
             log.append(f"Audio file: {audio_path}")
+            log.append(f"Settings backup: {settings_file}")
             log.append(f"Output will be saved to: {batch_dir}")
             log.append("")
             log.append("Settings optimized for:")
@@ -377,39 +401,57 @@ def execute_quick_test(
             log.append(f"  - {total_frames} frames @ {fps} FPS ({duration_seconds}s)")
             log.append(f"  - {len(generated_prompts)} escalating synthwave prompts")
 
-            return {
-                "success": True,
-                "video_path": None,  # No video yet - user needs to click Generate
-                "log": log,
-                "settings": settings,
-                "error": None
-            }
+            # Return tuple with UI updates
+            return (
+                f"{check} Quick Test Ready! Settings loaded → Click Generate to render",  # status
+                "\n".join(log),  # log
+                json.dumps(export_settings, indent=2),  # settings_json (for hidden state)
+                json.dumps(generated_prompts, indent=2),  # prompts (update UI)
+                audio_path or "",  # audio_path (update UI)
+                fps,  # fps (update UI)
+                total_frames,  # max_frames (update UI)
+                settings['camera_movement']['translation_z'],  # translation_z (update UI)
+                settings['camera_movement']['rotation_3d_y'],  # rotation_y (update UI)
+                f"0:({settings['strength']})"  # strength_schedule (update UI)
+            )
 
         except Exception as save_error:
             error_trace = traceback.format_exc()
             log.append(f"❌ Failed to save settings: {str(save_error)}")
             log.append(error_trace)
 
-            return {
-                "success": False,
-                "video_path": None,
-                "log": log,
-                "settings": settings,
-                "error": f"Settings save failed: {str(save_error)}"
-            }
+            # Return error tuple (no UI updates)
+            return (
+                f"{cross} Settings save failed: {str(save_error)}",
+                "\n".join(log),
+                "{}",  # empty settings
+                "{}",  # empty prompts
+                "",  # no audio
+                60,  # default fps
+                120,  # default frames
+                "0:(0)",  # no movement
+                "0:(0)",  # no rotation
+                "0:(0.85)"  # default strength
+            )
 
     except Exception as e:
         error_trace = traceback.format_exc()
         log.append(f"❌ Error: {str(e)}")
         log.append(error_trace)
 
-        return {
-            "success": False,
-            "video_path": None,
-            "log": log,
-            "settings": {},
-            "error": str(e)
-        }
+        # Return error tuple (no UI updates)
+        return (
+            f"{cross} Quick Test failed: {str(e)}",
+            "\n".join(log),
+            "{}",  # empty settings
+            "{}",  # empty prompts
+            "",  # no audio
+            60,  # default fps
+            120,  # default frames
+            "0:(0)",  # no movement
+            "0:(0)",  # no rotation
+            "0:(0.85)"  # default strength
+        )
 
 
 def handle_view_test_settings_click(settings_json: str) -> str:

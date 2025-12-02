@@ -41,8 +41,17 @@ def _build_quick_test_ui(components: dict):
                     padding: 20px; border-radius: 10px; margin-bottom: 20px; color: white;'>
             <h2 style='margin: 0 0 10px 0; font-size: 24px;'>🚀 Quick Test Setup</h2>
             <p style='margin: 0; font-size: 14px; opacity: 0.9;'>
-                Prepare a test animation with optimized settings for your current model.
-                Generates audio, AI prompts, and saves settings file. Then manually click Generate to render.
+                Generates optimized test animation settings for your current model.
+                Creates audio, AI prompts, and camera movement, then <strong>loads them into the UI automatically</strong>.
+            </p>
+        </div>
+    """)
+
+    gr.HTML(value="""
+        <div style='background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin-bottom: 15px;'>
+            <p style='margin: 0; font-size: 13px; color: #92400e;'>
+                ⚠️ <strong>Warning:</strong> Clicking "Prepare Quick Test Settings" will replace your current prompts,
+                audio path, camera movement, and other settings in the UI. A backup JSON file is saved automatically.
             </p>
         </div>
     """)
