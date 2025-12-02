@@ -15,13 +15,6 @@ from deforum.utils.system.logging import get_logger, emoji_if_enabled
 # Initialize logger
 logger = get_logger()
 
-# Module-level log to verify this file is being loaded
-print("=" * 80)
-print("DEFORUM DEBUG: tab_init.py module loaded!")
-print(f"DEFORUM DEBUG: File location: {__file__}")
-print("=" * 80)
-logger.info("tab_init.py module imported")
-
 
 def get_tab_init(d, da, dp, dau, dv=None):
     """Create the Init tab with audio, Parseq, and image init settings.
@@ -36,7 +29,6 @@ def get_tab_init(d, da, dp, dau, dv=None):
     Returns:
         dict: Component dictionary for event binding
     """
-    logger.info("get_tab_init() called - building Init tab")
 
     # Import dv if not provided
     if dv is None:
@@ -393,31 +385,19 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 # NOTE: use_mask_video and video_mask_path moved to dedicated Masking tab
             # NOTE: Mask Init tab moved to dedicated Masking tab
 
-            logger.info("About to create Zero-HITL and Quick Test tabs")
-
             # ZERO-HITL INNER-TAB
             from .tab_zero_hitl import get_tab_zero_hitl
             zero_hitl_tab_emoji = emoji_if_enabled(emoji_utils.dice())
             zero_hitl_title = f"{zero_hitl_tab_emoji} Zero-HITL" if zero_hitl_tab_emoji else "Zero-HITL"
-            logger.info(f"Creating Zero-HITL tab with title: '{zero_hitl_title}'")
             with gr.Tab(zero_hitl_title) as zero_hitl_subtab:
                 zero_hitl_params = get_tab_zero_hitl(skip_tabitem=True)
-            logger.info("Zero-HITL tab created successfully")
 
             # QUICK TEST INNER-TAB - Last tab (for testing installation)
-            try:
-                from .tab_quick_test import get_tab_quick_test
-                quick_test_tab_emoji = emoji_if_enabled(emoji_utils.rocket())
-                quick_test_title = f"{quick_test_tab_emoji} Quick Test" if quick_test_tab_emoji else "Quick Test"
-                logger.info(f"Creating Quick Test tab with title: '{quick_test_title}'")
-                with gr.Tab(quick_test_title) as quick_test_subtab:
-                    quick_test_params = get_tab_quick_test(skip_tabitem=True)
-                    logger.info(f"Quick Test tab created with {len(quick_test_params)} components")
-            except Exception as e:
-                logger.error(f"Failed to create Quick Test tab: {e}")
-                import traceback
-                logger.error(traceback.format_exc())
-                quick_test_params = {}
+            from .tab_quick_test import get_tab_quick_test
+            quick_test_tab_emoji = emoji_if_enabled(emoji_utils.rocket())
+            quick_test_title = f"{quick_test_tab_emoji} Quick Test" if quick_test_tab_emoji else "Quick Test"
+            with gr.Tab(quick_test_title) as quick_test_subtab:
+                quick_test_params = get_tab_quick_test(skip_tabitem=True)
 
     # Build result dict from locals/vars
     result = {k: v for k, v in {**locals(), **vars()}.items()}

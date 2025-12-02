@@ -83,10 +83,10 @@ def _build_quick_test_ui(components: dict):
             )
 
     # Generate button (slopcore-style)
-    clapperboard = emoji_utils.clapperboard()
+    movie_camera = emoji_utils.movie_camera()
     with FormRow(variant="compact"):
         btn_generate_test = gr.Button(
-            f"{clapperboard} Generate Test" if clapperboard else "Generate Test",
+            f"{movie_camera} Generate Test" if movie_camera else "Generate Test",
             variant="primary",
             size="lg",
             elem_id="btn_generate_test",
