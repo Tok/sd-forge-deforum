@@ -441,7 +441,7 @@ def on_ui_tabs():
                         info="Use full schedules (slow for 1000+ frames, shows complete movement)",
                         scale=0,
                     )
-                    refresh_emoji = emoji.refresh()
+                    refresh_emoji = emoji.refresh_icon()
                     if refresh_emoji:
                         refresh_emoji += " "
                     refresh_wormtrail_btn = gr.Button(
