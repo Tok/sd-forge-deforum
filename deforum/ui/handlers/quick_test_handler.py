@@ -475,17 +475,16 @@ def execute_quick_test(
             component_names = get_settings_component_names()
             dummy_args = [settings_file] + [''] * len(component_names)
 
-            # Call load_all_settings - returns list of values when ui_launch=False
+            # Call load_all_settings - returns list of component values when ui_launch=False
             loaded_values = load_all_settings(*dummy_args, ui_launch=False)
 
             # Return: (status, log, settings_json) + all loaded component values
-            # Note: loaded_values is [settings_path, component1, component2, ..., ""]
-            # We skip the first (settings_path) and last ("") elements
+            # loaded_values is already just the component values (no settings_path prefix)
             return (
                 gr.update(value=f"{check} Quick Test Ready! → Click Generate"),
                 gr.update(value="\n".join(log)),
                 json.dumps(export_settings, indent=2)
-            ) + tuple(loaded_values[1:-1])  # Skip settings_path and empty string
+            ) + tuple(loaded_values)
 
         except Exception as save_error:
             error_trace = traceback.format_exc()
