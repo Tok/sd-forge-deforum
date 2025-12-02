@@ -38,7 +38,7 @@ def get_tab_run(d, da):
                     )
                 with gr.Column(scale=1):
                     apply_model_defaults_btn = gr.Button(
-                        value="Apply Model Defaults",
+                        value="Reset to Optimal Settings for Model",
                         variant="primary",
                         size="sm"
                     )
@@ -91,7 +91,7 @@ def get_tab_run(d, da):
     local_vars = locals()
     result = {
         k: v for k, v in local_vars.items()
-        if not k.startswith('_') and k not in ('d', 'da', 'gr', 'FormRow', 'emoji_run', 'create_row', 'create_gr_elem')
+        if not k.startswith('_') and k not in ('d', 'da', 'gr', 'FormRow', 'emoji_run', 'emoji_if_enabled', 'create_row', 'create_gr_elem')
     }
 
     return result
