@@ -346,7 +346,7 @@ def execute_quick_test(
             args_dict['delete_imgs'] = False
             args_dict['animation_prompts'] = json.dumps(generated_prompts)
             args_dict['animation_prompts_positive'] = ""  # No global positive prompt
-            args_dict['animation_prompts_negative'] = "nsfw, nude, text, watermark, blurry, low quality"
+            args_dict['animation_prompts_negative'] = ""  # Distilled models (Flux, ZIT) at CFG=1 ignore negative prompts
             args_dict['strength_schedule'] = f"0:({settings['strength']})"
             args_dict['keyframe_strength_schedule'] = f"0:({settings['keyframe_strength']})"
 
