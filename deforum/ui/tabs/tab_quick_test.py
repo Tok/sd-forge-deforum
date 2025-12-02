@@ -74,13 +74,15 @@ def _build_quick_test_ui(components: dict):
                 info="-1 = random"
             )
 
-    # Generate button
+    # Generate button (slopcore-style)
+    clapperboard = emoji_utils.clapperboard()
     with FormRow(variant="compact"):
         btn_generate_test = gr.Button(
-            "🎬 Generate Test",
+            f"{clapperboard} Generate Test" if clapperboard else "Generate Test",
             variant="primary",
             size="lg",
             elem_id="btn_generate_test",
+            elem_classes=["slopcore-button"],
             scale=2
         )
 
@@ -109,16 +111,18 @@ def _build_quick_test_ui(components: dict):
         )
 
     # Action buttons
+    gear = emoji_utils.gear()
+    folder = emoji_utils.folder()
     with FormRow(variant="compact"):
         with gr.Column(scale=1):
             btn_view_quick_test_settings = gr.Button(
-                f"{emoji_utils.gear()} View Settings",
+                f"{gear} View Settings" if gear else "View Settings",
                 variant="secondary",
                 size="sm"
             )
         with gr.Column(scale=1):
             btn_open_quick_test_output = gr.Button(
-                f"{emoji_utils.folder()} Open Output Folder",
+                f"{folder} Open Output Folder" if folder else "Open Output Folder",
                 variant="secondary",
                 size="sm"
             )

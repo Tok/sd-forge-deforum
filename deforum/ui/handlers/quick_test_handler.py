@@ -156,10 +156,10 @@ def execute_quick_test(
 
         try:
             generate_loop(
-                output_path=audio_path,
-                duration=duration_seconds,
+                prompt="synthetic amen break",
+                duration_seconds=duration_seconds,
                 bpm=173,  # Amen break tempo
-                theme="synthetic amen break",
+                output_path=audio_path,
                 enable_chaos=False
             )
             log.append(f"✓ Audio generated: {audio_path}")
