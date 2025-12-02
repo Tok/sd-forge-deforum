@@ -180,25 +180,53 @@ def execute_quick_test(
         log.append("")
 
         # Phase 2: Generate prompts with Qwen
-        log.append("🤖 Phase 2: Generating prompts with Qwen...")
+        log.append("🤖 Phase 2: Generating escalating synthwave prompts with Qwen...")
 
         try:
             from deforum.ui.handlers.audio_prompt_generator import generate_prompts_with_ai
 
-            # Generate prompts using Qwen with the theme
-            # TODO: This needs actual integration - for now use placeholder
-            generated_prompts = {
-                "0": f"{prompt_theme}, cinematic lighting, photorealistic, high quality",
-                str(total_frames // 2): f"{prompt_theme}, dynamic movement, cinematic, detailed",
-                str(total_frames - 1): f"{prompt_theme}, final view, cinematic lighting, photorealistic"
-            }
-            log.append(f"✓ Generated {len(generated_prompts)} prompts from theme: '{prompt_theme}'")
+            # Generate escalating synthwave prompts
+            # Calculate how many prompts we need (one per beat roughly)
+            beats_per_second = 173 / 60  # BPM to beats per second
+            prompt_count = max(3, int(duration_seconds * beats_per_second / 4))  # One prompt every 4 beats
+
+            log.append(f"Generating {prompt_count} escalating prompts...")
+
+            # Call Qwen with escalating mode and synthwave style
+            prompt_result = generate_prompts_with_ai(
+                generation_mode="escalating",
+                intensity="crazy",  # Escalating intensity
+                style="synthwave",
+                theme=prompt_theme,
+                count=prompt_count,
+                start_prompt="",  # Not used in escalating mode
+                end_prompt="",
+                soundtrack_path=audio_path
+            )
+
+            # Parse result (comes back as newline-separated prompts)
+            if isinstance(prompt_result, dict) and 'value' in prompt_result:
+                prompt_lines = prompt_result['value'].strip().split('\n')
+            else:
+                prompt_lines = str(prompt_result).strip().split('\n')
+
+            # Distribute prompts evenly across frames
+            generated_prompts = {}
+            for i, prompt in enumerate(prompt_lines):
+                if prompt.strip():
+                    frame_num = int((i / len(prompt_lines)) * total_frames)
+                    generated_prompts[str(frame_num)] = prompt.strip()
+
+            log.append(f"✓ Generated {len(generated_prompts)} escalating synthwave prompts")
 
         except Exception as e:
-            log.append(f"⚠️ Prompt generation failed, using simple prompts: {e}")
+            log.append(f"⚠️ Qwen generation failed, using fallback escalation: {e}")
+            # Fallback escalating prompts
             generated_prompts = {
-                "0": f"{prompt_theme}, photorealistic",
-                str(total_frames - 1): f"{prompt_theme}, photorealistic"
+                "0": f"A {prompt_theme}, synthwave aesthetic, photorealistic",
+                str(total_frames // 3): f"A {prompt_theme} with neon lights, cyberpunk synthwave, dynamic",
+                str(2 * total_frames // 3): f"A synthwave {prompt_theme} with holographic effects, glowing neon, cyberpunk city",
+                str(total_frames - 1): f"An epic synthwave {prompt_theme} deity, mandelbulb fractals, neon universe, transcendent"
             }
 
         log.append("")
