@@ -65,6 +65,10 @@ MODEL_DETECTION_PATTERNS = {
         "z-image-turbo",
         "z_image_turbo",
         "Z-Image-Turbo",
+        "zit",  # Common abbreviation
+        "ZIT",
+        "zimage",
+        "z-image",
     ],
 
     # Lumina
@@ -257,16 +261,23 @@ def detect_model_type(model_name: str) -> ModelType:
     Returns:
         Detected ModelType enum
     """
+    from deforum.utils.system.logging import get_logger
+
+    logger = get_logger()
+
     if not model_name:
         return ModelType.UNKNOWN
 
     model_name_lower = model_name.lower()
+    logger.debug(f"Detecting model type for: {model_name}")
 
     for model_type, patterns in MODEL_DETECTION_PATTERNS.items():
         for pattern in patterns:
             if pattern.lower() in model_name_lower:
+                logger.info(f"Detected {model_type.value} from pattern '{pattern}' in model name")
                 return model_type
 
+    logger.warning(f"Could not detect model type from name: {model_name}")
     return ModelType.UNKNOWN
 
 
@@ -350,17 +361,26 @@ def create_preset_message(preset: ModelPreset, render_mode: str) -> str:
     target_emoji = emoji_if_enabled("🎯")
     bullet = emoji_if_enabled("•")
 
-    msg = f"""
-{target_emoji} {preset.model_type.value.upper()} Optimal Settings
+    # Get actual values that will be applied (with render mode adjustments)
+    final_fps = adjustments.get("fps", preset.fps)
+    final_cadence = adjustments.get("cadence", preset.cadence)
+    final_strength = adjustments.get("strength_keyframe", preset.strength_keyframe)
 
-This will adjust quality/performance parameters:
-{bullet} Steps: {preset.steps}
+    msg = f"""
+{target_emoji} {preset.model_type.value.upper()} Model Defaults
+
+Settings that WILL be changed:
+{bullet} Sampling Steps: {preset.steps}
 {bullet} Scheduler: {preset.scheduler.upper()}
 {bullet} CFG Scale: {preset.cfg_scale}
 {bullet} Resolution: {preset.width}x{preset.height}
+{bullet} FPS: {final_fps}
+{bullet} Strength: {final_strength}
 
-Your prompts, keyframes, and output settings are NOT changed.
-Save current settings first if you want to revert.
+Settings that WON'T be changed:
+{bullet} Prompts (animation_prompts)
+{bullet} Keyframes (max_frames, translation/rotation schedules)
+{bullet} Output paths (batch_name, output directory)
 """.strip()
 
     return msg

@@ -883,7 +883,7 @@ def on_ui_tabs():
         if 'apply_model_defaults_btn' in components:
             def apply_preset_wrapper(render_mode):
                 """Wrapper to apply model defaults and return component updates."""
-                from deforum.config.model_presets import get_preset_for_model, detect_loaded_model
+                from deforum.config.model_presets import get_preset_for_model, detect_loaded_model, detect_model_type
                 from deforum.utils.system.logging import get_logger
 
                 logger = get_logger()
@@ -891,44 +891,59 @@ def on_ui_tabs():
 
                 # Get current model
                 model_name = detect_loaded_model()
-                logger.info(f"Detected model: {model_name}")
+                logger.info(f"Detected model file: {model_name}")
 
                 if not model_name:
                     cross = emoji_if_enabled("❌")
+                    logger.error("No model loaded - cannot apply presets")
                     return [f"{cross} No model loaded"] + [gr.skip()] * 6
+
+                # Detect model type
+                model_type = detect_model_type(model_name)
+                logger.info(f"Detected model type: {model_type.value}")
 
                 preset = get_preset_for_model(model_name)
                 if not preset:
                     cross = emoji_if_enabled("❌")
-                    logger.warning(f"No preset found for model: {model_name}")
-                    return [f"{cross} No preset for: {model_name[:40]}..."] + [gr.skip()] * 6
+                    logger.error(f"No preset found for model type: {model_type.value}")
+                    return [f"{cross} No preset for: {model_type.value}"] + [gr.skip()] * 6
 
-                logger.info(f"Found preset: {preset.model_type.value}, steps={preset.steps}, scheduler={preset.scheduler}")
+                logger.info(f"Found preset for {preset.model_type.value}: steps={preset.steps}, scheduler={preset.scheduler}, cfg={preset.cfg_scale}")
 
                 # Get settings
                 status_msg, settings = handle_apply_model_defaults(render_mode)
-                logger.info(f"Settings to apply: {settings}")
+                logger.info(f"Settings dict to apply: {settings}")
+
+                # Log each setting that will be applied
+                for key, value in settings.items():
+                    logger.info(f"  Setting {key} = {value}")
 
                 # Build detailed status
                 changed = []
                 if 'steps' in settings:
-                    changed.append(f"Steps→{settings['steps']}")
+                    changed.append(f"Steps={settings['steps']}")
                 if 'scheduler' in settings:
-                    changed.append(f"Scheduler→{settings['scheduler']}")
+                    changed.append(f"Scheduler={settings['scheduler']}")
                 if 'scale' in settings:
-                    changed.append(f"CFG→{settings['scale']}")
+                    changed.append(f"CFG={settings['scale']}")
+                if 'W' in settings and 'H' in settings:
+                    changed.append(f"Resolution={settings['W']}x{settings['H']}")
 
                 check = emoji_if_enabled("✅")
                 status_msg = f"{check} {preset.model_type.value.upper()}: {', '.join(changed)}"
+                logger.info(f"Status message: {status_msg}")
 
                 # Create update dict for all affected components
                 updates = []
                 for comp_name in ['steps', 'sampler', 'scheduler', 'W', 'H', 'scale']:
                     if comp_name in settings:
                         updates.append(settings[comp_name])
+                        logger.debug(f"Updating component '{comp_name}' to: {settings[comp_name]}")
                     else:
                         updates.append(gr.skip())
+                        logger.debug(f"Skipping component '{comp_name}' (not in settings)")
 
+                logger.info("Model preset applied successfully")
                 return [status_msg] + updates
 
             components['apply_model_defaults_btn'].click(
