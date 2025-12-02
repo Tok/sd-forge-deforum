@@ -345,6 +345,8 @@ def execute_quick_test(
             args_dict['skip_video_creation'] = False
             args_dict['delete_imgs'] = False
             args_dict['animation_prompts'] = json.dumps(generated_prompts)
+            args_dict['animation_prompts_positive'] = ""  # No global positive prompt
+            args_dict['animation_prompts_negative'] = "nsfw, nude, text, watermark, blurry, low quality"
             args_dict['strength_schedule'] = f"0:({settings['strength']})"
             args_dict['keyframe_strength_schedule'] = f"0:({settings['keyframe_strength']})"
 
