@@ -73,10 +73,10 @@ def build_top_level_controls(d, da, dv):
     with gr.Row(visible=False) as reset_confirm_row:
         with gr.Column(scale=1):
             warning_emoji = emoji_if_enabled("⚠️") or "WARNING"
-            gr.Markdown(f"{warning_emoji} **Reset to Mode Defaults?**\n\nThis will generate new AI defaults. Make sure you've saved your current settings if needed.")
+            gr.Markdown(f"{warning_emoji} **Reset to Mode Defaults?**\n\nThis will reset Steps, Scheduler, CFG Scale, Strength, FPS, and Cadence to optimized defaults for this render mode. Your prompts and keyframes will NOT be changed.")
             with gr.Row():
                 components['reset_confirm_yes'] = gr.Button(
-                    "Yes, Generate Defaults",
+                    "Yes, Reset to Defaults",
                     variant="primary",
                     size="sm",
                     elem_classes=["slopcore-button"]
