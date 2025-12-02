@@ -554,8 +554,9 @@ def setup_deforum_left_side_ui():
                     )
 
             # ===== QUICK TEST BUTTON WIRING =====
-            # Wire up "Generate Test" button
-            if 'btn_generate_test' in locals() and 'quick_test_prompt' in locals():
+            # Wire up "Generate Test Clip" button
+            if 'btn_generate_test' in locals() and 'quick_test_prompt_theme' in locals():
+                logger.info("Wiring Quick Test button handlers...")
                 from deforum.ui.handlers.quick_test_handler import (
                     handle_generate_test_click,
                     handle_view_test_settings_click,
