@@ -245,25 +245,34 @@ def execute_quick_test(
             log.append(f"Actual audio duration: {actual_duration:.2f}s → {total_frames} frames @ {fps} FPS")
 
             # Detect events with BPM-aware sensitivity
+            # For Quick Test, we want more events for better prompt sync
             event_times, event_intensities, detected_bpm = detect_events_bpm_aware(
                 audio=y,
                 sample_rate=sr,
                 method="onset",  # Onset detection for transients
                 target_bpm=173,  # Amen break BPM
-                tolerance=0.15,   # ±15% acceptable
-                prefer_under_detection=True  # Prefer missing weak events over false positives
+                tolerance=0.20,   # ±20% acceptable (relaxed)
+                prefer_under_detection=False  # Allow more events for Quick Test
             )
 
             log.append(f"✓ Detected {len(event_times)} events at {detected_bpm:.1f} BPM")
 
+            # If we got very few events, use fallback
+            if len(event_times) < 3:
+                log.append(f"⚠️ Only {len(event_times)} events detected, using evenly-spaced fallback")
+                # Fallback: evenly spaced events every 0.5 seconds (for good prompt sync)
+                event_interval = 0.5
+                event_times = [i * event_interval for i in range(int(actual_duration / event_interval))]
+                event_intensities = [0.5] * len(event_times)
+                log.append(f"Using {len(event_times)} evenly-spaced events at {event_interval}s intervals")
+
         except Exception as e:
             log.append(f"⚠️ Event detection failed: {e}")
-            # Fallback: evenly spaced events every 4 beats
-            beats_per_second = 173 / 60
-            event_interval = 4.0 / beats_per_second  # 4 beats
+            # Fallback: evenly spaced events every 0.5 seconds
+            event_interval = 0.5
             event_times = [i * event_interval for i in range(int(actual_duration / event_interval))]
             event_intensities = [0.5] * len(event_times)
-            log.append(f"Using {len(event_times)} evenly-spaced fallback events")
+            log.append(f"Using {len(event_times)} evenly-spaced fallback events at {event_interval}s intervals")
 
         log.append("")
 
@@ -379,8 +388,14 @@ def execute_quick_test(
             "output_dir": batch_dir,
             "depth_model": "Depth-Anything-V2-Small",
             "camera_movement": {
-                "translation_z": "0:(0), {}: (2.0)".format(total_frames),
-                "rotation_3d_y": "0:(0), {}: (5.0)".format(total_frames)
+                # Slow zoom in (negative Z) with no rotation
+                "translation_z": "0:(0), {}: (-1.0)".format(total_frames),
+                "rotation_3d_y": "0:(0)"
+            },
+            "shakify": {
+                "shake_name": "Investigation",  # Gentle handheld shake
+                "shake_intensity": 1.0,
+                "shake_speed": 1.0
             }
         }
 
@@ -433,6 +448,11 @@ def execute_quick_test(
                 # Camera movement
                 "translation_z": settings['camera_movement']['translation_z'],
                 "rotation_3d_y": settings['camera_movement']['rotation_3d_y'],
+
+                # Shakify settings
+                "shake_name": settings['shakify']['shake_name'],
+                "shake_intensity": settings['shakify']['shake_intensity'],
+                "shake_speed": settings['shakify']['shake_speed'],
 
                 # Depth settings
                 "depth_algorithm": "Depth-Anything-V2-Small",
