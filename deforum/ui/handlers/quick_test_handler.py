@@ -508,20 +508,21 @@ def execute_quick_test(
             logger.info(f"  audio_path: {audio_path}")
             logger.info("=" * 60)
 
-            # Return tuple with UI updates
+            # Return tuple with UI updates using gr.update() for explicit updates
+            import gradio as gr
             return (
-                f"{check} Quick Test Ready! Settings loaded → Click Generate to render",  # status
-                "\n".join(log),  # log
+                gr.update(value=f"{check} Quick Test Ready! Settings loaded → Click Generate to render"),  # status
+                gr.update(value="\n".join(log)),  # log
                 json.dumps(export_settings, indent=2),  # settings_json (for hidden state)
-                json.dumps(generated_prompts, indent=2),  # prompts (update UI)
-                audio_path or "",  # audio_path (update UI)
-                fps,  # fps (update UI)
-                total_frames,  # max_frames (update UI)
-                settings['camera_movement']['translation_z'],  # translation_z (update UI)
-                settings['camera_movement']['rotation_3d_y'],  # rotation_y (update UI)
-                f"0:({settings['strength']})",  # strength_schedule (update UI)
-                settings['steps'],  # steps (update UI)
-                settings['cadence']  # cadence (update UI)
+                gr.update(value=json.dumps(generated_prompts, indent=2)),  # prompts (update UI)
+                gr.update(value=audio_path or ""),  # audio_path (update UI)
+                gr.update(value=fps),  # fps (update UI)
+                gr.update(value=total_frames),  # max_frames (update UI)
+                gr.update(value=settings['camera_movement']['translation_z']),  # translation_z (update UI)
+                gr.update(value=settings['camera_movement']['rotation_3d_y']),  # rotation_y (update UI)
+                gr.update(value=f"0:({settings['strength']})"),  # strength_schedule (update UI)
+                gr.update(value=settings['steps']),  # steps (update UI)
+                gr.update(value=settings['cadence'])  # cadence (update UI)
             )
 
         except Exception as save_error:
