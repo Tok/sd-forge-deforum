@@ -51,7 +51,7 @@ def _build_quick_test_ui(components: dict):
     with FormRow(variant="compact"):
         quick_test_prompt_theme = gr.Textbox(
             label="Prompt Theme",
-            value="cute bunny",
+            value="bunny",
             lines=2,
             info="Theme for AI prompt generation (Qwen will create escalating synthwave prompts)"
         )

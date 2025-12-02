@@ -266,22 +266,195 @@ def execute_quick_test(
         log.append(f"  - Strength: {settings['strength']} (normal), {settings['keyframe_strength']} (keyframe)")
         log.append("")
 
-        # Phase 3: Would execute Deforum render here
-        # For now, we'll return success with the settings
-        # TODO: Actually call the Deforum render pipeline
-
-        log.append("⚠️ Note: Actual render execution not yet implemented")
-        log.append("This is a placeholder for the full render pipeline")
+        # Phase 4: Execute Deforum render
+        log.append("🎬 Phase 4: Executing Deforum render...")
         log.append("")
-        log.append("✓ Quick Test validation complete!")
 
-        return {
-            "success": True,
-            "video_path": os.path.join(batch_dir, "test_video.mp4"),
-            "log": log,
-            "settings": settings,
-            "error": None
-        }
+        try:
+            from deforum.config.args import (
+                DeforumArgs, DeforumAnimArgs, DeforumOutputArgs,
+                ParseqArgs, LoopArgs, WanArgs, AudioSyncArgs,
+                process_args
+            )
+            from deforum.rendering.core import render_animation
+            from modules.processing import StableDiffusionProcessingImg2Img
+            import modules.shared as shared
+
+            # Build args_dict with all required parameters
+            args_dict = {}
+
+            # Add all defaults from argument definition functions
+            for key, config in DeforumArgs().items():
+                if isinstance(config, dict) and 'value' in config:
+                    args_dict[key] = config['value']
+                else:
+                    args_dict[key] = config
+
+            for key, config in DeforumAnimArgs().items():
+                if isinstance(config, dict) and 'value' in config:
+                    args_dict[key] = config['value']
+                else:
+                    args_dict[key] = config
+
+            for key, config in DeforumOutputArgs().items():
+                if isinstance(config, dict) and 'value' in config:
+                    args_dict[key] = config['value']
+                else:
+                    args_dict[key] = config
+
+            for key, config in ParseqArgs().items():
+                if isinstance(config, dict) and 'value' in config:
+                    args_dict[key] = config['value']
+                else:
+                    args_dict[key] = config
+
+            for key, config in LoopArgs().items():
+                if isinstance(config, dict) and 'value' in config:
+                    args_dict[key] = config['value']
+                else:
+                    args_dict[key] = config
+
+            for key, config in WanArgs().items():
+                if isinstance(config, dict) and 'value' in config:
+                    args_dict[key] = config['value']
+                else:
+                    args_dict[key] = config
+
+            for key, config in AudioSyncArgs().items():
+                if isinstance(config, dict) and 'value' in config:
+                    args_dict[key] = config['value']
+                else:
+                    args_dict[key] = config
+
+            # Override with test-specific settings
+            args_dict['W'] = 1280
+            args_dict['H'] = 720
+            args_dict['fps'] = fps
+            args_dict['steps'] = settings['steps']
+            args_dict['cfg_scale'] = settings['cfg_scale']
+            args_dict['sampler'] = settings['sampler']
+            args_dict['seed'] = random_seed
+            args_dict['strength'] = settings['strength']
+            args_dict['max_frames'] = total_frames
+            args_dict['render_mode'] = 'New 3D'
+            args_dict['animation_mode'] = '3D'
+            args_dict['keyframe_distribution'] = 'redistributed'
+            args_dict['diffusion_cadence'] = settings['cadence']
+            args_dict['add_soundtrack'] = 'File'
+            args_dict['soundtrack_path'] = audio_path
+            args_dict['skip_video_creation'] = False
+            args_dict['delete_imgs'] = False
+            args_dict['animation_prompts'] = json.dumps(generated_prompts)
+            args_dict['strength_schedule'] = f"0:({settings['strength']})"
+            args_dict['keyframe_strength_schedule'] = f"0:({settings['keyframe_strength']})"
+
+            # Camera movement
+            args_dict['translation_z'] = settings['camera_movement']['translation_z']
+            args_dict['rotation_3d_y'] = settings['camera_movement']['rotation_3d_y']
+
+            # Depth settings for 3D mode
+            args_dict['depth_algorithm'] = 'Depth-Anything-V2-Small'
+            args_dict['midas_weight'] = 0.3
+            args_dict['near_plane'] = 200
+            args_dict['far_plane'] = 10000
+            args_dict['fov'] = 70
+
+            # Create fake Processing object (required by process_args)
+            p = StableDiffusionProcessingImg2Img(
+                sd_model=shared.sd_model,
+                outpath_samples=batch_dir,
+                outpath_grids=batch_dir,
+                prompt="",  # Will be overridden by animation_prompts
+                negative_prompt="",
+                seed=random_seed,
+                sampler_name=settings['sampler'],
+                batch_size=1,
+                n_iter=1,
+                steps=settings['steps'],
+                cfg_scale=settings['cfg_scale'],
+                width=1280,
+                height=720,
+                init_images=[],
+                denoising_strength=1.0 - settings['strength']  # Deforum inverted strength
+            )
+            args_dict['p'] = p
+
+            # Additional required fields
+            args_dict['override_settings_with_file'] = False
+            args_dict['custom_settings_file'] = None
+
+            # Generate unique run ID
+            run_id = f"quick_test_{timestamp}"
+
+            # Process args into structured namespaces
+            log.append("  → Building argument namespaces...")
+            (
+                args_loaded_ok,
+                root,
+                args,
+                anim_args,
+                video_args,
+                parseq_args,
+                audio_sync_args,
+                loop_args,
+                controlnet_args,
+                wan_args
+            ) = process_args(args_dict, run_id)
+
+            if not args_loaded_ok:
+                raise Exception("Failed to load argument configuration")
+
+            log.append("  → Starting render animation...")
+            log.append("")
+
+            # Execute render
+            render_result = render_animation(
+                args=args,
+                anim_args=anim_args,
+                video_args=video_args,
+                parseq_args=parseq_args,
+                loop_args=loop_args,
+                controlnet_args=controlnet_args,
+                root=root
+            )
+
+            log.append("")
+            log.append("✓ Render complete!")
+
+            # Find the generated video
+            video_path = None
+            for ext in ['.mp4', '.webm', '.mov']:
+                potential_path = os.path.join(batch_dir, f"*{ext}")
+                import glob
+                matches = glob.glob(potential_path)
+                if matches:
+                    video_path = matches[0]
+                    break
+
+            if not video_path:
+                video_path = os.path.join(batch_dir, "test_video.mp4")
+                log.append(f"⚠️ Video file not found, expected at: {video_path}")
+
+            return {
+                "success": True,
+                "video_path": video_path,
+                "log": log,
+                "settings": settings,
+                "error": None
+            }
+
+        except Exception as render_error:
+            error_trace = traceback.format_exc()
+            log.append(f"❌ Render failed: {str(render_error)}")
+            log.append(error_trace)
+
+            return {
+                "success": False,
+                "video_path": None,
+                "log": log,
+                "settings": settings,
+                "error": f"Render execution failed: {str(render_error)}"
+            }
 
     except Exception as e:
         error_trace = traceback.format_exc()
