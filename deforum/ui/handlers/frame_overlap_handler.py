@@ -52,7 +52,9 @@ def update_frame_overlap_visualization(
         HTML string for visualization (or error/skip message)
     """
     try:
-        logger.info(f"🐛 Wormtrail ENTRY: max_frames={max_frames}")
+        from deforum.utils.system.logging import emoji as emoji_utils
+        worm = emoji_utils.worm()
+        logger.info(f"{worm} Wormtrail ENTRY: max_frames={max_frames}")
 
         # Strip truncation indicators from schedules (if present)
         # Truncated schedules have format: "0: (1.0), 100: (2.0) ... [truncated at frame 1000, full schedule in settings.json]"
@@ -69,7 +71,7 @@ def update_frame_overlap_visualization(
             'rotation_3d_z': rotation_3d_z or "0:(0)",
         }
 
-        logger.info(f"🐛 Wormtrail base schedule tx length: {len(base_schedules['translation_x'])} chars")
+        logger.info(f"{worm} Wormtrail base schedule tx length: {len(base_schedules['translation_x'])} chars")
 
         # Detect if schedules are downsampled BEFORE calling shakify
         # Count keyframes in any schedule to check

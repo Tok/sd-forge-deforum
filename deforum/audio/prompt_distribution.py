@@ -44,6 +44,12 @@ def distribute_prompts_across_keyframes(
     num_prompts = len(user_prompts)
     num_keyframes = len(keyframes)
 
+    # Ensure frame 0 always has a prompt (critical for generation start)
+    has_frame_zero = any(kf['frame'] == 0 for kf in keyframes)
+    if not has_frame_zero:
+        # Add frame 0 with first prompt
+        schedule["0"] = user_prompts[0]
+
     if mode == "cycle":
         # Cycle through prompts repeatedly
         for i, kf in enumerate(keyframes):

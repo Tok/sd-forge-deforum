@@ -313,6 +313,14 @@ def abacus():
     return _select('\U0001F9EE')  # 🧮
 
 
+def bug():
+    return _select('\U0001F41B')  # 🐛
+
+
+def worm():
+    return _select('\U0001FAB1')  # 🪱
+
+
 def info():
     return _select(f'\U00002139{_suffix}')  # ℹ️
 

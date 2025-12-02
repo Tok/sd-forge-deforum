@@ -262,15 +262,18 @@ Unable to generate downsampled preview (no frames after sampling).
 </div>'''
 
     # Check if there's any actual camera movement (check consecutive frame differences)
+    # Use very low threshold (0.001) for downsampled schedules with small per-frame deltas
     has_movement = any(
-        abs(metrics_list[i].prev_frame_rect.center_x - metrics_list[i-1].prev_frame_rect.center_x) > 0.1 or
-        abs(metrics_list[i].prev_frame_rect.center_y - metrics_list[i-1].prev_frame_rect.center_y) > 0.1 or
-        abs(metrics_list[i].prev_frame_rect.rotation - metrics_list[i-1].prev_frame_rect.rotation) > 0.1
+        abs(metrics_list[i].prev_frame_rect.center_x - metrics_list[i-1].prev_frame_rect.center_x) > 0.001 or
+        abs(metrics_list[i].prev_frame_rect.center_y - metrics_list[i-1].prev_frame_rect.center_y) > 0.001 or
+        abs(metrics_list[i].prev_frame_rect.rotation - metrics_list[i-1].prev_frame_rect.rotation) > 0.001
         for i in range(1, len(metrics_list))
     )
 
     if not has_movement:
-        return '<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">⚠️ No camera movement detected. Use "Rotate Around" preset or enter camera schedules to see frame overlap trail.</div>'
+        from deforum.utils.system.logging import emoji_if_enabled
+        warning = emoji_if_enabled("⚠️")
+        return f'<div style="color: #FF9664; padding: 20px; background: rgba(60,60,80,0.3); border-radius: 4px;">{warning} No camera movement detected. Use "Rotate Around" preset or enter camera schedules to see frame overlap trail.</div>'
 
     if prompt_keyframes is None:
         prompt_keyframes = set()
