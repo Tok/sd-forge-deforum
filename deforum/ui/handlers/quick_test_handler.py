@@ -406,6 +406,9 @@ def execute_quick_test(
             if not args_loaded_ok:
                 raise Exception("Failed to load argument configuration")
 
+            # Set job_id for status tracking
+            root.job_id = run_id
+
             log.append("  → Starting render animation...")
             log.append("")
 
