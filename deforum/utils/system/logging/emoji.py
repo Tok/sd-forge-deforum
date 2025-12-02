@@ -395,6 +395,61 @@ def maybe_alert():
     return emoji_if_enabled('\U0001F6A8')  # 🚨
 
 
+def maybe_film():
+    """Movie camera/film - theme-aware, returns empty string if emojis disabled.
+
+    In slopcore: 🎬 → 🟪 (purple square for output)
+    In classic: 🎬 → 🎬 (clapper board)
+    Disabled: '' (empty string)
+    """
+    from deforum.utils.system.logging import emoji_if_enabled
+    return emoji_if_enabled('\U0001F3AC')  # 🎬
+
+
+def maybe_music():
+    """Music notes - theme-aware, returns empty string if emojis disabled.
+
+    In slopcore: 🎶 → 🟦 (blue square for input)
+    In classic: 🎶 → 🎶 (musical notes)
+    Disabled: '' (empty string)
+    """
+    from deforum.utils.system.logging import emoji_if_enabled
+    return emoji_if_enabled('\U0001F3B6')  # 🎶
+
+
+def maybe_robot():
+    """Robot face - theme-aware, returns empty string if emojis disabled.
+
+    In slopcore: 🤖 → 🟦 (blue square for AI processing)
+    In classic: 🤖 → 🤖 (robot face)
+    Disabled: '' (empty string)
+    """
+    from deforum.utils.system.logging import emoji_if_enabled
+    return emoji_if_enabled('\U0001F916')  # 🤖
+
+
+def maybe_gear():
+    """Settings gear - theme-aware, returns empty string if emojis disabled.
+
+    In slopcore: ⚙️ → 🟦 (blue square for settings)
+    In classic: ⚙️ → ⚙️ (gear)
+    Disabled: '' (empty string)
+    """
+    from deforum.utils.system.logging import emoji_if_enabled
+    return emoji_if_enabled('\U00002699\U0000FE0F')  # ⚙️
+
+
+def maybe_chart():
+    """Input numbers symbol - theme-aware, returns empty string if emojis disabled.
+
+    In slopcore: 🔢 → 🟦 (blue square for data/numbers)
+    In classic: 🔢 → 🔢 (input numbers)
+    Disabled: '' (empty string)
+    """
+    from deforum.utils.system.logging import emoji_if_enabled
+    return emoji_if_enabled('\U0001F522')  # 🔢
+
+
 # ============================================================================
 # Theme-based Emoji Mapping
 # ============================================================================

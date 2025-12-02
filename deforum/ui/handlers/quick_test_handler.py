@@ -10,7 +10,7 @@ import json
 from typing import Tuple
 from pathlib import Path
 
-from deforum.utils.system.logging import get_logger, emoji as emoji_utils, emoji_if_enabled
+from deforum.utils.system.logging import get_logger, emoji as emoji_utils
 from deforum.utils.output_paths import OutputPaths
 
 logger = get_logger()
@@ -48,16 +48,15 @@ def handle_generate_test_click(
         - steps: Sampling steps
         - cadence: Diffusion cadence
     """
-    # Theme-aware status emojis
     # Theme-aware emojis
     warning = emoji_utils.maybe_warning()
     check = emoji_utils.maybe_check()
     cross = emoji_utils.maybe_cross()
-    film = emoji_if_enabled(emoji_utils.video_camera())
-    music = emoji_if_enabled(emoji_utils.music())
-    robot = emoji_if_enabled(emoji_utils.bulb())  # AI/automation
-    gear = emoji_if_enabled(emoji_utils.gear())
-    chart = emoji_if_enabled(emoji_utils.numbers())
+    film = emoji_utils.maybe_film()
+    music = emoji_utils.maybe_music()
+    robot = emoji_utils.maybe_robot()
+    gear = emoji_utils.maybe_gear()
+    chart = emoji_utils.maybe_chart()
 
     try:
         # Validate inputs
@@ -159,11 +158,11 @@ def execute_quick_test(
     warning = emoji_utils.maybe_warning()
     check = emoji_utils.maybe_check()
     cross = emoji_utils.maybe_cross()
-    film = emoji_if_enabled(emoji_utils.video_camera())
-    music = emoji_if_enabled(emoji_utils.music())
-    robot = emoji_if_enabled(emoji_utils.bulb())  # AI/automation
-    gear = emoji_if_enabled(emoji_utils.gear())
-    chart = emoji_if_enabled(emoji_utils.numbers())
+    film = emoji_utils.maybe_film()
+    music = emoji_utils.maybe_music()
+    robot = emoji_utils.maybe_robot()
+    gear = emoji_utils.maybe_gear()
+    chart = emoji_utils.maybe_chart()
 
     log = []
 
