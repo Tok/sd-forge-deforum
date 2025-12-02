@@ -571,6 +571,11 @@ def setup_deforum_left_side_ui():
                 qt_translation_z = locals().get('translation_z')
                 qt_rotation_3d_y = locals().get('rotation_3d_y')
                 qt_strength_schedule = locals().get('strength_schedule')
+                qt_steps = locals().get('steps')
+                qt_cfg_scale = locals().get('cfg_scale')
+                qt_sampler = locals().get('sampler')
+                qt_scheduler = locals().get('scheduler')
+                qt_cadence = locals().get('cadence')
 
                 # Main Generate Test button - loads settings into UI automatically
                 locals()['btn_generate_test'].click(
@@ -591,7 +596,12 @@ def setup_deforum_left_side_ui():
                         qt_max_frames,  # Update max frames
                         qt_translation_z,  # Update camera Z movement
                         qt_rotation_3d_y,  # Update camera Y rotation
-                        qt_strength_schedule  # Update strength schedule
+                        qt_strength_schedule,  # Update strength schedule
+                        qt_steps,  # Update sampling steps
+                        qt_cfg_scale,  # Update CFG scale
+                        qt_sampler,  # Update sampler
+                        qt_scheduler,  # Update scheduler
+                        qt_cadence  # Update diffusion cadence
                     ]
                 )
 

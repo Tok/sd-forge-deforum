@@ -88,7 +88,7 @@ def _build_quick_test_ui(components: dict):
                 value=5.0,
                 step=0.5,
                 label="Duration (seconds)",
-                info="Test video length"
+                info="Test video length (5s default for better prompt sync)"
             )
         with gr.Column(scale=1):
             quick_test_seed = gr.Number(

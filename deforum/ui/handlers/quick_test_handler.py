@@ -21,7 +21,7 @@ def handle_generate_test_click(
     audio_theme: str,
     duration: float,
     seed: int
-) -> Tuple[str, str, str, str, str, int, int, str, str, str]:
+) -> Tuple[str, str, str, str, str, int, int, str, str, str, int, float, str, str, int]:
     """Handle "Generate Test" button click.
 
     Generates audio, prompts, and schedules, then LOADS them into the UI automatically.
@@ -34,17 +34,22 @@ def handle_generate_test_click(
         seed: Random seed (from number input)
 
     Returns:
-        Tuple of (status, log, settings_json, prompts, audio_path, fps, max_frames, translation_z, rotation_y, strength_schedule)
+        Tuple of (status, log, settings_json, prompts, audio_path, fps, max_frames, translation_z, rotation_y, strength_schedule, steps, cfg_scale, sampler, scheduler, cadence)
         - status: Single-line status message
         - log: Multi-line generation log
         - settings_json_state: JSON settings (for hidden state/saving)
-        - prompts: Generated prompts as JSON string (loaded into prompts textbox)
-        - audio_path: Path to generated audio (loaded into soundtrack_path)
-        - fps: FPS value (loaded into FPS control)
-        - max_frames: Frame count (loaded into max_frames)
-        - translation_z: Camera Z movement (loaded into translation_z)
-        - rotation_y: Camera Y rotation (loaded into rotation_3d_y)
-        - strength_schedule: Strength schedule (loaded into strength textbox)
+        - prompts: Generated prompts as JSON string
+        - audio_path: Path to generated audio
+        - fps: FPS value
+        - max_frames: Frame count
+        - translation_z: Camera Z movement
+        - rotation_y: Camera Y rotation
+        - strength_schedule: Normal strength schedule
+        - steps: Sampling steps
+        - cfg_scale: CFG scale value
+        - sampler: Sampler name
+        - scheduler: Scheduler name
+        - cadence: Diffusion cadence
     """
     # Theme-aware status emojis
     warning = emoji_utils.maybe_warning()
@@ -64,7 +69,12 @@ def handle_generate_test_click(
                 120,   # max_frames
                 "0:(0)",  # translation_z
                 "0:(0)",  # rotation_y
-                "0:(0.85)"  # strength_schedule
+                "0:(0.85)",  # strength_schedule
+                20,  # steps
+                1.0,  # cfg_scale
+                "euler",  # sampler
+                "simple",  # scheduler
+                5  # cadence
             )
 
         if not prompt_theme or not prompt_theme.strip():
@@ -78,7 +88,12 @@ def handle_generate_test_click(
                 120,   # max_frames
                 "0:(0)",  # translation_z
                 "0:(0)",  # rotation_y
-                "0:(0.85)"  # strength_schedule
+                "0:(0.85)",  # strength_schedule
+                20,  # steps
+                1.0,  # cfg_scale
+                "euler",  # sampler
+                "simple",  # scheduler
+                5  # cadence
             )
 
         if not audio_theme or not audio_theme.strip():
@@ -107,7 +122,7 @@ def handle_generate_test_click(
 
         logger.error(f"{error_msg}\n{error_trace}")
 
-        # Return full 10-value tuple for error case
+        # Return full 15-value tuple for error case
         return (
             f"{cross} Fatal error: {str(e)}",
             f"💥 UNEXPECTED ERROR\n\n{error_trace}",
@@ -118,7 +133,12 @@ def handle_generate_test_click(
             120,   # max_frames
             "0:(0)",  # translation_z
             "0:(0)",  # rotation_y
-            "0:(0.85)"  # strength_schedule
+            "0:(0.85)",  # strength_schedule
+            20,  # steps
+            1.0,  # cfg_scale
+            "euler",  # sampler
+            "simple",  # scheduler
+            5  # cadence
         )
 
 
@@ -128,7 +148,7 @@ def execute_quick_test(
     duration_seconds: float,
     random_seed: int,
     output_dir: str
-) -> Tuple[str, str, str, str, str, int, int, str, str, str]:
+) -> Tuple[str, str, str, str, str, int, int, str, str, str, int, float, str, str, int]:
     """Execute the quick test generation.
 
     Args:
@@ -139,7 +159,7 @@ def execute_quick_test(
         output_dir: Output directory path
 
     Returns:
-        Tuple of (status, log, settings_json, prompts, audio_path, fps, max_frames, translation_z, rotation_y, strength_schedule)
+        Tuple of (status, log, settings_json, prompts, audio_path, fps, max_frames, translation_z, rotation_y, strength_schedule, steps, cfg_scale, sampler, scheduler, cadence)
     """
     # Theme-aware emojis
     check = emoji_utils.maybe_check()
@@ -472,7 +492,12 @@ def execute_quick_test(
                 total_frames,  # max_frames (update UI)
                 settings['camera_movement']['translation_z'],  # translation_z (update UI)
                 settings['camera_movement']['rotation_3d_y'],  # rotation_y (update UI)
-                f"0:({settings['strength']})"  # strength_schedule (update UI)
+                f"0:({settings['strength']})",  # strength_schedule (update UI)
+                settings['steps'],  # steps (update UI)
+                settings['cfg_scale'],  # cfg_scale (update UI)
+                settings['sampler'],  # sampler (update UI)
+                settings['scheduler'],  # scheduler (update UI)
+                settings['cadence']  # cadence (update UI)
             )
 
         except Exception as save_error:
@@ -491,7 +516,12 @@ def execute_quick_test(
                 120,  # default frames
                 "0:(0)",  # no movement
                 "0:(0)",  # no rotation
-                "0:(0.85)"  # default strength
+                "0:(0.85)",  # default strength
+                20,  # default steps
+                1.0,  # default cfg
+                "euler",  # default sampler
+                "simple",  # default scheduler
+                5  # default cadence
             )
 
     except Exception as e:
@@ -510,7 +540,12 @@ def execute_quick_test(
             120,  # default frames
             "0:(0)",  # no movement
             "0:(0)",  # no rotation
-            "0:(0.85)"  # default strength
+            "0:(0.85)",  # default strength
+            20,  # default steps
+            1.0,  # default cfg
+            "euler",  # default sampler
+            "simple",  # default scheduler
+            5  # default cadence
         )
 
 
