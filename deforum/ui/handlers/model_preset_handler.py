@@ -199,8 +199,8 @@ def handle_model_change_notification(render_mode: str) -> str:
 
 def apply_preset_to_components(
     settings: Dict[str, Any],
-    components: Dict[str, gr.Component]
-) -> Dict[gr.Component, Any]:
+    components: Dict[str, Any]
+) -> Dict[Any, Any]:
     """Convert settings dict to Gradio component updates.
 
     Args:
