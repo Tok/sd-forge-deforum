@@ -10,7 +10,7 @@ import json
 from typing import Tuple
 from pathlib import Path
 
-from deforum.utils.system.logging import get_logger, emoji as emoji_utils
+from deforum.utils.system.logging import get_logger, emoji as emoji_utils, emoji_if_enabled
 from deforum.utils.output_paths import OutputPaths
 
 logger = get_logger()
