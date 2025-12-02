@@ -1641,7 +1641,8 @@ def process_args(args_dict_main, run_id):
     if 'outdir_samples' in sh.opts.data and sh.opts.data['outdir_samples']:
         deforum_outpath = sh.opts.data['outdir_samples']
     else:
-        deforum_outpath = os.path.join(os.getcwd(), 'outputs', 'deforum')
+        from deforum.utils.output_paths import OutputPaths
+        deforum_outpath = os.path.join(os.getcwd(), OutputPaths.DEFORUM)
     full_base_folder_path = deforum_outpath
     root.raw_batch_name = args.batch_name
     args.batch_name = substitute_placeholders(args.batch_name, current_arg_list, full_base_folder_path)
