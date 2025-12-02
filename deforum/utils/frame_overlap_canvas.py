@@ -470,8 +470,8 @@ Unable to generate downsampled preview (no frames after sampling).
             }}
             drawRectangle(viewportCorners, colors.viewport, 0.8, false);
 
-            // Update info
-            document.getElementById('frameInfo').textContent = 'Frame: ' + frameIndex +
+            // Update info (use frame.frameIndex for actual frame number, not slider index)
+            document.getElementById('frameInfo').textContent = 'Frame: ' + frame.frameIndex +
                 ' | Pos: [' + frame.centerX.toFixed(1) + ', ' + frame.centerY.toFixed(1) + ']';
             document.getElementById('preservation').textContent = frame.preservation.toFixed(1);
             document.getElementById('novelty').textContent = frame.novelty.toFixed(1);
