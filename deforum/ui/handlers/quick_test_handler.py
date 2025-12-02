@@ -279,16 +279,16 @@ def execute_quick_test(
         log.append("")
 
         # Phase 3: Generate prompts with Qwen
-        log.append(f"🤖 Phase 3: Generating {len(event_times)} escalating synthwave prompts with Qwen...")
+        log.append(f"🤖 Phase 3: Generating {len(event_times)} progressive prompts with Qwen...")
 
         try:
             from deforum.ui.handlers.audio_prompt_generator import generate_prompts_with_ai
 
-            # Call Qwen with escalating mode and synthwave style
+            # Call Qwen with normal intensity for clean testing
             prompt_result = generate_prompts_with_ai(
                 generation_mode="escalating",
-                intensity="crazy",  # Escalating intensity
-                style="synthwave",
+                intensity="normal",  # Normal intensity - not crazy
+                style="",  # No specific style
                 theme=prompt_theme,
                 count=len(event_times),  # One prompt per detected event
                 start_prompt="",  # Not used in escalating mode
@@ -305,7 +305,7 @@ def execute_quick_test(
             # Take only requested count
             prompts = [line.strip() for line in prompt_lines if line.strip()][:len(event_times)]
 
-            log.append(f"✓ Generated {len(prompts)} escalating synthwave prompts")
+            log.append(f"✓ Generated {len(prompts)} progressive prompts")
 
         except Exception as e:
             log.append(f"⚠️ Qwen generation failed, using fallback escalation: {e}")
