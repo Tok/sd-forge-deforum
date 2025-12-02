@@ -44,9 +44,8 @@ cd sd-forge-deforum
 ```
 
 **First Test:**
-1. Navigate to Deforum tab
-2. Go to the "Quick Test" tab
-3. Click "Generate Test" to create a 5-second test video with synthetic audio
+1. Navigate to Deforum → Init → Quick Test
+2. Click "Generate Test" to create a 5-second test video with synthetic audio
 
 **See below for:** [Installation](#-installation), [Helper Scripts](#-helper-scripts), [Model Downloads](#-model-downloads)
 
@@ -754,7 +753,7 @@ The Audio Sync feature automatically detects musical events and places keyframes
 
 After installation, verify everything works with the Quick Test tab:
 
-1. Navigate to Deforum tab → "Quick Test"
+1. Navigate to Deforum → Init → Quick Test
 2. Click "Generate Test"
 
 **What happens:**

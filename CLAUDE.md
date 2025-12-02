@@ -32,9 +32,8 @@ python webui.py
 ```
 
 Then in the UI:
-1. Navigate to the Deforum tab
-2. Go to the "Quick Test" tab
-3. Click "Generate Test" to create a 5-second test video with synthetic audio and simple camera movement
+1. Navigate to Deforum → Init → Quick Test
+2. Click "Generate Test" to create a 5-second test video with synthetic audio and simple camera movement
 
 **Run with Deforum API enabled:**
 ```bash
