@@ -156,8 +156,14 @@ def execute_quick_test(
         Tuple of (status, log, settings_json, prompts, audio_path, fps, max_frames, translation_z, rotation_y, strength_schedule, steps, cadence)
     """
     # Theme-aware emojis
+    warning = emoji_utils.maybe_warning()
     check = emoji_utils.maybe_check()
     cross = emoji_utils.maybe_cross()
+    film = emoji_if_enabled(emoji_utils.video_camera())
+    music = emoji_if_enabled(emoji_utils.music())
+    robot = emoji_if_enabled(emoji_utils.bulb())  # AI/automation
+    gear = emoji_if_enabled(emoji_utils.gear())
+    chart = emoji_if_enabled(emoji_utils.numbers())
 
     log = []
 
@@ -277,7 +283,6 @@ def execute_quick_test(
             log.append(error_msg)
             log.append("Quick Test requires working audio event detection.")
             logger.error(error_msg)
-            import traceback
             logger.error(traceback.format_exc())
             # Don't continue - this is a test failure
             raise
@@ -355,7 +360,6 @@ def execute_quick_test(
 
         except Exception as e:
             log.append(f"⚠️ Prompt sync failed: {e}")
-            import traceback
             traceback.print_exc()
             # Create simple sequential schedule as fallback
             generated_prompts = {str(int(t * fps)): prompt for t, prompt in zip(event_times, prompts)}
@@ -535,7 +539,6 @@ def execute_quick_test(
                 log.append(f"⚠️ Auto-load failed: {str(load_error)}")
                 log.append("Falling back to manual value returns")
                 logger.error(f"Quick Test auto-load failed: {load_error}")
-                import traceback
                 logger.error(traceback.format_exc())
 
                 # Fallback: Return manual gr.update() values
