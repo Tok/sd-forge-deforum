@@ -143,6 +143,28 @@ def execute_quick_test(
             log.append(f"🎲 Generated random seed: {random_seed}")
             log.append("")
 
+        # Detect current model and set appropriate defaults
+        from deforum.utils.model_detection import (
+            get_model_name,
+            get_recommended_steps,
+            get_recommended_cfg_scale,
+            is_lumina_model
+        )
+
+        model_name = get_model_name()
+        recommended_steps = get_recommended_steps()
+        cfg_min, cfg_max = get_recommended_cfg_scale()
+        recommended_cfg = cfg_min  # Use minimum of recommended range
+
+        # Lumina needs special scheduler
+        recommended_scheduler = "Karras" if not is_lumina_model() else "Karras"  # Both use Karras
+
+        log.append(f"🤖 Detected Model: {model_name}")
+        log.append(f"  → Recommended Steps: {recommended_steps}")
+        log.append(f"  → Recommended CFG: {recommended_cfg:.1f}")
+        log.append(f"  → Scheduler: {recommended_scheduler}")
+        log.append("")
+
         # Calculate frame count
         fps = 60
         total_frames = int(duration_seconds * fps)
@@ -234,6 +256,16 @@ def execute_quick_test(
         # Phase 3: Build test settings
         log.append("⚙️ Phase 3: Building test settings...")
 
+        # Map sampler names (Forge backend naming)
+        sampler_map = {
+            "Flux": "euler",  # Flux uses Euler
+            "Flux Schnell": "euler",  # Schnell also uses Euler
+            "Flux Dev": "euler",  # Dev also uses Euler
+            "Lumina 2.0": "dpmpp_2m",  # Lumina uses DPM++ 2M
+            "Unknown": "euler"  # Safe default
+        }
+        recommended_sampler = sampler_map.get(model_name, "euler")
+
         settings = {
             "prompt_theme": prompt_theme,
             "audio_theme": audio_theme,
@@ -243,9 +275,10 @@ def execute_quick_test(
             "total_frames": total_frames,
             "resolution": "1280x720",
             "render_mode": "New 3D",
-            "steps": 20,
-            "cfg_scale": 7.0,
-            "sampler": "euler_a",
+            "steps": recommended_steps,  # Model-specific
+            "cfg_scale": recommended_cfg,  # Model-specific
+            "sampler": recommended_sampler,  # Model-specific
+            "scheduler": recommended_scheduler,  # Model-specific
             "cadence": 5,
             "strength": 0.85,
             "keyframe_strength": 0.20,
@@ -262,7 +295,9 @@ def execute_quick_test(
         log.append(f"✓ Test settings configured")
         log.append(f"  - Render Mode: {settings['render_mode']}")
         log.append(f"  - Resolution: {settings['resolution']}")
-        log.append(f"  - Steps: {settings['steps']}, Cadence: {settings['cadence']}")
+        log.append(f"  - Model: {model_name}")
+        log.append(f"  - Steps: {settings['steps']}, CFG: {settings['cfg_scale']:.1f}, Cadence: {settings['cadence']}")
+        log.append(f"  - Sampler: {settings['sampler']}, Scheduler: {settings['scheduler']}")
         log.append(f"  - Strength: {settings['strength']} (normal), {settings['keyframe_strength']} (keyframe)")
         log.append("")
 
@@ -326,13 +361,14 @@ def execute_quick_test(
                 else:
                     args_dict[key] = config
 
-            # Override with test-specific settings
+            # Override with test-specific settings (model-detected)
             args_dict['W'] = 1280
             args_dict['H'] = 720
             args_dict['fps'] = fps
-            args_dict['steps'] = settings['steps']
-            args_dict['cfg_scale'] = settings['cfg_scale']
-            args_dict['sampler'] = settings['sampler']
+            args_dict['steps'] = settings['steps']  # Model-specific
+            args_dict['cfg_scale'] = settings['cfg_scale']  # Model-specific
+            args_dict['sampler'] = settings['sampler']  # Model-specific
+            args_dict['scheduler'] = settings['scheduler']  # Model-specific
             args_dict['seed'] = random_seed
             args_dict['strength'] = settings['strength']
             args_dict['max_frames'] = total_frames
