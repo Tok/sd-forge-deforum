@@ -472,7 +472,7 @@ def execute_quick_test(
             log.append(f"✨ Settings ready! Updating UI components:")
             log.append(f"  - Prompts: {len(generated_prompts)} keyframes")
             log.append(f"  - Audio: {audio_path}")
-            log.append(f"  - Max Frames: {total_frames} (was probably much higher before)")
+            log.append(f"  - Max Frames: {total_frames}")
             log.append(f"  - FPS: {fps}")
             log.append(f"  - Steps: {settings['steps']}")
             log.append(f"  - Cadence: {settings['cadence']}")
