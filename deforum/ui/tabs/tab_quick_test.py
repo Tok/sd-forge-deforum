@@ -48,8 +48,10 @@ def _build_quick_test_ui(components: dict):
     """)
 
     gr.HTML(value="""
-        <div style='background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin-bottom: 15px;'>
-            <p style='margin: 0; font-size: 13px; color: #92400e;'>
+        <div style='background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+                    border-left: 4px solid #ff1493; padding: 12px; margin-bottom: 15px;
+                    border-radius: 5px; color: white;'>
+            <p style='margin: 0; font-size: 13px; font-weight: 500;'>
                 ⚠️ <strong>Warning:</strong> Clicking "Prepare Quick Test Settings" will replace your current prompts,
                 audio path, camera movement, and other settings in the UI. A backup JSON file is saved automatically.
             </p>

@@ -92,8 +92,8 @@ def handle_generate_test_click(
         logger.info(f"Duration: {duration}s, Seed: {seed}")
         logger.info("=" * 60)
 
-        # Execute test render
-        result = execute_quick_test(
+        # Execute test generation (returns tuple directly)
+        return execute_quick_test(
             prompt_theme=prompt_theme.strip(),
             audio_theme=audio_theme.strip(),
             duration_seconds=duration,
@@ -101,32 +101,24 @@ def handle_generate_test_click(
             output_dir=OutputPaths.DEFORUM
         )
 
-        # Format results for UI
-        if result["success"]:
-            status = f"{check} Test complete! Video: {result['video_path']}"
-            log = "\n".join(result["log"])
-            settings = json.dumps(result["settings"], indent=2)
-
-            logger.info(f"{check} Success: {result['video_path']}")
-        else:
-            status = f"{cross} Test failed: {result['error']}"
-            log = "\n".join(result["log"])
-            settings = "{}"
-
-            logger.error(f"{cross} Failure: {result['error']}")
-
-        return (status, log, settings)
-
     except Exception as e:
         error_msg = f"💥 Unexpected error: {str(e)}"
         error_trace = traceback.format_exc()
 
         logger.error(f"{error_msg}\n{error_trace}")
 
+        # Return full 10-value tuple for error case
         return (
             f"{cross} Fatal error: {str(e)}",
             f"💥 UNEXPECTED ERROR\n\n{error_trace}",
-            "{}"
+            "{}",  # settings_json
+            "{}",  # prompts
+            "",    # audio_path
+            60,    # fps
+            120,   # max_frames
+            "0:(0)",  # translation_z
+            "0:(0)",  # rotation_y
+            "0:(0.85)"  # strength_schedule
         )
 
 
@@ -136,8 +128,8 @@ def execute_quick_test(
     duration_seconds: float,
     random_seed: int,
     output_dir: str
-) -> dict:
-    """Execute the quick test render.
+) -> Tuple[str, str, str, str, str, int, int, str, str, str]:
+    """Execute the quick test generation.
 
     Args:
         prompt_theme: Theme for prompt generation
@@ -147,8 +139,12 @@ def execute_quick_test(
         output_dir: Output directory path
 
     Returns:
-        Dict with keys: success, video_path, log, settings, error
+        Tuple of (status, log, settings_json, prompts, audio_path, fps, max_frames, translation_z, rotation_y, strength_schedule)
     """
+    # Theme-aware emojis
+    check = emoji_utils.maybe_check()
+    cross = emoji_utils.maybe_cross()
+
     log = []
 
     try:
