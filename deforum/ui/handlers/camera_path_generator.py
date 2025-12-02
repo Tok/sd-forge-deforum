@@ -917,14 +917,17 @@ def handle_generate_preset(
                 logger.debug(f"First 5 actual translation_x schedule values: {', '.join(first_5_actual)}")
 
     # Generate visualization immediately
+    # Use FULL schedules if available (for large animations), otherwise use downsampled
+    viz_schedules = _current_full_schedules if _current_full_schedules else schedules
+
     try:
         fig, _ = visualize_schedules(
-            schedules.get('translation_x', ''),
-            schedules.get('translation_y', ''),
-            schedules.get('translation_z', ''),
-            schedules.get('rotation_3d_x', ''),
-            schedules.get('rotation_3d_y', ''),
-            schedules.get('rotation_3d_z', ''),
+            viz_schedules.get('translation_x', ''),
+            viz_schedules.get('translation_y', ''),
+            viz_schedules.get('translation_z', ''),
+            viz_schedules.get('rotation_3d_x', ''),
+            viz_schedules.get('rotation_3d_y', ''),
+            viz_schedules.get('rotation_3d_z', ''),
             int(num_frames),
             animation_prompts or "",
             shake_name="None",

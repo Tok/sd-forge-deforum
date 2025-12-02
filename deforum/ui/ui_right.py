@@ -833,9 +833,15 @@ def on_ui_tabs():
             def apply_preset_wrapper(render_mode):
                 """Wrapper to apply model defaults and return component updates."""
                 from deforum.config.model_presets import get_preset_for_model, detect_loaded_model
+                from deforum.utils.system.logging import get_logger
+
+                logger = get_logger()
+                logger.info("Apply Model Defaults clicked", emoji='target')
 
                 # Get current model
                 model_name = detect_loaded_model()
+                logger.info(f"Detected model: {model_name}")
+
                 if not model_name:
                     cross = emoji_if_enabled("❌")
                     return [f"{cross} No model loaded"] + [gr.skip()] * 6
@@ -843,10 +849,14 @@ def on_ui_tabs():
                 preset = get_preset_for_model(model_name)
                 if not preset:
                     cross = emoji_if_enabled("❌")
+                    logger.warning(f"No preset found for model: {model_name}")
                     return [f"{cross} No preset for: {model_name[:40]}..."] + [gr.skip()] * 6
+
+                logger.info(f"Found preset: {preset.model_type.value}, steps={preset.steps}, scheduler={preset.scheduler}")
 
                 # Get settings
                 status_msg, settings = handle_apply_model_defaults(render_mode)
+                logger.info(f"Settings to apply: {settings}")
 
                 # Build detailed status
                 changed = []

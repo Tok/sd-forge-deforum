@@ -47,8 +47,9 @@ def get_tab_run(d, da):
                 label="Status",
                 value="",
                 interactive=False,
-                visible=False,
-                elem_id='model_preset_status'
+                visible=True,
+                elem_id='model_preset_status',
+                lines=2
             )
 
         with FormRow():
