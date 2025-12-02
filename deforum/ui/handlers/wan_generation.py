@@ -313,7 +313,7 @@ def _construct_output_directory(args, root, emojis):
     from deforum.utils.system.logging import get_logger
     logger = get_logger()
 
-    deforum_outpath = os.path.join(os.getcwd(), 'outputs', 'deforum')
+    deforum_outpath = os.path.join(os.getcwd(), 'output', 'deforum')
 
     # Get batch name with fallbacks
     batch_name = _get_batch_name(args, root, emojis)

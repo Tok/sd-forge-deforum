@@ -55,7 +55,7 @@ def process_interp_vid_upload_logic(file, engine, x_am, sl_enabled, sl_am, keep_
 
     _, _, resolution = get_quick_vid_info(file.name)
     folder_name = clean_folder_name(Path(vid_file_name).stem)
-    outdir = opts.outdir_samples or os.path.join(os.getcwd(), 'outputs')
+    outdir = opts.outdir_samples or os.path.join(os.getcwd(), 'output')
     outdir_no_tmp = outdir + f'/frame-interpolation/{folder_name}'
     i = 1
     while os.path.exists(outdir_no_tmp):
@@ -217,10 +217,10 @@ def process_interp_pics_upload_logic(pic_list, engine, x_am, sl_enabled, sl_am, 
     pic_path_list = [pic.name for pic in pic_list]
     logger.info(f"got a request to *frame interpolate* a set of {len(pic_list)} images.")
     folder_name = clean_folder_name(Path(pic_list[0].name).stem)
-    outdir_no_tmp = os.path.join(os.getcwd(), 'outputs', 'frame-interpolation', folder_name)
+    outdir_no_tmp = os.path.join(os.getcwd(), 'output', 'frame-interpolation', folder_name)
     i = 1
     while os.path.exists(outdir_no_tmp):
-        outdir_no_tmp = os.path.join(os.getcwd(), 'outputs', 'frame-interpolation', folder_name + '_' + str(i))
+        outdir_no_tmp = os.path.join(os.getcwd(), 'output', 'frame-interpolation', folder_name + '_' + str(i))
         i += 1
 
     outdir = os.path.join(outdir_no_tmp, 'tmp_input_frames')

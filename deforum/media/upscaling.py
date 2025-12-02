@@ -45,7 +45,7 @@ def process_ncnn_upscale_vid_upload_logic(vid_path, in_vid_fps, in_vid_res, out_
     _get_logger().info(f"Got a request to *upscale* a video using {upscale_model} at {upscale_factor}")
 
     folder_name = clean_folder_name(Path(vid_path.name).stem)
-    outdir = opts.outdir_samples or os.path.join(os.getcwd(), 'outputs')
+    outdir = opts.outdir_samples or os.path.join(os.getcwd(), 'output')
     outdir_no_tmp = outdir + f'/frame-upscaling/{folder_name}'
     i = 1
     while os.path.exists(outdir_no_tmp):

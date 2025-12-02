@@ -265,7 +265,7 @@ class TuningTestManager:
 
         # Clean up old orbit test results before starting new run
         forge_root = Path(os.getcwd())
-        output_dir = forge_root / "outputs" / "deforum-tuning" / "depth_warping_orbits"
+        output_dir = forge_root / "output" / "deforum-tuning" / "depth_warping_orbits"
         if output_dir.exists():
             logger.info(f"Cleaning up old orbit test results in {output_dir}")
             # Remove old test directories (aspect*_*x*_factor*.*)
@@ -550,7 +550,7 @@ class TuningTestManager:
 
         # Save graph
         forge_root = Path(os.getcwd())
-        output_dir = forge_root / "outputs" / "deforum-tuning" / "depth_warping_orbits"
+        output_dir = forge_root / "output" / "deforum-tuning" / "depth_warping_orbits"
         output_path = output_dir / f"orbit_tuning_results_{test_id}.html"
 
         fig.write_html(str(output_path))
@@ -791,7 +791,7 @@ class TuningTestManager:
 
         # Save graph
         forge_root = Path(os.getcwd())
-        output_dir = forge_root / "outputs" / "deforum-tuning" / "raft_tests"
+        output_dir = forge_root / "output" / "deforum-tuning" / "raft_tests"
         output_path = output_dir / f"raft_tuning_results_{test_id}.html"
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1147,7 +1147,7 @@ class TuningTestManager:
         # Note: Deforum appends batch_name to outdir_samples, so we use parent dir
         import os
         forge_root = Path(os.getcwd())  # Forge root directory
-        output_dir = forge_root / "outputs" / "deforum-tuning" / "depth_warping_orbits"
+        output_dir = forge_root / "output" / "deforum-tuning" / "depth_warping_orbits"
         aspect_str = f"{int(aspect_ratio*100):03d}"
         # Use 2 decimal places to avoid collisions (-7.0 vs -6.95)
         test_name = f"aspect{aspect_str}_{width}x{height}_factor{abs(rotation_factor):.2f}"
@@ -1440,7 +1440,7 @@ class TuningTestManager:
         # Create test output directory
         import os
         forge_root = Path(os.getcwd())
-        output_dir = forge_root / "outputs" / "deforum-tuning" / "raft_tests"
+        output_dir = forge_root / "output" / "deforum-tuning" / "raft_tests"
         aspect_str = f"{int(aspect_ratio*100):03d}"
         test_name = (
             f"aspect{aspect_str}_{width}x{height}_"
@@ -1696,7 +1696,7 @@ class TuningTestManager:
         # Create test output directory in Forge root (not extension directory)
         import os
         forge_root = Path(os.getcwd())
-        output_dir = forge_root / "outputs" / "deforum-tuning" / "color_preservation"
+        output_dir = forge_root / "output" / "deforum-tuning" / "color_preservation"
         test_name = f"steps{steps}_norm{normal_strength:.2f}_kf{kf_strength:.2f}"
         test_dir = output_dir / test_name
         test_dir.mkdir(parents=True, exist_ok=True)

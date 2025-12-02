@@ -62,7 +62,7 @@ def get_latest_frames():
     import gradio as gr
 
     try:
-        deforum_outdir = os.path.join(os.getcwd(), "outputs", "deforum")
+        deforum_outdir = os.path.join(os.getcwd(), "output", "deforum")
 
         # Find most recent directory (Deforum_TIMESTAMP pattern)
         subdirs = [
@@ -308,7 +308,7 @@ def on_ui_tabs():
                 id_part = "deforum"
 
                 # Use Deforum-specific output directory
-                deforum_outdir = os.path.join(os.getcwd(), "outputs", "deforum")
+                deforum_outdir = os.path.join(os.getcwd(), "output", "deforum")
                 os.makedirs(deforum_outdir, exist_ok=True)
 
                 # Create output panel with gallery for viewing finished videos

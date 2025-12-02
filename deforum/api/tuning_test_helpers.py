@@ -142,7 +142,7 @@ def get_test_options_overrides(output_dir: Path = None) -> Dict[str, Any]:
             import os
             forge_root = Path(os.getcwd())
             return {
-                "outdir_samples": str(forge_root / "outputs" / "deforum-tuning"),
+                "outdir_samples": str(forge_root / "output" / "deforum-tuning"),
             }
 
 

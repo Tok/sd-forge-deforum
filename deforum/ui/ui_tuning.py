@@ -714,9 +714,9 @@ def create_tuning_tab() -> tuple:
             from modules.util import open_folder
             import os
 
-            # Use Forge's standard outputs directory (same as normal generations)
+            # Use Forge's standard output directory (same as normal generations)
             forge_root = Path(os.getcwd())
-            tuning_dir = forge_root / "outputs" / "deforum-tuning"
+            tuning_dir = forge_root / "output" / "deforum-tuning"
             tuning_dir.mkdir(parents=True, exist_ok=True)
 
             logger.info(f"Opening tuning directory: {tuning_dir}")
