@@ -5,6 +5,8 @@
 
 ⚠️ **COMPATIBILITY WARNING**: This fork is **100% incompatible** with older Deforum versions and original `deforum_settings.txt` files. You must use the new settings format from this repository.
 
+🚧 **WORK IN PROGRESS**: Active development - visualizations (camera path, wormtrail) and some UI features may be temporarily broken or not work as intended. Use at your own risk!
+
 **Primary Target:** [Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo) - Fully tested and supported
 **Other Forge versions:** May work but remain untested
 
