@@ -7,6 +7,7 @@ optimal defaults based on model type, step count, and render mode.
 from typing import Dict, Any, Optional, NamedTuple
 from dataclasses import dataclass
 from enum import Enum
+from deforum.utils.system.logging import emoji_if_enabled
 
 
 class ModelType(Enum):
@@ -345,27 +346,21 @@ def create_preset_message(preset: ModelPreset, render_mode: str) -> str:
     """
     adjustments = get_preset_adjustments_for_render_mode(preset, render_mode)
 
+    # Use emoji utility to respect global settings
+    target_emoji = emoji_if_enabled("🎯")
+    bullet = emoji_if_enabled("•")
+
     msg = f"""
-🎯 Optimal Settings for {preset.model_type.value.upper()}
+{target_emoji} {preset.model_type.value.upper()} Optimal Settings
 
-**Core Settings:**
-• Steps: {preset.steps}
-• Scheduler: {preset.scheduler.upper()}
-• Resolution: {preset.width}x{preset.height}
-• FPS: {adjustments.get('fps', preset.fps)}
+This will adjust quality/performance parameters:
+{bullet} Steps: {preset.steps}
+{bullet} Scheduler: {preset.scheduler.upper()}
+{bullet} CFG Scale: {preset.cfg_scale}
+{bullet} Resolution: {preset.width}x{preset.height}
 
-**Strength (Inverted):**
-• Keyframe: {adjustments.get('strength_keyframe', preset.strength_keyframe)} (preservation)
-• Cadence: {adjustments.get('strength_cadence', preset.strength_cadence)} (preservation)
-
-**Guidance:**
-• CFG Scale: {preset.cfg_scale}
-• Guidance (diffusers): {preset.guidance_scale}
-
-**Notes:**
-{preset.notes}
-
-**Apply these settings?**
+Your prompts, keyframes, and output settings are NOT changed.
+Save current settings first if you want to revert.
 """.strip()
 
     return msg

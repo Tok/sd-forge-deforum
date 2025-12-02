@@ -7,6 +7,7 @@ seed, and batch mode/resume options.
 import gradio as gr
 from modules.ui_components import FormRow
 from deforum.utils.system.logging.emoji import run as emoji_run
+from deforum.utils.system.logging import emoji_if_enabled
 from deforum.utils.ui.builders import create_row, create_gr_elem
 
 
@@ -27,7 +28,8 @@ def get_tab_run(d, da):
         seed, batch_name = create_row(d, 'seed', 'batch_name')
 
         # Model Preset Section
-        with gr.Accordion('🎯 Model Presets', open=False):
+        preset_title = f"{emoji_if_enabled('🎯')} Model Presets"
+        with gr.Accordion(preset_title, open=False):
             with gr.Row():
                 with gr.Column(scale=3):
                     model_preset_info = gr.HTML(

@@ -832,7 +832,33 @@ def on_ui_tabs():
         if 'apply_model_defaults_btn' in components:
             def apply_preset_wrapper(render_mode):
                 """Wrapper to apply model defaults and return component updates."""
+                from deforum.config.model_presets import get_preset_for_model, detect_loaded_model
+
+                # Get current model
+                model_name = detect_loaded_model()
+                if not model_name:
+                    cross = emoji_if_enabled("❌")
+                    return [f"{cross} No model loaded"] + [gr.skip()] * 6
+
+                preset = get_preset_for_model(model_name)
+                if not preset:
+                    cross = emoji_if_enabled("❌")
+                    return [f"{cross} No preset for: {model_name[:40]}..."] + [gr.skip()] * 6
+
+                # Get settings
                 status_msg, settings = handle_apply_model_defaults(render_mode)
+
+                # Build detailed status
+                changed = []
+                if 'steps' in settings:
+                    changed.append(f"Steps→{settings['steps']}")
+                if 'scheduler' in settings:
+                    changed.append(f"Scheduler→{settings['scheduler']}")
+                if 'scale' in settings:
+                    changed.append(f"CFG→{settings['scale']}")
+
+                check = emoji_if_enabled("✅")
+                status_msg = f"{check} {preset.model_type.value.upper()}: {', '.join(changed)}"
 
                 # Create update dict for all affected components
                 updates = []

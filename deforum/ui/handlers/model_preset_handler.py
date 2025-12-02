@@ -11,7 +11,7 @@ from deforum.config.model_presets import (
     ModelType,
     ModelPreset
 )
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 logger = get_logger()
 
@@ -111,7 +111,8 @@ def handle_apply_model_defaults(render_mode: str, *current_values) -> Tuple[str,
     preset, model_name = get_preset_for_current_model()
 
     if preset is None:
-        return f"❌ {model_name}", {}
+        cross = emoji_if_enabled("❌")
+        return f"{cross} {model_name}", {}
 
     # Get settings dict for this preset and render mode
     settings = get_settings_dict_from_preset(preset, render_mode)
@@ -121,7 +122,8 @@ def handle_apply_model_defaults(render_mode: str, *current_values) -> Tuple[str,
 
     logger.info(f"Applied {preset.model_type.value} preset for {render_mode} mode")
 
-    return f"✅ {preset.model_type.value.upper()} defaults applied", settings
+    check = emoji_if_enabled("✅")
+    return f"{check} {preset.model_type.value.upper()} defaults applied", settings
 
 
 def create_preset_status_message(
@@ -139,18 +141,21 @@ def create_preset_status_message(
     Returns:
         Formatted status string
     """
+    circle = emoji_if_enabled("⚪")
+    target = emoji_if_enabled("🎯")
+
     if model_name is None:
-        return "⚪ No model loaded"
+        return f"{circle} No model loaded"
 
     if model_type == ModelType.UNKNOWN:
-        return f"⚪ Unknown model: {model_name[:50]}"
+        return f"{circle} Unknown model: {model_name[:50]}"
 
     preset = get_preset_for_model(model_name)
 
     if preset is None:
-        return f"⚪ {model_type.value.upper()} (no preset available)"
+        return f"{circle} {model_type.value.upper()} (no preset available)"
 
-    return f"🎯 {model_type.value.upper()} | {preset.steps} steps, {preset.scheduler}"
+    return f"{target} {model_type.value.upper()} | {preset.steps} steps, {preset.scheduler}"
 
 
 def handle_model_change_notification(render_mode: str) -> str:
@@ -176,10 +181,11 @@ def handle_model_change_notification(render_mode: str) -> str:
         return ""
 
     # Create notification
+    target = emoji_if_enabled("🎯")
     message = f"""
 <div style="padding: 15px; background: rgba(23, 167, 254, 0.1); border-left: 4px solid #17A7FE; border-radius: 4px; margin: 10px 0;">
     <div style="font-weight: bold; color: #17A7FE; margin-bottom: 8px;">
-        🎯 Model Changed: {model_type.value.upper()}
+        {target} Model Changed: {model_type.value.upper()}
     </div>
     <div style="color: #CBD5E1; font-size: 13px; margin-bottom: 8px;">
         Optimal settings available for this model.
