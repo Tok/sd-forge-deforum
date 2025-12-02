@@ -258,21 +258,25 @@ def execute_quick_test(
             log.append(f"✓ Detected {len(event_times)} events at {detected_bpm:.1f} BPM")
 
             # If we got very few events, use fallback
-            if len(event_times) < 3:
-                log.append(f"⚠️ Only {len(event_times)} events detected, using evenly-spaced fallback")
-                # Fallback: evenly spaced events every 0.5 seconds (for good prompt sync)
-                event_interval = 0.5
-                event_times = [i * event_interval for i in range(int(actual_duration / event_interval))]
+            # We want ~2-3 events per second for good prompt variety
+            min_events = max(6, int(actual_duration * 2))  # At least 2 events/second
+            if len(event_times) < min_events:
+                log.append(f"⚠️ Only {len(event_times)} events detected (want {min_events}), using evenly-spaced fallback")
+                # Fallback: evenly spaced events every 0.3-0.4 seconds for rich prompt sync
+                events_per_second = 2.5  # 2.5 events/second = 0.4s interval
+                num_events = int(actual_duration * events_per_second) + 1  # +1 for frame 0
+                event_times = [i / events_per_second for i in range(num_events)]
                 event_intensities = [0.5] * len(event_times)
-                log.append(f"Using {len(event_times)} evenly-spaced events at {event_interval}s intervals")
+                log.append(f"Using {len(event_times)} evenly-spaced events ({events_per_second} per second)")
 
         except Exception as e:
             log.append(f"⚠️ Event detection failed: {e}")
-            # Fallback: evenly spaced events every 0.5 seconds
-            event_interval = 0.5
-            event_times = [i * event_interval for i in range(int(actual_duration / event_interval))]
+            # Fallback: evenly spaced events for rich prompt variety
+            events_per_second = 2.5  # 2.5 events/second = 0.4s interval
+            num_events = int(actual_duration * events_per_second) + 1  # +1 for frame 0
+            event_times = [i / events_per_second for i in range(num_events)]
             event_intensities = [0.5] * len(event_times)
-            log.append(f"Using {len(event_times)} evenly-spaced fallback events at {event_interval}s intervals")
+            log.append(f"Using {len(event_times)} evenly-spaced fallback events ({events_per_second} per second)")
 
         log.append("")
 
