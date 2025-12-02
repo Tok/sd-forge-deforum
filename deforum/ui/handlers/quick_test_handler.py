@@ -468,6 +468,14 @@ def execute_quick_test(
             log.append(f"  - Model: {model_name}")
             log.append(f"  - {total_frames} frames @ {fps} FPS ({duration_seconds}s)")
             log.append(f"  - {len(generated_prompts)} escalating synthwave prompts")
+            log.append("")
+            log.append(f"✨ Settings ready! Updating UI components:")
+            log.append(f"  - Prompts: {len(generated_prompts)} keyframes")
+            log.append(f"  - Audio: {audio_path}")
+            log.append(f"  - Max Frames: {total_frames} (was probably much higher before)")
+            log.append(f"  - FPS: {fps}")
+            log.append(f"  - Steps: {settings['steps']}")
+            log.append(f"  - Cadence: {settings['cadence']}")
 
             # Return tuple with UI updates
             return (

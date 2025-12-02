@@ -19,7 +19,9 @@ import gradio as gr
 from deforum.config.defaults import get_gradio_html
 from deforum.ui.gradio_funcs import change_css, handle_change_functions
 from deforum.config.args import DeforumArgs, DeforumAnimArgs, ParseqArgs, AudioSyncArgs, DeforumOutputArgs, RootArgs, LoopArgs, WanArgs
-from deforum.utils.system.logging import emoji as emoji_utils
+from deforum.utils.system.logging import emoji as emoji_utils, get_logger
+
+logger = get_logger()
 # TEMPORARILY DISABLED: ControlNet support disabled until Flux-specific reimplementation
 # from .deforum_controlnet import setup_controlnet_ui
 from deforum.ui.ui_elements import (get_tab_run, get_tab_keyframes, get_tab_prompts, get_tab_init,
@@ -574,6 +576,14 @@ def setup_deforum_left_side_ui():
                 qt_strength_schedule = locals().get('strength_schedule')
                 qt_steps = locals().get('steps')
                 qt_cadence = locals().get('cadence')
+
+                # Debug: Verify components exist
+                logger.debug(f"Quick Test UI component wiring:")
+                logger.debug(f"  animation_prompts: {qt_animation_prompts is not None}")
+                logger.debug(f"  max_frames: {qt_max_frames is not None}")
+                logger.debug(f"  fps: {qt_fps is not None}")
+                logger.debug(f"  steps: {qt_steps is not None}")
+                logger.debug(f"  cadence: {qt_cadence is not None}")
 
                 # Main Generate Test button - loads settings into UI automatically
                 locals()['btn_generate_test'].click(
