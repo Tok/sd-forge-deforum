@@ -119,9 +119,9 @@ def _build_quick_test_ui(components: dict):
     with FormRow(variant="compact"):
         quick_test_status = gr.Textbox(
             label="Status",
-            value="Ready to prepare test settings",
+            value="⚠️ Click 'Prepare Quick Test Settings' first, then go to Run tab and click 'Generate'",
             interactive=False,
-            lines=1
+            lines=2
         )
 
     with FormRow(variant="compact"):
