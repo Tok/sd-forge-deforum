@@ -651,9 +651,9 @@ def visualize_schedules(
                         transition=dict(duration=0)
                     )],
                     method='animate',
-                    label=str(idx)
+                    label=f.name  # Use frame name (original frame number) as label
                 )
-                for idx, f in enumerate(plotly_frames)
+                for f in plotly_frames
             ]
         )]
     )

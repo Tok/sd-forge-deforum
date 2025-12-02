@@ -52,6 +52,8 @@ def update_frame_overlap_visualization(
         HTML string for visualization (or error/skip message)
     """
     try:
+        logger.info(f"🐛 Wormtrail ENTRY: max_frames={max_frames}")
+
         # Strip truncation indicators from schedules (if present)
         # Truncated schedules have format: "0: (1.0), 100: (2.0) ... [truncated at frame 1000, full schedule in settings.json]"
         # No need to strip markers - schedules are now always full
@@ -67,6 +69,23 @@ def update_frame_overlap_visualization(
             'rotation_3d_z': rotation_3d_z or "0:(0)",
         }
 
+        logger.info(f"🐛 Wormtrail base schedule tx length: {len(base_schedules['translation_x'])} chars")
+
+        # Detect if schedules are downsampled BEFORE calling shakify
+        # Count keyframes in any schedule to check
+        import re
+        def count_keyframes(schedule_str):
+            if not schedule_str or not schedule_str.strip():
+                return 0
+            pattern = r'(\d+)\s*:\s*\([^)]+\)'
+            return len(re.findall(pattern, schedule_str))
+
+        sample_keyframe_count = count_keyframes(base_schedules['translation_x'])
+        is_downsampled = sample_keyframe_count < max_frames * 0.1 and sample_keyframe_count > 0
+        effective_max_frames = sample_keyframe_count if is_downsampled else max_frames
+
+        logger.debug(f"Wormtrail pre-shakify analysis: max_frames={max_frames}, keyframe_count={sample_keyframe_count}, is_downsampled={is_downsampled}, effective_max_frames={effective_max_frames}")
+
         # Apply shakify overlay to get final combined schedules
         # Scale down intensity to 30% for subtle visualization
         viz_intensity = shake_intensity * 0.3 if shake_name != "None" else 0.0
@@ -76,7 +95,7 @@ def update_frame_overlap_visualization(
             shake_name=shake_name,
             shake_intensity=viz_intensity,
             shake_speed=shake_speed,
-            max_frames=max_frames,
+            max_frames=effective_max_frames,  # Use detected keyframe count for downsampled schedules
             target_fps=target_fps
         )
 
@@ -86,8 +105,14 @@ def update_frame_overlap_visualization(
         rx_schedule = final_schedules['rotation_3d_x']
         ry_schedule = final_schedules['rotation_3d_y']
 
-        # Create parser
-        parser = FrameInterpolater(max_frames=max_frames)
+        # Use effective_max_frames from pre-shakify detection
+        # (shakify already expanded schedules to this length)
+        actual_frames = effective_max_frames
+
+        logger.debug(f"Wormtrail post-shakify: using actual_frames={actual_frames}")
+
+        # Create parser with detected frame count
+        parser = FrameInterpolater(max_frames=actual_frames)
 
         # Parse keyframes
         tx_keys = parser.parse_key_frames(tx_schedule)
@@ -134,11 +159,11 @@ def update_frame_overlap_visualization(
         #
         # Solution: Disable rotation for frame overlap visualization
         # The translation deltas alone show the camera path correctly
-        combined_rotation_deltas = [0.0] * max_frames
+        combined_rotation_deltas = [0.0] * actual_frames
 
         # Trace: Log first 20 frames of delta values (verbose diagnostic)
         logger.trace("Frame overlap delta schedules (first 20 frames):")
-        for i in range(min(20, max_frames)):
+        for i in range(min(20, actual_frames)):
             logger.trace(
                 f"  Frame {i:3d}: tx={tx_deltas[i]:7.2f}, ty={ty_deltas[i]:7.2f}, "
                 f"rx={rx_deltas[i]:7.2f}, ry={ry_deltas[i]:7.2f}, combined_rot={combined_rotation_deltas[i]:7.2f}"
@@ -151,7 +176,7 @@ def update_frame_overlap_visualization(
             zoom_deltas = zoom_series.tolist()
         else:
             # No zoom schedule provided, use 1.0 (no zoom)
-            zoom_deltas = [1.0] * max_frames
+            zoom_deltas = [1.0] * actual_frames
 
         # Parse prompt keyframes (frames with prompt entries)
         prompt_keyframes = set()

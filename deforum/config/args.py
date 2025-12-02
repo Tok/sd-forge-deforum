@@ -1547,6 +1547,23 @@ def process_args(args_dict_main, run_id):
     custom_settings_file = args_dict_main['custom_settings_file']
     p = args_dict_main['p']
 
+    # Check if full schedules are stored in memory (for large animations)
+    # If so, replace downsampled textbox values with full schedules
+    try:
+        from deforum.ui.handlers.camera_path_generator import get_full_schedules_if_stored
+        full_schedules = get_full_schedules_if_stored()
+        if full_schedules:
+            from deforum.utils.system.logging import get_logger
+            logger = get_logger()
+            logger.info("Using full schedules from memory (large animation bypassing downsampled textbox values)")
+            # Replace downsampled textbox values with full schedules
+            for key, value in full_schedules.items():
+                if key in args_dict_main:
+                    args_dict_main[key] = value
+    except Exception as e:
+        # Silently fail if import fails (e.g., during API calls or missing dependency)
+        pass
+
     root = SimpleNamespace(**RootArgs())
     args = SimpleNamespace(**{name: args_dict_main[name] for name in DeforumArgs()})
     anim_args = SimpleNamespace(**{name: args_dict_main[name] for name in DeforumAnimArgs()})

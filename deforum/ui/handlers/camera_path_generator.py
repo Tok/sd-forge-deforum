@@ -306,30 +306,73 @@ def _apply_schedule_truncation(
     num_frames: int,
     status: str
 ) -> Tuple[Dict[str, str], str]:
-    """Add info message for large animations (schedules NOT modified).
+    """Store full schedules in memory and return placeholders for large animations.
 
-    IMPORTANT: We do NOT downsample schedules for textboxes. The textboxes must
-    contain FULL schedules so they're used correctly during generation. We only
-    add an informational message to the status.
+    For large animations (>1000 frames), sending full schedules to Gradio textboxes
+    causes CPU spike and UI freeze (minutes of delay). Instead, we store schedules
+    in _current_full_schedules global and return placeholder text for textboxes.
 
     Args:
-        schedules: Full schedule strings dict (UNCHANGED)
+        schedules: Full schedule strings dict
         num_frames: Total number of frames
         status: Current status message
 
     Returns:
-        Tuple of (FULL_schedules, updated_status)
+        Tuple of (placeholder_schedules OR full_schedules, updated_status)
     """
+    global _current_full_schedules
+
     # Get threshold from settings
     max_display = shared.opts.data.get("deforum_max_schedule_display_frames", 1000)
 
     if should_truncate_schedules(num_frames, max_display):
-        # Add info message (schedules are NOT modified - they remain full)
-        status += f"\n\n📊 Large Animation Detected:\n- Total frames: {num_frames:,}\n- Schedule textboxes contain FULL data for accurate generation\n- Textboxes may be large but can be collapsed"
+        # Store full schedules in global for generation to retrieve
+        _current_full_schedules = schedules.copy()
 
-        logger.info(f"Large animation: {num_frames:,} frames - textboxes will contain full schedules")
-        return schedules, status  # Return FULL schedules unchanged
+        # Create downsampled schedules for textboxes (for visualization to work)
+        # Target ~300 keyframes for good visualization without UI freeze
+        TARGET_DISPLAY_KEYFRAMES = shared.opts.data.get("deforum_target_schedule_keyframes", 300)
+
+        import re
+        downsampled_schedules = {}
+
+        for key, value in schedules.items():
+            # Parse schedule entries
+            pattern = r'(\d+)\s*:\s*\(([^)]+)\)'
+            matches = re.findall(pattern, value)
+
+            if matches and len(matches) > TARGET_DISPLAY_KEYFRAMES:
+                # Calculate downsample rate to target ~TARGET_DISPLAY_KEYFRAMES
+                downsample_rate = max(1, len(matches) // TARGET_DISPLAY_KEYFRAMES)
+                downsampled_indices = set()
+
+                # Every Nth frame + first + last
+                for i in range(0, len(matches), downsample_rate):
+                    downsampled_indices.add(i)
+                downsampled_indices.add(0)
+                downsampled_indices.add(len(matches) - 1)
+
+                # Build downsampled schedule string
+                downsampled_entries = []
+                for idx in sorted(downsampled_indices):
+                    frame, val = matches[idx]
+                    downsampled_entries.append(f"{frame}: ({val})")
+
+                # Just the downsampled schedule data (no prefix text)
+                result = ', '.join(downsampled_entries)
+                downsampled_schedules[key] = result
+            else:
+                # Small enough, include as-is
+                downsampled_schedules[key] = value
+
+        # Add info message
+        status += f"\n\n📊 Large Animation - Schedules Downsampled for Display:\n- Total frames: {num_frames:,}\n- Textboxes show ~{TARGET_DISPLAY_KEYFRAMES} sampled keyframes for visualization\n- Full schedules ({num_frames:,} frames) stored internally for generation\n- When you click Generate, full schedules will be used automatically"
+
+        logger.info(f"Large animation: {num_frames:,} frames - full schedules in memory, textboxes show ~{TARGET_DISPLAY_KEYFRAMES} keyframes")
+        return downsampled_schedules, status
     else:
+        # Small animation - clear stored schedules and return full data for textboxes
+        _current_full_schedules = {}
         return schedules, status
 
 
@@ -800,8 +843,21 @@ def visualize_camera_path(camera_path: list) -> Tuple[go.Figure, str]:
     return fig, stats
 
 
-# Global state to store current path
+# Global state to store current path and full schedules (for large animations)
 _current_camera_path = []
+_current_full_schedules = {}  # Store full schedules for large animations
+
+
+def get_full_schedules_if_stored():
+    """Retrieve full schedules from memory if they were stored for a large animation.
+
+    This function should be called during generation to check if full schedules
+    are available in memory (instead of using the downsampled textbox values).
+
+    Returns:
+        Dict of full schedules if stored, empty dict otherwise
+    """
+    return _current_full_schedules.copy()
 
 
 def handle_generate_preset(
@@ -844,13 +900,21 @@ def handle_generate_preset(
     global _current_camera_path
     _current_camera_path = camera_path
 
-    # Debug: Check first few schedule values
+    # Debug: Check first few schedule values (both sampled and actual if downsampled)
     tx_schedule = schedules.get('translation_x', '')
     import re
     tx_matches = re.findall(r'(\d+)\s*:\s*\(\s*(-?\d+\.?\d*)\s*\)', tx_schedule)
     if len(tx_matches) >= 5:
-        first_5 = [f"{frame}: ({val})" for frame, val in tx_matches[:5]]
-        logger.debug(f"First 5 translation_x schedule values: {', '.join(first_5)}")
+        first_5_sampled = [f"{frame}: ({val})" for frame, val in tx_matches[:5]]
+        logger.debug(f"First 5 sampled translation_x schedule values: {', '.join(first_5_sampled)}")
+
+        # If schedules were downsampled, also show actual first 5 from full schedules
+        if _current_full_schedules and 'translation_x' in _current_full_schedules:
+            full_tx_schedule = _current_full_schedules['translation_x']
+            full_tx_matches = re.findall(r'(\d+)\s*:\s*\(\s*(-?\d+\.?\d*)\s*\)', full_tx_schedule)
+            if len(full_tx_matches) >= 5:
+                first_5_actual = [f"{frame}: ({val})" for frame, val in full_tx_matches[:5]]
+                logger.debug(f"First 5 actual translation_x schedule values: {', '.join(first_5_actual)}")
 
     # Generate visualization immediately
     try:

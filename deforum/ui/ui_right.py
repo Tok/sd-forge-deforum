@@ -920,35 +920,17 @@ def on_ui_tabs():
                     # Generate preset schedules (FULL, not truncated) and visualization
                     result = handle_generate_preset(*preset_args)
 
-                    # Extract schedule values from result
+                    # Extract schedule values from result (these are already downsampled for large animations)
                     status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot = result
 
-                    # Generate FULL schedules for wormtrail from cached camera_path
-                    # This is more efficient than parsing 30k+ frame schedule strings
-                    # Use the camera_path that was just generated (stored in global)
-                    if max_frames_val > 1000 and cpg._current_camera_path:
-                        # Regenerate full schedules from cached camera_path
-                        full_schedules = camera_path_to_schedules(
-                            cpg._current_camera_path,
-                            speed_multiplier=speed_multiplier,
-                            speed_randomization=speed_randomization,
-                            random_seed=int(random_seed) if random_seed >= 0 else 0,
-                            look_at_mode="original"  # Use original camera path rotations
-                        )
-                        tx_full = full_schedules.get('translation_x', tx_val)
-                        ty_full = full_schedules.get('translation_y', ty_val)
-                        tz_full = full_schedules.get('translation_z', tz_val)
-                        rx_full = full_schedules.get('rotation_3d_x', rx_val)
-                        ry_full = full_schedules.get('rotation_3d_y', ry_val)
-                        rz_full = full_schedules.get('rotation_3d_z', rz_val)
-                    else:
-                        # Use truncated schedules if animation is small
-                        tx_full, ty_full, tz_full = tx_val, ty_val, tz_val
-                        rx_full, ry_full, rz_full = rx_val, ry_val, rz_val
+                    # For wormtrail visualization, use the downsampled schedules from textboxes
+                    # Wormtrail will detect the actual number of keyframes and interpolate only that many frames
+                    # This prevents the 2-minute CPU spike from parsing 30k+ frame schedules
 
-                    # Update frame overlap visualization with FULL schedules
+                    # Update frame overlap visualization with downsampled schedules
+                    # The visualization will auto-detect schedule length and interpolate appropriately
                     overlap_html = update_overlap_viz(
-                        tx_full, ty_full, tz_full, rx_full, ry_full, rz_full,
+                        tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
                         *overlap_args,  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
                         prompts,  # animation_prompts
                         max_frames_val  # max_frames (from Run tab)
