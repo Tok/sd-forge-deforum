@@ -487,7 +487,8 @@ def execute_quick_test(
             log.append(f"{gear or '⚙️'} Phase 7: Loading settings into UI...")
 
             try:
-                # Import the settings loader
+                # Import the settings loader and gradio
+                import gradio as gr
                 from deforum.config.settings import load_all_settings, get_settings_component_names
 
                 # Build the args list that load_all_settings expects

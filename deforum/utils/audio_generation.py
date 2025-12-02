@@ -83,10 +83,10 @@ class IntentionallySabotagedAudio:
         # Apply chaos transformations
         audio_data = self._apply_tempo_chaos(audio_data, config)
         audio_data = self._apply_micro_loop_glitch(audio_data, config)
-        audio_data = self._apply_vinyl_crackle(audio_data)
+        audio_data = self._apply_vinyl_crackle(audio_data, config)
 
         # Save with potential corruption
-        output_path = self._save_with_chaos(audio_data, config.output_path)
+        output_path = self._save_with_chaos(audio_data, config.output_path, config)
 
         return output_path, self.slop_log
 
@@ -288,15 +288,19 @@ class IntentionallySabotagedAudio:
 
         return audio
 
-    def _apply_vinyl_crackle(self, audio: np.ndarray) -> np.ndarray:
+    def _apply_vinyl_crackle(self, audio: np.ndarray, config: AudioGenConfig) -> np.ndarray:
         """10% chance to add vinyl crackle SO LOUD it drowns out drums.
 
         Args:
             audio: Input audio
+            config: Audio generation config
 
         Returns:
             Potentially crackle-destroyed audio
         """
+        if not config.enable_chaos:
+            return audio
+
         if random.random() < self.PROB_VINYL_CRACKLE:
             # Generate crackle (random impulses)
             crackle = np.random.normal(0, 0.02, len(audio)).astype(np.float32)
@@ -320,12 +324,13 @@ class IntentionallySabotagedAudio:
 
         return audio
 
-    def _save_with_chaos(self, audio: np.ndarray, output_path: str) -> str:
+    def _save_with_chaos(self, audio: np.ndarray, output_path: str, config: AudioGenConfig) -> str:
         """Save audio with 5% chance of corrupted header (white noise intro).
 
         Args:
             audio: Audio data to save
             output_path: Target file path
+            config: Audio generation config
 
         Returns:
             Actual output path
@@ -340,8 +345,8 @@ class IntentionallySabotagedAudio:
             wav_file.setframerate(self.SAMPLE_RATE)
             wav_file.writeframes(audio_int16.tobytes())
 
-        # 5% chance to corrupt header → white noise intro
-        if random.random() < self.PROB_CORRUPT_HEADER:
+        # 5% chance to corrupt header → white noise intro (only if chaos enabled)
+        if config.enable_chaos and random.random() < self.PROB_CORRUPT_HEADER:
             self._corrupt_wav_header(output_path)
             self._log_decision("Corrupted WAV header: white noise intro (0.5s)",
                              self.PROB_CORRUPT_HEADER, True)
