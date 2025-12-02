@@ -27,26 +27,28 @@ def update_frame_overlap_visualization(
     shake_intensity: float = 1.0,
     shake_speed: float = 1.0,
     target_fps: int = 60,
-    animation_prompts: str = ""
+    animation_prompts: str = "",
+    use_full_schedules: bool = True
 ) -> Optional[str]:
     """Update frame overlap visualization from schedule strings with shakify overlay and zoom.
 
     Args:
-        translation_x: Translation X schedule string
-        translation_y: Translation Y schedule string
-        translation_z: Translation Z schedule string (unused for 2D overlap)
-        rotation_3d_x: Rotation X schedule string (unused for 2D overlap)
-        rotation_3d_y: Rotation Y schedule string (horizontal pan)
-        rotation_3d_z: Rotation Z schedule string (unused for 2D overlap)
+        translation_x: Translation X schedule string (downsampled for large animations)
+        translation_y: Translation Y schedule string (downsampled for large animations)
+        translation_z: Translation Z schedule string (downsampled for large animations)
+        rotation_3d_x: Rotation X schedule string (downsampled for large animations)
+        rotation_3d_y: Rotation Y schedule string (downsampled for large animations)
+        rotation_3d_z: Rotation Z schedule string (downsampled for large animations)
         zoom: Zoom schedule string (default: "" = no zoom, uses 1.0)
         max_frames: Maximum number of frames
         width: Viewport width in pixels
         height: Viewport height in pixels
         shake_name: Camera shakify pattern name (default: "None")
         shake_intensity: Shakify intensity multiplier (default: 1.0)
-        shake_speed: Shakify speed multiplier (default: 1.0)
+        shake_speed: shakify speed multiplier (default: 1.0)
         target_fps: Target FPS for shakify interpolation (default: 60)
         animation_prompts: Prompt schedule string (optional, for keyframe detection)
+        use_full_schedules: If True, try to use full schedules for large animations (default: True)
 
     Returns:
         HTML string for visualization (or error/skip message)
@@ -54,14 +56,14 @@ def update_frame_overlap_visualization(
     try:
         from deforum.utils.system.logging import emoji as emoji_utils
         worm = emoji_utils.worm()
-        logger.info(f"{worm} Wormtrail ENTRY: max_frames={max_frames}")
+        logger.info(f"{worm} Wormtrail ENTRY: max_frames={max_frames}, use_full_schedules={use_full_schedules}")
 
-        # Strip truncation indicators from schedules (if present)
-        # Truncated schedules have format: "0: (1.0), 100: (2.0) ... [truncated at frame 1000, full schedule in settings.json]"
-        # No need to strip markers - schedules are now always full
-        # (Downsampling was removed - textboxes contain full data for generation)
+        # Strategy for large animations:
+        # - UI textboxes show DOWNSAMPLED schedules (~300 keyframes for 30k frame animation)
+        # - Full schedules are stored in _current_full_schedules global
+        # - For wormtrail: Use DOWNSAMPLED by default (fast), allow full quality via toggle
 
-        # Build base schedules dict (zoom is handled separately, not processed by shakify)
+        # Build base schedules from provided (potentially downsampled) schedules
         base_schedules = {
             'translation_x': translation_x or "0:(0)",
             'translation_y': translation_y or "0:(0)",
@@ -71,10 +73,30 @@ def update_frame_overlap_visualization(
             'rotation_3d_z': rotation_3d_z or "0:(0)",
         }
 
-        logger.info(f"{worm} Wormtrail base schedule tx length: {len(base_schedules['translation_x'])} chars")
+        # Check if user wants full quality (may be slow for large animations)
+        full_schedules = {}
+        if use_full_schedules:
+            try:
+                from deforum.ui.handlers.camera_path_generator import get_current_full_schedules
+                full_schedules = get_current_full_schedules()
+                if full_schedules and 'translation_x' in full_schedules:
+                    # Use full schedules if available
+                    base_schedules = {
+                        'translation_x': full_schedules.get('translation_x') or "0:(0)",
+                        'translation_y': full_schedules.get('translation_y') or "0:(0)",
+                        'translation_z': full_schedules.get('translation_z') or "0:(0)",
+                        'rotation_3d_x': full_schedules.get('rotation_3d_x') or "0:(0)",
+                        'rotation_3d_y': full_schedules.get('rotation_3d_y') or "0:(0)",
+                        'rotation_3d_z': full_schedules.get('rotation_3d_z') or "0:(0)",
+                    }
+                    logger.info(f"{worm} Using FULL schedules ({len(base_schedules['translation_x'])} chars) - may be slow for large animations")
+            except Exception as e:
+                logger.debug(f"Could not get full schedules: {e}")
 
-        # Detect if schedules are downsampled BEFORE calling shakify
-        # Count keyframes in any schedule to check
+        if not full_schedules:
+            logger.info(f"{worm} Using DOWNSAMPLED schedules ({len(base_schedules['translation_x'])} chars) for fast preview")
+
+        # Count keyframes in schedule
         import re
         def count_keyframes(schedule_str):
             if not schedule_str or not schedule_str.strip():
@@ -84,7 +106,19 @@ def update_frame_overlap_visualization(
 
         sample_keyframe_count = count_keyframes(base_schedules['translation_x'])
         is_downsampled = sample_keyframe_count < max_frames * 0.1 and sample_keyframe_count > 0
-        effective_max_frames = sample_keyframe_count if is_downsampled else max_frames
+
+        # For downsampled schedules, use the keyframe count as max frames
+        # For full schedules, cap at reasonable limit to prevent UI freeze
+        MAX_WORMTRAIL_FRAMES = 1000  # Cap for full schedule rendering
+        if is_downsampled:
+            # Use actual keyframe count (already downsampled, e.g., ~304 for 30k animation)
+            effective_max_frames = sample_keyframe_count
+            logger.info(f"{worm} Downsampled mode: using {effective_max_frames} keyframes")
+        else:
+            # Cap full schedules to prevent UI freeze
+            effective_max_frames = min(max_frames, MAX_WORMTRAIL_FRAMES)
+            if max_frames > MAX_WORMTRAIL_FRAMES:
+                logger.warning(f"{worm} Capping wormtrail from {max_frames} to {MAX_WORMTRAIL_FRAMES} frames to prevent UI freeze")
 
         logger.debug(f"Wormtrail pre-shakify analysis: max_frames={max_frames}, keyframe_count={sample_keyframe_count}, is_downsampled={is_downsampled}, effective_max_frames={effective_max_frames}")
 
@@ -97,7 +131,7 @@ def update_frame_overlap_visualization(
             shake_name=shake_name,
             shake_intensity=viz_intensity,
             shake_speed=shake_speed,
-            max_frames=effective_max_frames,  # Use detected keyframe count for downsampled schedules
+            max_frames=effective_max_frames,  # Always use full max_frames for interpolation
             target_fps=target_fps
         )
 
@@ -107,8 +141,7 @@ def update_frame_overlap_visualization(
         rx_schedule = final_schedules['rotation_3d_x']
         ry_schedule = final_schedules['rotation_3d_y']
 
-        # Use effective_max_frames from pre-shakify detection
-        # (shakify already expanded schedules to this length)
+        # Use full max_frames for complete wormtrail
         actual_frames = effective_max_frames
 
         logger.debug(f"Wormtrail post-shakify: using actual_frames={actual_frames}")

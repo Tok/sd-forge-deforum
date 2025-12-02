@@ -435,6 +435,22 @@ def on_ui_tabs():
                         scale=0,
                     )
                 with gr.Row(variant="compact"):
+                    wormtrail_quality_full = gr.Checkbox(
+                        value=False,
+                        label="Full Quality",
+                        info="Use full schedules (slow for 1000+ frames, shows complete movement)",
+                        scale=0,
+                    )
+                    refresh_emoji = emoji.refresh()
+                    if refresh_emoji:
+                        refresh_emoji += " "
+                    refresh_wormtrail_btn = gr.Button(
+                        value=f"{refresh_emoji}Refresh Wormtrail" if refresh_emoji else "Refresh Wormtrail",
+                        variant="secondary",
+                        size="sm",
+                        scale=0,
+                    )
+                with gr.Row(variant="compact"):
                     frame_overlap_simulator = gr.HTML(
                         value='<div style="padding: 20px; color: #C8C8DC;">Loading frame overlap simulator...</div>',
                         label="Frame Overlap Simulator",
@@ -479,6 +495,8 @@ def on_ui_tabs():
                 components["frame_overlap_simulator"] = frame_overlap_simulator
                 components["show_shakify_in_camera_path"] = show_shakify_in_camera_path
                 components["show_shakify_in_overlap"] = show_shakify_in_overlap
+                components["wormtrail_quality_full"] = wormtrail_quality_full
+                components["refresh_wormtrail_btn"] = refresh_wormtrail_btn
                 components["analyze_path_btn"] = analyze_path_btn
                 components["optimize_path_btn"] = optimize_path_btn
                 components["path_analysis_output"] = path_analysis_output
@@ -576,6 +594,7 @@ def on_ui_tabs():
                 apply_shakify_toggle,
                 prompts,
                 max_frames_val,
+                use_full_quality=False,
             ):
                 """Update frame overlap visualization with optional shakify overlay and zoom."""
                 # Guard against empty inputs during UI initialization
@@ -621,6 +640,7 @@ def on_ui_tabs():
                     shake_speed=shake_speed,
                     target_fps=60,
                     animation_prompts=prompts or "",
+                    use_full_schedules=use_full_quality,
                 )
 
             def init_overlap_viz_with_preset():
@@ -704,11 +724,21 @@ def on_ui_tabs():
                 components.get("show_shakify_in_overlap"),  # Toggle control
                 components.get("animation_prompts"),  # For keyframe detection
                 components.get("max_frames"),  # Actual frame count
+                components.get("wormtrail_quality_full"),  # Full quality toggle
             ]
 
+            # Wire up manual refresh button for wormtrail
+            # This prevents automatic updates that freeze UI for large animations
+            if components.get("refresh_wormtrail_btn"):
+                components["refresh_wormtrail_btn"].click(
+                    fn=update_overlap_viz,
+                    inputs=viz_inputs,
+                    outputs=[frame_overlap_simulator],
+                )
+
             # Note: .change() handlers removed to prevent duplicate updates
-            # The preset button already returns frame_overlap_simulator as output (line 1016)
-            # Manual changes to schedules don't need auto-update (user can re-click preset button)
+            # The preset button already returns frame_overlap_simulator as output
+            # Manual changes to schedules don't need auto-update (user can click refresh button)
 
         # Path Analysis & Optimization handlers
         if components.get("analyze_path_btn") and components.get("optimize_path_btn"):
