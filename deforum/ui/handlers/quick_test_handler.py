@@ -97,7 +97,7 @@ def handle_generate_test_click(
 
         # Log start
         logger.info("=" * 60)
-        logger.info(f"{film or '🎬'} Quick Test started")
+        logger.info("Quick Test started")
         logger.info(f"Prompt Theme: '{prompt_theme}'")
         logger.info(f"Audio Theme: '{audio_theme}'")
         logger.info(f"Duration: {duration}s, Seed: {seed}")
