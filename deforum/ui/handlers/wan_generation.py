@@ -311,9 +311,11 @@ def _construct_output_directory(args, root, emojis):
         Constructed output directory path
     """
     from deforum.utils.system.logging import get_logger
+    from modules import shared
     logger = get_logger()
 
-    deforum_outpath = os.path.join(os.getcwd(), 'output', 'deforum')
+    # Respect Forge's video output directory setting, fallback to output/deforum
+    deforum_outpath = shared.opts.outdir_videos or os.path.join(os.getcwd(), 'output', 'deforum')
 
     # Get batch name with fallbacks
     batch_name = _get_batch_name(args, root, emojis)

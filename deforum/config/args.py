@@ -1635,11 +1635,14 @@ def process_args(args_dict_main, run_id):
     additional_substitutions = SimpleNamespace(date=time.strftime('%Y%m%d'), time=time.strftime('%H%M%S'))
     current_arg_list = [args, anim_args, video_args, parseq_args, root, additional_substitutions]
 
-    # Use dedicated Deforum output directory instead of img2img folder
-    # Allow override via outdir_samples for test isolation
-    # Check opts.data first since that's where options_overrides are set
+    # Use Deforum output directory with priority:
+    # 1. Test override (outdir_samples in opts.data) for test isolation
+    # 2. User setting (opts.outdir_videos) from Forge settings
+    # 3. Default fallback (output/deforum)
     if 'outdir_samples' in sh.opts.data and sh.opts.data['outdir_samples']:
         deforum_outpath = sh.opts.data['outdir_samples']
+    elif sh.opts.outdir_videos:
+        deforum_outpath = sh.opts.outdir_videos
     else:
         from deforum.utils.output_paths import OutputPaths
         deforum_outpath = os.path.join(os.getcwd(), OutputPaths.DEFORUM)

@@ -1,7 +1,14 @@
 """Centralized output path management for Deforum.
 
-This module provides a single source of truth for all output directory paths,
-ensuring consistency across the codebase and easy adaptation to different WebUI forks.
+This module provides default fallback paths for output directories.
+Deforum respects Forge's user-configurable output directory settings:
+
+Priority order for Deforum animations:
+1. Test override (opts.data['outdir_samples']) - for test isolation
+2. User setting (opts.outdir_videos) - from Forge Settings → Output Directory for Videos
+3. Default fallback (output/deforum) - constants in this module
+
+For upscaling/interpolation, uses opts.outdir_samples with fallback to output/.
 
 Forge Neo uses 'output/' not 'outputs/' - this module handles that centrally.
 """
@@ -11,10 +18,14 @@ from typing import Optional
 
 
 class OutputPaths:
-    """Centralized output directory path constants and utilities.
+    """Default fallback paths for Deforum outputs.
 
-    All output paths should be accessed through this class to ensure consistency
-    and easy maintenance.
+    These are FALLBACK values used when Forge settings are empty.
+    Actual output paths respect user settings from Forge Settings:
+    - opts.outdir_videos (for Deforum animations)
+    - opts.outdir_samples (for upscaling/interpolation)
+
+    See deforum/config/args.py for priority order.
     """
 
     # Base output directory (Forge Neo uses 'output', not 'outputs')
