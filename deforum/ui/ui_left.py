@@ -562,14 +562,15 @@ def setup_deforum_left_side_ui():
                     handle_open_test_output_click
                 )
 
-                # Collect UI components to update from Quick Test generation
-                animation_prompts = tab_prompts_params.get('animation_prompts')
-                soundtrack_path = tab_init_params.get('soundtrack_path')
-                fps = tab_output_params.get('fps')
-                max_frames = tab_output_params.get('max_frames')
-                translation_z = tab_keyframes_params.get('translation_z')
-                rotation_3d_y = tab_keyframes_params.get('rotation_3d_y')
-                strength_schedule = tab_keyframes_params.get('strength_schedule')
+                # Explicitly get UI components to update from Quick Test generation
+                # (Must use locals() after line 298-299 where tab params are unpacked)
+                qt_animation_prompts = locals().get('animation_prompts')
+                qt_soundtrack_path = locals().get('soundtrack_path')
+                qt_fps = locals().get('fps')
+                qt_max_frames = locals().get('max_frames')
+                qt_translation_z = locals().get('translation_z')
+                qt_rotation_3d_y = locals().get('rotation_3d_y')
+                qt_strength_schedule = locals().get('strength_schedule')
 
                 # Main Generate Test button - loads settings into UI automatically
                 locals()['btn_generate_test'].click(
@@ -584,13 +585,13 @@ def setup_deforum_left_side_ui():
                         locals()['quick_test_status'],  # Status message
                         locals()['quick_test_log'],  # Generation log
                         locals()['quick_test_generated_settings'],  # Settings JSON (hidden state)
-                        animation_prompts,  # Update prompts textbox
-                        soundtrack_path,  # Update audio path
-                        fps,  # Update FPS
-                        max_frames,  # Update max frames
-                        translation_z,  # Update camera Z movement
-                        rotation_3d_y,  # Update camera Y rotation
-                        strength_schedule  # Update strength schedule
+                        qt_animation_prompts,  # Update prompts textbox
+                        qt_soundtrack_path,  # Update audio path
+                        qt_fps,  # Update FPS
+                        qt_max_frames,  # Update max frames
+                        qt_translation_z,  # Update camera Z movement
+                        qt_rotation_3d_y,  # Update camera Y rotation
+                        qt_strength_schedule  # Update strength schedule
                     ]
                 )
 
