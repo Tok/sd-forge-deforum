@@ -266,7 +266,9 @@ def load_all_settings(*args, ui_launch=False, update_path=False, **kwargs):
         elif key == 'fill' and isinstance(val, int):
             val = mask_fill_choices[val]
         elif key in {'reroll_blank_frames', 'noise_type'} and key not in jdata:
-            default_key_val = (DeforumArgs if key != 'noise_type' else DeforumAnimArgs)[key]
+            # DeforumArgs and DeforumAnimArgs are functions that return dicts
+            default_dict = DeforumArgs() if key != 'noise_type' else DeforumAnimArgs()
+            default_key_val = default_dict.get(key, default_val)
             logger.info(f"{key} not found in load file, using default value: {default_key_val}")
             val = default_key_val
         elif key in {'animation_prompts_positive', 'animation_prompts_negative'}:

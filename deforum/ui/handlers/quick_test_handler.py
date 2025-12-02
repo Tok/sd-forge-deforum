@@ -49,9 +49,15 @@ def handle_generate_test_click(
         - cadence: Diffusion cadence
     """
     # Theme-aware status emojis
+    # Theme-aware emojis
     warning = emoji_utils.maybe_warning()
     check = emoji_utils.maybe_check()
     cross = emoji_utils.maybe_cross()
+    film = emoji_if_enabled(emoji_utils.video_camera())
+    music = emoji_if_enabled(emoji_utils.music())
+    robot = emoji_if_enabled(emoji_utils.bulb())  # AI/automation
+    gear = emoji_if_enabled(emoji_utils.gear())
+    chart = emoji_if_enabled(emoji_utils.numbers())
 
     try:
         # Validate inputs
@@ -92,7 +98,7 @@ def handle_generate_test_click(
 
         # Log start
         logger.info("=" * 60)
-        logger.info("🎬 Quick Test started")
+        logger.info(f"{film or '🎬'} Quick Test started")
         logger.info(f"Prompt Theme: '{prompt_theme}'")
         logger.info(f"Audio Theme: '{audio_theme}'")
         logger.info(f"Duration: {duration}s, Seed: {seed}")
@@ -162,7 +168,7 @@ def execute_quick_test(
         import os
         import time
 
-        log.append("🎬 Starting Quick Test generation...")
+        log.append(f"{film or '🎬'} Starting Quick Test generation...")
         log.append("")
 
         # Generate random seed if needed
@@ -187,7 +193,7 @@ def execute_quick_test(
         # Lumina needs special scheduler
         recommended_scheduler = "Karras" if not is_lumina_model() else "Karras"  # Both use Karras
 
-        log.append(f"🤖 Detected Model: {model_name}")
+        log.append(f"{robot or '🤖'} Detected Model: {model_name}")
         log.append(f"  → Recommended Steps: {recommended_steps}")
         log.append(f"  → Recommended CFG: {recommended_cfg:.1f}")
         log.append(f"  → Scheduler: {recommended_scheduler}")
@@ -196,11 +202,11 @@ def execute_quick_test(
         # Calculate frame count
         fps = 60
         total_frames = int(duration_seconds * fps)
-        log.append(f"📊 Configuration: {total_frames} frames at {fps} FPS")
+        log.append(f"{chart or '📊'} Configuration: {total_frames} frames at {fps} FPS")
         log.append("")
 
         # Phase 1: Generate synthetic audio
-        log.append("🎵 Phase 1: Generating synthetic audio...")
+        log.append(f"{music or '🎵'} Phase 1: Generating synthetic audio...")
 
         # Create output directory for this batch
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -230,7 +236,7 @@ def execute_quick_test(
         log.append("")
 
         # Phase 2: Detect audio events (BPM-aware)
-        log.append("🎵 Phase 2: Analyzing audio events...")
+        log.append(f"{music or '🎵'} Phase 2: Analyzing audio events...")
 
         try:
             import librosa
@@ -279,7 +285,7 @@ def execute_quick_test(
         log.append("")
 
         # Phase 3: Generate prompts with Qwen
-        log.append(f"🤖 Phase 3: Generating {len(event_times)} progressive prompts with Qwen...")
+        log.append(f"{robot or '🤖'} Phase 3: Generating {len(event_times)} progressive prompts with Qwen...")
 
         try:
             from deforum.ui.handlers.audio_prompt_generator import generate_prompts_with_ai
@@ -320,7 +326,7 @@ def execute_quick_test(
         log.append("")
 
         # Phase 4: Sync prompts to audio events
-        log.append("🎬 Phase 4: Syncing prompts to audio events...")
+        log.append(f"{film or '🎬'} Phase 4: Syncing prompts to audio events...")
 
         try:
             from deforum.audio import distribute_prompts_across_keyframes
@@ -357,7 +363,7 @@ def execute_quick_test(
         log.append("")
 
         # Phase 5: Build test settings
-        log.append("⚙️ Phase 5: Building test settings...")
+        log.append(f"{gear or '⚙️'} Phase 5: Building test settings...")
 
         # Map sampler names (Forge backend naming)
         sampler_map = {
@@ -411,7 +417,7 @@ def execute_quick_test(
         log.append("")
 
         # Phase 6: Save settings file as backup
-        log.append("💾 Phase 6: Saving Quick Test settings...")
+        log.append(f"{gear or '💾'} Phase 6: Saving Quick Test settings...")
         log.append("")
 
         try:
@@ -475,7 +481,7 @@ def execute_quick_test(
             log.append("")
 
             # PHASE 7: Load settings into UI automatically
-            log.append("⚙️ Phase 7: Loading settings into UI...")
+            log.append(f"{gear or '⚙️'} Phase 7: Loading settings into UI...")
 
             try:
                 # Import the settings loader
