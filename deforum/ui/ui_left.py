@@ -564,6 +564,7 @@ def setup_deforum_left_side_ui():
 
                 # Explicitly get UI components to update from Quick Test generation
                 # (Must use locals() after line 298-299 where tab params are unpacked)
+                # Note: Only update simple value components, not schedules (cfg_scale is a schedule)
                 qt_animation_prompts = locals().get('animation_prompts')
                 qt_soundtrack_path = locals().get('soundtrack_path')
                 qt_fps = locals().get('fps')
@@ -572,9 +573,6 @@ def setup_deforum_left_side_ui():
                 qt_rotation_3d_y = locals().get('rotation_3d_y')
                 qt_strength_schedule = locals().get('strength_schedule')
                 qt_steps = locals().get('steps')
-                qt_cfg_scale = locals().get('cfg_scale')
-                qt_sampler = locals().get('sampler')
-                qt_scheduler = locals().get('scheduler')
                 qt_cadence = locals().get('cadence')
 
                 # Main Generate Test button - loads settings into UI automatically
@@ -598,9 +596,6 @@ def setup_deforum_left_side_ui():
                         qt_rotation_3d_y,  # Update camera Y rotation
                         qt_strength_schedule,  # Update strength schedule
                         qt_steps,  # Update sampling steps
-                        qt_cfg_scale,  # Update CFG scale
-                        qt_sampler,  # Update sampler
-                        qt_scheduler,  # Update scheduler
                         qt_cadence  # Update diffusion cadence
                     ]
                 )
