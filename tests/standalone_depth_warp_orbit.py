@@ -33,7 +33,7 @@ parser.add_argument("--factor-min", type=float, default=-7.0)
 parser.add_argument("--factor-max", type=float, default=-3.0)
 parser.add_argument("--factor-step", type=float, default=0.5)
 parser.add_argument("--iterations", type=int, default=50)
-parser.add_argument("--output", type=Path, default=Path("outputs/depth-warp-orbit"))
+parser.add_argument("--output", type=Path, default=Path("output/depth-warp-orbit"))
 
 args = parser.parse_args()
 

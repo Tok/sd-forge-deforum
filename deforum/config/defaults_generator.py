@@ -164,8 +164,8 @@ def generate_mode_defaults(
             # Use batch directory (preferred - keeps everything together)
             audio_dir = Path(batch_dir)
         else:
-            # Fallback to outputs/audio/defaults
-            audio_dir = Path("outputs/audio/defaults")
+            # Fallback to output/audio/defaults
+            audio_dir = Path("output/audio/defaults")
             audio_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate filename based on mode

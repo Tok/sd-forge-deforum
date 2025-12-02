@@ -561,7 +561,7 @@ def orchestrate_slop(
     duration_seconds: float,
     theme: str = "",
     random_seed: int = -1,
-    output_dir: str = "outputs/zero_hitl"
+    output_dir: str = "output/zero_hitl"
 ) -> OrchestrationResult:
     """🔥 SLOP IT! 🔥
 

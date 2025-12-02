@@ -361,8 +361,8 @@ def setup_deforum_left_side_ui():
                     import shutil
                     from pathlib import Path
 
-                    # Create outputs/audio directory
-                    output_dir = Path("outputs/audio")
+                    # Create output/audio directory
+                    output_dir = Path("output/audio")
                     output_dir.mkdir(parents=True, exist_ok=True)
 
                     # Save uploaded file

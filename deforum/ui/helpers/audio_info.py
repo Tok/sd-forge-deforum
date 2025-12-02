@@ -54,8 +54,8 @@ def handle_audio_upload(audio_filepath: Optional[str], current_fps: int) -> Tupl
 
     import shutil
 
-    # Create outputs/audio directory
-    output_dir = Path("outputs/audio")
+    # Create output/audio directory
+    output_dir = Path("output/audio")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Get filename from uploaded file
