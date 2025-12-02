@@ -782,12 +782,23 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 # NOTE: use_mask_video and video_mask_path moved to dedicated Masking tab
             # NOTE: Mask Init tab moved to dedicated Masking tab
 
-            # ZERO-HITL INNER-TAB - Last tab (for one-click generation)
+            # ZERO-HITL INNER-TAB
             with gr.Tab(zero_hitl_title) as zero_hitl_subtab:
                 zero_hitl_params = get_tab_zero_hitl(skip_tabitem=True)
 
+            # QUICK TEST INNER-TAB - Last tab (for testing installation)
+            from deforum.ui.tabs.tab_quick_test import get_tab_quick_test
+            quick_test_tab_emoji = emoji_if_enabled(emoji_utils.rocket())
+            quick_test_title = f"{quick_test_tab_emoji} Quick Test" if quick_test_tab_emoji else "Quick Test"
+            with gr.Tab(quick_test_title) as quick_test_subtab:
+                quick_test_params = get_tab_quick_test(skip_tabitem=True)
+
     # Build result dict from locals/vars
     result = {k: v for k, v in {**locals(), **vars()}.items()}
+
+    # Merge Quick Test components into result
+    if 'quick_test_params' in locals() and quick_test_params:
+        result.update(quick_test_params)
 
     # Merge Zero-HITL components into result
     if 'zero_hitl_params' in locals() and zero_hitl_params:
