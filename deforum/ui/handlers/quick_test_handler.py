@@ -209,20 +209,20 @@ def execute_quick_test(
 
         audio_path = os.path.join(batch_dir, "test_audio.wav")
 
-        # Use synthetic amen break config but without chaos
-        audio_config = BUNNY_DEFAULT_AUDIO_CONFIG.copy()
-        audio_config["enable_chaos"] = False
-        audio_config["duration"] = duration_seconds
+        # Generate percussive audio for better event detection
+        # Use more percussive prompt to ensure clear transients
+        percussive_prompt = f"{audio_theme}, heavy drums, clear percussion, strong beats"
 
         try:
             generate_loop(
-                prompt=audio_theme,
+                prompt=percussive_prompt,
                 duration_seconds=duration_seconds,
                 bpm=173,  # Amen break tempo
                 output_path=audio_path,
-                enable_chaos=False
+                enable_chaos=False  # Keep it clean for reliable detection
             )
             log.append(f"✓ Audio generated: {audio_path}")
+            log.append(f"   Prompt: '{percussive_prompt}'")
         except Exception as e:
             log.append(f"⚠️ Audio generation failed (continuing without audio): {e}")
             audio_path = None
@@ -244,39 +244,37 @@ def execute_quick_test(
             total_frames = int(actual_duration * fps)
             log.append(f"Actual audio duration: {actual_duration:.2f}s → {total_frames} frames @ {fps} FPS")
 
-            # Detect events with BPM-aware sensitivity
-            # For Quick Test, we want more events for better prompt sync
+            # Detect events with VERY aggressive settings for Quick Test
+            # No fallbacks - we want to test the real audio detection system
             event_times, event_intensities, detected_bpm = detect_events_bpm_aware(
                 audio=y,
                 sample_rate=sr,
                 method="onset",  # Onset detection for transients
                 target_bpm=173,  # Amen break BPM
-                tolerance=0.20,   # ±20% acceptable (relaxed)
-                prefer_under_detection=False  # Allow more events for Quick Test
+                tolerance=0.40,   # ±40% acceptable (very relaxed for test audio)
+                prefer_under_detection=False  # Allow more events
             )
 
             log.append(f"✓ Detected {len(event_times)} events at {detected_bpm:.1f} BPM")
 
-            # If we got very few events, use fallback
-            # We want ~2-3 events per second for good prompt variety
-            min_events = max(6, int(actual_duration * 2))  # At least 2 events/second
+            # Validate we got reasonable number of events
+            min_events = max(6, int(actual_duration * 1.5))  # At least 1.5 events/second
             if len(event_times) < min_events:
-                log.append(f"⚠️ Only {len(event_times)} events detected (want {min_events}), using evenly-spaced fallback")
-                # Fallback: evenly spaced events every 0.3-0.4 seconds for rich prompt sync
-                events_per_second = 2.5  # 2.5 events/second = 0.4s interval
-                num_events = int(actual_duration * events_per_second) + 1  # +1 for frame 0
-                event_times = [i / events_per_second for i in range(num_events)]
-                event_intensities = [0.5] * len(event_times)
-                log.append(f"Using {len(event_times)} evenly-spaced events ({events_per_second} per second)")
+                error_msg = f"❌ Audio detection found only {len(event_times)} events (expected {min_events}+)"
+                log.append(error_msg)
+                log.append("This indicates a problem with audio generation or detection.")
+                log.append("Quick Test should generate audio with clear transients.")
+                logger.error(error_msg)
 
         except Exception as e:
-            log.append(f"⚠️ Event detection failed: {e}")
-            # Fallback: evenly spaced events for rich prompt variety
-            events_per_second = 2.5  # 2.5 events/second = 0.4s interval
-            num_events = int(actual_duration * events_per_second) + 1  # +1 for frame 0
-            event_times = [i / events_per_second for i in range(num_events)]
-            event_intensities = [0.5] * len(event_times)
-            log.append(f"Using {len(event_times)} evenly-spaced fallback events ({events_per_second} per second)")
+            error_msg = f"❌ Event detection failed: {e}"
+            log.append(error_msg)
+            log.append("Quick Test requires working audio event detection.")
+            logger.error(error_msg)
+            import traceback
+            logger.error(traceback.format_exc())
+            # Don't continue - this is a test failure
+            raise
 
         log.append("")
 
