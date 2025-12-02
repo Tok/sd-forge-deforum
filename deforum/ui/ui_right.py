@@ -34,6 +34,11 @@ from deforum.ui.ui_left import setup_deforum_left_side_ui
 from scripts.deforum_extend_paths import deforum_sys_extend
 import gradio as gr
 from deforum.utils.system.logging import get_logger, emoji_if_enabled
+from deforum.ui.handlers.model_preset_handler import (
+    handle_apply_model_defaults,
+    get_preset_for_current_model,
+    create_model_info_html
+)
 
 # Initialize logger
 logger = get_logger()
@@ -822,6 +827,36 @@ def on_ui_tabs():
                 components.get(name, dummy_component) or dummy_component
                 for name in component_names_needed
             ]
+
+        # Model Preset Button Handler
+        if 'apply_model_defaults_btn' in components:
+            def apply_preset_wrapper(render_mode):
+                """Wrapper to apply model defaults and return component updates."""
+                status_msg, settings = handle_apply_model_defaults(render_mode)
+
+                # Create update dict for all affected components
+                updates = []
+                for comp_name in ['steps', 'sampler', 'scheduler', 'W', 'H', 'scale']:
+                    if comp_name in settings:
+                        updates.append(settings[comp_name])
+                    else:
+                        updates.append(gr.skip())
+
+                return [status_msg] + updates
+
+            components['apply_model_defaults_btn'].click(
+                fn=apply_preset_wrapper,
+                inputs=[components.get('render_mode', dummy_component)],
+                outputs=[
+                    components.get('model_preset_status', dummy_component),
+                    components.get('steps', dummy_component),
+                    components.get('sampler', dummy_component),
+                    components.get('scheduler', dummy_component),
+                    components.get('W', dummy_component),
+                    components.get('H', dummy_component),
+                    components.get('scale', dummy_component),
+                ]
+            )
 
         submit.click(
             fn=wrap_gradio_gpu_call(run_deforum),

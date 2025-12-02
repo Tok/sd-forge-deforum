@@ -26,6 +26,29 @@ def get_tab_run(d, da):
         W, H = create_row(d, 'W', 'H')
         seed, batch_name = create_row(d, 'seed', 'batch_name')
 
+        # Model Preset Section
+        with gr.Accordion('🎯 Model Presets', open=False):
+            with gr.Row():
+                with gr.Column(scale=3):
+                    model_preset_info = gr.HTML(
+                        value='<div style="padding: 10px; color: #94A3B8;">Load a model to see optimal settings</div>',
+                        elem_id='model_preset_info'
+                    )
+                with gr.Column(scale=1):
+                    apply_model_defaults_btn = gr.Button(
+                        value="Apply Model Defaults",
+                        variant="primary",
+                        size="sm"
+                    )
+
+            model_preset_status = gr.Textbox(
+                label="Status",
+                value="",
+                interactive=False,
+                visible=False,
+                elem_id='model_preset_status'
+            )
+
         with FormRow():
             restore_faces = create_gr_elem(d.restore_faces)
             tiling = create_gr_elem(d.tiling)

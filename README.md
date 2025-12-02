@@ -9,7 +9,7 @@
 **Other Forge versions:** May work but remain untested
 
 Experimental fork of the [Deforum extension](https://github.com/deforum-art/sd-forge-deforum),
-completely refactored and modernized to work with **Flux.1/2**, **Lumina 2.0**, **Z-Image-Turbo**, **Wan 2.1/2.2 AI Video Generation**, and advanced workflow automation.
+completely refactored and modernized to work with **Flux.1**, **Lumina 2.0**, **Z-Image-Turbo**, **Wan 2.1/2.2 AI Video Generation**, and advanced workflow automation.
 
 ## 📖 Table of Contents
 
