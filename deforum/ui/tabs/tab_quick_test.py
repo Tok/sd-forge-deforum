@@ -110,7 +110,7 @@ def _build_quick_test_ui(components: dict):
         )
 
     # Respect emoji settings for preparation time message
-    clock_emoji = emoji_if_enabled(emoji_utils.clock())
+    clock_emoji = emoji_if_enabled(emoji_utils.stopwatch())
 
     gr.HTML(value=f"""
         <p style='text-align: center; font-size: 12px; opacity: 0.8; margin: -10px 0 10px 0; font-weight: 500;'>
