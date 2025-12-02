@@ -314,7 +314,7 @@ def on_reset_to_defaults_click(render_mode_val: str) -> Tuple:
         timestring = datetime.now().strftime("%Y%m%d_%H%M%S")
         mode_safe = render_mode_val.replace(' ', '')
         batch_name = f"Deforum_Defaults_{mode_safe}_{timestring}"
-        batch_dir = Path("outputs") / batch_name
+        batch_dir = Path("output") / batch_name
         batch_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate defaults

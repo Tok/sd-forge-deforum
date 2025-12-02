@@ -134,7 +134,7 @@ def generate_mode_defaults(
         >>> defaults = generate_mode_defaults(
         ...     render_mode="New 3D",
         ...     current_model="Flux\\flux1-dev-bnb-nf4-v2.safetensors",
-        ...     batch_dir=Path("outputs/Deforum_Defaults_New3D_20231105_123456"),
+        ...     batch_dir=Path("output/Deforum_Defaults_New3D_20231105_123456"),
         ...     progress_callback=lambda msg: print(msg)
         ... )
         >>> # defaults now contains all settings including AI-generated audio + prompts
