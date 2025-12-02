@@ -119,7 +119,7 @@ def _build_quick_test_ui(components: dict):
     with FormRow(variant="compact"):
         quick_test_status = gr.Textbox(
             label="Status",
-            value="⚠️ Click 'Prepare Quick Test Settings' first, then go to Run tab and click 'Generate'",
+            value=f"{warning_emoji or ''} Click 'Prepare Quick Test Settings' first, then go to Run tab and click 'Generate'",
             interactive=False,
             lines=2
         )
