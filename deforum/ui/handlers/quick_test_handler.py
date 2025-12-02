@@ -301,192 +301,93 @@ def execute_quick_test(
         log.append(f"  - Strength: {settings['strength']} (normal), {settings['keyframe_strength']} (keyframe)")
         log.append("")
 
-        # Phase 4: Execute Deforum render
-        log.append("🎬 Phase 4: Executing Deforum render...")
+        # Phase 4: Save settings file for manual loading
+        log.append("💾 Phase 4: Saving Quick Test settings...")
         log.append("")
 
         try:
-            from deforum.config.args import (
-                DeforumArgs, DeforumAnimArgs, DeforumOutputArgs,
-                ParseqArgs, LoopArgs, WanArgs, AudioSyncArgs,
-                process_args
-            )
-            from deforum.rendering.core import render_animation
-            from modules.processing import StableDiffusionProcessingImg2Img
-            import modules.shared as shared
+            # Save settings to JSON file in batch directory
+            settings_file = os.path.join(batch_dir, "quick_test_settings.json")
 
-            # Build args_dict with all required parameters
-            args_dict = {}
+            # Build complete settings dict for export
+            export_settings = {
+                # Basic settings
+                "W": 1280,
+                "H": 720,
+                "fps": fps,
+                "steps": settings['steps'],
+                "cfg_scale": settings['cfg_scale'],
+                "sampler": settings['sampler'],
+                "scheduler": settings['scheduler'],
+                "seed": random_seed,
+                "max_frames": total_frames,
 
-            # Add all defaults from argument definition functions
-            for key, config in DeforumArgs().items():
-                if isinstance(config, dict) and 'value' in config:
-                    args_dict[key] = config['value']
-                else:
-                    args_dict[key] = config
+                # Animation settings
+                "render_mode": "New 3D",
+                "animation_mode": "3D",
+                "diffusion_cadence": settings['cadence'],
+                "strength": settings['strength'],
+                "keyframe_strength": settings['keyframe_strength'],
+                "strength_schedule": f"0:({settings['strength']})",
+                "keyframe_strength_schedule": f"0:({settings['keyframe_strength']})",
 
-            for key, config in DeforumAnimArgs().items():
-                if isinstance(config, dict) and 'value' in config:
-                    args_dict[key] = config['value']
-                else:
-                    args_dict[key] = config
+                # Prompts and audio
+                "animation_prompts": generated_prompts,
+                "animation_prompts_positive": "",
+                "animation_prompts_negative": "",
+                "add_soundtrack": "File",
+                "soundtrack_path": audio_path,
 
-            for key, config in DeforumOutputArgs().items():
-                if isinstance(config, dict) and 'value' in config:
-                    args_dict[key] = config['value']
-                else:
-                    args_dict[key] = config
+                # Camera movement
+                "translation_z": settings['camera_movement']['translation_z'],
+                "rotation_3d_y": settings['camera_movement']['rotation_3d_y'],
 
-            for key, config in ParseqArgs().items():
-                if isinstance(config, dict) and 'value' in config:
-                    args_dict[key] = config['value']
-                else:
-                    args_dict[key] = config
+                # Depth settings
+                "depth_algorithm": "Depth-Anything-V2-Small",
+                "midas_weight": 0.3,
+                "near_plane": 200,
+                "far_plane": 10000,
+                "fov": 70,
 
-            for key, config in LoopArgs().items():
-                if isinstance(config, dict) and 'value' in config:
-                    args_dict[key] = config['value']
-                else:
-                    args_dict[key] = config
+                # Output settings
+                "skip_video_creation": False,
+                "delete_imgs": False,
+            }
 
-            for key, config in WanArgs().items():
-                if isinstance(config, dict) and 'value' in config:
-                    args_dict[key] = config['value']
-                else:
-                    args_dict[key] = config
+            with open(settings_file, 'w') as f:
+                json.dump(export_settings, f, indent=2)
 
-            for key, config in AudioSyncArgs().items():
-                if isinstance(config, dict) and 'value' in config:
-                    args_dict[key] = config['value']
-                else:
-                    args_dict[key] = config
-
-            # Override with test-specific settings (model-detected)
-            args_dict['W'] = 1280
-            args_dict['H'] = 720
-            args_dict['fps'] = fps
-            args_dict['steps'] = settings['steps']  # Model-specific
-            args_dict['cfg_scale'] = settings['cfg_scale']  # Model-specific
-            args_dict['sampler'] = settings['sampler']  # Model-specific
-            args_dict['scheduler'] = settings['scheduler']  # Model-specific
-            args_dict['seed'] = random_seed
-            args_dict['strength'] = settings['strength']
-            args_dict['max_frames'] = total_frames
-            args_dict['render_mode'] = 'New 3D'
-            args_dict['animation_mode'] = '3D'
-            args_dict['keyframe_distribution'] = 'redistributed'
-            args_dict['diffusion_cadence'] = settings['cadence']
-            args_dict['add_soundtrack'] = 'File'
-            args_dict['soundtrack_path'] = audio_path
-            args_dict['skip_video_creation'] = False
-            args_dict['delete_imgs'] = False
-            args_dict['animation_prompts'] = json.dumps(generated_prompts)
-            args_dict['animation_prompts_positive'] = ""  # No global positive prompt
-            args_dict['animation_prompts_negative'] = ""  # Distilled models (Flux, ZIT) at CFG=1 ignore negative prompts
-            args_dict['strength_schedule'] = f"0:({settings['strength']})"
-            args_dict['keyframe_strength_schedule'] = f"0:({settings['keyframe_strength']})"
-
-            # Camera movement
-            args_dict['translation_z'] = settings['camera_movement']['translation_z']
-            args_dict['rotation_3d_y'] = settings['camera_movement']['rotation_3d_y']
-
-            # Depth settings for 3D mode
-            args_dict['depth_algorithm'] = 'Depth-Anything-V2-Small'
-            args_dict['midas_weight'] = 0.3
-            args_dict['near_plane'] = 200
-            args_dict['far_plane'] = 10000
-            args_dict['fov'] = 70
-
-            # Create fake Processing object (required by process_args)
-            p = StableDiffusionProcessingImg2Img(
-                sd_model=shared.sd_model,
-                outpath_samples=batch_dir,
-                outpath_grids=batch_dir,
-                prompt="",  # Will be overridden by animation_prompts
-                negative_prompt="",
-                seed=random_seed,
-                sampler_name=settings['sampler'],
-                batch_size=1,
-                n_iter=1,
-                steps=settings['steps'],
-                cfg_scale=settings['cfg_scale'],
-                width=1280,
-                height=720,
-                init_images=[],
-                denoising_strength=1.0 - settings['strength']  # Deforum inverted strength
-            )
-            args_dict['p'] = p
-
-            # Additional required fields
-            args_dict['override_settings_with_file'] = False
-            args_dict['custom_settings_file'] = None
-
-            # Generate unique run ID
-            run_id = f"quick_test_{timestamp}"
-
-            # Process args into structured namespaces
-            log.append("  → Building argument namespaces...")
-            (
-                args_loaded_ok,
-                root,
-                args,
-                anim_args,
-                video_args,
-                parseq_args,
-                audio_sync_args,
-                loop_args,
-                controlnet_args,
-                wan_args
-            ) = process_args(args_dict, run_id)
-
-            if not args_loaded_ok:
-                raise Exception("Failed to load argument configuration")
-
-            # Set job_id for status tracking
-            root.job_id = run_id
-
-            log.append("  → Starting render animation...")
+            log.append(f"✓ Settings saved to: {settings_file}")
             log.append("")
-
-            # Execute render
-            render_result = render_animation(
-                args=args,
-                anim_args=anim_args,
-                video_args=video_args,
-                parseq_args=parseq_args,
-                loop_args=loop_args,
-                controlnet_args=controlnet_args,
-                root=root
-            )
-
+            log.append("=" * 60)
+            log.append("✅ QUICK TEST PREPARATION COMPLETE!")
+            log.append("=" * 60)
             log.append("")
-            log.append("✓ Render complete!")
-
-            # Find the generated video
-            video_path = None
-            for ext in ['.mp4', '.webm', '.mov']:
-                potential_path = os.path.join(batch_dir, f"*{ext}")
-                import glob
-                matches = glob.glob(potential_path)
-                if matches:
-                    video_path = matches[0]
-                    break
-
-            if not video_path:
-                video_path = os.path.join(batch_dir, "test_video.mp4")
-                log.append(f"⚠️ Video file not found, expected at: {video_path}")
+            log.append("Next steps:")
+            log.append("  1. Go to the 'Run' tab")
+            log.append("  2. Click 'Load All Settings'")
+            log.append(f"  3. Select: {settings_file}")
+            log.append("  4. Click 'Generate' to start rendering")
+            log.append("")
+            log.append(f"Audio file: {audio_path}")
+            log.append(f"Output will be saved to: {batch_dir}")
+            log.append("")
+            log.append("Settings optimized for:")
+            log.append(f"  - Model: {model_name}")
+            log.append(f"  - {total_frames} frames @ {fps} FPS ({duration_seconds}s)")
+            log.append(f"  - {len(generated_prompts)} escalating synthwave prompts")
 
             return {
                 "success": True,
-                "video_path": video_path,
+                "video_path": None,  # No video yet - user needs to click Generate
                 "log": log,
                 "settings": settings,
                 "error": None
             }
 
-        except Exception as render_error:
+        except Exception as save_error:
             error_trace = traceback.format_exc()
-            log.append(f"❌ Render failed: {str(render_error)}")
+            log.append(f"❌ Failed to save settings: {str(save_error)}")
             log.append(error_trace)
 
             return {
@@ -494,7 +395,7 @@ def execute_quick_test(
                 "video_path": None,
                 "log": log,
                 "settings": settings,
-                "error": f"Render execution failed: {str(render_error)}"
+                "error": f"Settings save failed: {str(save_error)}"
             }
 
     except Exception as e:

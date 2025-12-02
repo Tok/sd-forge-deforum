@@ -39,10 +39,10 @@ def _build_quick_test_ui(components: dict):
     gr.HTML(value="""
         <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     padding: 20px; border-radius: 10px; margin-bottom: 20px; color: white;'>
-            <h2 style='margin: 0 0 10px 0; font-size: 24px;'>🚀 Quick Test Generator</h2>
+            <h2 style='margin: 0 0 10px 0; font-size: 24px;'>🚀 Quick Test Setup</h2>
             <p style='margin: 0; font-size: 14px; opacity: 0.9;'>
-                Verify your Deforum installation with a simple 5-second test video.
-                Uses synthetic audio, basic camera movement, and optimized settings.
+                Prepare a test animation with optimized settings for your current model.
+                Generates audio, AI prompts, and saves settings file. Then manually click Generate to render.
             </p>
         </div>
     """)
@@ -83,10 +83,10 @@ def _build_quick_test_ui(components: dict):
             )
 
     # Generate button (slopcore-style)
-    movie_camera = emoji_if_enabled(emoji_utils.movie_camera())
+    gear = emoji_if_enabled(emoji_utils.gear())
     with FormRow(variant="compact"):
         btn_generate_test = gr.Button(
-            f"{movie_camera} Generate Test Clip" if movie_camera else "Generate Test Clip",
+            f"{gear} Prepare Quick Test Settings" if gear else "Prepare Quick Test Settings",
             variant="primary",
             size="lg",
             elem_id="btn_generate_test",
@@ -96,7 +96,7 @@ def _build_quick_test_ui(components: dict):
 
     gr.HTML(value="""
         <p style='text-align: center; font-size: 11px; opacity: 0.6; margin: -10px 0 10px 0;'>
-            EXPECTED TIME: ~2-3 MINUTES (depending on hardware)
+            PREPARATION TIME: ~30-60 seconds (audio + prompts generation)
         </p>
     """)
 
@@ -104,7 +104,7 @@ def _build_quick_test_ui(components: dict):
     with FormRow(variant="compact"):
         quick_test_status = gr.Textbox(
             label="Status",
-            value="Ready to generate test video",
+            value="Ready to prepare test settings",
             interactive=False,
             lines=1
         )
@@ -140,25 +140,31 @@ def _build_quick_test_ui(components: dict):
 
     # Info section
     gr.Markdown("""
-### What This Test Does:
+### What This Preparation Does:
+
+- **Auto-detects** your current model (Flux, Lumina, Z-Image, etc.)
+- **Generates** synthetic audio with your chosen theme
+- **Creates** AI-generated escalating synthwave prompts with Qwen
+- **Optimizes** settings for your model (steps, CFG, sampler, scheduler)
+- **Saves** complete settings file ready to load
+
+### Configuration:
 
 - **Resolution**: 720p (1280x720) - fast rendering
 - **FPS**: 60 - smooth playback
-- **Duration**: 5 seconds (~300 frames)
+- **Duration**: 3-10 seconds (your choice)
 - **Render Mode**: New 3D with keyframe redistribution
 - **Camera**: Simple forward movement with gentle rotation
-- **Audio**: Synthetic beat-synchronized audio (173 BPM)
 - **Depth**: Depth-Anything V2 (auto-downloads ~300MB on first run)
 
-### Expected Behavior:
+### After Preparation:
 
-1. Downloads Depth-Anything V2 model if needed
-2. Generates synthetic audio with beat pattern
-3. Creates keyframes with depth warping
-4. Renders smooth video with camera movement
-5. Outputs to: `output/deforum/<timestamp>/`
+1. Settings saved to `output/deforum/quick_test_<timestamp>/quick_test_settings.json`
+2. Audio file saved in same directory
+3. Go to **Run** tab → **Load All Settings** → select the JSON file
+4. Click **Generate** to render your test video!
 
-If this test completes successfully, your Deforum installation is working correctly!
+This workflow ensures settings are optimized for your model and lets you review/modify before rendering.
     """)
 
     # Store components for event handlers
