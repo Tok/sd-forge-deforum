@@ -68,9 +68,8 @@ for i in range(1, 6): # 5 CN models in total
 def handle_deprecated_settings(settings_json):
     # Set legacy_colormatch mode to True when importing old files, so results are backwards-compatible. Print a message about it too
     if 'legacy_colormatch' not in settings_json:
-        settings_json['legacy_colormatch'] = True
-        logger.info('\033[33mlegacy_colormatch is missing from settings file, so we are setting it to *True* for backwards compatability. You are welcome to test your file with that setting being disabled for better color coherency.\033[0m')
-        logger.info("")
+        settings_json['legacy_colormatch'] = False
+        logger.debug('legacy_colormatch not in settings file, defaulting to False for better color coherency')
     for setting_name, deprecation_info in deprecation_map.items():
         if setting_name in settings_json:
             if deprecation_info is None:
