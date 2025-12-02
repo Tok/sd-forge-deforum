@@ -473,62 +473,89 @@ def execute_quick_test(
 
             log.append(f"✓ Settings saved to: {settings_file}")
             log.append("")
-            log.append("=" * 60)
-            log.append("✅ QUICK TEST READY!")
-            log.append("=" * 60)
-            log.append("")
-            log.append("IMPORTANT: Load the settings file to ensure all values are applied!")
-            log.append("")
-            log.append("Next steps:")
-            log.append("  1. Go to Run tab")
-            log.append("  2. Click 'Load All Settings' button")
-            log.append(f"  3. Select: {settings_file}")
-            log.append("  4. Click 'Generate' to render!")
-            log.append("")
-            log.append(f"Audio file: {audio_path}")
-            log.append(f"Settings file: {settings_file}")
-            log.append(f"Output will be saved to: {batch_dir}")
-            log.append("")
-            log.append("Settings optimized for:")
-            log.append(f"  - Model: {model_name}")
-            log.append(f"  - {total_frames} frames @ {fps} FPS ({duration_seconds}s)")
-            log.append(f"  - {len(generated_prompts)} escalating synthwave prompts")
-            log.append("")
-            log.append(f"✨ Settings ready! Updating UI components:")
-            log.append(f"  - Prompts: {len(generated_prompts)} keyframes")
-            log.append(f"  - Audio: {audio_path}")
-            log.append(f"  - Max Frames: {total_frames}")
-            log.append(f"  - FPS: {fps}")
-            log.append(f"  - Steps: {settings['steps']}")
-            log.append(f"  - Cadence: {settings['cadence']}")
 
-            # Log what we're about to return
-            logger.info("=" * 60)
-            logger.info("QUICK TEST RETURNING UI UPDATES:")
-            logger.info(f"  max_frames: {total_frames}")
-            logger.info(f"  fps: {fps}")
-            logger.info(f"  steps: {settings['steps']}")
-            logger.info(f"  cadence: {settings['cadence']}")
-            logger.info(f"  prompts (first 100 chars): {json.dumps(generated_prompts, indent=2)[:100]}...")
-            logger.info(f"  audio_path: {audio_path}")
-            logger.info("=" * 60)
+            # PHASE 7: Load settings into UI automatically
+            log.append("⚙️ Phase 7: Loading settings into UI...")
 
-            # Return tuple with UI updates using gr.update() for explicit updates
-            import gradio as gr
-            return (
-                gr.update(value=f"{check} Quick Test Ready! Settings loaded → Click Generate to render"),  # status
-                gr.update(value="\n".join(log)),  # log
-                json.dumps(export_settings, indent=2),  # settings_json (for hidden state)
-                gr.update(value=json.dumps(generated_prompts, indent=2)),  # prompts (update UI)
-                gr.update(value=audio_path or ""),  # audio_path (update UI)
-                gr.update(value=fps),  # fps (update UI)
-                gr.update(value=total_frames),  # max_frames (update UI)
-                gr.update(value=settings['camera_movement']['translation_z']),  # translation_z (update UI)
-                gr.update(value=settings['camera_movement']['rotation_3d_y']),  # rotation_y (update UI)
-                gr.update(value=f"0:({settings['strength']})"),  # strength_schedule (update UI)
-                gr.update(value=settings['steps']),  # steps (update UI)
-                gr.update(value=settings['cadence'])  # cadence (update UI)
-            )
+            try:
+                # Import the settings loader
+                from deforum.config.settings import load_all_settings, get_settings_component_names
+
+                # Build the args list that load_all_settings expects
+                # First arg is the settings file path
+                component_names = get_settings_component_names()
+
+                # Create a dummy args list with default values (will be overwritten by load)
+                dummy_args = [settings_file] + [''] * len(component_names)
+
+                # Call load_all_settings with ui_launch=True to get gr.update() dict
+                updates_dict = load_all_settings(*dummy_args, ui_launch=True)[0]
+
+                log.append(f"✓ Loaded {len(updates_dict)} settings from file")
+                log.append("")
+                log.append("=" * 60)
+                log.append("✅ QUICK TEST READY!")
+                log.append("=" * 60)
+                log.append("")
+                log.append("Settings automatically loaded into UI!")
+                log.append("")
+                log.append("Next step:")
+                log.append("  → Go to Run tab and click 'Generate'!")
+                log.append("")
+                log.append(f"Audio file: {audio_path}")
+                log.append(f"Settings file: {settings_file}")
+                log.append(f"Output will be saved to: {batch_dir}")
+
+                # Return the loaded settings as updates
+                # We need to extract only the values we're returning (not all settings)
+                return_updates = (
+                    gr.update(value=f"{check} Quick Test Ready! Settings loaded → Click Generate"),
+                    gr.update(value="\n".join(log)),
+                    json.dumps(export_settings, indent=2),
+                    updates_dict.get('animation_prompts', gr.update()),
+                    updates_dict.get('soundtrack_path', gr.update()),
+                    updates_dict.get('fps', gr.update()),
+                    updates_dict.get('max_frames', gr.update()),
+                    updates_dict.get('translation_z', gr.update()),
+                    updates_dict.get('rotation_3d_y', gr.update()),
+                    updates_dict.get('strength_schedule', gr.update()),
+                    updates_dict.get('steps', gr.update()),
+                    updates_dict.get('cadence', gr.update())
+                )
+
+                return return_updates
+
+            except Exception as load_error:
+                log.append(f"⚠️ Auto-load failed: {str(load_error)}")
+                log.append("Falling back to manual value returns")
+                logger.error(f"Quick Test auto-load failed: {load_error}")
+                import traceback
+                logger.error(traceback.format_exc())
+
+                # Fallback: Return manual gr.update() values
+                log.append("")
+                log.append("=" * 60)
+                log.append("⚠️ QUICK TEST READY (manual mode)")
+                log.append("=" * 60)
+                log.append("")
+                log.append(f"Settings file: {settings_file}")
+                log.append("You may need to reload the page for updates to take effect.")
+
+                import gradio as gr
+                return (
+                    gr.update(value=f"{check} Quick Test Ready (manual) → Click Generate"),
+                    gr.update(value="\n".join(log)),
+                    json.dumps(export_settings, indent=2),
+                    gr.update(value=json.dumps(generated_prompts, indent=2)),
+                    gr.update(value=audio_path or ""),
+                    gr.update(value=fps),
+                    gr.update(value=total_frames),
+                    gr.update(value=settings['camera_movement']['translation_z']),
+                    gr.update(value=settings['camera_movement']['rotation_3d_y']),
+                    gr.update(value=f"0:({settings['strength']})"),
+                    gr.update(value=settings['steps']),
+                    gr.update(value=settings['cadence'])
+                )
 
         except Exception as save_error:
             error_trace = traceback.format_exc()
