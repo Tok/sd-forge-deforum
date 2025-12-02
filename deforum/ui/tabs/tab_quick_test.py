@@ -83,7 +83,7 @@ def _build_quick_test_ui(components: dict):
             )
 
     # Generate button (slopcore-style)
-    movie_camera = emoji_utils.movie_camera()
+    movie_camera = emoji_if_enabled(emoji_utils.movie_camera())
     with FormRow(variant="compact"):
         btn_generate_test = gr.Button(
             f"{movie_camera} Generate Test Clip" if movie_camera else "Generate Test Clip",
@@ -119,8 +119,8 @@ def _build_quick_test_ui(components: dict):
         )
 
     # Action buttons
-    gear = emoji_utils.gear()
-    folder = emoji_utils.folder()
+    gear = emoji_if_enabled(emoji_utils.gear())
+    folder = emoji_if_enabled(emoji_utils.folder())
     with FormRow(variant="compact"):
         with gr.Column(scale=1):
             btn_view_quick_test_settings = gr.Button(
