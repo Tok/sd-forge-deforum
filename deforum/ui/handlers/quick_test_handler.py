@@ -16,12 +16,19 @@ from deforum.utils.output_paths import OutputPaths
 logger = get_logger()
 
 
+def _get_empty_settings_components():
+    """Get empty values for all settings components (for error returns)."""
+    from deforum.config.settings import get_settings_component_names
+    # Return empty string for each component
+    return [''] * len(get_settings_component_names())
+
+
 def handle_generate_test_click(
     prompt_theme: str,
     audio_theme: str,
     duration: float,
     seed: int
-) -> Tuple[str, str, str, str, str, int, int, str, str, str, int, int]:
+) -> Tuple:
     """Handle "Generate Test" button click.
 
     Generates audio, prompts, and schedules, then LOADS them into the UI automatically.
@@ -34,19 +41,9 @@ def handle_generate_test_click(
         seed: Random seed (from number input)
 
     Returns:
-        Tuple of (status, log, settings_json, prompts, audio_path, fps, max_frames, translation_z, rotation_y, strength_schedule, steps, cadence)
-        - status: Single-line status message
-        - log: Multi-line generation log
-        - settings_json_state: JSON settings (for hidden state/saving)
-        - prompts: Generated prompts as JSON string
-        - audio_path: Path to generated audio
-        - fps: FPS value
-        - max_frames: Frame count
-        - translation_z: Camera Z movement
-        - rotation_y: Camera Y rotation
-        - strength_schedule: Normal strength schedule
-        - steps: Sampling steps
-        - cadence: Diffusion cadence
+        Tuple of (status, log, settings_json) + ALL settings components
+        - First 3 values: status message, generation log, settings JSON
+        - Remaining values: ALL UI components (same as Load All Settings button)
     """
     # Theme-aware emojis
     warning = emoji_utils.maybe_warning()
@@ -64,33 +61,15 @@ def handle_generate_test_click(
             return (
                 f"{warning} Error: Duration must be between 3 and 10 seconds",
                 "Invalid duration provided.",
-                "{}",  # settings_json
-                "{}",  # prompts
-                "",    # audio_path
-                60,    # fps
-                120,   # max_frames
-                "0:(0)",  # translation_z
-                "0:(0)",  # rotation_y
-                "0:(0.85)",  # strength_schedule
-                20,  # steps
-                5  # cadence
-            )
+                "{}"  # settings_json
+            ) + tuple(_get_empty_settings_components())
 
         if not prompt_theme or not prompt_theme.strip():
             return (
                 f"{warning} Error: Prompt theme cannot be empty",
                 "Please provide a theme for prompt generation.",
-                "{}",  # settings_json
-                "{}",  # prompts
-                "",    # audio_path
-                60,    # fps
-                120,   # max_frames
-                "0:(0)",  # translation_z
-                "0:(0)",  # rotation_y
-                "0:(0.85)",  # strength_schedule
-                20,  # steps
-                5  # cadence
-            )
+                "{}"  # settings_json
+            ) + tuple(_get_empty_settings_components())
 
         if not audio_theme or not audio_theme.strip():
             audio_theme = "synthetic amen break"  # Default fallback
@@ -118,21 +97,12 @@ def handle_generate_test_click(
 
         logger.error(f"{error_msg}\n{error_trace}")
 
-        # Return full 12-value tuple for error case
+        # Return error with empty settings components
         return (
             f"{cross} Fatal error: {str(e)}",
             f"💥 UNEXPECTED ERROR\n\n{error_trace}",
-            "{}",  # settings_json
-            "{}",  # prompts
-            "",    # audio_path
-            60,    # fps
-            120,   # max_frames
-            "0:(0)",  # translation_z
-            "0:(0)",  # rotation_y
-            "0:(0.85)",  # strength_schedule
-            20,  # steps
-            5  # cadence
-        )
+            "{}"  # settings_json
+        ) + tuple(_get_empty_settings_components())
 
 
 def execute_quick_test(
@@ -486,11 +456,10 @@ def execute_quick_test(
             log.append(f"{check} QUICK TEST READY!")
             log.append("=" * 60)
             log.append("")
-            log.append("Next steps:")
-            log.append("  1. Go to Run tab")
-            log.append("  2. Click 'Load All Settings' button")
-            log.append(f"  3. Paste this path: {settings_file}")
-            log.append("  4. Click 'Generate'!")
+            log.append("Settings loaded automatically!")
+            log.append("")
+            log.append("Next step:")
+            log.append("  → Go to Run tab and click 'Generate'!")
             log.append("")
             log.append(f"Test configuration: {total_frames} frames at {fps} FPS ({duration_seconds}s)")
             log.append(f"Audio file: {audio_path}")
@@ -498,64 +467,49 @@ def execute_quick_test(
             log.append(f"Output will be saved to: output/videos/")
             log.append("")
 
-            # Return simple confirmation (no auto-load attempt)
+            # Load settings using the same function as "Load All Settings" button
             import gradio as gr
+            from deforum.config.settings import load_all_settings, get_settings_component_names
+
+            # Build args list: settings_path + all component values (will be overwritten)
+            component_names = get_settings_component_names()
+            dummy_args = [settings_file] + [''] * len(component_names)
+
+            # Call load_all_settings - returns list of values when ui_launch=False
+            loaded_values = load_all_settings(*dummy_args, ui_launch=False)
+
+            # Return: (status, log, settings_json) + all loaded component values
+            # Note: loaded_values is [settings_path, component1, component2, ..., ""]
+            # We skip the first (settings_path) and last ("") elements
             return (
-                gr.update(value=f"{check} Quick Test Ready → Load settings on Run tab"),
+                gr.update(value=f"{check} Quick Test Ready! → Click Generate"),
                 gr.update(value="\n".join(log)),
-                json.dumps(export_settings, indent=2),
-                gr.update(),  # animation_prompts
-                gr.update(),  # soundtrack_path
-                gr.update(),  # fps
-                gr.update(),  # max_frames
-                gr.update(),  # translation_z
-                gr.update(),  # rotation_3d_y
-                gr.update(),  # strength_schedule
-                gr.update(),  # steps
-                gr.update()   # cadence
-            )
+                json.dumps(export_settings, indent=2)
+            ) + tuple(loaded_values[1:-1])  # Skip settings_path and empty string
 
         except Exception as save_error:
             error_trace = traceback.format_exc()
             log.append(f"❌ Failed to save settings: {str(save_error)}")
             log.append(error_trace)
 
-            # Return error tuple (no UI updates)
+            # Return error with empty settings components
             return (
                 f"{cross} Settings save failed: {str(save_error)}",
                 "\n".join(log),
-                "{}",  # empty settings
-                "{}",  # empty prompts
-                "",  # no audio
-                60,  # default fps
-                120,  # default frames
-                "0:(0)",  # no movement
-                "0:(0)",  # no rotation
-                "0:(0.85)",  # default strength
-                20,  # default steps
-                5  # default cadence
-            )
+                "{}"  # empty settings
+            ) + tuple(_get_empty_settings_components())
 
     except Exception as e:
         error_trace = traceback.format_exc()
         log.append(f"❌ Error: {str(e)}")
         log.append(error_trace)
 
-        # Return error tuple (no UI updates)
+        # Return error with empty settings components
         return (
             f"{cross} Quick Test failed: {str(e)}",
             "\n".join(log),
-            "{}",  # empty settings
-            "{}",  # empty prompts
-            "",  # no audio
-            60,  # default fps
-            120,  # default frames
-            "0:(0)",  # no movement
-            "0:(0)",  # no rotation
-            "0:(0.85)",  # default strength
-            20,  # default steps
-            5  # default cadence
-        )
+            "{}"  # empty settings
+        ) + tuple(_get_empty_settings_components())
 
 
 def handle_view_test_settings_click(settings_json: str) -> str:

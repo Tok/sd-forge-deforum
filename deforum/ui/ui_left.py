@@ -564,28 +564,16 @@ def setup_deforum_left_side_ui():
                     handle_open_test_output_click
                 )
 
-                # Explicitly get UI components to update from Quick Test generation
-                # (Must use locals() after line 298-299 where tab params are unpacked)
-                # Note: Only update simple value components, not schedules (cfg_scale is a schedule)
-                qt_animation_prompts = locals().get('animation_prompts')
-                qt_soundtrack_path = locals().get('soundtrack_path')
-                qt_fps = locals().get('fps')
-                qt_max_frames = locals().get('max_frames')
-                qt_translation_z = locals().get('translation_z')
-                qt_rotation_3d_y = locals().get('rotation_3d_y')
-                qt_strength_schedule = locals().get('strength_schedule')
-                qt_steps = locals().get('steps')
-                qt_cadence = locals().get('cadence')
+                # Build settings component list (same as Load All Settings button)
+                from deforum.config.settings import get_settings_component_names
+                dummy_component = gr.Textbox(visible=False)
 
-                # Debug: Verify components exist
-                logger.debug(f"Quick Test UI component wiring:")
-                logger.debug(f"  animation_prompts: {qt_animation_prompts is not None}")
-                logger.debug(f"  max_frames: {qt_max_frames is not None}")
-                logger.debug(f"  fps: {qt_fps is not None}")
-                logger.debug(f"  steps: {qt_steps is not None}")
-                logger.debug(f"  cadence: {qt_cadence is not None}")
+                settings_component_list = [
+                    components.get(name, dummy_component) or dummy_component
+                    for name in get_settings_component_names()
+                ]
 
-                # Main Generate Test button - loads settings into UI automatically
+                # Main Generate Test button - loads ALL settings into UI automatically
                 locals()['btn_generate_test'].click(
                     fn=handle_generate_test_click,
                     inputs=[
@@ -597,17 +585,8 @@ def setup_deforum_left_side_ui():
                     outputs=[
                         locals()['quick_test_status'],  # Status message
                         locals()['quick_test_log'],  # Generation log
-                        locals()['quick_test_generated_settings'],  # Settings JSON (hidden state)
-                        qt_animation_prompts,  # Update prompts textbox
-                        qt_soundtrack_path,  # Update audio path
-                        qt_fps,  # Update FPS
-                        qt_max_frames,  # Update max frames
-                        qt_translation_z,  # Update camera Z movement
-                        qt_rotation_3d_y,  # Update camera Y rotation
-                        qt_strength_schedule,  # Update strength schedule
-                        qt_steps,  # Update sampling steps
-                        qt_cadence  # Update diffusion cadence
-                    ]
+                        locals()['quick_test_generated_settings']  # Settings JSON (hidden state)
+                    ] + settings_component_list  # ALL settings components (same as Load All Settings)
                 )
 
                 # View settings button (using unique name to avoid conflict)
