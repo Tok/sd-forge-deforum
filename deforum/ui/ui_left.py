@@ -538,10 +538,20 @@ def setup_deforum_left_side_ui():
                         audio_ai_prompt_theme,
                         audio_ai_prompt_count,
                         audio_ai_start_prompt,
-                        audio_ai_end_prompt
+                        audio_ai_end_prompt,
+                        soundtrack_path  # For auto-calculating count when set to 0
                     ],
                     outputs=[audio_sync_prompts]
                 )
+
+                # Wire up calculate count from audio button
+                if 'calc_count_from_audio_btn' in locals():
+                    from deforum.ui.handlers.audio_prompt_generator import calculate_prompt_count_from_audio
+                    calc_count_from_audio_btn.click(
+                        fn=calculate_prompt_count_from_audio,
+                        inputs=[soundtrack_path],
+                        outputs=[audio_ai_prompt_count]
+                    )
 
             # ===== ZERO-HITL BUTTON WIRING =====
             # Wire up "🔥 SLOP IT! 🔥" button

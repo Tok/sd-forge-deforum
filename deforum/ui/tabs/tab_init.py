@@ -188,13 +188,21 @@ def get_tab_init(d, da, dp, dau, dv=None):
                         placeholder="e.g., synthwave, cyberpunk, fantasy",
                         info="Optional visual style to apply to all prompts"
                     )
+
+                with FormRow():
                     audio_ai_prompt_count = gr.Number(
                         label="Number of Prompts",
-                        value=5,
+                        value=0,
                         precision=0,
-                        minimum=1,
-                        maximum=20,
-                        info="How many prompts to generate"
+                        minimum=0,
+                        maximum=200,
+                        info="0 = auto-calculate from audio BPM and duration"
+                    )
+                    calc_abacus = emoji_utils.abacus()
+                    calc_count_from_audio_btn = gr.Button(
+                        value=f"{calc_abacus} Calculate from Audio" if calc_abacus else "Calculate from Audio",
+                        size="sm",
+                        scale=0
                     )
 
                 # Generation mode and intensity row
@@ -398,6 +406,7 @@ def get_tab_init(d, da, dp, dau, dv=None):
         'audio_ai_style',
         'audio_ai_prompt_theme',
         'audio_ai_prompt_count',
+        'calc_count_from_audio_btn',
         'audio_ai_start_prompt',
         'audio_ai_end_prompt',
         'audio_sync_prompts',

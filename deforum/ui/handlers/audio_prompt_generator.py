@@ -317,7 +317,7 @@ def _generate_fallback_prompts(
         return '\n'.join(prompts)
 
 
-def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, start_prompt, end_prompt):
+def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, start_prompt, end_prompt, soundtrack_path=None):
     """Generate prompts using Qwen with multiple modes and intensity levels.
 
     Args:
@@ -325,14 +325,36 @@ def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, st
         intensity: Intensity level (subtle, normal, crazy, extreme, etc.)
         style: Optional visual style to apply
         theme: Main subject/theme for prompts
-        count: Number of prompts to generate
+        count: Number of prompts to generate (0 = auto-calculate from audio)
         start_prompt: Starting prompt (for start-to-end mode)
         end_prompt: Ending prompt (for start-to-end mode)
+        soundtrack_path: Optional audio path for auto-calculation when count=0
 
     Returns:
         Gradio update with generated prompts (one per line)
     """
     logger.info(f"AI PROMPT GENERATION BUTTON CLICKED!", emoji='palette')
+
+    # Auto-calculate count from audio if set to 0
+    if count == 0 or count is None:
+        if soundtrack_path:
+            logger.info("   Auto-calculating prompt count from audio...", emoji='sound')
+            # Call the calculate function directly and extract the value
+            try:
+                result = calculate_prompt_count_from_audio(soundtrack_path)
+                if 'value' in result:
+                    count = result['value']
+                    logger.info(f"   Auto-calculated count: {count}", emoji='abacus')
+                else:
+                    count = 5  # Fallback
+                    logger.warning("   Failed to auto-calculate, using default count: 5")
+            except Exception as e:
+                count = 5  # Fallback
+                logger.warning(f"   Error auto-calculating count: {str(e)}, using default: 5")
+        else:
+            count = 5  # Fallback when no audio loaded
+            logger.info("   No audio loaded, using default count: 5")
+
     logger.info(f"   Mode: {generation_mode}, Intensity: {intensity}, Style: {style}, Theme: {theme}, Count: {count}")
 
     try:
@@ -388,3 +410,62 @@ def generate_prompts_with_ai(generation_mode, intensity, style, theme, count, st
         # Generate fallback prompts
         fallback = _generate_fallback_prompts(generation_mode, style, theme, count, start_prompt, end_prompt)
         return gr.update(value=fallback)
+
+
+def calculate_prompt_count_from_audio(soundtrack_path: str) -> int:
+    """Calculate optimal prompt count based on audio duration and BPM.
+
+    Args:
+        soundtrack_path: Path or URL to audio file
+
+    Returns:
+        Gradio update with calculated prompt count, or 0 if audio invalid
+    """
+    if not soundtrack_path or not soundtrack_path.strip():
+        from deforum.utils.system.logging import emoji as emoji_utils
+        warning = emoji_utils.maybe_warning()
+        logger.warning(f"{warning} No audio file loaded - cannot calculate prompt count")
+        return gr.update(value=5)  # Return default
+
+    try:
+        from deforum.audio.analysis import load_audio_file, detect_beats, get_audio_duration
+        from deforum.media.video_audio_utilities import download_audio
+        from deforum.utils.audio.sync import calculate_keyframes_per_beat
+
+        # Load audio
+        local_path = download_audio(soundtrack_path)
+        audio, sr = load_audio_file(local_path, sample_rate=22050)
+        duration = get_audio_duration(audio, sr)
+
+        # Detect BPM
+        _, bpm = detect_beats(audio, sr)
+
+        # Calculate optimal prompts based on BPM
+        # Slow music (60-90 BPM): 1 prompt per beat
+        # Medium music (90-140 BPM): 1 prompt per 2 beats
+        # Fast music (140+ BPM): 1 prompt per 4 beats
+        keyframes_per_beat = calculate_keyframes_per_beat(bpm)
+        beats_per_second = bpm / 60.0
+        suggested_count = int(duration * beats_per_second * keyframes_per_beat)
+
+        # Cap at reasonable maximum (200 prompts for long tracks)
+        suggested_count = min(suggested_count, 200)
+        # Ensure minimum of 5
+        suggested_count = max(suggested_count, 5)
+
+        from deforum.utils.system.logging import emoji as emoji_utils
+        check = emoji_utils.maybe_check()
+        logger.info(
+            f"{check} Audio analysis: {duration:.1f}s @ {bpm:.1f} BPM → {suggested_count} prompts recommended",
+            emoji='sound'
+        )
+
+        return gr.update(value=suggested_count)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        from deforum.utils.system.logging import emoji as emoji_utils
+        warning = emoji_utils.maybe_warning()
+        logger.warning(f"{warning} Error analyzing audio: {str(e)}")
+        return gr.update(value=5)  # Return default on error
