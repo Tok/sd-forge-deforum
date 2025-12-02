@@ -415,6 +415,16 @@ def on_ui_tabs():
                         scale=0,
                     )
                 with gr.Row(variant="compact"):
+                    refresh_emoji = emoji.refresh_icon()
+                    if refresh_emoji:
+                        refresh_emoji += " "
+                    refresh_camera_path_btn = gr.Button(
+                        value=f"{refresh_emoji}Refresh Camera Path" if refresh_emoji else "Refresh Camera Path",
+                        variant="secondary",
+                        size="sm",
+                        scale=0,
+                    )
+                with gr.Row(variant="compact"):
                     camera_path_plot = gr.Plot(
                         label="Camera Path Visualization (Real-time)",
                         show_label=False,
@@ -492,6 +502,7 @@ def on_ui_tabs():
                     )
 
                 components["camera_path_plot"] = camera_path_plot
+                components["refresh_camera_path_btn"] = refresh_camera_path_btn
                 components["frame_overlap_simulator"] = frame_overlap_simulator
                 components["show_shakify_in_camera_path"] = show_shakify_in_camera_path
                 components["show_shakify_in_overlap"] = show_shakify_in_overlap
@@ -549,29 +560,39 @@ def on_ui_tabs():
                     logger.warning(f"Failed to update camera path visualization: {e}")
                     return None
 
-            # Load visualization on UI startup (not on tab selection)
+            # Wire up manual refresh button for camera path
+            # This prevents automatic updates that could be expensive for large animations
+            camera_path_inputs = [
+                components.get("translation_x"),
+                components.get("translation_y"),
+                components.get("translation_z"),
+                components.get("rotation_3d_x"),
+                components.get("rotation_3d_y"),
+                components.get("rotation_3d_z"),
+                components.get("animation_prompts"),
+                components.get("shake_name"),
+                components.get("shake_intensity"),
+                components.get("shake_speed"),
+                components.get("show_shakify_in_camera_path"),
+                components.get("max_frames"),
+            ]
+
+            if components.get("refresh_camera_path_btn"):
+                components["refresh_camera_path_btn"].click(
+                    fn=update_camera_path_visualization,
+                    inputs=camera_path_inputs,
+                    outputs=[camera_path_plot],
+                )
+
+            # Load visualization on UI startup with default preset
             deforum_interface.load(
                 fn=update_camera_path_visualization,
-                inputs=[
-                    components.get("translation_x"),
-                    components.get("translation_y"),
-                    components.get("translation_z"),
-                    components.get("rotation_3d_x"),
-                    components.get("rotation_3d_y"),
-                    components.get("rotation_3d_z"),
-                    components.get("animation_prompts"),
-                    components.get("shake_name"),
-                    components.get("shake_intensity"),
-                    components.get("shake_speed"),
-                    components.get("show_shakify_in_camera_path"),
-                    components.get("max_frames"),
-                ],
+                inputs=camera_path_inputs,
                 outputs=[camera_path_plot],
             )
 
-            # NOTE: Schedule textbox .change() handlers removed to prevent infinite loops
-            # When preset buttons update all 6 textboxes, each .change() triggers a visualization,
-            # causing 6+ simultaneous calls. Preset buttons already return the visualization directly.
+            # NOTE: Schedule textbox .change() handlers removed to prevent automatic updates
+            # Preset buttons NO LONGER auto-update visualizations - user must click refresh buttons
 
         # Frame Overlap Simulator - load on UI startup (independent of tab selection)
         if frame_overlap_simulator:
@@ -1003,20 +1024,13 @@ def on_ui_tabs():
             if btn_generate_preset and camera_path_plot and tx:
                 # Wire up preset generation button
                 def handle_preset_with_overlap(*args):
-                    """Handle preset generation and update both visualizations."""
-                    import deforum.ui.handlers.camera_path_generator as cpg
-                    from deforum.utils.spline_camera_path import camera_path_to_schedules
+                    """Handle preset generation and update camera path visualization only.
 
-                    # First 20 args are for handle_generate_preset, rest are for overlap viz
+                    Wormtrail is NOT auto-updated to prevent UI freeze on large animations.
+                    User must click 'Refresh Wormtrail' button to manually update it.
+                    """
+                    # First 20 args are for handle_generate_preset
                     preset_args = args[:20]
-                    overlap_args = args[20:]  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
-
-                    # Extract params for wormtrail
-                    speed_multiplier = args[1]
-                    speed_randomization = args[2]
-                    max_frames_val = args[5]
-                    random_seed = args[8]
-                    prompts = args[19]  # animation_prompts
 
                     # Generate preset schedules (FULL, not truncated) and visualization
                     result = handle_generate_preset(*preset_args)
@@ -1024,20 +1038,9 @@ def on_ui_tabs():
                     # Extract schedule values from result (these are already downsampled for large animations)
                     status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot = result
 
-                    # For wormtrail visualization, use the downsampled schedules from textboxes
-                    # Wormtrail will detect the actual number of keyframes and interpolate only that many frames
-                    # This prevents the 2-minute CPU spike from parsing 30k+ frame schedules
-
-                    # Update frame overlap visualization with downsampled schedules
-                    # The visualization will auto-detect schedule length and interpolate appropriately
-                    overlap_html = update_overlap_viz(
-                        tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
-                        *overlap_args,  # zoom, W, H, shake_name, shake_intensity, shake_speed, show_shakify
-                        prompts,  # animation_prompts
-                        max_frames_val  # max_frames (from Run tab)
-                    )
-
-                    return (status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot, overlap_html)
+                    # Return schedules and camera path plot
+                    # Wormtrail is NOT included - user must manually refresh it
+                    return (status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot)
 
                 btn_generate_preset.click(
                     fn=handle_preset_with_overlap,
@@ -1063,14 +1066,6 @@ def on_ui_tabs():
                         ry,
                         rz,
                         components.get("animation_prompts"),
-                        # Overlap viz inputs (7 args)
-                        components.get("zoom"),
-                        components.get("W"),
-                        components.get("H"),
-                        components.get("shake_name"),
-                        components.get("shake_intensity"),
-                        components.get("shake_speed"),
-                        components.get("show_shakify_in_overlap"),
                     ],
                     outputs=[
                         components.get("preset_status"),
@@ -1080,8 +1075,8 @@ def on_ui_tabs():
                         rx,
                         ry,
                         rz,
-                        camera_path_plot,  # Update visualization directly
-                        frame_overlap_simulator,  # Update worm trail
+                        # Camera path plot and wormtrail NOT auto-updated
+                        # User must click respective refresh buttons to update visualizations
                     ],
                 )
 
