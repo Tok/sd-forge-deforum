@@ -110,8 +110,9 @@ def _build_quick_test_ui(components: dict):
         )
 
     gr.HTML(value="""
-        <p style='text-align: center; font-size: 11px; opacity: 0.6; margin: -10px 0 10px 0;'>
-            PREPARATION TIME: ~30-60 seconds (audio + prompts generation)
+        <p style='text-align: center; font-size: 12px; opacity: 0.8; margin: -10px 0 10px 0; font-weight: 500;'>
+            ⏱️ PREPARATION TIME: ~30-60 seconds (audio + prompts generation)<br>
+            ⚠️ You MUST click this button BEFORE clicking Generate in the Run tab!
         </p>
     """)
 
