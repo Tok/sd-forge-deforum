@@ -497,6 +497,17 @@ def execute_quick_test(
             log.append(f"  - Steps: {settings['steps']}")
             log.append(f"  - Cadence: {settings['cadence']}")
 
+            # Log what we're about to return
+            logger.info("=" * 60)
+            logger.info("QUICK TEST RETURNING UI UPDATES:")
+            logger.info(f"  max_frames: {total_frames}")
+            logger.info(f"  fps: {fps}")
+            logger.info(f"  steps: {settings['steps']}")
+            logger.info(f"  cadence: {settings['cadence']}")
+            logger.info(f"  prompts (first 100 chars): {json.dumps(generated_prompts, indent=2)[:100]}...")
+            logger.info(f"  audio_path: {audio_path}")
+            logger.info("=" * 60)
+
             # Return tuple with UI updates
             return (
                 f"{check} Quick Test Ready! Settings loaded → Click Generate to render",  # status

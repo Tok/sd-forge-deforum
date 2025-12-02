@@ -115,7 +115,7 @@ def _build_quick_test_ui(components: dict):
     gr.HTML(value=f"""
         <p style='text-align: center; font-size: 12px; opacity: 0.8; margin: -10px 0 10px 0; font-weight: 500;'>
             {clock_emoji or ''} PREPARATION TIME: ~30-60 seconds (audio + prompts generation)<br>
-            {warning_emoji or ''} You MUST click this button BEFORE clicking Generate in the Run tab!
+            {warning_emoji or ''} Click this button to generate and load test settings automatically
         </p>
     """)
 
@@ -123,7 +123,7 @@ def _build_quick_test_ui(components: dict):
     with FormRow(variant="compact"):
         quick_test_status = gr.Textbox(
             label="Status",
-            value=f"{warning_emoji or ''} Click 'Prepare Quick Test Settings' first, then go to Run tab and click 'Generate'",
+            value="Ready to generate test settings",
             interactive=False,
             lines=2
         )
