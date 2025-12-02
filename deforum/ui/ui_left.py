@@ -553,6 +553,46 @@ def setup_deforum_left_side_ui():
                         outputs=[audio_ai_prompt_count]
                     )
 
+            # ===== QUICK TEST BUTTON WIRING =====
+            # Wire up "Generate Test" button
+            if 'btn_generate_test' in locals() and 'quick_test_prompt' in locals():
+                from deforum.ui.handlers.quick_test_handler import (
+                    handle_generate_test_click,
+                    handle_view_test_settings_click,
+                    handle_open_test_output_click
+                )
+
+                # Main Generate Test button
+                locals()['btn_generate_test'].click(
+                    fn=handle_generate_test_click,
+                    inputs=[
+                        locals()['quick_test_prompt'],
+                        locals()['quick_test_duration'],
+                        locals()['quick_test_seed']
+                    ],
+                    outputs=[
+                        locals()['quick_test_status'],
+                        locals()['quick_test_log'],
+                        locals()['quick_test_generated_settings']
+                    ]
+                )
+
+                # View settings button (using unique name to avoid conflict)
+                if 'btn_view_quick_test_settings' in locals():
+                    locals()['btn_view_quick_test_settings'].click(
+                        fn=handle_view_test_settings_click,
+                        inputs=[locals()['quick_test_generated_settings']],
+                        outputs=[locals()['quick_test_log']]
+                    )
+
+                # Open output folder button (using unique name to avoid conflict)
+                if 'btn_open_quick_test_output' in locals():
+                    locals()['btn_open_quick_test_output'].click(
+                        fn=handle_open_test_output_click,
+                        inputs=[],
+                        outputs=[locals()['quick_test_status']]
+                    )
+
             # ===== ZERO-HITL BUTTON WIRING =====
             # Wire up "🔥 SLOP IT! 🔥" button
             if 'btn_slop_it' in locals() and 'zero_hitl_duration' in locals():

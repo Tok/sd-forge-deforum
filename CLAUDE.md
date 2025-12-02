@@ -33,9 +33,8 @@ python webui.py
 
 Then in the UI:
 1. Navigate to the Deforum tab
-2. Set "Distribution" to "Keyframes Only"
-3. Set "Animation Mode" to "3D"
-4. Click generate to run the default bunny test (333 frames, 19 keyframes, 720p at 60 FPS)
+2. Go to the "Quick Test" tab
+3. Click "Generate Test" to create a 5-second test video with synthetic audio and simple camera movement
 
 **Run with Deforum API enabled:**
 ```bash

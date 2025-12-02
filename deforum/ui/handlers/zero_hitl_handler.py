@@ -167,7 +167,9 @@ def handle_open_output_click() -> str:
     import subprocess
     import platform
 
-    output_dir = "outputs/zero_hitl"
+    # Use centralized output path
+    from deforum.utils.output_paths import OutputPaths
+    output_dir = OutputPaths.DEFORUM
 
     # Create directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)

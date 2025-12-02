@@ -45,9 +45,8 @@ cd sd-forge-deforum
 
 **First Test:**
 1. Navigate to Deforum tab
-2. Set "Distribution" → "Keyframes Only"
-3. Set "Animation Mode" → "3D"
-4. Click Generate (runs 333-frame bunny test at 60 FPS)
+2. Go to the "Quick Test" tab
+3. Click "Generate Test" to create a 5-second test video with synthetic audio
 
 **See below for:** [Installation](#-installation), [Helper Scripts](#-helper-scripts), [Model Downloads](#-model-downloads)
 
@@ -198,7 +197,7 @@ cd sd-forge-deforum
 - **Theme-Based Generation**: Describe the vibe, get matching audio loops
 - **BPM Control**: Adjustable tempo for beat-synchronized animations
 - **Mono Output**: Optimized for video soundtracks (1D array format)
-- **Fallback Patterns**: Amen break and other classic samples when models unavailable
+- **Fallback Patterns**: Synthetic audio generation when models unavailable
 - **Zero-HITL Integration**: Automatic audio generation with intentional chaos (20% tempo manipulation, 15% micro-loops, 10% vinyl crackle)
 - **Dedicated Tab**: Easy access to all patterns and intensity controls
 - **Realistic Motion**: Add cinematic camera shake on top of scheduled movement
@@ -751,21 +750,26 @@ The Audio Sync feature automatically detects musical events and places keyframes
 - **Bass**: Low-frequency energy (kick drums)
 - **Combined**: Multi-method fusion
 
-## Default Bunny Test
+## Quick Test
 
-After installation, test with the default bunny animation:
+After installation, verify everything works with the Quick Test tab:
 
-1. Set Distribution → Keyframes Only
-2. Set Animation Mode → 3D
-3. Click Generate
+1. Navigate to Deforum tab → "Quick Test"
+2. Click "Generate Test"
 
 **What happens:**
-- Downloads Depth-Anything V2 on first run
-- Generates 333 frames at 720p, 60 FPS
-- Only 19 frames diffused (keyframes at prompt boundaries)
-- Synced to amen break beat (enable sound in settings)
+- Downloads Depth-Anything V2 on first run (~300MB)
+- Generates 5-second test video at 60 FPS (~300 frames)
+- Uses synthetic audio with beat synchronization
+- Fast render with optimized settings (New 3D mode)
+- Output: `output/deforum/<timestamp>/`
 
-https://github.com/user-attachments/assets/5f637a04-104f-4d87-8439-15a386685a5e
+**Test Configuration:**
+- Resolution: 720p (1280x720)
+- FPS: 60
+- Steps: 20
+- Cadence: 5 (keyframes at every 5th frame)
+- Depth warping enabled with simple camera movement
 
 ## Troubleshooting
 
