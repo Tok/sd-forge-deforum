@@ -566,7 +566,7 @@ def setup_deforum_left_side_ui():
 
                 # Build settings component list (same as Load All Settings button)
                 from deforum.config.settings import get_settings_component_names
-                dummy_component = gr.Textbox(visible=False)
+                dummy_component = gr.Button(visible=False)
 
                 settings_component_list = [
                     locals().get(name, dummy_component) or dummy_component
