@@ -29,6 +29,31 @@ echo -e "${BB0_ZENITH}Forge WebUI + Deforum${NC}"
 echo -e "${BB0_ZENITH}========================================${NC}"
 echo ""
 
+# Check for existing WebUI instances to prevent duplicate launches
+# This prevents VRAM exhaustion from multiple instances running simultaneously
+EXISTING_PID=$(pgrep -f "python.*launch.py" | head -1)
+if [[ -n "$EXISTING_PID" ]]; then
+    echo ""
+    echo -e "${BB0_GLITCH}========================================${NC}"
+    echo -e "${BB0_GLITCH}ERROR: WebUI is already running!${NC}"
+    echo -e "${BB0_GLITCH}========================================${NC}"
+    echo ""
+    echo -e "Found existing process: ${BB0_VOID}PID $EXISTING_PID${NC}"
+    echo ""
+    echo -e "${BB0_MIDNIGHT}Running multiple instances causes VRAM exhaustion and OOM errors.${NC}"
+    echo ""
+    echo -e "${BB0_ZENITH}To stop the existing instance:${NC}"
+    echo -e "  ${BB0_VOID}kill $EXISTING_PID${NC}"
+    echo ""
+    echo -e "${BB0_ZENITH}Or to force kill all WebUI instances:${NC}"
+    echo -e "  ${BB0_VOID}pkill -f 'python.*launch.py'${NC}"
+    echo ""
+    echo -e "${BB0_ZENITH}Then restart with:${NC}"
+    echo -e "  ${BB0_VOID}./start-forge.sh${NC}"
+    echo ""
+    exit 1
+fi
+
 cd "$FORGE_DIR"
 
 # Check for --no-opt flag
