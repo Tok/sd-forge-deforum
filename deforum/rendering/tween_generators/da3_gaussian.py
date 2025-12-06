@@ -82,11 +82,8 @@ class DA3GaussianTweenGenerator(BaseTweenGenerator):
         logger.info(f"Building 3D Gaussian scene from {len(keyframes)} keyframes...")
 
         try:
-            # Get DA3 model
-            da3_model = self.depth_model.depth_anything
-
-            # Run DA3 3DGS estimation
-            self.scene_3dgs = da3_model.estimate_3d_gaussians(keyframes)
+            # Use DepthModel wrapper method instead of calling depth_anything directly
+            self.scene_3dgs = self.depth_model.estimate_3d_gaussians(keyframes)
 
             if self.scene_3dgs is None:
                 logger.error("DA3 failed to estimate 3D Gaussians")

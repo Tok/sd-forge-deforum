@@ -149,6 +149,56 @@ class DepthModel:
 
         return depth_tensor
 
+    def estimate_3d_gaussians(self, images, use_ray_pose=True, conf_thresh_percentile=40.0):
+        """
+        Estimate 3D Gaussian Splatting parameters from multiple images (DA3 AnyView only)
+
+        Args:
+            images: List of images as numpy arrays (BGR, uint8) - OpenCV format
+            use_ray_pose: Use ray-based pose estimation (more accurate, slower)
+            conf_thresh_percentile: Confidence threshold percentile (0-100)
+
+        Returns:
+            Prediction object with gaussians attribute, or None if not supported/failed
+        """
+        if not self.is_v3:
+            logger.error("3D Gaussian Splatting requires Depth Anything V3 (AnyView variant)")
+            return None
+
+        if not hasattr(self.depth_anything, 'model'):
+            logger.error("DA3 model not properly initialized")
+            return None
+
+        try:
+            # Convert BGR numpy arrays to PIL RGB images
+            pil_images = []
+            for img in images:
+                if isinstance(img, np.ndarray):
+                    # OpenCV BGR -> PIL RGB
+                    img_rgb = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_BGR2RGB)
+                    pil_images.append(Image.fromarray(img_rgb))
+                else:
+                    pil_images.append(img)
+
+            logger.info("3D Gaussian Splatting estimation (Phase 3 - not yet implemented)")
+
+            # Call DA3 infer with infer_gs=True
+            # Note: This requires DA3 model to have gs_head and gs_adapter initialized
+            prediction = self.depth_anything.predict(
+                pil_images,
+                use_ray_pose=use_ray_pose,
+                conf_thresh_percentile=conf_thresh_percentile,
+                infer_gs=True  # Enable 3DGS estimation
+            )
+
+            return prediction
+
+        except Exception as e:
+            logger.error(f"3DGS estimation failed: {str(e)}")
+            import traceback
+            logger.debug(traceback.format_exc())
+            return None
+
     def to(self, device):
         """Move model to specified device"""
         self.device = device
