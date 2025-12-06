@@ -29,19 +29,24 @@ def _get_model_name(variant: str, size: str) -> str:
     """Get HuggingFace model name for DA3 variant and size.
 
     Args:
-        variant: 'mono' or 'any-view'
-        size: 'small', 'base', or 'large'
+        variant: 'mono', 'any-view', or 'giant' (3DGS capable)
+        size: 'small', 'base', 'large', 'giant', or 'nested-giant-large'
 
     Returns:
         HuggingFace model identifier string
     """
     model_map: Dict[Tuple[str, str], str] = {
+        # Mono models - single-view depth only
         ('mono', 'small'): 'depth-anything/Depth-Anything-V3-Small',
         ('mono', 'base'): 'depth-anything/Depth-Anything-V3-Base',
         ('mono', 'large'): 'depth-anything/Depth-Anything-V3-Large',
+        # Any-view models - multi-view geometry (NOT 3DGS capable)
         ('any-view', 'small'): 'depth-anything/DA3-Small',
         ('any-view', 'base'): 'depth-anything/DA3-Base',
         ('any-view', 'large'): 'depth-anything/DA3-Large',
+        # GIANT models - 3DGS capable (1.15B and 1.40B params)
+        ('giant', 'giant'): 'depth-anything/DA3-GIANT',
+        ('giant', 'nested-giant-large'): 'depth-anything/DA3NESTED-GIANT-LARGE',
     }
 
     key = (variant.lower(), size.lower())

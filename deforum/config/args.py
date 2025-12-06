@@ -1277,7 +1277,14 @@ def WanArgs():
             "type": "dropdown",
             "choices": ["Wan", "FILM", "DA3-3DGS"],
             "value": "Wan",
-            "info": "Interpolation method for Flux FLF2V mode: 'Wan' (AI-generated video, recommended), 'FILM' (smearcore - sharp motion mixing like dragging paint), 'DA3-3DGS' (3D Gaussian Splatting - NOT YET AVAILABLE, requires future DA3 models with trained 3DGS heads, geometric interpolation with multi-view consistency). Note: RIFE is available in post-processing for framerate doubling."
+            "info": "Interpolation method for Flux FLF2V mode: 'Wan' (AI-generated video, recommended), 'FILM' (smearcore - sharp motion mixing like dragging paint), 'DA3-3DGS' (3D Gaussian Splatting with novel view synthesis - requires DA3-GIANT models, geometric interpolation with multi-view consistency). Note: RIFE is available in post-processing for framerate doubling."
+        },
+        "da3_3dgs_model": {
+            "label": "DA3-3DGS Model",
+            "type": "dropdown",
+            "choices": ["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
+            "value": "DA3-GIANT",
+            "info": "3DGS-capable DA3 model (only used when FLF2V method is DA3-3DGS): 'DA3-GIANT' (1.15B params, ~3GB VRAM), 'DA3NESTED-GIANT-LARGE' (1.40B params, ~4GB VRAM, recommended - combines multi-view with metric depth). Both models support feed-forward 3D Gaussian Splatting for novel view synthesis."
         },
 
         # Advanced Generation Settings

@@ -172,11 +172,14 @@ git checkout dev
 - **See**: `docs/MCP_INTEGRATION.md` for complete setup guide
 
 ### 🎨 **Reworked Workflow-Centric UI**
-- **5 Render Modes**: Classic 3D, New 3D, Keyframes Only, Flux + Interpolation, Gaussian Scene
+- **4 Render Modes**: Classic 3D, New 3D, Keyframes Only, Keyframes + Interpolation
 - **Flattened Navigation**: Single-level tab structure for faster access
 - **Promoted Tabs**: Distribution, Shakify, 3D Depth elevated to main level
 - **Context-Aware Controls**: UI adapts based on selected render mode
 - **Dual Strength Schedules**: Normal + keyframe strength for advanced control
+- **Model Selection by Workflow**:
+  - 3D Depth tab: DA3-Mono models for depth warping (all standard modes)
+  - Wan Models tab: DA3-GIANT models for 3DGS interpolation (DA3-3DGS method only)
 
 ### 🕳️ **Depth-Anything V2** (Legacy - deprecated in favor of V3)
 - **Status**: Still functional but superseded by V3 (will be phased out in future releases)
@@ -188,26 +191,32 @@ git checkout dev
 ### 🌌 **Depth-Anything V3 + 3D Gaussian Splatting** (NEW - Default Depth Model)
 - **State-of-Art (2025)**: Latest depth estimation with multi-view geometry and 3DGS capabilities
 - **Official Website**: [https://depth-anything-3.github.io/](https://depth-anything-3.github.io/) (with gorgeous purple gradient!)
-- **3 Phased Integration**:
-  - **Phase 1 (COMPLETE)**: Drop-in replacement for DA2 with better monocular depth quality
-  - **Phase 2 (COMPLETE)**: Multi-view depth with temporal consistency for video sequences
-  - **Phase 3 (COMPLETE)**: 3D Gaussian Splatting rendering for novel view synthesis
-- **Tween Generation Modes** (in 3D Depth tab):
-  - **da3_gaussian** (default) - 3D Gaussian Splatting for ultimate quality and geometric consistency
-  - **da3_multiview** - Multi-view geometry for temporal consistency
-  - **depth_warp** - Classic depth-based warping (fastest, legacy)
-- **Two Model Variants**:
-  - **AnyView Models** (default) - Multi-view geometry + 3DGS support, best quality
-  - **Mono Models** - Single-view only, faster but no 3DGS
-- **Auto-Selection**: Depth model auto-switches based on tween mode:
-  - `da3_gaussian` or `da3_multiview` → AnyView (required for multi-view features)
-  - `depth_warp` → Mono (faster, lower VRAM)
+- **Two Model Families**:
+  - **Mono Models** (Standard) - For 3D depth warp modes (Classic 3D, New 3D, Keyframes Only)
+    - Fast single-view depth estimation
+    - Low VRAM (~135MB-500MB)
+    - **Default**: DA3-Mono-Small (recommended for most users)
+  - **GIANT Models** (Experimental) - For DA3-3DGS FLF2V interpolation only
+    - Feed-forward 3D Gaussian Splatting with novel view synthesis
+    - **High VRAM** (24GB+ recommended, 16GB minimum with aggressive cleanup)
+    - Models: DA3-GIANT (1.15B params, ~3GB) or DA3NESTED-GIANT-LARGE (1.40B params, ~4GB)
+    - **⚠️ VERY EXPERIMENTAL**: Requires DA3-GIANT models, two-phase workflow (Flux → DA3-3DGS)
+- **3DGS Integration** (⚠️ Experimental):
+  - **NEW**: DA3-3DGS interpolation method in "Keyframes + Interpolation" mode
+  - **Phase 1**: Generate ALL keyframes with Flux/Z-Image
+  - **VRAM Cleanup**: Aggressive model unload between phases
+  - **Phase 2**: Build 3DGS scene from keyframes, render novel views for tweens
+  - **Phase 3**: Stitch final video
+  - **Fallback to Wan**: If DA3-3DGS fails or models unavailable, automatically falls back to Wan FLF2V
+  - **Turn Off**: Switch "FLF2V Interpolation Method" from "DA3-3DGS" to "Wan" or "FILM" if experiencing issues
+- **Standard Depth Warp Modes** (Stable):
+  - **depth_warp** (default) - Classic depth-based warping with DA3-Mono models
+  - **da3_multiview** - Multi-view geometry for temporal consistency (experimental)
 - **Auto-Install**: Package installs from GitHub via requirements.txt
 - **Auto-Download**: Models download from HuggingFace on first use
-- **6 Model Options**: Small/Base/Large for both Mono and AnyView variants
-  - Default: Depth-Anything-V3-AnyView-Small (multi-view + 3DGS, ~135MB)
-  - Performance: Depth-Anything-V3-Mono-Small (faster, single-view, ~135MB)
-  - Quality: Depth-Anything-V3-AnyView-Large (best quality, ~350MB)
+- **Model Options**:
+  - Standard: DA3-Mono-Small/Base/Large (~135MB-500MB)
+  - GIANT: DA3-GIANT (1.15B, ~3GB) or DA3NESTED-GIANT-LARGE (1.40B, ~4GB)
 - **Backwards Compatible**: Existing DA2 workflows continue working unchanged
 - **See**: `docs/DEPTH_ANYTHING_V3_PLAN.md` and `docs/DA3_TESTING_GUIDE.md` for technical details
 
@@ -319,23 +328,32 @@ Pure keyframe diffusion with depth tweening:
 - Best For: Maximum speed, slow movements
 - Note: Not compatible with RAFT/ControlNet
 
-#### **4. Flux + Interpolation** 🎬
+#### **4. Keyframes + Interpolation** 🎬
 Hybrid Flux keyframes + multi-method interpolation:
-- Interpolation: Wan FLF2V or pure FILM for smearcore aesthetics
-- Strength: Single (I2V chaining)
+- **Phase 1**: Generate ALL keyframes with Flux/Z-Image
+- **Phase 2**: Interpolate tweens with selected method
+- **Three Interpolation Methods**:
+  - **Wan FLF2V** (default): AI-generated video with semantic understanding
+  - **FILM**: Google's Frame Interpolation for Large Motion (smearcore aesthetics)
+  - **DA3-3DGS** (⚠️ experimental): 3D Gaussian Splatting with novel view synthesis
+- Strength: Single (I2V chaining for Wan)
 - Defaults: 24 FPS, pseudo-cadence, 20 steps
 - Best For: Dramatic changes, cinematic quality
 - Features: Qwen prompt enhancement, movement analysis
-
-#### **5. Gaussian Scene** 🌌 (NEW)
-3D Gaussian Splatting rendering with DA3 AnyView:
-- Depth Model: Auto-upgrades to Depth-Anything V3 AnyView
-- Rendering: 3DGS primitive splatting instead of depth warping
-- Strength: Dual (normal + keyframe)
-- Defaults: 60 FPS, cadence=5, 20 steps
-- Best For: Complex camera movements (orbits, figure-8s), novel view synthesis
-- Requires: DA3 AnyView models (download with `./shell_scripts/download-all-models.sh`)
-- Note: Experimental feature, requires significant VRAM
+- **Depth Models Used**:
+  - Wan/FILM: No depth model needed
+  - DA3-3DGS: DA3-GIANT or DA3NESTED-GIANT-LARGE (selected in Wan Models tab)
+- **Why Different Models for Different Modes?**
+  - **Standard 3D modes** (Classic/New/Keyframes Only) use **Mono models** for depth warping:
+    - Fast single-view depth estimation (~135-500MB VRAM)
+    - DA3-Mono-Small (default) provides excellent depth maps for 3D transforms
+    - Selected in "3D Depth" tab
+  - **DA3-3DGS interpolation** uses **GIANT models** for novel view synthesis:
+    - Feed-forward 3D Gaussian Splatting (1.15B-1.40B params, ~3-4GB VRAM)
+    - Renders completely new camera viewpoints from keyframe geometry
+    - Selected in "Wan Models" tab (only used when FLF2V method = DA3-3DGS)
+  - **Separate workflows**: Standard modes do depth warp frame-by-frame; DA3-3DGS builds full 3D scene from all keyframes
+- **Turn Off DA3-3DGS**: Set "FLF2V Interpolation Method" to "Wan" or "FILM" if issues occur
 
 ## Requirements
 

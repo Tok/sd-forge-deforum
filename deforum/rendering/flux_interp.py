@@ -196,8 +196,31 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     else:
         logger.info(f"   (All {newly_generated} keyframes newly generated with Flux/SD)")
 
+    # CRITICAL: Aggressive VRAM cleanup between Phase 1 and Phase 2
+    # This allows switching from Flux/Z-Image to DA3-GIANT without VRAM conflicts
+    logger.info(f"\n{emoji_if_enabled('🧹')} Cleaning up VRAM before Phase 2...")
+    import gc
+    import torch
+    from modules import devices
+
+    # Unload Flux/SD models completely
+    try:
+        devices.torch_gc()
+    except:
+        pass
+
+    # Force garbage collection
+    gc.collect()
+
+    # Clear CUDA cache
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+
+    logger.info(f"{emoji_if_enabled('✓')} VRAM cleanup complete - ready for interpolation models")
+
     # ====================
-    # PHASE 2: Batch Frame Interpolation (Wan/RIFE/FILM)
+    # PHASE 2: Batch Frame Interpolation (Wan/FILM/DA3-3DGS)
     # ====================
     logger.separator(char="=")
     logger.info("PHASE 2: Batch Frame Interpolation")
