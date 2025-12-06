@@ -383,9 +383,26 @@ def generate_da3_3dgs_interpolation(
     logger.debug(f"   Camera poses: {extrinsics.shape}")
     logger.debug(f"   Camera intrinsics: {intrinsics.shape}")
 
-    # Get first and last camera poses for interpolation
-    first_pose = extrinsics[0]  # [4, 4]
-    last_pose = extrinsics[-1]  # [4, 4]
+    # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
+    # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
+    # but we MUST interpolate between segment boundaries to stay in sync
+    if segment_first_idx is not None and segment_last_idx is not None:
+        # Find which collected keyframe corresponds to each segment boundary
+        try:
+            first_idx_pos = keyframe_indices.index(segment_first_idx)
+            last_idx_pos = keyframe_indices.index(segment_last_idx)
+            first_pose = extrinsics[first_idx_pos]  # Pose of segment first keyframe
+            last_pose = extrinsics[last_idx_pos]    # Pose of segment last keyframe
+            logger.debug(f"   Using segment boundary poses: collected[{first_idx_pos}]={segment_first_idx}, collected[{last_idx_pos}]={segment_last_idx}")
+        except ValueError:
+            # Fallback: segment boundaries not in collected keyframes (shouldn't happen)
+            logger.warning(f"   Segment boundaries {segment_first_idx}-{segment_last_idx} not in collected keyframes {keyframe_indices}, using first/last")
+            first_pose = extrinsics[0]
+            last_pose = extrinsics[-1]
+    else:
+        # No segment info provided, use first/last of collected keyframes
+        first_pose = extrinsics[0]  # [4, 4]
+        last_pose = extrinsics[-1]  # [4, 4]
 
     # Use average intrinsics (usually constant across views)
     avg_intrinsics = np.mean(intrinsics, axis=0)
@@ -429,12 +446,20 @@ def generate_da3_3dgs_interpolation(
     logger.info(f"   Rendering {num_tweens} tween views{f' + {num_keyframes_rendered} keyframes' if num_keyframes_rendered > 0 else ''}...")
     frame_paths = []
 
-    first_frame_idx = keyframe_indices[0]
-    last_frame_idx = keyframe_indices[-1]
+    # CRITICAL: Use SEGMENT BOUNDARIES for span, not collected keyframe range
+    # This ensures interpolation stays in sync with segment tweens
+    if segment_first_idx is not None and segment_last_idx is not None:
+        first_frame_idx = segment_first_idx
+        last_frame_idx = segment_last_idx
+    else:
+        # Fallback: use collected keyframe range
+        first_frame_idx = keyframe_indices[0]
+        last_frame_idx = keyframe_indices[-1]
+
     total_span = last_frame_idx - first_frame_idx
 
     for target_idx in target_frame_indices:
-        # Calculate interpolation parameter (0 to 1)
+        # Calculate interpolation parameter (0 to 1) within SEGMENT span
         t = (target_idx - first_frame_idx) / total_span if total_span > 0 else 0.5
 
         # Interpolate camera pose
