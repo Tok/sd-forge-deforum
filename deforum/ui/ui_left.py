@@ -283,10 +283,14 @@ def setup_deforum_left_side_ui():
             with gr.TabItem(f"{emoji_utils.masking()} Masking", visible=True) as tab_masking:
                 tab_masking_params = get_tab_masking(d, da, skip_tabitem=True)  # 7. Masking - all modes
 
-            # Flux + Interpolation mode tab:
+            # Flux + Interpolation mode tabs:
             from .ui_elements import get_tab_wan
-            with gr.TabItem(f"{emoji_utils.wan_video()} Interpolation", visible=True) as tab_wan:
-                tab_wan_params = get_tab_wan(dw, da, skip_tabitem=True)  # 8. Interpolation - Flux + Interpolation mode
+            with gr.TabItem(f"{emoji_utils.wan_video()} Wan Settings", visible=True) as tab_wan:
+                tab_wan_params = get_tab_wan(dw, da, skip_tabitem=True)  # 8a. Wan - Flux + Interpolation mode
+
+            from deforum.ui.tabs.tab_da3_3dgs import get_tab_da3_3dgs
+            with gr.TabItem(f"{emoji_if_enabled('🔍')} DA3-3DGS", visible=True) as tab_da3_3dgs:
+                tab_da3_3dgs_params = get_tab_da3_3dgs(dw, skip_tabitem=True)  # 8b. DA3-3DGS - Flux + Interpolation mode
 
             # Always visible tabs:
             tab_run_params = get_tab_run(d, da)  # 8. Run - all modes
@@ -297,7 +301,7 @@ def setup_deforum_left_side_ui():
 
             # add returned gradio elements from main tabs to locals()
             # Note: Zero-HITL components now come from tab_init_params
-            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_prompts_params, **tab_camera_path_params, **tab_shakify_params, **tab_masking_params, **tab_depth_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_output_params}.items():
+            for key, value in {**tab_run_params, **tab_keyframes_params, **tab_prompts_params, **tab_camera_path_params, **tab_shakify_params, **tab_masking_params, **tab_depth_params, **tab_init_params, **controlnet_dict, **tab_wan_params, **tab_da3_3dgs_params, **tab_output_params}.items():
                 locals()[key] = value
 
             # WORKAROUND: Explicitly unpack audio AI components as actual local variables
@@ -312,10 +316,10 @@ def setup_deforum_left_side_ui():
             audio_ai_end_prompt = tab_init_params.get('audio_ai_end_prompt')
             audio_sync_prompts = tab_init_params.get('audio_sync_prompts')
 
-            # Explicitly unpack DA3-3DGS components from tab_wan_params
-            da3_3dgs_model = tab_wan_params.get('da3_3dgs_model')
-            da3_3dgs_num_keyframes = tab_wan_params.get('da3_3dgs_num_keyframes')
-            da3_3dgs_render_keyframes = tab_wan_params.get('da3_3dgs_render_keyframes')
+            # Explicitly unpack DA3-3DGS components from dedicated tab
+            da3_3dgs_model = tab_da3_3dgs_params.get('da3_3dgs_model')
+            da3_3dgs_num_keyframes = tab_da3_3dgs_params.get('da3_3dgs_num_keyframes')
+            da3_3dgs_render_keyframes = tab_da3_3dgs_params.get('da3_3dgs_render_keyframes')
 
             # Explicitly unpack components needed for Reset to Defaults button
             soundtrack_path = tab_init_params.get('soundtrack_path')
