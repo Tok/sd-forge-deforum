@@ -759,7 +759,29 @@ def generate_da3_3dgs_segment(first_image, last_image, first_frame_idx, last_fra
             first_depth = torch.from_numpy(result.depth[0]).float().to(device)
             last_depth = torch.from_numpy(result.depth[1]).float().to(device)
 
-            logger.debug(f"   Depth maps: first={first_depth.shape}, last={last_depth.shape}")
+            logger.debug(f"   DA3 depth maps: first={first_depth.shape}, last={last_depth.shape}")
+
+            # Get image dimensions to match depth map size
+            img_height, img_width = first_image.size[1], first_image.size[0]  # PIL is (W, H)
+            logger.debug(f"   Image dimensions: {img_width}x{img_height}")
+
+            # Resize depth maps to match image dimensions (DA3 downsamples internally)
+            # Use bilinear interpolation for smooth depth transitions
+            import torch.nn.functional as F
+            first_depth_resized = F.interpolate(
+                first_depth.unsqueeze(0).unsqueeze(0),  # [1, 1, H, W]
+                size=(img_height, img_width),
+                mode='bilinear',
+                align_corners=False
+            )
+            last_depth_resized = F.interpolate(
+                last_depth.unsqueeze(0).unsqueeze(0),
+                size=(img_height, img_width),
+                mode='bilinear',
+                align_corners=False
+            )
+
+            logger.debug(f"   Resized depth maps: {first_depth_resized.shape}")
 
             # Use proper 3D depth warping for novel view synthesis
             from deforum.animation.animation import anim_frame_warp_3d
@@ -768,10 +790,9 @@ def generate_da3_3dgs_segment(first_image, last_image, first_frame_idx, last_fra
             keys = data.animation_keys.deform_keys
             anim_args = data.args.anim_args
 
-            # Prepare depth tensors in format expected by warp function
-            # DA3 returns [H, W], warp expects [1, 1, H, W]
-            first_depth_tensor = first_depth.unsqueeze(0).unsqueeze(0)  # [1, 1, H, W]
-            last_depth_tensor = last_depth.unsqueeze(0).unsqueeze(0)
+            # Depth tensors are now in correct format [1, 1, H, W] matching image size
+            first_depth_tensor = first_depth_resized
+            last_depth_tensor = last_depth_resized
 
             frame_paths = []
             for i in range(num_frames):
