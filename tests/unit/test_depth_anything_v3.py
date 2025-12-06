@@ -58,41 +58,41 @@ class TestModelNameMapping:
     """Test model name detection and mapping."""
 
     def test_mono_small(self):
-        """Test mono small model mapping."""
-        assert _get_model_name('mono', 'small') == 'depth-anything/Depth-Anything-V3-Small'
+        """Test mono small model mapping (maps to LARGE - only variant available)."""
+        assert _get_model_name('mono', 'small') == 'depth-anything/DA3MONO-LARGE'
 
     def test_mono_base(self):
-        """Test mono base model mapping."""
-        assert _get_model_name('mono', 'base') == 'depth-anything/Depth-Anything-V3-Base'
+        """Test mono base model mapping (maps to LARGE - only variant available)."""
+        assert _get_model_name('mono', 'base') == 'depth-anything/DA3MONO-LARGE'
 
     def test_mono_large(self):
         """Test mono large model mapping."""
-        assert _get_model_name('mono', 'large') == 'depth-anything/Depth-Anything-V3-Large'
+        assert _get_model_name('mono', 'large') == 'depth-anything/DA3MONO-LARGE'
 
     def test_anyview_small(self):
         """Test any-view small model mapping."""
-        assert _get_model_name('any-view', 'small') == 'depth-anything/DA3-Small'
+        assert _get_model_name('any-view', 'small') == 'depth-anything/DA3-SMALL'
 
     def test_anyview_base(self):
         """Test any-view base model mapping."""
-        assert _get_model_name('any-view', 'base') == 'depth-anything/DA3-Base'
+        assert _get_model_name('any-view', 'base') == 'depth-anything/DA3-BASE'
 
     def test_anyview_large(self):
         """Test any-view large model mapping."""
-        assert _get_model_name('any-view', 'large') == 'depth-anything/DA3-Large'
+        assert _get_model_name('any-view', 'large') == 'depth-anything/DA3-LARGE'
 
     def test_case_insensitive(self):
         """Test that variant and size are case-insensitive."""
-        assert _get_model_name('MONO', 'LARGE') == 'depth-anything/Depth-Anything-V3-Large'
-        assert _get_model_name('Any-View', 'Base') == 'depth-anything/DA3-Base'
+        assert _get_model_name('MONO', 'LARGE') == 'depth-anything/DA3MONO-LARGE'
+        assert _get_model_name('Any-View', 'Base') == 'depth-anything/DA3-BASE'
 
     def test_invalid_variant_fallback(self):
-        """Test fallback to mono/small for invalid variant."""
-        assert _get_model_name('invalid', 'large') == 'depth-anything/Depth-Anything-V3-Small'
+        """Test fallback to mono/small for invalid variant (uses mono large)."""
+        assert _get_model_name('invalid', 'large') == 'depth-anything/DA3MONO-LARGE'
 
     def test_invalid_size_fallback(self):
-        """Test fallback to mono/small for invalid size."""
-        assert _get_model_name('mono', 'invalid') == 'depth-anything/Depth-Anything-V3-Small'
+        """Test fallback to mono/small for invalid size (uses mono large)."""
+        assert _get_model_name('mono', 'invalid') == 'depth-anything/DA3MONO-LARGE'
 
 
 class TestImageConversion:
@@ -339,7 +339,8 @@ class TestDepthAnythingV3Mock:
         assert da3.model == mock_model
 
         # Check model was loaded and moved to device
-        mock_da3_class.from_pretrained.assert_called_once_with('depth-anything/Depth-Anything-V3-Small')
+        # mono/small maps to DA3MONO-LARGE (only mono variant available)
+        mock_da3_class.from_pretrained.assert_called_once_with('depth-anything/DA3MONO-LARGE')
         mock_model.to.assert_called_once_with(device)
 
     def test_init_import_error(self):

@@ -294,9 +294,9 @@ class TestModelVariantBehavior:
         device = torch.device('cpu')
         da3 = DepthAnythingV3(device, model_size='large', variant='mono')
 
-        # Check correct model was loaded
+        # Check correct model was loaded (mono/large maps to DA3MONO-LARGE)
         mock_da3_class.from_pretrained.assert_called_with(
-            'depth-anything/Depth-Anything-V3-Large'
+            'depth-anything/DA3MONO-LARGE'
         )
 
     @patch('depth_anything_3.api.DepthAnything3')
@@ -308,9 +308,9 @@ class TestModelVariantBehavior:
         device = torch.device('cpu')
         da3 = DepthAnythingV3(device, model_size='base', variant='any-view')
 
-        # Check correct model was loaded
+        # Check correct model was loaded (any-view uses all caps)
         mock_da3_class.from_pretrained.assert_called_with(
-            'depth-anything/DA3-Base'
+            'depth-anything/DA3-BASE'
         )
 
     @patch('depth_anything_3.api.DepthAnything3')
@@ -322,9 +322,9 @@ class TestModelVariantBehavior:
         device = torch.device('cpu')
         da3 = DepthAnythingV3(device)
 
-        # Check default is mono/small
+        # Check default is mono/small (maps to DA3MONO-LARGE - only mono variant)
         mock_da3_class.from_pretrained.assert_called_with(
-            'depth-anything/Depth-Anything-V3-Small'
+            'depth-anything/DA3MONO-LARGE'
         )
         assert da3.variant == 'mono'
 
