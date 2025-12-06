@@ -241,8 +241,8 @@ def run_deforum(*args):
                 render_input_video(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)#TODO: prettify code
             elif anim_args.animation_mode == 'Interpolation':
                 render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
-            elif anim_args.animation_mode == 'Flux + Interpolation':
-                # Flux + Interpolation mode: Flux keyframes + choice of interpolation (Wan FLF2V or FILM)
+            elif anim_args.animation_mode in ('Flux + Interpolation', 'Keyframes + Interpolation'):
+                # Keyframes + Interpolation mode: Model-agnostic keyframes + choice of interpolation (Wan/FILM/DA3-3DGS)
                 from deforum.rendering.flux_interp import render_flux_interp
                 render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, wan_args, root)
             else:
