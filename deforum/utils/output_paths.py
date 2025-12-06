@@ -110,13 +110,19 @@ class OutputPaths:
             # Standard Deforum output paths (Forge uses 'output' not 'outputs')
             Path(f"{cls.DEFORUM}/Deforum_{timestring}/{timestring}_settings.txt"),
             Path(f"{cls.DEFORUM}/{timestring}/{timestring}_settings.txt"),
+            # Common video output directories
+            Path(f"{cls.BASE}/videos/Deforum_{timestring}/{timestring}_settings.txt"),
+            Path(f"{cls.BASE}/videos/{timestring}/{timestring}_settings.txt"),
         ]
 
         # Add custom outdir paths if provided
         if outdir:
             possible_paths.extend([
+                Path(outdir) / f"Deforum_{timestring}" / f"{timestring}_settings.txt",
+                Path(outdir) / f"{timestring}" / f"{timestring}_settings.txt",
                 Path(outdir) / f"{timestring}_settings.txt",
-                Path(outdir) / timestring / f"{timestring}_settings.txt",
+                Path(outdir) / "videos" / f"Deforum_{timestring}" / f"{timestring}_settings.txt",
+                Path(outdir) / "videos" / f"{timestring}" / f"{timestring}_settings.txt",
             ])
 
         # Find first existing path
