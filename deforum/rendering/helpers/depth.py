@@ -40,6 +40,9 @@ def create_depth_model_and_enable_depth_map_saving_if_active(anim_mode, root, an
     render_mode = getattr(args, 'render_mode', 'New 3D')
     tween_mode = getattr(anim_args, 'tween_generation_mode', 'depth_warp')
 
+    # DEBUG: Log depth model selection source
+    logger.debug(f"Depth model from args: {depth_algorithm} (render_mode={render_mode}, tween_mode={tween_mode})")
+
     # Check if Gaussian Scene mode or da3_gaussian tween mode requires DA3
     needs_da3 = (render_mode == 'Gaussian Scene' or tween_mode == 'da3_gaussian')
     is_da2 = 'v2' in depth_algorithm.lower()
