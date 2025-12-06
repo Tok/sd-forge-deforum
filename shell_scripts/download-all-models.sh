@@ -290,7 +290,61 @@ esac
 echo ""
 
 # =====================================
-# 8. Lumina 2.0 (Anime-Optimized)
+# 8. Depth Anything V3 (Advanced Depth Estimation)
+# =====================================
+echo -e "${BB0_MIDNIGHT}=== Depth Anything V3 (DA3) ===${NC}"
+echo "DA3 provides enhanced depth estimation with multi-view geometry support"
+echo "Required for Gaussian Scene mode (3D Gaussian Splatting)"
+echo ""
+echo "Choose which DA3 models to download:"
+echo "  1) DA3-AnyView-Large (Recommended for Gaussian Scene, ~350MB)"
+echo "  2) DA3-Mono-Large (Better monocular depth only, ~350MB)"
+echo "  3) DA3-AnyView-Base (Faster, lower quality, ~135MB)"
+echo "  4) All DA3 models (Downloads all 3)"
+echo "  5) Skip DA3 models (keep using Depth-Anything V2)"
+echo ""
+echo -e "${BB0_VOID}NOTE: AnyView models required for Gaussian Scene mode${NC}"
+read -p "Enter choice [1-5]: " da3_choice
+
+# Create DA3 directory
+mkdir -p models/Deforum/depth-anything-v3
+
+case $da3_choice in
+    1|4)
+        echo -e "${BB0_GLITCH}Downloading DA3-AnyView-Large (multi-view + Gaussian Scene)...${NC}"
+        huggingface-cli download depth-anything/DA3-Large \
+            --local-dir models/Deforum/depth-anything-v3/DA3-Large \
+            --resume-download
+        echo -e "${BB0_ZENITH}✓ DA3-AnyView-Large downloaded${NC}"
+        ;&  # Fall through if choice was 4
+esac
+
+case $da3_choice in
+    2|4)
+        echo -e "${BB0_GLITCH}Downloading DA3-Mono-Large (monocular depth only)...${NC}"
+        huggingface-cli download depth-anything/DA3MONO-Large \
+            --local-dir models/Deforum/depth-anything-v3/DA3MONO-Large \
+            --resume-download
+        echo -e "${BB0_ZENITH}✓ DA3-Mono-Large downloaded${NC}"
+        ;&  # Fall through if choice was 4
+esac
+
+case $da3_choice in
+    3|4)
+        echo -e "${BB0_GLITCH}Downloading DA3-AnyView-Base (faster, lower quality)...${NC}"
+        huggingface-cli download depth-anything/DA3-Base \
+            --local-dir models/Deforum/depth-anything-v3/DA3-Base \
+            --resume-download
+        echo -e "${BB0_ZENITH}✓ DA3-AnyView-Base downloaded${NC}"
+        ;;
+    5)
+        echo -e "${BB0_GLITCH}Skipping DA3 models (will use Depth-Anything V2)${NC}"
+        ;;
+esac
+echo ""
+
+# =====================================
+# 9. Lumina 2.0 (Anime-Optimized)
 # =====================================
 echo -e "${BB0_MIDNIGHT}=== Lumina 2.0 (Anime-Optimized Fine-Tune) ===${NC}"
 echo "Lumina 2.0 is a 2B parameter model with 1024x1024 native resolution"
