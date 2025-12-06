@@ -175,20 +175,35 @@ class Tween:
             return self._generate_standard_depth_warp(data, last_frame, prev_image)
 
     def _collect_keyframes(self, data):
-        """Collect all generated keyframe images for 3DGS scene building.
+        """Collect generated frames for 3DGS scene building.
+
+        Collects either keyframes only or all diffusion frames based on
+        da3_3dgs_use_all_frames setting (up to da3_3dgs_max_frames limit).
 
         Returns:
             List of numpy array images (BGR format) for DA3 3DGS processing
         """
         if hasattr(data, 'generated_keyframes'):
-            keyframe_dicts = data.generated_keyframes
-            # Extract just the images from the keyframe dicts
+            frame_dicts = data.generated_keyframes
+            # Extract just the images from the frame dicts
             # DA3 expects List[np.ndarray], not List[dict]
-            images = [kf['image'] for kf in keyframe_dicts]
-            log_utils.info(f"Collected {len(images)} keyframe images for 3DGS scene building")
+            images = [kf['image'] for kf in frame_dicts]
+
+            # Log what we collected
+            use_all_frames = getattr(data.args.anim_args, 'da3_3dgs_use_all_frames', False)
+            keyframe_count = sum(1 for kf in frame_dicts if kf.get('is_keyframe', False))
+
+            if use_all_frames:
+                log_utils.info(
+                    f"Collected {len(images)} frames for 3DGS scene building "
+                    f"({keyframe_count} keyframes + {len(images) - keyframe_count} cadence)"
+                )
+            else:
+                log_utils.info(f"Collected {len(images)} keyframes for 3DGS scene building")
+
             return images
         else:
-            log_utils.warning("No keyframes collected yet - generated_keyframes not initialized")
+            log_utils.warning("No frames collected yet - generated_keyframes not initialized")
             return []
 
     def _generate_standard_depth_warp(self, data, last_frame, prev_image):

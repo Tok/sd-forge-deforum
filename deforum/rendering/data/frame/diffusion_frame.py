@@ -144,23 +144,35 @@ class DiffusionFrame:
         self.progress_and_save(data, image)
         self.update_render_preview(data)
 
-        # Store keyframe for DA3 Gaussian splatting scene building
-        # Only store actual keyframes (not all diffusion frames)
-        if self.is_keyframe and hasattr(data, 'generated_keyframes'):
-            # Convert to numpy array if needed
-            import numpy as np
-            if isinstance(image, Image.Image):
-                image_np = np.array(image)
-            else:
-                image_np = image
+        # Store frames for DA3 Gaussian splatting scene building
+        if hasattr(data, 'generated_keyframes'):
+            # Check if we should store this frame
+            use_all_frames = getattr(data.args.anim_args, 'da3_3dgs_use_all_frames', False)
+            max_frames = getattr(data.args.anim_args, 'da3_3dgs_max_frames', 30)
+            current_count = len(data.generated_keyframes)
 
-            keyframe_data = {
-                'frame_idx': self.i,
-                'image': image_np,
-                'depth': self.depth,  # Will be set by progress_and_save
-                'seed': self.seed
-            }
-            data.generated_keyframes.append(keyframe_data)
+            # Store if: (keyframes only and is_keyframe) OR (all frames and under limit)
+            should_store = (
+                (not use_all_frames and self.is_keyframe) or  # Keyframes only mode
+                (use_all_frames and current_count < max_frames)  # All frames mode with limit
+            )
+
+            if should_store:
+                # Convert to numpy array if needed
+                import numpy as np
+                if isinstance(image, Image.Image):
+                    image_np = np.array(image)
+                else:
+                    image_np = image
+
+                frame_data = {
+                    'frame_idx': self.i,
+                    'image': image_np,
+                    'depth': self.depth,  # Will be set by progress_and_save
+                    'seed': self.seed,
+                    'is_keyframe': self.is_keyframe
+                }
+                data.generated_keyframes.append(frame_data)
 
     def progress_and_save(self, data: RenderData, image):
         """Will progress frame or turbo-frame step, save the image, update `self.depth` and return next index."""
