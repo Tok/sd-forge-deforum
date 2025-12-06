@@ -43,16 +43,26 @@ class Tween:
             # Only store tweens in 'all' mode
             if collection_mode == 'all' and current_count < max_frames_limit:
                 import numpy as np
+                import torch
                 # Convert saved_image (OpenCV BGR) to numpy if needed
                 if isinstance(saved_image, np.ndarray):
                     image_np = saved_image
                 else:
                     image_np = np.array(saved_image)
 
+                # CRITICAL: Move depth tensor to CPU to free VRAM
+                # Depth maps accumulate in VRAM if left as CUDA tensors
+                depth_cpu = None
+                if self.depth is not None:
+                    if isinstance(self.depth, torch.Tensor):
+                        depth_cpu = self.depth.cpu()
+                    else:
+                        depth_cpu = self.depth
+
                 frame_data = {
                     'frame_idx': self.i,
                     'image': image_np,
-                    'depth': self.depth,
+                    'depth': depth_cpu,  # Stored on CPU to save VRAM
                     'seed': last_frame.seed,  # Tweens inherit seed from parent keyframe
                     'is_keyframe': False,
                     'is_tween': True

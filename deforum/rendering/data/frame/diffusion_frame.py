@@ -172,15 +172,25 @@ class DiffusionFrame:
             if should_store:
                 # Convert to numpy array if needed
                 import numpy as np
+                import torch
                 if isinstance(image, Image.Image):
                     image_np = np.array(image)
                 else:
                     image_np = image
 
+                # CRITICAL: Move depth tensor to CPU to free VRAM
+                # Depth maps accumulate in VRAM if left as CUDA tensors
+                depth_cpu = None
+                if self.depth is not None:
+                    if isinstance(self.depth, torch.Tensor):
+                        depth_cpu = self.depth.cpu()
+                    else:
+                        depth_cpu = self.depth
+
                 frame_data = {
                     'frame_idx': self.i,
                     'image': image_np,
-                    'depth': self.depth,  # Will be set by progress_and_save
+                    'depth': depth_cpu,  # Stored on CPU to save VRAM
                     'seed': self.seed,
                     'is_keyframe': self.is_keyframe,
                     'is_tween': False  # This is a diffusion frame, not a tween
