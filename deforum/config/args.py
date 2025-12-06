@@ -638,9 +638,9 @@ def DeforumAnimArgs():
         "tween_generation_mode": {
             "label": "Tween Generation Mode",
             "type": "dropdown",
-            "choices": ['depth_warp', 'da3_multiview', 'da3_gaussian'],
-            "value": "depth_warp",
-            "info": "Tween generation: depth_warp (classic), da3_multiview (Phase 2, requires DA3 AnyView), da3_gaussian (Phase 3, not yet implemented)"
+            "choices": ['da3_gaussian', 'depth_warp', 'da3_multiview'],
+            "value": "da3_gaussian",
+            "info": "Tween generation: da3_gaussian (3D Gaussian Splatting, best quality + geometric consistency), depth_warp (classic depth warping, stable), da3_multiview (multi-view geometry, experimental)"
         },
         "midas_weight": {
             "label": "Depth weight (legacy, not used)",

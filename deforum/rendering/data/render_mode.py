@@ -37,8 +37,7 @@ class RenderMode(Enum):
     CLASSIC_3D = "Classic 3D"
     NEW_3D = "New 3D"
     KEYFRAMES_ONLY = "Keyframes Only"
-    FLUX_WAN = "Flux + Interpolation"
-    GAUSSIAN_SCENE = "Gaussian Scene"
+    KEYFRAMES_INTERP = "Keyframes + Interpolation"
 
     @property
     def config(self) -> ModeConfig:
@@ -65,9 +64,10 @@ class RenderMode(Enum):
             "Classic 3D": RenderMode.CLASSIC_3D,
             "New 3D": RenderMode.NEW_3D,
             "Keyframes Only": RenderMode.KEYFRAMES_ONLY,
-            "Flux + Interpolation": RenderMode.FLUX_WAN,
-            "Flux/Wan": RenderMode.FLUX_WAN,  # Legacy compatibility
-            "Gaussian Scene": RenderMode.GAUSSIAN_SCENE,
+            "Keyframes + Interpolation": RenderMode.KEYFRAMES_INTERP,
+            # Legacy compatibility
+            "Keyframes + Interpolation": RenderMode.KEYFRAMES_INTERP,
+            "Keyframes + Interpolation": RenderMode.KEYFRAMES_INTERP
         }
         return mode_map.get(mode_str, RenderMode.default())
 
@@ -78,10 +78,10 @@ class RenderMode(Enum):
         Used for backwards compatibility with existing code that checks animation_mode.
 
         Returns:
-            Legacy animation mode string: '3D', 'Interpolation', or 'Flux + Interpolation'
+            Legacy animation mode string: '3D' or 'Keyframes + Interpolation'
         """
-        if self == RenderMode.FLUX_WAN:
-            return "Flux + Interpolation"
+        if self == RenderMode.KEYFRAMES_INTERP:
+            return "Keyframes + Interpolation"
         else:
             return "3D"
 
@@ -91,11 +91,11 @@ class RenderMode(Enum):
 
     def should_show_3d_tabs(self) -> bool:
         """Return True if 3D-specific tabs (Depth, Shakify, RAFT, ControlNet) should be visible."""
-        return self in [RenderMode.CLASSIC_3D, RenderMode.NEW_3D, RenderMode.KEYFRAMES_ONLY, RenderMode.GAUSSIAN_SCENE]
+        return self in [RenderMode.CLASSIC_3D, RenderMode.NEW_3D, RenderMode.KEYFRAMES_ONLY]
 
     def should_show_wan_tab(self) -> bool:
         """Return True if Wan Models tab should be visible."""
-        return self == RenderMode.FLUX_WAN
+        return self == RenderMode.KEYFRAMES_INTERP
 
     def should_show_cadence_slider(self) -> bool:
         """Return True if cadence slider should be interactive (not pseudo-cadence display)."""
@@ -103,8 +103,8 @@ class RenderMode(Enum):
 
     def should_show_keyframe_strength(self) -> bool:
         """Return True if keyframe strength slider should be visible."""
-        # New 3D uses both, Keyframes Only and Flux + Interpolation use keyframe only
-        return self in [RenderMode.NEW_3D, RenderMode.KEYFRAMES_ONLY, RenderMode.FLUX_WAN]
+        # New 3D uses both, Keyframes Only and Keyframes + Interpolation use keyframe only
+        return self in [RenderMode.NEW_3D, RenderMode.KEYFRAMES_ONLY, RenderMode.KEYFRAMES_INTERP]
 
     def should_show_normal_strength(self) -> bool:
         """Return True if normal strength slider should be visible."""
@@ -172,52 +172,28 @@ _MODE_CONFIGS = {
         )
     ),
 
-    RenderMode.FLUX_WAN: ModeConfig(
-        display_name="Flux + Interpolation",
-        keyframe_distribution=None,  # Uses separate Flux/Lumina + Interpolation pipeline
+    RenderMode.KEYFRAMES_INTERP: ModeConfig(
+        display_name="Keyframes + Interpolation",
+        keyframe_distribution=None,  # Uses separate keyframe + interpolation pipeline
         uses_dual_strength=False,
         default_fps=24,
         default_cadence=10,  # Not used for diffusion, but provides pseudo-cadence hint
-        default_steps=20,  # Flux Dev for keyframes (Schnell=4, Dev=20, Lumina=30)
+        default_steps=20,  # Model-dependent: Flux Dev=20, Schnell=4, Lumina=30, Z-Image=4
         shows_pseudo_cadence=True,
         description=(
-            "Flux/Lumina keyframes + choice of interpolation method (Wan/FILM). "
-            "Phase 1: Generate keyframes with Flux or Lumina at prompt boundaries. "
+            "Model-agnostic keyframes + choice of interpolation method (Wan/FILM). "
+            "Phase 1: Generate keyframes with any model (Flux, Lumina, Z-Image, etc.) at prompt boundaries. "
             "Phase 2: Interpolate tweens with selected method (Wan FLF2V / FILM). "
             "Phase 3: Stitch final video. "
-            "Models: Flux.1 (best quality), Lumina 2.0 (anime, 1024x1024 native). "
+            "Models: Flux.1 (best quality), Lumina 2.0 (anime, 1024x1024), Z-Image-Turbo (fast, 4 steps). "
             "Best quality for dramatic changes between keyframes. "
             "Hides 3D-specific controls (RAFT, ControlNet, Shakify, Depth). "
             "Shows Wan Models tab (only needed when using Wan method). "
             "Uses only keyframe strength schedule (for Wan I2V chaining). "
             "IMPORTANT: Strength resolution depends on steps. "
             "Flux Dev (20 steps) = 0.05 resolution. Flux Schnell (4 steps) = 0.25 resolution. "
-            "Lumina (30 steps) = 0.033 resolution. "
+            "Lumina (30 steps) = 0.033 resolution. Z-Image (4 steps) = 0.25 resolution. "
             "Lower steps make strength harder to tune precisely."
-        )
-    ),
-
-    RenderMode.GAUSSIAN_SCENE: ModeConfig(
-        display_name="Gaussian Scene",
-        keyframe_distribution=KeyFrameDistribution.KEYFRAMES_ONLY,
-        uses_dual_strength=False,
-        default_fps=60,
-        default_cadence=10,  # Not used, provides pseudo-cadence hint
-        default_steps=20,  # Flux Dev standard
-        shows_pseudo_cadence=True,
-        description=(
-            "3D Gaussian Splatting scene reconstruction from keyframes. "
-            "Phase 1: Generate keyframes with diffusion at prompt boundaries. "
-            "Phase 2: Build 3D Gaussian scene from all keyframes using DA3. "
-            "Phase 3: Render ALL tweens from 3DGS scene using Deforum camera schedules. "
-            "Best for: Complex camera paths (orbital shots, dramatic movements). "
-            "Requires: Depth Anything V3 + gsplat library (pip install gsplat). "
-            "Set Tween Generation Mode to 'da3_gaussian' for 3DGS rendering. "
-            "Shows 3D Depth tab for DA3 model selection and 3DGS settings. "
-            "Hides RAFT/optical flow (not compatible with 3DGS). "
-            "Uses only keyframe strength schedule. "
-            "20 steps = 0.05 strength resolution. "
-            "Ultimate quality for geometric consistency and novel views."
         )
     ),
 }

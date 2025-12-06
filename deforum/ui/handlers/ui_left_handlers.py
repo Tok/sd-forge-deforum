@@ -252,7 +252,7 @@ def handle_render_mode_change(mode: str, fractional_enabled: bool) -> list:
         RenderMode.CLASSIC_3D: "Sampling steps for all diffusions (every cadence frames)",
         RenderMode.NEW_3D: "Sampling steps for all diffusions (keyframes + cadence frames)",
         RenderMode.KEYFRAMES_ONLY: "Sampling steps for keyframe diffusions only",
-        RenderMode.FLUX_WAN: "Sampling steps for Flux keyframe generation (Wan FLF2V steps in Wan Models tab)",
+        RenderMode.KEYFRAMES_INTERP: "Sampling steps for Flux keyframe generation (Wan FLF2V steps in Wan Models tab)",
     }
     steps_info = steps_info_map.get(render_mode_enum, "Sampling steps for diffusion")
 

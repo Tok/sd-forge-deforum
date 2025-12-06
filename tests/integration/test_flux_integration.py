@@ -35,7 +35,7 @@ def test_flux_basic_generation():
     deforum_settings['batch_name'] = get_test_batch_name('test_flux_basic_generation')
 
     # Configure for Flux + Interpolation mode
-    deforum_settings['animation_mode'] = "Flux + Interpolation"
+    deforum_settings['animation_mode'] = "Keyframes + Interpolation"
     deforum_settings['max_frames'] = 9  # Will create keyframes at 0, 8
     deforum_settings['keyframe_distribution_mode'] = "Keyframes Only"
     deforum_settings['prompts'] = {
@@ -121,7 +121,7 @@ def test_flux_wan_hybrid_mode():
     deforum_settings['batch_name'] = get_test_batch_name('test_flux_wan_hybrid_mode')
 
     # Flux + Interpolation hybrid workflow
-    deforum_settings['animation_mode'] = "Flux + Interpolation"
+    deforum_settings['animation_mode'] = "Keyframes + Interpolation"
     deforum_settings['max_frames'] = 9
     deforum_settings['keyframe_distribution_mode'] = "Keyframes Only"
     deforum_settings['prompts'] = {
@@ -168,7 +168,7 @@ def test_flux_qwen_prompt_enhancement():
     deforum_settings['batch_name'] = get_test_batch_name('test_flux_qwen_prompt_enhancement')
 
     # Enable Qwen enhancement
-    deforum_settings['animation_mode'] = "Flux + Interpolation"
+    deforum_settings['animation_mode'] = "Keyframes + Interpolation"
     deforum_settings['max_frames'] = 9
     deforum_settings['enable_qwen_enhancement'] = True
     deforum_settings['qwen_model_size'] = "3B"  # Use smallest model for testing
@@ -206,7 +206,7 @@ def test_flux_resolution_512x512():
     # Set test-specific batch name for easier output identification
     deforum_settings['batch_name'] = get_test_batch_name('test_flux_resolution_512x512')
 
-    deforum_settings['animation_mode'] = "Flux + Interpolation"
+    deforum_settings['animation_mode'] = "Keyframes + Interpolation"
     deforum_settings['max_frames'] = 5
     deforum_settings['W'] = 512
     deforum_settings['H'] = 512
@@ -246,7 +246,7 @@ def test_flux_resolution_768x768():
     # Set test-specific batch name for easier output identification
     deforum_settings['batch_name'] = get_test_batch_name('test_flux_resolution_768x768')
 
-    deforum_settings['animation_mode'] = "Flux + Interpolation"
+    deforum_settings['animation_mode'] = "Keyframes + Interpolation"
     deforum_settings['max_frames'] = 5
     deforum_settings['W'] = 768
     deforum_settings['H'] = 768
@@ -287,7 +287,7 @@ def test_flux_with_movement_analysis():
     deforum_settings['batch_name'] = get_test_batch_name('test_flux_with_movement_analysis')
 
     # Use movement schedules that Qwen can analyze
-    deforum_settings['animation_mode'] = "Flux + Interpolation"
+    deforum_settings['animation_mode'] = "Keyframes + Interpolation"
     deforum_settings['max_frames'] = 9
     deforum_settings['enable_qwen_enhancement'] = True
     deforum_settings['qwen_analyze_movement'] = True
@@ -326,7 +326,7 @@ def test_flux_steps_configuration():
     deforum_settings['batch_name'] = get_test_batch_name('test_flux_steps_configuration')
 
     # Test with minimal steps (Flux Schnell can do 4 steps)
-    deforum_settings['animation_mode'] = "Flux + Interpolation"
+    deforum_settings['animation_mode'] = "Keyframes + Interpolation"
     deforum_settings['max_frames'] = 5
     deforum_settings['steps'] = 4  # Minimal for Flux Schnell
     deforum_settings['keyframe_distribution_mode'] = "Keyframes Only"
@@ -360,7 +360,7 @@ def test_flux_vae_integration():
     deforum_settings['batch_name'] = get_test_batch_name('test_flux_vae_integration')
 
     # Flux requires specific VAE
-    deforum_settings['animation_mode'] = "Flux + Interpolation"
+    deforum_settings['animation_mode'] = "Keyframes + Interpolation"
     deforum_settings['max_frames'] = 3
     deforum_settings['keyframe_distribution_mode'] = "Keyframes Only"
     deforum_settings['prompts'] = {"0": "vae test", "2": "vae test 2"}

@@ -331,7 +331,7 @@ def get_preset_adjustments_for_render_mode(
         adjustments["cadence"] = None  # No cadence
         adjustments["strength_keyframe"] = 0.15  # Very low for dramatic changes
 
-    elif render_mode == "Flux + Interpolation":
+    elif render_mode == "Keyframes + Interpolation":
         # Keyframes + AI interpolation
         adjustments["fps"] = 24
         adjustments["cadence"] = None  # No cadence

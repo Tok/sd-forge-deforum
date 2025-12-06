@@ -56,7 +56,7 @@ def load_static_defaults(render_mode: str, model_type: str) -> Dict:
     """Load static default settings from JSON file.
 
     Args:
-        render_mode: Render mode ("New 3D", "Classic 3D", "Keyframes Only", "Flux + Interpolation")
+        render_mode: Render mode ("New 3D", "Classic 3D", "Keyframes Only", "Keyframes + Interpolation")
         model_type: Model type ("flux_dev", "flux_schnell", "lumina")
 
     Returns:
@@ -70,7 +70,7 @@ def load_static_defaults(render_mode: str, model_type: str) -> Dict:
         "New 3D": "new_3d",
         "Classic 3D": "classic_3d",
         "Keyframes Only": "keyframes_only",
-        "Flux + Interpolation": "flux_interpolation",
+        "Keyframes + Interpolation": "flux_interpolation",
     }
 
     mode_dir = mode_dir_map.get(render_mode)
