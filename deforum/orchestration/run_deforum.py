@@ -140,16 +140,21 @@ def run_deforum(*args):
                                 logger.warning(f"Invalid da3_3dgs_model value '{current_value}' (not in {valid_models}), using default 'DA3-GIANT'")
                                 args_dict['da3_3dgs_model'] = 'DA3-GIANT'
 
-                        # Validate da3_3dgs_num_keyframes - fix invalid values
-                        if 'da3_3dgs_num_keyframes' in args_dict:
+                        # Validate da3_3dgs_neighbor_segments - fix invalid values
+                        if 'da3_3dgs_neighbor_segments' in args_dict:
                             try:
-                                num_kf = int(args_dict['da3_3dgs_num_keyframes'])
-                                if num_kf < 2 or num_kf > 10:
-                                    logger.warning(f"Invalid da3_3dgs_num_keyframes value {num_kf} (must be 2-10), using default 5")
-                                    args_dict['da3_3dgs_num_keyframes'] = 5
+                                num_neighbors = int(args_dict['da3_3dgs_neighbor_segments'])
+                                if num_neighbors < 0 or num_neighbors > 3:
+                                    logger.warning(f"Invalid da3_3dgs_neighbor_segments value {num_neighbors} (must be 0-3), using default 1")
+                                    args_dict['da3_3dgs_neighbor_segments'] = 1
                             except (ValueError, TypeError):
-                                logger.warning(f"Invalid da3_3dgs_num_keyframes value '{args_dict['da3_3dgs_num_keyframes']}' (not an integer), using default 5")
-                                args_dict['da3_3dgs_num_keyframes'] = 5
+                                logger.warning(f"Invalid da3_3dgs_neighbor_segments value '{args_dict['da3_3dgs_neighbor_segments']}' (not an integer), using default 1")
+                                args_dict['da3_3dgs_neighbor_segments'] = 1
+
+                        # Migrate old parameter name if present
+                        elif 'da3_3dgs_num_keyframes' in args_dict:
+                            logger.info(f"Migrating old 'da3_3dgs_num_keyframes' parameter to 'da3_3dgs_neighbor_segments'")
+                            args_dict['da3_3dgs_neighbor_segments'] = 1  # Default to 1 neighbor segment
                 except Exception as e:
                     logger.warning(f"Could not load animation_mode from settings file: {e}")
                     logger.info(f"  Using current UI setting: {animation_mode}")
