@@ -14,6 +14,7 @@ accelerate>=0.25.0,<2.0.0
 # Depth Anything V3 (optional - Phase 1/2/3 integration)
 # depth-anything-3>=0.1.0
 # xformers>=0.0.20  # Required by DA3
+# gsplat>=0.1.0  # Required by DA3 Phase 3 (3D Gaussian Splatting)
 # Note: Uncomment to enable DA3 support. DA2 remains default.
 
 # Audio sync dependencies

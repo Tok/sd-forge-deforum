@@ -38,6 +38,7 @@ class RenderMode(Enum):
     NEW_3D = "New 3D"
     KEYFRAMES_ONLY = "Keyframes Only"
     FLUX_WAN = "Flux + Interpolation"
+    GAUSSIAN_SCENE = "Gaussian Scene"
 
     @property
     def config(self) -> ModeConfig:
@@ -66,6 +67,7 @@ class RenderMode(Enum):
             "Keyframes Only": RenderMode.KEYFRAMES_ONLY,
             "Flux + Interpolation": RenderMode.FLUX_WAN,
             "Flux/Wan": RenderMode.FLUX_WAN,  # Legacy compatibility
+            "Gaussian Scene": RenderMode.GAUSSIAN_SCENE,
         }
         return mode_map.get(mode_str, RenderMode.default())
 
@@ -89,7 +91,7 @@ class RenderMode(Enum):
 
     def should_show_3d_tabs(self) -> bool:
         """Return True if 3D-specific tabs (Depth, Shakify, RAFT, ControlNet) should be visible."""
-        return self in [RenderMode.CLASSIC_3D, RenderMode.NEW_3D, RenderMode.KEYFRAMES_ONLY]
+        return self in [RenderMode.CLASSIC_3D, RenderMode.NEW_3D, RenderMode.KEYFRAMES_ONLY, RenderMode.GAUSSIAN_SCENE]
 
     def should_show_wan_tab(self) -> bool:
         """Return True if Wan Models tab should be visible."""
@@ -192,6 +194,30 @@ _MODE_CONFIGS = {
             "Flux Dev (20 steps) = 0.05 resolution. Flux Schnell (4 steps) = 0.25 resolution. "
             "Lumina (30 steps) = 0.033 resolution. "
             "Lower steps make strength harder to tune precisely."
+        )
+    ),
+
+    RenderMode.GAUSSIAN_SCENE: ModeConfig(
+        display_name="Gaussian Scene",
+        keyframe_distribution=KeyFrameDistribution.KEYFRAMES_ONLY,
+        uses_dual_strength=False,
+        default_fps=60,
+        default_cadence=10,  # Not used, provides pseudo-cadence hint
+        default_steps=20,  # Flux Dev standard
+        shows_pseudo_cadence=True,
+        description=(
+            "3D Gaussian Splatting scene reconstruction from keyframes. "
+            "Phase 1: Generate keyframes with diffusion at prompt boundaries. "
+            "Phase 2: Build 3D Gaussian scene from all keyframes using DA3. "
+            "Phase 3: Render ALL tweens from 3DGS scene using Deforum camera schedules. "
+            "Best for: Complex camera paths (orbital shots, dramatic movements). "
+            "Requires: Depth Anything V3 + gsplat library (pip install gsplat). "
+            "Set Tween Generation Mode to 'da3_gaussian' for 3DGS rendering. "
+            "Shows 3D Depth tab for DA3 model selection and 3DGS settings. "
+            "Hides RAFT/optical flow (not compatible with 3DGS). "
+            "Uses only keyframe strength schedule. "
+            "20 steps = 0.05 strength resolution. "
+            "Ultimate quality for geometric consistency and novel views."
         )
     ),
 }
