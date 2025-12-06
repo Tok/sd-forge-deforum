@@ -122,18 +122,31 @@ class DepthModel:
             self.depth_anything = DepthAnything(self.device, model_size=model_size)
             self.is_v3 = False
 
-    def predict(self, prev_img_cv2) -> torch.Tensor:
+    def predict(self, prev_img_cv2, use_ray_pose=False, conf_thresh_percentile=40.0) -> torch.Tensor:
         """
         Predict depth map from image
 
         Args:
             prev_img_cv2: Input image as numpy array (BGR, uint8) - OpenCV format
+            use_ray_pose: DA3 only - use ray-based pose estimation (more accurate, slower)
+            conf_thresh_percentile: DA3 only - confidence threshold percentile (0-100)
 
         Returns:
             torch.Tensor: Depth map tensor
         """
         img_pil = Image.fromarray(cv2.cvtColor(prev_img_cv2.astype(np.uint8), cv2.COLOR_RGB2BGR))
-        depth_tensor = self.depth_anything.predict(img_pil)
+
+        # Pass DA3 parameters if this is a V3 model
+        if self.is_v3:
+            depth_tensor = self.depth_anything.predict(
+                img_pil,
+                use_ray_pose=use_ray_pose,
+                conf_thresh_percentile=conf_thresh_percentile
+            )
+        else:
+            # DA2 doesn't use these parameters
+            depth_tensor = self.depth_anything.predict(img_pil)
+
         return depth_tensor
 
     def to(self, device):

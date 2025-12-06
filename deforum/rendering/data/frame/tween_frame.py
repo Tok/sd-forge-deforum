@@ -257,7 +257,11 @@ class Tween:
         has_depth = data.depth_model is not None
         if has_image and has_depth:
             image = Tween.ensure_image_is_a_numpy_array(image)
-            return data.depth_model.predict(image)
+            return data.depth_model.predict(
+                image,
+                use_ray_pose=data.args.anim_args.da3_use_ray_pose,
+                conf_thresh_percentile=data.args.anim_args.da3_conf_thresh_percentile
+            )
         else:
             return None
 

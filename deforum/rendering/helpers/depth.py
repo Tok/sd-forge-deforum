@@ -14,7 +14,11 @@ def generate_and_save_depth_map_if_active(data, opencv_image, i):
     # They will be cleaned up later if user doesn't want to keep them
     if data.depth_model is not None:
         memory_utils.handle_vram_before_depth_map_generation(data)
-        depth = data.depth_model.predict(opencv_image)
+        depth = data.depth_model.predict(
+            opencv_image,
+            use_ray_pose=data.args.anim_args.da3_use_ray_pose,
+            conf_thresh_percentile=data.args.anim_args.da3_conf_thresh_percentile
+        )
         # Ensure depth-maps subdirectory exists
         depth_dir = os.path.join(data.output_directory, "depth-maps")
         os.makedirs(depth_dir, exist_ok=True)
