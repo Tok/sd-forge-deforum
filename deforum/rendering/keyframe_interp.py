@@ -95,6 +95,10 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         img_count = len([f for f in os.listdir(data.output_directory) if f.endswith(('.png', '.jpg', '.jpeg'))])
         logger.debug(f"Existing images in output dir: {img_count}")
 
+    # Check interpolation method early (needed for Phase 1 keyframe saving logic)
+    interp_method = getattr(wan_args, 'flux_flf2v_interpolation_method', 'Wan')
+    use_da3_3dgs = (interp_method == "DA3-3DGS")
+
     # ====================
     # PHASE 1: Batch Generate All Keyframes (Flux/Z-Image/Lumina/SD)
     # ====================
@@ -107,10 +111,21 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     is_resuming = anim_args.resume_from_timestring
     
     if is_resuming:
-        logger.info(f"{emoji_if_enabled('🔄')} Resume mode: Scanning for existing keyframes in {data.output_directory}...")
+        logger.info(f"{emoji_if_enabled('🔄')} Resume mode: Scanning for existing keyframes...")
         for frame in keyframes:
             # Check simple format first (matches our save format: 000000001.png)
             simple_filename = f"{frame.i:09d}.png"
+
+            # For DA3-3DGS mode, check _diffusion/ subdirectory first
+            if use_da3_3dgs:
+                diffusion_dir = os.path.join(data.output_directory, "_diffusion")
+                diffusion_path = os.path.join(diffusion_dir, simple_filename)
+                if os.path.exists(diffusion_path):
+                    keyframe_images[frame.i] = diffusion_path
+                    logger.info(f"   {emoji_if_enabled('✓')} Found existing keyframe in _diffusion/: {simple_filename}")
+                    continue
+
+            # Check root directory
             simple_path = os.path.join(data.output_directory, simple_filename)
 
             # Also check for filename with timestring prefix (legacy from old runs)
@@ -169,8 +184,8 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         if image is None:
             raise RuntimeError(f"Failed to generate keyframe at frame {frame.i}")
 
-        # Save keyframe
-        keyframe_path = save_keyframe(data, frame, image)
+        # Save keyframe (to _diffusion/ if using DA3-3DGS for easy Phase 2 retries)
+        keyframe_path = save_keyframe(data, frame, image, use_diffusion_subdir=use_da3_3dgs)
         keyframe_images[frame.i] = keyframe_path
 
         logger.info(f"{emoji_if_enabled('✅')} Keyframe {idx + 1} saved: {os.path.basename(keyframe_path)}")
@@ -225,9 +240,6 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     logger.separator(char="=")
     logger.info("PHASE 2: Batch Frame Interpolation")
     logger.separator(char="=")
-
-    # Get interpolation method (check once for all segments)
-    interp_method = getattr(wan_args, 'flux_flf2v_interpolation_method', 'Wan')
     logger.info(f"{emoji_if_enabled('📊')} Interpolation method: {interp_method}")
 
     # Unload diffusion models to free GPU memory
@@ -412,23 +424,8 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
             # Generate target frame indices (tweens to create)
             target_indices = list(range(first_frame_idx + 1, last_frame_idx))
 
-            # Move original diffusion keyframes to _diffusion subdirectory (DA3-3DGS mode only)
-            # This keeps them separate from the 3DGS-rendered outputs
-            import shutil
-            diffusion_dir = os.path.join(data.output_directory, "_diffusion")
-            os.makedirs(diffusion_dir, exist_ok=True)
-
-            # Move segment boundary keyframes if they haven't been moved yet
-            for boundary_idx in [first_frame_idx, last_frame_idx]:
-                if boundary_idx in keyframe_images:
-                    original_path = keyframe_images[boundary_idx]
-                    original_filename = os.path.basename(original_path)
-                    diffusion_path = os.path.join(diffusion_dir, original_filename)
-
-                    # Only move if not already in _diffusion directory and not already moved
-                    if not original_path.startswith(diffusion_dir) and os.path.exists(original_path):
-                        shutil.move(original_path, diffusion_path)
-                        logger.debug(f"   Moved original keyframe to _diffusion/{original_filename}")
+            # Note: Original diffusion keyframes are already in _diffusion/ subdirectory (saved during Phase 1)
+            # This ensures they're available for Phase 2 retries without polluting the root directory
 
             # Generate interpolated frames using 3DGS
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -495,11 +492,29 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         wan_integration.unload_model()
 
 
-def save_keyframe(data: RenderData, frame: DiffusionFrame, image):
-    """Save keyframe image to disk with simple frame number naming (no timestring prefix)"""
-    # Use simple format like Flux/Wan mode: 000000001.png instead of timestring_000000001.png
+def save_keyframe(data: RenderData, frame: DiffusionFrame, image, use_diffusion_subdir=False):
+    """Save keyframe image to disk with simple frame number naming (no timestring prefix)
+
+    Args:
+        data: RenderData object containing output directory
+        frame: DiffusionFrame containing frame index
+        image: Image to save (PIL or numpy array)
+        use_diffusion_subdir: If True, save to _diffusion/ subdirectory (for DA3-3DGS mode)
+
+    Returns:
+        str: Full path to saved keyframe
+    """
+    # Use simple format: 000000001.png (no timestring prefix)
     filename = f"{frame.i:09d}.png"
-    filepath = os.path.join(data.output_directory, filename)
+
+    # For DA3-3DGS mode, save to _diffusion/ subdirectory
+    # This keeps original keyframes available for Phase 2 retries without polluting root dir
+    if use_diffusion_subdir:
+        diffusion_dir = os.path.join(data.output_directory, "_diffusion")
+        os.makedirs(diffusion_dir, exist_ok=True)
+        filepath = os.path.join(diffusion_dir, filename)
+    else:
+        filepath = os.path.join(data.output_directory, filename)
 
     # Convert CV2 image to PIL if needed, then save
     if image_utils.is_PIL(image):
