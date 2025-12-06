@@ -143,7 +143,7 @@ class DepthAnythingV3:
                 depth,
                 size=(original_h, original_w),
                 mode='bilinear',
-                align_corners=False
+                align_corners=True  # Changed from False - prevents spatial misalignment
             )
 
         return depth
