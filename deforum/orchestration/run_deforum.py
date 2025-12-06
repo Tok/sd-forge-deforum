@@ -144,8 +144,8 @@ def run_deforum(*args):
                         if 'da3_3dgs_neighbor_segments' in args_dict:
                             try:
                                 num_neighbors = int(args_dict['da3_3dgs_neighbor_segments'])
-                                if num_neighbors < 0 or num_neighbors > 10:
-                                    logger.warning(f"Invalid da3_3dgs_neighbor_segments value {num_neighbors} (must be 0-10), using default 4")
+                                if num_neighbors < 0 or num_neighbors > 8:
+                                    logger.warning(f"Invalid da3_3dgs_neighbor_segments value {num_neighbors} (must be 0-8), using default 4")
                                     args_dict['da3_3dgs_neighbor_segments'] = 4
                             except (ValueError, TypeError):
                                 logger.warning(f"Invalid da3_3dgs_neighbor_segments value '{args_dict['da3_3dgs_neighbor_segments']}' (not an integer), using default 4")

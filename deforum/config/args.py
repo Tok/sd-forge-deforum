@@ -1296,10 +1296,10 @@ def WanArgs():
             "label": "Neighbor Segments for 3DGS",
             "type": "slider",
             "minimum": 0,
-            "maximum": 10,
+            "maximum": 8,
             "step": 1,
             "value": 4,
-            "info": "How many neighboring segments to include for multi-view 3DGS reconstruction. Uses ACTUAL keyframes from your prompt schedule (not arbitrary count). Higher values = more keyframes = better 3D geometry but more VRAM. 0: just segment boundaries (2 keyframes, fastest), 4: ~9 keyframes (default, good balance), 10: ~21 keyframes (maximum quality, highest VRAM). Example: segment 12→22 with neighbors=4 uses keyframes from schedule (e.g., [0,12,22,32,43,53,64,73,89])."
+            "info": "How many neighboring segments to include for multi-view 3DGS reconstruction. Uses ACTUAL keyframes from your prompt schedule (not arbitrary count). Higher values = more keyframes = better 3D geometry but more VRAM. VRAM usage scales with: keyframe_count × resolution × gaussian_count (~705k splats). 0: just segment (2 keyframes, fastest, lowest VRAM), 4: ~9 keyframes (default, ~16GB VRAM @ 1024x1024), 8: ~17 keyframes (best quality, 24GB+ VRAM recommended). Reduce if OOM errors occur."
         },
         "da3_3dgs_render_keyframes": {
             "label": "Render 3DGS Keyframes",
