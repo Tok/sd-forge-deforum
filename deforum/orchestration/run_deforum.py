@@ -172,6 +172,27 @@ def run_deforum(*args):
                 logger.debug(f"Overriding anim_args.animation_mode with args_dict value: '{args_dict['animation_mode']}'")
                 anim_args.animation_mode = args_dict['animation_mode']
             logger.debug(f"Final anim_args.animation_mode: '{anim_args.animation_mode}'")
+
+            # Validate model-specific settings and warn if misconfigured
+            from deforum.config.model_configs import validate_settings, log_model_config
+            try:
+                # Get current model name from shared state
+                model_name = shared.sd_model.sd_checkpoint_info.name if hasattr(shared.sd_model, 'sd_checkpoint_info') else "Unknown"
+
+                # Log detected model configuration
+                log_model_config(model_name)
+
+                # Validate settings and log warnings
+                warnings = validate_settings(args, model_name)
+                if warnings:
+                    logger.warning("")
+                    logger.warning("═══ Configuration Warnings ═══")
+                    for warning in warnings:
+                        logger.warning(warning)
+                    logger.warning("═════════════════════════════")
+                    logger.warning("")
+            except Exception as e:
+                logger.debug(f"Could not validate model settings: {e}")
         except Exception as e:
             JobStatusTracker().fail_job(job_id, error_type="TERMINAL", message="Invalid arguments.")
             logger.error("\n*START OF TRACEBACK*")

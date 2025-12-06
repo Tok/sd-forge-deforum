@@ -39,22 +39,17 @@ BUNNY_DEFAULT_PROMPT_CONFIG = {
 def detect_model_type(model_name: str) -> str:
     """Detect model type from model filename.
 
+    DEPRECATED: Use model_configs.detect_model_type_extended() instead.
+
     Args:
         model_name: SD model filename (e.g., "Flux\\flux1-dev-bnb-nf4-v2.safetensors")
 
     Returns:
-        Model type: "flux_dev", "flux_schnell", "lumina", or "sd15" (fallback)
+        Model type: "flux_dev", "flux_schnell", "lumina", "z_image", or "sd15" (fallback)
     """
-    model_lower = model_name.lower()
-
-    if "schnell" in model_lower:
-        return "flux_schnell"
-    elif "flux" in model_lower:
-        return "flux_dev"
-    elif "lumina" in model_lower or "neta" in model_lower:
-        return "lumina"
-    else:
-        return "sd15"  # Fallback for SD1.5/SDXL
+    # Delegate to extended version
+    from deforum.config.model_configs import detect_model_type_extended
+    return detect_model_type_extended(model_name)
 
 
 def load_static_defaults(render_mode: str, model_type: str) -> Dict:
