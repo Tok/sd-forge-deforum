@@ -147,7 +147,7 @@ class Tween:
 
             # Check if we've already attempted scene building
             if hasattr(data, 'gaussian_scene_build_attempted') and data.gaussian_scene_build_attempted:
-                # Scene building was already attempted and failed - fall back
+                # Scene building was already attempted and failed - fall back silently
                 if data.gaussian_scene is None:
                     return self._generate_standard_depth_warp(data, last_frame, prev_image)
 
