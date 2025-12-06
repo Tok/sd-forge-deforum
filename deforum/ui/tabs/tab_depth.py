@@ -24,6 +24,26 @@ def get_tab_depth_warping(da, skip_tabitem=False):
     is_visible = True
     is_info_visible = is_visible
 
+    # Define auto-switching function before creating components
+    def auto_switch_depth_model(tween_mode: str) -> str:
+        """Auto-select optimal depth model for selected tween mode.
+
+        Args:
+            tween_mode: Selected tween generation mode
+
+        Returns:
+            Recommended depth model name
+        """
+        # 3DGS requires AnyView variant for multi-view geometry
+        if tween_mode == 'da3_gaussian':
+            return 'Depth-Anything-V3-AnyView-Small'
+        # Multiview also benefits from AnyView
+        elif tween_mode == 'da3_multiview':
+            return 'Depth-Anything-V3-AnyView-Small'
+        # Classic depth warp can use faster Mono variant
+        else:  # depth_warp
+            return 'Depth-Anything-V3-Mono-Small'
+
     # Controls first - most important
     with gr.Accordion(f"{emoji_utils.gear()} Depth Settings", open=True):
         depth_warp_msg_html = gr.HTML(
@@ -165,26 +185,6 @@ def get_tab_depth_warping(da, skip_tabitem=False):
         - Models auto-download from HuggingFace on first use
         - For 3DGS (optional): Install `gsplat` with `pip install --no-build-isolation git+https://github.com/nerfstudio-project/gsplat.git@0b4dddf04cb687367602c01196913cde6a743d70`
         """)
-
-    # Auto-switch depth model based on tween generation mode
-    def auto_switch_depth_model(tween_mode: str) -> str:
-        """Auto-select optimal depth model for selected tween mode.
-
-        Args:
-            tween_mode: Selected tween generation mode
-
-        Returns:
-            Recommended depth model name
-        """
-        # 3DGS requires AnyView variant for multi-view geometry
-        if tween_mode == 'da3_gaussian':
-            return 'Depth-Anything-V3-AnyView-Small'
-        # Multiview also benefits from AnyView
-        elif tween_mode == 'da3_multiview':
-            return 'Depth-Anything-V3-AnyView-Small'
-        # Classic depth warp can use faster Mono variant
-        else:  # depth_warp
-            return 'Depth-Anything-V3-Mono-Small'
 
     # Wire up auto-switching when tween mode changes
     tween_generation_mode.change(
