@@ -62,10 +62,21 @@ class TestModelDetection:
         assert detect_model_type_extended("zimage-turbo.ckpt") == "z_image"
         assert detect_model_type_extended("stabilityai/z-image.safetensors") == "z_image"
 
-    def test_detect_sd15_fallback(self):
-        """Test SD 1.5/SDXL detection and unknown model handling."""
+    def test_detect_sdxl(self):
+        """Test SDXL detection."""
+        assert detect_model_type_extended("sdxl-base.safetensors") == "sdxl"
+        assert detect_model_type_extended("stable-diffusion-xl.ckpt") == "sdxl"
+        assert detect_model_type_extended("SDXL-1.0.safetensors") == "sdxl"
+        assert detect_model_type_extended("sd_xl_base.ckpt") == "sdxl"
+
+    def test_detect_sd15(self):
+        """Test SD 1.5 detection."""
         assert detect_model_type_extended("sd15-model.ckpt") == "sd15"
-        assert detect_model_type_extended("sdxl-base.safetensors") == "sd15"
+        assert detect_model_type_extended("sd-1.5.safetensors") == "sd15"
+        assert detect_model_type_extended("SD1.5.ckpt") == "sd15"
+
+    def test_detect_unknown_model(self):
+        """Test unknown model handling."""
         assert detect_model_type_extended("unknown-model.ckpt") == "unknown"
 
     def test_detect_empty_string(self):
@@ -114,9 +125,31 @@ class TestModelConfigRetrieval:
         assert config.cfg_scale_default == 2.0
         assert config.uses_distilled_cfg is False
 
+    def test_get_sdxl_config(self):
+        """Test retrieving SDXL configuration."""
+        config = get_model_config("sdxl-base.safetensors")
+
+        assert config.model_type == "sdxl"
+        assert config.display_name == "SDXL"
+        assert config.recommended_steps == 25
+        assert config.uses_cfg is True
+        assert config.cfg_scale_default == 7.5
+        assert config.uses_distilled_cfg is False
+
+    def test_get_sd15_config(self):
+        """Test retrieving SD 1.5 configuration."""
+        config = get_model_config("sd15-model.ckpt")
+
+        assert config.model_type == "sd15"
+        assert config.display_name == "SD 1.5"
+        assert config.recommended_steps == 25
+        assert config.uses_cfg is True
+        assert config.cfg_scale_default == 7.5
+        assert config.uses_distilled_cfg is False
+
     def test_all_configs_exist(self):
         """Test that all model types have configs."""
-        required_types = ["flux_dev", "flux_schnell", "lumina", "z_image", "sd15", "unknown"]
+        required_types = ["flux_dev", "flux_schnell", "lumina", "z_image", "sdxl", "sd15", "unknown"]
 
         for model_type in required_types:
             assert model_type in MODEL_CONFIGS

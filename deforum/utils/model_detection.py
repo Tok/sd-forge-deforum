@@ -175,6 +175,51 @@ def is_flux_model() -> bool:
         return False
 
 
+def is_sdxl_model() -> bool:
+    """Detect if SDXL is the currently loaded model.
+
+    Returns:
+        True if SDXL is loaded, False otherwise
+    """
+    try:
+        shared = _get_shared_module()
+        if shared is None or not hasattr(shared, 'sd_model'):
+            return False
+
+        model = shared.sd_model
+
+        # Get detection data
+        class_name = _get_model_class_name(model)
+        checkpoint_name = _get_checkpoint_name(shared)
+        full_path = getattr(shared.sd_model.sd_checkpoint_info, 'filename', '') if hasattr(shared.sd_model, 'sd_checkpoint_info') else ''
+
+        # Check 1: Model class name contains 'SDXL'
+        if class_name and 'SDXL' in class_name:
+            logger.debug(f"Detected SDXL model via class name: {class_name}")
+            return True
+
+        # Check 2: Full path or checkpoint name contains sdxl patterns
+        sdxl_patterns = ['sdxl', 'sd_xl', 'sd-xl', 'stable-diffusion-xl']
+
+        if full_path:
+            full_path_lower = full_path.lower()
+            if any(pattern in full_path_lower for pattern in sdxl_patterns):
+                logger.debug(f"Detected SDXL model via path: {full_path}")
+                return True
+
+        if checkpoint_name:
+            checkpoint_lower = checkpoint_name.lower()
+            if any(pattern in checkpoint_lower for pattern in sdxl_patterns):
+                logger.debug(f"Detected SDXL model via checkpoint name: {checkpoint_name}")
+                return True
+
+        return False
+
+    except Exception as e:
+        logger.debug(f"SDXL detection failed: {e}")
+        return False
+
+
 def is_zimage_model() -> bool:
     """Detect if Z-Image-Turbo is the currently loaded model.
 
@@ -247,7 +292,7 @@ def get_model_name() -> str:
     """Get friendly name of currently loaded model.
 
     Returns:
-        Model name string ("Lumina 2.0", "Flux Dev", "Flux Schnell", "Z-Image-Turbo", "Unknown")
+        Model name string ("Lumina 2.0", "Flux Dev", "Flux Schnell", "SDXL", "Z-Image-Turbo", "Unknown")
     """
     if is_lumina_model():
         return LUMINA_CONFIG.name
@@ -259,6 +304,9 @@ def get_model_name() -> str:
 
     if is_zimage_model():
         return "Z-Image-Turbo"
+
+    if is_sdxl_model():
+        return "SDXL"
 
     return DEFAULT_CONFIG.name
 

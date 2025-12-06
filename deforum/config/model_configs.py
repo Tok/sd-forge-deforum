@@ -141,9 +141,9 @@ MODEL_CONFIGS = {
         notes="Z-Image-Turbo uses traditional CFG (2.0 recommended). Distilled CFG is ignored. Optimized for 1-4 steps."
     ),
 
-    "sd15": ModelConfig(
-        model_type="sd15",
-        display_name="SD 1.5 / SDXL",
+    "sdxl": ModelConfig(
+        model_type="sdxl",
+        display_name="SDXL",
         recommended_steps=25,
         min_steps=15,
         max_steps=50,
@@ -159,7 +159,28 @@ MODEL_CONFIGS = {
         compatible_schedulers=["normal", "karras", "exponential", "simple"],
         recommended_sampler="dpmpp_2m",
         compatible_samplers=["euler_a", "dpmpp_2m", "dpmpp_2m_sde", "ddim"],
-        notes="SD 1.5/SDXL uses traditional CFG (7.5 recommended). Distilled CFG is ignored."
+        notes="SDXL uses traditional CFG (7.5 recommended). Distilled CFG is ignored."
+    ),
+
+    "sd15": ModelConfig(
+        model_type="sd15",
+        display_name="SD 1.5",
+        recommended_steps=25,
+        min_steps=15,
+        max_steps=50,
+        uses_cfg=True,
+        cfg_scale_default=7.5,
+        cfg_scale_min=4.0,
+        cfg_scale_max=15.0,
+        uses_distilled_cfg=False,
+        distilled_cfg_scale_default=3.5,  # Ignored
+        distilled_cfg_scale_min=1.0,
+        distilled_cfg_scale_max=10.0,
+        recommended_scheduler="normal",
+        compatible_schedulers=["normal", "karras", "exponential", "simple"],
+        recommended_sampler="dpmpp_2m",
+        compatible_samplers=["euler_a", "dpmpp_2m", "dpmpp_2m_sde", "ddim"],
+        notes="SD 1.5 uses traditional CFG (7.5 recommended). Distilled CFG is ignored."
     ),
 
     "unknown": ModelConfig(
@@ -192,7 +213,7 @@ def detect_model_type_extended(model_name: str) -> str:
         model_name: SD model filename or path
 
     Returns:
-        Model type key: "flux_dev", "flux_schnell", "lumina", "z_image", "sd15", "unknown"
+        Model type key: "flux_dev", "flux_schnell", "lumina", "z_image", "sdxl", "sd15", "unknown"
     """
     if not model_name:
         return "unknown"  # No model name available
@@ -206,9 +227,11 @@ def detect_model_type_extended(model_name: str) -> str:
         return "flux_dev"
     elif "lumina" in model_lower or "neta" in model_lower:
         return "lumina"
-    elif any(pattern in model_lower for pattern in ["z-image", "zimage", "zit", "tongyi"]):
+    elif any(pattern in model_lower for pattern in ["z-image", "zimage", "z_image", "zit", "tongyi"]):
         return "z_image"
-    elif any(pattern in model_lower for pattern in ["sd15", "sd_15", "sd-15", "sdxl", "sd_xl", "sd-xl"]):
+    elif any(pattern in model_lower for pattern in ["sdxl", "sd_xl", "sd-xl", "stable-diffusion-xl"]):
+        return "sdxl"
+    elif any(pattern in model_lower for pattern in ["sd15", "sd_15", "sd-15", "sd1.5", "sd-1.5"]):
         return "sd15"
     else:
         return "unknown"  # Unknown model - skip validation
@@ -227,7 +250,7 @@ def get_model_config(model_name: str) -> ModelConfig:
     """
     # Try runtime detection first (more reliable)
     try:
-        from deforum.utils.model_detection import is_flux_model, is_lumina_model, is_zimage_model
+        from deforum.utils.model_detection import is_flux_model, is_lumina_model, is_zimage_model, is_sdxl_model
 
         if is_lumina_model():
             return MODEL_CONFIGS["lumina"]
@@ -238,6 +261,8 @@ def get_model_config(model_name: str) -> ModelConfig:
             return MODEL_CONFIGS["flux_dev"]
         if is_zimage_model():
             return MODEL_CONFIGS["z_image"]
+        if is_sdxl_model():
+            return MODEL_CONFIGS["sdxl"]
     except Exception as e:
         logger.debug(f"Runtime model detection failed, using name-based fallback: {e}")
 
