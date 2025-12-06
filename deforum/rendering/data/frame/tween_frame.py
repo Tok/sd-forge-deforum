@@ -145,8 +145,17 @@ class Tween:
         try:
             from deforum.rendering.tween_generators.da3_gaussian import DA3GaussianTweenGenerator
 
+            # Check if we've already attempted scene building
+            if hasattr(data, 'gaussian_scene_build_attempted') and data.gaussian_scene_build_attempted:
+                # Scene building was already attempted and failed - fall back
+                if data.gaussian_scene is None:
+                    return self._generate_standard_depth_warp(data, last_frame, prev_image)
+
             # Check if 3DGS scene is already built
             if not hasattr(data, 'gaussian_scene') or data.gaussian_scene is None:
+                # Mark that we're attempting scene building (prevents retries on failure)
+                data.gaussian_scene_build_attempted = True
+
                 log_utils.info("3D Gaussian scene not built yet, building now...")
                 # Collect all keyframes from diffusion_frames
                 # NOTE: This should ideally be done once after all keyframes are generated
@@ -162,7 +171,7 @@ class Tween:
                 data.gaussian_generator = generator  # Store generator for later use
 
                 if data.gaussian_scene is None:
-                    log_utils.error("3DGS scene building failed, falling back to depth warp")
+                    log_utils.error("3DGS scene building failed, falling back to depth warp for all remaining tweens")
                     return self._generate_standard_depth_warp(data, last_frame, prev_image)
 
             # Generate tween using existing 3DGS scene

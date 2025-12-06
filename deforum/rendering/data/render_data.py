@@ -68,6 +68,9 @@ class RenderData:
     output_directory: str
     is_use_mask: bool
     generated_keyframes: list  # Track keyframes for DA3 Gaussian splatting scene building
+    gaussian_scene: Any = None  # 3DGS scene (None if not built or failed)
+    gaussian_generator: Any = None  # 3DGS generator instance
+    gaussian_scene_build_attempted: bool = False  # Prevents retrying failed scene builds
 
     @staticmethod
     def create(args, parseq_args, anim_args, video_args, loop_args,
