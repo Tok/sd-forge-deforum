@@ -10,13 +10,192 @@ This module provides drop-in replacement for DA2 in Phase 1, with hooks for
 Phase 2 (multi-view) and Phase 3 (3DGS) capabilities.
 """
 
-from torchvision import transforms
+from typing import Dict, List, Tuple, Union, Any, Optional
 import torch
+import torch.nn.functional as F
 import numpy as np
+from PIL import Image
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
+
+# Constants
+DEPTH_OUTPUT_FORMAT = (1, 1)  # Target depth tensor format: [1, 1, H, W]
+BGR_TO_RGB_SLICE = slice(None, None, -1)  # Reverse color channel order
+
+
+def _get_model_name(variant: str, size: str) -> str:
+    """Get HuggingFace model name for DA3 variant and size.
+
+    Args:
+        variant: 'mono' or 'any-view'
+        size: 'small', 'base', or 'large'
+
+    Returns:
+        HuggingFace model identifier string
+    """
+    model_map: Dict[Tuple[str, str], str] = {
+        ('mono', 'small'): 'depth-anything/Depth-Anything-V3-Small',
+        ('mono', 'base'): 'depth-anything/Depth-Anything-V3-Base',
+        ('mono', 'large'): 'depth-anything/Depth-Anything-V3-Large',
+        ('any-view', 'small'): 'depth-anything/DA3-Small',
+        ('any-view', 'base'): 'depth-anything/DA3-Base',
+        ('any-view', 'large'): 'depth-anything/DA3-Large',
+    }
+
+    key = (variant.lower(), size.lower())
+    if key not in model_map:
+        logger.warning(
+            f"Invalid DA3 config: variant={variant}, size={size}. "
+            f"Defaulting to mono/small."
+        )
+        key = ('mono', 'small')
+
+    return model_map[key]
+
+
+def _convert_bgr_to_rgb_pil(image_bgr: np.ndarray) -> Image.Image:
+    """Convert BGR numpy array to RGB PIL Image.
+
+    Args:
+        image_bgr: Numpy array in BGR format (from OpenCV)
+
+    Returns:
+        PIL Image in RGB format
+    """
+    image_rgb = image_bgr[:, :, BGR_TO_RGB_SLICE]
+    return Image.fromarray(image_rgb)
+
+
+def _extract_image_dimensions(image: Union[np.ndarray, Image.Image]) -> Tuple[int, int]:
+    """Extract height and width from image.
+
+    Args:
+        image: Numpy array or PIL Image
+
+    Returns:
+        Tuple of (height, width)
+    """
+    if isinstance(image, np.ndarray):
+        return image.shape[:2]  # (H, W) for numpy
+    else:
+        w, h = image.size
+        return (h, w)  # PIL gives (W, H), return (H, W)
+
+
+def _prepare_image_for_inference(
+    image: Union[np.ndarray, Image.Image]
+) -> Tuple[Image.Image, int, int]:
+    """Prepare image for DA3 inference by converting to PIL RGB and extracting dimensions.
+
+    Args:
+        image: Input image (numpy array in BGR or PIL Image in RGB)
+
+    Returns:
+        Tuple of (PIL Image in RGB, original_height, original_width)
+    """
+    original_h, original_w = _extract_image_dimensions(image)
+
+    if isinstance(image, np.ndarray):
+        pil_image = _convert_bgr_to_rgb_pil(image)
+    else:
+        pil_image = image
+
+    return pil_image, original_h, original_w
+
+
+def _convert_depth_to_tensor(depth_np: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+    """Convert depth array/tensor to standardized format [1, 1, H, W].
+
+    Args:
+        depth_np: Depth data (numpy array or torch tensor)
+
+    Returns:
+        Depth tensor in format [1, 1, H, W]
+    """
+    if isinstance(depth_np, torch.Tensor):
+        depth = depth_np
+        if depth.ndim == 2:
+            depth = depth.unsqueeze(0).unsqueeze(0)  # [H,W] -> [1,1,H,W]
+        elif depth.ndim == 3:
+            depth = depth.unsqueeze(0)  # [1,H,W] -> [1,1,H,W]
+    else:
+        # Convert numpy to tensor [H,W] -> [1,1,H,W]
+        depth = torch.from_numpy(depth_np).unsqueeze(0).unsqueeze(0).float()
+
+    return depth
+
+
+def _normalize_depth_range(depth: torch.Tensor) -> torch.Tensor:
+    """Normalize depth values to [0, 1] range.
+
+    DA3 returns depth in arbitrary ranges (e.g., 0.94-1.04).
+    Depth warping expects normalized depth where 0=nearest, 1=farthest.
+
+    Args:
+        depth: Depth tensor with arbitrary value range
+
+    Returns:
+        Depth tensor normalized to [0, 1]
+    """
+    depth_min = depth.min()
+    depth_max = depth.max()
+
+    if depth_max > depth_min:  # Avoid division by zero
+        return (depth - depth_min) / (depth_max - depth_min)
+
+    return depth
+
+
+def _resize_depth_to_match_image(
+    depth: torch.Tensor,
+    target_h: int,
+    target_w: int
+) -> torch.Tensor:
+    """Resize depth map to match original image dimensions.
+
+    DA3 downsamples during processing (e.g., 1920x480 -> 504x280).
+    Depth warping expects depth to match image size exactly.
+
+    Args:
+        depth: Depth tensor [1, 1, H, W]
+        target_h: Target height
+        target_w: Target width
+
+    Returns:
+        Resized depth tensor [1, 1, target_h, target_w]
+    """
+    current_h, current_w = depth.shape[2], depth.shape[3]
+
+    if current_h != target_h or current_w != target_w:
+        # align_corners=True prevents spatial misalignment (cross/quadrant artifacts)
+        depth = F.interpolate(
+            depth,
+            size=(target_h, target_w),
+            mode='bilinear',
+            align_corners=True
+        )
+
+    return depth
+
+
+def _convert_images_to_pil(images: List[Union[np.ndarray, Image.Image]]) -> List[Image.Image]:
+    """Convert list of images to PIL format.
+
+    Args:
+        images: List of numpy arrays (BGR) or PIL Images
+
+    Returns:
+        List of PIL Images in RGB format
+    """
+    pil_images = []
+    for img in images:
+        if isinstance(img, np.ndarray):
+            pil_images.append(_convert_bgr_to_rgb_pil(img))
+        else:
+            pil_images.append(img)
+    return pil_images
 
 
 class DepthAnythingV3:
@@ -32,7 +211,12 @@ class DepthAnythingV3:
             - 'any-view': Multi-view geometry support (Phase 2)
     """
 
-    def __init__(self, device, model_size='small', variant='mono'):
+    def __init__(
+        self,
+        device: torch.device,
+        model_size: str = 'small',
+        variant: str = 'mono'
+    ) -> None:
         """Initialize Depth Anything V3 model.
 
         Models auto-download from HuggingFace on first use to cache directory.
@@ -41,25 +225,7 @@ class DepthAnythingV3:
         self.model_size = model_size
         self.variant = variant
 
-        # Model name mapping
-        model_map = {
-            ('mono', 'small'): 'depth-anything/Depth-Anything-V3-Small',
-            ('mono', 'base'): 'depth-anything/Depth-Anything-V3-Base',
-            ('mono', 'large'): 'depth-anything/Depth-Anything-V3-Large',
-            ('any-view', 'small'): 'depth-anything/DA3-Small',
-            ('any-view', 'base'): 'depth-anything/DA3-Base',
-            ('any-view', 'large'): 'depth-anything/DA3-Large',
-        }
-
-        key = (variant.lower(), model_size.lower())
-        if key not in model_map:
-            logger.warning(
-                f"Invalid DA3 config: variant={variant}, size={model_size}. "
-                f"Defaulting to mono/small."
-            )
-            key = ('mono', 'small')
-
-        model_name = model_map[key]
+        model_name = _get_model_name(variant, model_size)
 
         logger.info(f"Loading Depth Anything V3 ({variant} {model_size}) from {model_name}...")
         logger.info("Model will auto-download to HuggingFace cache if not present")
@@ -85,7 +251,12 @@ class DepthAnythingV3:
             logger.error(f"Failed to load DA3 model: {str(e)}")
             raise
 
-    def predict(self, image, weight=0.5, half_precision=False):
+    def predict(
+        self,
+        image: Union[np.ndarray, Image.Image],
+        weight: float = 0.5,
+        half_precision: bool = False
+    ) -> torch.Tensor:
         """Predict depth map from single image (drop-in replacement for DA2).
 
         Args:
@@ -96,59 +267,31 @@ class DepthAnythingV3:
         Returns:
             Depth map tensor [1, 1, H, W] compatible with DA2 output format
         """
-        import torch.nn.functional as F
-
-        # Store original image dimensions
-        if isinstance(image, np.ndarray):
-            original_h, original_w = image.shape[:2]
-            from PIL import Image
-            # Assume BGR format from cv2
-            image_rgb = image[:, :, ::-1]
-            image = Image.fromarray(image_rgb)
-        else:
-            original_w, original_h = image.size
+        # Prepare image and extract dimensions
+        pil_image, original_h, original_w = _prepare_image_for_inference(image)
 
         # Run DA3 inference (may downsample internally for processing)
-        result = self.model.inference([image])
+        result = self.model.inference([pil_image])
 
         # Extract depth map from Prediction object (dataclass with .depth attribute)
         # result.depth is np.ndarray with shape [N, H, W] where N is number of images
         depth_np = result.depth[0]  # First (and only) image -> [H, W]
 
         # Convert to tensor format matching DA2 output: [1, 1, H, W]
-        if isinstance(depth_np, torch.Tensor):
-            depth = depth_np
-            if depth.ndim == 2:
-                depth = depth.unsqueeze(0).unsqueeze(0)  # [H,W] -> [1,1,H,W]
-            elif depth.ndim == 3:
-                depth = depth.unsqueeze(0)  # [1,H,W] -> [1,1,H,W]
-        else:
-            # Convert numpy to tensor [H,W] -> [1,1,H,W]
-            depth = torch.from_numpy(depth_np).unsqueeze(0).unsqueeze(0).float()
+        depth = _convert_depth_to_tensor(depth_np)
 
-        # CRITICAL: Normalize depth to 0-1 range for consistency with DA2
-        # DA3 returns depth in arbitrary range (e.g., 0.94-1.04), but depth warping
-        # expects normalized depth where 0=nearest, 1=farthest
-        depth_min = depth.min()
-        depth_max = depth.max()
-        if depth_max > depth_min:  # Avoid division by zero
-            depth = (depth - depth_min) / (depth_max - depth_min)
+        # Normalize depth to 0-1 range for consistency with DA2
+        depth = _normalize_depth_range(depth)
 
-        # CRITICAL: Resize depth map to match original image dimensions
-        # DA3 downsamples during processing (e.g., 1920x480 -> 504x280)
-        # but depth warping expects depth to match image size exactly
-        current_h, current_w = depth.shape[2], depth.shape[3]
-        if current_h != original_h or current_w != original_w:
-            depth = F.interpolate(
-                depth,
-                size=(original_h, original_w),
-                mode='bilinear',
-                align_corners=True  # Changed from False - prevents spatial misalignment
-            )
+        # Resize depth map to match original image dimensions
+        depth = _resize_depth_to_match_image(depth, original_h, original_w)
 
         return depth
 
-    def predict_multiview(self, images):
+    def predict_multiview(
+        self,
+        images: List[Union[np.ndarray, Image.Image]]
+    ) -> Union[Dict[str, Any], Any]:
         """Predict depth with multi-view consistency (Phase 2 capability).
 
         Args:
@@ -176,21 +319,17 @@ class DepthAnythingV3:
             }
 
         # Convert numpy arrays to PIL Images if needed
-        pil_images = []
-        for img in images:
-            if isinstance(img, np.ndarray):
-                from PIL import Image
-                img_rgb = img[:, :, ::-1]  # BGR -> RGB
-                pil_images.append(Image.fromarray(img_rgb))
-            else:
-                pil_images.append(img)
+        pil_images = _convert_images_to_pil(images)
 
         # Run DA3 multi-view inference
         result = self.model.inference(pil_images)
 
         return result
 
-    def estimate_3d_gaussians(self, images):
+    def estimate_3d_gaussians(
+        self,
+        images: List[Union[np.ndarray, Image.Image]]
+    ) -> Optional[Any]:
         """Estimate 3D Gaussian Splatting parameters (Phase 3 capability).
 
         Args:
@@ -207,14 +346,7 @@ class DepthAnythingV3:
         logger.info("3D Gaussian Splatting estimation (Phase 3 - not yet implemented)")
 
         # Convert numpy arrays to PIL Images if needed
-        pil_images = []
-        for img in images:
-            if isinstance(img, np.ndarray):
-                from PIL import Image
-                img_rgb = img[:, :, ::-1]  # BGR -> RGB
-                pil_images.append(Image.fromarray(img_rgb))
-            else:
-                pil_images.append(img)
+        pil_images = _convert_images_to_pil(images)
 
         # Run DA3 inference with 3DGS enabled
         try:
