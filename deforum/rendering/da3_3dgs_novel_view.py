@@ -209,8 +209,10 @@ def render_novel_view_from_gaussians(
             height=height,
         )
 
-        # rendered_image is [1, H, W, 3], convert to numpy
-        img_np = rendered_image[0].detach().cpu().numpy()  # [H, W, 3]
+        # rendered_image is [1, C, H, W, 3] where C=1 (single camera)
+        # Squeeze extra dimensions to get [H, W, 3]
+        img_tensor = rendered_image.squeeze(0).squeeze(0)  # Remove batch and camera dims
+        img_np = img_tensor.detach().cpu().numpy()  # [H, W, 3]
         img_np = (img_np * 255).clip(0, 255).astype(np.uint8)
 
         return Image.fromarray(img_np)
