@@ -144,17 +144,17 @@ def run_deforum(*args):
                         if 'da3_3dgs_neighbor_segments' in args_dict:
                             try:
                                 num_neighbors = int(args_dict['da3_3dgs_neighbor_segments'])
-                                if num_neighbors < 0 or num_neighbors > 3:
-                                    logger.warning(f"Invalid da3_3dgs_neighbor_segments value {num_neighbors} (must be 0-3), using default 2")
-                                    args_dict['da3_3dgs_neighbor_segments'] = 2
+                                if num_neighbors < 0 or num_neighbors > 10:
+                                    logger.warning(f"Invalid da3_3dgs_neighbor_segments value {num_neighbors} (must be 0-10), using default 4")
+                                    args_dict['da3_3dgs_neighbor_segments'] = 4
                             except (ValueError, TypeError):
-                                logger.warning(f"Invalid da3_3dgs_neighbor_segments value '{args_dict['da3_3dgs_neighbor_segments']}' (not an integer), using default 2")
-                                args_dict['da3_3dgs_neighbor_segments'] = 2
+                                logger.warning(f"Invalid da3_3dgs_neighbor_segments value '{args_dict['da3_3dgs_neighbor_segments']}' (not an integer), using default 4")
+                                args_dict['da3_3dgs_neighbor_segments'] = 4
 
                         # Migrate old parameter name if present
                         elif 'da3_3dgs_num_keyframes' in args_dict:
                             logger.info(f"Migrating old 'da3_3dgs_num_keyframes' parameter to 'da3_3dgs_neighbor_segments'")
-                            args_dict['da3_3dgs_neighbor_segments'] = 2  # Default to 2 neighbor segments for better geometry
+                            args_dict['da3_3dgs_neighbor_segments'] = 4  # Default to 4 neighbor segments (~9 keyframes)
                 except Exception as e:
                     logger.warning(f"Could not load animation_mode from settings file: {e}")
                     logger.info(f"  Using current UI setting: {animation_mode}")

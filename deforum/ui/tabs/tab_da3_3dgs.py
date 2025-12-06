@@ -26,7 +26,7 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
     **3D Gaussian Splatting with Depth Anything V3 GIANT models**
 
     This mode uses multi-view 3D reconstruction to interpolate between keyframes:
-    - Collects keyframes from current segment + 2 neighbor segments (default)
+    - Collects keyframes from current segment + 4 neighbor segments (default ~9 keyframes)
     - DA3 auto-estimates camera poses from image content
     - Builds 3D Gaussian Splatting scene (~705k splats)
     - Renders novel views via camera pose interpolation
