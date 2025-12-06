@@ -172,17 +172,39 @@ git checkout dev
 - **See**: `docs/MCP_INTEGRATION.md` for complete setup guide
 
 ### 🎨 **Reworked Workflow-Centric UI**
-- **4 Render Modes**: Classic 3D, New 3D, Keyframes Only, Flux + Interpolation
+- **5 Render Modes**: Classic 3D, New 3D, Keyframes Only, Flux + Interpolation, Gaussian Scene
 - **Flattened Navigation**: Single-level tab structure for faster access
 - **Promoted Tabs**: Distribution, Shakify, 3D Depth elevated to main level
 - **Context-Aware Controls**: UI adapts based on selected render mode
 - **Dual Strength Schedules**: Normal + keyframe strength for advanced control
 
-### 🕳️ **Depth-Anything V2** (Only depth model - faster & more accurate)
-- **State-of-Art**: Latest depth estimation from DepthAnything team
+### 🕳️ **Depth-Anything V2** (Legacy depth model - still supported)
+- **State-of-Art (2023)**: Excellent depth estimation for traditional depth warping
 - **Unified Model**: Single model replaces 5 legacy options (MiDaS, AdaBins, LeReS, ZoeDepth, DPT-Large)
 - **Auto-Download**: First use downloads to `models/Deforum/`
 - **GPU Accelerated**: Optimized for modern hardware
+
+### 🌌 **Depth-Anything V3 + Gaussian Scene Mode** (NEW - 3D Gaussian Splatting)
+- **State-of-Art (2025)**: Latest depth estimation with multi-view geometry and 3DGS capabilities
+- **3 Phased Integration**:
+  - **Phase 1 (COMPLETE)**: Drop-in replacement for DA2 with better monocular depth quality
+  - **Phase 2 (COMPLETE)**: Multi-view depth with temporal consistency for video sequences
+  - **Phase 3 (COMPLETE)**: 3D Gaussian Splatting rendering for novel view synthesis
+- **Gaussian Scene Render Mode**: New render mode specifically for 3DGS-based animation
+  - Generates 3D Gaussian primitives from keyframe depth + RGB
+  - Renders novel views by splatting Gaussians instead of depth warping
+  - Dramatically better quality on complex camera movements (orbits, figure-8s)
+- **Two Model Variants**:
+  - **Mono Models**: Enhanced single-image depth estimation (better than DA2)
+  - **AnyView Models**: Multi-view geometry + pose estimation (required for Gaussian Scene mode)
+- **Auto-Upgrade**: Selecting "Gaussian Scene" mode automatically upgrades DA2 → DA3 AnyView
+- **12 Model Options**: Small/Base/Large for both Mono and AnyView variants
+- **Backwards Compatible**: Existing DA2 workflows continue working unchanged
+- **Smart Downloads**: Interactive script lets you choose which DA3 models to download
+  - AnyView-Large recommended for Gaussian Scene (best quality, ~350MB)
+  - Mono-Large for traditional depth warping improvements (~350MB)
+  - Base models for faster processing with lower quality (~135MB)
+- **See**: `docs/DEPTH_ANYTHING_V3_PLAN.md` and `docs/DA3_TESTING_GUIDE.md` for technical details
 
 ### 📹 **Camera Shakify Integration** (EatTheFuture's Blender patterns)
 - **Pre-Recorded Patterns**: EARTHQUAKE, FILM_GRAIN, GENTLE_HANDHELD, INVESTIGATION, SMOOTH_DOLLY
@@ -299,6 +321,16 @@ Hybrid Flux keyframes + multi-method interpolation:
 - Defaults: 24 FPS, pseudo-cadence, 20 steps
 - Best For: Dramatic changes, cinematic quality
 - Features: Qwen prompt enhancement, movement analysis
+
+#### **5. Gaussian Scene** 🌌 (NEW)
+3D Gaussian Splatting rendering with DA3 AnyView:
+- Depth Model: Auto-upgrades to Depth-Anything V3 AnyView
+- Rendering: 3DGS primitive splatting instead of depth warping
+- Strength: Dual (normal + keyframe)
+- Defaults: 60 FPS, cadence=5, 20 steps
+- Best For: Complex camera movements (orbits, figure-8s), novel view synthesis
+- Requires: DA3 AnyView models (download with `./shell_scripts/download-all-models.sh`)
+- Note: Experimental feature, requires significant VRAM
 
 ## Requirements
 
