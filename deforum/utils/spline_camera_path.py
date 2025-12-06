@@ -821,6 +821,11 @@ def camera_path_to_schedules(
     prev_rot_y = 0.0
     prev_rot_z = 0.0
 
+    # For center mode, track first frame rotation to normalize (set in first iteration)
+    first_center_rot_x = None
+    first_center_rot_y = None
+    first_center_rot_z = None
+
     # Setup speed randomization if enabled
     if speed_randomization > 0.0:
         np.random.seed(random_seed)
@@ -889,7 +894,19 @@ def camera_path_to_schedules(
             # After offset: camera at (0,0,0) must look at (-100,0,0)
             camera_pos = (norm_x, norm_y, norm_z)
             center_pos = (center_offset_x, center_offset_y, center_offset_z)
-            norm_rot_x, norm_rot_y, norm_rot_z = look_at_target(camera_pos, center_pos, stabilize=stabilize_camera)
+            abs_rot_x, abs_rot_y, abs_rot_z = look_at_target(camera_pos, center_pos, stabilize=stabilize_camera)
+
+            # CRITICAL: Normalize rotations so first frame starts at zero
+            # Store first frame rotation on first iteration
+            if first_center_rot_x is None:
+                first_center_rot_x = abs_rot_x
+                first_center_rot_y = abs_rot_y
+                first_center_rot_z = abs_rot_z
+
+            # Subtract first frame rotation to normalize (just like non-center modes)
+            norm_rot_x = abs_rot_x - first_center_rot_x
+            norm_rot_y = abs_rot_y - first_center_rot_y
+            norm_rot_z = abs_rot_z - first_center_rot_z
         else:
             # Preserve original rotations from camera path (relative to first frame)
             # This allows tangent, inward, blend modes to show their unique rotation patterns
