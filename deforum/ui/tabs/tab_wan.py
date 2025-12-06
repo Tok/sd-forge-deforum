@@ -23,9 +23,8 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         skip_tabitem: If True, don't create TabItem wrapper
     """
 
-    movie_camera = emoji_utils.movie_camera()
     gr.Markdown(f"""
-    ## {movie_camera} Interpolation Methods
+    ## {emoji_if_enabled('🎬')} Interpolation Methods
 
     **Choose your interpolation method for smooth transitions between keyframes:**
 
@@ -38,16 +37,18 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     """)
 
     # INTERPOLATION METHOD SELECTOR - ALWAYS VISIBLE AT TOP
-    gr.Markdown(f"### {emoji_utils.target()} Select Interpolation Method")
+    gr.Markdown(f"### {emoji_if_enabled('🎯')} Select Interpolation Method")
     with gr.Row():
         flux_flf2v_interpolation_method = create_gr_elem(dw.flux_flf2v_interpolation_method)
 
-    # DA3-3DGS MODEL SELECTOR - Only visible when DA3-3DGS method selected
-    gr.Markdown(f"### {emoji_utils.depth_emoji()} DA3-3DGS Settings (Experimental)")
-    with gr.Row():
-        da3_3dgs_model = create_gr_elem(dw.da3_3dgs_model)
-        da3_3dgs_num_keyframes = create_gr_elem(dw.da3_3dgs_num_keyframes)
-        da3_3dgs_render_keyframes = create_gr_elem(dw.da3_3dgs_render_keyframes)
+    # DA3-3DGS SETTINGS - Conditionally visible accordion
+    with gr.Accordion(f"{emoji_if_enabled('🔍')} DA3-3DGS Settings", open=True, visible=False) as da3_3dgs_accordion:
+        gr.Markdown("**3D Gaussian Splatting Interpolation Settings**")
+        with gr.Row():
+            da3_3dgs_model = create_gr_elem(dw.da3_3dgs_model)
+            da3_3dgs_num_keyframes = create_gr_elem(dw.da3_3dgs_num_keyframes)
+        with gr.Row():
+            da3_3dgs_render_keyframes = create_gr_elem(dw.da3_3dgs_render_keyframes)
 
     gr.Markdown("---")
 
@@ -748,16 +749,31 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
             6. **Check seed behavior**: Set seed behavior to 'schedule' if you want custom seed scheduling
             """)
 
+    # Connect DA3-3DGS accordion visibility to interpolation method selection
+    def toggle_da3_3dgs_settings(method):
+        return gr.update(visible=(method == "DA3-3DGS"))
+
+    flux_flf2v_interpolation_method.change(
+        fn=toggle_da3_3dgs_settings,
+        inputs=[flux_flf2v_interpolation_method],
+        outputs=[da3_3dgs_accordion]
+    )
+
     # Connect movement sensitivity override toggle
     def toggle_movement_sensitivity_override(override_enabled):
         return gr.update(interactive=override_enabled)
-    
+
     movement_sensitivity_override.change(
         fn=toggle_movement_sensitivity_override,
         inputs=[movement_sensitivity_override],
         outputs=[wan_movement_sensitivity]
     )
         
+    # Ensure all DA3-3DGS components are properly captured in locals()
+    locals()['da3_3dgs_model'] = da3_3dgs_model
+    locals()['da3_3dgs_num_keyframes'] = da3_3dgs_num_keyframes
+    locals()['da3_3dgs_render_keyframes'] = da3_3dgs_render_keyframes
+
     # Ensure wan_inference_steps is properly captured
     locals()['wan_inference_steps'] = wan_inference_steps
     
