@@ -3,6 +3,9 @@ from cv2.typing import MatLike
 from deforum.rendering.calls.anim import call_anim_frame_warp
 from deforum.animation.optical_flow_utils import (get_flow_from_images, image_transform_optical_flow,
                                    abs_flow_to_rel_flow, rel_flow_to_abs_flow)
+from deforum.utils.system.logging import get_logger
+
+logger = get_logger()
 
 
 def advance_optical_flow_cadence_before_animation_warping(data, last_frame, tween_frame, prev_image, image) -> MatLike:
@@ -21,7 +24,26 @@ def advance_optical_flow_cadence_before_animation_warping(data, last_frame, twee
 
 
 def advance(data, i, image, depth):
-    """Apply 3D animation warping to image using depth."""
+    """Apply 3D animation warping to image using depth.
+
+    Supports multiple tween generation modes:
+    - depth_warp: Classic depth-based warping (default)
+    - da3_multiview: Multi-view geometry using DA3 (Phase 2)
+    - da3_gaussian: 3D Gaussian Splatting (Phase 3, not yet implemented)
+    """
+    # Check tween generation mode
+    tween_mode = getattr(data.args.anim_args, 'tween_generation_mode', 'depth_warp')
+
+    if tween_mode == 'da3_multiview':
+        # Use DA3 multi-view tween generation (Phase 2)
+        logger.debug(f"Using DA3 multi-view tween generation for frame {i}")
+        # NOTE: This is called for warping individual frames, not for generating tweens
+        # Tween generation happens in tween_frame.py via emit_frame()
+        # For now, fall through to depth warp for frame-level warping
+        # Multi-view tweens will be integrated at the tween emission level
+        pass
+
+    # Standard depth warping (works for all modes)
     if depth is not None:
         warped_image, _ = call_anim_frame_warp(data, i, image, depth)
         return warped_image
