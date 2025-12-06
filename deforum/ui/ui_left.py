@@ -312,6 +312,11 @@ def setup_deforum_left_side_ui():
             audio_ai_end_prompt = tab_init_params.get('audio_ai_end_prompt')
             audio_sync_prompts = tab_init_params.get('audio_sync_prompts')
 
+            # Explicitly unpack DA3-3DGS components from tab_wan_params
+            da3_3dgs_model = tab_wan_params.get('da3_3dgs_model')
+            da3_3dgs_num_keyframes = tab_wan_params.get('da3_3dgs_num_keyframes')
+            da3_3dgs_render_keyframes = tab_wan_params.get('da3_3dgs_render_keyframes')
+
             # Explicitly unpack components needed for Reset to Defaults button
             soundtrack_path = tab_init_params.get('soundtrack_path')
             # max_frames now created at top-level (not in tab_keyframes)
