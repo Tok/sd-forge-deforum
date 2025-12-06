@@ -11,6 +11,11 @@ git+https://github.com/huggingface/diffusers.git
 transformers>=4.36.0,<5.0.0
 accelerate>=0.25.0,<2.0.0
 
+# Depth Anything V3 (optional - Phase 1/2/3 integration)
+# depth-anything-3>=0.1.0
+# xformers>=0.0.20  # Required by DA3
+# Note: Uncomment to enable DA3 support. DA2 remains default.
+
 # Audio sync dependencies
 librosa>=0.10.0
 soundfile>=0.12.0

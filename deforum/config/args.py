@@ -621,9 +621,19 @@ def DeforumAnimArgs():
         "depth_algorithm": {
             "label": "Depth Algorithm",
             "type": "dropdown",
-            "choices": ['Depth-Anything-V2-Small', 'Depth-Anything-V2-Base', 'Depth-Anything-V2-Large'],
+            "choices": [
+                'Depth-Anything-V2-Small',
+                'Depth-Anything-V2-Base',
+                'Depth-Anything-V2-Large',
+                'Depth-Anything-V3-Mono-Small',
+                'Depth-Anything-V3-Mono-Base',
+                'Depth-Anything-V3-Mono-Large',
+                'Depth-Anything-V3-AnyView-Small',
+                'Depth-Anything-V3-AnyView-Base',
+                'Depth-Anything-V3-AnyView-Large'
+            ],
             "value": "Depth-Anything-V2-Small",
-            "info": "Depth Anything V2 model size - Small (fastest), Base (balanced), Large (best quality)"
+            "info": "Depth model: V2 (stable, default) or V3 (better quality, requires depth-anything-3 package). Mono=single-view, AnyView=multi-view support"
         },
         "midas_weight": {
             "label": "Depth weight (legacy, not used)",
