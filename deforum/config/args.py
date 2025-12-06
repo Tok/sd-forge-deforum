@@ -1292,6 +1292,21 @@ def WanArgs():
             "value": "DA3-GIANT",
             "info": "3DGS-capable DA3 model (only used when FLF2V method is DA3-3DGS): 'DA3-GIANT' (1.15B params, ~3GB VRAM), 'DA3NESTED-GIANT-LARGE' (1.40B params, ~4GB VRAM, recommended - combines multi-view with metric depth). Both models support feed-forward 3D Gaussian Splatting for novel view synthesis."
         },
+        "da3_3dgs_num_keyframes": {
+            "label": "3DGS Keyframes per Scene",
+            "type": "slider",
+            "minimum": 2,
+            "maximum": 10,
+            "step": 1,
+            "value": 5,
+            "info": "Number of consecutive keyframes to collect for building each 3DGS scene. More keyframes = better multi-view geometry and novel view quality, but slower and more VRAM. 2: fastest (stereo pair), 5: balanced quality/speed (recommended), 10: best quality (high VRAM usage ~10-15GB)."
+        },
+        "da3_3dgs_use_deforum_poses": {
+            "label": "Guide with Deforum Camera Poses",
+            "type": "checkbox",
+            "value": False,
+            "info": "Provide Deforum movement schedule to DA3 as camera pose guidance (experimental). When enabled, converts Deforum's translation/rotation schedules to camera extrinsics for pose-conditioned 3DGS inference. When disabled, DA3 estimates camera poses automatically from image content. Automatic estimation is more reliable for now."
+        },
 
         # Advanced Generation Settings
         "wan_negative_prompt": {

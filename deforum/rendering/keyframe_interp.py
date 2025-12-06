@@ -383,15 +383,44 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
             )
         elif interp_method == "DA3-3DGS":
             logger.info(f"      Using DA3 3D Gaussian Splatting")
-            logger.info(f"      Model: {getattr(wan_args, 'da3_3dgs_model', 'DA3-GIANT')}")
-            segment_frames = generate_da3_3dgs_segment(
-                first_image=first_image,
-                last_image=last_image,
-                first_frame_idx=first_frame_idx,
-                last_frame_idx=last_frame_idx,
-                num_frames=num_tween_frames,
-                wan_args=wan_args,
-                data=data
+            model_selection = getattr(wan_args, 'da3_3dgs_model', 'DA3-GIANT')
+            num_keyframes_to_collect = getattr(wan_args, 'da3_3dgs_num_keyframes', 5)
+            logger.info(f"      Model: {model_selection}")
+            logger.info(f"      Collecting {num_keyframes_to_collect} keyframes for scene building")
+
+            # Use new proper 3DGS interpolation module
+            from deforum.rendering.da3_3dgs_novel_view import (
+                collect_nearby_keyframes,
+                generate_da3_3dgs_interpolation
+            )
+            from PIL import Image
+            import torch
+
+            # Load all keyframe images into memory for collection
+            all_keyframes_pil = {}
+            for kf_idx, kf_path in keyframe_images.items():
+                all_keyframes_pil[kf_idx] = Image.open(kf_path)
+
+            # Collect nearby keyframes for this segment
+            collected_images, collected_indices = collect_nearby_keyframes(
+                all_keyframe_images=all_keyframes_pil,
+                segment_first_idx=first_frame_idx,
+                segment_last_idx=last_frame_idx,
+                num_to_collect=num_keyframes_to_collect
+            )
+
+            # Generate target frame indices (tweens to create)
+            target_indices = list(range(first_frame_idx + 1, last_frame_idx))
+
+            # Generate interpolated frames using 3DGS
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            segment_frames = generate_da3_3dgs_interpolation(
+                keyframe_images=collected_images,
+                keyframe_indices=collected_indices,
+                target_frame_indices=target_indices,
+                model_selection=model_selection,
+                output_dir=data.output_directory,
+                device=device
             )
         else:  # Default: Wan
             logger.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}")
@@ -664,190 +693,6 @@ def stitch_wan_flux_video(data, frame_paths, video_args, interp_method="Wan"):
             os.remove(concat_file)
 
     return output_path
-
-
-def generate_da3_3dgs_segment(first_image, last_image, first_frame_idx, last_frame_idx,
-                               num_frames, wan_args, data):
-    """
-    Generate frames using DA3 3D Gaussian Splatting for one segment.
-
-    Uses Depth Anything V3 GIANT models to build a 3DGS scene from keyframes
-    and render novel views for intermediate frames.
-
-    Args:
-        first_image: PIL Image of first keyframe
-        last_image: PIL Image of last keyframe
-        first_frame_idx: Global index of first keyframe
-        last_frame_idx: Global index of last keyframe
-        num_frames: Number of tween frames to generate (excluding keyframes)
-        wan_args: Wan arguments containing da3_3dgs_model selection
-        data: RenderData object with camera path schedules
-
-    Returns:
-        List of paths to generated tween frames
-    """
-    import numpy as np
-    import torch
-    from PIL import Image
-
-    logger.info(f"   {emoji_if_enabled('🌌')} DA3-3DGS interpolation: {num_frames} frames")
-
-    # Get selected GIANT model
-    model_selection = getattr(wan_args, 'da3_3dgs_model', 'DA3-GIANT')
-    logger.info(f"   Loading {model_selection} for 3DGS scene building...")
-
-    try:
-        # Import DA3 depth model
-        from deforum.depth.depth_anything_v3 import DepthAnythingV3
-
-        # Determine variant and size from selection
-        if model_selection == 'DA3-GIANT':
-            variant = 'giant'
-            size = 'giant'
-        elif model_selection == 'DA3NESTED-GIANT-LARGE':
-            variant = 'giant'
-            size = 'nested-giant-large'
-        else:
-            logger.warning(f"Unknown model '{model_selection}', using DA3-GIANT")
-            variant = 'giant'
-            size = 'giant'
-
-        # Initialize DA3 GIANT model
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        depth_model = DepthAnythingV3(device, model_size=size, variant=variant)
-
-        # Convert PIL images to numpy arrays (BGR for DA3)
-        first_np = cv2.cvtColor(np.array(first_image), cv2.COLOR_RGB2BGR)
-        last_np = cv2.cvtColor(np.array(last_image), cv2.COLOR_RGB2BGR)
-
-        # Collect nearby keyframes for better 3DGS scene (more views = better quality)
-        # TODO: Implement da3_3dgs_frame_collection settings to control this
-        # For now, just use the two boundary keyframes
-        keyframe_images = [first_np, last_np]
-
-        # Build 3DGS scene from keyframes
-        logger.info(f"   Building 3DGS scene from keyframes...")
-        logger.debug(f"Attempting 3DGS estimation with {len(keyframe_images)} images...")
-
-        # Call DA3 3DGS inference with infer_gs=True
-        result = depth_model.estimate_3d_gaussians(keyframe_images)
-
-        if result is None:
-            # Model doesn't support 3DGS, but we can still use depth maps for warping
-            logger.warning(f"   {emoji_if_enabled('⚠️')} Model {model_selection} doesn't support 3DGS (no gs_head/gs_adapter)")
-            logger.info(f"   {emoji_if_enabled('✨')} Using standard depth estimation for 3D warping instead...")
-
-            # Get depth maps without 3DGS (standard DA3 inference)
-            result = depth_model.model.inference([first_np, last_np])
-
-        # result should now have depth maps either from 3DGS or standard inference
-
-        # Implement novel view rendering from DA3 result
-        # DA3 provides depth maps + camera poses, we can use depth-based warping
-        logger.info(f"   {emoji_if_enabled('✨')} Rendering novel views from DA3 geometry...")
-        logger.debug(f"   Result type: {type(result)}")
-
-        # Extract depth maps and camera information from DA3 result
-        try:
-            # DA3 Prediction object structure:
-            # - result.depth: List[np.ndarray] - depth maps for each input image
-            # - result.conf: List[np.ndarray] - confidence maps (optional)
-            # - result.extrinsics: np.ndarray - camera extrinsics [N, 4, 4] (optional)
-            # - result.intrinsics: np.ndarray - camera intrinsics [N, 3, 3] (optional)
-            # - result.gaussians: object - 3DGS parameters (if infer_gs=True and model supports it)
-
-            first_depth = torch.from_numpy(result.depth[0]).float().to(device)
-            last_depth = torch.from_numpy(result.depth[1]).float().to(device)
-
-            logger.debug(f"   DA3 depth maps: first={first_depth.shape}, last={last_depth.shape}")
-
-            # Get image dimensions to match depth map size
-            img_height, img_width = first_image.size[1], first_image.size[0]  # PIL is (W, H)
-            logger.debug(f"   Image dimensions: {img_width}x{img_height}")
-
-            # Resize depth maps to match image dimensions (DA3 downsamples internally)
-            # Use bilinear interpolation for smooth depth transitions
-            import torch.nn.functional as F
-            first_depth_resized = F.interpolate(
-                first_depth.unsqueeze(0).unsqueeze(0),  # [1, 1, H, W]
-                size=(img_height, img_width),
-                mode='bilinear',
-                align_corners=False
-            )
-            last_depth_resized = F.interpolate(
-                last_depth.unsqueeze(0).unsqueeze(0),
-                size=(img_height, img_width),
-                mode='bilinear',
-                align_corners=False
-            )
-
-            logger.debug(f"   Resized depth maps: {first_depth_resized.shape}")
-
-            # Use proper 3D depth warping for novel view synthesis
-            from deforum.animation.animation import anim_frame_warp_3d
-            import math
-
-            keys = data.animation_keys.deform_keys
-            anim_args = data.args.anim_args
-
-            # Depth tensors are now in correct format [1, 1, H, W] matching image size
-            first_depth_tensor = first_depth_resized
-            last_depth_tensor = last_depth_resized
-
-            frame_paths = []
-            for i in range(num_frames):
-                global_frame_idx = first_frame_idx + 1 + i
-                alpha = (i + 1) / (num_frames + 1)
-
-                # Choose source keyframe to warp from (closest one for better quality)
-                if alpha < 0.5:
-                    source_image = first_image
-                    source_depth_tensor = first_depth_tensor
-                    source_frame_idx = first_frame_idx
-                else:
-                    source_image = last_image
-                    source_depth_tensor = last_depth_tensor
-                    source_frame_idx = last_frame_idx
-
-                # Convert PIL to cv2 format (BGR numpy array)
-                source_cv2 = cv2.cvtColor(np.array(source_image), cv2.COLOR_RGB2BGR)
-
-                # Apply 3D depth warp using Deforum's warp function
-                # This warps the source image to the target camera position
-                warped_cv2 = anim_frame_warp_3d(
-                    device=device,
-                    prev_img_cv2=source_cv2,
-                    depth=source_depth_tensor,
-                    anim_args=anim_args,
-                    keys=keys,
-                    frame_idx=global_frame_idx,
-                    shaker=None  # No camera shake for interpolated frames
-                )
-
-                # Convert back to PIL RGB
-                warped_rgb = cv2.cvtColor(warped_cv2, cv2.COLOR_BGR2RGB)
-                warped_img = Image.fromarray(warped_rgb)
-
-                # Save frame
-                target_filename = f"{global_frame_idx:09d}.png"
-                target_path = os.path.join(data.output_directory, target_filename)
-                warped_img.save(target_path)
-                frame_paths.append(target_path)
-
-            logger.info(f"   {emoji_if_enabled('✅')} Generated {len(frame_paths)} 3D-warped frames")
-            return frame_paths
-
-        except Exception as e:
-            logger.error(f"   {emoji_if_enabled('❌')} 3D depth warping failed: {e}")
-            import traceback
-            logger.debug(traceback.format_exc())
-            raise  # Re-raise to propagate error
-
-    except Exception as e:
-        logger.error(f"   {emoji_if_enabled('❌')} DA3-3DGS failed: {e}")
-        import traceback
-        logger.debug(traceback.format_exc())
-        raise  # Re-raise to propagate error - no blending fallback!
 
 
 def generate_film_segment(first_image, last_image, num_frames, height, width,
