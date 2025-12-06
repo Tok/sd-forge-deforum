@@ -285,7 +285,8 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         logger.warning(f"   In-between frames to generate: {num_tween_frames} (frames {first_frame_idx+1} to {last_frame_idx-1})")
 
         # Check if all frames in this segment already exist (resume mode)
-        if is_resuming:
+        # Skip only if NOT regenerating tweens
+        if is_resuming and not anim_args.resume_regenerate_tweens:
             segment_complete = True
             segment_existing_frames = []
             for frame_offset in range(num_tween_frames):
@@ -306,11 +307,13 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 else:
                     segment_complete = False
                     break
-            
+
             if segment_complete:
                 logger.debug(f"{emoji_if_enabled('⏭')}️  Skipping segment {idx + 1} - all {num_tween_frames} frames already exist")
                 all_segment_frames.extend(segment_existing_frames)
                 continue
+        elif is_resuming and anim_args.resume_regenerate_tweens:
+            logger.info(f"{emoji_if_enabled('🔄')} Regenerating tweens for segment {idx + 1} (resume_regenerate_tweens=True)")
 
         # Get prompts for BOTH keyframes
         first_prompt_idx = min(first_frame_idx, len(data.prompt_series) - 1)

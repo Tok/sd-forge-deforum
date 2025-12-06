@@ -396,6 +396,12 @@ def DeforumAnimArgs():
             "value": "20241111111111",
             "info": ""
         },
+        "resume_regenerate_tweens": {
+            "label": "Regenerate Tweens on Resume",
+            "type": "checkbox",
+            "value": True,
+            "info": "When resuming, regenerate all tween frames (useful for testing different FLF2V methods like DA3-3DGS vs Wan vs FILM). Keyframes are always reused from disk. Turn OFF to skip segments where all tweens already exist."
+        },
         "enable_ddim_eta_scheduling": {
             "label": "Enable DDIM ETA scheduling",
             "type": "checkbox",

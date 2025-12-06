@@ -86,6 +86,7 @@ def get_tab_run(d, da):
                 resume_from_timestring, resume_timestring = create_row(
                     da, 'resume_from_timestring', 'resume_timestring'
                 )
+                resume_regenerate_tweens = create_gr_elem(da.resume_regenerate_tweens)
 
     # Return all local Gradio components for event binding
     local_vars = locals()

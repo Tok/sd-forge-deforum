@@ -56,6 +56,44 @@ git checkout dev
 
 **See below for:** [Installation](#-installation), [Helper Scripts](#-helper-scripts), [Model Downloads](#-model-downloads)
 
+## 🔄 Resume Workflow (Test Different Interpolation Methods)
+
+A powerful workflow for **iterative testing** of different interpolation methods (DA3-3DGS, Wan FLF2V, FILM) without regenerating expensive keyframes:
+
+**1. Generate Keyframes Once:**
+- Run "Keyframes + Interpolation" mode with your desired settings
+- All keyframes are generated and saved to `output/videos/Deforum_<timestring>/`
+- Settings are automatically saved to `<timestring>_settings.txt`
+
+**2. Test Different Interpolation Methods:**
+- Navigate to: **Deforum → Init → Resume Animation**
+- Enter the timestring from step 1 (e.g., `20251206213828`)
+- Check **"Resume from timestring"** checkbox
+- **"Regenerate Tweens on Resume"** is ON by default (recommended for testing)
+- Switch interpolation method in **Wan Models** tab:
+  - `DA3-3DGS` - 3D depth warping with DA3-GIANT models
+  - `Wan` - AI video generation with semantic understanding
+  - `FILM` - Google's frame interpolation for large motion
+- Click **Generate** - only tweens are regenerated, keyframes reused from disk!
+
+**What Gets Reused:**
+- ✅ All keyframe images (never regenerated)
+- ✅ FPS, max_frames, prompts from saved settings
+- ✅ Animation schedules, camera paths
+
+**What Changes:**
+- ✨ Interpolation method (DA3-3DGS ↔ Wan ↔ FILM)
+- ✨ Method-specific settings (guidance_scale, model selection, etc.)
+- ✨ All tweens regenerated with new method
+
+**Turn OFF "Regenerate Tweens"** if you want to:
+- Resume incomplete render (picks up where it left off)
+- Skip segments where all tweens already exist
+
+**Location in UI:** Deforum → Init → Resume Animation (second tab, after Settings Presets)
+
+**Time Savings:** Keyframes take 80-90% of render time. Reusing them lets you A/B test interpolation methods in minutes instead of hours!
+
 ## ⚡ Major New Features
 
 ### 🎬 **Wan AI Video Generation** (Alibaba's state-of-the-art T2V/I2V)
