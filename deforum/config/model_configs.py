@@ -161,6 +161,27 @@ MODEL_CONFIGS = {
         compatible_samplers=["euler_a", "dpmpp_2m", "dpmpp_2m_sde", "ddim"],
         notes="SD 1.5/SDXL uses traditional CFG (7.5 recommended). Distilled CFG is ignored."
     ),
+
+    "unknown": ModelConfig(
+        model_type="unknown",
+        display_name="Unknown Model",
+        recommended_steps=20,
+        min_steps=1,
+        max_steps=150,
+        uses_cfg=True,
+        cfg_scale_default=7.5,
+        cfg_scale_min=0.0,
+        cfg_scale_max=30.0,
+        uses_distilled_cfg=False,
+        distilled_cfg_scale_default=3.5,
+        distilled_cfg_scale_min=0.0,
+        distilled_cfg_scale_max=30.0,
+        recommended_scheduler="normal",
+        compatible_schedulers=["normal", "karras", "exponential", "simple", "sgm_uniform", "linear_quadratic"],
+        recommended_sampler="euler",
+        compatible_samplers=["euler", "euler_a", "dpmpp_2m", "dpmpp_2m_sde", "ddim", "dpm_2", "dpm_2_a"],
+        notes="Unknown model type - validation disabled. Please configure settings manually based on your model's requirements."
+    ),
 }
 
 
@@ -171,10 +192,10 @@ def detect_model_type_extended(model_name: str) -> str:
         model_name: SD model filename or path
 
     Returns:
-        Model type key: "flux_dev", "flux_schnell", "lumina", "z_image", "sd15"
+        Model type key: "flux_dev", "flux_schnell", "lumina", "z_image", "sd15", "unknown"
     """
     if not model_name:
-        return "sd15"  # Fallback
+        return "unknown"  # No model name available
 
     model_lower = model_name.lower()
 
@@ -187,8 +208,10 @@ def detect_model_type_extended(model_name: str) -> str:
         return "lumina"
     elif any(pattern in model_lower for pattern in ["z-image", "zimage", "zit", "tongyi"]):
         return "z_image"
+    elif any(pattern in model_lower for pattern in ["sd15", "sd_15", "sd-15", "sdxl", "sd_xl", "sd-xl"]):
+        return "sd15"
     else:
-        return "sd15"  # Fallback for SD1.5/SDXL/unknown
+        return "unknown"  # Unknown model - skip validation
 
 
 def get_model_config(model_name: str) -> ModelConfig:

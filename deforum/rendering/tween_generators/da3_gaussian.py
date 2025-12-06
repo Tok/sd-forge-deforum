@@ -92,10 +92,23 @@ class DA3GaussianTweenGenerator(BaseTweenGenerator):
                 logger.error("DA3 failed to estimate 3D Gaussians")
                 return None
 
-            logger.info(
-                f"✓ 3D Gaussian scene built successfully: "
-                f"{len(self.scene_3dgs.get('means', []))} Gaussians"
-            )
+            # Check if Prediction object has gaussians attribute
+            if hasattr(self.scene_3dgs, 'gaussians'):
+                gaussian_count = len(self.scene_3dgs.gaussians) if self.scene_3dgs.gaussians is not None else 0
+                logger.info(
+                    f"✓ 3D Gaussian scene built successfully: "
+                    f"{gaussian_count} Gaussians from Prediction object"
+                )
+            elif isinstance(self.scene_3dgs, dict):
+                # Legacy dict format
+                gaussian_count = len(self.scene_3dgs.get('means', []))
+                logger.info(
+                    f"✓ 3D Gaussian scene built successfully: "
+                    f"{gaussian_count} Gaussians from dict"
+                )
+            else:
+                logger.info(f"✓ 3D Gaussian scene built (Prediction type: {type(self.scene_3dgs).__name__})")
+
             return self.scene_3dgs
 
         except Exception as e:
