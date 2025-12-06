@@ -717,9 +717,14 @@ def generate_da3_3dgs_segment(first_image, last_image, first_frame_idx, last_fra
         first_np = cv2.cvtColor(np.array(first_image), cv2.COLOR_RGB2BGR)
         last_np = cv2.cvtColor(np.array(last_image), cv2.COLOR_RGB2BGR)
 
-        # Build 3DGS scene from two keyframes
-        logger.info(f"   Building 3DGS scene from keyframes...")
+        # Collect nearby keyframes for better 3DGS scene (more views = better quality)
+        # TODO: Implement da3_3dgs_frame_collection settings to control this
+        # For now, just use the two boundary keyframes
         keyframe_images = [first_np, last_np]
+
+        # Build 3DGS scene from keyframes
+        logger.info(f"   Building 3DGS scene from keyframes...")
+        logger.debug(f"Attempting 3DGS estimation with {len(keyframe_images)} images...")
 
         # Call DA3 3DGS inference with infer_gs=True
         result = depth_model.estimate_3d_gaussians(keyframe_images)
@@ -747,9 +752,23 @@ def generate_da3_3dgs_segment(first_image, last_image, first_frame_idx, last_fra
             return frame_paths
 
         # TODO: Implement novel view rendering from 3DGS scene
-        # For now, this is a placeholder that does linear interpolation
+        #
+        # The 3DGS scene was successfully built, but we need to:
+        # 1. Extract gaussian primitives from result object
+        # 2. Interpolate camera poses between first_frame and last_frame
+        # 3. Render novel views from interpolated camera positions
+        #
+        # For reference:
+        # - result likely contains: result.gaussians (means, rotations, scales, opacities, colors)
+        # - Need to implement gaussian splatting renderer or use differentiable renderer
+        # - Camera poses can be interpolated from data.animation_keys schedules
+        #
+        # Current limitation: Just using linear image blending as fallback
         logger.warning(f"   {emoji_if_enabled('⚠️')} Novel view rendering not yet implemented!")
+        logger.warning(f"   3DGS scene built successfully, but rendering pipeline incomplete")
         logger.warning(f"   Using linear interpolation as fallback...")
+        logger.debug(f"   Result type: {type(result)}")
+        logger.debug(f"   Result attributes: {dir(result) if result else 'None'}")
 
         frame_paths = []
         for i in range(num_frames):
