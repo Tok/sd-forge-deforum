@@ -123,9 +123,9 @@ MODEL_CONFIGS = {
     "z_image": ModelConfig(
         model_type="z_image",
         display_name="Z-Image-Turbo",
-        recommended_steps=4,
-        min_steps=1,
-        max_steps=8,
+        recommended_steps=9,
+        min_steps=4,
+        max_steps=15,
         uses_cfg=True,
         cfg_scale_default=2.0,
         cfg_scale_min=1.0,
@@ -138,7 +138,7 @@ MODEL_CONFIGS = {
         compatible_schedulers=["simple", "normal"],
         recommended_sampler="euler",
         compatible_samplers=["euler", "dpmpp_2m"],
-        notes="Z-Image-Turbo uses traditional CFG (2.0 recommended). Distilled CFG is ignored. Optimized for 1-4 steps."
+        notes="Z-Image-Turbo uses traditional CFG (2.0 recommended). Distilled CFG is ignored. Optimized for 4-15 steps (9 recommended)."
     ),
 
     "sdxl": ModelConfig(
@@ -351,15 +351,19 @@ def validate_settings(args, model_name: str) -> List[str]:
             )
 
     # SCHEDULER VALIDATION
-    if scheduler not in config.compatible_schedulers:
+    scheduler_lower = scheduler.lower() if scheduler else ""
+    compatible_schedulers_lower = [s.lower() for s in config.compatible_schedulers]
+    if scheduler_lower not in compatible_schedulers_lower:
         warnings.append(
             f"⚠️ Scheduler '{scheduler}' may not work optimally with {config.display_name}. "
             f"Recommended: {config.recommended_scheduler} "
             f"(compatible: {', '.join(config.compatible_schedulers)})"
         )
 
-    # SAMPLER VALIDATION
-    if sampler not in config.compatible_samplers:
+    # SAMPLER VALIDATION (case-insensitive)
+    sampler_lower = sampler.lower() if sampler else ""
+    compatible_samplers_lower = [s.lower() for s in config.compatible_samplers]
+    if sampler_lower not in compatible_samplers_lower:
         warnings.append(
             f"⚠️ Sampler '{sampler}' may not work optimally with {config.display_name}. "
             f"Recommended: {config.recommended_sampler} "

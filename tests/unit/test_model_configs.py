@@ -120,7 +120,7 @@ class TestModelConfigRetrieval:
 
         assert config.model_type == "z_image"
         assert config.display_name == "Z-Image-Turbo"
-        assert config.recommended_steps == 4
+        assert config.recommended_steps == 9
         assert config.uses_cfg is True
         assert config.cfg_scale_default == 2.0
         assert config.uses_distilled_cfg is False
@@ -264,6 +264,22 @@ class TestSettingsValidation:
         # Should warn about scheduler
         assert len(warnings) > 0
         assert any("Scheduler" in w for w in warnings)
+
+    def test_sampler_case_insensitive(self):
+        """Test that sampler validation is case-insensitive."""
+        args = SimpleNamespace(
+            steps=4,
+            cfg_scale=2.0,
+            sampler='Euler',  # Capitalized should match 'euler'
+            sampler_schedule_type='simple',
+            anim_args=None
+        )
+
+        warnings = validate_settings(args, "z-image.safetensors")
+
+        # Should NOT warn about sampler (case-insensitive match)
+        sampler_warnings = [w for w in warnings if "Sampler" in w]
+        assert len(sampler_warnings) == 0
 
     def test_cfg_scale_out_of_range(self):
         """Test warning for CFG scale outside recommended range."""
