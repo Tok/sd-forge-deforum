@@ -103,18 +103,31 @@ def run_deforum(*args):
                             # Override in args_dict so it's used throughout
                             args_dict['animation_mode'] = animation_mode
 
+                        # Load critical parameters from saved file for resume consistency
+                        # These must match the original run or frame indices will be wrong
+                        critical_params = ['fps', 'max_frames', 'prompts']
+                        critical_loaded = []
+                        for param in critical_params:
+                            if param in saved_settings:
+                                args_dict[param] = saved_settings[param]
+                                critical_loaded.append(param)
+                                logger.debug(f"  {emoji_if_enabled('✓')} Loaded {param}: {saved_settings[param] if param != 'prompts' else f'{len(saved_settings[param])} keyframes'}")
+
+                        if critical_loaded:
+                            logger.info(f"Resume detected: Loaded critical params from saved file: {', '.join(critical_loaded)}", emoji='refresh')
+
                         # Also load ALL wan settings from saved file (critical for FLF2V settings)
                         wan_settings_loaded = 0
                         for key, value in saved_settings.items():
-                            if key.startswith('wan_'):
+                            if key.startswith('wan_') or key.startswith('flux_flf2v_') or key == 'da3_3dgs_model':
                                 if key in args_dict:
                                     args_dict[key] = value
                                     wan_settings_loaded += 1
-                                    if 'flf2v' in key.lower():
+                                    if 'flf2v' in key.lower() or '3dgs' in key.lower():
                                         logger.debug(f"  {emoji_if_enabled('✓')} Loaded {key}: {value}")
 
                         if wan_settings_loaded > 0:
-                            logger.info(f"Resume detected: Loaded {wan_settings_loaded} wan_* settings from saved file", emoji='refresh')
+                            logger.info(f"Resume detected: Loaded {wan_settings_loaded} interpolation settings from saved file", emoji='refresh')
                         else:
                             logger.warning(f"No animation_mode found in settings file")
                             logger.info(f"  Using current UI setting: {animation_mode}")
