@@ -349,6 +349,10 @@ def run_deforum(*args):
 
         generation_info_js = processed.js()
 
+        # ALWAYS save settings to output directory for resuming
+        save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, video_args, root, None, wan_args)
+
+        # ALSO save to persistent settings path if enabled
         if shared.opts.data.get("deforum_enable_persistent_settings", False):
             persistent_sett_path = shared.opts.data.get("deforum_persistent_settings_path")
             save_settings_from_animation_run(args, anim_args, parseq_args, loop_args, controlnet_args, video_args, root, persistent_sett_path, wan_args)
