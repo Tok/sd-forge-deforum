@@ -368,6 +368,11 @@ def generate_da3_3dgs_interpolation(
     intrinsics = result.intrinsics  # [N, 3, 3]
     gaussians = result.gaussians
 
+    # DEBUG: Log intrinsics to diagnose principal point issue
+    logger.debug(f"   Intrinsics shape: {intrinsics.shape}")
+    logger.debug(f"   First intrinsics matrix:\n{intrinsics[0]}")
+    logger.debug(f"   Image size from keyframes: {keyframe_images[0].size}")
+
     # Convert [N, 3, 4] to [N, 4, 4] by adding bottom row [0, 0, 0, 1]
     if extrinsics.shape[1:] == (3, 4):
         logger.debug(f"   Converting camera poses from (3, 4) to (4, 4)...")
@@ -406,6 +411,49 @@ def generate_da3_3dgs_interpolation(
 
     # Get image dimensions
     img_width, img_height = keyframe_images[0].size
+
+    # CRITICAL FIX: DA3 may return intrinsics for a different resolution than our images
+    # The principal point (cx, cy) and focal lengths (fx, fy) need to be scaled
+    # Standard assumption: DA3 processed images at some internal resolution
+    # We need to detect what that was and scale appropriately
+
+    # Extract intrinsics values
+    fx_da3 = avg_intrinsics[0, 0]
+    fy_da3 = avg_intrinsics[1, 1]
+    cx_da3 = avg_intrinsics[0, 2]
+    cy_da3 = avg_intrinsics[1, 2]
+
+    logger.debug(f"   DA3 intrinsics: fx={fx_da3:.1f}, fy={fy_da3:.1f}, cx={cx_da3:.1f}, cy={cy_da3:.1f}")
+    logger.debug(f"   Target render size: {img_width}x{img_height}")
+
+    # Infer DA3's processing resolution from principal point
+    # Principal point should be roughly at image center, so cx ≈ width/2, cy ≈ height/2
+    inferred_da3_width = cx_da3 * 2.0
+    inferred_da3_height = cy_da3 * 2.0
+
+    logger.debug(f"   Inferred DA3 processing size: {inferred_da3_width:.0f}x{inferred_da3_height:.0f}")
+
+    # Scale intrinsics to target resolution
+    scale_x = img_width / inferred_da3_width
+    scale_y = img_height / inferred_da3_height
+
+    fx_scaled = fx_da3 * scale_x
+    fy_scaled = fy_da3 * scale_y
+    cx_scaled = cx_da3 * scale_x
+    cy_scaled = cy_da3 * scale_y
+
+    logger.debug(f"   Scaling factors: x={scale_x:.3f}, y={scale_y:.3f}")
+    logger.debug(f"   Scaled intrinsics: fx={fx_scaled:.1f}, fy={fy_scaled:.1f}, cx={cx_scaled:.1f}, cy={cy_scaled:.1f}")
+
+    # Rebuild intrinsics matrix with scaled values
+    avg_intrinsics_scaled = np.array([
+        [fx_scaled, 0, cx_scaled],
+        [0, fy_scaled, cy_scaled],
+        [0, 0, 1]
+    ], dtype=np.float32)
+
+    # Use scaled intrinsics for rendering
+    avg_intrinsics = avg_intrinsics_scaled
 
     # Optionally render 3DGS versions of segment boundary keyframes
     # This ensures visual consistency between keyframes and tweens
