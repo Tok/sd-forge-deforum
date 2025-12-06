@@ -42,6 +42,11 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     with gr.Row():
         flux_flf2v_interpolation_method = create_gr_elem(dw.flux_flf2v_interpolation_method)
 
+    # DA3-3DGS MODEL SELECTOR - Only visible when DA3-3DGS method selected
+    gr.Markdown(f"### {emoji_utils.depth_emoji()} DA3-3DGS Model (Experimental)")
+    with gr.Row():
+        da3_3dgs_model = create_gr_elem(dw.da3_3dgs_model)
+
     gr.Markdown("---")
 
     # Deforum Integration Info - Shows what settings are used
