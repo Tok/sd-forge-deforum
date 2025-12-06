@@ -125,7 +125,7 @@ MODEL_CONFIGS = {
         display_name="Z-Image-Turbo",
         recommended_steps=9,
         min_steps=4,
-        max_steps=15,
+        max_steps=30,
         uses_cfg=True,
         cfg_scale_default=2.0,
         cfg_scale_min=1.0,
@@ -138,7 +138,7 @@ MODEL_CONFIGS = {
         compatible_schedulers=["simple", "normal"],
         recommended_sampler="euler",
         compatible_samplers=["euler", "dpmpp_2m"],
-        notes="Z-Image-Turbo uses traditional CFG (2.0 recommended). Distilled CFG is ignored. Optimized for 4-15 steps (9 recommended)."
+        notes="Z-Image-Turbo uses traditional CFG (2.0 recommended). Distilled CFG is ignored. Optimized for 4-15 steps (9 recommended), supports up to 30."
     ),
 
     "sdxl": ModelConfig(
