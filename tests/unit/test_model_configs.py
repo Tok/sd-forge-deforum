@@ -4,14 +4,36 @@ Tests model detection, configuration retrieval, and settings validation.
 """
 
 import pytest
+import sys
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
-from deforum.config.model_configs import (
-    detect_model_type_extended,
-    get_model_config,
-    validate_settings,
-    MODEL_CONFIGS,
+# Add extension root to path to import model_configs directly (avoiding Forge deps)
+extension_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(extension_root))
+
+# Mock the logger module BEFORE importing model_configs
+# This prevents ImportError when model_configs tries to import get_logger
+mock_logger_module = Mock()
+mock_logger_instance = Mock()
+mock_logger_module.get_logger.return_value = mock_logger_instance
+sys.modules['deforum.utils.system.logging'] = mock_logger_module
+
+# Import directly from model_configs module (not through deforum.config package)
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "model_configs",
+    extension_root / "deforum" / "config" / "model_configs.py"
 )
+model_configs = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(model_configs)
+
+# Extract what we need
+detect_model_type_extended = model_configs.detect_model_type_extended
+get_model_config = model_configs.get_model_config
+validate_settings = model_configs.validate_settings
+MODEL_CONFIGS = model_configs.MODEL_CONFIGS
 
 
 class TestModelDetection:

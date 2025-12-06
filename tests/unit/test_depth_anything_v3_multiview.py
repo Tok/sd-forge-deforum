@@ -15,7 +15,7 @@ from deforum.depth.depth_anything_v3 import DepthAnythingV3
 class TestMultiviewPrediction:
     """Test multi-view depth prediction (Phase 2)."""
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_multiview_with_anyview_model(self, mock_da3_class):
         """Test multiview prediction with any-view variant."""
         # Mock model
@@ -42,7 +42,7 @@ class TestMultiviewPrediction:
         assert result == mock_result
         mock_model.inference.assert_called_once()
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_multiview_fallback_with_mono_model(self, mock_da3_class):
         """Test multiview falls back to single-view with mono variant."""
         # Mock model for mono variant
@@ -78,7 +78,7 @@ class TestMultiviewPrediction:
         for conf in result['confidence']:
             assert torch.all(conf == 1.0)
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_multiview_with_numpy_images(self, mock_da3_class):
         """Test multiview with numpy array images (BGR)."""
         # Mock model
@@ -108,7 +108,7 @@ class TestMultiviewPrediction:
         rgb_array = np.array(pil_images[0])
         assert rgb_array[0, 0, 2] == 255  # Blue in RGB position
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_multiview_with_mixed_images(self, mock_da3_class):
         """Test multiview with mixed numpy and PIL images."""
         # Mock model
@@ -142,7 +142,7 @@ class TestMultiviewPrediction:
 class Test3DGaussianSplatting:
     """Test 3D Gaussian Splatting estimation (Phase 3)."""
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_3dgs_estimation_success(self, mock_da3_class):
         """Test successful 3DGS estimation."""
         # Mock model with 3DGS support
@@ -177,7 +177,7 @@ class Test3DGaussianSplatting:
         call_kwargs = mock_model.inference.call_args[1]
         assert call_kwargs.get('infer_gs') is True
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_3dgs_estimation_failure(self, mock_da3_class):
         """Test 3DGS estimation failure (model doesn't support it)."""
         # Mock model that raises error for 3DGS
@@ -198,7 +198,7 @@ class Test3DGaussianSplatting:
         # Check result is None
         assert result is None
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_3dgs_with_numpy_images(self, mock_da3_class):
         """Test 3DGS estimation with numpy images."""
         # Mock model
@@ -227,7 +227,7 @@ class Test3DGaussianSplatting:
         assert len(pil_images) == 2
         assert all(isinstance(img, Image.Image) for img in pil_images)
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_3dgs_empty_image_list(self, mock_da3_class):
         """Test 3DGS with empty image list."""
         # Mock model
@@ -251,7 +251,7 @@ class Test3DGaussianSplatting:
 class TestModelVariantBehavior:
     """Test behavior differences between mono and any-view variants."""
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_mono_loads_correct_model(self, mock_da3_class):
         """Test that mono variant loads correct model."""
         mock_model = Mock()
@@ -265,7 +265,7 @@ class TestModelVariantBehavior:
             'depth-anything/Depth-Anything-V3-Large'
         )
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_anyview_loads_correct_model(self, mock_da3_class):
         """Test that any-view variant loads correct model."""
         mock_model = Mock()
@@ -279,7 +279,7 @@ class TestModelVariantBehavior:
             'depth-anything/DA3-Base'
         )
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_default_variant_is_mono(self, mock_da3_class):
         """Test that default variant is mono."""
         mock_model = Mock()
@@ -294,7 +294,7 @@ class TestModelVariantBehavior:
         )
         assert da3.variant == 'mono'
 
-    @patch('deforum.depth.depth_anything_v3.DepthAnything3')
+    @patch('depth_anything_3.api.DepthAnything3')
     def test_default_size_is_small(self, mock_da3_class):
         """Test that default model size is small."""
         mock_model = Mock()
