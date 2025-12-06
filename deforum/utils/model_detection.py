@@ -199,23 +199,25 @@ def is_zimage_model() -> bool:
         logger.info(f"  - Checkpoint name: {checkpoint_name}")
         logger.info(f"  - Full path: {full_path}")
 
-        # Check 1: Full path contains Z-Image directory (most reliable)
-        if full_path and 'z-image' in full_path.lower():
-            logger.info(f"✓ Detected Z-Image model via path: {full_path}")
+        # Check 1: Model class name is exactly 'ZImage' (most reliable!)
+        if class_name and class_name == 'ZImage':
+            logger.info(f"✓ Detected Z-Image model via class name: {class_name}")
             return True
 
-        # Check 2: Checkpoint name contains z-image patterns
-        if checkpoint_name:
-            checkpoint_lower = checkpoint_name.lower()
-            if any(pattern in checkpoint_lower for pattern in ['z-image', 'zimage', 'zit', 'tongyi']):
-                logger.info(f"✓ Detected Z-Image model via checkpoint name: {checkpoint_name}")
+        # Check 2: Full path or checkpoint name contains z-image/z_image patterns
+        z_image_patterns = ['z-image', 'zimage', 'z_image', 'zit', 'tongyi']
+
+        if full_path:
+            full_path_lower = full_path.lower()
+            if any(pattern in full_path_lower for pattern in z_image_patterns):
+                logger.info(f"✓ Detected Z-Image model via path: {full_path}")
                 return True
 
-        # Check 3: Model class name contains 'SD3' (Z-Image is based on SD3)
-        if class_name and 'SD3' in class_name:
-            logger.info(f"Model is SD3-based but no Z-Image identifiers found")
-            # Could be actual SD3 model, not Z-Image
-            return False
+        if checkpoint_name:
+            checkpoint_lower = checkpoint_name.lower()
+            if any(pattern in checkpoint_lower for pattern in z_image_patterns):
+                logger.info(f"✓ Detected Z-Image model via checkpoint name: {checkpoint_name}")
+                return True
 
         logger.info("✗ Z-Image model not detected")
         return False
