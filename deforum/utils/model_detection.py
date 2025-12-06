@@ -184,47 +184,46 @@ def is_zimage_model() -> bool:
     try:
         shared = _get_shared_module()
         if shared is None or not hasattr(shared, 'sd_model'):
+            logger.info("Z-Image detection: shared module or sd_model not available")
             return False
 
         model = shared.sd_model
 
-        # Check 1: Model class name contains 'SD3' (Z-Image is based on SD3)
+        # Get all detection data upfront for logging
         class_name = _get_model_class_name(model)
-        if class_name and 'SD3' in class_name:
-            # Need to disambiguate from actual SD3 models
-            checkpoint_name = _get_checkpoint_name(shared)
-            if checkpoint_name:
-                checkpoint_lower = checkpoint_name.lower()
-                # Z-Image specific patterns
-                if any(pattern in checkpoint_lower for pattern in ['z-image', 'zimage', 'zit', 'tongyi']):
-                    logger.debug(f"Detected Z-Image model via checkpoint name: {checkpoint_name}")
-                    return True
-                # Check path contains Z-Image directory
-                if hasattr(shared.sd_model, 'sd_checkpoint_info'):
-                    full_path = getattr(shared.sd_model.sd_checkpoint_info, 'filename', '')
-                    if 'z-image' in full_path.lower():
-                        logger.debug(f"Detected Z-Image model via path: {full_path}")
-                        return True
+        checkpoint_name = _get_checkpoint_name(shared)
+        full_path = getattr(shared.sd_model.sd_checkpoint_info, 'filename', '') if hasattr(shared.sd_model, 'sd_checkpoint_info') else ''
+
+        logger.info(f"Z-Image detection attempt:")
+        logger.info(f"  - Class name: {class_name}")
+        logger.info(f"  - Checkpoint name: {checkpoint_name}")
+        logger.info(f"  - Full path: {full_path}")
+
+        # Check 1: Full path contains Z-Image directory (most reliable)
+        if full_path and 'z-image' in full_path.lower():
+            logger.info(f"✓ Detected Z-Image model via path: {full_path}")
+            return True
 
         # Check 2: Checkpoint name contains z-image patterns
-        checkpoint_name = _get_checkpoint_name(shared)
         if checkpoint_name:
             checkpoint_lower = checkpoint_name.lower()
             if any(pattern in checkpoint_lower for pattern in ['z-image', 'zimage', 'zit', 'tongyi']):
-                logger.debug(f"Detected Z-Image model via checkpoint name: {checkpoint_name}")
+                logger.info(f"✓ Detected Z-Image model via checkpoint name: {checkpoint_name}")
                 return True
 
-        # Check 3: Full path contains Z-Image directory
-        if hasattr(shared.sd_model, 'sd_checkpoint_info'):
-            full_path = getattr(shared.sd_model.sd_checkpoint_info, 'filename', '')
-            if 'z-image' in full_path.lower():
-                logger.debug(f"Detected Z-Image model via path: {full_path}")
-                return True
+        # Check 3: Model class name contains 'SD3' (Z-Image is based on SD3)
+        if class_name and 'SD3' in class_name:
+            logger.info(f"Model is SD3-based but no Z-Image identifiers found")
+            # Could be actual SD3 model, not Z-Image
+            return False
 
+        logger.info("✗ Z-Image model not detected")
         return False
 
     except Exception as e:
-        logger.debug(f"Z-Image detection failed: {e}")
+        logger.warning(f"Z-Image detection failed with error: {e}")
+        import traceback
+        logger.debug(traceback.format_exc())
         return False
 
 

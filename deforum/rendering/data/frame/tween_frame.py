@@ -178,12 +178,15 @@ class Tween:
         """Collect all generated keyframe images for 3DGS scene building.
 
         Returns:
-            List of keyframe dicts with keys: frame_idx, image, depth, seed
+            List of numpy array images (BGR format) for DA3 3DGS processing
         """
         if hasattr(data, 'generated_keyframes'):
-            keyframes = data.generated_keyframes
-            log_utils.info(f"Collected {len(keyframes)} keyframes for 3DGS scene building")
-            return keyframes
+            keyframe_dicts = data.generated_keyframes
+            # Extract just the images from the keyframe dicts
+            # DA3 expects List[np.ndarray], not List[dict]
+            images = [kf['image'] for kf in keyframe_dicts]
+            log_utils.info(f"Collected {len(images)} keyframe images for 3DGS scene building")
+            return images
         else:
             log_utils.warning("No keyframes collected yet - generated_keyframes not initialized")
             return []
