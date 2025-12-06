@@ -4,12 +4,34 @@ Tests Phase 2 (multi-view) and Phase 3 (3D Gaussian Splatting) features.
 """
 
 import pytest
+import sys
 import torch
 import numpy as np
 from PIL import Image
+from pathlib import Path
 from unittest.mock import Mock, patch
 
-from deforum.depth.depth_anything_v3 import DepthAnythingV3
+# Add extension root to path for direct module import (avoiding Forge deps)
+extension_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(extension_root))
+
+# Mock logger module BEFORE importing depth_anything_v3
+mock_logger_module = Mock()
+mock_logger_instance = Mock()
+mock_logger_module.get_logger.return_value = mock_logger_instance
+sys.modules['deforum.utils.system.logging'] = mock_logger_module
+
+# Import directly from depth_anything_v3 module (not through deforum.depth package)
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "depth_anything_v3",
+    extension_root / "deforum" / "depth" / "depth_anything_v3.py"
+)
+da3_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(da3_module)
+
+# Extract what we need
+DepthAnythingV3 = da3_module.DepthAnythingV3
 
 
 class TestMultiviewPrediction:

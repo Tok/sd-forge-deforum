@@ -4,23 +4,42 @@ Tests all pure helper functions and the main predict() pipeline.
 """
 
 import pytest
+import sys
 import torch
 import numpy as np
 from PIL import Image
+from pathlib import Path
 from unittest.mock import Mock, MagicMock, patch
 
-# Import functions to test
-from deforum.depth.depth_anything_v3 import (
-    _get_model_name,
-    _convert_bgr_to_rgb_pil,
-    _extract_image_dimensions,
-    _prepare_image_for_inference,
-    _convert_depth_to_tensor,
-    _normalize_depth_range,
-    _resize_depth_to_match_image,
-    _convert_images_to_pil,
-    DepthAnythingV3,
+# Add extension root to path for direct module import (avoiding Forge deps)
+extension_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(extension_root))
+
+# Mock logger module BEFORE importing depth_anything_v3
+mock_logger_module = Mock()
+mock_logger_instance = Mock()
+mock_logger_module.get_logger.return_value = mock_logger_instance
+sys.modules['deforum.utils.system.logging'] = mock_logger_module
+
+# Import directly from depth_anything_v3 module (not through deforum.depth package)
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "depth_anything_v3",
+    extension_root / "deforum" / "depth" / "depth_anything_v3.py"
 )
+da3_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(da3_module)
+
+# Extract what we need
+_get_model_name = da3_module._get_model_name
+_convert_bgr_to_rgb_pil = da3_module._convert_bgr_to_rgb_pil
+_extract_image_dimensions = da3_module._extract_image_dimensions
+_prepare_image_for_inference = da3_module._prepare_image_for_inference
+_convert_depth_to_tensor = da3_module._convert_depth_to_tensor
+_normalize_depth_range = da3_module._normalize_depth_range
+_resize_depth_to_match_image = da3_module._resize_depth_to_match_image
+_convert_images_to_pil = da3_module._convert_images_to_pil
+DepthAnythingV3 = da3_module.DepthAnythingV3
 
 
 class TestModelNameMapping:
