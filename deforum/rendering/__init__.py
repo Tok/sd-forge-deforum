@@ -7,7 +7,7 @@ except ImportError:
     render_animation = None  # type: ignore
 
 try:
-    from .flux_interp import render_flux_interp
+    from .keyframe_interp import render_flux_interp
 except ImportError:
     render_flux_interp = None  # type: ignore
 

@@ -131,6 +131,14 @@ def run_deforum(*args):
                         else:
                             logger.warning(f"No animation_mode found in settings file")
                             logger.info(f"  Using current UI setting: {animation_mode}")
+
+                        # Validate da3_3dgs_model - fix invalid values from old UI state
+                        if 'da3_3dgs_model' in args_dict:
+                            valid_models = ["DA3-GIANT", "DA3NESTED-GIANT-LARGE"]
+                            current_value = args_dict['da3_3dgs_model']
+                            if current_value not in valid_models:
+                                logger.warning(f"Invalid da3_3dgs_model value '{current_value}' (not in {valid_models}), using default 'DA3-GIANT'")
+                                args_dict['da3_3dgs_model'] = 'DA3-GIANT'
                 except Exception as e:
                     logger.warning(f"Could not load animation_mode from settings file: {e}")
                     logger.info(f"  Using current UI setting: {animation_mode}")
@@ -255,7 +263,7 @@ def run_deforum(*args):
                 render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
             elif anim_args.animation_mode in ('Flux + Interpolation', 'Keyframes + Interpolation'):
                 # Keyframes + Interpolation mode: Model-agnostic keyframes + choice of interpolation (Wan/FILM/DA3-3DGS)
-                from deforum.rendering.flux_interp import render_flux_interp
+                from deforum.rendering.keyframe_interp import render_flux_interp
                 render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, wan_args, root)
             else:
                 logger.info('Other modes are not available yet!')
