@@ -123,7 +123,6 @@ def run_deforum(*args):
                     logger.info(f"  Using current UI setting: {animation_mode}")
             else:
                 logger.warning(f"Could not find settings file for timestring '{timestring}'")
-                logger.debug(f"  Tried: {possible_paths[0]}")
                 logger.info(f"  Using current UI setting: {animation_mode}")
     
     logger.debug(f"Final animation_mode after resume check: '{animation_mode}'")
