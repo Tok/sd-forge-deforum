@@ -622,9 +622,6 @@ def DeforumAnimArgs():
             "label": "Depth Algorithm",
             "type": "dropdown",
             "choices": [
-                'Depth-Anything-V3-AnyView-Small',
-                'Depth-Anything-V3-AnyView-Base',
-                'Depth-Anything-V3-AnyView-Large',
                 'Depth-Anything-V3-Mono-Small',
                 'Depth-Anything-V3-Mono-Base',
                 'Depth-Anything-V3-Mono-Large',
@@ -632,15 +629,15 @@ def DeforumAnimArgs():
                 'Depth-Anything-V2-Base',
                 'Depth-Anything-V2-Large'
             ],
-            "value": "Depth-Anything-V3-AnyView-Small",
-            "info": "Depth model: V3 (recommended, better quality) or V2 (legacy, stable). AnyView (default)=multi-view+3DGS support, Mono=single-view only. V2 will be phased out in future releases."
+            "value": "Depth-Anything-V3-Mono-Small",
+            "info": "Depth model for 3D warping: V3 (recommended, better quality) or V2 (legacy, stable). Mono variants only - for 3D Gaussian Splatting, use 'Keyframes + Interpolation' mode with DA3-3DGS method. V2 will be phased out in future releases."
         },
         "tween_generation_mode": {
             "label": "Tween Generation Mode",
             "type": "dropdown",
-            "choices": ['depth_warp', 'da3_multiview', 'da3_gaussian'],
+            "choices": ['depth_warp', 'da3_multiview'],
             "value": "depth_warp",
-            "info": "Tween generation: depth_warp (classic depth warping, stable - default), da3_multiview (multi-view geometry, experimental), da3_gaussian (3D Gaussian Splatting - NOT YET AVAILABLE, requires future DA3 models with trained 3DGS heads)"
+            "info": "Tween generation: depth_warp (classic depth warping, stable - default), da3_multiview (multi-view geometry, experimental). For 3D Gaussian Splatting, use 'Keyframes + Interpolation' mode with DA3-3DGS interpolation method."
         },
         "da3_use_ray_pose": {
             "label": "DA3: Use Ray Pose Estimation",
@@ -1278,9 +1275,9 @@ def WanArgs():
         "flux_flf2v_interpolation_method": {
             "label": "FLF2V Interpolation Method",
             "type": "dropdown",
-            "choices": ["Wan", "FILM"],
+            "choices": ["Wan", "FILM", "DA3-3DGS"],
             "value": "Wan",
-            "info": "Interpolation method for Flux FLF2V mode: 'Wan' (AI-generated video, recommended for large motion), 'FILM' (smearcore - sharp motion mixing like dragging paint, Google's ML interpolation). Note: RIFE is available in post-processing for framerate doubling."
+            "info": "Interpolation method for Flux FLF2V mode: 'Wan' (AI-generated video, recommended), 'FILM' (smearcore - sharp motion mixing like dragging paint), 'DA3-3DGS' (3D Gaussian Splatting - NOT YET AVAILABLE, requires future DA3 models with trained 3DGS heads, geometric interpolation with multi-view consistency). Note: RIFE is available in post-processing for framerate doubling."
         },
 
         # Advanced Generation Settings
