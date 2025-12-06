@@ -157,9 +157,10 @@ def get_tab_depth_warping(da, skip_tabitem=False):
         - Controls perspective intensity (lower = more dramatic)
         - Near/Far planes control depth clipping range
 
-        **DA3 Requirements:**
-        - Install from GitHub: `git clone https://github.com/ByteDance-Seed/Depth-Anything-3.git && cd Depth-Anything-3 && pip install -e .`
-        - For 3DGS: Also install `gsplat` from GitHub
+        **DA3 Installation:**
+        - Package auto-installs from GitHub via requirements.txt
+        - Models auto-download from HuggingFace on first use
+        - For 3DGS (optional): Install `gsplat` with `pip install --no-build-isolation git+https://github.com/nerfstudio-project/gsplat.git@0b4dddf04cb687367602c01196913cde6a743d70`
         """)
 
     # Auto-switch depth model based on tween generation mode

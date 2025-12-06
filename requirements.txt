@@ -12,10 +12,10 @@ transformers>=4.36.0,<5.0.0
 accelerate>=0.25.0,<2.0.0
 
 # Depth Anything V3 (Phase 1/2/3 integration)
-# Note: DA3 must be installed from GitHub (not PyPI)
-# Install: cd /tmp && git clone https://github.com/ByteDance-Seed/Depth-Anything-3.git && cd Depth-Anything-3 && pip install -e .
+# DA3 auto-installs from GitHub (like diffusers above)
+git+https://github.com/ByteDance-Seed/Depth-Anything-3.git
 xformers>=0.0.20  # Required by DA3
-# gsplat - install from source: pip install --no-build-isolation git+https://github.com/nerfstudio-project/gsplat.git@0b4dddf04cb687367602c01196913cde6a743d70
+# gsplat for 3DGS - install from source: pip install --no-build-isolation git+https://github.com/nerfstudio-project/gsplat.git@0b4dddf04cb687367602c01196913cde6a743d70
 
 # Audio sync dependencies
 librosa>=0.10.0

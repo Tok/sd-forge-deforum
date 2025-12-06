@@ -294,16 +294,16 @@ echo ""
 # =====================================
 echo -e "${BB0_MIDNIGHT}=== Depth Anything V3 (DA3) ===${NC}"
 echo "DA3 provides enhanced depth estimation with multi-view geometry support"
-echo "Required for Gaussian Scene mode (3D Gaussian Splatting)"
+echo "Required for da3_gaussian tween mode (3D Gaussian Splatting)"
 echo ""
 echo "Choose which DA3 models to download:"
-echo "  1) DA3-AnyView-Large (Recommended for Gaussian Scene, ~350MB)"
-echo "  2) DA3-Mono-Large (Better monocular depth only, ~350MB)"
-echo "  3) DA3-AnyView-Base (Faster, lower quality, ~135MB)"
+echo "  1) DA3-AnyView-Small (Recommended, default, multi-view + 3DGS, ~135MB)"
+echo "  2) DA3-Mono-Small (Faster, single-view only, ~135MB)"
+echo "  3) DA3-AnyView-Large (Best quality, multi-view + 3DGS, ~350MB)"
 echo "  4) All DA3 models (Downloads all 3)"
-echo "  5) Skip DA3 models (keep using Depth-Anything V2)"
+echo "  5) Skip DA3 models (package auto-installs but models won't cache)"
 echo ""
-echo -e "${BB0_VOID}NOTE: AnyView models required for Gaussian Scene mode${NC}"
+echo -e "${BB0_VOID}NOTE: AnyView models required for da3_gaussian and da3_multiview tween modes${NC}"
 read -p "Enter choice [1-5]: " da3_choice
 
 # Create DA3 directory
@@ -311,34 +311,34 @@ mkdir -p models/Deforum/depth-anything-v3
 
 case $da3_choice in
     1|4)
-        echo -e "${BB0_GLITCH}Downloading DA3-AnyView-Large (multi-view + Gaussian Scene)...${NC}"
-        huggingface-cli download depth-anything/DA3-Large \
-            --local-dir models/Deforum/depth-anything-v3/DA3-Large \
+        echo -e "${BB0_GLITCH}Downloading DA3-AnyView-Small (default, multi-view + 3DGS)...${NC}"
+        huggingface-cli download depth-anything/DA3-Small \
+            --local-dir models/Deforum/depth-anything-v3/DA3-Small \
             --resume-download
-        echo -e "${BB0_ZENITH}✓ DA3-AnyView-Large downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ DA3-AnyView-Small downloaded${NC}"
         ;&  # Fall through if choice was 4
 esac
 
 case $da3_choice in
     2|4)
-        echo -e "${BB0_GLITCH}Downloading DA3-Mono-Large (monocular depth only)...${NC}"
-        huggingface-cli download depth-anything/DA3MONO-Large \
-            --local-dir models/Deforum/depth-anything-v3/DA3MONO-Large \
+        echo -e "${BB0_GLITCH}Downloading DA3-Mono-Small (faster, single-view only)...${NC}"
+        huggingface-cli download depth-anything/Depth-Anything-V3-Small \
+            --local-dir models/Deforum/depth-anything-v3/Depth-Anything-V3-Small \
             --resume-download
-        echo -e "${BB0_ZENITH}✓ DA3-Mono-Large downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ DA3-Mono-Small downloaded${NC}"
         ;&  # Fall through if choice was 4
 esac
 
 case $da3_choice in
     3|4)
-        echo -e "${BB0_GLITCH}Downloading DA3-AnyView-Base (faster, lower quality)...${NC}"
-        huggingface-cli download depth-anything/DA3-Base \
-            --local-dir models/Deforum/depth-anything-v3/DA3-Base \
+        echo -e "${BB0_GLITCH}Downloading DA3-AnyView-Large (best quality, multi-view + 3DGS)...${NC}"
+        huggingface-cli download depth-anything/DA3-Large \
+            --local-dir models/Deforum/depth-anything-v3/DA3-Large \
             --resume-download
-        echo -e "${BB0_ZENITH}✓ DA3-AnyView-Base downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ DA3-AnyView-Large downloaded${NC}"
         ;;
     5)
-        echo -e "${BB0_GLITCH}Skipping DA3 models (will use Depth-Anything V2)${NC}"
+        echo -e "${BB0_GLITCH}Skipping DA3 models (package auto-installs, models will download on first use)${NC}"
         ;;
 esac
 echo ""
@@ -470,8 +470,9 @@ echo "  • FILM: models/Deforum/film_interpolation/"
 echo "  • Wan AI Video: models/Deforum/wan/"
 echo "  • Qwen Prompts: models/Deforum/qwen/"
 echo ""
-echo -e "${BB0_MIDNIGHT}Note:${NC} Depth models (Depth-Anything V2) will be auto-downloaded"
-echo "on first use. Gifski and Real-ESRGAN binaries are also auto-downloaded."
+echo -e "${BB0_MIDNIGHT}Note:${NC} Depth-Anything V3 package auto-installs from GitHub (requirements.txt)"
+echo "Models download from HuggingFace on first use if not cached locally."
+echo "Gifski and Real-ESRGAN binaries are also auto-downloaded."
 echo ""
-echo -e "${BB0_ZENITH}✅ You can now use Deforum with Flux + Interpolation mode!${NC}"
+echo -e "${BB0_ZENITH}✅ You can now use Deforum with all render modes!${NC}"
 echo ""

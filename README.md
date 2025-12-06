@@ -185,26 +185,30 @@ git checkout dev
 - **Migration**: DA3 Mono models are drop-in replacements with better quality
 - **Recommendation**: Switch to DA3-Mono-Small for improved depth estimation
 
-### 🌌 **Depth-Anything V3 + Gaussian Scene Mode** (NEW - 3D Gaussian Splatting)
+### 🌌 **Depth-Anything V3 + 3D Gaussian Splatting** (NEW - Default Depth Model)
 - **State-of-Art (2025)**: Latest depth estimation with multi-view geometry and 3DGS capabilities
+- **Official Website**: [https://depth-anything-3.github.io/](https://depth-anything-3.github.io/) (with gorgeous purple gradient!)
 - **3 Phased Integration**:
   - **Phase 1 (COMPLETE)**: Drop-in replacement for DA2 with better monocular depth quality
   - **Phase 2 (COMPLETE)**: Multi-view depth with temporal consistency for video sequences
   - **Phase 3 (COMPLETE)**: 3D Gaussian Splatting rendering for novel view synthesis
-- **Gaussian Scene Render Mode**: New render mode specifically for 3DGS-based animation
-  - Generates 3D Gaussian primitives from keyframe depth + RGB
-  - Renders novel views by splatting Gaussians instead of depth warping
-  - Dramatically better quality on complex camera movements (orbits, figure-8s)
+- **Tween Generation Modes** (in 3D Depth tab):
+  - **da3_gaussian** (default) - 3D Gaussian Splatting for ultimate quality and geometric consistency
+  - **da3_multiview** - Multi-view geometry for temporal consistency
+  - **depth_warp** - Classic depth-based warping (fastest, legacy)
 - **Two Model Variants**:
-  - **Mono Models**: Enhanced single-image depth estimation (better than DA2)
-  - **AnyView Models**: Multi-view geometry + pose estimation (required for Gaussian Scene mode)
-- **Auto-Upgrade**: Selecting "Gaussian Scene" mode automatically upgrades DA2 → DA3 AnyView
-- **12 Model Options**: Small/Base/Large for both Mono and AnyView variants
+  - **AnyView Models** (default) - Multi-view geometry + 3DGS support, best quality
+  - **Mono Models** - Single-view only, faster but no 3DGS
+- **Auto-Selection**: Depth model auto-switches based on tween mode:
+  - `da3_gaussian` or `da3_multiview` → AnyView (required for multi-view features)
+  - `depth_warp` → Mono (faster, lower VRAM)
+- **Auto-Install**: Package installs from GitHub via requirements.txt
+- **Auto-Download**: Models download from HuggingFace on first use
+- **6 Model Options**: Small/Base/Large for both Mono and AnyView variants
+  - Default: Depth-Anything-V3-AnyView-Small (multi-view + 3DGS, ~135MB)
+  - Performance: Depth-Anything-V3-Mono-Small (faster, single-view, ~135MB)
+  - Quality: Depth-Anything-V3-AnyView-Large (best quality, ~350MB)
 - **Backwards Compatible**: Existing DA2 workflows continue working unchanged
-- **Smart Downloads**: Interactive script lets you choose which DA3 models to download
-  - AnyView-Large recommended for Gaussian Scene (best quality, ~350MB)
-  - Mono-Large for traditional depth warping improvements (~350MB)
-  - Base models for faster processing with lower quality (~135MB)
 - **See**: `docs/DEPTH_ANYTHING_V3_PLAN.md` and `docs/DA3_TESTING_GUIDE.md` for technical details
 
 ### 📹 **Camera Shakify Integration** (EatTheFuture's Blender patterns)
