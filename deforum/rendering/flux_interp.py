@@ -230,6 +230,13 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     interp_method = getattr(wan_args, 'flux_flf2v_interpolation_method', 'Wan')
     logger.info(f"{emoji_if_enabled('📊')} Interpolation method: {interp_method}")
 
+    # Check if DA3-3DGS is selected (not yet implemented)
+    if interp_method == "DA3-3DGS":
+        logger.warning(f"{emoji_if_enabled('⚠️')} DA3-3DGS interpolation is not yet implemented!")
+        logger.warning(f"   This feature requires DA3-GIANT models with trained 3DGS heads.")
+        logger.warning(f"   Falling back to Wan FLF2V interpolation...")
+        interp_method = "Wan"  # Fallback to Wan
+
     # Unload Flux model to free GPU memory
     logger.info(f"{emoji_if_enabled('🗑')}️  Unloading Flux model to free GPU memory...")
     from backend import memory_management
