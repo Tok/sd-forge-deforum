@@ -150,11 +150,18 @@ def render_novel_view_from_gaussians(
         means = means.squeeze(0)  # [N, 3]
         scales = scales.squeeze(0)  # [N, 3]
         rotations = rotations.squeeze(0)  # [N, 4]
-        if opacities.dim() == 4:
-            opacities = opacities.squeeze(0).squeeze(-1).squeeze(-1)  # [N]
-        elif opacities.dim() == 2:
-            opacities = opacities.squeeze(0)  # [N]
         sh_coeffs = sh_coeffs.squeeze(0)  # [N, 3, d_sh]
+
+        # Handle opacities carefully - can be [batch, N] or [batch, N, 1, d_sh]
+        if opacities.dim() == 4:
+            # [batch, N, 1, d_sh] -> squeeze all extra dims -> [N]
+            opacities = opacities.squeeze(0).squeeze(-1).squeeze(-1)  # [N]
+        elif opacities.dim() == 3:
+            # [batch, N, 1] -> [N]
+            opacities = opacities.squeeze(0).squeeze(-1)  # [N]
+        elif opacities.dim() == 2:
+            # [batch, N] -> [N]
+            opacities = opacities.squeeze(0)  # [N]
 
     # Convert camera pose to view matrix (camera-to-world → world-to-camera)
     # DA3 provides extrinsics as [4, 4], gsplat expects viewmat
@@ -194,7 +201,7 @@ def render_novel_view_from_gaussians(
             means=means.unsqueeze(0),  # [1, N, 3]
             quats=rotations.unsqueeze(0),  # [1, N, 4]
             scales=scales.unsqueeze(0),  # [1, N, 3]
-            opacities=opacities.unsqueeze(0).unsqueeze(-1),  # [1, N, 1]
+            opacities=opacities.unsqueeze(0),  # [1, N] - no extra dimension!
             colors=colors_rgb.unsqueeze(0),  # [1, N, 3]
             viewmats=viewmat.unsqueeze(0),  # [1, 4, 4]
             Ks=torch.from_numpy(camera_intrinsics).float().to(device).unsqueeze(0),  # [1, 3, 3]
