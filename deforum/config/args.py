@@ -642,6 +642,22 @@ def DeforumAnimArgs():
             "value": "da3_gaussian",
             "info": "Tween generation: da3_gaussian (3D Gaussian Splatting, best quality + geometric consistency), depth_warp (classic depth warping, stable), da3_multiview (multi-view geometry, experimental)"
         },
+        "da3_use_ray_pose": {
+            "label": "DA3: Use Ray Pose Estimation",
+            "type": "checkbox",
+            "value": False,
+            "info": "Enable more accurate camera pose estimation from ray head (slower but better for complex movements). Only applies to DA3 AnyView models with da3_gaussian or da3_multiview tween modes."
+        },
+        "da3_conf_thresh_percentile": {
+            "label": "DA3: Confidence Threshold Percentile",
+            "type": "number",
+            "precision": 1,
+            "value": 40.0,
+            "minimum": 0.0,
+            "maximum": 100.0,
+            "step": 5.0,
+            "info": "Adaptive confidence threshold for DA3 depth estimation (0-100). Lower = more strict, higher = more permissive. Default 40.0 works well for most scenes."
+        },
         "midas_weight": {
             "label": "Depth weight (legacy, not used)",
             "type": "number",

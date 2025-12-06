@@ -255,7 +255,9 @@ class DepthAnythingV3:
         self,
         image: Union[np.ndarray, Image.Image],
         weight: float = 0.5,
-        half_precision: bool = False
+        half_precision: bool = False,
+        use_ray_pose: bool = False,
+        conf_thresh_percentile: float = 40.0
     ) -> torch.Tensor:
         """Predict depth map from single image (drop-in replacement for DA2).
 
@@ -263,6 +265,8 @@ class DepthAnythingV3:
             image: Input image (numpy array or PIL Image)
             weight: Depth map weight (not used by DA3, kept for compatibility)
             half_precision: Use FP16 precision (not used by DA3, kept for compatibility)
+            use_ray_pose: Use ray-based pose estimation (more accurate but slower)
+            conf_thresh_percentile: Adaptive confidence threshold percentile (0-100)
 
         Returns:
             Depth map tensor [1, 1, H, W] compatible with DA2 output format
@@ -271,7 +275,12 @@ class DepthAnythingV3:
         pil_image, original_h, original_w = _prepare_image_for_inference(image)
 
         # Run DA3 inference (may downsample internally for processing)
-        result = self.model.inference([pil_image])
+        # Pass tuning parameters to DA3 model
+        result = self.model.inference(
+            [pil_image],
+            use_ray_pose=use_ray_pose,
+            conf_thresh_percentile=conf_thresh_percentile
+        )
 
         # Extract depth map from Prediction object (dataclass with .depth attribute)
         # result.depth is np.ndarray with shape [N, H, W] where N is number of images

@@ -404,7 +404,7 @@ def get_tab_depth_warping(da, skip_tabitem=False):
         with FormRow(visible=is_visible) as depth_warp_row_1:
             use_depth_warping = create_gr_elem(da.use_depth_warping)
             depth_algorithm = create_gr_elem(da.depth_algorithm)
-            midas_weight = create_gr_elem(da.midas_weight)
+        # midas_weight removed - legacy parameter no longer needed with DA3
         with FormRow(visible=is_visible) as depth_warp_row_2:
             padding_mode = create_gr_elem(da.padding_mode)
             sampling_mode = create_gr_elem(da.sampling_mode)
