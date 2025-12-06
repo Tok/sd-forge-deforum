@@ -1298,8 +1298,8 @@ def WanArgs():
             "minimum": 0,
             "maximum": 3,
             "step": 1,
-            "value": 1,
-            "info": "How many neighboring segments to include for multi-view 3DGS reconstruction. Uses ACTUAL keyframes from your prompt schedule (not arbitrary count). 0: just segment boundaries (2 keyframes, fastest), 1: include 1 segment before+after (default, balanced), 2-3: more context (better geometry, more VRAM). Example: segment 12→22 with neighbors=1 uses keyframes [0,12,22,32] from schedule."
+            "value": 2,
+            "info": "How many neighboring segments to include for multi-view 3DGS reconstruction. Uses ACTUAL keyframes from your prompt schedule (not arbitrary count). 0: just segment boundaries (2 keyframes, fastest), 1: include 1 segment before+after (minimal context), 2: include 2 segments before+after (default, better geometry), 3: maximum context (best quality, highest VRAM). Example: segment 12→22 with neighbors=2 uses keyframes [0,12,22,32,43] from schedule."
         },
         "da3_3dgs_render_keyframes": {
             "label": "Render 3DGS Keyframes",
