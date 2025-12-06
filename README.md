@@ -235,17 +235,24 @@ A powerful workflow for **iterative testing** of different interpolation methods
     - **Only DA3MONO-LARGE available** on HuggingFace (~350MB VRAM)
     - No Small/Base variants exist - all size selections use LARGE
     - **Default**: DA3MONO-LARGE (only option for mono depth)
-  - **GIANT Models** (Experimental) - For DA3-3DGS FLF2V interpolation only
-    - Feed-forward 3D Gaussian Splatting with novel view synthesis
+  - **GIANT Models** (Experimental) - For DA3-3DGS interpolation only
+    - Feed-forward 3D Gaussian Splatting with novel view synthesis (~705k splats per scene)
     - **High VRAM** (24GB+ recommended, 16GB minimum with aggressive cleanup)
     - Models: DA3-GIANT (1.15B params, ~3GB) or DA3NESTED-GIANT-LARGE (1.40B params, ~4GB)
-    - **⚠️ VERY EXPERIMENTAL**: Requires DA3-GIANT models, two-phase workflow (Flux → DA3-3DGS)
-- **3DGS Integration** (⚠️ Experimental):
+    - **⚠️ VERY EXPERIMENTAL**: Working proof-of-concept, two-phase workflow (Flux → DA3-3DGS)
+- **3DGS Integration** (⚠️ Experimental - Working PoC):
   - **NEW**: DA3-3DGS interpolation method in "Keyframes + Interpolation" mode
   - **Phase 1**: Generate ALL keyframes with Flux/Z-Image
   - **VRAM Cleanup**: Aggressive model unload between phases
-  - **Phase 2**: Build 3DGS scene from keyframes, render novel views for tweens
-  - **Phase 3**: Stitch final video
+  - **Phase 2**: Multi-view 3DGS scene reconstruction + novel view rendering
+    - Collects 5 consecutive keyframes per segment (configurable 2-10)
+    - DA3 auto-estimates camera poses from keyframe content
+    - Builds 3DGS scene with ~705k gaussian splats
+    - Renders novel views via linear camera interpolation (SLERP for rotation)
+    - **Camera movement**: DA3 auto-estimated poses only (Deforum schedules NOT used)
+    - **Visual consistency**: Original diffusion keyframes moved to `_diffusion/` subdirectory
+    - **3DGS outputs**: All frames (keyframes + tweens) rendered in main directory
+  - **Phase 3**: Stitch final video with ffmpeg
   - **Fallback to Wan**: If DA3-3DGS fails or models unavailable, automatically falls back to Wan FLF2V
   - **Turn Off**: Switch "FLF2V Interpolation Method" from "DA3-3DGS" to "Wan" or "FILM" if experiencing issues
 - **Standard Depth Warp Modes** (Stable):
@@ -374,11 +381,11 @@ Hybrid Flux keyframes + multi-method interpolation:
 - **Three Interpolation Methods**:
   - **Wan FLF2V** (default): AI-generated video with semantic understanding
   - **FILM**: Google's Frame Interpolation for Large Motion (smearcore aesthetics)
-  - **DA3-3DGS** (⚠️ experimental): 3D Gaussian Splatting with novel view synthesis
+  - **DA3-3DGS** (⚠️ experimental): 3D Gaussian Splatting with DA3 auto-estimated camera poses
 - Strength: Single (I2V chaining for Wan)
 - Defaults: 24 FPS, pseudo-cadence, 20 steps
-- Best For: Dramatic changes, cinematic quality
-- Features: Qwen prompt enhancement, movement analysis
+- Best For: Dramatic changes, cinematic quality, novel viewpoint exploration
+- Features: Qwen prompt enhancement, movement analysis (Wan/FILM only)
 - **Depth Models Used**:
   - Wan/FILM: No depth model needed
   - DA3-3DGS: DA3-GIANT or DA3NESTED-GIANT-LARGE (selected in Wan Models tab)
@@ -387,9 +394,12 @@ Hybrid Flux keyframes + multi-method interpolation:
     - Fast single-view depth estimation (~350MB VRAM)
     - DA3MONO-LARGE (only mono variant available) provides excellent depth maps for 3D transforms
     - Selected in "3D Depth" tab
-  - **DA3-3DGS interpolation** uses **GIANT models** for novel view synthesis:
+  - **DA3-3DGS interpolation** uses **GIANT models** for multi-view 3D reconstruction:
     - Feed-forward 3D Gaussian Splatting (1.15B-1.40B params, ~3-4GB VRAM)
-    - Renders completely new camera viewpoints from keyframe geometry
+    - Builds 3D scene from 5 consecutive keyframes (~705k splats)
+    - DA3 auto-estimates camera poses from image content
+    - Novel view rendering via linear pose interpolation (SLERP for rotation)
+    - **Deforum camera schedules NOT used** - DA3's pose estimation drives movement
     - Selected in "Wan Models" tab (only used when FLF2V method = DA3-3DGS)
   - **Separate workflows**: Standard modes do depth warp frame-by-frame; DA3-3DGS builds full 3D scene from all keyframes
 - **Turn Off DA3-3DGS**: Set "FLF2V Interpolation Method" to "Wan" or "FILM" if issues occur

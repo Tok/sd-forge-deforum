@@ -47,8 +47,6 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     with gr.Row():
         da3_3dgs_model = create_gr_elem(dw.da3_3dgs_model)
         da3_3dgs_num_keyframes = create_gr_elem(dw.da3_3dgs_num_keyframes)
-    with gr.Row():
-        da3_3dgs_use_deforum_poses = create_gr_elem(dw.da3_3dgs_use_deforum_poses)
         da3_3dgs_render_keyframes = create_gr_elem(dw.da3_3dgs_render_keyframes)
 
     gr.Markdown("---")

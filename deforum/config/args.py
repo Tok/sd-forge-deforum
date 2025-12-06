@@ -1299,19 +1299,13 @@ def WanArgs():
             "maximum": 10,
             "step": 1,
             "value": 5,
-            "info": "Number of consecutive keyframes to collect for building each 3DGS scene. More keyframes = better multi-view geometry and novel view quality, but slower and more VRAM. 2: fastest (stereo pair), 5: balanced quality/speed (recommended), 10: best quality (high VRAM usage ~10-15GB)."
-        },
-        "da3_3dgs_use_deforum_poses": {
-            "label": "Guide with Deforum Camera Poses",
-            "type": "checkbox",
-            "value": False,
-            "info": "Provide Deforum movement schedule to DA3 as camera pose guidance (experimental). When enabled, converts Deforum's translation/rotation schedules to camera extrinsics for pose-conditioned 3DGS inference. When disabled, DA3 estimates camera poses automatically from image content. Automatic estimation is more reliable for now."
+            "info": "Number of consecutive keyframes to collect for building each 3DGS scene. More keyframes = better multi-view geometry and novel view quality, but slower and more VRAM. 2: fastest (stereo pair), 5: balanced quality/speed (recommended), 10: best quality (high VRAM usage ~10-15GB). DA3 auto-estimates camera poses from keyframe content."
         },
         "da3_3dgs_render_keyframes": {
-            "label": "Also Render 3DGS Keyframes",
+            "label": "Render 3DGS Keyframes",
             "type": "checkbox",
             "value": True,
-            "info": "Render 3DGS versions of the segment boundary keyframes for visual consistency. Saves to separate '_3dgs' subdirectory alongside tweens. When enabled, both keyframes and tweens will be gaussian-rendered. When disabled, only tweens are rendered (original diffusion keyframes remain, causing visual mismatch)."
+            "info": "Render 3DGS versions of the segment boundary keyframes for visual consistency with tweens. When enabled: original diffusion keyframes moved to '_diffusion/' subdirectory, all 3DGS frames (keyframes + tweens) saved to main directory for seamless final video. When disabled: only tweens are 3DGS-rendered, original keyframes remain (causes visual mismatch)."
         },
 
         # Advanced Generation Settings
