@@ -126,6 +126,14 @@ class DepthAnythingV3:
             # Convert numpy to tensor [H,W] -> [1,1,H,W]
             depth = torch.from_numpy(depth_np).unsqueeze(0).unsqueeze(0).float()
 
+        # CRITICAL: Normalize depth to 0-1 range for consistency with DA2
+        # DA3 returns depth in arbitrary range (e.g., 0.94-1.04), but depth warping
+        # expects normalized depth where 0=nearest, 1=farthest
+        depth_min = depth.min()
+        depth_max = depth.max()
+        if depth_max > depth_min:  # Avoid division by zero
+            depth = (depth - depth_min) / (depth_max - depth_min)
+
         # CRITICAL: Resize depth map to match original image dimensions
         # DA3 downsamples during processing (e.g., 1920x480 -> 504x280)
         # but depth warping expects depth to match image size exactly
