@@ -36,14 +36,14 @@ def _get_model_name(variant: str, size: str) -> str:
         HuggingFace model identifier string
     """
     model_map: Dict[Tuple[str, str], str] = {
-        # Mono models - single-view depth only
-        ('mono', 'small'): 'depth-anything/Depth-Anything-V3-Small',
-        ('mono', 'base'): 'depth-anything/Depth-Anything-V3-Base',
-        ('mono', 'large'): 'depth-anything/Depth-Anything-V3-Large',
+        # Mono models - single-view depth only (ONLY LARGE available on HF)
+        ('mono', 'small'): 'depth-anything/DA3MONO-LARGE',  # No small variant, use large
+        ('mono', 'base'): 'depth-anything/DA3MONO-LARGE',   # No base variant, use large
+        ('mono', 'large'): 'depth-anything/DA3MONO-LARGE',
         # Any-view models - multi-view geometry (NOT 3DGS capable)
-        ('any-view', 'small'): 'depth-anything/DA3-Small',
-        ('any-view', 'base'): 'depth-anything/DA3-Base',
-        ('any-view', 'large'): 'depth-anything/DA3-Large',
+        ('any-view', 'small'): 'depth-anything/DA3-SMALL',
+        ('any-view', 'base'): 'depth-anything/DA3-BASE',
+        ('any-view', 'large'): 'depth-anything/DA3-LARGE',
         # GIANT models - 3DGS capable (1.15B and 1.40B params)
         ('giant', 'giant'): 'depth-anything/DA3-GIANT',
         ('giant', 'nested-giant-large'): 'depth-anything/DA3NESTED-GIANT-LARGE',

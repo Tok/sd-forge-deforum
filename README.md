@@ -194,8 +194,9 @@ git checkout dev
 - **Two Model Families**:
   - **Mono Models** (Standard) - For 3D depth warp modes (Classic 3D, New 3D, Keyframes Only)
     - Fast single-view depth estimation
-    - Low VRAM (~135MB-500MB)
-    - **Default**: DA3-Mono-Small (recommended for most users)
+    - **Only DA3MONO-LARGE available** on HuggingFace (~350MB VRAM)
+    - No Small/Base variants exist - all size selections use LARGE
+    - **Default**: DA3MONO-LARGE (only option for mono depth)
   - **GIANT Models** (Experimental) - For DA3-3DGS FLF2V interpolation only
     - Feed-forward 3D Gaussian Splatting with novel view synthesis
     - **High VRAM** (24GB+ recommended, 16GB minimum with aggressive cleanup)
@@ -215,7 +216,7 @@ git checkout dev
 - **Auto-Install**: Package installs from GitHub via requirements.txt
 - **Auto-Download**: Models download from HuggingFace on first use
 - **Model Options**:
-  - Standard: DA3-Mono-Small/Base/Large (~135MB-500MB)
+  - Standard: DA3MONO-LARGE (~350MB) - only mono variant available
   - GIANT: DA3-GIANT (1.15B, ~3GB) or DA3NESTED-GIANT-LARGE (1.40B, ~4GB)
 - **Backwards Compatible**: Existing DA2 workflows continue working unchanged
 - **See**: `docs/DEPTH_ANYTHING_V3_PLAN.md` and `docs/DA3_TESTING_GUIDE.md` for technical details
@@ -345,8 +346,8 @@ Hybrid Flux keyframes + multi-method interpolation:
   - DA3-3DGS: DA3-GIANT or DA3NESTED-GIANT-LARGE (selected in Wan Models tab)
 - **Why Different Models for Different Modes?**
   - **Standard 3D modes** (Classic/New/Keyframes Only) use **Mono models** for depth warping:
-    - Fast single-view depth estimation (~135-500MB VRAM)
-    - DA3-Mono-Small (default) provides excellent depth maps for 3D transforms
+    - Fast single-view depth estimation (~350MB VRAM)
+    - DA3MONO-LARGE (only mono variant available) provides excellent depth maps for 3D transforms
     - Selected in "3D Depth" tab
   - **DA3-3DGS interpolation** uses **GIANT models** for novel view synthesis:
     - Feed-forward 3D Gaussian Splatting (1.15B-1.40B params, ~3-4GB VRAM)
