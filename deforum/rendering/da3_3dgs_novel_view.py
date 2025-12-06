@@ -367,9 +367,17 @@ def generate_da3_3dgs_interpolation(
 
     # Extract camera poses and intrinsics
     logger.info("   Extracting camera poses from DA3...")
-    extrinsics = result.extrinsics  # [N, 4, 4]
+    extrinsics = result.extrinsics  # May be [N, 3, 4] or [N, 4, 4]
     intrinsics = result.intrinsics  # [N, 3, 3]
     gaussians = result.gaussians
+
+    # Convert [N, 3, 4] to [N, 4, 4] by adding bottom row [0, 0, 0, 1]
+    if extrinsics.shape[1:] == (3, 4):
+        logger.debug(f"   Converting camera poses from (3, 4) to (4, 4)...")
+        num_cameras = extrinsics.shape[0]
+        bottom_row = np.array([0, 0, 0, 1], dtype=extrinsics.dtype).reshape(1, 1, 4)
+        bottom_rows = np.tile(bottom_row, (num_cameras, 1, 1))  # [N, 1, 4]
+        extrinsics = np.concatenate([extrinsics, bottom_rows], axis=1)  # [N, 4, 4]
 
     logger.info(f"   3DGS scene built: {gaussians.means.shape[1]} gaussian splats")
     logger.debug(f"   Camera poses: {extrinsics.shape}")
@@ -387,13 +395,10 @@ def generate_da3_3dgs_interpolation(
 
     # Optionally render 3DGS versions of segment boundary keyframes
     # This ensures visual consistency between keyframes and tweens
+    # Note: Original diffusion keyframes are moved to _diffusion/ by the caller
     keyframe_paths = []
     if render_keyframes and segment_first_idx is not None and segment_last_idx is not None:
         logger.info(f"   Rendering 3DGS keyframes for visual consistency...")
-
-        # Create _3dgs subdirectory for keyframe renders
-        output_3dgs_dir = os.path.join(output_dir, "_3dgs")
-        os.makedirs(output_3dgs_dir, exist_ok=True)
 
         # Find which collected keyframes match the segment boundaries
         keyframe_to_render = []
@@ -413,7 +418,7 @@ def generate_da3_3dgs_interpolation(
                 device=device
             )
             kf_filename = f"{kf_idx:09d}.png"
-            kf_path = os.path.join(output_3dgs_dir, kf_filename)
+            kf_path = os.path.join(output_dir, kf_filename)  # Save to main output dir
             rendered_kf.save(kf_path)
             keyframe_paths.append(kf_path)
             logger.debug(f"   Saved 3DGS keyframe: {kf_filename}")

@@ -412,6 +412,24 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
             # Generate target frame indices (tweens to create)
             target_indices = list(range(first_frame_idx + 1, last_frame_idx))
 
+            # Move original diffusion keyframes to _diffusion subdirectory (DA3-3DGS mode only)
+            # This keeps them separate from the 3DGS-rendered outputs
+            import shutil
+            diffusion_dir = os.path.join(data.output_directory, "_diffusion")
+            os.makedirs(diffusion_dir, exist_ok=True)
+
+            # Move segment boundary keyframes if they haven't been moved yet
+            for boundary_idx in [first_frame_idx, last_frame_idx]:
+                if boundary_idx in keyframe_images:
+                    original_path = keyframe_images[boundary_idx]
+                    original_filename = os.path.basename(original_path)
+                    diffusion_path = os.path.join(diffusion_dir, original_filename)
+
+                    # Only move if not already in _diffusion directory and not already moved
+                    if not original_path.startswith(diffusion_dir) and os.path.exists(original_path):
+                        shutil.move(original_path, diffusion_path)
+                        logger.debug(f"   Moved original keyframe to _diffusion/{original_filename}")
+
             # Generate interpolated frames using 3DGS
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             segment_frames = generate_da3_3dgs_interpolation(
