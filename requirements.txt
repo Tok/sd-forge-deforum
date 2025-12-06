@@ -15,7 +15,9 @@ accelerate>=0.25.0,<2.0.0
 # DA3 auto-installs from GitHub (like diffusers above)
 git+https://github.com/ByteDance-Seed/Depth-Anything-3.git
 xformers>=0.0.20  # Required by DA3
-# gsplat for 3DGS - install from source: pip install --no-build-isolation git+https://github.com/nerfstudio-project/gsplat.git@0b4dddf04cb687367602c01196913cde6a743d70
+
+# gsplat for 3D Gaussian Splatting rendering (DA3-3DGS interpolation mode)
+gsplat>=1.0.0  # Install via: pip install gsplat (has prebuilt wheels for CUDA 11.8/12.1)
 
 # Audio sync dependencies
 librosa>=0.10.0

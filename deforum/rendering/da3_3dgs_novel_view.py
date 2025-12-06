@@ -16,7 +16,7 @@ import torch
 from PIL import Image
 import cv2
 
-from deforum.utils.system.logging import get_logger
+from deforum.utils.system.logging import get_logger, emoji_if_enabled
 
 logger = get_logger()
 
@@ -113,14 +113,11 @@ def render_novel_view_from_gaussians(
     image_size: Tuple[int, int],
     device: torch.device
 ) -> Image.Image:
-    """Render a novel view from 3D Gaussian Splatting parameters.
-
-    This is a STUB - proper 3DGS rendering requires diff-gaussian-rasterization.
-    For now, this will just return a placeholder or use depth-based approximation.
+    """Render a novel view from 3D Gaussian Splatting parameters using gsplat.
 
     Args:
-        gaussians: Gaussians object from DA3 with means, scales, rotations, etc.
-        camera_pose: Camera extrinsic matrix [4, 4]
+        gaussians: Gaussians object from DA3 with means, scales, rotations, harmonics, opacities
+        camera_pose: Camera extrinsic matrix [4, 4] (world-to-camera)
         camera_intrinsics: Camera intrinsic matrix [3, 3]
         image_size: (width, height)
         device: torch device
@@ -128,28 +125,99 @@ def render_novel_view_from_gaussians(
     Returns:
         Rendered PIL Image
     """
-    # TODO: Implement proper 3DGS rasterization
-    # This requires diff-gaussian-rasterization or gsplat library
+    try:
+        import gsplat
+        from gsplat import rasterization
+    except ImportError:
+        logger.warning("gsplat not installed - returning placeholder. Install with: pip install gsplat")
+        width, height = image_size
+        placeholder = np.zeros((height, width, 3), dtype=np.uint8)
+        cv2.putText(placeholder, "gsplat not installed", (width // 4, height // 2),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
+        return Image.fromarray(placeholder)
 
-    logger.warning("⚠️  Proper 3DGS rendering not yet implemented - using placeholder")
-
-    # For now, return a simple placeholder
-    # In production, this would use diff-gaussian-rasterization to render the gaussians
     width, height = image_size
-    placeholder = np.zeros((height, width, 3), dtype=np.uint8)
 
-    # Add text indicating this is a placeholder
-    cv2.putText(
-        placeholder,
-        "3DGS Rendering Stub",
-        (width // 4, height // 2),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1.0,
-        (255, 255, 255),
-        2
-    )
+    # Extract gaussian parameters (all should be torch tensors on device)
+    means = gaussians.means  # [batch, N, 3] - world space positions
+    scales = gaussians.scales  # [batch, N, 3] - scale in each axis
+    rotations = gaussians.rotations  # [batch, N, 4] - quaternions (w,x,y,z)
+    opacities = gaussians.opacities  # [batch, N] or [batch, N, 1, d_sh]
+    sh_coeffs = gaussians.harmonics  # [batch, N, 3, d_sh] - spherical harmonics for color
 
-    return Image.fromarray(placeholder)
+    # gsplat expects batch dimension - squeeze if needed
+    if means.dim() == 3 and means.shape[0] == 1:
+        means = means.squeeze(0)  # [N, 3]
+        scales = scales.squeeze(0)  # [N, 3]
+        rotations = rotations.squeeze(0)  # [N, 4]
+        if opacities.dim() == 4:
+            opacities = opacities.squeeze(0).squeeze(-1).squeeze(-1)  # [N]
+        elif opacities.dim() == 2:
+            opacities = opacities.squeeze(0)  # [N]
+        sh_coeffs = sh_coeffs.squeeze(0)  # [N, 3, d_sh]
+
+    # Convert camera pose to view matrix (camera-to-world → world-to-camera)
+    # DA3 provides extrinsics as [4, 4], gsplat expects viewmat
+    viewmat = torch.from_numpy(camera_pose).float().to(device)  # [4, 4]
+
+    # Build projection matrix from intrinsics
+    fx = camera_intrinsics[0, 0]
+    fy = camera_intrinsics[1, 1]
+    cx = camera_intrinsics[0, 2]
+    cy = camera_intrinsics[1, 2]
+
+    # Construct OpenGL-style projection matrix
+    near = 0.01
+    far = 100.0
+    projmat = torch.zeros(4, 4, device=device)
+    projmat[0, 0] = 2 * fx / width
+    projmat[1, 1] = 2 * fy / height
+    projmat[0, 2] = (2 * cx / width) - 1
+    projmat[1, 2] = (2 * cy / height) - 1
+    projmat[2, 2] = -(far + near) / (far - near)
+    projmat[2, 3] = -2 * far * near / (far - near)
+    projmat[3, 2] = -1
+
+    # Rasterize gaussians
+    # gsplat API: rasterization(means, quats, scales, opacities, colors, viewmats, Ks, width, height)
+    # For SH colors, we need to evaluate them first or use gsplat's SH evaluation
+
+    # Convert SH coeffs to RGB colors (use DC term only for now - simpler)
+    # DC term is the first coefficient (index 0) in the SH series
+    colors_dc = sh_coeffs[:, :, 0]  # [N, 3] - RGB from DC term
+    # Clamp to valid range
+    colors_rgb = torch.sigmoid(colors_dc)  # [N, 3]
+
+    # Prepare inputs for gsplat rasterization
+    try:
+        rendered_image, _, _ = rasterization(
+            means=means.unsqueeze(0),  # [1, N, 3]
+            quats=rotations.unsqueeze(0),  # [1, N, 4]
+            scales=scales.unsqueeze(0),  # [1, N, 3]
+            opacities=opacities.unsqueeze(0).unsqueeze(-1),  # [1, N, 1]
+            colors=colors_rgb.unsqueeze(0),  # [1, N, 3]
+            viewmats=viewmat.unsqueeze(0),  # [1, 4, 4]
+            Ks=torch.from_numpy(camera_intrinsics).float().to(device).unsqueeze(0),  # [1, 3, 3]
+            width=width,
+            height=height,
+        )
+
+        # rendered_image is [1, H, W, 3], convert to numpy
+        img_np = rendered_image[0].detach().cpu().numpy()  # [H, W, 3]
+        img_np = (img_np * 255).clip(0, 255).astype(np.uint8)
+
+        return Image.fromarray(img_np)
+
+    except Exception as e:
+        logger.error(f"gsplat rasterization failed: {e}")
+        import traceback
+        logger.debug(traceback.format_exc())
+
+        # Return error placeholder
+        placeholder = np.zeros((height, width, 3), dtype=np.uint8)
+        cv2.putText(placeholder, f"Render failed: {str(e)[:30]}", (10, height // 2),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        return Image.fromarray(placeholder)
 
 
 def collect_nearby_keyframes(
@@ -246,7 +314,7 @@ def generate_da3_3dgs_interpolation(
     Returns:
         List of paths to generated frame files
     """
-    logger.info(f"🌌 DA3-3DGS Interpolation:")
+    logger.info(f"{emoji_if_enabled('🌌')} DA3-3DGS Interpolation:")
     logger.info(f"   Keyframes: {len(keyframe_images)} frames at indices {keyframe_indices}")
     logger.info(f"   Targets: {len(target_frame_indices)} frames to generate")
     logger.info(f"   Model: {model_selection}")
@@ -335,5 +403,5 @@ def generate_da3_3dgs_interpolation(
         rendered_image.save(target_path)
         frame_paths.append(target_path)
 
-    logger.info(f"   ✅ Generated {len(frame_paths)} novel views")
+    logger.info(f"   {emoji_if_enabled('✅')} Generated {len(frame_paths)} novel views")
     return frame_paths
