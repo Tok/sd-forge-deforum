@@ -95,6 +95,12 @@ class DA3GaussianTweenGenerator(BaseTweenGenerator):
             # Check if Prediction object has gaussians attribute
             if hasattr(self.scene_3dgs, 'gaussians'):
                 gaussian_count = len(self.scene_3dgs.gaussians) if self.scene_3dgs.gaussians is not None else 0
+                if gaussian_count == 0:
+                    logger.warning(
+                        "3D Gaussian scene returned 0 Gaussians - DA3 3DGS feature not yet fully implemented. "
+                        "Falling back to depth warp."
+                    )
+                    return None
                 logger.info(
                     f"✓ 3D Gaussian scene built successfully: "
                     f"{gaussian_count} Gaussians from Prediction object"
@@ -102,6 +108,12 @@ class DA3GaussianTweenGenerator(BaseTweenGenerator):
             elif isinstance(self.scene_3dgs, dict):
                 # Legacy dict format
                 gaussian_count = len(self.scene_3dgs.get('means', []))
+                if gaussian_count == 0:
+                    logger.warning(
+                        "3D Gaussian scene returned 0 Gaussians - insufficient data. "
+                        "Falling back to depth warp."
+                    )
+                    return None
                 logger.info(
                     f"✓ 3D Gaussian scene built successfully: "
                     f"{gaussian_count} Gaussians from dict"

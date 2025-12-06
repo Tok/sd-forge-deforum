@@ -63,14 +63,14 @@ class TestModelDetection:
         assert detect_model_type_extended("stabilityai/z-image.safetensors") == "z_image"
 
     def test_detect_sd15_fallback(self):
-        """Test SD 1.5/SDXL fallback for unknown models."""
+        """Test SD 1.5/SDXL detection and unknown model handling."""
         assert detect_model_type_extended("sd15-model.ckpt") == "sd15"
         assert detect_model_type_extended("sdxl-base.safetensors") == "sd15"
-        assert detect_model_type_extended("unknown-model.ckpt") == "sd15"
+        assert detect_model_type_extended("unknown-model.ckpt") == "unknown"
 
     def test_detect_empty_string(self):
-        """Test that empty string falls back to sd15."""
-        assert detect_model_type_extended("") == "sd15"
+        """Test that empty string returns unknown."""
+        assert detect_model_type_extended("") == "unknown"
 
     def test_case_insensitive(self):
         """Test that detection is case-insensitive."""
@@ -116,7 +116,7 @@ class TestModelConfigRetrieval:
 
     def test_all_configs_exist(self):
         """Test that all model types have configs."""
-        required_types = ["flux_dev", "flux_schnell", "lumina", "z_image", "sd15"]
+        required_types = ["flux_dev", "flux_schnell", "lumina", "z_image", "sd15", "unknown"]
 
         for model_type in required_types:
             assert model_type in MODEL_CONFIGS
