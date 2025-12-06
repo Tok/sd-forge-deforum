@@ -39,7 +39,7 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
     gr.Markdown(f"### {emoji_if_enabled('🎛')} Model Configuration")
     with gr.Row():
         da3_3dgs_model = create_gr_elem(dw.da3_3dgs_model)
-        da3_3dgs_num_keyframes = create_gr_elem(dw.da3_3dgs_num_keyframes)
+        da3_3dgs_neighbor_segments = create_gr_elem(dw.da3_3dgs_neighbor_segments)
     
     # Output Settings
     gr.Markdown(f"### {emoji_if_enabled('💾')} Output Settings")
@@ -81,7 +81,7 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
     
     # CRITICAL: Immediately capture components in locals() for registration
     locals()['da3_3dgs_model'] = da3_3dgs_model
-    locals()['da3_3dgs_num_keyframes'] = da3_3dgs_num_keyframes
+    locals()['da3_3dgs_neighbor_segments'] = da3_3dgs_neighbor_segments
     locals()['da3_3dgs_render_keyframes'] = da3_3dgs_render_keyframes
     
     return {k: v for k, v in {**locals(), **vars()}.items()}

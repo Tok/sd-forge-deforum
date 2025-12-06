@@ -318,7 +318,7 @@ def setup_deforum_left_side_ui():
 
             # Explicitly unpack DA3-3DGS components from dedicated tab
             da3_3dgs_model = tab_da3_3dgs_params.get('da3_3dgs_model')
-            da3_3dgs_num_keyframes = tab_da3_3dgs_params.get('da3_3dgs_num_keyframes')
+            da3_3dgs_neighbor_segments = tab_da3_3dgs_params.get('da3_3dgs_neighbor_segments')
             da3_3dgs_render_keyframes = tab_da3_3dgs_params.get('da3_3dgs_render_keyframes')
 
             # Explicitly unpack components needed for Reset to Defaults button

@@ -233,21 +233,32 @@ def collect_nearby_keyframes(
     all_keyframe_images: dict,
     segment_first_idx: int,
     segment_last_idx: int,
-    num_to_collect: int
+    num_neighbor_segments: int = 1
 ) -> Tuple[List[Image.Image], List[int]]:
-    """Collect nearby keyframes around a segment for multi-view 3DGS.
+    """Collect keyframes from current segment + neighboring segments for multi-view 3DGS.
 
-    Collects num_to_collect keyframes centered around the segment,
-    including the segment boundaries.
+    Uses ACTUAL keyframes from the prompt schedule, not an arbitrary count.
+    Includes segment boundaries + keyframes from N neighboring segments on each side.
 
     Args:
         all_keyframe_images: Dict mapping frame_idx -> PIL Image for ALL keyframes
         segment_first_idx: First keyframe index of current segment
         segment_last_idx: Last keyframe index of current segment
-        num_to_collect: Total number of keyframes to collect (2-10)
+        num_neighbor_segments: How many segments to include before/after (0-3)
+                               0 = just segment boundaries
+                               1 = include 1 segment before + 1 after (default)
+                               2 = include 2 segments before + 2 after
+                               3 = include 3 segments before + 3 after
 
     Returns:
         Tuple of (collected_images, collected_indices)
+
+    Example:
+        Keyframes: [0, 12, 22, 32, 43, 53]
+        Segment: 12→22 (frames 12-22)
+        num_neighbor_segments=1 → collect [0, 12, 22, 32] (1 before, segment, 1 after)
+        num_neighbor_segments=0 → collect [12, 22] (just segment)
+        num_neighbor_segments=2 → collect [0, 12, 22, 32, 43] (2 before, segment, 2 after - clamped to available)
     """
     # Get all available keyframe indices sorted
     available_indices = sorted(all_keyframe_images.keys())
@@ -258,39 +269,25 @@ def collect_nearby_keyframes(
         last_pos = available_indices.index(segment_last_idx)
     except ValueError:
         # Segment boundaries not in keyframes - just use them
+        logger.warning(f"Segment boundaries {segment_first_idx}-{segment_last_idx} not in keyframe schedule!")
         return (
             [all_keyframe_images[segment_first_idx], all_keyframe_images[segment_last_idx]],
             [segment_first_idx, segment_last_idx]
         )
 
-    # Calculate how many extra frames to collect beyond segment boundaries
-    # We want num_to_collect total, including first and last
-    extras_needed = num_to_collect - 2  # -2 for first and last
-    extras_before = extras_needed // 2
-    extras_after = extras_needed - extras_before
+    # Expand to include neighboring segments
+    # Each segment is one keyframe, so N segments = N keyframes on each side
+    start_pos = max(0, first_pos - num_neighbor_segments)
+    end_pos = min(len(available_indices) - 1, last_pos + num_neighbor_segments)
 
-    # Collect indices
-    start_pos = max(0, first_pos - extras_before)
-    end_pos = min(len(available_indices) - 1, last_pos + extras_after)
-
-    # If we couldn't get enough before, try to get more after
-    if (first_pos - start_pos) < extras_before:
-        shortage = extras_before - (first_pos - start_pos)
-        end_pos = min(len(available_indices) - 1, end_pos + shortage)
-
-    # If we couldn't get enough after, try to get more before
-    if (end_pos - last_pos) < extras_after:
-        shortage = extras_after - (end_pos - last_pos)
-        start_pos = max(0, start_pos - shortage)
-
-    # Collect the actual keyframes
+    # Collect the actual keyframes from the schedule
     collected_indices = available_indices[start_pos:end_pos + 1]
     collected_images = [all_keyframe_images[idx] for idx in collected_indices]
 
     logger.debug(
-        f"   Collected {len(collected_images)} keyframes: "
-        f"indices {collected_indices[0]}-{collected_indices[-1]} "
-        f"(segment: {segment_first_idx}-{segment_last_idx})"
+        f"   Collected {len(collected_images)} keyframes from schedule: "
+        f"indices {collected_indices} "
+        f"(segment: {segment_first_idx}-{segment_last_idx}, neighbors: {num_neighbor_segments})"
     )
 
     return collected_images, collected_indices

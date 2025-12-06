@@ -384,9 +384,9 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         elif interp_method == "DA3-3DGS":
             logger.info(f"      Using DA3 3D Gaussian Splatting")
             model_selection = getattr(wan_args, 'da3_3dgs_model', 'DA3-GIANT')
-            num_keyframes_to_collect = getattr(wan_args, 'da3_3dgs_num_keyframes', 5)
+            neighbor_segments = getattr(wan_args, 'da3_3dgs_neighbor_segments', 1)
             logger.info(f"      Model: {model_selection}")
-            logger.info(f"      Collecting {num_keyframes_to_collect} keyframes for scene building")
+            logger.info(f"      Including {neighbor_segments} neighbor segment(s) before+after for 3DGS scene")
 
             # Use new proper 3DGS interpolation module
             from deforum.rendering.da3_3dgs_novel_view import (
@@ -401,12 +401,12 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
             for kf_idx, kf_path in keyframe_images.items():
                 all_keyframes_pil[kf_idx] = Image.open(kf_path)
 
-            # Collect nearby keyframes for this segment
+            # Collect keyframes from current segment + neighbors
             collected_images, collected_indices = collect_nearby_keyframes(
                 all_keyframe_images=all_keyframes_pil,
                 segment_first_idx=first_frame_idx,
                 segment_last_idx=last_frame_idx,
-                num_to_collect=num_keyframes_to_collect
+                num_neighbor_segments=neighbor_segments
             )
 
             # Generate target frame indices (tweens to create)

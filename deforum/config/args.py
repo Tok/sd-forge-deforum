@@ -1292,14 +1292,14 @@ def WanArgs():
             "value": "DA3-GIANT",
             "info": "3DGS-capable DA3 model (only used when FLF2V method is DA3-3DGS): 'DA3-GIANT' (1.15B params, ~3GB VRAM), 'DA3NESTED-GIANT-LARGE' (1.40B params, ~4GB VRAM, recommended - combines multi-view with metric depth). Both models support feed-forward 3D Gaussian Splatting for novel view synthesis."
         },
-        "da3_3dgs_num_keyframes": {
-            "label": "3DGS Keyframes per Scene",
+        "da3_3dgs_neighbor_segments": {
+            "label": "Neighbor Segments for 3DGS",
             "type": "slider",
-            "minimum": 2,
-            "maximum": 10,
+            "minimum": 0,
+            "maximum": 3,
             "step": 1,
-            "value": 5,
-            "info": "Number of consecutive keyframes to collect for building each 3DGS scene. More keyframes = better multi-view geometry and novel view quality, but slower and more VRAM. 2: fastest (stereo pair), 5: balanced quality/speed (recommended), 10: best quality (high VRAM usage ~10-15GB). DA3 auto-estimates camera poses from keyframe content."
+            "value": 1,
+            "info": "How many neighboring segments to include for multi-view 3DGS reconstruction. Uses ACTUAL keyframes from your prompt schedule (not arbitrary count). 0: just segment boundaries (2 keyframes, fastest), 1: include 1 segment before+after (default, balanced), 2-3: more context (better geometry, more VRAM). Example: segment 12→22 with neighbors=1 uses keyframes [0,12,22,32] from schedule."
         },
         "da3_3dgs_render_keyframes": {
             "label": "Render 3DGS Keyframes",
