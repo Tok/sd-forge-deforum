@@ -135,14 +135,18 @@ def get_tab_depth_warping(da, skip_tabitem=False):
         **Transform 2D images into 3D space** using AI depth estimation for realistic camera movement.
 
         **Depth Estimation Models:**
-        - **Depth-Anything V2** (default) - Fast, stable, accurate
-        - **Depth-Anything V3 Mono** - Better quality (+25% accuracy)
-        - **Depth-Anything V3 AnyView** - Multi-view geometry support
+        - **Depth-Anything V3 AnyView** - Multi-view geometry + 3DGS support, best quality
+        - **Depth-Anything V3 Mono** - Single-view only, faster but no 3DGS
+        - **Depth-Anything V2** (legacy) - Older models, will be phased out
+
+        **Auto-Selection:** Depth model auto-switches based on tween mode:
+        - `da3_gaussian` or `da3_multiview` → AnyView (required for multi-view features)
+        - `depth_warp` → Mono (faster, lower VRAM)
 
         **Tween Generation Modes:**
-        - **depth_warp** (default) - Classic depth-based warping, fast and stable
-        - **da3_multiview** - Multi-view geometry for temporal consistency (requires DA3 AnyView)
-        - **da3_gaussian** - 3D Gaussian Splatting for ultimate quality (requires Gaussian Scene mode)
+        - **da3_gaussian** (default) - 3D Gaussian Splatting for ultimate quality and geometric consistency
+        - **da3_multiview** - Multi-view geometry for temporal consistency
+        - **depth_warp** - Classic depth-based warping, fastest but less accurate
 
         **When to Use:**
         - Required for **3D Animation Mode** to enable camera movement through space
@@ -157,5 +161,32 @@ def get_tab_depth_warping(da, skip_tabitem=False):
         - Install from GitHub: `git clone https://github.com/ByteDance-Seed/Depth-Anything-3.git && cd Depth-Anything-3 && pip install -e .`
         - For 3DGS: Also install `gsplat` from GitHub
         """)
+
+    # Auto-switch depth model based on tween generation mode
+    def auto_switch_depth_model(tween_mode: str) -> str:
+        """Auto-select optimal depth model for selected tween mode.
+
+        Args:
+            tween_mode: Selected tween generation mode
+
+        Returns:
+            Recommended depth model name
+        """
+        # 3DGS requires AnyView variant for multi-view geometry
+        if tween_mode == 'da3_gaussian':
+            return 'Depth-Anything-V3-AnyView-Small'
+        # Multiview also benefits from AnyView
+        elif tween_mode == 'da3_multiview':
+            return 'Depth-Anything-V3-AnyView-Small'
+        # Classic depth warp can use faster Mono variant
+        else:  # depth_warp
+            return 'Depth-Anything-V3-Mono-Small'
+
+    # Wire up auto-switching when tween mode changes
+    tween_generation_mode.change(
+        fn=auto_switch_depth_model,
+        inputs=[tween_generation_mode],
+        outputs=[depth_algorithm]
+    )
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
