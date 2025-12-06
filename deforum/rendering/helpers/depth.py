@@ -45,11 +45,17 @@ def create_depth_model_and_enable_depth_map_saving_if_active(anim_mode, root, an
     is_da2 = 'v2' in depth_algorithm.lower()
 
     if needs_da3 and is_da2:
-        # Auto-upgrade to DA3 AnyView Large (best for 3DGS)
+        # Auto-upgrade to DA3 AnyView (keep same size as user selected)
         original_algorithm = depth_algorithm
-        depth_algorithm = 'Depth-Anything-V3-AnyView-Large'
+        # Extract size from original (Small/Base/Large)
+        size = 'Small'  # Default
+        for s in ['Small', 'Base', 'Large']:
+            if s in depth_algorithm:
+                size = s
+                break
+        depth_algorithm = f'Depth-Anything-V3-AnyView-{size}'
         logger.warning(
-            f"Gaussian Scene mode requires Depth Anything V3. "
+            f"Gaussian Scene/da3_gaussian mode requires Depth Anything V3 AnyView. "
             f"Auto-upgrading from '{original_algorithm}' to '{depth_algorithm}'"
         )
 

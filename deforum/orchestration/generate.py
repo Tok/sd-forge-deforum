@@ -457,6 +457,31 @@ def generate_with_nans_check(args, keys, anim_args, loop_args, controlnet_args, 
 
 def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
                    root, parseq_adapter, frame=0, sampler_name=None, scheduler_name=None):
+    # On first frame only: Force aggressive model cleanup
+    # This prevents VRAM fragmentation when switching model types (Flux → Z-Image, etc.)
+    if frame == 0:
+        import gc
+        import torch
+        from modules import devices
+
+        logger.debug("First frame: forcing model cleanup to prevent VRAM fragmentation...")
+
+        # Force garbage collection
+        gc.collect()
+
+        # Clear CUDA cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+
+        # Use Forge's device management
+        try:
+            devices.torch_gc()
+        except:
+            pass
+
+        logger.debug("Model cleanup complete")
+
     # Setup the pipeline
     p = get_webui_sd_pipeline(args, root)
     p.prompt, p.negative_prompt = split_weighted_subprompts(args.prompt, frame, anim_args.max_frames)
