@@ -149,13 +149,16 @@ class DepthModel:
 
         return depth_tensor
 
-    def estimate_3d_gaussians(self, images, use_ray_pose=True, conf_thresh_percentile=40.0):
+    def estimate_3d_gaussians(self, images, extrinsics=None, intrinsics=None,
+                              use_ray_pose=True, conf_thresh_percentile=40.0):
         """
         Estimate 3D Gaussian Splatting parameters from multiple images (DA3 AnyView only)
 
         Args:
             images: List of images as numpy arrays (BGR, uint8) - OpenCV format
-            use_ray_pose: Use ray-based pose estimation (more accurate, slower)
+            extrinsics: Optional (N, 4, 4) camera extrinsics matrices (camera-to-world)
+            intrinsics: Optional (N, 3, 3) camera intrinsics matrices
+            use_ray_pose: Use ray-based pose estimation (more accurate, slower) - ignored if extrinsics provided
             conf_thresh_percentile: Confidence threshold percentile (0-100)
 
         Returns:
@@ -180,15 +183,20 @@ class DepthModel:
                 else:
                     pil_images.append(img)
 
-            logger.info("3D Gaussian Splatting estimation (Phase 3 - not yet implemented)")
+            if extrinsics is not None and intrinsics is not None:
+                logger.info(f"3D Gaussian Splatting with {len(pil_images)} frames and Deforum camera path")
+            else:
+                logger.info(f"3D Gaussian Splatting with {len(pil_images)} frames (auto pose estimation)")
 
-            # Call DA3 infer with infer_gs=True
+            # Call DA3 inference with 3DGS enabled
             # Note: This requires DA3 model to have gs_head and gs_adapter initialized
-            prediction = self.depth_anything.predict(
+            prediction = self.depth_anything.inference(
                 pil_images,
+                extrinsics=extrinsics,
+                intrinsics=intrinsics,
+                infer_gs=True,  # Enable 3DGS estimation
                 use_ray_pose=use_ray_pose,
-                conf_thresh_percentile=conf_thresh_percentile,
-                infer_gs=True  # Enable 3DGS estimation
+                conf_thresh_percentile=conf_thresh_percentile
             )
 
             return prediction

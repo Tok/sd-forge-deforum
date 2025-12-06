@@ -74,7 +74,7 @@ class DA3GaussianTweenGenerator(BaseTweenGenerator):
 
         Args:
             keyframes: List of diffused keyframe images (BGR numpy arrays)
-            camera_schedules: Optional Deforum camera schedules for alignment
+            camera_schedules: Optional Deforum RenderData with animation_keys for camera path
 
         Returns:
             Dictionary with 3DGS parameters or None if failed
@@ -82,8 +82,22 @@ class DA3GaussianTweenGenerator(BaseTweenGenerator):
         logger.info(f"Building 3D Gaussian scene from {len(keyframes)} keyframes...")
 
         try:
+            # Extract camera parameters from Deforum schedules if available
+            extrinsics = None
+            intrinsics = None
+
+            if camera_schedules is not None and hasattr(camera_schedules, 'animation_keys'):
+                logger.debug("Extracting camera parameters from Deforum schedules for 3DGS")
+                extrinsics, intrinsics = self._build_camera_matrices(camera_schedules, len(keyframes))
+            else:
+                logger.debug("No camera schedules provided - DA3 will estimate poses automatically")
+
             # Use DepthModel wrapper method instead of calling depth_anything directly
-            self.scene_3dgs = self.depth_model.estimate_3d_gaussians(keyframes)
+            self.scene_3dgs = self.depth_model.estimate_3d_gaussians(
+                keyframes,
+                extrinsics=extrinsics,
+                intrinsics=intrinsics
+            )
 
             if self.scene_3dgs is None:
                 logger.error("DA3 failed to estimate 3D Gaussians")
@@ -171,11 +185,101 @@ class DA3GaussianTweenGenerator(BaseTweenGenerator):
             logger.debug(traceback.format_exc())
             return self._linear_blend_fallback(prev_image, image, tween_frame.value)
 
+    def _build_camera_matrices(self, data, num_frames):
+        """Build camera extrinsics and intrinsics matrices from Deforum schedules.
+
+        Args:
+            data: RenderData with animation_keys
+            num_frames: Number of frames to build matrices for
+
+        Returns:
+            Tuple of (extrinsics, intrinsics) as numpy arrays
+            - extrinsics: (N, 4, 4) camera-to-world transformation matrices
+            - intrinsics: (N, 3, 3) camera intrinsic matrices
+        """
+        import numpy as np
+        import math
+
+        extrinsics_list = []
+        intrinsics_list = []
+
+        # Get image dimensions
+        width = data.width() if hasattr(data, 'width') else 512
+        height = data.height() if hasattr(data, 'height') else 512
+
+        # Build matrices for each collected frame
+        # Note: We match frame indices from generated_keyframes
+        frame_indices = []
+        if hasattr(data, 'generated_keyframes'):
+            frame_indices = [kf['frame_idx'] for kf in data.generated_keyframes[:num_frames]]
+        else:
+            # Fallback: assume sequential frames
+            frame_indices = list(range(num_frames))
+
+        for frame_idx in frame_indices:
+            # Extract camera parameters from Deforum schedules
+            cam_params = self._extract_camera_params_from_deforum(data, frame_idx)
+
+            # Build extrinsics (4x4 camera-to-world matrix)
+            # Deforum uses: translation + rotation (Euler angles XYZ)
+            tx, ty, tz = cam_params['translation']
+            rx, ry, rz = cam_params['rotation']
+
+            # Create rotation matrix from Euler angles (XYZ order)
+            # Rx * Ry * Rz
+            cos_rx, sin_rx = math.cos(rx), math.sin(rx)
+            cos_ry, sin_ry = math.cos(ry), math.sin(ry)
+            cos_rz, sin_rz = math.cos(rz), math.sin(rz)
+
+            # Rotation matrix (world-to-camera, OpenGL convention)
+            R = np.array([
+                [cos_ry * cos_rz, -cos_ry * sin_rz, sin_ry],
+                [sin_rx * sin_ry * cos_rz + cos_rx * sin_rz,
+                 -sin_rx * sin_ry * sin_rz + cos_rx * cos_rz, -sin_rx * cos_ry],
+                [-cos_rx * sin_ry * cos_rz + sin_rx * sin_rz,
+                 cos_rx * sin_ry * sin_rz + sin_rx * cos_rz, cos_rx * cos_ry]
+            ])
+
+            # Translation vector
+            t = np.array([[tx], [ty], [tz]])
+
+            # Build 4x4 extrinsics matrix (camera-to-world)
+            extrinsics = np.eye(4)
+            extrinsics[:3, :3] = R.T  # Transpose for camera-to-world
+            extrinsics[:3, 3:4] = -R.T @ t  # Camera position in world space
+
+            extrinsics_list.append(extrinsics)
+
+            # Build intrinsics (3x3 camera calibration matrix)
+            # K = [[fx,  0, cx],
+            #      [ 0, fy, cy],
+            #      [ 0,  0,  1]]
+            fov_rad = math.radians(cam_params['fov'])
+            focal_length = (width / 2.0) / math.tan(fov_rad / 2.0)
+
+            intrinsics = np.array([
+                [focal_length, 0, width / 2.0],
+                [0, focal_length, height / 2.0],
+                [0, 0, 1]
+            ])
+
+            intrinsics_list.append(intrinsics)
+
+        # Convert to numpy arrays with shape (N, 4, 4) and (N, 3, 3)
+        extrinsics_np = np.stack(extrinsics_list, axis=0)
+        intrinsics_np = np.stack(intrinsics_list, axis=0)
+
+        logger.debug(f"Built camera matrices: extrinsics {extrinsics_np.shape}, intrinsics {intrinsics_np.shape}")
+
+        return extrinsics_np, intrinsics_np
+
     def _extract_camera_params_from_deforum(self, data, frame_idx):
         """Extract camera parameters from Deforum schedules for given frame.
 
+        IMPORTANT: Includes camera shake (Shakify) if enabled, matching anim_frame_warp_3d()
+
         Args:
-            data: RenderData with animation keys
+            data: RenderData with animation keys and optional shaker
             frame_idx: Frame index to extract parameters for
 
         Returns:
@@ -191,23 +295,33 @@ class DA3GaussianTweenGenerator(BaseTweenGenerator):
         if frame_idx >= len(keys.translation_x_series):
             frame_idx = len(keys.translation_x_series) - 1
 
-        # Extract translation (in Deforum's coordinate system)
+        # Check if camera shake is enabled
+        shaker = data.shaker if hasattr(data, 'shaker') else None
+        is_shake = shaker is not None and shaker.is_enabled
+
+        # Helper to apply shake (matches animation.py:183-196)
+        def _maybe_shake(series_value, transform_type, axis):
+            if is_shake:
+                return series_value + shaker.get_data(transform_type, axis, frame_idx) * shaker.shake_intensity
+            return series_value
+
+        # Extract translation with shake (in Deforum's coordinate system)
         translation_scale = 1.0 / 200.0  # Same as animation.py
         translation = [
-            keys.translation_x_series[frame_idx] * translation_scale * -1.0,
-            keys.translation_y_series[frame_idx] * translation_scale,
-            keys.translation_z_series[frame_idx] * translation_scale * -1.0
+            _maybe_shake(keys.translation_x_series[frame_idx], 'translation', 'x') * translation_scale * -1.0,
+            _maybe_shake(keys.translation_y_series[frame_idx], 'translation', 'y') * translation_scale,
+            _maybe_shake(keys.translation_z_series[frame_idx], 'translation', 'z') * translation_scale * -1.0
         ]
 
-        # Extract rotation (convert to radians)
+        # Extract rotation with shake (convert to radians)
         import math
         rotation = [
-            math.radians(keys.rotation_3d_x_series[frame_idx]),
-            math.radians(keys.rotation_3d_y_series[frame_idx]),
-            math.radians(keys.rotation_3d_z_series[frame_idx])
+            math.radians(_maybe_shake(keys.rotation_3d_x_series[frame_idx], 'rotation_3d', 'x')),
+            math.radians(_maybe_shake(keys.rotation_3d_y_series[frame_idx], 'rotation_3d', 'y')),
+            math.radians(_maybe_shake(keys.rotation_3d_z_series[frame_idx], 'rotation_3d', 'z'))
         ]
 
-        # Extract FOV and aspect ratio
+        # Extract FOV and aspect ratio (no shake applied to these)
         fov = keys.fov_series[frame_idx]
         aspect_ratio = keys.aspect_ratio_series[frame_idx]
 
