@@ -69,9 +69,9 @@ def DeforumAnimArgs():
         "render_mode": {
             "label": "Render Mode",
             "type": "radio",
-            "choices": ['Classic 3D', 'New 3D', 'Keyframes Only', 'Flux + Interpolation'],
-            "value": "Keyframes Only",
-            "info": "Primary workflow selector: Classic 3D (fixed cadence, RAFT/ControlNet), New 3D (keyframe redistribution, dual strength), Keyframes Only (depth tweening), Flux + Interpolation (multi-method AI interpolation)"
+            "choices": ['Classic 3D', 'New 3D', 'Keyframes Only', 'Flux + Interpolation', 'Gaussian Scene'],
+            "value": "New 3D",
+            "info": "Primary workflow selector: Classic 3D (fixed cadence, RAFT/ControlNet), New 3D (keyframe redistribution, default), Keyframes Only (depth tweening), Flux + Interpolation (multi-method AI interpolation), Gaussian Scene (3DGS scene reconstruction)"
         },
         "animation_mode": {
             "label": "Animation mode (Legacy - use Render Mode instead)",
@@ -621,9 +621,26 @@ def DeforumAnimArgs():
         "depth_algorithm": {
             "label": "Depth Algorithm",
             "type": "dropdown",
-            "choices": ['Depth-Anything-V2-Small', 'Depth-Anything-V2-Base', 'Depth-Anything-V2-Large'],
+            "choices": [
+                'Depth-Anything-V2-Small',
+                'Depth-Anything-V2-Base',
+                'Depth-Anything-V2-Large',
+                'Depth-Anything-V3-Mono-Small',
+                'Depth-Anything-V3-Mono-Base',
+                'Depth-Anything-V3-Mono-Large',
+                'Depth-Anything-V3-AnyView-Small',
+                'Depth-Anything-V3-AnyView-Base',
+                'Depth-Anything-V3-AnyView-Large'
+            ],
             "value": "Depth-Anything-V2-Small",
-            "info": "Depth Anything V2 model size - Small (fastest), Base (balanced), Large (best quality)"
+            "info": "Depth model: V2 (stable, default) or V3 (better quality, requires depth-anything-3 package). Mono=single-view, AnyView=multi-view support"
+        },
+        "tween_generation_mode": {
+            "label": "Tween Generation Mode",
+            "type": "dropdown",
+            "choices": ['depth_warp', 'da3_multiview', 'da3_gaussian'],
+            "value": "depth_warp",
+            "info": "Tween generation: depth_warp (classic), da3_multiview (Phase 2, requires DA3 AnyView), da3_gaussian (Phase 3, not yet implemented)"
         },
         "midas_weight": {
             "label": "Depth weight (legacy, not used)",

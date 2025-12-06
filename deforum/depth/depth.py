@@ -22,15 +22,19 @@ from PIL import Image
 from einops import rearrange, repeat
 from modules import devices
 from .depth_anything_v2 import DepthAnything
+from deforum.utils.system.logging import get_logger
+
+# Initialize logger
+logger = get_logger()
 
 class DepthModel:
     """
-    Simplified depth model using only Depth Anything V2
+    Depth model supporting Depth Anything V2 and V3
 
-    Supports three model sizes:
-    - Depth-Anything-V2-Small (fastest)
-    - Depth-Anything-V2-Base (balanced)
-    - Depth-Anything-V2-Large (best quality)
+    Supported models:
+    - Depth-Anything-V2-Small/Base/Large (stable, default)
+    - Depth-Anything-V3-Mono-Small/Base/Large (better quality)
+    - Depth-Anything-V3-AnyView-Small/Base/Large (multi-view support)
     """
     _instance = None
 
@@ -70,16 +74,53 @@ class DepthModel:
         self._initialize_model()
 
     def _initialize_model(self):
-        """Initialize Depth Anything V2 model with the selected size"""
-        # Extract model size from depth_algorithm string
-        # 'Depth-Anything-V2-Small' -> 'small'
-        # 'Depth-Anything-V2-Base' -> 'base'
-        # 'Depth-Anything-V2-Large' -> 'large'
-        model_size = self.depth_algorithm.lower().split('-')[-1]  # Get last part after last dash
-        if model_size not in ['small', 'base', 'large']:
-            model_size = 'small'  # Fallback to small if unknown
+        """Initialize Depth Anything V2 or V3 model based on depth_algorithm"""
+        # Parse depth_algorithm string
+        # DA2: 'Depth-Anything-V2-Small' -> version='v2', size='small', variant=None
+        # DA3: 'Depth-Anything-V3-Mono-Large' -> version='v3', size='large', variant='mono'
+        parts = self.depth_algorithm.lower().split('-')
 
-        self.depth_anything = DepthAnything(self.device, model_size=model_size)
+        # Determine version
+        is_v3 = 'v3' in parts
+
+        # Extract model size (always last part)
+        model_size = parts[-1]
+        if model_size not in ['small', 'base', 'large']:
+            logger.warning(f"Unknown model size '{model_size}', defaulting to 'small'")
+            model_size = 'small'
+
+        if is_v3:
+            # DA3 model - extract variant (mono or anyview)
+            # 'depth-anything-v3-mono-small' -> variant='mono'
+            # 'depth-anything-v3-anyview-base' -> variant='any-view'
+            variant = 'mono'  # Default
+            if 'anyview' in parts:
+                variant = 'any-view'
+            elif 'mono' in parts:
+                variant = 'mono'
+
+            logger.info(f"Loading Depth Anything V3 ({variant}, {model_size})")
+
+            try:
+                from .depth_anything_v3 import DepthAnythingV3
+                self.depth_anything = DepthAnythingV3(
+                    self.device,
+                    model_size=model_size,
+                    variant=variant
+                )
+                self.is_v3 = True
+            except ImportError as e:
+                logger.error(
+                    "Depth Anything V3 not available. Install with: pip install depth-anything-3 xformers"
+                )
+                logger.warning("Falling back to Depth Anything V2 Small")
+                self.depth_anything = DepthAnything(self.device, model_size='small')
+                self.is_v3 = False
+        else:
+            # DA2 model
+            logger.info(f"Loading Depth Anything V2 ({model_size})")
+            self.depth_anything = DepthAnything(self.device, model_size=model_size)
+            self.is_v3 = False
 
     def predict(self, prev_img_cv2, midas_weight=None, half_precision=None) -> torch.Tensor:
         """
@@ -101,7 +142,12 @@ class DepthModel:
         """Move model to specified device"""
         self.device = device
         if hasattr(self, 'depth_anything'):
-            self.depth_anything.pipe.model.to(device)
+            if hasattr(self, 'is_v3') and self.is_v3:
+                # DA3 model has different structure
+                self.depth_anything.model.to(device)
+            else:
+                # DA2 model uses pipeline
+                self.depth_anything.pipe.model.to(device)
         gc.collect()
         torch.cuda.empty_cache()
 

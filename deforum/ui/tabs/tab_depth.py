@@ -35,6 +35,8 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             use_depth_warping = create_gr_elem(da.use_depth_warping)
             depth_algorithm = create_gr_elem(da.depth_algorithm)
             midas_weight = create_gr_elem(da.midas_weight)
+        with FormRow(visible=is_visible) as depth_warp_row_1b:
+            tween_generation_mode = create_gr_elem(da.tween_generation_mode)
         with FormRow(visible=is_visible) as depth_warp_row_2:
             padding_mode = create_gr_elem(da.padding_mode)
             sampling_mode = create_gr_elem(da.sampling_mode)
@@ -127,14 +129,20 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             far_schedule = create_gr_elem(da.far_schedule)
 
     # Explanation after controls
-    with gr.Accordion(f"{emoji_utils.info} About 3D Depth Warping", open=False):
+    with gr.Accordion(f"{emoji_utils.info} About 3D Depth Warping & Tween Generation", open=False):
         gr.Markdown("""
         ## 3D Depth Warping & FOV
         **Transform 2D images into 3D space** using AI depth estimation for realistic camera movement.
 
-        **Depth Estimation:**
-        - Uses **Depth-Anything V2** - State-of-the-art depth estimation model
-        - Provides accurate depth maps for realistic 3D camera effects
+        **Depth Estimation Models:**
+        - **Depth-Anything V2** (default) - Fast, stable, accurate
+        - **Depth-Anything V3 Mono** - Better quality (+25% accuracy)
+        - **Depth-Anything V3 AnyView** - Multi-view geometry support
+
+        **Tween Generation Modes:**
+        - **depth_warp** (default) - Classic depth-based warping, fast and stable
+        - **da3_multiview** - Multi-view geometry for temporal consistency (requires DA3 AnyView)
+        - **da3_gaussian** - 3D Gaussian Splatting for ultimate quality (requires Gaussian Scene mode)
 
         **When to Use:**
         - Required for **3D Animation Mode** to enable camera movement through space
@@ -144,6 +152,10 @@ def get_tab_depth_warping(da, skip_tabitem=False):
         **FOV (Field of View):**
         - Controls perspective intensity (lower = more dramatic)
         - Near/Far planes control depth clipping range
+
+        **DA3 Requirements:**
+        - Install from GitHub: `git clone https://github.com/ByteDance-Seed/Depth-Anything-3.git && cd Depth-Anything-3 && pip install -e .`
+        - For 3DGS: Also install `gsplat` from GitHub
         """)
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
