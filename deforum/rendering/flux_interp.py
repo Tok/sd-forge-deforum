@@ -730,26 +730,14 @@ def generate_da3_3dgs_segment(first_image, last_image, first_frame_idx, last_fra
         result = depth_model.estimate_3d_gaussians(keyframe_images)
 
         if result is None:
-            logger.error(f"   {emoji_if_enabled('❌')} 3DGS scene building failed!")
-            logger.warning(f"   Model {model_selection} may not have trained gs_head/gs_adapter")
-            logger.warning(f"   Falling back to simple linear interpolation...")
+            # Model doesn't support 3DGS, but we can still use depth maps for warping
+            logger.warning(f"   {emoji_if_enabled('⚠️')} Model {model_selection} doesn't support 3DGS (no gs_head/gs_adapter)")
+            logger.info(f"   {emoji_if_enabled('✨')} Using standard depth estimation for 3D warping instead...")
 
-            # Fallback: Simple linear blend between keyframes
-            frame_paths = []
-            for i in range(num_frames):
-                alpha = (i + 1) / (num_frames + 1)  # 0 to 1 progression
+            # Get depth maps without 3DGS (standard DA3 inference)
+            result = depth_model.model.inference([first_np, last_np])
 
-                # Linear interpolation
-                blended = Image.blend(first_image, last_image, alpha)
-
-                # Save frame
-                global_frame_idx = first_frame_idx + 1 + i
-                target_filename = f"{global_frame_idx:09d}.png"
-                target_path = os.path.join(data.output_directory, target_filename)
-                blended.save(target_path)
-                frame_paths.append(target_path)
-
-            return frame_paths
+        # result should now have depth maps either from 3DGS or standard inference
 
         # Implement novel view rendering from DA3 result
         # DA3 provides depth maps + camera poses, we can use depth-based warping
@@ -770,123 +758,72 @@ def generate_da3_3dgs_segment(first_image, last_image, first_frame_idx, last_fra
 
             logger.debug(f"   Depth maps: first={first_depth.shape}, last={last_depth.shape}")
 
-            # Use 3D depth warping with camera path interpolation
-            # This is proper novel view synthesis using depth geometry and camera transforms
-            from deforum.rendering.util.py3d_utils import image_transform_optical_flow
-            from deforum.rendering.data.anim.deform_keys import DeformKeys
+            # Use proper 3D depth warping for novel view synthesis
+            from deforum.animation.animation import anim_frame_warp_3d
+            import math
 
             keys = data.animation_keys.deform_keys
+            anim_args = data.args.anim_args
+
+            # Prepare depth tensors in format expected by warp function
+            # DA3 returns [H, W], warp expects [1, 1, H, W]
+            first_depth_tensor = first_depth.unsqueeze(0).unsqueeze(0)  # [1, 1, H, W]
+            last_depth_tensor = last_depth.unsqueeze(0).unsqueeze(0)
 
             frame_paths = []
             for i in range(num_frames):
                 global_frame_idx = first_frame_idx + 1 + i
                 alpha = (i + 1) / (num_frames + 1)
 
-                # Get camera transforms for this intermediate frame from schedules
-                # Interpolate between first_frame and last_frame camera positions
-                tx = keys.translation_x_series[global_frame_idx]
-                ty = keys.translation_y_series[global_frame_idx]
-                tz = keys.translation_z_series[global_frame_idx]
-                rx = keys.rotation_3d_x_series[global_frame_idx]
-                ry = keys.rotation_3d_y_series[global_frame_idx]
-                rz = keys.rotation_3d_z_series[global_frame_idx]
-
-                # Determine which keyframe to warp from based on proximity
-                # Closer to start: warp from first_image, closer to end: warp from last_image
+                # Choose source keyframe to warp from (closest one for better quality)
                 if alpha < 0.5:
-                    # Warp from first keyframe
                     source_image = first_image
-                    source_depth = first_depth
-                    # Calculate relative transform from first_frame to current
-                    rel_tx = tx - keys.translation_x_series[first_frame_idx]
-                    rel_ty = ty - keys.translation_y_series[first_frame_idx]
-                    rel_tz = tz - keys.translation_z_series[first_frame_idx]
-                    rel_rx = rx - keys.rotation_3d_x_series[first_frame_idx]
-                    rel_ry = ry - keys.rotation_3d_y_series[first_frame_idx]
-                    rel_rz = rz - keys.rotation_3d_z_series[first_frame_idx]
+                    source_depth_tensor = first_depth_tensor
+                    source_frame_idx = first_frame_idx
                 else:
-                    # Warp from last keyframe
                     source_image = last_image
-                    source_depth = last_depth
-                    # Calculate relative transform from last_frame to current
-                    rel_tx = tx - keys.translation_x_series[last_frame_idx]
-                    rel_ty = ty - keys.translation_y_series[last_frame_idx]
-                    rel_tz = tz - keys.translation_z_series[last_frame_idx]
-                    rel_rx = rx - keys.rotation_3d_x_series[last_frame_idx]
-                    rel_ry = ry - keys.rotation_3d_y_series[last_frame_idx]
-                    rel_rz = rz - keys.rotation_3d_z_series[last_frame_idx]
+                    source_depth_tensor = last_depth_tensor
+                    source_frame_idx = last_frame_idx
 
-                # Apply 3D depth warp to source image using relative camera transform
-                # TODO: This needs actual depth warping implementation from py3d_utils
-                # For now, fall back to depth-weighted blending
-                logger.warning(f"   3D depth warping not yet integrated, using depth-weighted blend")
+                # Convert PIL to cv2 format (BGR numpy array)
+                source_cv2 = cv2.cvtColor(np.array(source_image), cv2.COLOR_RGB2BGR)
 
-                # Depth-weighted interpolation (better than linear, not as good as warping)
-                depth_weight_first = (1 / (first_depth + 1e-6)).clamp(0, 10)
-                depth_weight_last = (1 / (last_depth + 1e-6)).clamp(0, 10)
+                # Apply 3D depth warp using Deforum's warp function
+                # This warps the source image to the target camera position
+                warped_cv2 = anim_frame_warp_3d(
+                    device=device,
+                    prev_img_cv2=source_cv2,
+                    depth=source_depth_tensor,
+                    anim_args=anim_args,
+                    keys=keys,
+                    frame_idx=global_frame_idx,
+                    shaker=None  # No camera shake for interpolated frames
+                )
 
-                total_weight = depth_weight_first * (1 - alpha) + depth_weight_last * alpha
-                w_first = (depth_weight_first * (1 - alpha)) / (total_weight + 1e-6)
-                w_last = (depth_weight_last * alpha) / (total_weight + 1e-6)
-
-                first_arr = np.array(first_image).astype(np.float32) / 255.0
-                last_arr = np.array(last_image).astype(np.float32) / 255.0
-
-                w_first_np = w_first.cpu().numpy()[..., np.newaxis]
-                w_last_np = w_last.cpu().numpy()[..., np.newaxis]
-
-                blended = first_arr * w_first_np + last_arr * w_last_np
-                blended = (blended * 255).clip(0, 255).astype(np.uint8)
-                blended_img = Image.fromarray(blended)
+                # Convert back to PIL RGB
+                warped_rgb = cv2.cvtColor(warped_cv2, cv2.COLOR_BGR2RGB)
+                warped_img = Image.fromarray(warped_rgb)
 
                 # Save frame
                 target_filename = f"{global_frame_idx:09d}.png"
                 target_path = os.path.join(data.output_directory, target_filename)
-                blended_img.save(target_path)
+                warped_img.save(target_path)
                 frame_paths.append(target_path)
 
-            logger.info(f"   {emoji_if_enabled('✅')} Generated {len(frame_paths)} depth-aware interpolated frames")
+            logger.info(f"   {emoji_if_enabled('✅')} Generated {len(frame_paths)} 3D-warped frames")
             return frame_paths
 
         except Exception as e:
-            logger.warning(f"   Novel view rendering failed: {e}")
-            logger.warning(f"   Falling back to simple linear interpolation...")
+            logger.error(f"   {emoji_if_enabled('❌')} 3D depth warping failed: {e}")
             import traceback
             logger.debug(traceback.format_exc())
-
-        frame_paths = []
-        for i in range(num_frames):
-            alpha = (i + 1) / (num_frames + 1)
-            blended = Image.blend(first_image, last_image, alpha)
-
-            global_frame_idx = first_frame_idx + 1 + i
-            target_filename = f"{global_frame_idx:09d}.png"
-            target_path = os.path.join(data.output_directory, target_filename)
-            blended.save(target_path)
-            frame_paths.append(target_path)
-
-        logger.info(f"   {emoji_if_enabled('✅')} Generated {len(frame_paths)} interpolated frames")
-        return frame_paths
+            raise  # Re-raise to propagate error
 
     except Exception as e:
         logger.error(f"   {emoji_if_enabled('❌')} DA3-3DGS failed: {e}")
         import traceback
         logger.debug(traceback.format_exc())
-        logger.warning(f"   Falling back to simple linear interpolation...")
-
-        # Fallback to linear interpolation
-        frame_paths = []
-        for i in range(num_frames):
-            alpha = (i + 1) / (num_frames + 1)
-            blended = Image.blend(first_image, last_image, alpha)
-
-            global_frame_idx = first_frame_idx + 1 + i
-            target_filename = f"{global_frame_idx:09d}.png"
-            target_path = os.path.join(data.output_directory, target_filename)
-            blended.save(target_path)
-            frame_paths.append(target_path)
-
-        return frame_paths
+        raise  # Re-raise to propagate error - no blending fallback!
 
 
 def generate_film_segment(first_image, last_image, num_frames, height, width,
