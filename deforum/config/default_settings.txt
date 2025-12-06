@@ -155,7 +155,7 @@
     "perlin_octaves": 4,
     "perlin_persistence": 0.5,
     "use_depth_warping": true,
-    "depth_algorithm": "Depth-Anything-V2-Small",
+    "depth_algorithm": "Depth-Anything-V3-Mono-Small",
     "tween_generation_mode": "depth_warp",
     "midas_weight": 0.2,
     "padding_mode": "border",

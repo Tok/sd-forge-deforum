@@ -178,11 +178,12 @@ git checkout dev
 - **Context-Aware Controls**: UI adapts based on selected render mode
 - **Dual Strength Schedules**: Normal + keyframe strength for advanced control
 
-### 🕳️ **Depth-Anything V2** (Legacy depth model - still supported)
+### 🕳️ **Depth-Anything V2** (Legacy - deprecated in favor of V3)
+- **Status**: Still functional but superseded by V3 (will be phased out in future releases)
 - **State-of-Art (2023)**: Excellent depth estimation for traditional depth warping
 - **Unified Model**: Single model replaces 5 legacy options (MiDaS, AdaBins, LeReS, ZoeDepth, DPT-Large)
-- **Auto-Download**: First use downloads to `models/Deforum/`
-- **GPU Accelerated**: Optimized for modern hardware
+- **Migration**: DA3 Mono models are drop-in replacements with better quality
+- **Recommendation**: Switch to DA3-Mono-Small for improved depth estimation
 
 ### 🌌 **Depth-Anything V3 + Gaussian Scene Mode** (NEW - 3D Gaussian Splatting)
 - **State-of-Art (2025)**: Latest depth estimation with multi-view geometry and 3DGS capabilities

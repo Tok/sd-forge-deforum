@@ -622,18 +622,18 @@ def DeforumAnimArgs():
             "label": "Depth Algorithm",
             "type": "dropdown",
             "choices": [
-                'Depth-Anything-V2-Small',
-                'Depth-Anything-V2-Base',
-                'Depth-Anything-V2-Large',
                 'Depth-Anything-V3-Mono-Small',
                 'Depth-Anything-V3-Mono-Base',
                 'Depth-Anything-V3-Mono-Large',
                 'Depth-Anything-V3-AnyView-Small',
                 'Depth-Anything-V3-AnyView-Base',
-                'Depth-Anything-V3-AnyView-Large'
+                'Depth-Anything-V3-AnyView-Large',
+                'Depth-Anything-V2-Small',
+                'Depth-Anything-V2-Base',
+                'Depth-Anything-V2-Large'
             ],
-            "value": "Depth-Anything-V2-Small",
-            "info": "Depth model: V2 (stable, default) or V3 (better quality, requires depth-anything-3 package). Mono=single-view, AnyView=multi-view support"
+            "value": "Depth-Anything-V3-Mono-Small",
+            "info": "Depth model: V3 (recommended, better quality) or V2 (legacy, stable). Mono=single-view, AnyView=multi-view+3DGS support. V2 will be phased out in future releases."
         },
         "tween_generation_mode": {
             "label": "Tween Generation Mode",
