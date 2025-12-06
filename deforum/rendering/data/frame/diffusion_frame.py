@@ -146,16 +146,28 @@ class DiffusionFrame:
 
         # Store frames for DA3 Gaussian splatting scene building
         if hasattr(data, 'generated_keyframes'):
-            # Check if we should store this frame
-            use_all_frames = getattr(data.args.anim_args, 'da3_3dgs_use_all_frames', False)
+            # Get collection strategy: 'keyframes', 'diffusion', or 'all'
+            collection_mode = getattr(data.args.anim_args, 'da3_3dgs_frame_collection', 'keyframes')
             max_frames = getattr(data.args.anim_args, 'da3_3dgs_max_frames', 30)
             current_count = len(data.generated_keyframes)
 
-            # Store if: (keyframes only and is_keyframe) OR (all frames and under limit)
-            should_store = (
-                (not use_all_frames and self.is_keyframe) or  # Keyframes only mode
-                (use_all_frames and current_count < max_frames)  # All frames mode with limit
-            )
+            # Determine if we should store this diffusion frame
+            should_store = False
+            if collection_mode == 'keyframes':
+                # Only keyframes
+                should_store = self.is_keyframe
+            elif collection_mode == 'diffusion':
+                # All diffusion frames (keyframes + non-key diffusion frames)
+                # Note: Tweens are NOT diffusion frames, so they won't be stored here
+                should_store = True
+            elif collection_mode == 'all':
+                # All frames including tweens - but tweens are stored separately
+                # Here we just store all diffusion frames
+                should_store = True
+
+            # Apply max_frames limit
+            if should_store and current_count >= max_frames:
+                should_store = False
 
             if should_store:
                 # Convert to numpy array if needed
@@ -170,7 +182,8 @@ class DiffusionFrame:
                     'image': image_np,
                     'depth': self.depth,  # Will be set by progress_and_save
                     'seed': self.seed,
-                    'is_keyframe': self.is_keyframe
+                    'is_keyframe': self.is_keyframe,
+                    'is_tween': False  # This is a diffusion frame, not a tween
                 }
                 data.generated_keyframes.append(frame_data)
 

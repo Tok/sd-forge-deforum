@@ -34,6 +34,31 @@ class Tween:
         saved_image = image_utils.save_and_return_frame(data, self, new_image)
         total_tqdm.increment_tween_count()
 
+        # Store tween for DA3 Gaussian splatting scene building (if 'all' mode)
+        if hasattr(data, 'generated_keyframes'):
+            collection_mode = getattr(data.args.anim_args, 'da3_3dgs_frame_collection', 'keyframes')
+            max_frames_limit = getattr(data.args.anim_args, 'da3_3dgs_max_frames', 30)
+            current_count = len(data.generated_keyframes)
+
+            # Only store tweens in 'all' mode
+            if collection_mode == 'all' and current_count < max_frames_limit:
+                import numpy as np
+                # Convert saved_image (OpenCV BGR) to numpy if needed
+                if isinstance(saved_image, np.ndarray):
+                    image_np = saved_image
+                else:
+                    image_np = np.array(saved_image)
+
+                frame_data = {
+                    'frame_idx': self.i,
+                    'image': image_np,
+                    'depth': self.depth,
+                    'seed': last_frame.seed,  # Tweens inherit seed from parent keyframe
+                    'is_keyframe': False,
+                    'is_tween': True
+                }
+                data.generated_keyframes.append(frame_data)
+
         # updating reference images for next iteration
         data.images.before_previous = data.images.previous
         data.images.previous = saved_image
@@ -177,8 +202,10 @@ class Tween:
     def _collect_keyframes(self, data):
         """Collect generated frames for 3DGS scene building.
 
-        Collects either keyframes only or all diffusion frames based on
-        da3_3dgs_use_all_frames setting (up to da3_3dgs_max_frames limit).
+        Collection strategy based on da3_3dgs_frame_collection setting:
+        - 'keyframes': Keyframes only (minimal, default)
+        - 'diffusion': Keyframes + non-key diffusion frames (New 3D mode)
+        - 'all': Keyframes + diffusion + tweens (maximum quality)
 
         Returns:
             List of numpy array images (BGR format) for DA3 3DGS processing
@@ -189,17 +216,27 @@ class Tween:
             # DA3 expects List[np.ndarray], not List[dict]
             images = [kf['image'] for kf in frame_dicts]
 
-            # Log what we collected
-            use_all_frames = getattr(data.args.anim_args, 'da3_3dgs_use_all_frames', False)
+            # Count frame types for logging
             keyframe_count = sum(1 for kf in frame_dicts if kf.get('is_keyframe', False))
+            tween_count = sum(1 for kf in frame_dicts if kf.get('is_tween', False))
+            diffusion_count = len(images) - tween_count  # All non-tweens are diffusion frames
 
-            if use_all_frames:
-                log_utils.info(
-                    f"Collected {len(images)} frames for 3DGS scene building "
-                    f"({keyframe_count} keyframes + {len(images) - keyframe_count} cadence)"
-                )
-            else:
+            # Get collection mode
+            collection_mode = getattr(data.args.anim_args, 'da3_3dgs_frame_collection', 'keyframes')
+
+            # Log what we collected
+            if collection_mode == 'keyframes':
                 log_utils.info(f"Collected {len(images)} keyframes for 3DGS scene building")
+            elif collection_mode == 'diffusion':
+                log_utils.info(
+                    f"Collected {len(images)} diffusion frames for 3DGS scene building "
+                    f"({keyframe_count} keyframes + {diffusion_count - keyframe_count} cadence)"
+                )
+            elif collection_mode == 'all':
+                log_utils.info(
+                    f"Collected {len(images)} total frames for 3DGS scene building "
+                    f"({keyframe_count} keyframes + {diffusion_count - keyframe_count} diffusion + {tween_count} tweens)"
+                )
 
             return images
         else:

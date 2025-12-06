@@ -658,11 +658,12 @@ def DeforumAnimArgs():
             "step": 5.0,
             "info": "Adaptive confidence threshold for DA3 depth estimation (0-100). Lower = more strict, higher = more permissive. Default 40.0 works well for most scenes."
         },
-        "da3_3dgs_use_all_frames": {
-            "label": "3DGS: Use All Frames for Scene Building",
-            "type": "checkbox",
-            "value": False,
-            "info": "Use ALL diffused frames (keyframes + cadence) for 3D Gaussian scene reconstruction instead of keyframes only. Provides better scene quality but uses more memory. Most useful for first ~20-30 frames."
+        "da3_3dgs_frame_collection": {
+            "label": "3DGS: Frame Collection Strategy",
+            "type": "dropdown",
+            "choices": ['all', 'diffusion', 'keyframes'],
+            "value": "all",
+            "info": "Which frames to use for 3D Gaussian scene building: 'all' (keyframes + diffusion + tweens, maximum quality, default), 'diffusion' (keyframes + non-key diffusion frames in New 3D mode), 'keyframes' (keyframes only, minimal memory)"
         },
         "da3_3dgs_max_frames": {
             "label": "3DGS: Max Frames for Scene Building",
