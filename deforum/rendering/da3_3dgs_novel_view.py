@@ -201,10 +201,10 @@ def render_novel_view_from_gaussians(
             means=means.unsqueeze(0),  # [1, N, 3]
             quats=rotations.unsqueeze(0),  # [1, N, 4]
             scales=scales.unsqueeze(0),  # [1, N, 3]
-            opacities=opacities.unsqueeze(0),  # [1, N] - no extra dimension!
+            opacities=opacities.unsqueeze(0),  # [1, N]
             colors=colors_rgb.unsqueeze(0),  # [1, N, 3]
-            viewmats=viewmat.unsqueeze(0),  # [1, 4, 4]
-            Ks=torch.from_numpy(camera_intrinsics).float().to(device).unsqueeze(0),  # [1, 3, 3]
+            viewmats=viewmat.unsqueeze(0).unsqueeze(0),  # [1, 1, 4, 4] - batch, cameras, 4, 4
+            Ks=torch.from_numpy(camera_intrinsics).float().to(device).unsqueeze(0).unsqueeze(0),  # [1, 1, 3, 3]
             width=width,
             height=height,
         )
