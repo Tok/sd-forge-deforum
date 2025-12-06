@@ -175,13 +175,18 @@ class Tween:
             return self._generate_standard_depth_warp(data, last_frame, prev_image)
 
     def _collect_keyframes(self, data):
-        """Collect all generated keyframe images for 3DGS scene building."""
-        # This is a simplified implementation
-        # In production, keyframes should be collected as they're generated
-        # For now, we return empty list and rely on incremental building
-        # TODO: Implement proper keyframe collection during rendering
-        log_utils.warning("Keyframe collection not fully implemented - 3DGS may not work correctly")
-        return []
+        """Collect all generated keyframe images for 3DGS scene building.
+
+        Returns:
+            List of keyframe dicts with keys: frame_idx, image, depth, seed
+        """
+        if hasattr(data, 'generated_keyframes'):
+            keyframes = data.generated_keyframes
+            log_utils.info(f"Collected {len(keyframes)} keyframes for 3DGS scene building")
+            return keyframes
+        else:
+            log_utils.warning("No keyframes collected yet - generated_keyframes not initialized")
+            return []
 
     def _generate_standard_depth_warp(self, data, last_frame, prev_image):
         """Standard depth warp pipeline (extracted for fallback)."""

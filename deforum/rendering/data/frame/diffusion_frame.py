@@ -144,6 +144,24 @@ class DiffusionFrame:
         self.progress_and_save(data, image)
         self.update_render_preview(data)
 
+        # Store keyframe for DA3 Gaussian splatting scene building
+        # Only store actual keyframes (not all diffusion frames)
+        if self.is_keyframe and hasattr(data, 'generated_keyframes'):
+            # Convert to numpy array if needed
+            import numpy as np
+            if isinstance(image, Image.Image):
+                image_np = np.array(image)
+            else:
+                image_np = image
+
+            keyframe_data = {
+                'frame_idx': self.i,
+                'image': image_np,
+                'depth': self.depth,  # Will be set by progress_and_save
+                'seed': self.seed
+            }
+            data.generated_keyframes.append(keyframe_data)
+
     def progress_and_save(self, data: RenderData, image):
         """Will progress frame or turbo-frame step, save the image, update `self.depth` and return next index."""
         opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)

@@ -67,6 +67,7 @@ class RenderData:
     depth_model: Any
     output_directory: str
     is_use_mask: bool
+    generated_keyframes: list  # Track keyframes for DA3 Gaussian splatting scene building
 
     @staticmethod
     def create(args, parseq_args, anim_args, video_args, loop_args,
@@ -88,13 +89,13 @@ class RenderData:
         # Feels slightly awkward, but it's probably not worth optimizing since only 1st and gc can take care of it fine.
         incomplete_init = RenderData(None, None, None, args.seed, ri_args, parseq_adapter, srt,
                                      animation_keys, animation_mode, prompt_series, depth_model,
-                                     output_directory, is_use_mask)
+                                     output_directory, is_use_mask, [])
         images = Images.create(incomplete_init)
         shaker = Shaker.create(incomplete_init)
         mask = Mask.create(incomplete_init, 0)  # TODO? fix index
 
         instance = RenderData(images, shaker, mask, args.seed, ri_args, parseq_adapter, srt, animation_keys,
-                              animation_mode, prompt_series, depth_model, output_directory, is_use_mask)
+                              animation_mode, prompt_series, depth_model, output_directory, is_use_mask, [])
         RenderData.init_looper_if_active(args, loop_args)
         RenderData.handle_controlnet_video_input_frames_generation(controlnet_args, args, anim_args)
         RenderData.create_output_directory_for_the_batch(args.outdir)
