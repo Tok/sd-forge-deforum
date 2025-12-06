@@ -282,7 +282,9 @@ def prepare_generation(data: RenderData, frame: DiffusionFrame):
     # (belongs to completed frame, not upcoming one)
     dashboard = getattr(data, 'dashboard', None)
     if dashboard and hasattr(dashboard, 'last_frame_image') and dashboard.last_frame_image is not None:
-        dashboard.add_ascii_art_to_log(dashboard.last_frame_image, frame.i - 1)
+        # Use tracked frame index instead of frame.i - 1 (which points to last tween, not keyframe)
+        frame_idx = getattr(dashboard, 'last_frame_idx', frame.i - 1)
+        dashboard.add_ascii_art_to_log(dashboard.last_frame_image, frame_idx)
 
     # Update dashboard frame type to match log output
     if dashboard:

@@ -394,6 +394,26 @@ def get_tab_depth_warping(da, skip_tabitem=False):
     is_visible = True
     is_info_visible = is_visible
 
+    # Define auto-switching function before creating components
+    def auto_switch_depth_model(tween_mode: str) -> str:
+        """Auto-select optimal depth model for selected tween mode.
+
+        Args:
+            tween_mode: Selected tween generation mode
+
+        Returns:
+            Recommended depth model name
+        """
+        # 3DGS requires AnyView variant for multi-view geometry
+        if tween_mode == 'da3_gaussian':
+            return 'Depth-Anything-V3-AnyView-Small'
+        # Multiview also benefits from AnyView
+        elif tween_mode == 'da3_multiview':
+            return 'Depth-Anything-V3-AnyView-Small'
+        # Classic depth warp can use faster Mono variant
+        else:  # depth_warp
+            return 'Depth-Anything-V3-Mono-Small'
+
     # Controls first - most important
     with gr.Accordion(f"{emoji_utils.gear()} Depth Settings", open=True):
         depth_warp_msg_html = gr.HTML(
@@ -405,6 +425,11 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             use_depth_warping = create_gr_elem(da.use_depth_warping)
             depth_algorithm = create_gr_elem(da.depth_algorithm)
         # midas_weight removed - legacy parameter no longer needed with DA3
+        with FormRow(visible=is_visible) as depth_warp_row_1b:
+            tween_generation_mode = create_gr_elem(da.tween_generation_mode)
+        with FormRow(visible=is_visible) as depth_warp_row_1c:
+            da3_use_ray_pose = create_gr_elem(da.da3_use_ray_pose)
+            da3_conf_thresh_percentile = create_gr_elem(da.da3_conf_thresh_percentile)
         with FormRow(visible=is_visible) as depth_warp_row_2:
             padding_mode = create_gr_elem(da.padding_mode)
             sampling_mode = create_gr_elem(da.sampling_mode)
@@ -468,14 +493,24 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             far_schedule = create_gr_elem(da.far_schedule)
 
     # Explanation after controls
-    with gr.Accordion(f"{emoji_utils.info} About 3D Depth Warping", open=False):
+    with gr.Accordion(f"{emoji_utils.info} About 3D Depth Warping & Tween Generation", open=False):
         gr.Markdown("""
         ## 3D Depth Warping & FOV
         **Transform 2D images into 3D space** using AI depth estimation for realistic camera movement.
 
-        **Depth Estimation:**
-        - Uses **Depth-Anything V2** - State-of-the-art depth estimation model
-        - Provides accurate depth maps for realistic 3D camera effects
+        **Depth Estimation Models:**
+        - **Depth-Anything V3 AnyView** - Multi-view geometry + 3DGS support, best quality
+        - **Depth-Anything V3 Mono** - Single-view only, faster but no 3DGS
+        - **Depth-Anything V2** (legacy) - Older models, will be phased out
+
+        **Auto-Selection:** Depth model auto-switches based on tween mode:
+        - `da3_gaussian` or `da3_multiview` → AnyView (required for multi-view features)
+        - `depth_warp` → Mono (faster, lower VRAM)
+
+        **Tween Generation Modes:**
+        - **da3_gaussian** (default) - 3D Gaussian Splatting for ultimate quality and geometric consistency
+        - **da3_multiview** - Multi-view geometry for temporal consistency
+        - **depth_warp** - Classic depth-based warping, fastest but less accurate
 
         **When to Use:**
         - Required for **3D Animation Mode** to enable camera movement through space
@@ -485,7 +520,19 @@ def get_tab_depth_warping(da, skip_tabitem=False):
         **FOV (Field of View):**
         - Controls perspective intensity (lower = more dramatic)
         - Near/Far planes control depth clipping range
+
+        **DA3 Installation:**
+        - Package auto-installs from GitHub via requirements.txt
+        - Models auto-download from HuggingFace on first use
+        - For 3DGS (optional): Install `gsplat` with `pip install --no-build-isolation git+https://github.com/nerfstudio-project/gsplat.git@0b4dddf04cb687367602c01196913cde6a743d70`
         """)
+
+    # Wire up auto-switching when tween mode changes
+    tween_generation_mode.change(
+        fn=auto_switch_depth_model,
+        inputs=[tween_generation_mode],
+        outputs=[depth_algorithm]
+    )
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
 

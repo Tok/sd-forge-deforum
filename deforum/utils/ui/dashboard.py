@@ -118,6 +118,7 @@ class FixedDashboard:
 
         # State
         self.last_frame_image = None
+        self.last_frame_idx = None  # Track frame index of last_frame_image
         self.frame_info = {
             'current': 0,
             'total': 0,

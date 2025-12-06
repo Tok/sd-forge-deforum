@@ -217,6 +217,8 @@ def _update_dashboard(args, anim_args, p, keys, frame_idx, previous_image, dashb
     if previous_image is not None:
         dashboard.frame_info['color_rgb'] = _get_mean_color(previous_image)
         dashboard.last_frame_image = previous_image  # Store for ASCII preview (printed before next frame)
+        # Previous image is from frame_idx - 1
+        dashboard.last_frame_idx = max(0, frame_idx - 1)
 
     # Update table data
     total_steps = p.steps
@@ -682,6 +684,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
     # (show actual generated frame, not the transformed input)
     if dashboard is not None:
         dashboard.last_frame_image = results
+        dashboard.last_frame_idx = frame  # Track frame index of generated image
 
     return results
 
