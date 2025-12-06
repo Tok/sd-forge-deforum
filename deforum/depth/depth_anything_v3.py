@@ -106,19 +106,20 @@ class DepthAnythingV3:
         # Run DA3 inference
         result = self.model.inference([image])
 
-        # Extract depth map (result is dict with 'depth', 'confidence', etc.)
-        depth = result['depth'][0]  # First (and only) image
+        # Extract depth map from Prediction object (dataclass with .depth attribute)
+        # result.depth is np.ndarray with shape [N, H, W] where N is number of images
+        depth_np = result.depth[0]  # First (and only) image -> [H, W]
 
         # Convert to tensor format matching DA2 output: [1, 1, H, W]
-        if isinstance(depth, torch.Tensor):
+        if isinstance(depth_np, torch.Tensor):
+            depth = depth_np
             if depth.ndim == 2:
                 depth = depth.unsqueeze(0).unsqueeze(0)  # [H,W] -> [1,1,H,W]
             elif depth.ndim == 3:
                 depth = depth.unsqueeze(0)  # [1,H,W] -> [1,1,H,W]
         else:
-            # Convert numpy/PIL to tensor
-            depth_tensor = transforms.ToTensor()(depth).unsqueeze(0)
-            depth = depth_tensor
+            # Convert numpy to tensor [H,W] -> [1,1,H,W]
+            depth = torch.from_numpy(depth_np).unsqueeze(0).unsqueeze(0).float()
 
         return depth
 
@@ -190,10 +191,11 @@ class DepthAnythingV3:
             else:
                 pil_images.append(img)
 
-        # Run DA3 inference with 3DGS task
+        # Run DA3 inference with 3DGS enabled
         try:
-            result = self.model.inference(pil_images, task='3dgs')
-            return result.get('gaussians', None)
+            result = self.model.inference(pil_images, infer_gs=True)
+            # Return Prediction object with .gaussians attribute
+            return result
         except Exception as e:
             logger.error(f"3DGS estimation failed: {str(e)}")
             logger.info("This feature requires DA3NESTED-GIANT-LARGE model")
