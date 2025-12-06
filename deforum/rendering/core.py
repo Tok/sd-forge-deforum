@@ -48,6 +48,29 @@ def _strip_negative_prompt(prompt_text):
 
 
 def render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
+    # Aggressive VRAM cleanup before starting render
+    # This is critical when switching between different model types (Flux → Z-Image, etc.)
+    logger.debug("Performing VRAM cleanup before render start...")
+    import gc
+    import torch
+    from modules import devices
+
+    # Force garbage collection
+    gc.collect()
+
+    # Clear CUDA cache
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+
+    # Use Forge's device management if available
+    try:
+        devices.torch_gc()
+    except:
+        pass
+
+    logger.debug("VRAM cleanup complete")
+
     # Pre-download soundtrack if specified
     if video_args.add_soundtrack == 'File' and video_args.soundtrack_path is not None:
         if video_args.soundtrack_path.startswith(('http://', 'https://')):
@@ -58,7 +81,7 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
                 logger.info(f"Audio successfully pre-downloaded to: {video_args.soundtrack_path}")
             except Exception as e:
                 logger.error(f"Pre-downloading audio failed: {e}")
-    
+
     data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, root)
     check_render_conditions(data)
     web_ui_utils.init_job(data)
