@@ -230,13 +230,6 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     interp_method = getattr(wan_args, 'flux_flf2v_interpolation_method', 'Wan')
     logger.info(f"{emoji_if_enabled('📊')} Interpolation method: {interp_method}")
 
-    # Check if DA3-3DGS is selected (not yet implemented)
-    if interp_method == "DA3-3DGS":
-        logger.warning(f"{emoji_if_enabled('⚠️')} DA3-3DGS interpolation is not yet implemented!")
-        logger.warning(f"   This feature requires DA3-GIANT models with trained 3DGS heads.")
-        logger.warning(f"   Falling back to Wan FLF2V interpolation...")
-        interp_method = "Wan"  # Fallback to Wan
-
     # Unload Flux model to free GPU memory
     logger.info(f"{emoji_if_enabled('🗑')}️  Unloading Flux model to free GPU memory...")
     from backend import memory_management
@@ -384,6 +377,18 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 first_frame_idx=first_frame_idx,
                 output_dir=data.output_directory,
                 fps=video_args.fps
+            )
+        elif interp_method == "DA3-3DGS":
+            logger.info(f"      Using DA3 3D Gaussian Splatting")
+            logger.info(f"      Model: {getattr(wan_args, 'da3_3dgs_model', 'DA3-GIANT')}")
+            segment_frames = generate_da3_3dgs_segment(
+                first_image=first_image,
+                last_image=last_image,
+                first_frame_idx=first_frame_idx,
+                last_frame_idx=last_frame_idx,
+                num_frames=num_tween_frames,
+                wan_args=wan_args,
+                data=data
             )
         else:  # Default: Wan
             logger.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}")
@@ -656,6 +661,129 @@ def stitch_wan_flux_video(data, frame_paths, video_args, interp_method="Wan"):
             os.remove(concat_file)
 
     return output_path
+
+
+def generate_da3_3dgs_segment(first_image, last_image, first_frame_idx, last_frame_idx,
+                               num_frames, wan_args, data):
+    """
+    Generate frames using DA3 3D Gaussian Splatting for one segment.
+
+    Uses Depth Anything V3 GIANT models to build a 3DGS scene from keyframes
+    and render novel views for intermediate frames.
+
+    Args:
+        first_image: PIL Image of first keyframe
+        last_image: PIL Image of last keyframe
+        first_frame_idx: Global index of first keyframe
+        last_frame_idx: Global index of last keyframe
+        num_frames: Number of tween frames to generate (excluding keyframes)
+        wan_args: Wan arguments containing da3_3dgs_model selection
+        data: RenderData object with camera path schedules
+
+    Returns:
+        List of paths to generated tween frames
+    """
+    import numpy as np
+    import torch
+    from PIL import Image
+
+    logger.info(f"   {emoji_if_enabled('🌌')} DA3-3DGS interpolation: {num_frames} frames")
+
+    # Get selected GIANT model
+    model_selection = getattr(wan_args, 'da3_3dgs_model', 'DA3-GIANT')
+    logger.info(f"   Loading {model_selection} for 3DGS scene building...")
+
+    try:
+        # Import DA3 depth model
+        from deforum.depth.depth_anything_v3 import DepthAnythingV3
+
+        # Determine variant and size from selection
+        if model_selection == 'DA3-GIANT':
+            variant = 'giant'
+            size = 'giant'
+        elif model_selection == 'DA3NESTED-GIANT-LARGE':
+            variant = 'giant'
+            size = 'nested-giant-large'
+        else:
+            logger.warning(f"Unknown model '{model_selection}', using DA3-GIANT")
+            variant = 'giant'
+            size = 'giant'
+
+        # Initialize DA3 GIANT model
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        depth_model = DepthAnythingV3(device, model_size=size, variant=variant)
+
+        # Convert PIL images to numpy arrays (BGR for DA3)
+        first_np = cv2.cvtColor(np.array(first_image), cv2.COLOR_RGB2BGR)
+        last_np = cv2.cvtColor(np.array(last_image), cv2.COLOR_RGB2BGR)
+
+        # Build 3DGS scene from two keyframes
+        logger.info(f"   Building 3DGS scene from keyframes...")
+        keyframe_images = [first_np, last_np]
+
+        # Call DA3 3DGS inference with infer_gs=True
+        result = depth_model.estimate_3d_gaussians(keyframe_images)
+
+        if result is None:
+            logger.error(f"   {emoji_if_enabled('❌')} 3DGS scene building failed!")
+            logger.warning(f"   Model {model_selection} may not have trained gs_head/gs_adapter")
+            logger.warning(f"   Falling back to simple linear interpolation...")
+
+            # Fallback: Simple linear blend between keyframes
+            frame_paths = []
+            for i in range(num_frames):
+                alpha = (i + 1) / (num_frames + 1)  # 0 to 1 progression
+
+                # Linear interpolation
+                blended = Image.blend(first_image, last_image, alpha)
+
+                # Save frame
+                global_frame_idx = first_frame_idx + 1 + i
+                target_filename = f"{global_frame_idx:09d}.png"
+                target_path = os.path.join(data.output_directory, target_filename)
+                blended.save(target_path)
+                frame_paths.append(target_path)
+
+            return frame_paths
+
+        # TODO: Implement novel view rendering from 3DGS scene
+        # For now, this is a placeholder that does linear interpolation
+        logger.warning(f"   {emoji_if_enabled('⚠️')} Novel view rendering not yet implemented!")
+        logger.warning(f"   Using linear interpolation as fallback...")
+
+        frame_paths = []
+        for i in range(num_frames):
+            alpha = (i + 1) / (num_frames + 1)
+            blended = Image.blend(first_image, last_image, alpha)
+
+            global_frame_idx = first_frame_idx + 1 + i
+            target_filename = f"{global_frame_idx:09d}.png"
+            target_path = os.path.join(data.output_directory, target_filename)
+            blended.save(target_path)
+            frame_paths.append(target_path)
+
+        logger.info(f"   {emoji_if_enabled('✅')} Generated {len(frame_paths)} interpolated frames")
+        return frame_paths
+
+    except Exception as e:
+        logger.error(f"   {emoji_if_enabled('❌')} DA3-3DGS failed: {e}")
+        import traceback
+        logger.debug(traceback.format_exc())
+        logger.warning(f"   Falling back to simple linear interpolation...")
+
+        # Fallback to linear interpolation
+        frame_paths = []
+        for i in range(num_frames):
+            alpha = (i + 1) / (num_frames + 1)
+            blended = Image.blend(first_image, last_image, alpha)
+
+            global_frame_idx = first_frame_idx + 1 + i
+            target_filename = f"{global_frame_idx:09d}.png"
+            target_path = os.path.join(data.output_directory, target_filename)
+            blended.save(target_path)
+            frame_paths.append(target_path)
+
+        return frame_paths
 
 
 def generate_film_segment(first_image, last_image, num_frames, height, width,
