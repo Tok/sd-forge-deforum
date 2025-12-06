@@ -161,22 +161,22 @@ def render_novel_view_from_gaussians(
     viewmat = torch.from_numpy(camera_pose).float().to(device)  # [4, 4]
 
     # Build projection matrix from intrinsics
-    fx = camera_intrinsics[0, 0]
-    fy = camera_intrinsics[1, 1]
-    cx = camera_intrinsics[0, 2]
-    cy = camera_intrinsics[1, 2]
+    fx = float(camera_intrinsics[0, 0])
+    fy = float(camera_intrinsics[1, 1])
+    cx = float(camera_intrinsics[0, 2])
+    cy = float(camera_intrinsics[1, 2])
 
     # Construct OpenGL-style projection matrix
     near = 0.01
     far = 100.0
     projmat = torch.zeros(4, 4, device=device)
-    projmat[0, 0] = 2 * fx / width
-    projmat[1, 1] = 2 * fy / height
-    projmat[0, 2] = (2 * cx / width) - 1
-    projmat[1, 2] = (2 * cy / height) - 1
+    projmat[0, 0] = 2.0 * fx / width
+    projmat[1, 1] = 2.0 * fy / height
+    projmat[0, 2] = (2.0 * cx / width) - 1.0
+    projmat[1, 2] = (2.0 * cy / height) - 1.0
     projmat[2, 2] = -(far + near) / (far - near)
-    projmat[2, 3] = -2 * far * near / (far - near)
-    projmat[3, 2] = -1
+    projmat[2, 3] = -2.0 * far * near / (far - near)
+    projmat[3, 2] = -1.0
 
     # Rasterize gaussians
     # gsplat API: rasterization(means, quats, scales, opacities, colors, viewmats, Ks, width, height)
