@@ -9,12 +9,12 @@ Note: RIFE is NOT available here (defaults to single frames on dramatic changes)
       RIFE is available for post-processing smooth videos only.
 
 Architecture:
-  Phase 1: Generate ALL keyframes with Flux/SD
-  Phase 2: Batch interpolation between each consecutive keyframe pair (Wan/FILM)
+  Phase 1: Generate ALL keyframes with diffusion models (Flux/Z-Image/Lumina/SD)
+  Phase 2: Batch interpolation between each consecutive keyframe pair (Wan/FILM/DA3-3DGS)
   Phase 3: Stitch final video
 
 This combines the best of both worlds:
-- High-quality Flux-generated keyframes
+- High-quality diffusion-generated keyframes
 - Smooth interpolation between keyframes using your choice of method
 """
 
@@ -46,15 +46,15 @@ logger = get_logger()
 
 def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, wan_args, root):
     """
-    Flux + Interpolation rendering mode: Flux for keyframes + choice of interpolation
+    Keyframes + Interpolation rendering mode: Diffusion for keyframes + choice of interpolation
 
-    1. Generate all keyframes with Flux/SD
-    2. Interpolate between keyframes with Wan FLF2V or FILM
+    1. Generate all keyframes with diffusion models (Flux/Z-Image/Lumina/SD)
+    2. Interpolate between keyframes with Wan FLF2V, FILM, or DA3-3DGS
     3. Stitch final video
 
     Interpolation method is selected via wan_args.flux_interpolation_method
     """
-    logger.info(f"{emoji_if_enabled('🎬')} Flux + Interpolation Mode: Flux Keyframes + ML Interpolation")
+    logger.info(f"{emoji_if_enabled('🎬')} Keyframes + Interpolation Mode: Diffusion Keyframes + ML Interpolation")
 
     # Pre-download soundtrack if specified (same as core.py)
     if video_args.add_soundtrack == 'File' and video_args.soundtrack_path is not None:
@@ -96,10 +96,10 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         logger.debug(f"Existing images in output dir: {img_count}")
 
     # ====================
-    # PHASE 1: Batch Generate All Keyframes with Flux/SD
+    # PHASE 1: Batch Generate All Keyframes (Flux/Z-Image/Lumina/SD)
     # ====================
     logger.separator(char="=")
-    logger.info("PHASE 1: Batch Keyframe Generation with Flux/SD")
+    logger.info("PHASE 1: Batch Keyframe Generation")
     logger.separator(char="=")
 
     # Check for resume mode - scan for existing keyframes
@@ -162,7 +162,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         # Reset progress tracking for this frame
         shared.total_tqdm.reset_step_count(frame.actual_steps(data))
 
-        # Generate keyframe image using Flux/SD
+        # Generate keyframe image using diffusion model
         web_ui_utils.update_job(data, frame.i)
         image = frame.generate(data, shared.total_tqdm)
 
@@ -194,16 +194,16 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     if from_resume > 0:
         logger.info(f"   ({newly_generated} newly generated, {from_resume} from previous run)")
     else:
-        logger.info(f"   (All {newly_generated} keyframes newly generated with Flux/SD)")
+        logger.info(f"   (All {newly_generated} keyframes newly generated)")
 
     # CRITICAL: Aggressive VRAM cleanup between Phase 1 and Phase 2
-    # This allows switching from Flux/Z-Image to DA3-GIANT without VRAM conflicts
+    # This allows switching from Flux/Z-Image/Lumina to DA3-GIANT without VRAM conflicts
     logger.info(f"\n{emoji_if_enabled('🧹')} Cleaning up VRAM before Phase 2...")
     import gc
     import torch
     from modules import devices
 
-    # Unload Flux/SD models completely
+    # Unload diffusion models completely
     try:
         devices.torch_gc()
     except:
@@ -230,8 +230,8 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     interp_method = getattr(wan_args, 'flux_flf2v_interpolation_method', 'Wan')
     logger.info(f"{emoji_if_enabled('📊')} Interpolation method: {interp_method}")
 
-    # Unload Flux model to free GPU memory
-    logger.info(f"{emoji_if_enabled('🗑')}️  Unloading Flux model to free GPU memory...")
+    # Unload diffusion models to free GPU memory
+    logger.info(f"{emoji_if_enabled('🗑')}️  Unloading diffusion models to free GPU memory...")
     from backend import memory_management
     memory_management.unload_all_models()
     memory_management.soft_empty_cache()
