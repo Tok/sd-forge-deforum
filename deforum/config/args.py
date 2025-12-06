@@ -69,14 +69,14 @@ def DeforumAnimArgs():
         "render_mode": {
             "label": "Render Mode",
             "type": "radio",
-            "choices": ['Classic 3D', 'New 3D', 'Keyframes Only', 'Flux + Interpolation', 'Gaussian Scene'],
+            "choices": ['Classic 3D', 'New 3D', 'Keyframes Only', 'Keyframes + Interpolation'],
             "value": "New 3D",
-            "info": "Primary workflow selector: Classic 3D (fixed cadence, RAFT/ControlNet), New 3D (keyframe redistribution, default), Keyframes Only (depth tweening), Flux + Interpolation (multi-method AI interpolation), Gaussian Scene (3DGS scene reconstruction)"
+            "info": "Primary workflow selector: Classic 3D (fixed cadence, RAFT/ControlNet), New 3D (keyframe redistribution, default), Keyframes Only (depth tweening), Keyframes + Interpolation (model-agnostic keyframes with AI interpolation). Use Tween Generation Mode in 3D Depth tab to select da3_gaussian for 3DGS geometric consistency."
         },
         "animation_mode": {
             "label": "Animation mode (Legacy - use Render Mode instead)",
             "type": "radio",
-            "choices": ['3D', 'Interpolation', 'Flux + Interpolation'],
+            "choices": ['3D', 'Interpolation', 'Keyframes + Interpolation'],
             "value": "3D",
             "info": "[DEPRECATED] Use Render Mode instead. This field is maintained for backward compatibility."
         },
