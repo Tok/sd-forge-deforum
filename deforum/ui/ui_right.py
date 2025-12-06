@@ -391,6 +391,7 @@ def on_ui_tabs():
                         lines=3,
                         max_lines=3,
                     )
+                    components["settings_path"] = settings_path
                 with gr.Row(variant="compact"):
                     save_settings_btn = gr.Button(
                         "Save Settings", elem_id="deforum_save_settings_btn"

@@ -61,14 +61,16 @@ def handle_generate_test_click(
             return (
                 f"{warning} Error: Duration must be between 3 and 10 seconds",
                 "Invalid duration provided.",
-                "{}"  # settings_json
+                "{}",  # settings_json
+                gr.update()  # keep settings_path unchanged
             ) + tuple(_get_empty_settings_components())
 
         if not prompt_theme or not prompt_theme.strip():
             return (
                 f"{warning} Error: Prompt theme cannot be empty",
                 "Please provide a theme for prompt generation.",
-                "{}"  # settings_json
+                "{}",  # settings_json
+                gr.update()  # keep settings_path unchanged
             ) + tuple(_get_empty_settings_components())
 
         if not audio_theme or not audio_theme.strip():
@@ -101,7 +103,8 @@ def handle_generate_test_click(
         return (
             f"{cross} Fatal error: {str(e)}",
             f"💥 UNEXPECTED ERROR\n\n{error_trace}",
-            "{}"  # settings_json
+            "{}",  # settings_json
+            gr.update()  # keep settings_path unchanged
         ) + tuple(_get_empty_settings_components())
 
 
@@ -478,12 +481,13 @@ def execute_quick_test(
             # Call load_all_settings - returns list of component values when ui_launch=False
             loaded_values = load_all_settings(*dummy_args, ui_launch=False)
 
-            # Return: (status, log, settings_json) + all loaded component values
+            # Return: (status, log, settings_json, settings_path) + all loaded component values
             # loaded_values is already just the component values (no settings_path prefix)
             return (
                 gr.update(value=f"{check} Quick Test Ready! → Click Generate"),
                 gr.update(value="\n".join(log)),
-                json.dumps(export_settings, indent=2)
+                json.dumps(export_settings, indent=2),
+                gr.update(value=settings_file)  # Update settings_path textbox
             ) + tuple(loaded_values)
 
         except Exception as save_error:
@@ -495,7 +499,8 @@ def execute_quick_test(
             return (
                 f"{cross} Settings save failed: {str(save_error)}",
                 "\n".join(log),
-                "{}"  # empty settings
+                "{}",  # empty settings
+                gr.update()  # keep settings_path unchanged
             ) + tuple(_get_empty_settings_components())
 
     except Exception as e:
@@ -507,7 +512,8 @@ def execute_quick_test(
         return (
             f"{cross} Quick Test failed: {str(e)}",
             "\n".join(log),
-            "{}"  # empty settings
+            "{}",  # empty settings
+            gr.update()  # keep settings_path unchanged
         ) + tuple(_get_empty_settings_components())
 
 

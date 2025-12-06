@@ -585,7 +585,8 @@ def setup_deforum_left_side_ui():
                     outputs=[
                         locals()['quick_test_status'],  # Status message
                         locals()['quick_test_log'],  # Generation log
-                        locals()['quick_test_generated_settings']  # Settings JSON (hidden state)
+                        locals()['quick_test_generated_settings'],  # Settings JSON (hidden state)
+                        locals().get('settings_path', dummy_component)  # Update settings_path textbox
                     ] + settings_component_list  # ALL settings components (same as Load All Settings)
                 )
 

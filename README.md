@@ -35,15 +35,20 @@ completely refactored and modernized to work with **Flux.1**, **Lumina 2.0**, **
 cd extensions && git clone https://github.com/Tok/sd-forge-deforum.git
 cd sd-forge-deforum
 
-# 2. Automated setup (PyTorch + SageAttention + Deforum deps)
+# 2. Switch to dev branch (latest features, may be unstable)
+git checkout dev
+
+# 3. Automated setup (PyTorch + SageAttention + Deforum deps)
 ./setup.sh --prepare
 
-# 3. Download models (interactive)
+# 4. Download models (interactive)
 ./shell_scripts/download-all-models.sh
 
-# 4. Launch Forge with optimizations
+# 5. Launch Forge with optimizations
 ./start-forge.sh
 ```
+
+> **Note:** The `dev` branch contains the latest features and fixes but may not yet be merged to `main`. It's recommended to use `dev` for the most up-to-date experience, but switch back to `main` (`git checkout main`) if you need maximum stability.
 
 **First Test:**
 1. Navigate to Deforum → Init → Quick Test
