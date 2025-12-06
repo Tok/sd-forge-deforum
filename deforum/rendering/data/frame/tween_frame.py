@@ -68,6 +68,10 @@ class Tween:
         # Check tween generation mode
         tween_mode = getattr(data.args.anim_args, 'tween_generation_mode', 'depth_warp')
 
+        # DEBUG: Log tween mode on first tween only (frame 1)
+        if self.i == 1:
+            log_utils.info(f"Tween Generation Mode: {tween_mode}")
+
         if tween_mode == 'da3_multiview':
             # Phase 2: Multi-view tween generation
             return self._generate_multiview(data, last_frame, prev_image)
@@ -149,6 +153,7 @@ class Tween:
             if hasattr(data, 'gaussian_scene_build_attempted') and data.gaussian_scene_build_attempted:
                 # Scene building was already attempted and failed - fall back silently
                 if data.gaussian_scene is None:
+                    log_utils.debug(f"3DGS scene building previously failed, using depth warp for tween {self.i}")
                     return self._generate_standard_depth_warp(data, last_frame, prev_image)
 
             # Check if 3DGS scene is already built

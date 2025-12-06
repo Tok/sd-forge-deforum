@@ -108,9 +108,13 @@ class DA3GaussianTweenGenerator(BaseTweenGenerator):
                 gaussian_count = len(self.scene_3dgs.gaussians) if self.scene_3dgs.gaussians is not None else 0
                 if gaussian_count == 0:
                     logger.warning(
-                        "3D Gaussian scene returned 0 Gaussians - DA3 3DGS feature not yet fully implemented. "
-                        "Falling back to depth warp."
+                        "⚠️  3D Gaussian Splatting is not available yet - waiting for DA3 models with trained 3DGS heads"
                     )
+                    logger.info(
+                        "Current DA3 models (Small/Base/Large/AnyView) don't have gs_head/gs_adapter components. "
+                        "Future DA3-GIANT-LARGE or similar models will enable this feature."
+                    )
+                    logger.info("Falling back to standard depth warp for now.")
                     return None
                 logger.info(
                     f"✓ 3D Gaussian scene built successfully: "

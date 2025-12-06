@@ -352,17 +352,23 @@ class DepthAnythingV3:
                 - 'opacities': Opacity values [N, 1]
                 - 'colors': RGB colors [N, 3]
         """
-        logger.info("3D Gaussian Splatting estimation (Phase 3 - not yet implemented)")
-
         # Convert numpy arrays to PIL Images if needed
         pil_images = _convert_images_to_pil(images)
 
         # Run DA3 inference with 3DGS enabled
         try:
+            logger.debug(f"Attempting 3DGS estimation with {len(pil_images)} images...")
             result = self.model.inference(pil_images, infer_gs=True)
             # Return Prediction object with .gaussians attribute
             return result
+        except (AttributeError, TypeError) as e:
+            # Model doesn't have gs_head/gs_adapter - this is expected for current DA3 models
+            logger.debug(f"3DGS estimation not supported by current model: {str(e)}")
+            logger.warning(
+                "⚠️  3D Gaussian Splatting requires DA3 models with trained 3DGS heads "
+                "(e.g., DA3-GIANT-LARGE). Current DA3 models don't support this feature yet."
+            )
+            return None
         except Exception as e:
             logger.error(f"3DGS estimation failed: {str(e)}")
-            logger.info("This feature requires DA3NESTED-GIANT-LARGE model")
             return None
