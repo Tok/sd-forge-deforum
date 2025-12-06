@@ -15,11 +15,23 @@ from unittest.mock import Mock, MagicMock, patch
 extension_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(extension_root))
 
-# Mock logger module BEFORE importing depth_anything_v3
+# Mock ALL external dependencies BEFORE importing depth_anything_v3
+# This prevents ModuleNotFoundError in CI environment
+
+# Mock logger module
 mock_logger_module = Mock()
 mock_logger_instance = Mock()
 mock_logger_module.get_logger.return_value = mock_logger_instance
 sys.modules['deforum.utils.system.logging'] = mock_logger_module
+
+# Mock depth_anything_3 module (not installed in CI)
+mock_da3_module = Mock()
+mock_da3_class = Mock()
+mock_da3_module.DepthAnything3 = mock_da3_class
+mock_da3_module.api = Mock()
+mock_da3_module.api.DepthAnything3 = mock_da3_class
+sys.modules['depth_anything_3'] = mock_da3_module
+sys.modules['depth_anything_3.api'] = mock_da3_module.api
 
 # Import directly from depth_anything_v3 module (not through deforum.depth package)
 import importlib.util
