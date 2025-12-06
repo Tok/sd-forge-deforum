@@ -1307,6 +1307,12 @@ def WanArgs():
             "value": True,
             "info": "Render 3DGS versions of the segment boundary keyframes for visual consistency with tweens. When enabled: original diffusion keyframes moved to '_diffusion/' subdirectory, all 3DGS frames (keyframes + tweens) saved to main directory for seamless final video. When disabled: only tweens are 3DGS-rendered, original keyframes remain (causes visual mismatch)."
         },
+        "da3_3dgs_use_deforum_motion": {
+            "label": "Use Deforum Camera Motion",
+            "type": "checkbox",
+            "value": False,
+            "info": "EXPERIMENTAL: Use Deforum's scheduled camera motion (translation_x/y/z, rotation_3d_x/y/z) instead of DA3's auto-estimated poses. DA3 depth builds 3D scene, Deforum schedules control camera movement. Pros: Smooth continuous motion matching your animation. Cons: DA3's auto-estimation may be more geometrically accurate. Requires non-zero camera schedules to work."
+        },
 
         # Advanced Generation Settings
         "wan_negative_prompt": {
