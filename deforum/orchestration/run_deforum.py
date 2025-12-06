@@ -139,6 +139,17 @@ def run_deforum(*args):
                             if current_value not in valid_models:
                                 logger.warning(f"Invalid da3_3dgs_model value '{current_value}' (not in {valid_models}), using default 'DA3-GIANT'")
                                 args_dict['da3_3dgs_model'] = 'DA3-GIANT'
+
+                        # Validate da3_3dgs_num_keyframes - fix invalid values
+                        if 'da3_3dgs_num_keyframes' in args_dict:
+                            try:
+                                num_kf = int(args_dict['da3_3dgs_num_keyframes'])
+                                if num_kf < 2 or num_kf > 10:
+                                    logger.warning(f"Invalid da3_3dgs_num_keyframes value {num_kf} (must be 2-10), using default 5")
+                                    args_dict['da3_3dgs_num_keyframes'] = 5
+                            except (ValueError, TypeError):
+                                logger.warning(f"Invalid da3_3dgs_num_keyframes value '{args_dict['da3_3dgs_num_keyframes']}' (not an integer), using default 5")
+                                args_dict['da3_3dgs_num_keyframes'] = 5
                 except Exception as e:
                     logger.warning(f"Could not load animation_mode from settings file: {e}")
                     logger.info(f"  Using current UI setting: {animation_mode}")
