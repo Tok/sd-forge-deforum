@@ -6,8 +6,13 @@ Integration of Depth Anything V3 (DA3) to enhance Deforum's tween frame generati
 
 **Branch:** `feature/depth-anything-v3` (ready for merge)
 **Base:** `dev`
-**Commits:** 4 (f13617c4, 6ae204b1, 69ca8bfd, 4ee10170)
-**Lines Changed:** +1,655 across 16 files
+**Commits:** 10 total
+- Phase 1-3 implementation: f13617c4, 6ae204b1, 69ca8bfd, 4ee10170
+- UI fixes and polish: 3812cd72, 5d4edd56, 1fd7e45b, 7046cb54
+- Auto-upgrade logic: dd448ad1
+- Documentation: 20186e35
+
+**Lines Changed:** +1,998 across 17 files (+8 new, 9 modified)
 
 ## Architecture Comparison
 
