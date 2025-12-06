@@ -175,6 +175,59 @@ def is_flux_model() -> bool:
         return False
 
 
+def is_zimage_model() -> bool:
+    """Detect if Z-Image-Turbo is the currently loaded model.
+
+    Returns:
+        True if Z-Image-Turbo is loaded, False otherwise
+    """
+    try:
+        shared = _get_shared_module()
+        if shared is None or not hasattr(shared, 'sd_model'):
+            return False
+
+        model = shared.sd_model
+
+        # Check 1: Model class name contains 'SD3' (Z-Image is based on SD3)
+        class_name = _get_model_class_name(model)
+        if class_name and 'SD3' in class_name:
+            # Need to disambiguate from actual SD3 models
+            checkpoint_name = _get_checkpoint_name(shared)
+            if checkpoint_name:
+                checkpoint_lower = checkpoint_name.lower()
+                # Z-Image specific patterns
+                if any(pattern in checkpoint_lower for pattern in ['z-image', 'zimage', 'zit', 'tongyi']):
+                    logger.debug(f"Detected Z-Image model via checkpoint name: {checkpoint_name}")
+                    return True
+                # Check path contains Z-Image directory
+                if hasattr(shared.sd_model, 'sd_checkpoint_info'):
+                    full_path = getattr(shared.sd_model.sd_checkpoint_info, 'filename', '')
+                    if 'z-image' in full_path.lower():
+                        logger.debug(f"Detected Z-Image model via path: {full_path}")
+                        return True
+
+        # Check 2: Checkpoint name contains z-image patterns
+        checkpoint_name = _get_checkpoint_name(shared)
+        if checkpoint_name:
+            checkpoint_lower = checkpoint_name.lower()
+            if any(pattern in checkpoint_lower for pattern in ['z-image', 'zimage', 'zit', 'tongyi']):
+                logger.debug(f"Detected Z-Image model via checkpoint name: {checkpoint_name}")
+                return True
+
+        # Check 3: Full path contains Z-Image directory
+        if hasattr(shared.sd_model, 'sd_checkpoint_info'):
+            full_path = getattr(shared.sd_model.sd_checkpoint_info, 'filename', '')
+            if 'z-image' in full_path.lower():
+                logger.debug(f"Detected Z-Image model via path: {full_path}")
+                return True
+
+        return False
+
+    except Exception as e:
+        logger.debug(f"Z-Image detection failed: {e}")
+        return False
+
+
 def _detect_flux_variant(checkpoint_name: Optional[str]) -> str:
     """Detect Flux variant (Dev or Schnell) from checkpoint name.
 
@@ -193,7 +246,7 @@ def get_model_name() -> str:
     """Get friendly name of currently loaded model.
 
     Returns:
-        Model name string ("Lumina 2.0", "Flux Dev", "Flux Schnell", "Unknown")
+        Model name string ("Lumina 2.0", "Flux Dev", "Flux Schnell", "Z-Image-Turbo", "Unknown")
     """
     if is_lumina_model():
         return LUMINA_CONFIG.name
@@ -202,6 +255,9 @@ def get_model_name() -> str:
         shared = _get_shared_module()
         checkpoint_name = _get_checkpoint_name(shared) if shared else None
         return _detect_flux_variant(checkpoint_name)
+
+    if is_zimage_model():
+        return "Z-Image-Turbo"
 
     return DEFAULT_CONFIG.name
 

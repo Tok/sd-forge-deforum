@@ -185,7 +185,7 @@ def detect_model_type_extended(model_name: str) -> str:
         return "flux_dev"
     elif "lumina" in model_lower or "neta" in model_lower:
         return "lumina"
-    elif "z-image" in model_lower or "zimage" in model_lower or "stabilityai" in model_lower:
+    elif any(pattern in model_lower for pattern in ["z-image", "zimage", "zit", "tongyi"]):
         return "z_image"
     else:
         return "sd15"  # Fallback for SD1.5/SDXL/unknown
@@ -194,12 +194,31 @@ def detect_model_type_extended(model_name: str) -> str:
 def get_model_config(model_name: str) -> ModelConfig:
     """Get configuration for detected model type.
 
+    Uses runtime detection (is_*_model functions) first, falls back to name-based detection.
+
     Args:
         model_name: SD model filename or path
 
     Returns:
         ModelConfig with optimal settings for this model
     """
+    # Try runtime detection first (more reliable)
+    try:
+        from deforum.utils.model_detection import is_flux_model, is_lumina_model, is_zimage_model
+
+        if is_lumina_model():
+            return MODEL_CONFIGS["lumina"]
+        if is_flux_model():
+            # Distinguish Dev vs Schnell
+            if "schnell" in model_name.lower():
+                return MODEL_CONFIGS["flux_schnell"]
+            return MODEL_CONFIGS["flux_dev"]
+        if is_zimage_model():
+            return MODEL_CONFIGS["z_image"]
+    except Exception as e:
+        logger.debug(f"Runtime model detection failed, using name-based fallback: {e}")
+
+    # Fall back to name-based detection
     model_type = detect_model_type_extended(model_name)
     return MODEL_CONFIGS[model_type]
 
