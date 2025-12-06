@@ -50,6 +50,12 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         with gr.Row():
             da3_3dgs_render_keyframes = create_gr_elem(dw.da3_3dgs_render_keyframes)
 
+    # CRITICAL: Immediately capture DA3-3DGS components in locals() after creation
+    # Python's locals() dict doesn't auto-update, so we must explicitly assign
+    locals()['da3_3dgs_model'] = da3_3dgs_model
+    locals()['da3_3dgs_num_keyframes'] = da3_3dgs_num_keyframes
+    locals()['da3_3dgs_render_keyframes'] = da3_3dgs_render_keyframes
+
     gr.Markdown("---")
 
     # Deforum Integration Info - Shows what settings are used
@@ -769,11 +775,6 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
         outputs=[wan_movement_sensitivity]
     )
         
-    # Ensure all DA3-3DGS components are properly captured in locals()
-    locals()['da3_3dgs_model'] = da3_3dgs_model
-    locals()['da3_3dgs_num_keyframes'] = da3_3dgs_num_keyframes
-    locals()['da3_3dgs_render_keyframes'] = da3_3dgs_render_keyframes
-
     # Ensure wan_inference_steps is properly captured
     locals()['wan_inference_steps'] = wan_inference_steps
     
