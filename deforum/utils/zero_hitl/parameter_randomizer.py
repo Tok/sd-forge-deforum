@@ -68,7 +68,6 @@ class SlopcoreParameters:
 
     # Depth
     depth_model: str
-    midas_weight: float
 
     # Color/style chaos
     color_palette: List[str]
@@ -243,7 +242,6 @@ class CuratedChaosEngine:
 
         # Depth
         depth_model = self.DEPTH_MODEL
-        midas_weight = random.choice(self.MIDAS_WEIGHT_OPTIONS)
 
         # Color palette with potential RGB inversion
         color_palette, rgb_inverted = self._select_color_palette()
@@ -279,7 +277,6 @@ class CuratedChaosEngine:
             shakify_pattern=shakify_pattern,
             shakify_intensity=shakify_intensity,
             depth_model=depth_model,
-            midas_weight=midas_weight,
             color_palette=color_palette,
             rgb_inverted=rgb_inverted,
             style=style,

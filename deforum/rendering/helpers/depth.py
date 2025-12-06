@@ -14,8 +14,7 @@ def generate_and_save_depth_map_if_active(data, opencv_image, i):
     # They will be cleaned up later if user doesn't want to keep them
     if data.depth_model is not None:
         memory_utils.handle_vram_before_depth_map_generation(data)
-        depth = data.depth_model.predict(opencv_image, data.args.anim_args.midas_weight,
-                                         data.args.root.half_precision)
+        depth = data.depth_model.predict(opencv_image)
         # Ensure depth-maps subdirectory exists
         depth_dir = os.path.join(data.output_directory, "depth-maps")
         os.makedirs(depth_dir, exist_ok=True)
@@ -57,6 +56,5 @@ def create_depth_model_and_enable_depth_map_saving_if_active(anim_mode, root, an
         keep_in_vram=anim_mode.is_keep_in_vram,
         depth_algorithm=depth_algorithm,
         Width=args.W,
-        Height=args.H,
-        midas_weight=anim_args.midas_weight
+        Height=args.H
     )

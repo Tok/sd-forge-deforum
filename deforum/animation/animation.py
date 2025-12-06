@@ -121,7 +121,7 @@ def anim_frame_warp(
     """Main entry point for frame warping - routes to 2D or 3D based on animation mode."""
     if anim_args.use_depth_warping:
         if depth is None and depth_model is not None:
-            depth = depth_model.predict(prev_img_cv2, anim_args.midas_weight, half_precision)
+            depth = depth_model.predict(prev_img_cv2)
     else:
         depth = None
 

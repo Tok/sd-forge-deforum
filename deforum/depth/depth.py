@@ -122,14 +122,12 @@ class DepthModel:
             self.depth_anything = DepthAnything(self.device, model_size=model_size)
             self.is_v3 = False
 
-    def predict(self, prev_img_cv2, midas_weight=None, half_precision=None) -> torch.Tensor:
+    def predict(self, prev_img_cv2) -> torch.Tensor:
         """
         Predict depth map from image
 
         Args:
             prev_img_cv2: Input image as numpy array (BGR, uint8) - OpenCV format
-            midas_weight: Legacy parameter, ignored (kept for backward compatibility)
-            half_precision: Legacy parameter, ignored (kept for backward compatibility)
 
         Returns:
             torch.Tensor: Depth map tensor

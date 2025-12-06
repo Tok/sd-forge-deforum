@@ -440,7 +440,6 @@ def execute_quick_test(
 
                 # Depth settings
                 "depth_algorithm": "Depth-Anything-V2-Small",
-                "midas_weight": 0.3,
                 "near_plane": 200,
                 "far_plane": 10000,
                 "fov": 70,

@@ -261,7 +261,6 @@ def build_args_from_slopcore(
         # Depth settings
         'use_depth_warping': True,
         'depth_algorithm': params.depth_model,
-        'midas_weight': params.midas_weight,
         'fov': 40,
         'fov_schedule': '0:(40)',
         'near_schedule': '0:(200)',

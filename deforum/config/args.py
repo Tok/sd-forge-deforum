@@ -658,14 +658,6 @@ def DeforumAnimArgs():
             "step": 5.0,
             "info": "Adaptive confidence threshold for DA3 depth estimation (0-100). Lower = more strict, higher = more permissive. Default 40.0 works well for most scenes."
         },
-        "midas_weight": {
-            "label": "Depth weight (legacy, not used)",
-            "type": "number",
-            "precision": None,
-            "value": 0.2,
-            "info": "Legacy parameter from old depth models (MiDaS/Zoe), no longer used with Depth-Anything V2",
-            "visible": False
-        },
         "padding_mode": {
             "label": "Padding mode",
             "type": "radio",
