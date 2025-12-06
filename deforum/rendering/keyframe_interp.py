@@ -420,7 +420,10 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 target_frame_indices=target_indices,
                 model_selection=model_selection,
                 output_dir=data.output_directory,
-                device=device
+                device=device,
+                render_keyframes=getattr(wan_args, 'da3_3dgs_render_keyframes', True),
+                segment_first_idx=first_frame_idx,
+                segment_last_idx=last_frame_idx
             )
         else:  # Default: Wan
             logger.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}")

@@ -302,7 +302,10 @@ def generate_da3_3dgs_interpolation(
     target_frame_indices: List[int],
     model_selection: str,
     output_dir: str,
-    device: torch.device
+    device: torch.device,
+    render_keyframes: bool = False,
+    segment_first_idx: int = None,
+    segment_last_idx: int = None
 ) -> List[str]:
     """Generate interpolated frames using DA3 3D Gaussian Splatting.
 
@@ -382,8 +385,43 @@ def generate_da3_3dgs_interpolation(
     # Get image dimensions
     img_width, img_height = keyframe_images[0].size
 
-    # Generate interpolated frames
-    logger.info(f"   Rendering {len(target_frame_indices)} novel views...")
+    # Optionally render 3DGS versions of segment boundary keyframes
+    # This ensures visual consistency between keyframes and tweens
+    keyframe_paths = []
+    if render_keyframes and segment_first_idx is not None and segment_last_idx is not None:
+        logger.info(f"   Rendering 3DGS keyframes for visual consistency...")
+
+        # Create _3dgs subdirectory for keyframe renders
+        output_3dgs_dir = os.path.join(output_dir, "_3dgs")
+        os.makedirs(output_3dgs_dir, exist_ok=True)
+
+        # Find which collected keyframes match the segment boundaries
+        keyframe_to_render = []
+        if segment_first_idx in keyframe_indices:
+            idx_pos = keyframe_indices.index(segment_first_idx)
+            keyframe_to_render.append((segment_first_idx, extrinsics[idx_pos]))
+        if segment_last_idx in keyframe_indices and segment_last_idx != segment_first_idx:
+            idx_pos = keyframe_indices.index(segment_last_idx)
+            keyframe_to_render.append((segment_last_idx, extrinsics[idx_pos]))
+
+        for kf_idx, kf_pose in keyframe_to_render:
+            rendered_kf = render_novel_view_from_gaussians(
+                gaussians=gaussians,
+                camera_pose=kf_pose,
+                camera_intrinsics=avg_intrinsics,
+                image_size=(img_width, img_height),
+                device=device
+            )
+            kf_filename = f"{kf_idx:09d}.png"
+            kf_path = os.path.join(output_3dgs_dir, kf_filename)
+            rendered_kf.save(kf_path)
+            keyframe_paths.append(kf_path)
+            logger.debug(f"   Saved 3DGS keyframe: {kf_filename}")
+
+    # Generate interpolated tween frames
+    num_tweens = len(target_frame_indices)
+    num_keyframes_rendered = len(keyframe_paths)
+    logger.info(f"   Rendering {num_tweens} tween views{f' + {num_keyframes_rendered} keyframes' if num_keyframes_rendered > 0 else ''}...")
     frame_paths = []
 
     first_frame_idx = keyframe_indices[0]
@@ -412,5 +450,5 @@ def generate_da3_3dgs_interpolation(
         rendered_image.save(target_path)
         frame_paths.append(target_path)
 
-    logger.info(f"   {emoji_if_enabled('✅')} Generated {len(frame_paths)} novel views")
+    logger.info(f"   {emoji_if_enabled('✅')} Generated {len(frame_paths)} tween views{f' + {num_keyframes_rendered} keyframes' if num_keyframes_rendered > 0 else ''}")
     return frame_paths

@@ -1307,6 +1307,12 @@ def WanArgs():
             "value": False,
             "info": "Provide Deforum movement schedule to DA3 as camera pose guidance (experimental). When enabled, converts Deforum's translation/rotation schedules to camera extrinsics for pose-conditioned 3DGS inference. When disabled, DA3 estimates camera poses automatically from image content. Automatic estimation is more reliable for now."
         },
+        "da3_3dgs_render_keyframes": {
+            "label": "Also Render 3DGS Keyframes",
+            "type": "checkbox",
+            "value": True,
+            "info": "Render 3DGS versions of the segment boundary keyframes for visual consistency. Saves to separate '_3dgs' subdirectory alongside tweens. When enabled, both keyframes and tweens will be gaussian-rendered. When disabled, only tweens are rendered (original diffusion keyframes remain, causing visual mismatch)."
+        },
 
         # Advanced Generation Settings
         "wan_negative_prompt": {
