@@ -96,14 +96,19 @@ class DepthAnythingV3:
         Returns:
             Depth map tensor [1, 1, H, W] compatible with DA2 output format
         """
-        # Convert numpy array to PIL Image if needed
+        import torch.nn.functional as F
+
+        # Store original image dimensions
         if isinstance(image, np.ndarray):
+            original_h, original_w = image.shape[:2]
             from PIL import Image
             # Assume BGR format from cv2
             image_rgb = image[:, :, ::-1]
             image = Image.fromarray(image_rgb)
+        else:
+            original_w, original_h = image.size
 
-        # Run DA3 inference
+        # Run DA3 inference (may downsample internally for processing)
         result = self.model.inference([image])
 
         # Extract depth map from Prediction object (dataclass with .depth attribute)
@@ -120,6 +125,18 @@ class DepthAnythingV3:
         else:
             # Convert numpy to tensor [H,W] -> [1,1,H,W]
             depth = torch.from_numpy(depth_np).unsqueeze(0).unsqueeze(0).float()
+
+        # CRITICAL: Resize depth map to match original image dimensions
+        # DA3 downsamples during processing (e.g., 1920x480 -> 504x280)
+        # but depth warping expects depth to match image size exactly
+        current_h, current_w = depth.shape[2], depth.shape[3]
+        if current_h != original_h or current_w != original_w:
+            depth = F.interpolate(
+                depth,
+                size=(original_h, original_w),
+                mode='bilinear',
+                align_corners=False
+            )
 
         return depth
 
