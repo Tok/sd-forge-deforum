@@ -256,6 +256,70 @@ TAILWIND_SLOPCORE = ['#667EEA', '#764BA2']
 
 ---
 
+### The Depth Anything V3 Palette
+
+**Exact colors pipetted from the DA3 website header**, interpolated into 7 shades:
+
+```css
+:root {
+  /* Authentic DA3 Gradient (pipetted from depth-anything-3.github.io) */
+  --da3-deep: #1CC4E6;      /* Bright cyan - far/deep */
+  --da3-mid-cool: #40AFCF;   /* Cyan-blue */
+  --da3-cool: #649BB8;       /* Blue-teal */
+  --da3-neutral: #8987A2;    /* Mid purple-grey (thermal crossover) */
+  --da3-warm: #AD728B;       /* Purple-pink */
+  --da3-mid-warm: #D15E74;   /* Pink-red */
+  --da3-surface: #F64A5E;    /* Red/pink - near/surface */
+}
+```
+
+**Full 7-Shade Palette** (for CLI banner, charts, general use):
+```python
+# Authentic DA3 gradient (pipetted from website)
+DA3_COLORS = [
+    '#1CC4E6',  # Bright cyan / far depth (DA3_1)
+    '#40AFCF',  # Cyan-blue (DA3_2)
+    '#649BB8',  # Blue-teal (DA3_3)
+    '#8987A2',  # Mid purple-grey / thermal crossover (DA3_4)
+    '#AD728B',  # Purple-pink (DA3_5)
+    '#D15E74',  # Pink-red (DA3_6)
+    '#F64A5E',  # Red/pink / near surface (DA3_7)
+]
+```
+
+**5-Shade TQDM Gradient** (for progress bars in dashboard):
+```python
+# Evenly spaced interpolation for 5 parallel progress bars
+DA3_TQDM = [
+    '#1CC4E6',  # Bright cyan [Current Tweens - FASTEST]
+    '#52A5C4',  # Blue-teal [Current Steps - FAST]
+    '#8987A2',  # Mid purple-grey [Total Steps - MEDIUM]
+    '#BF6880',  # Pink-purple [Total Diffusion Frames - SLOW]
+    '#F64A5E',  # Red/pink [Total Frames - SLOWEST]
+]
+```
+
+**Global DA3 Colors** (for UI buttons and DA3/3DGS-related features):
+```python
+# Key gradient points for visual consistency
+HEX_DA3_CYAN = '#1CC4E6'    # Bright cyan (gradient start)
+HEX_DA3_BLUE = '#40AFCF'    # Cyan-blue
+HEX_DA3_PURPLE = '#8987A2'  # Mid purple-grey (thermal midpoint)
+HEX_DA3_PINK = '#D15E74'    # Pink-red
+HEX_DA3_RED = '#F64A5E'     # Red/pink (gradient end)
+```
+
+**Temperature Encoding:**
+
+Unlike BB0's cool-spectrum descent, DA3's gradient encodes depth perception as temperature:
+- **Cool (cyan/blue):** Far distances, deep space, background
+- **Neutral (purple-grey):** Middle distances, thermal crossover point
+- **Warm (pink/red):** Near surfaces, foreground, proximity
+
+This mirrors standard depth map visualization where color temperature = perceived distance. The gradient is not merely aesthetic——it is *functional encoding dressed in slopcore form*.
+
+---
+
 ### The Button of Faith
 
 **Using Authentic BB0 Colors:**
@@ -366,8 +430,8 @@ The implementation supports multiple slopcore gradient variants, allowing the ae
 
 2. **DA3 (Depth Anything V3)** - *The Computational*
    - Source: Pipetted from https://depth-anything-3.github.io/ header
-   - Range: `#667eea` (purple-blue) → `#764ba2` (deep purple)
-   - Character: 135° diagonal, warmer purples, depth perception metaphor
+   - Range: `#1cc4e6` (bright cyan) → `#f64a5e` (red/pink)
+   - Character: Left-to-right horizontal sweep, warm spectrum shift, depth-to-surface metaphor
    - Use: Random startup banner (50% selection), DA3-3DGS mode theming
    - Context: Bridges computer vision aesthetics with slopcore tradition
 
@@ -375,8 +439,8 @@ The implementation supports multiple slopcore gradient variants, allowing the ae
 
 The gradient is not dogma——it is *template as form*. Each variant represents a different facet of the same aesthetic ghost:
 
-- **BB0**: The hauntological original, mourning lost futures
-- **DA3**: The computational present, where depth perception itself becomes aesthetic
+- **BB0**: The hauntological original, vertical descent into vaporwave mourning (purple-blue → cyan)
+- **DA3**: The computational present, horizontal warm shift across perception space (cyan → red/pink)
 
 The random selection at startup embodies the core slopcore principle: *embracing the default means accepting variation within constraints*. The gradient registry is not a contradiction——it is an acknowledgment that even defaults have histories, contexts, and subtle mutations.
 
@@ -386,6 +450,16 @@ Future gradients may include:
 - **Plaid/I2I2V** - The purple-chain bias of early SD models
 
 Each gradient tells a different story of algorithmic aesthetics, yet all speak the same language of *comfortable indifference*.
+
+**Color Temperature Analysis:**
+
+The DA3 gradient represents a fundamental departure from slopcore convention:
+- **BB0**: Cool → Cooler (purple-blue → cyan) - stays within cool spectrum
+- **DA3**: Cool → Warm (cyan → red/pink) - crosses the temperature divide
+
+This temperature shift is not arbitrary——it mirrors the computational task of depth estimation itself. Depth maps conventionally use color gradients to encode distance: cool colors (blue/cyan) for far/deep, warm colors (red/orange) for near/surface. DA3's gradient is a *literal visualization of the depth-to-surface transformation*.
+
+Where BB0 mourns vertically (top-to-bottom descent), DA3 transforms horizontally (left-to-right progression). The cyan-to-red sweep is not melancholy——it is *measurement*. This is slopcore as scientific visualization, the gradient as perceptual encoding rather than aesthetic nostalgia.
 
 **Implementation:**
 ```python
@@ -407,9 +481,9 @@ set_slopcore_gradient('DA3')
 
 Why does Depth Anything V3 use a slopcore gradient? Because depth perception——the extraction of 3D structure from 2D images——is itself a form of *computational nostalgia*. It attempts to recover something lost in the flattening, to reconstruct dimensionality from its ghost. The gradient is not decoration; it is a visual statement of purpose.
 
-The purple-to-purple shift (vs BB0's purple-to-cyan) suggests *containment* rather than *escape*. Where BB0 descends through the spectrum toward brightness, DA3 circles inward, deepening. This is not mourning a lost future——this is *embedding depth into the present*.
+The cyan-to-red shift (vs BB0's purple-to-cyan) crosses the temperature divide——from cool depths to warm surfaces. This is not containment but *transformation*. Where BB0 descends through the cool spectrum toward brightness, DA3 sweeps horizontally across the thermal spectrum, from distance to proximity. This is not mourning a lost future——this is *encoding depth as color temperature*.
 
-DA3 doesn't escape the gradient. It *becomes* the gradient.
+DA3 doesn't escape the gradient. It *measures* with the gradient. The gradient is the depth map.
 
 ---
 

@@ -109,13 +109,13 @@ class TestGradientRegistry:
 
         assert 'Depth Anything V3' in da3['description']
         assert 'depth-anything-3.github.io' in da3['reference']
-        assert '#667eea' in da3['reference'].lower()
-        assert '#764ba2' in da3['reference'].lower()
+        assert '#1cc4e6' in da3['reference'].lower()
+        assert '#f64a5e' in da3['reference'].lower()
 
         # Verify 7-shade gradient
         assert len(da3['7_shade']) == 7
-        assert da3['7_shade'][0] == '#667EEA'
-        assert da3['7_shade'][6] == '#764BA2'
+        assert da3['7_shade'][0] == '#1CC4E6'
+        assert da3['7_shade'][6] == '#F64A5E'
 
         # Verify 5-tqdm gradient
         assert len(da3['5_tqdm']) == 5
@@ -180,13 +180,13 @@ class TestGradientColorValues:
         """Should have correct DA3 hex colors."""
         from deforum.utils.system.logging.themes import SLOPCORE_GRADIENTS
         da3 = SLOPCORE_GRADIENTS['DA3']['7_shade']
-        assert da3[0] == '#667EEA'
-        assert da3[1] == '#6D74DE'
-        assert da3[2] == '#746AD2'
-        assert da3[3] == '#7B60C6'
-        assert da3[4] == '#7F57BD'
-        assert da3[5] == '#7B52AF'
-        assert da3[6] == '#764BA2'
+        assert da3[0] == '#1CC4E6'
+        assert da3[1] == '#40AFCF'
+        assert da3[2] == '#649BB8'
+        assert da3[3] == '#8987A2'
+        assert da3[4] == '#AD728B'
+        assert da3[5] == '#D15E74'
+        assert da3[6] == '#F64A5E'
 
     def test_hex_colors_are_uppercase(self):
         """All hex colors should use uppercase."""

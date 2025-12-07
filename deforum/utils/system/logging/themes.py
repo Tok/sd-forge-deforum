@@ -35,25 +35,33 @@ HEX_SLOPCORE_BB0_TQDM_5 = '#17A7FE'  # Cyan [Total Frames - SLOWEST]
 # SLOPCORE THEME - Depth Anything V3 gradient (DA3 mode)
 # ============================================================================
 # Exact colors pipetted from Depth Anything V3 website header
-# Original gradient: #667eea (purple-blue) → #764ba2 (deep purple), 135deg diagonal
+# Original gradient: #1cc4e6 (cyan) → #f64a5e (red/pink), left to right
 # Reference: https://depth-anything-3.github.io/
 
 # 7-shade gradient (for CLI banner, charts, general use)
-HEX_SLOPCORE_DA3_1 = '#667EEA'  # Purple-blue (gradient start)
-HEX_SLOPCORE_DA3_2 = '#6D74DE'  # Purple-blue blend
-HEX_SLOPCORE_DA3_3 = '#746AD2'  # Blue-purple
-HEX_SLOPCORE_DA3_4 = '#7B60C6'  # Mid purple
-HEX_SLOPCORE_DA3_5 = '#7F57BD'  # Purple
-HEX_SLOPCORE_DA3_6 = '#7B52AF'  # Deep purple
-HEX_SLOPCORE_DA3_7 = '#764BA2'  # Deepest purple (gradient end)
+HEX_SLOPCORE_DA3_1 = '#1CC4E6'  # Cyan (gradient start)
+HEX_SLOPCORE_DA3_2 = '#40AFCF'  # Cyan-blue blend
+HEX_SLOPCORE_DA3_3 = '#649BB8'  # Blue-teal
+HEX_SLOPCORE_DA3_4 = '#8987A2'  # Mid purple-grey
+HEX_SLOPCORE_DA3_5 = '#AD728B'  # Purple-pink
+HEX_SLOPCORE_DA3_6 = '#D15E74'  # Pink-red
+HEX_SLOPCORE_DA3_7 = '#F64A5E'  # Red/pink (gradient end)
 
 # 5-shade gradient (specifically for tqdm progress bars)
 # Maps to the 5 parallel dashboard bars in display order
-HEX_SLOPCORE_DA3_TQDM_1 = '#667EEA'  # Purple-blue [Current Tweens - FASTEST]
-HEX_SLOPCORE_DA3_TQDM_2 = '#7068D6'  # Blue-purple [Current Steps - FAST]
-HEX_SLOPCORE_DA3_TQDM_3 = '#7B60C6'  # Mid purple [Total Steps - MEDIUM]
-HEX_SLOPCORE_DA3_TQDM_4 = '#7C56B4'  # Deep purple [Total Diffusion Frames - SLOW]
-HEX_SLOPCORE_DA3_TQDM_5 = '#764BA2'  # Deepest purple [Total Frames - SLOWEST]
+HEX_SLOPCORE_DA3_TQDM_1 = '#1CC4E6'  # Cyan [Current Tweens - FASTEST]
+HEX_SLOPCORE_DA3_TQDM_2 = '#52A5C4'  # Blue-teal [Current Steps - FAST]
+HEX_SLOPCORE_DA3_TQDM_3 = '#8987A2'  # Mid purple-grey [Total Steps - MEDIUM]
+HEX_SLOPCORE_DA3_TQDM_4 = '#BF6880'  # Pink-purple [Total Diffusion Frames - SLOW]
+HEX_SLOPCORE_DA3_TQDM_5 = '#F64A5E'  # Red/pink [Total Frames - SLOWEST]
+
+# Global DA3 colors for UI buttons and DA3/3DGS-related features
+# Using key gradient points for visual consistency
+HEX_DA3_CYAN = HEX_SLOPCORE_DA3_1      # '#1CC4E6' - Bright cyan (DA3 start)
+HEX_DA3_BLUE = HEX_SLOPCORE_DA3_2      # '#40AFCF' - Cyan-blue
+HEX_DA3_PURPLE = HEX_SLOPCORE_DA3_4    # '#8987A2' - Mid purple-grey
+HEX_DA3_PINK = HEX_SLOPCORE_DA3_6      # '#D15E74' - Pink-red
+HEX_DA3_RED = HEX_SLOPCORE_DA3_7       # '#F64A5E' - Red/pink (DA3 end)
 
 # ============================================================================
 # Active Slopcore Gradient Selection
@@ -235,8 +243,8 @@ SLOPCORE_GRADIENTS = {
                     HEX_SLOPCORE_DA3_4, HEX_SLOPCORE_DA3_5, HEX_SLOPCORE_DA3_6, HEX_SLOPCORE_DA3_7],
         '5_tqdm': [HEX_SLOPCORE_DA3_TQDM_1, HEX_SLOPCORE_DA3_TQDM_2, HEX_SLOPCORE_DA3_TQDM_3,
                    HEX_SLOPCORE_DA3_TQDM_4, HEX_SLOPCORE_DA3_TQDM_5],
-        'description': 'Depth Anything V3 - Purple-blue → Deep purple',
-        'reference': 'https://depth-anything-3.github.io/ (#667eea → #764ba2)'
+        'description': 'Depth Anything V3 - Bright cyan → Red/pink',
+        'reference': 'https://depth-anything-3.github.io/ (#1cc4e6 → #f64a5e)'
     }
 }
 

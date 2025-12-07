@@ -6,7 +6,21 @@ import torch
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-# Import functions to test
+# Check if transformers is available (required for DA3 depth model)
+transformers_available = False
+try:
+    import transformers
+    transformers_available = True
+except ImportError:
+    pass
+
+# Skip all tests in this module if transformers not available
+pytestmark = pytest.mark.skipif(
+    not transformers_available,
+    reason="transformers library required for DA3-3DGS tests"
+)
+
+# Import functions to test (after skipif check)
 from deforum.rendering.da3_3dgs_novel_view import (
     slerp_quaternion,
     interpolate_camera_pose,
