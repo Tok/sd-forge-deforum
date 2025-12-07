@@ -569,10 +569,10 @@ class TuningTestManager:
         # Run the parameter sweep (synthetic)
         results = run_synthetic_3dgs_sweep(sweep_config, test_output_dir)
 
-        # Update test status with results
+        # Update test status with results (convert to dicts for JSON serialization)
         with self.test_lock:
             if test_id in self.active_tests:
-                self.active_tests[test_id].results = results
+                self.active_tests[test_id].results = [r.to_dict() for r in results]
 
         logger.info(f"Synthetic DA3-3DGS sweep complete: {len(results)} tests run")
 
