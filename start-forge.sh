@@ -56,6 +56,13 @@ fi
 
 cd "$FORGE_DIR"
 
+# Clear Python bytecode cache to ensure latest code is loaded
+echo -e "${BB0_MIDNIGHT}Clearing Python bytecode cache...${NC}"
+find extensions/sd-forge-deforum -type f \( -name "*.pyc" -o -name "*.pyo" \) -delete 2>/dev/null
+find extensions/sd-forge-deforum -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
+echo -e "${BB0_ZENITH}✓ Cache cleared${NC}"
+echo ""
+
 # Check for --no-opt flag
 USE_OPTIMIZATIONS=true
 EXTRA_ARGS=""
