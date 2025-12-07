@@ -23,6 +23,9 @@ from deforum.rendering.options import get_log_theme
 
 logger = get_logger()
 
+# Global variable to store depth range for dynamic far plane calculation
+_last_depth_range = None
+
 
 def slerp_quaternion(q1: np.ndarray, q2: np.ndarray, t: float) -> np.ndarray:
     """Spherical linear interpolation between two quaternions.
@@ -315,6 +318,10 @@ def render_novel_view_from_gaussians(
         logger.info(f"   Depth distribution: min={depth_np.min():.4f}, max={depth_np.max():.4f}, "
                     f"mean={depth_np.mean():.4f}, median={np.median(depth_np):.4f}")
 
+        # Store depth range for dynamic far plane calculation
+        global _last_depth_range
+        _last_depth_range = (float(depth_np.min()), float(depth_np.max()))
+
         # Keep only splats beyond near clip distance
         # Negative depth = in front of camera, so we want depth < -near_clip_distance
         mask = depth < -near_clip_distance
@@ -344,9 +351,20 @@ def render_novel_view_from_gaussians(
     cx = float(camera_intrinsics[0, 2])
     cy = float(camera_intrinsics[1, 2])
 
-    # Construct OpenGL-style projection matrix
+    # Construct OpenGL-style projection matrix with dynamic far plane
     near = 0.01
-    far = 100.0
+
+    # Calculate far plane based on actual scene depth
+    # If we have depth range from near-clip filtering, use it
+    if '_last_depth_range' in globals() and _last_depth_range is not None:
+        depth_min, depth_max = _last_depth_range
+        # depths are negative in camera space (in front of camera)
+        # far plane should be abs(depth_min) with some margin
+        far = abs(depth_min) * 1.2  # 20% margin beyond furthest splat
+        logger.debug(f"   Dynamic far plane: {far:.2f} (scene depth range: {depth_min:.2f} to {depth_max:.2f})")
+    else:
+        far = 100.0  # Fallback
+        logger.debug(f"   Using default far plane: {far:.2f}")
     projmat = torch.zeros(4, 4, device=device)
     projmat[0, 0] = 2.0 * fx / width
     projmat[1, 1] = 2.0 * fy / height
@@ -971,6 +989,46 @@ def generate_da3_3dgs_interpolation(
     # This ensures cameras point at the dense center of the scene, not empty space
     extrinsics = reorient_cameras_to_target(extrinsics, centroid)
     logger.info(f"   Reoriented cameras to look at point cloud center")
+
+    # CRITICAL FIX: DA3's camera poses are at wrong scale
+    # Position cameras OUTSIDE the scene bounding box, looking inward
+    scene_extent = bbox_max - bbox_min
+    max_extent = np.max(scene_extent)
+
+    # Calculate scene "radius" (half of max extent)
+    scene_radius = max_extent / 2.0
+
+    # Cameras should be positioned at 1.5x scene radius from centroid
+    # This ensures they're outside the scene, looking inward
+    target_distance = scene_radius * 1.5
+
+    # Calculate current average camera distance
+    cam_distances = []
+    for ext in extrinsics:
+        R = ext[:3, :3]
+        t = ext[:3, 3]
+        cam_pos = -R.T @ t
+        dist = np.linalg.norm(cam_pos - centroid)
+        cam_distances.append(dist)
+
+    avg_cam_dist = np.mean(cam_distances)
+    scale_factor = target_distance / (avg_cam_dist + 1e-8)
+
+    logger.info(f"   Scene radius: {scene_radius:.2f}, Target camera distance: {target_distance:.2f}")
+    logger.info(f"   Current avg distance: {avg_cam_dist:.2f}, Scale factor: {scale_factor:.2f}x")
+
+    # Apply scaling to camera positions relative to centroid
+    for i in range(len(extrinsics)):
+        R = extrinsics[i, :3, :3]
+        t = extrinsics[i, :3, 3]
+        cam_pos = -R.T @ t
+
+        # Scale position to place camera outside scene
+        cam_pos_scaled = centroid + (cam_pos - centroid) * scale_factor
+
+        # Update extrinsic matrix
+        t_new = -R @ cam_pos_scaled
+        extrinsics[i, :3, 3] = t_new
 
     # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
     # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
