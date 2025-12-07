@@ -138,9 +138,7 @@ def on_ui_tabs():
 
     # Slopcore gradient aesthetic for Generate button and hide unwanted buttons
     slopcore_css = """
-    /* Slopcore gradient for Generate button and audio sync buttons */
-    /* NUCLEAR OPTION: Override Gradio 4 default button styles with maximum specificity */
-    /* Target by ID with maximum specificity */
+    /* DA3 slopcore gradient for MAIN GENERATE BUTTON ONLY (cyan → red/pink) */
     #deforum_generate,
     #deforum_generate *,
     #deforum_generate.primary,
@@ -149,7 +147,31 @@ def on_ui_tabs():
     #deforum_generate > button,
     #deforum_generate button,
     [id*="deforum_generate"] button,
-    [id="deforum_generate"],
+    [id="deforum_generate"] {
+        background: linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%) !important;
+        background-image: linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%) !important;
+        background-color: #1cc4e6 !important;
+        border: none !important;
+        color: white !important;
+        font-weight: 600 !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+        box-shadow: 0 4px 6px rgba(28, 196, 230, 0.3) !important;
+        transition: all 0.3s ease !important;
+    }
+    /* Main generate button hover - reversed DA3 gradient */
+    #deforum_generate:hover,
+    #deforum_generate *:hover,
+    button#deforum_generate:hover,
+    #deforum_generate > button:hover,
+    [id*="deforum_generate"] button:hover {
+        background: linear-gradient(135deg, #f64a5e 0%, #1cc4e6 100%) !important;
+        background-image: linear-gradient(135deg, #f64a5e 0%, #1cc4e6 100%) !important;
+        background-color: #f64a5e !important;
+        box-shadow: 0 6px 12px rgba(246, 74, 94, 0.4) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* BB0 Slopcore gradient for OTHER buttons (audio sync, etc.) */
     #audio_sync_button,
     #audio_sync_button *,
     button#audio_sync_button,
@@ -193,12 +215,7 @@ def on_ui_tabs():
         box-shadow: 0 4px 6px rgba(86, 6, 255, 0.3) !important;
         transition: all 0.3s ease !important;
     }
-    /* Hover states with universal selectors */
-    #deforum_generate:hover,
-    #deforum_generate *:hover,
-    button#deforum_generate:hover,
-    #deforum_generate > button:hover,
-    [id*="deforum_generate"] button:hover,
+    /* BB0 Hover states for OTHER buttons */
     #audio_sync_button:hover,
     #audio_sync_button *:hover,
     button#audio_sync_button:hover,
