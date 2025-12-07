@@ -1013,13 +1013,20 @@ def create_tuning_tab() -> tuple:
                     df = pd.DataFrame(status["results"])
 
                     # Detect test type from results structure
-                    is_orbit = 'rotation_factor' in status["results"][0]
+                    first_result = status["results"][0]
+                    is_orbit = 'rotation_factor' in first_result
+                    is_3dgs_synthetic = 'neighbor_segments' in first_result and 'pattern' in first_result
 
                     if is_orbit:
                         # Orbit test visualization
                         best_config = find_best_orbit_configuration(status["results"])
                         metrics_fig = create_orbit_metrics_plot(status["results"])
                         heatmap_fig = create_orbit_heatmap(status["results"], 'iterations_until_offscreen')
+                    elif is_3dgs_synthetic:
+                        # 3DGS synthetic test visualization (simple table for now)
+                        best_config = max(status["results"], key=lambda r: r['overall_score'])
+                        metrics_fig = None  # TODO: Create 3DGS-specific charts
+                        heatmap_fig = None
                     else:
                         # Standard I2V chaining test visualization
                         best_config = find_best_configuration(status["results"])
