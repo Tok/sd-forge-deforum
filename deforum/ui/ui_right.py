@@ -352,27 +352,18 @@ def on_ui_tabs():
         display: block !important;
     }
 
-    /* DA3 slopcore gradient for MAIN GENERATE BUTTON ONLY (electric cyan → coral red) LEFT TO RIGHT */
+    /* DA3 slopcore gradient for MAIN GENERATE BUTTON ONLY (electric cyan → watermelon) LEFT TO RIGHT */
     /* MUST COME LAST - Overrides BB0 button styles above */
-    /* MAXIMUM SPECIFICITY to override .slopcore-button class */
-    div#deforum_generate,
-    div#deforum_generate button,
-    #deforum_generate.generate-button,
-    #deforum_generate button.generate-button,
-    button#deforum_generate.primary,
-    button#deforum_generate.slopcore-button,
-    #deforum_generate.slopcore-button,
-    #deforum_results button#deforum_generate,
-    #deforum_results div#deforum_generate button,
-    #deforum_generate,
-    #deforum_generate *,
-    #deforum_generate.primary,
-    #deforum_generate.secondary,
+    /* Target WebUI-generated Deforum generate button specifically */
+    /* Button has elem_id="deforum_generate" and variant="primary" */
+    #deforum_generate_box button[id$="_generate"],
+    #deforum_generate_box button.primary,
     button#deforum_generate,
-    #deforum_generate > button,
-    #deforum_generate button,
-    [id*="deforum_generate"] button,
-    [id="deforum_generate"] {
+    button[id="deforum_generate"],
+    #deforum_generate,
+    #deforum_generate_box > div > button,
+    #deforum_results #deforum_generate,
+    div#deforum_generate_box button:not(.generate-box-interrupt):not(.generate-box-skip):not(.generate-box-interrupting) {
         background: linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%) !important;
         background-image: linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%) !important;
         background-color: #1cc4e6 !important;
@@ -384,20 +375,14 @@ def on_ui_tabs():
         transition: all 0.3s ease !important;
     }
     /* Main generate button hover - reversed DA3 gradient (LEFT TO RIGHT) */
-    div#deforum_generate:hover,
-    div#deforum_generate button:hover,
-    #deforum_generate.generate-button:hover,
-    #deforum_generate button.generate-button:hover,
-    button#deforum_generate.primary:hover,
-    button#deforum_generate.slopcore-button:hover,
-    #deforum_generate.slopcore-button:hover,
-    #deforum_results button#deforum_generate:hover,
-    #deforum_results div#deforum_generate button:hover,
-    #deforum_generate:hover,
-    #deforum_generate *:hover,
+    #deforum_generate_box button[id$="_generate"]:hover,
+    #deforum_generate_box button.primary:hover,
     button#deforum_generate:hover,
-    #deforum_generate > button:hover,
-    [id*="deforum_generate"] button:hover {
+    button[id="deforum_generate"]:hover,
+    #deforum_generate:hover,
+    #deforum_generate_box > div > button:hover,
+    #deforum_results #deforum_generate:hover,
+    div#deforum_generate_box button:not(.generate-box-interrupt):not(.generate-box-skip):not(.generate-box-interrupting):hover {
         background: linear-gradient(135deg, #f64a5e 0%, #1cc4e6 100%) !important;
         background-image: linear-gradient(135deg, #f64a5e 0%, #1cc4e6 100%) !important;
         background-color: #f64a5e !important;
