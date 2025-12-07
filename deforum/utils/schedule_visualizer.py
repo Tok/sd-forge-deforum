@@ -392,7 +392,7 @@ def visualize_schedules(
     yaw = ry_coords[idx]
     roll = rz_coords[idx]
     forward = euler_to_forward_vector(pitch, yaw, roll)
-    arrow_length = 10
+    arrow_length = 5  # Reduced from 10 to make camera direction indicators smaller
     forward_x = forward.x * arrow_length
     forward_y = forward.y * arrow_length
     forward_z = forward.z * arrow_length
@@ -411,7 +411,24 @@ def visualize_schedules(
                 hoverinfo='skip',
                 showlegend=False
             ),
-            # Trace 1: Static keyframe markers (always visible)
+            # Trace 1: Static normal frame markers (all frames, smaller and subtler)
+            go.Scatter3d(
+                x=x_coords,
+                y=y_coords,
+                z=z_coords,
+                mode='markers',
+                name='Frames',
+                marker=dict(
+                    size=4,  # Small markers for normal frames
+                    color=BB0_MIDNIGHT,  # Mid blue for normal frames
+                    symbol='circle',
+                    opacity=0.4  # Subtle to not overwhelm the visualization
+                ),
+                hovertemplate='Frame %{text}<br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>',
+                text=list(range(len(x_coords))),
+                showlegend=False
+            ),
+            # Trace 2: Static keyframe markers (always visible, on top of normal frames)
             go.Scatter3d(
                 x=[x_coords[f] for f in prompt_keyframes if f < len(x_coords)],
                 y=[y_coords[f] for f in prompt_keyframes if f < len(y_coords)],
@@ -429,7 +446,7 @@ def visualize_schedules(
                 hovertemplate='<b>KEYFRAME %{text}</b><br>X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>',
                 showlegend=False
             ) if prompt_keyframes else go.Scatter3d(x=[], y=[], z=[], mode='markers', showlegend=False),
-            # Trace 2: Animated camera position marker
+            # Trace 3: Animated camera position marker
             go.Scatter3d(
                 x=[x_coords[idx]],
                 y=[y_coords[idx]],
@@ -445,7 +462,7 @@ def visualize_schedules(
                 hovertemplate=f'<b>Frame {idx}</b><br>X: {x_coords[idx]:.2f}<br>Y: {y_coords[idx]:.2f}<br>Z: {z_coords[idx]:.2f}<extra></extra>',
                 showlegend=False
             ),
-            # Trace 3: Animated forward arrow
+            # Trace 4: Animated forward arrow
             go.Scatter3d(
                 x=[x_coords[idx], x_coords[idx] + forward_x],
                 y=[y_coords[idx], y_coords[idx] + forward_y],
@@ -456,7 +473,7 @@ def visualize_schedules(
                 hoverinfo='skip',
                 showlegend=False
             ),
-            # Trace 4: Animated arrowhead
+            # Trace 5: Animated arrowhead
             go.Scatter3d(
                 x=[x_coords[idx] + forward_x],
                 y=[y_coords[idx] + forward_y],
@@ -496,8 +513,8 @@ def visualize_schedules(
             ))
             static_arrow_frames.append(idx)
 
-    # Build animation frames (update traces 2, 3, 4 for each frame)
-    # Note: Must include empty {} for all static arrow traces (traces 5+)
+    # Build animation frames (update traces 3, 4, 5 for each frame)
+    # Note: Must include empty {} for all static traces (traces 0, 1, 2 and 6+)
     num_static_arrows = len(static_arrow_frames)
     plotly_frames = []
     for idx in animation_frames:
@@ -514,8 +531,9 @@ def visualize_schedules(
 
         frame_data = [
             {},  # Trace 0: Static path (no update)
-            {},  # Trace 1: Static keyframes (no update)
-            # Trace 2: Camera position
+            {},  # Trace 1: Static normal frame markers (no update)
+            {},  # Trace 2: Static keyframes (no update)
+            # Trace 3: Camera position
             go.Scatter3d(
                 x=[x_coords[idx]],
                 y=[y_coords[idx]],
@@ -523,14 +541,14 @@ def visualize_schedules(
                 marker=dict(size=15, color=marker_color, symbol='diamond', opacity=1.0),
                 hovertemplate=f'<b>Frame {idx}</b><br>X: {x_coords[idx]:.2f}<br>Y: {y_coords[idx]:.2f}<br>Z: {z_coords[idx]:.2f}<extra></extra>'
             ),
-            # Trace 3: Forward arrow
+            # Trace 4: Forward arrow
             go.Scatter3d(
                 x=[x_coords[idx], x_coords[idx] + forward_x],
                 y=[y_coords[idx], y_coords[idx] + forward_y],
                 z=[z_coords[idx], z_coords[idx] + forward_z],
                 line=dict(color=marker_color, width=4)
             ),
-            # Trace 4: Arrowhead
+            # Trace 5: Arrowhead
             go.Scatter3d(
                 x=[x_coords[idx] + forward_x],
                 y=[y_coords[idx] + forward_y],
@@ -539,7 +557,7 @@ def visualize_schedules(
             )
         ]
 
-        # Add empty {} for all static arrow traces (traces 5 to 5+N-1)
+        # Add empty {} for all static arrow traces (traces 6 to 6+N-1)
         frame_data.extend([{}] * num_static_arrows)
 
         plotly_frames.append(go.Frame(

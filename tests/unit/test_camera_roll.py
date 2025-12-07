@@ -122,6 +122,55 @@ class TestRotateAroundPathRoll:
             assert point.rot_y != 0.0 or point.rot_x != 0.0  # Some rotation present
             assert point.rot_z is not None
 
+    def test_rotate_around_schedules_contain_roll(self):
+        """Test that rotate-around with look-at-center generates schedules with proper roll."""
+        import re
+        from deforum.utils.spline_camera_path import camera_path_to_schedules
+
+        # Generate rotate-around path with quaternion look-at center mode
+        path = generate_rotate_around_path(
+            num_frames=10,
+            radius=50.0,
+            height=10.0,
+            center_x=0.0,
+            center_y=0.0,
+            center_z=0.0,
+            stabilize_camera=True,
+            rotation_mode='quaternion',
+            look_at_mode='center'
+        )
+
+        # Convert to schedules with look_at_mode="center"
+        schedules = camera_path_to_schedules(
+            path,
+            speed_multiplier=1.0,
+            look_at_mode='center',
+            stabilize_camera=True
+        )
+
+        # Verify all rotation schedules exist
+        assert 'rotation_3d_x' in schedules
+        assert 'rotation_3d_y' in schedules
+        assert 'rotation_3d_z' in schedules
+
+        # Parse rotation_3d_z schedule and verify it contains values
+        rot_z_schedule = schedules['rotation_3d_z']
+        pattern = r'(\d+)\s*:\s*\(([^)]+)\)'
+        matches = re.findall(pattern, rot_z_schedule)
+
+        assert len(matches) > 0, "rotation_3d_z schedule should contain frame values"
+
+        # Extract all rot_z values
+        rot_z_values = [float(val) for frame, val in matches]
+
+        # With stabilize_camera=True, roll should be minimal but not hardcoded to 0
+        # All values should be floats (not None)
+        assert all(isinstance(v, float) for v in rot_z_values)
+
+        # With stabilization, max roll should be < 5 degrees
+        max_roll = max(abs(v) for v in rot_z_values)
+        assert max_roll < 5.0, f"With stabilize=True, roll should be < 5°, got {max_roll:.2f}°"
+
 
 class TestSplinePathRoll:
     """Test spline curve paths calculate roll properly."""

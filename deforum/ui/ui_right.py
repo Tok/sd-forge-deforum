@@ -1043,11 +1043,7 @@ def on_ui_tabs():
             if btn_generate_preset and camera_path_plot and tx:
                 # Wire up preset generation button
                 def handle_preset_with_overlap(*args):
-                    """Handle preset generation and update camera path visualization only.
-
-                    Wormtrail is NOT auto-updated to prevent UI freeze on large animations.
-                    User must click 'Refresh Wormtrail' button to manually update it.
-                    """
+                    """Handle preset generation and update both camera path plot and wormtrail."""
                     # First 20 args are for handle_generate_preset
                     preset_args = args[:20]
 
@@ -1057,9 +1053,30 @@ def on_ui_tabs():
                     # Extract schedule values from result (these are already downsampled for large animations)
                     status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot = result
 
-                    # Return schedules and camera path plot
-                    # Wormtrail is NOT included - user must manually refresh it
-                    return (status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot)
+                    # Also update wormtrail visualization
+                    wormtrail_html = None
+                    if frame_overlap_simulator:
+                        try:
+                            wormtrail_html = update_overlap_viz(
+                                tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
+                                args[20],  # zoom
+                                args[21],  # width
+                                args[22],  # height
+                                args[23],  # shake_name
+                                args[24],  # shake_intensity
+                                args[25],  # shake_speed
+                                args[26],  # apply_shakify_toggle
+                                args[27],  # prompts
+                                args[28],  # max_frames
+                                args[29],  # use_full_quality
+                            )
+                        except Exception as e:
+                            import traceback
+                            print(f"Warning: Wormtrail update failed: {e}\n{traceback.format_exc()}")
+                            wormtrail_html = f'<div style="color: #FF5050; padding: 20px;">Wormtrail update failed: {e}</div>'
+
+                    # Return schedules, camera path plot, and wormtrail
+                    return (status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot, wormtrail_html)
 
                 btn_generate_preset.click(
                     fn=handle_preset_with_overlap,
@@ -1085,6 +1102,17 @@ def on_ui_tabs():
                         ry,
                         rz,
                         components.get("animation_prompts"),
+                        # Additional inputs for wormtrail update (10 args)
+                        components.get("zoom"),
+                        components.get("W"),
+                        components.get("H"),
+                        components.get("shake_name"),
+                        components.get("shake_intensity"),
+                        components.get("shake_speed"),
+                        components.get("show_shakify_in_overlap"),
+                        components.get("animation_prompts"),
+                        components.get("max_frames"),
+                        components.get("wormtrail_quality_full"),
                     ],
                     outputs=[
                         components.get("preset_status"),
@@ -1094,24 +1122,53 @@ def on_ui_tabs():
                         rx,
                         ry,
                         rz,
-                        # Camera path plot and wormtrail NOT auto-updated
-                        # User must click respective refresh buttons to update visualizations
+                        camera_path_plot,  # Camera path plot
+                        frame_overlap_simulator,  # Wormtrail auto-update
                     ],
                 )
 
             if btn_randomize_preset and camera_path_plot and tx:
                 # Wire up randomize button
                 def randomize_preset_wrapper(*args):
-                    """Randomize by using current params but with random seed"""
-                    args_list = list(args)
+                    """Randomize by using current params but with random seed and update visualizations."""
+                    # First 20 args are preset params (like handle_preset_with_overlap)
+                    args_list = list(args[:20])
                     args_list[8] = -1  # preset_random_seed index - force new randomization
                     if args_list[7] == 0:  # preset_randomize
                         args_list[7] = 0.5
-                    return handle_generate_preset(*args_list)
+
+                    # Generate preset schedules and visualization
+                    result = handle_generate_preset(*args_list)
+                    status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot = result
+
+                    # Also update wormtrail visualization
+                    wormtrail_html = None
+                    if frame_overlap_simulator:
+                        try:
+                            wormtrail_html = update_overlap_viz(
+                                tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
+                                args[20],  # zoom
+                                args[21],  # width
+                                args[22],  # height
+                                args[23],  # shake_name
+                                args[24],  # shake_intensity
+                                args[25],  # shake_speed
+                                args[26],  # apply_shakify_toggle
+                                args[27],  # prompts
+                                args[28],  # max_frames
+                                args[29],  # use_full_quality
+                            )
+                        except Exception as e:
+                            import traceback
+                            print(f"Warning: Wormtrail update failed: {e}\n{traceback.format_exc()}")
+                            wormtrail_html = f'<div style="color: #FF5050; padding: 20px;">Wormtrail update failed: {e}</div>'
+
+                    return (status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot, wormtrail_html)
 
                 btn_randomize_preset.click(
                     fn=randomize_preset_wrapper,
                     inputs=[
+                        # Preset generation inputs (20 args)
                         components.get("preset_type"),
                         components.get("speed_multiplier"),
                         components.get("speed_randomization"),
@@ -1121,12 +1178,28 @@ def on_ui_tabs():
                         components.get("preset_closed_loop"),
                         components.get("preset_randomize"),
                         components.get("preset_random_seed"),
+                        components.get("preset_rotation_mode"),
+                        components.get("preset_rotation_factor"),
+                        components.get("preset_look_at_mode"),
+                        components.get("preset_look_at_blend"),
                         tx,
                         ty,
                         tz,
                         rx,
                         ry,
                         rz,
+                        components.get("animation_prompts"),
+                        # Additional inputs for wormtrail update (10 args)
+                        components.get("zoom"),
+                        components.get("W"),
+                        components.get("H"),
+                        components.get("shake_name"),
+                        components.get("shake_intensity"),
+                        components.get("shake_speed"),
+                        components.get("show_shakify_in_overlap"),
+                        components.get("animation_prompts"),
+                        components.get("max_frames"),
+                        components.get("wormtrail_quality_full"),
                     ],
                     outputs=[
                         components.get("preset_status"),
@@ -1135,7 +1208,9 @@ def on_ui_tabs():
                         tz,
                         rx,
                         ry,
-                        rz,  # Only update schedules
+                        rz,
+                        camera_path_plot,  # Camera path plot
+                        frame_overlap_simulator,  # Wormtrail auto-update
                     ],
                 )
 
