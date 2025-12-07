@@ -45,30 +45,40 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
 
     gr.Markdown("""
     **How it works:**
-    - Collects keyframes from current segment + 4 neighbor segments (default ~9 keyframes)
+    - **Scene Strategy:** Choose how 3DGS scenes are built (per-segment / per-prompt / rolling-window)
+    - **Per-Prompt (Recommended):** Build ONE scene per prompt change - eliminates coordinate drift within semantic regions
     - DA3 auto-estimates camera poses from image content
-    - Builds 3D Gaussian Splatting scene (~705k splats, configurable)
+    - Builds 3D Gaussian Splatting scene (~705k splats, configurable densification)
     - Renders novel views via camera pose interpolation
-    - **Note:** Deforum camera schedules are NOT used - DA3 drives movement
+    - **Note:** DA3 automatic pose estimation (Deforum camera schedules disabled by default - better results)
 
     ---
     """)
     
+    # Scene Strategy
+    gr.Markdown(f"### {emoji_if_enabled('🏗️')} Scene Building Strategy")
+    with gr.Row():
+        da3_3dgs_scene_strategy = create_gr_elem(dw.da3_3dgs_scene_strategy)
+
+    with gr.Row():
+        da3_3dgs_rolling_window_size = create_gr_elem(dw.da3_3dgs_rolling_window_size)
+        da3_3dgs_max_prompt_keyframes = create_gr_elem(dw.da3_3dgs_max_prompt_keyframes)
+
     # Model Selection
     gr.Markdown(f"### {emoji_if_enabled('🎛')} Model Configuration")
     with gr.Row():
         da3_3dgs_model = create_gr_elem(dw.da3_3dgs_model)
         da3_3dgs_neighbor_segments = create_gr_elem(dw.da3_3dgs_neighbor_segments)
-    
+
     # Quality Settings
     gr.Markdown(f"### {emoji_if_enabled('✨')} Quality Settings")
     with gr.Row():
         da3_3dgs_densification_factor = create_gr_elem(dw.da3_3dgs_densification_factor)
         da3_3dgs_near_clip_distance = create_gr_elem(dw.da3_3dgs_near_clip_distance)
 
-    # Camera Motion
-    gr.Markdown(f"### {emoji_if_enabled('📹')} Camera Motion")
-    with gr.Row():
+    # Camera Motion (hidden - DA3 automatic pose estimation works better)
+    # Create component but hide it to keep parameter passing intact
+    with gr.Row(visible=False):
         da3_3dgs_use_deforum_motion = create_gr_elem(dw.da3_3dgs_use_deforum_motion)
 
     # Output Settings
@@ -110,6 +120,9 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
         """)
     
     # CRITICAL: Immediately capture components in locals() for registration
+    locals()['da3_3dgs_scene_strategy'] = da3_3dgs_scene_strategy
+    locals()['da3_3dgs_rolling_window_size'] = da3_3dgs_rolling_window_size
+    locals()['da3_3dgs_max_prompt_keyframes'] = da3_3dgs_max_prompt_keyframes
     locals()['da3_3dgs_model'] = da3_3dgs_model
     locals()['da3_3dgs_neighbor_segments'] = da3_3dgs_neighbor_segments
     locals()['da3_3dgs_densification_factor'] = da3_3dgs_densification_factor
