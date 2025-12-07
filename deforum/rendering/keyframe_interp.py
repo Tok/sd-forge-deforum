@@ -541,7 +541,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 densification_factor=densification_factor,
                 near_clip_distance=near_clip_distance,
                 dashboard=dashboard,
-                deform_keys=data.animation_keys.deform_keys  # Deforum movement schedules for camera control
+                deform_keys=data.animation_keys.deform_keys if getattr(wan_args, 'da3_3dgs_use_deforum_motion', False) else None
             )
         else:  # Default: Wan
             logger.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}")
