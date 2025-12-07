@@ -302,8 +302,8 @@ def render_novel_view_from_gaussians(
     # DA3 provides extrinsics as [4, 4], gsplat expects viewmat
     viewmat = torch.from_numpy(camera_pose).float().to(device)  # [4, 4]
 
-    # Apply near-clip filtering to remove splats too close to camera
-    if near_clip_distance > 0.0:
+    # TEMP DEBUG: Disable near-clip filtering to test if it's causing black frames
+    if False and near_clip_distance > 0.0:
         # Transform means to camera space to get depth
         # viewmat is world-to-camera, so: cam_pos = viewmat @ world_pos
         means_homogeneous = torch.cat([means, torch.ones(means.shape[0], 1, device=device)], dim=1)  # [N, 4]
