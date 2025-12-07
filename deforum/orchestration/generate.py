@@ -628,12 +628,11 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
             # Note: Flux ControlNet V2 control samples are retrieved from global storage
             # by the patched KModel.apply_model during sampling (no injection needed here)
 
-            with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
-                p_txt.scheduler = "Simple"  # FIXME provide
-                # Suppress redundant Forge output (info already shown in Deforum's table)
-                # No callback needed for simplified dashboard (would cause recursion)
-                with suppress_forge_output():
-                    processed = processing.process_images(p_txt)
+            p_txt.scheduler = "Simple"  # FIXME provide
+            # Suppress redundant Forge output (info already shown in Deforum's table)
+            # No callback needed for simplified dashboard (would cause recursion)
+            with suppress_forge_output():
+                processed = processing.process_images(p_txt)
 
             try:
                 p_txt.close()
@@ -690,11 +689,10 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
             # Fractional strength is applied via monkey patches at extension init
             # No per-frame intervention needed here - patches are always active
 
-            with A1111OptionsOverrider({"control_net_detectedmap_dir" : os.path.join(args.outdir, "controlnet_detected_map")}):
-                # Suppress redundant Forge output (info already shown in Deforum's table)
-                # No callback needed for simplified dashboard (would cause recursion)
-                with suppress_forge_output():
-                    processed = processing.process_images(p)
+            # Suppress redundant Forge output (info already shown in Deforum's table)
+            # No callback needed for simplified dashboard (would cause recursion)
+            with suppress_forge_output():
+                processed = processing.process_images(p)
 
 
     if root.initial_info is None:
