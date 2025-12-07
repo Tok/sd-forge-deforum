@@ -313,8 +313,8 @@ def render_novel_view_from_gaussians(
 
     # Debug: Log depth distribution (use INFO so it always shows)
     depth_np = depth.detach().cpu().numpy()
-    logger.info(f"   Depth distribution: min={depth_np.min():.4f}, max={depth_np.max():.4f}, "
-                f"mean={depth_np.mean():.4f}, median={np.median(depth_np):.4f}")
+    logger.info(f"   Depth: min={depth_np.min():.2f}, max={depth_np.max():.2f}, "
+                f"mean={depth_np.mean():.2f}, median={np.median(depth_np):.2f}")
 
     # Store depth range for dynamic far plane calculation
     global _last_depth_range
@@ -390,10 +390,10 @@ def render_novel_view_from_gaussians(
         # depths are negative in camera space (in front of camera)
         # far plane should be abs(depth_min) with some margin
         far = abs(depth_min) * 1.2  # 20% margin beyond furthest splat
-        logger.debug(f"   Dynamic far plane: {far:.2f} (scene depth range: {depth_min:.2f} to {depth_max:.2f})")
+        logger.debug(f"   Far plane: {far:.1f} (dynamic, depth {depth_min:.1f}..{depth_max:.1f})")
     else:
         far = 100.0  # Fallback
-        logger.debug(f"   Using default far plane: {far:.2f}")
+        logger.debug(f"   Far plane: {far:.1f} (default)")
     projmat = torch.zeros(4, 4, device=device)
     projmat[0, 0] = 2.0 * fx / width
     projmat[1, 1] = 2.0 * fy / height
@@ -918,12 +918,8 @@ def generate_da3_3dgs_interpolation(
     Returns:
         List of paths to generated frame files
     """
-    logger.info(f"{emoji_if_enabled('🌌')} DA3-3DGS Interpolation:")
-    logger.info(f"   Keyframes: {len(keyframe_images)} frames at indices {keyframe_indices}")
-    logger.info(f"   Targets: {len(target_frame_indices)} frames to generate")
-    logger.info(f"   Model: {model_selection}")
-    logger.info(f"   Densification factor: {densification_factor}")
-    logger.info(f"   Near-clip distance: {near_clip_distance}")
+    logger.info(f"{emoji_if_enabled('🌌')} DA3-3DGS: {len(keyframe_images)} keyframes {keyframe_indices}, "
+                f"{len(target_frame_indices)} targets, model={model_selection}, densify={densification_factor}x, near_clip={near_clip_distance}")
 
     # Initialize dashboard totals if available
     if dashboard:
