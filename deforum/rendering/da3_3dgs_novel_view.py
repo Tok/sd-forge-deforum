@@ -307,7 +307,7 @@ def render_novel_view_from_gaussians(
 
     # Transform means to camera space to get depth (ALWAYS needed for far plane calculation)
     # viewmat is world-to-camera, so: cam_pos = viewmat @ world_pos
-    means_homogeneous = torch.cat([means, torch.ones(means.shape[0], 1, device=device)], dim=1]  # [N, 4]
+    means_homogeneous = torch.cat([means, torch.ones(means.shape[0], 1, device=device)], dim=1)  # [N, 4]
     means_cam = (viewmat @ means_homogeneous.T).T  # [N, 4]
     depth = means_cam[:, 2]  # Z coordinate in camera space (negative = in front of camera)
 
