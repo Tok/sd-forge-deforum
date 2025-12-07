@@ -894,7 +894,8 @@ def generate_da3_3dgs_interpolation(
     segment_last_idx: int = None,
     densification_factor: int = 1,
     near_clip_distance: float = 0.0,
-    dashboard=None
+    dashboard=None,
+    deform_keys=None
 ) -> List[str]:
     """Generate interpolated frames using DA3 3D Gaussian Splatting.
 
@@ -1006,21 +1007,41 @@ def generate_da3_3dgs_interpolation(
         cam_pos = -R.T @ t  # Camera position in world coordinates
         logger.debug(f"   Camera {i} position: ({cam_pos[0]:.4f}, {cam_pos[1]:.4f}, {cam_pos[2]:.4f})")
 
-    # Use DA3's automatic pose estimation from depth
-    # DA3 generates camera poses that are optimally positioned based on actual scene geometry
-    # NOTE: Deforum translation/rotation schedules are NOT used for 3DGS interpolation
-    # DA3 automatically determines optimal camera movement based on scene depth
-    logger.info(f"   Using DA3 automatic pose estimation from depth")
-    logger.info(f"   NOTE: Deforum movement schedules are ignored (DA3 controls camera path)")
-    logger.info(f"   Using DA3's original camera poses (scene and cameras at consistent scale)")
+    # Choose camera pose strategy: Deforum schedules OR DA3 automatic
+    if deform_keys is not None:
+        # Use Deforum movement schedules relative to scene center
+        logger.info(f"   Using Deforum movement schedules for camera path")
+        logger.info(f"   Camera positioned relative to scene centroid: ({centroid[0]:.2f}, {centroid[1]:.2f}, {centroid[2]:.2f})")
 
-    # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
-    # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
-    # but we MUST interpolate between segment boundaries to stay in sync
-    first_pose, last_pose = get_segment_boundary_poses(
-        extrinsics, keyframe_indices, segment_first_idx, segment_last_idx
-    )
-    tween_poses_list = None  # Will be interpolated in render_tween_frames
+        from deforum.rendering.deforum_camera_poses import generate_camera_poses_from_deforum_schedules
+
+        first_pose, last_pose, tween_poses_list = generate_camera_poses_from_deforum_schedules(
+            keyframe_indices=keyframe_indices,
+            segment_first_idx=segment_first_idx,
+            segment_last_idx=segment_last_idx,
+            target_frame_indices=target_frame_indices,
+            deform_keys=deform_keys,
+            scene_centroid=centroid,
+            scene_bounds=(bbox_min, bbox_max),
+            base_camera_distance=None  # Auto-calculate from scene extent
+        )
+
+        logger.info(f"   Generated {len(tween_poses_list)} camera poses from Deforum schedules")
+
+    else:
+        # Use DA3's automatic pose estimation from depth
+        # DA3 generates camera poses that are optimally positioned based on actual scene geometry
+        logger.info(f"   Using DA3 automatic pose estimation from depth")
+        logger.info(f"   NOTE: Deforum movement schedules not provided (DA3 controls camera path)")
+        logger.info(f"   Using DA3's original camera poses (scene and cameras at consistent scale)")
+
+        # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
+        # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
+        # but we MUST interpolate between segment boundaries to stay in sync
+        first_pose, last_pose = get_segment_boundary_poses(
+            extrinsics, keyframe_indices, segment_first_idx, segment_last_idx
+        )
+        tween_poses_list = None  # Will be interpolated in render_tween_frames
 
     # Use average intrinsics (usually constant across views)
     avg_intrinsics = np.mean(intrinsics, axis=0)
