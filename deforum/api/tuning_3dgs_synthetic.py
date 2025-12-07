@@ -193,36 +193,78 @@ def measure_vram_usage() -> float:
         return 0.0
 
 
+def calculate_frame_similarity(frame1_path: Path, frame2_path: Path) -> float:
+    """Calculate similarity between two frames using SSIM.
+
+    Args:
+        frame1_path: Path to first frame
+        frame2_path: Path to second frame
+
+    Returns:
+        SSIM score 0-1 (higher = more similar)
+    """
+    from PIL import Image
+    import numpy as np
+    from skimage.metrics import structural_similarity
+
+    img1 = np.array(Image.open(frame1_path).convert('L'))  # Grayscale
+    img2 = np.array(Image.open(frame2_path).convert('L'))
+
+    ssim = structural_similarity(img1, img2, data_range=255)
+    return float(ssim)
+
+
 def test_da3_pose_estimation(
     image_paths: List[Path],
     model_name: str,
     neighbor_segments: int
 ) -> tuple[bool, float, float]:
-    """Test DA3 pose estimation on synthetic images.
+    """Test DA3 pose estimation quality using frame similarity metrics.
+
+    Instead of running actual DA3 (TODO), we measure keyframe similarity
+    to estimate how well DA3 would perform. Higher similarity = smoother
+    motion = better pose estimation.
 
     Args:
         image_paths: Paths to test images
-        model_name: DA3 model to use
-        neighbor_segments: Number of neighbor frames for pose estimation
+        model_name: DA3 model to use (currently just for logging)
+        neighbor_segments: Number of neighbor frames (affects context quality)
 
     Returns:
         (success, avg_confidence, temporal_smoothness)
     """
-    # TODO: Actual DA3 pose estimation integration
-    # For now, return placeholder metrics
-    logger.info(f"Testing DA3 pose estimation: {model_name}, {len(image_paths)} frames...")
+    logger.info(f"Analyzing frame similarity: {model_name}, {len(image_paths)} frames, "
+                f"{neighbor_segments} neighbors...")
 
     try:
-        # Simulate pose estimation (replace with actual DA3 call)
-        success = True
-        avg_confidence = 0.85  # Placeholder
-        temporal_smoothness = 0.90  # Placeholder
+        # Calculate similarity between consecutive frames
+        similarities = []
+        for i in range(len(image_paths) - 1):
+            sim = calculate_frame_similarity(image_paths[i], image_paths[i + 1])
+            similarities.append(sim)
 
-        logger.info(f"✓ Pose estimation: confidence={avg_confidence:.2f}, smoothness={temporal_smoothness:.2f}")
-        return success, avg_confidence, temporal_smoothness
+        if not similarities:
+            logger.warning("Not enough frames to calculate similarity")
+            return False, 0.0, 0.0
+
+        # Metrics:
+        # - avg_confidence: Average frame similarity (proxy for pose estimation confidence)
+        # - temporal_smoothness: Consistency of similarity (low variance = smooth motion)
+        avg_similarity = float(np.mean(similarities))
+        variance = float(np.var(similarities))
+        temporal_smoothness = 1.0 - min(variance / 0.1, 1.0)  # Normalize variance to 0-1
+
+        # Adjust confidence based on neighbor_segments
+        # More neighbors = more context = better confidence
+        context_factor = min(neighbor_segments / 8.0, 1.0)  # 8 neighbors = 100%
+        avg_confidence = avg_similarity * context_factor
+
+        logger.info(f"✓ Frame similarity: avg={avg_similarity:.3f}, variance={variance:.4f}, "
+                    f"confidence={avg_confidence:.3f}, smoothness={temporal_smoothness:.3f}")
+        return True, avg_confidence, temporal_smoothness
 
     except Exception as e:
-        logger.error(f"❌ Pose estimation failed: {e}")
+        logger.error(f"❌ Frame similarity analysis failed: {e}")
         return False, 0.0, 0.0
 
 
