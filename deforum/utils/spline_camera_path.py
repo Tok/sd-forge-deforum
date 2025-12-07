@@ -969,9 +969,12 @@ def camera_path_to_schedules(
         delta_x = norm_x - prev_x
         delta_y = norm_y - prev_y
         delta_z = norm_z - prev_z
-        delta_rot_x = _normalize_angle_delta(norm_rot_x - prev_rot_x)
-        delta_rot_y = _normalize_angle_delta(norm_rot_y - prev_rot_y)
-        delta_rot_z = _normalize_angle_delta(norm_rot_z - prev_rot_z)
+        # DO NOT normalize rotation deltas - they're already frame-to-frame differences
+        # Normalization would restrict continuous rotation (e.g., full 360° orbits)
+        # Frame-to-frame rotation deltas are naturally small (<20° typically)
+        delta_rot_x = norm_rot_x - prev_rot_x
+        delta_rot_y = norm_rot_y - prev_rot_y
+        delta_rot_z = norm_rot_z - prev_rot_z
 
         # Apply speed multiplier (with per-frame variation if enabled)
         if speed_per_frame is not None:
