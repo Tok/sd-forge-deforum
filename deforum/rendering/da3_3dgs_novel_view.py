@@ -305,7 +305,9 @@ def render_novel_view_from_gaussians(
     # DA3 provides extrinsics as [4, 4], gsplat expects viewmat
     viewmat = torch.from_numpy(camera_pose).float().to(device)  # [4, 4]
 
-    # Apply near-clip filtering to remove splats too close to camera
+    # Apply adaptive near-clip filtering to remove splats too close to camera
+    # NOTE: near_clip_distance is now interpreted as a PERCENTILE (0.0-1.0), not absolute world units
+    # This makes filtering work consistently across DA3's arbitrary scene scales
     if near_clip_distance > 0.0:
         # Transform means to camera space to get depth
         # viewmat is world-to-camera, so: cam_pos = viewmat @ world_pos
@@ -322,22 +324,46 @@ def render_novel_view_from_gaussians(
         global _last_depth_range
         _last_depth_range = (float(depth_np.min()), float(depth_np.max()))
 
-        # Keep only splats beyond near clip distance
-        # Negative depth = in front of camera, so we want depth < -near_clip_distance
-        mask = depth < -near_clip_distance
+        # ADAPTIVE NEAR-CLIP: Use percentile-based filtering instead of absolute world units
+        # near_clip_distance interpreted as percentile: 0.01 = remove closest 1% of splats
+        # This adapts to DA3's arbitrary scene scale
+        if near_clip_distance <= 1.0:
+            # Percentile mode: remove closest N% of splats
+            percentile = near_clip_distance * 100  # 0.01 -> 1%
+
+            # Only consider negative depths (in front of camera)
+            negative_depths = depth_np[depth_np < 0]
+
+            if len(negative_depths) > 0:
+                # Calculate threshold as Nth percentile of negative depths
+                # Higher (less negative) values are closer to camera
+                threshold = np.percentile(negative_depths, 100 - percentile)
+
+                # Keep splats beyond (more negative than) threshold
+                mask = depth < threshold
+
+                kept_pct = (mask.sum().item() / means.shape[0]) * 100
+                removed = (~mask).sum().item()
+
+                logger.info(f"   Adaptive near-clip (percentile={percentile:.1f}%): "
+                           f"threshold={threshold:.4f}, keeping {kept_pct:.1f}% ({mask.sum()}/{means.shape[0]} splats)")
+            else:
+                # All splats behind camera, don't filter
+                mask = torch.ones(means.shape[0], dtype=torch.bool, device=device)
+                logger.info(f"   All splats behind camera, skipping near-clip filter")
+        else:
+            # Legacy absolute mode (if user sets value > 1.0)
+            mask = depth < -near_clip_distance
+            logger.info(f"   Absolute near-clip (world units={near_clip_distance:.2f})")
 
         # Safety check: don't filter out ALL splats (would cause black frame)
         if mask.sum() == 0:
             logger.warning(
                 f"   Near-clip filter would remove ALL {means.shape[0]} splats! "
-                f"near_clip={near_clip_distance}, depth range=[{depth_np.min():.4f}, {depth_np.max():.4f}]. "
                 f"Disabling filter for this frame."
             )
             # DO NOT apply the mask - keep all splats to avoid black frame
         elif mask.sum() < means.shape[0]:
-            num_removed = (~mask).sum()
-            logger.info(f"   Near-clip filter: keeping {mask.sum()}/{means.shape[0]} splats (removed {num_removed} too close)")
-
             # Apply mask to all gaussian parameters
             means = means[mask]
             scales = scales[mask]

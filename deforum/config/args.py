@@ -1321,13 +1321,13 @@ def WanArgs():
             "info": "Subdivide each gaussian splat for higher quality rendering. DA3 generates ~705k base splats. AUTO: Detects available VRAM and selects maximum quality tier. Manual tiers: 1: 705k splats (fastest, ~2GB VRAM), 2: 1.4M (good, ~3GB), 3: 2.1M (high, ~4GB), 4: 2.8M (very high, ~5GB), 5: 3.5M (excellent, ~7GB), 6: 4.2M (ultra, ~9GB), 7: 4.9M (extreme, ~11GB), 8: 5.6M (maximum, ~14GB). Higher = finer detail but more VRAM. Each splat subdivided into N smaller splats with positional offsets."
         },
         "da3_3dgs_near_clip_distance": {
-            "label": "Near Clip Distance",
+            "label": "Near Clip Filter (Percentile)",
             "type": "slider",
             "minimum": 0.0,
-            "maximum": 5.0,
-            "step": 0.05,
+            "maximum": 1.0,
+            "step": 0.01,
             "value": 0.0,
-            "info": "Remove gaussian splats closer than this distance to the camera (in world units). DEFAULT: 0.0 (disabled) because DA3's camera positioning can place cameras inside the scene, causing 99%+ of splats to be filtered. Only enable if you experience 'straw' artifacts extending from camera. WARNING: Values >0.1 often cause black frames."
+            "info": "Remove closest N% of gaussian splats to eliminate 'straw' artifacts. ADAPTIVE: Uses percentile of depth distribution instead of absolute world units. 0.0 = disabled (show all splats), 0.01 = remove closest 1%, 0.05 = remove closest 5%, 0.10 = remove closest 10%. Higher values may cause visible holes. Percentile-based filtering adapts to DA3's arbitrary scene scales automatically. Values >1.0 revert to legacy absolute mode."
         },
 
         # Advanced Generation Settings
