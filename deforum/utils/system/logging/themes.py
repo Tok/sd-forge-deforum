@@ -178,8 +178,9 @@ def get_theme_colors(theme: str) -> dict:
     if theme == 'slopcore':
         # TRACE, DEBUG, INFO, WARNING, ERROR always use BB0 colors (fixed, not gradient-dependent)
         # This ensures consistent log colors regardless of active gradient (BB0/DA3)
-        trace_color = from_hex_color(HEX_SLOPCORE_BB0_6)   # Always BB0 bright blue (#228CFE)
-        debug_color = from_hex_color(HEX_SLOPCORE_BB0_5)   # Always BB0 blue (#2C71FE)
+        # Gradient progression: Purple → Blue → Cyan (matching BB0 album cover)
+        trace_color = from_hex_color(HEX_SLOPCORE_BB0_3)   # Always BB0 blue-purple (#413CFF)
+        debug_color = from_hex_color(HEX_SLOPCORE_BB0_2)   # Always BB0 purple-blue (#4C21FF)
         info_color = from_hex_color(HEX_SLOPCORE_BB0_7)    # Always BB0 cyan (#17A7FE)
 
         return {
