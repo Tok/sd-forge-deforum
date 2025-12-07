@@ -1289,8 +1289,8 @@ def WanArgs():
             "label": "DA3-3DGS Model",
             "type": "dropdown",
             "choices": ["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
-            "value": "DA3-GIANT",
-            "info": "3DGS-capable DA3 model (only used when FLF2V method is DA3-3DGS): 'DA3-GIANT' (1.15B params, ~3GB VRAM), 'DA3NESTED-GIANT-LARGE' (1.40B params, ~4GB VRAM, recommended - combines multi-view with metric depth). Both models support feed-forward 3D Gaussian Splatting for novel view synthesis."
+            "value": "DA3NESTED-GIANT-LARGE",
+            "info": "3DGS-capable DA3 model (only used when FLF2V method is DA3-3DGS): 'DA3-GIANT' (1.15B params, ~3GB VRAM), 'DA3NESTED-GIANT-LARGE' (1.40B params, ~4GB VRAM, default - combines multi-view with metric depth for better geometry). Both models support feed-forward 3D Gaussian Splatting for novel view synthesis."
         },
         "da3_3dgs_neighbor_segments": {
             "label": "Neighbor Segments for 3DGS",
@@ -1298,8 +1298,8 @@ def WanArgs():
             "minimum": 0,
             "maximum": 8,
             "step": 1,
-            "value": 4,
-            "info": "How many neighboring segments to include for multi-view 3DGS reconstruction. Uses ACTUAL keyframes from your prompt schedule (not arbitrary count). Higher values = more keyframes = better 3D geometry but more VRAM. VRAM usage scales with: keyframe_count × resolution × gaussian_count (~705k splats). 0: just segment (2 keyframes, fastest, lowest VRAM), 4: ~9 keyframes (default, ~16GB VRAM @ 1024x1024), 8: ~17 keyframes (best quality, 24GB+ VRAM recommended). Reduce if OOM errors occur."
+            "value": 6,
+            "info": "How many neighboring segments to include for multi-view 3DGS reconstruction. Uses ACTUAL keyframes from your prompt schedule (not arbitrary count). Higher values = more keyframes = better 3D geometry but more VRAM. VRAM usage scales with: keyframe_count × resolution × gaussian_count (~705k splats). 0: just segment (2 keyframes, fastest, lowest VRAM), 4: ~9 keyframes (good, ~16GB VRAM @ 1024x1024), 6: ~13 keyframes (default, better quality, ~20GB VRAM), 8: ~17 keyframes (best quality, 24GB+ VRAM recommended). Reduce if OOM errors occur."
         },
         "da3_3dgs_render_keyframes": {
             "label": "Render 3DGS Keyframes",
