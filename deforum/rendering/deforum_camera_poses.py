@@ -87,9 +87,10 @@ def deforum_pose_to_extrinsic(
     # Camera space: X=right, Y=up, Z=backward
     R_cam_to_world = np.column_stack([right, up, -forward])
 
-    # Apply Deforum rotation on top of look-at rotation
-    R_deforum = euler_to_rotation_matrix(rx, ry, rz)
-    R_cam_to_world = R_cam_to_world @ R_deforum
+    # TODO: Apply Deforum rotation on top of look-at rotation
+    # For now, skip this to test if basic look-at works
+    # R_deforum = euler_to_rotation_matrix(rx, ry, rz)
+    # R_cam_to_world = R_cam_to_world @ R_deforum
 
     # Convert to world-to-camera extrinsic matrix
     R_world_to_cam = R_cam_to_world.T
