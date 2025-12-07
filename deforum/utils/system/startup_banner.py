@@ -50,11 +50,17 @@ def print_startup_banner():
         return f"#{r:02x}{g:02x}{b:02x}"
 
     # Generate smooth slopcore gradient (more shades for smoother background)
-    # Slopcore gradient order: darkest purple → bright cyan (1→2→3→4→5→6→7)
-    slopcore_gradient = []
+    # BB0: Reverse order for left-to-right (cyan/blue → purple)
+    # DA3: Keep order for left-to-right (cyan → red/pink)
     slopcore_base_colors = [HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
                             HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7]
 
+    # For BB0, reverse the gradient so it goes cyan→purple (left to right)
+    # For DA3, keep as-is (already cyan→red)
+    if gradient_variant == 'BB0':
+        slopcore_base_colors = list(reversed(slopcore_base_colors))  # Cyan → Purple
+
+    slopcore_gradient = []
     # Interpolate between each pair for smoother slopcore gradient
     for i in range(len(slopcore_base_colors) - 1):
         slopcore_gradient.append(slopcore_base_colors[i])
@@ -80,7 +86,8 @@ def print_startup_banner():
         b = int(hex_color[5:7], 16)
         return f"\033[48;2;{r};{g};{b}m"
 
-    # Helper to get slopcore gradient background color by position (0.0 to 1.0)
+    # Helper to get slopcore gradient background color by horizontal position (0.0 to 1.0)
+    # Simple left-to-right gradient: BB0 (blue→purple) or DA3 (cyan→red)
     def get_slopcore_bg_by_position(position):
         idx = min(int(position * len(slopcore_gradient)), len(slopcore_gradient) - 1)
         return hex_to_bg_ansi(slopcore_gradient[idx])
@@ -163,12 +170,11 @@ def print_startup_banner():
     max_shift = cumulative_shifts[-1]
 
     # Top line: ◤ with slopcore gradient bg, then spaces with slopcore gradient, ending with ◥
+    # Simple horizontal gradient: left (0.0) to right (1.0)
     top_line = ""
-    top_shift = get_row_shift(0)
     for char_pos in range(box_width):
-        # Slopcore gradient: emphasize row shift more for fuller range
-        # Use row position as primary driver, char position as secondary
-        gradient_pos = min(1.0, max(0.0, (top_shift * 3 + char_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+        # Simple left-to-right gradient position
+        gradient_pos = char_pos / (box_width - 1) if box_width > 1 else 0.0
         bg = get_slopcore_bg_by_position(gradient_pos)
 
         if char_pos == 0:
@@ -183,21 +189,18 @@ def print_startup_banner():
     top_line += RESET  # Single reset at end of line
     banner_lines.append(top_line)
 
-    # Content lines with diagonal slopcore gradient background
+    # Content lines with horizontal slopcore gradient background (left to right)
     for row_idx, line in enumerate(lines):
         # Strip ANSI codes to get visible text
         visible_text = re.sub(r'\033\[[0-9;]*m', '', line)
         text_display_width = display_width(visible_text)  # Actual terminal width
-
-        # Get row shift using double Fibonacci pattern
-        row_shift = get_row_shift(row_idx + 1)  # +1 because row 0 is top border
 
         # Build content: 2 spaces + text + padding to fill box_width
         left_padding = "  "
         right_padding_width = box_width - 2 - text_display_width
         right_padding = " " * right_padding_width
 
-        # Now apply gradient to each character position
+        # Now apply gradient to each character position (simple horizontal)
         content_line = ""
         display_pos = 0
 
@@ -223,7 +226,7 @@ def print_startup_banner():
 
         # Left padding (2 spaces)
         for i in range(2):
-            gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+            gradient_pos = display_pos / (box_width - 1) if box_width > 1 else 0.0
             bg = get_slopcore_bg_by_position(gradient_pos)
             content_line += f"{bg} "
             display_pos += 1
@@ -235,8 +238,8 @@ def print_startup_banner():
             char_width = 2 if unicodedata.east_asian_width(char) in ('F', 'W') else 1
 
             if is_title_row:
-                # Calculate gradient position for this character
-                gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+                # Calculate gradient position for this character (simple horizontal)
+                gradient_pos = display_pos / (box_width - 1) if box_width > 1 else 0.0
 
                 if char in ('▓', '▒', '░'):
                     # Shade characters: gradient foreground on terminal-black background
@@ -267,8 +270,8 @@ def print_startup_banner():
                     bg = get_slopcore_bg_by_position(gradient_pos)
                     content_line += f"{bg}{WHITE}{char}"
             else:
-                # Regular content: slopcore gradient background, white text
-                gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+                # Regular content: slopcore gradient background, white text (simple horizontal)
+                gradient_pos = display_pos / (box_width - 1) if box_width > 1 else 0.0
                 bg = get_slopcore_bg_by_position(gradient_pos)
                 content_line += f"{bg}{WHITE}{char}"
 
@@ -277,7 +280,7 @@ def print_startup_banner():
 
         # Right padding
         for i in range(right_padding_width):
-            gradient_pos = min(1.0, max(0.0, (row_shift * 3 + display_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+            gradient_pos = display_pos / (box_width - 1) if box_width > 1 else 0.0
             bg = get_slopcore_bg_by_position(gradient_pos)
             content_line += f"{bg} "
             display_pos += 1
@@ -285,11 +288,10 @@ def print_startup_banner():
         content_line += RESET  # Single reset at end of line
         banner_lines.append(content_line)
 
-    # Bottom border with slopcore rounded corners and diagonal slopcore gradient
+    # Bottom border with slopcore rounded corners and horizontal slopcore gradient
     bottom_line = ""
-    bottom_shift = get_row_shift(len(lines) + 1)  # Last row
     for char_pos in range(box_width):
-        gradient_pos = min(1.0, max(0.0, (bottom_shift * 3 + char_pos * 0.5) / (max_shift * 3 + box_width * 0.5)))
+        gradient_pos = char_pos / (box_width - 1) if box_width > 1 else 0.0
         bg = get_slopcore_bg_by_position(gradient_pos)
 
         if char_pos == 0:
