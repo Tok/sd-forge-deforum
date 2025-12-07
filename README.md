@@ -130,7 +130,8 @@ ls output/videos/
 1. **Always Re-Load Audio on Resume:**
    - When resuming, **re-upload or re-specify your audio file**
    - This ensures audio is properly embedded in the final video
-   - Location: **Deforum** → **Output** → **Audio** section
+   - Location: **Deforum** → **Init** → **Sync Audio** tab
+   - ⚠️ **Known Issue**: Audio should ideally be in Output tab, but currently lives in Init tab
 
 2. **If Audio Embedding Fails:**
    The generated video is saved in `output/videos/Deforum_<timestring>/`:
@@ -156,6 +157,81 @@ ls output/videos/
    - **Audio desynced**: Use `itsoffset` parameter (see above)
    - **Audio choppy**: Check if audio file is corrupted, try re-encoding
    - **Wrong duration**: Use `-shortest` flag to match video length
+
+### Pragmatic Post-Processing with FFmpeg
+
+**Why Post-Process with FFmpeg?**
+Often the most practical approach is to generate your base video with Deforum, then apply upscaling and frame interpolation with FFmpeg's fast non-AI methods. This is:
+- ✅ **Faster** than AI-based upscaling (ESRGAN, etc.)
+- ✅ **Predictable** - simple algorithms, no surprises
+- ✅ **Scriptable** - easy to batch process multiple videos
+- ✅ **Good enough** for most use cases (especially for social media)
+
+**Upscaling (Lanczos - High Quality):**
+```bash
+cd output/videos/Deforum_<timestring>/
+
+# 2x upscale (720p → 1440p)
+ffmpeg -i video.mp4 -vf "scale=iw*2:ih*2:flags=lanczos" -c:a copy upscaled_2x.mp4
+
+# 4x upscale (720p → 2880p)
+ffmpeg -i video.mp4 -vf "scale=iw*4:ih*4:flags=lanczos" -c:a copy upscaled_4x.mp4
+
+# Upscale to specific resolution (maintain aspect ratio)
+ffmpeg -i video.mp4 -vf "scale=1920:-1:flags=lanczos" -c:a copy upscaled_1080p.mp4
+
+# Upscale with bicubic (faster, slightly softer)
+ffmpeg -i video.mp4 -vf "scale=iw*2:ih*2:flags=bicubic" -c:a copy upscaled_bicubic.mp4
+```
+
+**Frame Interpolation (Minterpolate - Motion Compensated):**
+```bash
+# Double framerate (24 FPS → 48 FPS)
+ffmpeg -i video.mp4 -filter:v "minterpolate='fps=48'" doubled_fps.mp4
+
+# Quadruple framerate (24 FPS → 96 FPS)
+ffmpeg -i video.mp4 -filter:v "minterpolate='fps=96'" quadrupled_fps.mp4
+
+# Blend mode (smoother but less accurate)
+ffmpeg -i video.mp4 -filter:v "minterpolate='fps=48:mi_mode=blend'" blended.mp4
+
+# Motion compensated (better for camera movement)
+ffmpeg -i video.mp4 -filter:v "minterpolate='fps=48:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1'" interpolated.mp4
+```
+
+**Combine Upscaling + Interpolation:**
+```bash
+# 2x resolution + 2x framerate in one pass
+ffmpeg -i video.mp4 -vf "scale=iw*2:ih*2:flags=lanczos,minterpolate='fps=48'" -c:a copy final.mp4
+
+# With audio re-encoding (if needed)
+ffmpeg -i video.mp4 -i audio.mp3 \
+  -vf "scale=iw*2:ih*2:flags=lanczos,minterpolate='fps=48'" \
+  -c:a aac -shortest final_with_audio.mp4
+```
+
+**Quick Quality Improvements:**
+```bash
+# Sharpen (helps after upscaling)
+ffmpeg -i upscaled.mp4 -vf "unsharp=5:5:1.0:5:5:0.0" -c:a copy sharpened.mp4
+
+# Denoise (reduce compression artifacts)
+ffmpeg -i video.mp4 -vf "nlmeans=s=3.0" -c:a copy denoised.mp4
+
+# Color correction (increase saturation)
+ffmpeg -i video.mp4 -vf "eq=saturation=1.2" -c:a copy saturated.mp4
+```
+
+**When to Use AI vs FFmpeg:**
+- ✅ **Use FFmpeg**: Quick previews, social media, iterative testing, batch processing
+- ⚠️ **Consider AI**: Final deliverables, extreme upscaling (>4x), complex motion, print resolution
+- 💡 **Hybrid Approach**: Generate base video → FFmpeg 2x upscale → AI 2x upscale (if needed)
+
+**Performance Notes:**
+- Lanczos upscaling: Very fast (~30-60 FPS on most GPUs)
+- Minterpolate: Slower but still real-time (~10-20 FPS)
+- Both methods preserve fine details better than bilinear/nearest neighbor
+- Hardware acceleration available: add `-hwaccel cuda` (NVIDIA) or `-hwaccel vulkan`
 
 ### DA3-3DGS Specific Notes
 
