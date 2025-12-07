@@ -131,7 +131,10 @@ ls output/videos/
    - When resuming, **re-upload or re-specify your audio file**
    - This ensures audio is properly embedded in the final video
    - Location: **Deforum** → **Init** → **Sync Audio** tab
-   - ⚠️ **Known Issue**: Audio should ideally be in Output tab, but currently lives in Init tab
+   - ⚠️ **Known Issue**: Audio path IS saved in settings file, but the UI field doesn't auto-populate on resume
+   - **Result**: Empty UI field overrides saved audio path (gets set to empty string)
+   - **Workaround**: Manually re-enter or re-upload the audio file before clicking Generate
+   - **Future Fix**: UI should auto-load audio path from settings file on resume
 
 2. **If Audio Embedding Fails:**
    The generated video is saved in `output/videos/Deforum_<timestring>/`:

@@ -54,6 +54,10 @@ def get_tab_init(d, da, dp, dau, dv=None):
                 )
 
                 # Soundtrack controls (moved from Prompts tab)
+                # TODO: On resume, this field doesn't auto-populate from loaded settings
+                # The audio path IS saved in settings file, but UI doesn't load it
+                # Result: Empty field overrides saved value, user must manually re-enter
+                # Fix: Add logic to populate soundtrack_path.value from loaded settings
                 with FormRow():
                     add_soundtrack = create_gr_elem(dv.add_soundtrack)
                     soundtrack_path = create_gr_elem(dv.soundtrack_path)
