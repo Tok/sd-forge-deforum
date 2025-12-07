@@ -641,21 +641,23 @@ class TestNearClipFiltering:
                 None   # info
             )
 
-            # Call with near_clip_distance=0.0 (no filtering)
-            render_novel_view_from_gaussians(
-                mock_gaussians,
-                camera_pose,
-                intrinsics,
-                image_size=(100, 100),
-                device=device,
-                densification_factor=1,
-                near_clip_distance=0.0
-            )
+            # Mock logger to avoid trace() errors
+            with patch('deforum.rendering.da3_3dgs_novel_view.logger'):
+                # Call with near_clip_distance=0.0 (no filtering)
+                render_novel_view_from_gaussians(
+                    mock_gaussians,
+                    camera_pose,
+                    intrinsics,
+                    image_size=(100, 100),
+                    device=device,
+                    densification_factor=1,
+                    near_clip_distance=0.0
+                )
 
-            # Check that rasterization was called with all 100 splats
-            call_args = mock_raster.call_args
-            means_passed = call_args.kwargs['means']
-            assert means_passed.shape[1] == 100, "Should pass all 100 splats when filtering disabled"
+                # Check that rasterization was called with all 100 splats
+                call_args = mock_raster.call_args
+                means_passed = call_args.kwargs['means']
+                assert means_passed.shape[1] == 100, "Should pass all 100 splats when filtering disabled"
 
     def test_filters_close_splats(self):
         """Should filter out splats very close to camera."""
@@ -695,23 +697,25 @@ class TestNearClipFiltering:
                 None
             )
 
-            # Call with near_clip_distance=0.05
-            render_novel_view_from_gaussians(
-                mock_gaussians,
-                camera_pose,
-                intrinsics,
-                image_size=(100, 100),
-                device=device,
-                densification_factor=1,
-                near_clip_distance=0.05
-            )
+            # Mock logger to avoid trace() errors
+            with patch('deforum.rendering.da3_3dgs_novel_view.logger'):
+                # Call with near_clip_distance=0.05
+                render_novel_view_from_gaussians(
+                    mock_gaussians,
+                    camera_pose,
+                    intrinsics,
+                    image_size=(100, 100),
+                    device=device,
+                    densification_factor=1,
+                    near_clip_distance=0.05
+                )
 
-            # Check filtered count
-            call_args = mock_raster.call_args
-            means_passed = call_args.kwargs['means']
+                # Check filtered count
+                call_args = mock_raster.call_args
+                means_passed = call_args.kwargs['means']
 
-            # Should filter out splat at -0.01 (too close), keep others
-            assert means_passed.shape[1] == 3, f"Should keep 3/4 splats (got {means_passed.shape[1]})"
+                # Should filter out splat at -0.01 (too close), keep others
+                assert means_passed.shape[1] == 3, f"Should keep 3/4 splats (got {means_passed.shape[1]})"
 
     def test_safety_check_prevents_black_frames(self):
         """Should not filter out ALL splats (safety check)."""
