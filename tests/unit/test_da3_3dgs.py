@@ -171,11 +171,13 @@ class TestGaussianDensification:
             harmonics=torch.randn(batch_size, N, 3, 16, device=device)
         )
 
-        densified = densify_gaussians(mock_gaussians, densification_factor=2, device=device)
+        # Mock logger to avoid trace() errors
+        with patch('deforum.rendering.da3_3dgs_novel_view.logger'):
+            densified = densify_gaussians(mock_gaussians, densification_factor=2, device=device)
 
-        assert densified.means.shape == (batch_size, N * 2, 3)
-        assert densified.scales.shape == (batch_size, N * 2, 3)
-        assert densified.rotations.shape == (batch_size, N * 2, 4)
+            assert densified.means.shape == (batch_size, N * 2, 3)
+            assert densified.scales.shape == (batch_size, N * 2, 3)
+            assert densified.rotations.shape == (batch_size, N * 2, 4)
 
     def test_densification_triples_splat_count(self):
         """Should triple splat count with factor=3."""
@@ -191,9 +193,11 @@ class TestGaussianDensification:
             harmonics=torch.randn(batch_size, N, 3, 16, device=device)
         )
 
-        densified = densify_gaussians(mock_gaussians, densification_factor=3, device=device)
+        # Mock logger to avoid trace() errors
+        with patch('deforum.rendering.da3_3dgs_novel_view.logger'):
+            densified = densify_gaussians(mock_gaussians, densification_factor=3, device=device)
 
-        assert densified.means.shape == (batch_size, N * 3, 3)
+            assert densified.means.shape == (batch_size, N * 3, 3)
 
     def test_densification_reduces_scale(self):
         """Should reduce scale of sub-splats to avoid overlap."""
@@ -210,13 +214,15 @@ class TestGaussianDensification:
             harmonics=torch.randn(batch_size, N, 3, 16, device=device)
         )
 
-        densified = densify_gaussians(mock_gaussians, densification_factor=2, device=device)
+        # Mock logger to avoid trace() errors
+        with patch('deforum.rendering.da3_3dgs_novel_view.logger'):
+            densified = densify_gaussians(mock_gaussians, densification_factor=2, device=device)
 
-        # Scale should be reduced (cube root for 3D)
-        expected_scale = original_scale / (2 ** 0.333)
-        actual_scale = densified.scales[0, 0, 0].item()
+            # Scale should be reduced (cube root for 3D)
+            expected_scale = original_scale / (2 ** 0.333)
+            actual_scale = densified.scales[0, 0, 0].item()
 
-        assert actual_scale == pytest.approx(expected_scale, abs=1e-4)
+            assert actual_scale == pytest.approx(expected_scale, abs=1e-4)
 
     def test_densification_reduces_opacity(self):
         """Should reduce opacity to account for overlapping splats."""
@@ -233,13 +239,15 @@ class TestGaussianDensification:
             harmonics=torch.randn(batch_size, N, 3, 16, device=device)
         )
 
-        densified = densify_gaussians(mock_gaussians, densification_factor=2, device=device)
+        # Mock logger to avoid trace() errors
+        with patch('deforum.rendering.da3_3dgs_novel_view.logger'):
+            densified = densify_gaussians(mock_gaussians, densification_factor=2, device=device)
 
-        # Opacity should be halved
-        expected_opacity = original_opacity / 2
-        actual_opacity = densified.opacities[0, 0].item()
+            # Opacity should be halved
+            expected_opacity = original_opacity / 2
+            actual_opacity = densified.opacities[0, 0].item()
 
-        assert actual_opacity == pytest.approx(expected_opacity, abs=1e-5)
+            assert actual_opacity == pytest.approx(expected_opacity, abs=1e-5)
 
 
 class TestCollectNearbyKeyframes:
@@ -625,7 +633,7 @@ class TestNearClipFiltering:
         device = torch.device('cpu')
 
         # Mock gsplat rasterization to count splats
-        with patch('deforum.rendering.da3_3dgs_novel_view.rasterization') as mock_raster:
+        with patch('gsplat.rasterization') as mock_raster:
             # Return dummy rendered image
             mock_raster.return_value = (
                 torch.zeros(1, 1, 100, 100, 3),  # rendered_image
@@ -680,7 +688,7 @@ class TestNearClipFiltering:
 
         device = torch.device('cpu')
 
-        with patch('deforum.rendering.da3_3dgs_novel_view.rasterization') as mock_raster:
+        with patch('gsplat.rasterization') as mock_raster:
             mock_raster.return_value = (
                 torch.zeros(1, 1, 100, 100, 3),
                 None,
@@ -725,7 +733,7 @@ class TestNearClipFiltering:
 
         device = torch.device('cpu')
 
-        with patch('deforum.rendering.da3_3dgs_novel_view.rasterization') as mock_raster:
+        with patch('gsplat.rasterization') as mock_raster:
             mock_raster.return_value = (
                 torch.zeros(1, 1, 100, 100, 3),
                 None,
