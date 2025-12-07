@@ -2,15 +2,21 @@
 
 Tests DA3 pose estimation using reproducible synthetic images (no diffusion).
 
+IMPORTANT: This tests DA3 PARAMETERS ONLY, not the full 3DGS rendering pipeline.
+For actual 3DGS rendering tests, use render_mode="Keyframes + Interpolation"
+(Flux + Interpolation workflow) which is the ONLY mode with 3DGS support.
+
 What this tests:
-- DA3 model pose estimation quality
-- 3DGS parameter impact (neighbor_segments, densification, near_clip)
+- DA3 model pose estimation quality with different parameters
+- Parameter impact on pose estimation (neighbor_segments, model size)
 - Processing time and VRAM usage
-- Quality metrics on consistent test data
+- Quality metrics on consistent reproducible test data
 
 What this does NOT test:
-- Diffusion generation quality (use separate I2V tests for that)
-- Actual 3DGS rendering (requires gsplat package)
+- Diffusion generation quality (no diffusion involved)
+- Actual 3DGS rendering (no splat generation, requires gsplat + Flux workflow)
+- Tween interpolation quality (no tweens generated)
+- Full Deforum pipeline integration
 """
 
 import time

@@ -1,4 +1,16 @@
-"""DA3-3DGS parameter sweep test runner.
+"""DA3-3DGS parameter sweep test runner (LEGACY - EXPENSIVE).
+
+⚠️  DEPRECATED: This runner generates frames via DIFFUSION which is expensive
+    and tests diffusion quality, not 3DGS parameters.
+
+    USE INSTEAD: tuning_3dgs_synthetic.py for fast, reproducible parameter testing
+
+    This runner is kept only for full end-to-end pipeline testing.
+
+IMPORTANT: 3DGS rendering only works in render_mode="Keyframes + Interpolation"
+           (Flux + Interpolation workflow). This runner attempts to use
+           animation_mode="3D" + flux_flf2v_interpolation_method="DA3-3DGS"
+           but may not trigger actual 3DGS rendering correctly.
 
 Runs actual 3DGS renders with different parameter combinations and measures:
 - Render success/failure (OOM, crashes)
