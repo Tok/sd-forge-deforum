@@ -9,27 +9,71 @@ Defines color palettes and styling for three themes:
 from deforum.utils.image.color import hex_to_ansi_foreground as from_hex_color
 
 # ============================================================================
-# SLOPCORE THEME - Authentic BLANK BANSHEE 0 gradient
+# SLOPCORE THEME - Authentic BLANK BANSHEE 0 gradient (Default)
 # ============================================================================
 # Exact colors pipetted from BB0 album cover
 # Original album gradient: #5606ff (top) → #17a7fe (bottom), straight vertical
 
 # 7-shade gradient (for CLI banner, charts, general use)
-HEX_SLOPCORE_1 = '#5606FF'  # Deep purple-blue (album top)
-HEX_SLOPCORE_2 = '#4C21FF'  # Purple-blue
-HEX_SLOPCORE_3 = '#413CFF'  # Blue-purple (banner start)
-HEX_SLOPCORE_4 = '#3757FF'  # Mid blue
-HEX_SLOPCORE_5 = '#2C71FE'  # Blue
-HEX_SLOPCORE_6 = '#228CFE'  # Bright blue
-HEX_SLOPCORE_7 = '#17A7FE'  # Cyan (album bottom, banner end)
+HEX_SLOPCORE_BB0_1 = '#5606FF'  # Deep purple-blue (album top)
+HEX_SLOPCORE_BB0_2 = '#4C21FF'  # Purple-blue
+HEX_SLOPCORE_BB0_3 = '#413CFF'  # Blue-purple (banner start)
+HEX_SLOPCORE_BB0_4 = '#3757FF'  # Mid blue
+HEX_SLOPCORE_BB0_5 = '#2C71FE'  # Blue
+HEX_SLOPCORE_BB0_6 = '#228CFE'  # Bright blue
+HEX_SLOPCORE_BB0_7 = '#17A7FE'  # Cyan (album bottom, banner end)
 
 # 5-shade gradient (specifically for tqdm progress bars)
 # Maps to the 5 parallel dashboard bars in display order
-HEX_SLOPCORE_TQDM_1 = '#5606FF'  # Deep purple-blue [Current Tweens - FASTEST]
-HEX_SLOPCORE_TQDM_2 = '#462EFF'  # Purple-blue [Current Steps - FAST]
-HEX_SLOPCORE_TQDM_3 = '#3757FF'  # Mid blue [Total Steps - MEDIUM]
-HEX_SLOPCORE_TQDM_4 = '#277FFE'  # Bright blue [Total Diffusion Frames - SLOW]
-HEX_SLOPCORE_TQDM_5 = '#17A7FE'  # Cyan [Total Frames - SLOWEST]
+HEX_SLOPCORE_BB0_TQDM_1 = '#5606FF'  # Deep purple-blue [Current Tweens - FASTEST]
+HEX_SLOPCORE_BB0_TQDM_2 = '#462EFF'  # Purple-blue [Current Steps - FAST]
+HEX_SLOPCORE_BB0_TQDM_3 = '#3757FF'  # Mid blue [Total Steps - MEDIUM]
+HEX_SLOPCORE_BB0_TQDM_4 = '#277FFE'  # Bright blue [Total Diffusion Frames - SLOW]
+HEX_SLOPCORE_BB0_TQDM_5 = '#17A7FE'  # Cyan [Total Frames - SLOWEST]
+
+# ============================================================================
+# SLOPCORE THEME - Depth Anything V3 gradient (DA3 mode)
+# ============================================================================
+# Exact colors pipetted from Depth Anything V3 website header
+# Original gradient: #667eea (purple-blue) → #764ba2 (deep purple), 135deg diagonal
+# Reference: https://depth-anything-3.github.io/
+
+# 7-shade gradient (for CLI banner, charts, general use)
+HEX_SLOPCORE_DA3_1 = '#667EEA'  # Purple-blue (gradient start)
+HEX_SLOPCORE_DA3_2 = '#6D74DE'  # Purple-blue blend
+HEX_SLOPCORE_DA3_3 = '#746AD2'  # Blue-purple
+HEX_SLOPCORE_DA3_4 = '#7B60C6'  # Mid purple
+HEX_SLOPCORE_DA3_5 = '#7F57BD'  # Purple
+HEX_SLOPCORE_DA3_6 = '#7B52AF'  # Deep purple
+HEX_SLOPCORE_DA3_7 = '#764BA2'  # Deepest purple (gradient end)
+
+# 5-shade gradient (specifically for tqdm progress bars)
+# Maps to the 5 parallel dashboard bars in display order
+HEX_SLOPCORE_DA3_TQDM_1 = '#667EEA'  # Purple-blue [Current Tweens - FASTEST]
+HEX_SLOPCORE_DA3_TQDM_2 = '#7068D6'  # Blue-purple [Current Steps - FAST]
+HEX_SLOPCORE_DA3_TQDM_3 = '#7B60C6'  # Mid purple [Total Steps - MEDIUM]
+HEX_SLOPCORE_DA3_TQDM_4 = '#7C56B4'  # Deep purple [Total Diffusion Frames - SLOW]
+HEX_SLOPCORE_DA3_TQDM_5 = '#764BA2'  # Deepest purple [Total Frames - SLOWEST]
+
+# ============================================================================
+# Active Slopcore Gradient Selection
+# ============================================================================
+# Default to BB0 gradient (backward compatibility)
+# Can be dynamically switched to DA3 gradient when DA3-3DGS is active
+
+HEX_SLOPCORE_1 = HEX_SLOPCORE_BB0_1
+HEX_SLOPCORE_2 = HEX_SLOPCORE_BB0_2
+HEX_SLOPCORE_3 = HEX_SLOPCORE_BB0_3
+HEX_SLOPCORE_4 = HEX_SLOPCORE_BB0_4
+HEX_SLOPCORE_5 = HEX_SLOPCORE_BB0_5
+HEX_SLOPCORE_6 = HEX_SLOPCORE_BB0_6
+HEX_SLOPCORE_7 = HEX_SLOPCORE_BB0_7
+
+HEX_SLOPCORE_TQDM_1 = HEX_SLOPCORE_BB0_TQDM_1
+HEX_SLOPCORE_TQDM_2 = HEX_SLOPCORE_BB0_TQDM_2
+HEX_SLOPCORE_TQDM_3 = HEX_SLOPCORE_BB0_TQDM_3
+HEX_SLOPCORE_TQDM_4 = HEX_SLOPCORE_BB0_TQDM_4
+HEX_SLOPCORE_TQDM_5 = HEX_SLOPCORE_BB0_TQDM_5
 
 # Functional colors (borrowed from classic theme for slopcore mode)
 # These are NOT slopcore colors, but used for practical UX purposes
@@ -170,3 +214,107 @@ def get_theme_colors(theme: str) -> dict:
             'reset': '',
             'bold': '',
         }
+
+
+# ============================================================================
+# Slopcore Gradient Switching
+# ============================================================================
+
+# Available slopcore gradient variants
+SLOPCORE_GRADIENTS = {
+    'BB0': {
+        '7_shade': [HEX_SLOPCORE_BB0_1, HEX_SLOPCORE_BB0_2, HEX_SLOPCORE_BB0_3,
+                    HEX_SLOPCORE_BB0_4, HEX_SLOPCORE_BB0_5, HEX_SLOPCORE_BB0_6, HEX_SLOPCORE_BB0_7],
+        '5_tqdm': [HEX_SLOPCORE_BB0_TQDM_1, HEX_SLOPCORE_BB0_TQDM_2, HEX_SLOPCORE_BB0_TQDM_3,
+                   HEX_SLOPCORE_BB0_TQDM_4, HEX_SLOPCORE_BB0_TQDM_5],
+        'description': 'BLANK BANSHEE 0 - Deep purple-blue → Bright cyan',
+        'reference': 'BB0 album cover gradient (#5606ff → #17a7fe)'
+    },
+    'DA3': {
+        '7_shade': [HEX_SLOPCORE_DA3_1, HEX_SLOPCORE_DA3_2, HEX_SLOPCORE_DA3_3,
+                    HEX_SLOPCORE_DA3_4, HEX_SLOPCORE_DA3_5, HEX_SLOPCORE_DA3_6, HEX_SLOPCORE_DA3_7],
+        '5_tqdm': [HEX_SLOPCORE_DA3_TQDM_1, HEX_SLOPCORE_DA3_TQDM_2, HEX_SLOPCORE_DA3_TQDM_3,
+                   HEX_SLOPCORE_DA3_TQDM_4, HEX_SLOPCORE_DA3_TQDM_5],
+        'description': 'Depth Anything V3 - Purple-blue → Deep purple',
+        'reference': 'https://depth-anything-3.github.io/ (#667eea → #764ba2)'
+    }
+}
+
+_active_gradient = 'BB0'  # Default gradient
+
+
+def set_slopcore_gradient(gradient_name: str) -> None:
+    """Dynamically switch the active slopcore gradient.
+
+    Args:
+        gradient_name: Name of gradient variant ('BB0', 'DA3', etc.)
+
+    Raises:
+        ValueError: If gradient_name is not recognized
+    """
+    global _active_gradient
+    global HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4
+    global HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7
+    global HEX_SLOPCORE_TQDM_1, HEX_SLOPCORE_TQDM_2, HEX_SLOPCORE_TQDM_3
+    global HEX_SLOPCORE_TQDM_4, HEX_SLOPCORE_TQDM_5
+    global SLOPCORE_1, SLOPCORE_2, SLOPCORE_3, SLOPCORE_4
+    global SLOPCORE_5, SLOPCORE_6, SLOPCORE_7
+
+    if gradient_name not in SLOPCORE_GRADIENTS:
+        raise ValueError(f"Unknown gradient: {gradient_name}. Available: {list(SLOPCORE_GRADIENTS.keys())}")
+
+    _active_gradient = gradient_name
+    gradient = SLOPCORE_GRADIENTS[gradient_name]
+
+    # Update 7-shade gradient
+    shades = gradient['7_shade']
+    HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4, \
+    HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7 = shades
+
+    # Update 5-shade tqdm gradient
+    tqdm_shades = gradient['5_tqdm']
+    HEX_SLOPCORE_TQDM_1, HEX_SLOPCORE_TQDM_2, HEX_SLOPCORE_TQDM_3, \
+    HEX_SLOPCORE_TQDM_4, HEX_SLOPCORE_TQDM_5 = tqdm_shades
+
+    # Re-convert hex to ANSI
+    SLOPCORE_1 = from_hex_color(HEX_SLOPCORE_1)
+    SLOPCORE_2 = from_hex_color(HEX_SLOPCORE_2)
+    SLOPCORE_3 = from_hex_color(HEX_SLOPCORE_3)
+    SLOPCORE_4 = from_hex_color(HEX_SLOPCORE_4)
+    SLOPCORE_5 = from_hex_color(HEX_SLOPCORE_5)
+    SLOPCORE_6 = from_hex_color(HEX_SLOPCORE_6)
+    SLOPCORE_7 = from_hex_color(HEX_SLOPCORE_7)
+
+
+def get_active_gradient() -> str:
+    """Get the name of the currently active slopcore gradient.
+
+    Returns:
+        Gradient name ('BB0', 'DA3', etc.)
+    """
+    return _active_gradient
+
+
+def get_random_slopcore_gradient() -> str:
+    """Randomly select a slopcore gradient variant.
+
+    Returns:
+        Random gradient name from available gradients
+    """
+    import random
+    return random.choice(list(SLOPCORE_GRADIENTS.keys()))
+
+
+def list_slopcore_gradients() -> dict:
+    """Get all available slopcore gradient variants with metadata.
+
+    Returns:
+        Dictionary of gradient names to metadata (description, reference)
+    """
+    return {
+        name: {
+            'description': data['description'],
+            'reference': data['reference']
+        }
+        for name, data in SLOPCORE_GRADIENTS.items()
+    }

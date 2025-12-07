@@ -14,7 +14,15 @@ def print_startup_banner():
     except:
         commit_id = "Unknown"
 
-    # ANSI color codes for slopcore gradient
+    # Randomly select slopcore gradient variant (BB0 or DA3)
+    from deforum.utils.system.logging.themes import (
+        get_random_slopcore_gradient, set_slopcore_gradient, get_active_gradient
+    )
+
+    gradient_variant = get_random_slopcore_gradient()
+    set_slopcore_gradient(gradient_variant)
+
+    # ANSI color codes for active slopcore gradient (now selected)
     from deforum.utils.system.logging.themes import (
         HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
         HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7
@@ -101,6 +109,10 @@ def print_startup_banner():
         left_pad_spaces = (available_width - title_width) // 2
         title_text = (" " * left_pad_spaces) + title_text
 
+    # Get gradient metadata for footer
+    from deforum.utils.system.logging.themes import SLOPCORE_GRADIENTS
+    gradient_meta = SLOPCORE_GRADIENTS[gradient_variant]
+
     # Prepare content lines (plain text, background will have gradient)
     lines = [
         title_text,
@@ -114,7 +126,9 @@ def print_startup_banner():
         f"This Fork: {GITHUB_URL} (commit: {commit_id})",
         "",
         "Primary Target: Forge Neo (fully tested and supported)",
-        "Other Forge Versions: May work but remain untested"
+        "Other Forge Versions: May work but remain untested",
+        "",
+        f"Slopcore Gradient: {gradient_meta['description']}"
     ]
 
     # Draw box with diagonal slopcore gradient background

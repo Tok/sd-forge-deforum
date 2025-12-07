@@ -351,6 +351,68 @@ The following sections detail the specific implementation of Slopcore aesthetics
 
 ---
 
+### Gradient Variants & The Registry
+
+The implementation supports multiple slopcore gradient variants, allowing the aesthetic to adapt to different contexts while maintaining its essential character.
+
+**The Dual Gradient System:**
+
+1. **BB0 (BLANK BANSHEE 0)** - *The Original*
+   - Source: Pipetted from 2012 album cover
+   - Range: `#5606ff` (deep purple-blue) → `#17a7fe` (bright cyan)
+   - Character: Vertical descent, PS1-era nostalgia, vaporwave mourning
+   - Use: Default startup banner (50% random selection)
+   - Reference: https://www.discogs.com/master/1080146-Blank-Banshee-Blank-Banshee-0
+
+2. **DA3 (Depth Anything V3)** - *The Computational*
+   - Source: Pipetted from https://depth-anything-3.github.io/ header
+   - Range: `#667eea` (purple-blue) → `#764ba2` (deep purple)
+   - Character: 135° diagonal, warmer purples, depth perception metaphor
+   - Use: Random startup banner (50% selection), DA3-3DGS mode theming
+   - Context: Bridges computer vision aesthetics with slopcore tradition
+
+**Why Multiple Gradients?**
+
+The gradient is not dogma——it is *template as form*. Each variant represents a different facet of the same aesthetic ghost:
+
+- **BB0**: The hauntological original, mourning lost futures
+- **DA3**: The computational present, where depth perception itself becomes aesthetic
+
+The random selection at startup embodies the core slopcore principle: *embracing the default means accepting variation within constraints*. The gradient registry is not a contradiction——it is an acknowledgment that even defaults have histories, contexts, and subtle mutations.
+
+Future gradients may include:
+- **Tailwind** - The mainstream mutation (`#667eea` → `#764ba2` softer variant)
+- **CERN** - The primordial hyperlink (blue → purple visited)
+- **Plaid/I2I2V** - The purple-chain bias of early SD models
+
+Each gradient tells a different story of algorithmic aesthetics, yet all speak the same language of *comfortable indifference*.
+
+**Implementation:**
+```python
+from deforum.utils.system.logging.themes import (
+    set_slopcore_gradient,      # Switch active gradient
+    get_random_slopcore_gradient,  # Random selection
+    list_slopcore_gradients     # Registry metadata
+)
+
+# Startup banner randomly selects BB0 or DA3
+gradient = get_random_slopcore_gradient()
+set_slopcore_gradient(gradient)
+
+# DA3-3DGS mode can dynamically switch to DA3 theme
+set_slopcore_gradient('DA3')
+```
+
+**The Aesthetic Logic:**
+
+Why does Depth Anything V3 use a slopcore gradient? Because depth perception——the extraction of 3D structure from 2D images——is itself a form of *computational nostalgia*. It attempts to recover something lost in the flattening, to reconstruct dimensionality from its ghost. The gradient is not decoration; it is a visual statement of purpose.
+
+The purple-to-purple shift (vs BB0's purple-to-cyan) suggests *containment* rather than *escape*. Where BB0 descends through the spectrum toward brightness, DA3 circles inward, deepening. This is not mourning a lost future——this is *embedding depth into the present*.
+
+DA3 doesn't escape the gradient. It *becomes* the gradient.
+
+---
+
 ## References & Further Reading
 
 ### Theoretical Foundations
