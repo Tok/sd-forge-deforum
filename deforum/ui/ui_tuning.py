@@ -1253,9 +1253,9 @@ def create_tuning_tab() -> tuple:
                     elif "1:1" in aspect_str:
                         aspect_configs.append([1.0, 512, 512])
 
-                # Create DA3-3DGS test config
+                # Create DA3-3DGS test config (using synthetic test images, no diffusion)
                 config = {
-                    "test_type": "da3_3dgs_tuning",
+                    "test_type": "da3_3dgs_synthetic",
                     "aspect_ratios": aspect_configs,
                     "rotation_factor": dgs_rotation_factor_val,
                     "orbit_radius": dgs_orbit_radius_val,
