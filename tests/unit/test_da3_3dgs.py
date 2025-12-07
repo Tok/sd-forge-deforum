@@ -1,4 +1,9 @@
-"""Unit tests for DA3-3DGS novel view synthesis functionality."""
+"""Unit tests for DA3-3DGS novel view synthesis functionality.
+
+These tests require heavy dependencies (transformers, gsplat) that are not
+installed in CI. They are marked with @pytest.mark.skip_ci and will be
+skipped automatically in GitHub Actions but run locally.
+"""
 
 import pytest
 import numpy as np
@@ -6,21 +11,11 @@ import torch
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-# Check if transformers is available (required for DA3 depth model)
-transformers_available = False
-try:
-    import transformers
-    transformers_available = True
-except ImportError:
-    pass
+# Mark entire module to skip in CI (heavy dependencies: transformers, gsplat)
+# Tests will run locally but skip in GitHub Actions
+pytestmark = pytest.mark.skip_ci
 
-# Skip all tests in this module if transformers not available
-pytestmark = pytest.mark.skipif(
-    not transformers_available,
-    reason="transformers library required for DA3-3DGS tests"
-)
-
-# Import functions to test (after skipif check)
+# Import functions to test
 from deforum.rendering.da3_3dgs_novel_view import (
     slerp_quaternion,
     interpolate_camera_pose,

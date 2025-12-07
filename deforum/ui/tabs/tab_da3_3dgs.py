@@ -28,9 +28,15 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
     gr.HTML(value=f"""
         <div style='background: linear-gradient(135deg, {HEX_DA3_CYAN} 0%, {HEX_DA3_RED} 100%);
                     padding: 20px; border-radius: 10px; margin-bottom: 20px; color: white;'>
-            <h2 style='margin: 0 0 10px 0; font-size: 24px;'>{magnifying_glass or ''} DA3-3DGS Interpolation Settings</h2>
+            <h2 style='margin: 0 0 10px 0; font-size: 24px;'>
+                {magnifying_glass or ''} DA3-3DGS Interpolation Settings
+                <a href="https://depth-anything-3.github.io/" target="_blank"
+                   style="color: white; text-decoration: none; opacity: 0.8; font-size: 16px; margin-left: 10px;">
+                    ↗
+                </a>
+            </h2>
             <p style='margin: 0; font-size: 14px; opacity: 0.9;'>
-                <strong>3D Gaussian Splatting with Depth Anything V3 GIANT models</strong><br/>
+                <strong>3D Gaussian Splatting with <a href="https://depth-anything-3.github.io/" target="_blank" style="color: white; text-decoration: underline;">Depth Anything V3</a> GIANT models</strong><br/>
                 Multi-view 3D reconstruction for novel view synthesis between keyframes.
                 DA3 auto-estimates camera poses, builds gaussian scenes, and renders smooth interpolations.
             </p>

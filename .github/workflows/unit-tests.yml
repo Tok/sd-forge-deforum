@@ -51,7 +51,8 @@ jobs:
       - name: Run unit tests
         run: |
           # Run only unit tests with coverage (integration tests explicitly ignored)
-          pytest tests/unit/ -v --tb=short --ignore=tests/integration --junitxml=test-results.xml --cov=deforum/utils --cov-report=term --cov-report=html --cov-report=xml
+          # Skip tests marked with 'skip_ci' (heavy dependencies not in CI environment)
+          pytest tests/unit/ -v --tb=short --ignore=tests/integration -m "not skip_ci" --junitxml=test-results.xml --cov=deforum/utils --cov-report=term --cov-report=html --cov-report=xml
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
