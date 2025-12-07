@@ -1315,12 +1315,10 @@ def WanArgs():
         },
         "da3_3dgs_densification_factor": {
             "label": "Gaussian Densification",
-            "type": "slider",
-            "minimum": 1,
-            "maximum": 8,
-            "step": 1,
-            "value": 3,
-            "info": "Subdivide each gaussian splat for higher quality rendering. DA3 generates ~705k base splats. Quality tiers: 1: 705k splats (fastest, 8GB VRAM), 2: 1.4M (good, 12GB), 3: 2.1M (default, high quality, 16GB), 4: 2.8M (very high, 20GB), 5: 3.5M (excellent, 24GB), 6: 4.2M (ultra, 28GB), 7: 4.9M (extreme, 32GB), 8: 5.6M (maximum, 40GB+). Higher values = finer detail but exponentially more VRAM. Each splat is subdivided into N smaller splats with slight positional offsets."
+            "type": "dropdown",
+            "choices": ["Auto (Max Quality for VRAM)", "1", "2", "3", "4", "5", "6", "7", "8"],
+            "value": "Auto (Max Quality for VRAM)",
+            "info": "Subdivide each gaussian splat for higher quality rendering. DA3 generates ~705k base splats. AUTO: Detects available VRAM and selects maximum quality tier. Manual tiers: 1: 705k splats (fastest, ~2GB VRAM), 2: 1.4M (good, ~3GB), 3: 2.1M (high, ~4GB), 4: 2.8M (very high, ~5GB), 5: 3.5M (excellent, ~7GB), 6: 4.2M (ultra, ~9GB), 7: 4.9M (extreme, ~11GB), 8: 5.6M (maximum, ~14GB). Higher = finer detail but more VRAM. Each splat subdivided into N smaller splats with positional offsets."
         },
         "da3_3dgs_near_clip_distance": {
             "label": "Near Clip Distance",

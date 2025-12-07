@@ -248,15 +248,17 @@ A powerful workflow for **iterative testing** of different interpolation methods
     - Collects 5 consecutive keyframes per segment (configurable 2-10)
     - DA3 auto-estimates camera poses from keyframe content
     - Builds 3DGS scene with ~705k gaussian splats (base), up to 5.6M with densification
-    - **Quality Control**: Gaussian Densification Factor (1-8, default 3 = 2.1M splats)
-      - Factor 1: 705k splats (fastest, 8GB VRAM)
-      - Factor 2: 1.4M splats (good, 12GB VRAM)
-      - Factor 3: 2.1M splats (default, high quality, 16GB VRAM)
-      - Factor 4: 2.8M splats (very high, 20GB VRAM)
-      - Factor 5: 3.5M splats (excellent, 24GB VRAM)
-      - Factor 6: 4.2M splats (ultra, 28GB VRAM)
-      - Factor 7: 4.9M splats (extreme, 32GB VRAM)
-      - Factor 8: 5.6M splats (maximum, 40GB+ VRAM)
+    - **Quality Control**: Gaussian Densification Factor (Auto or 1-8)
+      - **Auto (Default)**: Detects available VRAM and selects maximum quality tier
+      - Factor 1: 705k splats (fastest, ~2GB VRAM)
+      - Factor 2: 1.4M splats (good, ~3GB VRAM)
+      - Factor 3: 2.1M splats (high, ~4GB VRAM)
+      - Factor 4: 2.8M splats (very high, ~5GB VRAM)
+      - Factor 5: 3.5M splats (excellent, ~7GB VRAM)
+      - Factor 6: 4.2M splats (ultra, ~9GB VRAM)
+      - Factor 7: 4.9M splats (extreme, ~11GB VRAM)
+      - Factor 8: 5.6M splats (maximum, ~14GB VRAM)
+      - **Auto Mode**: Reserves 2GB safety margin, selects highest tier that fits
     - **Near-Clip Filtering**: Removes "straw" artifacts too close to camera lens
       - Default: 0.1 (minimal filtering, removes very close splats)
       - Range: 0.0-5.0 (0.0 = disabled, higher = more aggressive)

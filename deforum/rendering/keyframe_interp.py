@@ -429,8 +429,19 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
 
             # Generate interpolated frames using 3DGS
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            densification_factor = getattr(wan_args, 'da3_3dgs_densification_factor', 3)
+
+            # Parse densification factor (handle "Auto" mode)
+            from deforum.rendering.da3_3dgs_quality import (
+                parse_densification_factor, log_vram_usage_estimate
+            )
+            densification_input = getattr(wan_args, 'da3_3dgs_densification_factor', 'Auto (Max Quality for VRAM)')
+            densification_factor = parse_densification_factor(densification_input)
+
             near_clip_distance = getattr(wan_args, 'da3_3dgs_near_clip_distance', 0.1)
+
+            # Log VRAM usage estimate
+            resolution = (data.width(), data.height())
+            log_vram_usage_estimate(densification_factor, resolution)
 
             segment_frames = generate_da3_3dgs_interpolation(
                 keyframe_images=collected_images,
