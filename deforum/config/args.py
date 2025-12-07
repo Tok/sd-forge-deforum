@@ -1334,7 +1334,7 @@ def WanArgs():
             "type": "dropdown",
             "choices": ["per_segment", "per_prompt", "rolling_window"],
             "value": "per_segment",
-            "info": "How to build 3DGS scenes. PER-SEGMENT (default): Build new scene for each tween segment from nearby keyframes (~9 keyframes) - fast, but coordinate drift between segments. PER-PROMPT: Build ONE scene per prompt change, shared across all segments with same prompt - semantically coherent, eliminates drift within same subject/setting, VRAM scales with prompt segment size. ROLLING WINDOW: Build scenes from fixed-size windows (30-50 keyframes) - consistent window size regardless of prompts. Choose: speed (per-segment), semantic coherence (per-prompt), or fixed VRAM (rolling-window)."
+            "info": "How to build 3DGS scenes. PER-SEGMENT (default, RECOMMENDED): Build NEW 3DGS world at each segment - KEEPS MOVEMENT IN SYNC WITH RHYTHM/BEAT, more dynamic/interesting, fast render, minimal VRAM, minor coordinate drift acceptable. KEY INSIGHT: 'Fresh start' at each segment maintains visual rhythm matching music/pacing. PER-PROMPT: Build ONE scene per prompt change - semantically coherent, eliminates drift, but LOSES rhythm sync (feels 'floaty/disconnected'), VRAM scales with prompt length. ROLLING WINDOW: Fixed-size windows (30-50 keyframes) - predictable VRAM. Choose: rhythm sync (per-segment), semantic coherence (per-prompt), or fixed VRAM (rolling-window)."
         },
         "da3_3dgs_rolling_window_size": {
             "label": "Rolling Window Size (keyframes)",

@@ -28,6 +28,7 @@ class TuningTestType(str, Enum):
     FLUX_PARAMETER_SWEEP = "flux_parameter_sweep"
     DEPTH_WARPING_ORBIT = "depth_warping_orbit"
     RAFT_TUNING = "raft_tuning"
+    DA3_3DGS_TUNING = "da3_3dgs_tuning"
 
 
 class TuningTestConfig(BaseModel):
@@ -66,6 +67,23 @@ class TuningTestConfig(BaseModel):
     raft_flow_factor_min: Optional[float] = Field(None, ge=0.0, le=2.0, description="Min flow factor (0=depth-only, 1=normal, 2=strong RAFT)")
     raft_flow_factor_max: Optional[float] = Field(None, ge=0.0, le=2.0, description="Max flow factor")
     raft_flow_factor_step: Optional[float] = Field(None, ge=0.05, le=0.5, description="Step size for flow factor sweep")
+
+    # DA3-3DGS-specific parameters (for da3_3dgs_tuning test type)
+    dgs_rotation_factor: Optional[float] = Field(None, ge=-50.0, le=-1.0, description="Fixed rotation factor for 3DGS tests (empirical optimal: -8.0)")
+    dgs_test_iterations: Optional[int] = Field(None, ge=10, le=200, description="Number of frames to generate per test")
+    dgs_scene_strategies: Optional[List[str]] = Field(None, description="List of scene strategies to test: ['per_segment', 'per_prompt', 'rolling_window']")
+    dgs_rolling_window_size: Optional[int] = Field(None, ge=10, le=100, description="Rolling window size for rolling_window strategy")
+    dgs_max_prompt_keyframes: Optional[int] = Field(None, ge=10, le=200, description="Max keyframes per prompt scene for per_prompt strategy")
+    dgs_models: Optional[List[str]] = Field(None, description="List of DA3 models to test: ['DA3-GIANT', 'DA3NESTED-GIANT-LARGE']")
+    dgs_neighbor_segments_min: Optional[int] = Field(None, ge=2, le=10, description="Min neighbor segments (keyframes around each segment)")
+    dgs_neighbor_segments_max: Optional[int] = Field(None, ge=2, le=10, description="Max neighbor segments")
+    dgs_neighbor_segments_step: Optional[int] = Field(None, ge=1, le=4, description="Step size for neighbor segments sweep")
+    dgs_densification_min: Optional[int] = Field(None, ge=1, le=8, description="Min densification factor (1x = 705k splats)")
+    dgs_densification_max: Optional[int] = Field(None, ge=1, le=8, description="Max densification factor (8x = 5.6M splats)")
+    dgs_densification_step: Optional[int] = Field(None, ge=1, le=4, description="Step size for densification sweep")
+    dgs_nearclip_min: Optional[float] = Field(None, ge=0.01, le=1.0, description="Min near-clip distance (filters close splats)")
+    dgs_nearclip_max: Optional[float] = Field(None, ge=0.01, le=1.0, description="Max near-clip distance")
+    dgs_nearclip_step: Optional[float] = Field(None, ge=0.01, le=0.5, description="Step size for near-clip sweep")
 
 
 class TuningTestStatus(BaseModel):

@@ -46,7 +46,9 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
     gr.Markdown("""
     **How it works:**
     - **Scene Strategy:** Choose how 3DGS scenes are built (per-segment / per-prompt / rolling-window)
-    - **Per-Prompt (Recommended):** Build ONE scene per prompt change - eliminates coordinate drift within semantic regions
+    - **Per-Segment (Default, Recommended):** Build NEW 3DGS world at each segment - keeps movement IN SYNC with rhythm/beat!
+    - **KEY INSIGHT:** 'Fresh start' at each segment maintains visual rhythm matching music/pacing (more dynamic/interesting)
+    - **Per-Prompt:** Build ONE scene per prompt - eliminates drift but feels 'floaty' (loses rhythm sync)
     - DA3 auto-estimates camera poses from image content
     - Builds 3D Gaussian Splatting scene (~705k splats, configurable densification)
     - Renders novel views via camera pose interpolation
