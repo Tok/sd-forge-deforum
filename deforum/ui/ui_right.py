@@ -287,6 +287,43 @@ def on_ui_tabs():
         transform: translateY(-1px) !important;
     }
 
+    /* Visualization refresh buttons - smaller and rounded */
+    #refresh_camera_path_btn,
+    #refresh_camera_path_btn *,
+    #refresh_camera_path_btn button,
+    button#refresh_camera_path_btn,
+    #refresh_wormtrail_btn,
+    #refresh_wormtrail_btn *,
+    #refresh_wormtrail_btn button,
+    button#refresh_wormtrail_btn {
+        min-height: 32px !important;
+        max-height: 32px !important;
+        height: 32px !important;
+        padding: 4px 12px !important;
+        font-size: 13px !important;
+        border-radius: 16px !important;
+        background: #4a5568 !important;
+        border: 1px solid #6b7280 !important;
+        color: #e5e7eb !important;
+        font-weight: 500 !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    #refresh_camera_path_btn:hover,
+    #refresh_camera_path_btn *:hover,
+    #refresh_camera_path_btn button:hover,
+    button#refresh_camera_path_btn:hover,
+    #refresh_wormtrail_btn:hover,
+    #refresh_wormtrail_btn *:hover,
+    #refresh_wormtrail_btn button:hover,
+    button#refresh_wormtrail_btn:hover {
+        background: #5a6678 !important;
+        border-color: #7b8390 !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
+        transform: translateY(-1px) !important;
+    }
+
     /* Hide ALL unwanted buttons in deforum results - keep only folder button */
     #deforum_results button[id*="save"],
     #deforum_results button[id*="send"],
@@ -477,6 +514,7 @@ def on_ui_tabs():
                         variant="secondary",
                         size="sm",
                         scale=0,
+                        elem_id="refresh_camera_path_btn",
                     )
                 # Get visualization visibility default from settings (persistent)
                 from modules import shared
@@ -523,6 +561,7 @@ def on_ui_tabs():
                         variant="secondary",
                         size="sm",
                         scale=0,
+                        elem_id="refresh_wormtrail_btn",
                     )
                 with gr.Row(variant="compact"):
                     frame_overlap_simulator = gr.HTML(
