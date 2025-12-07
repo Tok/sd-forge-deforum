@@ -479,17 +479,28 @@ def run_synthetic_3dgs_test(
 def run_synthetic_3dgs_sweep(
     sweep_config: Dict[str, Any],
     output_dir: Path,
+    test_manager=None,
+    test_id: str = None,
 ) -> List[DA3SyntheticTestResult]:
     """Run a parameter sweep across synthetic 3DGS configurations.
 
     Args:
         sweep_config: Sweep configuration with parameter ranges
         output_dir: Base output directory for all tests
+        test_manager: TuningTestManager instance (for cancellation support)
+        test_id: Test ID (for cancellation support)
 
     Returns:
         List of test results
     """
     results = []
+
+    def is_cancelled() -> bool:
+        """Check if test has been cancelled."""
+        if test_manager and test_id:
+            status = test_manager.get_status(test_id)
+            return status and status.status == "cancelled"
+        return False
 
     # Extract sweep ranges
     models = sweep_config.get("models", ["DA3NESTED-GIANT-LARGE"])
@@ -537,6 +548,11 @@ def run_synthetic_3dgs_sweep(
                 for nearclip in nearclip_values:
                     for aspect_config in aspect_ratios:
                         for pattern in patterns:
+                            # Check for cancellation
+                            if is_cancelled():
+                                logger.warning(f"Test cancelled by user after {test_count}/{total_tests} tests")
+                                break
+
                             test_count += 1
 
                             aspect_ratio, width, height = aspect_config
@@ -559,10 +575,22 @@ def run_synthetic_3dgs_sweep(
                             result = run_synthetic_3dgs_test(config, output_dir)
                             results.append(result)
 
-                    # Save intermediate results
-                    results_file = output_dir / "synthetic_sweep_results.json"
-                    with open(results_file, 'w') as f:
-                        json.dump([r.to_dict() for r in results], f, indent=2)
+                        # Break outer loops if cancelled
+                        if is_cancelled():
+                            break
+                    if is_cancelled():
+                        break
+                if is_cancelled():
+                    break
+            if is_cancelled():
+                break
+        if is_cancelled():
+            break
+
+    # Save final results
+    results_file = output_dir / "synthetic_sweep_results.json"
+    with open(results_file, 'w') as f:
+        json.dump([r.to_dict() for r in results], f, indent=2)
 
     logger.info(f"\n{'='*60}")
     logger.info(f"Sweep complete: {len(results)} tests run")

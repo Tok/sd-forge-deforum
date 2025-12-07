@@ -566,8 +566,13 @@ class TuningTestManager:
 
         logger.info(f"Synthetic sweep config: {sweep_config}")
 
-        # Run the parameter sweep (synthetic)
-        results = run_synthetic_3dgs_sweep(sweep_config, test_output_dir)
+        # Run the parameter sweep (synthetic) with cancellation support
+        results = run_synthetic_3dgs_sweep(
+            sweep_config,
+            test_output_dir,
+            test_manager=self,
+            test_id=test_id
+        )
 
         # Update test status with results (convert to dicts for JSON serialization)
         with self.test_lock:
