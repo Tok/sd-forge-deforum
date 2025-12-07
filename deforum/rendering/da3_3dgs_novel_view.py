@@ -370,6 +370,291 @@ def collect_nearby_keyframes(
     return collected_images, collected_indices
 
 
+def get_da3_model_config(model_selection: str) -> tuple[str, str]:
+    """Get DA3 model variant and size from selection name.
+
+    Args:
+        model_selection: Model name ('DA3-GIANT' or 'DA3NESTED-GIANT-LARGE')
+
+    Returns:
+        Tuple of (variant, size) for model initialization
+    """
+    if model_selection == 'DA3-GIANT':
+        return 'giant', 'giant'
+    elif model_selection == 'DA3NESTED-GIANT-LARGE':
+        return 'giant', 'nested-giant-large'
+    else:
+        logger.warning(f"Unknown model '{model_selection}', using DA3-GIANT")
+        return 'giant', 'giant'
+
+
+def convert_pil_to_bgr(images: List[Image.Image]) -> List[np.ndarray]:
+    """Convert PIL images to BGR numpy arrays for DA3.
+
+    Args:
+        images: List of PIL images in RGB format
+
+    Returns:
+        List of numpy arrays in BGR format
+    """
+    return [cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR) for img in images]
+
+
+def convert_extrinsics_to_4x4(extrinsics: np.ndarray) -> np.ndarray:
+    """Convert camera extrinsics from [N, 3, 4] to [N, 4, 4] format.
+
+    Adds bottom row [0, 0, 0, 1] to create homogeneous transformation matrices.
+
+    Args:
+        extrinsics: Camera poses [N, 3, 4] or [N, 4, 4]
+
+    Returns:
+        Camera poses [N, 4, 4]
+    """
+    if extrinsics.shape[1:] == (3, 4):
+        logger.debug(f"   Converting camera poses from (3, 4) to (4, 4)...")
+        num_cameras = extrinsics.shape[0]
+        bottom_row = np.array([0, 0, 0, 1], dtype=extrinsics.dtype).reshape(1, 1, 4)
+        bottom_rows = np.tile(bottom_row, (num_cameras, 1, 1))  # [N, 1, 4]
+        return np.concatenate([extrinsics, bottom_rows], axis=1)  # [N, 4, 4]
+    return extrinsics
+
+
+def get_segment_boundary_poses(
+    extrinsics: np.ndarray,
+    keyframe_indices: List[int],
+    segment_first_idx: int,
+    segment_last_idx: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Extract camera poses for segment boundaries from collected keyframes.
+
+    Args:
+        extrinsics: All camera poses [N, 4, 4]
+        keyframe_indices: Frame indices of collected keyframes
+        segment_first_idx: Start frame index of segment
+        segment_last_idx: End frame index of segment
+
+    Returns:
+        Tuple of (first_pose, last_pose) for segment boundaries
+    """
+    try:
+        first_idx_pos = keyframe_indices.index(segment_first_idx)
+        last_idx_pos = keyframe_indices.index(segment_last_idx)
+        first_pose = extrinsics[first_idx_pos]
+        last_pose = extrinsics[last_idx_pos]
+        logger.debug(
+            f"   Using segment boundary poses: "
+            f"collected[{first_idx_pos}]={segment_first_idx}, "
+            f"collected[{last_idx_pos}]={segment_last_idx}"
+        )
+        return first_pose, last_pose
+    except ValueError:
+        logger.warning(
+            f"   Segment boundaries {segment_first_idx}-{segment_last_idx} "
+            f"not in collected keyframes {keyframe_indices}, using first/last"
+        )
+        return extrinsics[0], extrinsics[-1]
+
+
+def scale_intrinsics_to_resolution(
+    intrinsics: np.ndarray,
+    target_width: int,
+    target_height: int
+) -> np.ndarray:
+    """Scale camera intrinsics from DA3's processing resolution to target resolution.
+
+    DA3 processes images at an internal resolution (e.g., 518x518) and returns
+    intrinsics for that resolution. This function infers the processing resolution
+    from the principal point and scales all intrinsic parameters appropriately.
+
+    Args:
+        intrinsics: Average intrinsics matrix [3, 3] from DA3
+        target_width: Target render width in pixels
+        target_height: Target render height in pixels
+
+    Returns:
+        Scaled intrinsics matrix [3, 3]
+    """
+    # Extract intrinsics values
+    fx_da3 = intrinsics[0, 0]
+    fy_da3 = intrinsics[1, 1]
+    cx_da3 = intrinsics[0, 2]
+    cy_da3 = intrinsics[1, 2]
+
+    logger.debug(
+        f"   DA3 intrinsics: fx={fx_da3:.1f}, fy={fy_da3:.1f}, "
+        f"cx={cx_da3:.1f}, cy={cy_da3:.1f}"
+    )
+    logger.debug(f"   Target render size: {target_width}x{target_height}")
+
+    # Infer DA3's processing resolution from principal point
+    # Principal point should be roughly at image center: cx ≈ width/2, cy ≈ height/2
+    inferred_da3_width = cx_da3 * 2.0
+    inferred_da3_height = cy_da3 * 2.0
+
+    logger.debug(
+        f"   Inferred DA3 processing size: "
+        f"{inferred_da3_width:.0f}x{inferred_da3_height:.0f}"
+    )
+
+    # Scale intrinsics to target resolution
+    scale_x = target_width / inferred_da3_width
+    scale_y = target_height / inferred_da3_height
+
+    fx_scaled = fx_da3 * scale_x
+    fy_scaled = fy_da3 * scale_y
+    cx_scaled = cx_da3 * scale_x
+    cy_scaled = cy_da3 * scale_y
+
+    logger.debug(f"   Scaling factors: x={scale_x:.3f}, y={scale_y:.3f}")
+    logger.debug(
+        f"   Scaled intrinsics: fx={fx_scaled:.1f}, fy={fy_scaled:.1f}, "
+        f"cx={cx_scaled:.1f}, cy={cy_scaled:.1f}"
+    )
+
+    # Rebuild intrinsics matrix with scaled values
+    return np.array([
+        [fx_scaled, 0, cx_scaled],
+        [0, fy_scaled, cy_scaled],
+        [0, 0, 1]
+    ], dtype=np.float32)
+
+
+def render_3dgs_keyframes(
+    gaussians,
+    extrinsics: np.ndarray,
+    keyframe_indices: List[int],
+    segment_first_idx: int,
+    segment_last_idx: int,
+    avg_intrinsics: np.ndarray,
+    image_size: tuple[int, int],
+    output_dir: str,
+    device: torch.device,
+    densification_factor: int
+) -> List[str]:
+    """Render 3DGS versions of segment boundary keyframes for visual consistency.
+
+    Args:
+        gaussians: 3D gaussian splat scene
+        extrinsics: Camera poses [N, 4, 4]
+        keyframe_indices: Indices of collected keyframes
+        segment_first_idx: First keyframe index of segment
+        segment_last_idx: Last keyframe index of segment
+        avg_intrinsics: Camera intrinsics matrix [3, 3]
+        image_size: (width, height) for rendering
+        output_dir: Directory to save rendered keyframes
+        device: Torch device
+        densification_factor: Gaussian densification factor
+
+    Returns:
+        List of paths to rendered keyframe images
+    """
+    logger.info(f"   Rendering 3DGS keyframes for visual consistency...")
+
+    img_width, img_height = image_size
+    keyframe_paths = []
+
+    # Find which collected keyframes match the segment boundaries
+    keyframe_to_render = []
+    if segment_first_idx in keyframe_indices:
+        idx_pos = keyframe_indices.index(segment_first_idx)
+        keyframe_to_render.append((segment_first_idx, extrinsics[idx_pos]))
+    if segment_last_idx in keyframe_indices and segment_last_idx != segment_first_idx:
+        idx_pos = keyframe_indices.index(segment_last_idx)
+        keyframe_to_render.append((segment_last_idx, extrinsics[idx_pos]))
+
+    for kf_idx, kf_pose in keyframe_to_render:
+        rendered_kf = render_novel_view_from_gaussians(
+            gaussians=gaussians,
+            camera_pose=kf_pose,
+            camera_intrinsics=avg_intrinsics,
+            image_size=(img_width, img_height),
+            device=device,
+            densification_factor=densification_factor
+        )
+        kf_filename = f"{kf_idx:09d}.png"
+        kf_path = os.path.join(output_dir, kf_filename)
+        rendered_kf.save(kf_path)
+        keyframe_paths.append(kf_path)
+        logger.debug(f"   Saved 3DGS keyframe: {kf_filename}")
+
+    return keyframe_paths
+
+
+def render_tween_frames(
+    gaussians,
+    first_pose: np.ndarray,
+    last_pose: np.ndarray,
+    target_frame_indices: List[int],
+    segment_first_idx: int,
+    segment_last_idx: int,
+    keyframe_indices: List[int],
+    avg_intrinsics: np.ndarray,
+    image_size: tuple[int, int],
+    output_dir: str,
+    device: torch.device,
+    densification_factor: int
+) -> List[str]:
+    """Render interpolated tween frames between segment boundaries.
+
+    Args:
+        gaussians: 3D gaussian splat scene
+        first_pose: Camera pose for first segment boundary [4, 4]
+        last_pose: Camera pose for last segment boundary [4, 4]
+        target_frame_indices: Frame indices to generate
+        segment_first_idx: First keyframe index of segment
+        segment_last_idx: Last keyframe index of segment
+        keyframe_indices: Indices of collected keyframes (for fallback)
+        avg_intrinsics: Camera intrinsics matrix [3, 3]
+        image_size: (width, height) for rendering
+        output_dir: Directory to save rendered frames
+        device: Torch device
+        densification_factor: Gaussian densification factor
+
+    Returns:
+        List of paths to rendered frame images
+    """
+    img_width, img_height = image_size
+    frame_paths = []
+
+    # CRITICAL: Use SEGMENT BOUNDARIES for span, not collected keyframe range
+    # This ensures interpolation stays in sync with segment tweens
+    if segment_first_idx is not None and segment_last_idx is not None:
+        first_frame_idx = segment_first_idx
+        last_frame_idx = segment_last_idx
+    else:
+        # Fallback: use collected keyframe range
+        first_frame_idx = keyframe_indices[0]
+        last_frame_idx = keyframe_indices[-1]
+
+    total_span = last_frame_idx - first_frame_idx
+
+    for target_idx in target_frame_indices:
+        # Calculate interpolation parameter (0 to 1) within SEGMENT span
+        t = (target_idx - first_frame_idx) / total_span if total_span > 0 else 0.5
+
+        # Interpolate camera pose
+        interp_pose = interpolate_camera_pose(first_pose, last_pose, t)
+
+        # Render novel view from 3DGS scene
+        rendered_image = render_novel_view_from_gaussians(
+            gaussians=gaussians,
+            camera_pose=interp_pose,
+            camera_intrinsics=avg_intrinsics,
+            image_size=(img_width, img_height),
+            device=device,
+            densification_factor=densification_factor
+        )
+
+        # Save frame
+        target_filename = f"{target_idx:09d}.png"
+        target_path = os.path.join(output_dir, target_filename)
+        rendered_image.save(target_path)
+        frame_paths.append(target_path)
+
+    return frame_paths
+
+
 def generate_da3_3dgs_interpolation(
     keyframe_images: List[Image.Image],
     keyframe_indices: List[int],
@@ -410,25 +695,13 @@ def generate_da3_3dgs_interpolation(
     from deforum.depth.depth_anything_v3 import DepthAnythingV3
 
     # Determine variant and size from selection
-    if model_selection == 'DA3-GIANT':
-        variant = 'giant'
-        size = 'giant'
-    elif model_selection == 'DA3NESTED-GIANT-LARGE':
-        variant = 'giant'
-        size = 'nested-giant-large'
-    else:
-        logger.warning(f"Unknown model '{model_selection}', using DA3-GIANT")
-        variant = 'giant'
-        size = 'giant'
+    variant, size = get_da3_model_config(model_selection)
 
     # Initialize DA3 GIANT model
     depth_model = DepthAnythingV3(device, model_size=size, variant=variant)
 
     # Convert PIL images to numpy arrays (BGR for DA3)
-    keyframe_arrays = [
-        cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-        for img in keyframe_images
-    ]
+    keyframe_arrays = convert_pil_to_bgr(keyframe_images)
 
     # Build 3DGS scene from all keyframes
     logger.info(f"   Building 3DGS scene from {len(keyframe_arrays)} keyframes...")
@@ -452,12 +725,7 @@ def generate_da3_3dgs_interpolation(
     logger.debug(f"   Image size from keyframes: {keyframe_images[0].size}")
 
     # Convert [N, 3, 4] to [N, 4, 4] by adding bottom row [0, 0, 0, 1]
-    if extrinsics.shape[1:] == (3, 4):
-        logger.debug(f"   Converting camera poses from (3, 4) to (4, 4)...")
-        num_cameras = extrinsics.shape[0]
-        bottom_row = np.array([0, 0, 0, 1], dtype=extrinsics.dtype).reshape(1, 1, 4)
-        bottom_rows = np.tile(bottom_row, (num_cameras, 1, 1))  # [N, 1, 4]
-        extrinsics = np.concatenate([extrinsics, bottom_rows], axis=1)  # [N, 4, 4]
+    extrinsics = convert_extrinsics_to_4x4(extrinsics)
 
     logger.info(f"   3DGS scene built: {gaussians.means.shape[1]} gaussian splats")
     logger.debug(f"   Camera poses: {extrinsics.shape}")
@@ -466,23 +734,9 @@ def generate_da3_3dgs_interpolation(
     # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
     # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
     # but we MUST interpolate between segment boundaries to stay in sync
-    if segment_first_idx is not None and segment_last_idx is not None:
-        # Find which collected keyframe corresponds to each segment boundary
-        try:
-            first_idx_pos = keyframe_indices.index(segment_first_idx)
-            last_idx_pos = keyframe_indices.index(segment_last_idx)
-            first_pose = extrinsics[first_idx_pos]  # Pose of segment first keyframe
-            last_pose = extrinsics[last_idx_pos]    # Pose of segment last keyframe
-            logger.debug(f"   Using segment boundary poses: collected[{first_idx_pos}]={segment_first_idx}, collected[{last_idx_pos}]={segment_last_idx}")
-        except ValueError:
-            # Fallback: segment boundaries not in collected keyframes (shouldn't happen)
-            logger.warning(f"   Segment boundaries {segment_first_idx}-{segment_last_idx} not in collected keyframes {keyframe_indices}, using first/last")
-            first_pose = extrinsics[0]
-            last_pose = extrinsics[-1]
-    else:
-        # No segment info provided, use first/last of collected keyframes
-        first_pose = extrinsics[0]  # [4, 4]
-        last_pose = extrinsics[-1]  # [4, 4]
+    first_pose, last_pose = get_segment_boundary_poses(
+        extrinsics, keyframe_indices, segment_first_idx, segment_last_idx
+    )
 
     # Use average intrinsics (usually constant across views)
     avg_intrinsics = np.mean(intrinsics, axis=0)
@@ -491,119 +745,51 @@ def generate_da3_3dgs_interpolation(
     img_width, img_height = keyframe_images[0].size
 
     # CRITICAL FIX: DA3 may return intrinsics for a different resolution than our images
-    # The principal point (cx, cy) and focal lengths (fx, fy) need to be scaled
-    # Standard assumption: DA3 processed images at some internal resolution
-    # We need to detect what that was and scale appropriately
+    # Scale intrinsics to match target render resolution
+    avg_intrinsics = scale_intrinsics_to_resolution(avg_intrinsics, img_width, img_height)
 
-    # Extract intrinsics values
-    fx_da3 = avg_intrinsics[0, 0]
-    fy_da3 = avg_intrinsics[1, 1]
-    cx_da3 = avg_intrinsics[0, 2]
-    cy_da3 = avg_intrinsics[1, 2]
-
-    logger.debug(f"   DA3 intrinsics: fx={fx_da3:.1f}, fy={fy_da3:.1f}, cx={cx_da3:.1f}, cy={cy_da3:.1f}")
-    logger.debug(f"   Target render size: {img_width}x{img_height}")
-
-    # Infer DA3's processing resolution from principal point
-    # Principal point should be roughly at image center, so cx ≈ width/2, cy ≈ height/2
-    inferred_da3_width = cx_da3 * 2.0
-    inferred_da3_height = cy_da3 * 2.0
-
-    logger.debug(f"   Inferred DA3 processing size: {inferred_da3_width:.0f}x{inferred_da3_height:.0f}")
-
-    # Scale intrinsics to target resolution
-    scale_x = img_width / inferred_da3_width
-    scale_y = img_height / inferred_da3_height
-
-    fx_scaled = fx_da3 * scale_x
-    fy_scaled = fy_da3 * scale_y
-    cx_scaled = cx_da3 * scale_x
-    cy_scaled = cy_da3 * scale_y
-
-    logger.debug(f"   Scaling factors: x={scale_x:.3f}, y={scale_y:.3f}")
-    logger.debug(f"   Scaled intrinsics: fx={fx_scaled:.1f}, fy={fy_scaled:.1f}, cx={cx_scaled:.1f}, cy={cy_scaled:.1f}")
-
-    # Rebuild intrinsics matrix with scaled values
-    avg_intrinsics_scaled = np.array([
-        [fx_scaled, 0, cx_scaled],
-        [0, fy_scaled, cy_scaled],
-        [0, 0, 1]
-    ], dtype=np.float32)
-
-    # Use scaled intrinsics for rendering
-    avg_intrinsics = avg_intrinsics_scaled
-
-    # Optionally render 3DGS versions of segment boundary keyframes
-    # This ensures visual consistency between keyframes and tweens
+    # Optionally render 3DGS versions of segment boundary keyframes for visual consistency
     # Note: Original diffusion keyframes are moved to _diffusion/ by the caller
     keyframe_paths = []
     if render_keyframes and segment_first_idx is not None and segment_last_idx is not None:
-        logger.info(f"   Rendering 3DGS keyframes for visual consistency...")
-
-        # Find which collected keyframes match the segment boundaries
-        keyframe_to_render = []
-        if segment_first_idx in keyframe_indices:
-            idx_pos = keyframe_indices.index(segment_first_idx)
-            keyframe_to_render.append((segment_first_idx, extrinsics[idx_pos]))
-        if segment_last_idx in keyframe_indices and segment_last_idx != segment_first_idx:
-            idx_pos = keyframe_indices.index(segment_last_idx)
-            keyframe_to_render.append((segment_last_idx, extrinsics[idx_pos]))
-
-        for kf_idx, kf_pose in keyframe_to_render:
-            rendered_kf = render_novel_view_from_gaussians(
-                gaussians=gaussians,
-                camera_pose=kf_pose,
-                camera_intrinsics=avg_intrinsics,
-                image_size=(img_width, img_height),
-                device=device,
-                densification_factor=densification_factor
-            )
-            kf_filename = f"{kf_idx:09d}.png"
-            kf_path = os.path.join(output_dir, kf_filename)  # Save to main output dir
-            rendered_kf.save(kf_path)
-            keyframe_paths.append(kf_path)
-            logger.debug(f"   Saved 3DGS keyframe: {kf_filename}")
-
-    # Generate interpolated tween frames
-    num_tweens = len(target_frame_indices)
-    num_keyframes_rendered = len(keyframe_paths)
-    logger.info(f"   Rendering {num_tweens} tween views{f' + {num_keyframes_rendered} keyframes' if num_keyframes_rendered > 0 else ''}...")
-    frame_paths = []
-
-    # CRITICAL: Use SEGMENT BOUNDARIES for span, not collected keyframe range
-    # This ensures interpolation stays in sync with segment tweens
-    if segment_first_idx is not None and segment_last_idx is not None:
-        first_frame_idx = segment_first_idx
-        last_frame_idx = segment_last_idx
-    else:
-        # Fallback: use collected keyframe range
-        first_frame_idx = keyframe_indices[0]
-        last_frame_idx = keyframe_indices[-1]
-
-    total_span = last_frame_idx - first_frame_idx
-
-    for target_idx in target_frame_indices:
-        # Calculate interpolation parameter (0 to 1) within SEGMENT span
-        t = (target_idx - first_frame_idx) / total_span if total_span > 0 else 0.5
-
-        # Interpolate camera pose
-        interp_pose = interpolate_camera_pose(first_pose, last_pose, t)
-
-        # Render novel view from 3DGS scene
-        rendered_image = render_novel_view_from_gaussians(
+        keyframe_paths = render_3dgs_keyframes(
             gaussians=gaussians,
-            camera_pose=interp_pose,
-            camera_intrinsics=avg_intrinsics,
+            extrinsics=extrinsics,
+            keyframe_indices=keyframe_indices,
+            segment_first_idx=segment_first_idx,
+            segment_last_idx=segment_last_idx,
+            avg_intrinsics=avg_intrinsics,
             image_size=(img_width, img_height),
+            output_dir=output_dir,
             device=device,
             densification_factor=densification_factor
         )
 
-        # Save frame
-        target_filename = f"{target_idx:09d}.png"
-        target_path = os.path.join(output_dir, target_filename)
-        rendered_image.save(target_path)
-        frame_paths.append(target_path)
+    # Generate interpolated tween frames
+    num_tweens = len(target_frame_indices)
+    num_keyframes_rendered = len(keyframe_paths)
+    logger.info(
+        f"   Rendering {num_tweens} tween views"
+        f"{f' + {num_keyframes_rendered} keyframes' if num_keyframes_rendered > 0 else ''}..."
+    )
 
-    logger.info(f"   {emoji_if_enabled('✅')} Generated {len(frame_paths)} tween views{f' + {num_keyframes_rendered} keyframes' if num_keyframes_rendered > 0 else ''}")
+    frame_paths = render_tween_frames(
+        gaussians=gaussians,
+        first_pose=first_pose,
+        last_pose=last_pose,
+        target_frame_indices=target_frame_indices,
+        segment_first_idx=segment_first_idx,
+        segment_last_idx=segment_last_idx,
+        keyframe_indices=keyframe_indices,
+        avg_intrinsics=avg_intrinsics,
+        image_size=(img_width, img_height),
+        output_dir=output_dir,
+        device=device,
+        densification_factor=densification_factor
+    )
+
+    logger.info(
+        f"   {emoji_if_enabled('✅')} Generated {len(frame_paths)} tween views"
+        f"{f' + {num_keyframes_rendered} keyframes' if num_keyframes_rendered > 0 else ''}"
+    )
     return frame_paths
