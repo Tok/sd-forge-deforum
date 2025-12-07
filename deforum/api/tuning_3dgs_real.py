@@ -116,21 +116,21 @@ def load_da3_model(model_name: str, device: torch.device):
     """
     from deforum.depth.depth_anything_v3 import DepthAnythingV3
 
-    # Parse model name to get variant and size
-    # DA3-GIANT -> variant="giant", size="giant"
-    # DA3NESTED-GIANT-LARGE -> variant="giant", size="large" (nested)
-    if "NESTED" in model_name:
-        variant = "giant"
-        size = "large"
-    else:
-        variant = "giant"
-        size = "giant"
+    # Parse model name to get variant and model_size
+    # DA3-GIANT -> variant="giant", model_size="giant"
+    # DA3NESTED-GIANT-LARGE -> variant="giant", model_size="nested-giant-large"
+    variant = "giant"  # Both models are 3DGS-capable giants
 
-    logger.info(f"Loading DA3 model: {model_name} (variant={variant}, size={size})...")
+    if "NESTED" in model_name:
+        model_size = "nested-giant-large"
+    else:
+        model_size = "giant"
+
+    logger.info(f"Loading DA3 model: {model_name} (variant={variant}, model_size={model_size})...")
     model = DepthAnythingV3(
-        variant=variant,
-        size=size,
-        device=device
+        device=device,
+        model_size=model_size,
+        variant=variant
     )
     return model
 
