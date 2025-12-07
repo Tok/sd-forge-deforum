@@ -84,16 +84,17 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     # Extract only keyframes (frames with is_keyframe=True)
     keyframes = [f for f in all_frames if f.is_keyframe]
 
-    # Initialize dashboard if enabled (same as core.py)
+    # Initialize specialized dashboard for Flux+Interpolation mode
     from deforum.rendering import options as opt_utils
     dashboard = None
     if opt_utils.is_dashboard_enabled():
-        from deforum.utils.ui.dashboard import FixedDashboard
-        dashboard = FixedDashboard()
-        # Initialize progress totals (only keyframes, not all frames)
-        dashboard.progress_data['diffusion_frames'] = (0, len(keyframes))
-        total_steps = sum(frame.actual_steps(data) for frame in keyframes)
-        dashboard.progress_data['total_steps'] = (0, total_steps)
+        from deforum.utils.ui.interpolation_dashboard import InterpolationDashboard
+        dashboard = InterpolationDashboard()
+        # Initialize progress totals
+        # Phase 1: Keyframes to generate
+        dashboard.phase1_total = len(keyframes)
+        # Phase 2: Interpolation segments (keyframes - 1)
+        dashboard.phase2_total = len(keyframes) - 1
 
         # Set up signal handler for clean Ctrl+C (same as core.py)
         import signal
@@ -228,8 +229,17 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         logger.debug(f"{emoji_if_enabled('📸')} Need to generate {len(keyframes_to_generate)} new keyframes")
     
     for idx, frame in enumerate(keyframes):
+        # Update dashboard for Phase 1
+        if dashboard:
+            dashboard.update_phase1(idx, len(keyframes))
+            dashboard.set_operation(f"Generating keyframe {idx + 1}/{len(keyframes)} (frame {frame.i})")
+            dashboard.update_vram_from_torch()
+
         # Skip if keyframe already exists (resume mode)
         if frame.i in keyframe_images:
+            if dashboard:
+                dashboard.update_phase1(idx + 1, len(keyframes))
+                dashboard.set_operation(f"Skipped existing keyframe {idx + 1}/{len(keyframes)}")
             continue
 
         logger.debug(f"\n{emoji_if_enabled('📸')} Generating NEW keyframe {idx + 1}/{len(keyframes)} (frame {frame.i})...")
@@ -358,6 +368,12 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     all_segment_frames = []
 
     for idx in range(len(keyframes) - 1):
+        # Update dashboard for Phase 2
+        if dashboard:
+            dashboard.update_phase2(idx, len(keyframes) - 1)
+            dashboard.set_operation(f"Interpolating segment {idx + 1}/{len(keyframes) - 1}")
+            dashboard.update_vram_from_torch()
+
         first_kf = keyframes[idx]
         last_kf = keyframes[idx + 1]
 
