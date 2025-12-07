@@ -145,18 +145,21 @@ def on_ui_tabs():
     import time
     cache_bust = int(time.time())
 
-    slopcore_css = f"""
+    # Use % formatting instead of f-string to avoid Python 3.12 parsing issues
+    css_header = """
     /* ========================================================================== */
-    /* DEFORUM SLOPCORE CSS v2.0 - Loaded at: {cache_bust} */
+    /* DEFORUM SLOPCORE CSS v2.0 - Loaded at: %s */
     /* Gradient Direction Fix: BB0=Vertical(180deg) DA3=Horizontal(135deg) */
     /* If buttons still wrong: Clear ALL browser cache + hard refresh (Ctrl+Shift+F5) */
     /* ========================================================================== */
 
     /* Visual confirmation that CSS loaded - adds subtle indicator */
-    #deforum_interface {{
-        --css-version: "{cache_bust}";
-    }}
+    #deforum_interface {
+        --css-version: "%s";
+    }
+    """ % (cache_bust, cache_bust)
 
+    css_body = """
     /* BB0 Slopcore gradient for OTHER buttons (audio sync, etc.) - TOP TO BOTTOM (VERTICAL) */
     /* Electric purple at top (#5606ff) → Azure cyan at bottom (#17a7fe) - matching BB0 album */
     #audio_sync_button,
@@ -409,6 +412,9 @@ def on_ui_tabs():
         transform: translateY(-1px) !important;
     }
     """
+
+    # Combine CSS header with body (header already formatted above)
+    slopcore_css = css_header + css_body
 
     with gr.Blocks(analytics_enabled=False, css=slopcore_css) as deforum_interface:
         components = {}
