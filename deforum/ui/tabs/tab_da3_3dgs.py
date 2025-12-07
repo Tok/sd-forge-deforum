@@ -7,28 +7,41 @@ import gradio as gr
 from types import SimpleNamespace
 from deforum.utils.system.logging import emoji_if_enabled
 from deforum.utils.ui.builders import create_gr_elem
+from deforum.utils.system.logging.themes import (
+    HEX_DA3_CYAN, HEX_DA3_RED
+)
 
 
 def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
     """DA3-3DGS Settings Tab - 3D Gaussian Splatting interpolation settings.
-    
+
     Args:
         dw: DeforumWanArgs namespace (contains DA3-3DGS params)
         skip_tabitem: If True, don't create TabItem wrapper
-        
+
     Returns:
         Dict of all created Gradio components
     """
-    
-    gr.Markdown(f"""
-    ## {emoji_if_enabled('🔍')} DA3-3DGS Interpolation Settings
 
-    **3D Gaussian Splatting with Depth Anything V3 GIANT models**
+    # DA3 slopcore gradient banner (cyan → red/pink)
+    magnifying_glass = emoji_if_enabled('🔍')
+    gr.HTML(value=f"""
+        <div style='background: linear-gradient(135deg, {HEX_DA3_CYAN} 0%, {HEX_DA3_RED} 100%);
+                    padding: 20px; border-radius: 10px; margin-bottom: 20px; color: white;'>
+            <h2 style='margin: 0 0 10px 0; font-size: 24px;'>{magnifying_glass or ''} DA3-3DGS Interpolation Settings</h2>
+            <p style='margin: 0; font-size: 14px; opacity: 0.9;'>
+                <strong>3D Gaussian Splatting with Depth Anything V3 GIANT models</strong><br/>
+                Multi-view 3D reconstruction for novel view synthesis between keyframes.
+                DA3 auto-estimates camera poses, builds gaussian scenes, and renders smooth interpolations.
+            </p>
+        </div>
+    """)
 
-    This mode uses multi-view 3D reconstruction to interpolate between keyframes:
+    gr.Markdown("""
+    **How it works:**
     - Collects keyframes from current segment + 4 neighbor segments (default ~9 keyframes)
     - DA3 auto-estimates camera poses from image content
-    - Builds 3D Gaussian Splatting scene (~705k splats)
+    - Builds 3D Gaussian Splatting scene (~705k splats, configurable)
     - Renders novel views via camera pose interpolation
     - **Note:** Deforum camera schedules are NOT used - DA3 drives movement
 
