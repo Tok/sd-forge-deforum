@@ -1327,9 +1327,9 @@ def WanArgs():
             "type": "slider",
             "minimum": 0.0,
             "maximum": 5.0,
-            "step": 0.1,
-            "value": 0.0,
-            "info": "Remove gaussian splats closer than this distance to the camera (in world units). Helps eliminate 'straw' artifacts that appear too close to the camera lens. 0.0 = no filtering (default, show all splats), 0.5 = remove very near splats, higher values = more aggressive filtering. WARNING: May cause black frames if set too high."
+            "step": 0.05,
+            "value": 0.1,
+            "info": "Remove gaussian splats closer than this distance to the camera (in world units). Helps eliminate 'straw' artifacts that appear too close to the camera lens. 0.0 = no filtering (show all splats), 0.1 = minimal filtering (default, removes very close splats), 0.5 = moderate filtering, higher values = more aggressive. WARNING: Values >1.0 may cause black frames."
         },
 
         # Advanced Generation Settings

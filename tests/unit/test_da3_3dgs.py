@@ -602,5 +602,158 @@ class TestModelConfigSelection:
         assert size == 'giant'
 
 
+class TestNearClipFiltering:
+    """Test near-clip distance filtering for gaussian splats."""
+
+    def test_no_filtering_when_disabled(self):
+        """Should not filter any splats when near_clip_distance=0.0."""
+        from deforum.rendering.da3_3dgs_novel_view import render_novel_view_from_gaussians
+
+        # Create mock gaussians with known splat count
+        mock_gaussians = SimpleNamespace(
+            means=torch.randn(1, 100, 3),  # 100 splats
+            scales=torch.randn(1, 100, 3),
+            rotations=torch.randn(1, 100, 4),
+            opacities=torch.randn(1, 100),
+            harmonics=torch.randn(1, 100, 3, 16)
+        )
+
+        # Mock camera pose (identity)
+        camera_pose = np.eye(4, dtype=np.float32)
+        intrinsics = np.array([[100, 0, 50], [0, 100, 50], [0, 0, 1]], dtype=np.float32)
+
+        device = torch.device('cpu')
+
+        # Mock gsplat rasterization to count splats
+        with patch('deforum.rendering.da3_3dgs_novel_view.rasterization') as mock_raster:
+            # Return dummy rendered image
+            mock_raster.return_value = (
+                torch.zeros(1, 1, 100, 100, 3),  # rendered_image
+                None,  # alpha
+                None   # info
+            )
+
+            # Call with near_clip_distance=0.0 (no filtering)
+            render_novel_view_from_gaussians(
+                mock_gaussians,
+                camera_pose,
+                intrinsics,
+                image_size=(100, 100),
+                device=device,
+                densification_factor=1,
+                near_clip_distance=0.0
+            )
+
+            # Check that rasterization was called with all 100 splats
+            call_args = mock_raster.call_args
+            means_passed = call_args.kwargs['means']
+            assert means_passed.shape[1] == 100, "Should pass all 100 splats when filtering disabled"
+
+    def test_filters_close_splats(self):
+        """Should filter out splats very close to camera."""
+        from deforum.rendering.da3_3dgs_novel_view import render_novel_view_from_gaussians
+
+        # Create gaussians with splats at various depths
+        # In camera space: negative Z = in front of camera
+        # Place splats at depths: -0.01, -0.1, -1.0, -10.0
+        means_world = torch.tensor([
+            [[0, 0, -0.01]],  # Very close (should be filtered with threshold=0.05)
+            [[0, 0, -0.1]],   # Close (should pass with threshold=0.05)
+            [[0, 0, -1.0]],   # Medium distance
+            [[0, 0, -10.0]]   # Far
+        ], dtype=torch.float32)  # [4, 1, 3]
+
+        # Reshape to batch format
+        means_batch = means_world.reshape(1, 4, 3)  # [1, 4, 3]
+
+        mock_gaussians = SimpleNamespace(
+            means=means_batch,
+            scales=torch.ones(1, 4, 3),
+            rotations=torch.tensor([[[1, 0, 0, 0]]] * 4).reshape(1, 4, 4),
+            opacities=torch.ones(1, 4),
+            harmonics=torch.zeros(1, 4, 3, 16)
+        )
+
+        # Identity camera (world = camera space for this test)
+        camera_pose = np.eye(4, dtype=np.float32)
+        intrinsics = np.array([[100, 0, 50], [0, 100, 50], [0, 0, 1]], dtype=np.float32)
+
+        device = torch.device('cpu')
+
+        with patch('deforum.rendering.da3_3dgs_novel_view.rasterization') as mock_raster:
+            mock_raster.return_value = (
+                torch.zeros(1, 1, 100, 100, 3),
+                None,
+                None
+            )
+
+            # Call with near_clip_distance=0.05
+            render_novel_view_from_gaussians(
+                mock_gaussians,
+                camera_pose,
+                intrinsics,
+                image_size=(100, 100),
+                device=device,
+                densification_factor=1,
+                near_clip_distance=0.05
+            )
+
+            # Check filtered count
+            call_args = mock_raster.call_args
+            means_passed = call_args.kwargs['means']
+
+            # Should filter out splat at -0.01 (too close), keep others
+            assert means_passed.shape[1] == 3, f"Should keep 3/4 splats (got {means_passed.shape[1]})"
+
+    def test_safety_check_prevents_black_frames(self):
+        """Should not filter out ALL splats (safety check)."""
+        from deforum.rendering.da3_3dgs_novel_view import render_novel_view_from_gaussians
+
+        # Create gaussians where ALL splats are very close
+        means_batch = torch.tensor([[[0, 0, -0.01]]] * 10, dtype=torch.float32).reshape(1, 10, 3)
+
+        mock_gaussians = SimpleNamespace(
+            means=means_batch,
+            scales=torch.ones(1, 10, 3),
+            rotations=torch.tensor([[[1, 0, 0, 0]]] * 10).reshape(1, 10, 4),
+            opacities=torch.ones(1, 10),
+            harmonics=torch.zeros(1, 10, 3, 16)
+        )
+
+        camera_pose = np.eye(4, dtype=np.float32)
+        intrinsics = np.array([[100, 0, 50], [0, 100, 50], [0, 0, 1]], dtype=np.float32)
+
+        device = torch.device('cpu')
+
+        with patch('deforum.rendering.da3_3dgs_novel_view.rasterization') as mock_raster:
+            mock_raster.return_value = (
+                torch.zeros(1, 1, 100, 100, 3),
+                None,
+                None
+            )
+
+            # Call with aggressive near_clip that would filter everything
+            with patch('deforum.rendering.da3_3dgs_novel_view.logger') as mock_logger:
+                render_novel_view_from_gaussians(
+                    mock_gaussians,
+                    camera_pose,
+                    intrinsics,
+                    image_size=(100, 100),
+                    device=device,
+                    densification_factor=1,
+                    near_clip_distance=1.0  # Would filter all splats at -0.01
+                )
+
+                # Check that warning was logged
+                mock_logger.warning.assert_called_once()
+                warning_msg = mock_logger.warning.call_args[0][0]
+                assert "would remove ALL" in warning_msg, "Should warn about filtering all splats"
+
+            # Check that NO filtering was applied (safety override)
+            call_args = mock_raster.call_args
+            means_passed = call_args.kwargs['means']
+            assert means_passed.shape[1] == 10, "Should keep all splats to prevent black frame"
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
