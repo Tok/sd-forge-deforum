@@ -237,6 +237,39 @@ def on_ui_tabs():
         transform: translateY(-1px) !important;
     }
 
+    /* DA3 slopcore gradient for DA3/3DGS-related buttons (cyan → red/pink) */
+    .da3-button,
+    .da3-button *,
+    .da3-button button,
+    div.da3-button button,
+    button.da3-button,
+    *[class*="da3-button"],
+    *[class*="da3-button"] button {
+        background: linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%) !important;
+        background-image: linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%) !important;
+        background-color: #1cc4e6 !important;
+        border: none !important;
+        color: white !important;
+        font-weight: 600 !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+        box-shadow: 0 4px 6px rgba(28, 196, 230, 0.3) !important;
+        transition: all 0.3s ease !important;
+    }
+    /* DA3 button hover - reversed gradient */
+    .da3-button:hover,
+    .da3-button *:hover,
+    .da3-button button:hover,
+    div.da3-button button:hover,
+    button.da3-button:hover,
+    *[class*="da3-button"]:hover,
+    *[class*="da3-button"] button:hover {
+        background: linear-gradient(135deg, #f64a5e 0%, #1cc4e6 100%) !important;
+        background-image: linear-gradient(135deg, #f64a5e 0%, #1cc4e6 100%) !important;
+        background-color: #f64a5e !important;
+        box-shadow: 0 6px 12px rgba(246, 74, 94, 0.4) !important;
+        transform: translateY(-1px) !important;
+    }
+
     /* Hide ALL unwanted buttons in deforum results - keep only folder button */
     #deforum_results button[id*="save"],
     #deforum_results button[id*="send"],
