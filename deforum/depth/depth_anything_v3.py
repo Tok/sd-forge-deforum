@@ -203,6 +203,10 @@ def _convert_images_to_pil(images: List[Union[np.ndarray, Image.Image]]) -> List
     return pil_images
 
 
+# Module-level cache for DA3 models (key: (variant, model_size, device))
+_DA3_MODEL_CACHE = {}
+
+
 class DepthAnythingV3:
     """Depth Anything V3 model wrapper.
 
@@ -230,17 +234,27 @@ class DepthAnythingV3:
         self.model_size = model_size
         self.variant = variant
 
+        # Check cache first
+        cache_key = (variant, model_size, str(device))
+        if cache_key in _DA3_MODEL_CACHE:
+            logger.debug(f"Using cached DA3 model ({variant} {model_size})")
+            self.model = _DA3_MODEL_CACHE[cache_key]
+            return
+
         model_name = _get_model_name(variant, model_size)
 
-        logger.info(f"Loading Depth Anything V3 ({variant} {model_size}) from {model_name}...")
-        logger.info("Model will auto-download to HuggingFace cache if not present")
+        logger.info(f"Loading DA3 ({variant} {model_size})...")
 
         try:
             # Try to import DA3
             from depth_anything_3.api import DepthAnything3
             self.model = DepthAnything3.from_pretrained(model_name)
             self.model.to(device)
-            logger.info(f"✓ Depth Anything V3 loaded successfully on {device}")
+
+            # Cache the model for future use
+            _DA3_MODEL_CACHE[cache_key] = self.model
+
+            logger.info(f"✓ DA3 loaded on {device}")
 
         except ImportError as e:
             logger.error(

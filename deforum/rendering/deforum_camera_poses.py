@@ -238,7 +238,17 @@ def generate_camera_poses_from_deforum_schedules(
         tween_pose = build_camera_pose(tx, ty, tz, rx, ry, rz)
         tween_poses.append(tween_pose)
 
-    logger.debug(f"   Generated {len(tween_poses)} poses, cam_dist={base_camera_distance:.1f}, scene_extent={max_extent:.1f}")
+    # Log first few camera positions for debugging
+    def extract_cam_pos(extrinsic: np.ndarray) -> np.ndarray:
+        """Extract camera position from extrinsic matrix."""
+        R, t = extrinsic[:3, :3], extrinsic[:3, 3]
+        return -R.T @ t
+
+    first_cam_pos = extract_cam_pos(first_pose)
+    last_cam_pos = extract_cam_pos(last_pose)
+    logger.debug(f"   Camera positions: first=({first_cam_pos[0]:.1f},{first_cam_pos[1]:.1f},{first_cam_pos[2]:.1f}), "
+                 f"last=({last_cam_pos[0]:.1f},{last_cam_pos[1]:.1f},{last_cam_pos[2]:.1f}), "
+                 f"dist={base_camera_distance:.1f}")
 
     return first_pose, last_pose, tween_poses
 

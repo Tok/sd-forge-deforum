@@ -158,17 +158,11 @@ def log_vram_usage_estimate(densification_factor: int, resolution: Tuple[int, in
     estimated_min = min_vram * resolution_mult
     estimated_rec = rec_vram * resolution_mult
 
-    logger.info(f"   Estimated VRAM usage:")
-    logger.info(f"      Densification factor: {densification_factor}")
-    logger.info(f"      Gaussian splats: {splat_count:,}")
-    logger.info(f"      Resolution: {resolution[0]}x{resolution[1]}")
-    logger.info(f"      Minimum VRAM: {estimated_min:.1f}GB")
-    logger.info(f"      Recommended VRAM: {estimated_rec:.1f}GB")
-
     # Check current availability
     available = get_available_vram_gb()
+    logger.debug(f"   VRAM estimate: densify={densification_factor}x, {splat_count:,} splats, {resolution[0]}x{resolution[1]}, "
+                 f"min={estimated_min:.1f}GB, rec={estimated_rec:.1f}GB, avail={available:.1f}GB")
     if available > 0:
-        logger.info(f"      Available VRAM: {available:.1f}GB")
         if available < estimated_min:
             logger.warning(f"      ⚠️  VRAM may be insufficient! ({available:.1f}GB < {estimated_min:.1f}GB minimum)")
         elif available < estimated_rec:

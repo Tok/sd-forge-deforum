@@ -500,7 +500,22 @@ def collect_nearby_keyframes(
 
     # Collect the actual keyframes from the schedule
     collected_indices = available_indices[start_pos:end_pos + 1]
-    collected_images = [all_keyframe_images[idx] for idx in collected_indices]
+
+    # Validate that all keyframes have images
+    collected_images = []
+    missing_keyframes = []
+    for idx in collected_indices:
+        if idx in all_keyframe_images and all_keyframe_images[idx] is not None:
+            collected_images.append(all_keyframe_images[idx])
+        else:
+            missing_keyframes.append(idx)
+            logger.warning(f"   Missing keyframe image at index {idx}, skipping from 3DGS scene")
+
+    # Update collected_indices to only include valid keyframes
+    collected_indices = [idx for idx in collected_indices if idx not in missing_keyframes]
+
+    if missing_keyframes:
+        logger.warning(f"   Skipped {len(missing_keyframes)} missing keyframes: {missing_keyframes}")
 
     logger.debug(
         f"   Collected {len(collected_images)} keyframes from schedule: "

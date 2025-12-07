@@ -465,12 +465,9 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         else:
             flf2v_prompt = ""  # Default to no prompt
         
-        logger.info(f"   {emoji_if_enabled('🎯')} Interpolation Settings:")
-        logger.info(f"      Method: {interp_method}")
-
         # Route to appropriate interpolation function
         if interp_method == "FILM":
-            logger.info(f"      Using FILM (Frame Interpolation for Large Motion)")
+            logger.info(f"   {emoji_if_enabled('🎯')} Interpolation: FILM (Frame Interpolation for Large Motion)")
             segment_frames = generate_film_segment(
                 first_image=first_image,
                 last_image=last_image,
@@ -482,11 +479,9 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 fps=video_args.fps
             )
         elif interp_method == "DA3-3DGS":
-            logger.info(f"      Using DA3 3D Gaussian Splatting")
             model_selection = getattr(wan_args, 'da3_3dgs_model', 'DA3-GIANT')
             neighbor_segments = getattr(wan_args, 'da3_3dgs_neighbor_segments', 1)
-            logger.info(f"      Model: {model_selection}")
-            logger.info(f"      Including {neighbor_segments} neighbor segment(s) before+after for 3DGS scene")
+            logger.info(f"   {emoji_if_enabled('🎯')} Interpolation: DA3-3DGS, model={model_selection}, neighbors={neighbor_segments}")
 
             # Use new proper 3DGS interpolation module
             from deforum.rendering.da3_3dgs_novel_view import (
