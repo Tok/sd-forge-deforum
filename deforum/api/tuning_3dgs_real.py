@@ -221,8 +221,11 @@ def run_real_3dgs_test(
         )
 
         # Get camera poses from DA3 prediction
-        camera_poses = prediction.camera_poses  # [N, 4, 4]
-        camera_intrinsics = prediction.camera_intrinsics  # [3, 3]
+        camera_poses = prediction.extrinsics  # [N, 3, 4] or [N, 4, 4]
+        camera_intrinsics_all = prediction.intrinsics  # [N, 3, 3]
+
+        # Use first camera intrinsics (assuming all similar)
+        camera_intrinsics = camera_intrinsics_all[0]  # [3, 3]
 
         rendered_paths = []
         render_times = []
