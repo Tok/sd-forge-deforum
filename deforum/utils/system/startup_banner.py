@@ -136,9 +136,7 @@ def print_startup_banner():
         f"This Fork: {GITHUB_URL} (commit: {commit_id})",
         "",
         "Primary Target: Forge Neo (fully tested and supported)",
-        "Other Forge Versions: May work but remain untested",
-        "",
-        f"Slopcore Gradient: {gradient_meta['description']}"
+        "Other Forge Versions: May work but remain untested"
     ]
 
     # Draw box with diagonal slopcore gradient background
