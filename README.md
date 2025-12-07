@@ -56,6 +56,127 @@ git checkout dev
 
 **See below for:** [Installation](#-installation), [Helper Scripts](#-helper-scripts), [Model Downloads](#-model-downloads)
 
+## 💡 Tips & Best Practices
+
+### Settings Persistence & Defaults
+
+**Using Forge's Built-In Persistence (Recommended):**
+Forge Neo includes a powerful settings persistence mechanism that saves your preferred defaults:
+
+1. **Save Your Setup:**
+   - Navigate to: **Settings** → **Other** → **Defaults**
+   - Configure Deforum settings as desired
+   - Click **"Save defaults"**
+   - Your settings are now saved and will persist across Forge restarts
+
+2. **Deforum Extension Settings:**
+   - Navigate to: **Settings** → **Extensions** → **Deforum**
+   - Configure extension-specific options:
+     - Console dashboard settings
+     - ASCII preview options
+     - Default render mode
+     - Logging verbosity
+
+**Why Use Forge Defaults?**
+- ✅ Persists across Forge updates
+- ✅ Works with all extensions
+- ✅ Cleaner than managing `.txt` settings files
+- ✅ Built into Forge's infrastructure
+
+### Understanding Timestrings
+
+**What is a Timestring?**
+A timestring is the unique identifier for each generation batch, formatted as `YYYYMMDDHHMMSS`:
+- Example: `20251207143022` = December 7, 2025 at 14:30:22
+- Located in: `output/videos/Deforum_<timestring>/`
+- All frames, settings, and metadata stored in this directory
+
+**How to Find Your Timestring:**
+```bash
+# Look in output directory
+ls output/videos/
+
+# Example output:
+# Deforum_20251207143022/  ← This is your timestring
+# Deforum_20251207155418/
+```
+
+### Resume & Regeneration
+
+**Basic Resume (Continue Incomplete Render):**
+1. Navigate to: **Deforum** → **Init** → **Resume Animation**
+2. Enter your timestring (e.g., `20251207143022`)
+3. Check **"Resume from timestring"**
+4. Uncheck **"Regenerate Tweens on Resume"** (to continue where you left off)
+5. Click **Generate**
+
+**Regenerate Tweens (Test Different Interpolation):**
+1. Same steps as above, but...
+2. **Keep** "Regenerate Tweens on Resume" **checked** (default)
+3. Change interpolation method in **Wan Models** tab
+4. Only tweens regenerated, keyframes reused from disk
+5. Perfect for A/B testing methods (Wan vs FILM vs DA3-3DGS)
+
+**What Gets Reused vs Regenerated:**
+- ✅ **Always Reused**: All keyframe images (never regenerated)
+- ✅ **Always Reused**: Settings (FPS, max_frames, prompts, schedules)
+- 🔄 **Regenerated (if enabled)**: All tween frames with new interpolation method
+- 🔄 **Regenerated (if enabled)**: Final stitched video
+
+### Audio Embedding & Troubleshooting
+
+**Audio Embedding Best Practices:**
+
+1. **Always Re-Load Audio on Resume:**
+   - When resuming, **re-upload or re-specify your audio file**
+   - This ensures audio is properly embedded in the final video
+   - Location: **Deforum** → **Output** → **Audio** section
+
+2. **If Audio Embedding Fails:**
+   The generated video is saved in `output/videos/Deforum_<timestring>/`:
+   - Video: `<filename>.mp4`
+   - Audio: `audio.mp3` (if provided)
+
+   **Fix with FFmpeg directly:**
+   ```bash
+   cd output/videos/Deforum_<timestring>/
+
+   # Embed audio manually
+   ffmpeg -i video.mp4 -i audio.mp3 -c:v copy -c:a aac -shortest final_with_audio.mp4
+
+   # If audio sync is off, adjust offset
+   ffmpeg -i video.mp4 -itsoffset 0.5 -i audio.mp3 -c:v copy -c:a aac -shortest synced.mp4
+
+   # Re-encode if needed (fixes codec issues)
+   ffmpeg -i video.mp4 -i audio.mp3 -c:v libx264 -c:a aac -strict experimental final.mp4
+   ```
+
+3. **Common Audio Issues:**
+   - **No audio in output**: Re-load audio file before clicking Generate
+   - **Audio desynced**: Use `itsoffset` parameter (see above)
+   - **Audio choppy**: Check if audio file is corrupted, try re-encoding
+   - **Wrong duration**: Use `-shortest` flag to match video length
+
+### DA3-3DGS Specific Notes
+
+**Camera Movement with 3D Gaussian Splatting:**
+- ⚠️ **Deforum movement schedules are NOT used** for DA3-3DGS interpolation
+- DA3 automatically estimates camera poses from depth analysis
+- Camera path is determined by DA3's understanding of scene geometry
+- **Why?** DA3 is uniquely equipped to generate optimal camera movement based on actual 3D scene structure
+- **Future**: Deforum schedule integration may be revisited, but DA3's automatic approach currently produces better results
+
+**You will see this log message:**
+```
+INFO: Using DA3 automatic pose estimation from depth
+INFO: NOTE: Deforum movement schedules are ignored (DA3 controls camera path)
+```
+
+**If you need Deforum-controlled camera movement:**
+- Use **Wan FLF2V** or **FILM** interpolation methods instead
+- These methods respect Deforum schedules for keyframe generation
+- Only DA3-3DGS uses automatic pose estimation
+
 ## 🔄 Resume Workflow (Test Different Interpolation Methods)
 
 A powerful workflow for **iterative testing** of different interpolation methods (DA3-3DGS, Wan FLF2V, FILM) without regenerating expensive keyframes:
