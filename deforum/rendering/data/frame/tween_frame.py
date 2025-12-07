@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 
 from deforum.rendering.data.render_data import RenderData
-from deforum.rendering import img_2_img_tubes
+# Note: img_2_img_tubes imported lazily in methods to avoid circular dependency
 from deforum.rendering.helpers import image as image_utils
 from deforum.utils.system.logging import log as log_utils
 from deforum.rendering.helpers import turbo as turbo_utils
@@ -75,6 +75,7 @@ class Tween:
         data.args.root.init_sample = saved_image
 
     def _generate(self, data, last_frame, prev_image):
+        from deforum.rendering import img_2_img_tubes
         # Check tween generation mode
         tween_mode = getattr(data.args.anim_args, 'tween_generation_mode', 'depth_warp')
 
@@ -112,6 +113,7 @@ class Tween:
 
     def _generate_multiview(self, data, last_frame, prev_image):
         """Generate tween using DA3 multi-view geometry (Phase 2)."""
+        from deforum.rendering import img_2_img_tubes
         try:
             from deforum.rendering.tween_generators.da3_multiview import DA3MultiViewTweenGenerator
 
@@ -269,6 +271,7 @@ class Tween:
 
     def _generate_standard_depth_warp(self, data, last_frame, prev_image):
         """Standard depth warp pipeline (extracted for fallback)."""
+        from deforum.rendering import img_2_img_tubes
         advanced_image = turbo_utils.advance_optical_flow_cadence_before_animation_warping(
             data, last_frame, self, data.images.before_previous, data.images.previous)
         temp_depth = Tween.calculate_depth_prediction(data, advanced_image)

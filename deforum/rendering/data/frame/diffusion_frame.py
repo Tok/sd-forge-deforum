@@ -18,7 +18,7 @@ from . import DiffusionFrameData, KeyFrameDistribution
 from .tween_frame import Tween
 from deforum.rendering.data import RenderData, Schedule
 from deforum.rendering.data.taqaddumat import Taqaddumat
-from deforum.rendering import img_2_img_tubes
+# Note: img_2_img_tubes imported lazily in methods to avoid circular dependency
 from deforum.rendering.helpers import depth as depth_utils
 from deforum.rendering.helpers import filename as filename_utils
 from deforum.utils.system.logging import log as log_utils
@@ -140,6 +140,7 @@ class DiffusionFrame:
         return image
 
     def after_diffusion(self, data: RenderData, image):
+        from deforum.rendering import img_2_img_tubes
         data.images.color_match = img_2_img_tubes.conditional_color_match_tube(data, self)(image)
         self.progress_and_save(data, image)
         self.update_render_preview(data)
@@ -223,6 +224,7 @@ class DiffusionFrame:
         log_utils.print_optical_flow_info(data, redo, random_seed)
 
         sample_image = call_generate(data, self, random_seed)
+        from deforum.rendering import img_2_img_tubes
         optical_tube = img_2_img_tubes.optical_flow_redo_tube(data, self, redo)
         transformed_sample_image = optical_tube(sample_image)
 
