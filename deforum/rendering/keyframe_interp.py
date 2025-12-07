@@ -645,10 +645,22 @@ def stitch_wan_flux_video(data, frame_paths, video_args, interp_method="Wan"):
     # Get ffmpeg parameters from settings
     ffmpeg_location, ffmpeg_crf, ffmpeg_preset = get_ffmpeg_params()
 
-    # Output video path - use interpolation method in filename
-    # Wan → flux_wan, RIFE → flux_rife, FILM → flux_film
-    method_suffix = interp_method.lower()  # "wan", "rife", "film"
-    output_filename = f"{data.args.root.timestring}_flux_{method_suffix}.mp4"
+    # Detect model type from checkpoint name
+    checkpoint_name = data.args.args.checkpoint or ""
+    if "flux" in checkpoint_name.lower():
+        model_prefix = "flux"
+    elif "z-image" in checkpoint_name.lower() or "zimage" in checkpoint_name.lower() or "zit" in checkpoint_name.lower():
+        model_prefix = "zit"
+    elif "lumina" in checkpoint_name.lower():
+        model_prefix = "lumina"
+    else:
+        # Fallback to generic "diffusion"
+        model_prefix = "diffusion"
+
+    # Output video path - use model + interpolation method in filename
+    # e.g., zit_da3-3dgs, flux_wan, lumina_film
+    method_suffix = interp_method.lower().replace("da3-3dgs", "da3-3dgs")  # Keep DA3-3DGS as-is
+    output_filename = f"{data.args.root.timestring}_{model_prefix}_{method_suffix}.mp4"
     output_path = os.path.join(data.output_directory, output_filename)
 
     # Collect ALL frame files (keyframes + tweens) sorted numerically
