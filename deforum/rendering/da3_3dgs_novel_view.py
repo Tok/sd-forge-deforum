@@ -984,51 +984,7 @@ def generate_da3_3dgs_interpolation(
     # DA3 automatically determines optimal camera movement based on scene depth
     logger.info(f"   Using DA3 automatic pose estimation from depth")
     logger.info(f"   NOTE: Deforum movement schedules are ignored (DA3 controls camera path)")
-
-    # Reorient camera poses to look at centroid for better framing
-    # This ensures cameras point at the dense center of the scene, not empty space
-    extrinsics = reorient_cameras_to_target(extrinsics, centroid)
-    logger.info(f"   Reoriented cameras to look at point cloud center")
-
-    # CRITICAL FIX: DA3's camera poses are at wrong scale
-    # Position cameras OUTSIDE the scene bounding box, looking inward
-    scene_extent = bbox_max - bbox_min
-    max_extent = np.max(scene_extent)
-
-    # Calculate scene "radius" (half of max extent)
-    scene_radius = max_extent / 2.0
-
-    # Cameras should be positioned at 1.5x scene radius from centroid
-    # This ensures they're outside the scene, looking inward
-    target_distance = scene_radius * 1.5
-
-    # Calculate current average camera distance
-    cam_distances = []
-    for ext in extrinsics:
-        R = ext[:3, :3]
-        t = ext[:3, 3]
-        cam_pos = -R.T @ t
-        dist = np.linalg.norm(cam_pos - centroid)
-        cam_distances.append(dist)
-
-    avg_cam_dist = np.mean(cam_distances)
-    scale_factor = target_distance / (avg_cam_dist + 1e-8)
-
-    logger.info(f"   Scene radius: {scene_radius:.2f}, Target camera distance: {target_distance:.2f}")
-    logger.info(f"   Current avg distance: {avg_cam_dist:.2f}, Scale factor: {scale_factor:.2f}x")
-
-    # Apply scaling to camera positions relative to centroid
-    for i in range(len(extrinsics)):
-        R = extrinsics[i, :3, :3]
-        t = extrinsics[i, :3, 3]
-        cam_pos = -R.T @ t
-
-        # Scale position to place camera outside scene
-        cam_pos_scaled = centroid + (cam_pos - centroid) * scale_factor
-
-        # Update extrinsic matrix
-        t_new = -R @ cam_pos_scaled
-        extrinsics[i, :3, 3] = t_new
+    logger.info(f"   Using DA3's original camera poses (scene and cameras at consistent scale)")
 
     # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
     # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
