@@ -237,7 +237,7 @@ def render_novel_view_from_gaussians(
     image_size: Tuple[int, int],
     device: torch.device,
     densification_factor: int = 1,
-    near_clip_distance: float = 0.0
+    near_clip_distance: float = 0.1
 ) -> Image.Image:
     """Render a novel view from 3D Gaussian Splatting parameters using gsplat.
 
