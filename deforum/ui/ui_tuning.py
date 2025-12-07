@@ -679,65 +679,65 @@ def create_tuning_tab() -> tuple:
                             label="Max neighbor segments",
                             minimum=2,
                             maximum=10,
-                            value=8,
+                            value=6,
                             step=1,
-                            info="Maximum keyframes to include (sweep 4, 6, 8)",
+                            info="Results show 3-6 is sweet spot (4 optimal with score 95.26)",
                         )
                         dgs_neighbor_segments_step = gr.Slider(
                             label="Neighbor segments step",
                             minimum=1,
                             maximum=4,
-                            value=2,
+                            value=1,
                             step=1,
-                            info="Step between values (4, 6, 8)",
+                            info="Step 1 for fine tuning (3, 4, 5, 6)",
                         )
                         dgs_densification_min = gr.Slider(
                             label="Min densification factor",
                             minimum=1,
                             maximum=8,
-                            value=2,
+                            value=1,
                             step=1,
-                            info="1x = 705k splats, 2x = 1.4M splats (sweep 2, 4, 6)",
+                            info="⚠️ CRITICAL! Results: 2=excellent (95), 4=medium (84), 6=poor (70)",
                         )
                         dgs_densification_max = gr.Slider(
                             label="Max densification factor",
                             minimum=1,
                             maximum=8,
-                            value=6,
+                            value=5,
                             step=1,
-                            info="8x = 5.6M splats (may OOM on 24GB GPUs)",
+                            info="Test 1-5 (lower is better! 2 is empirically optimal)",
                         )
                         dgs_densification_step = gr.Slider(
                             label="Densification step",
                             minimum=1,
                             maximum=4,
-                            value=2,
+                            value=1,
                             step=1,
-                            info="Step between values (2, 4, 6)",
+                            info="Step 1 for fine tuning around optimal value of 2",
                         )
                         dgs_nearclip_min = gr.Slider(
                             label="Min near-clip distance",
                             minimum=0.00,
                             maximum=1.0,
-                            value=0.05,
+                            value=0.00,
                             step=0.01,
-                            info="Filter out splats too close (0.00 = disabled, reduces 'straw' artifacts)",
+                            info="Results show minimal impact (0.00-0.15 changes score <0.1)",
                         )
                         dgs_nearclip_max = gr.Slider(
                             label="Max near-clip distance",
                             minimum=0.00,
                             maximum=1.0,
-                            value=0.15,
+                            value=0.10,
                             step=0.01,
-                            info="Test range: 0.05, 0.10, 0.15 (0.00 = disabled)",
+                            info="Just test extremes (0.00 disabled, 0.10 moderate filtering)",
                         )
                         dgs_nearclip_step = gr.Slider(
                             label="Near-clip step",
                             minimum=0.01,
                             maximum=0.5,
-                            value=0.05,
+                            value=0.10,
                             step=0.01,
-                            info="Step between values",
+                            info="Large step OK (minimal impact on quality)",
                         )
 
                         # 3DGS test action buttons
