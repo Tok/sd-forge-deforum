@@ -228,7 +228,7 @@ def densify_gaussians(gaussians, densification_factor: int, device):
         harmonics=torch.cat(densified_sh_coeffs, dim=1)
     )
 
-    logger.trace(f"   Densified gaussians: {N:,} → {N * densification_factor:,} splats (×{densification_factor})")
+    logger.info(f"   Densified gaussians: {N:,} → {N * densification_factor:,} splats (×{densification_factor})")
 
     return densified_gaussians
 
@@ -310,10 +310,10 @@ def render_novel_view_from_gaussians(
         means_cam = (viewmat @ means_homogeneous.T).T  # [N, 4]
         depth = means_cam[:, 2]  # Z coordinate in camera space (negative = in front of camera)
 
-        # Debug: Log depth distribution
+        # Debug: Log depth distribution (use INFO so it always shows)
         depth_np = depth.detach().cpu().numpy()
-        logger.trace(f"   Depth distribution: min={depth_np.min():.4f}, max={depth_np.max():.4f}, "
-                     f"mean={depth_np.mean():.4f}, median={np.median(depth_np):.4f}")
+        logger.info(f"   Depth distribution: min={depth_np.min():.4f}, max={depth_np.max():.4f}, "
+                    f"mean={depth_np.mean():.4f}, median={np.median(depth_np):.4f}")
 
         # Keep only splats beyond near clip distance
         # Negative depth = in front of camera, so we want depth < -near_clip_distance
@@ -329,7 +329,7 @@ def render_novel_view_from_gaussians(
             # DO NOT apply the mask - keep all splats to avoid black frame
         elif mask.sum() < means.shape[0]:
             num_removed = (~mask).sum()
-            logger.trace(f"   Near-clip filter: keeping {mask.sum()}/{means.shape[0]} splats (removed {num_removed} too close)")
+            logger.info(f"   Near-clip filter: keeping {mask.sum()}/{means.shape[0]} splats (removed {num_removed} too close)")
 
             # Apply mask to all gaussian parameters
             means = means[mask]
