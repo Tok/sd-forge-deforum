@@ -162,9 +162,19 @@ def create_camera_poses_from_deforum_schedules(
     ty_base = deform_keys.translation_y_series[first_idx]
     tz_base = deform_keys.translation_z_series[first_idx]
 
+    # Calculate camera starting position: Place camera in front of scene, not inside it
+    # Use scene extent to position camera at a distance where it can see the whole scene
+    scene_extent = scene_bbox_max - scene_bbox_min
+    camera_distance = max(scene_extent) * 0.5  # Start 50% of max extent away from centroid
+
+    # Camera starts in front of scene (negative Z in camera space = forward in world)
+    camera_start_pos = scene_centroid + np.array([0, 0, camera_distance])
+
     logger.info(f"   Creating {num_frames} camera poses from Deforum schedules:")
     logger.info(f"      First frame baseline: tx={tx_base:.2f}, ty={ty_base:.2f}, tz={tz_base:.2f}")
     logger.info(f"      Scene centroid: ({scene_centroid[0]:.1f}, {scene_centroid[1]:.1f}, {scene_centroid[2]:.1f})")
+    logger.info(f"      Camera start position: ({camera_start_pos[0]:.1f}, {camera_start_pos[1]:.1f}, {camera_start_pos[2]:.1f})")
+    logger.info(f"      Camera distance from centroid: {camera_distance:.1f}")
 
     for i, frame_idx in enumerate(frame_indices):
         # Get Deforum translation/rotation for this frame
@@ -180,10 +190,10 @@ def create_camera_poses_from_deforum_schedules(
         ty_rel = ty - ty_base
         tz_rel = tz - tz_base
 
-        # Offset to scene centroid so camera starts at center
-        tx_world = scene_centroid[0] + tx_rel * scene_scale
-        ty_world = scene_centroid[1] + ty_rel * scene_scale
-        tz_world = scene_centroid[2] + tz_rel * scene_scale
+        # Position camera in front of scene and apply Deforum movement
+        tx_world = camera_start_pos[0] + tx_rel * scene_scale
+        ty_world = camera_start_pos[1] + ty_rel * scene_scale
+        tz_world = camera_start_pos[2] + tz_rel * scene_scale
 
         # Create extrinsic matrix
         extrinsic = deforum_pose_to_extrinsic(
