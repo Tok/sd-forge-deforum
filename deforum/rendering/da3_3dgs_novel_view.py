@@ -991,16 +991,23 @@ def generate_da3_3dgs_interpolation(
     logger.debug(f"   Scene: centroid=({centroid[0]:.1f},{centroid[1]:.1f},{centroid[2]:.1f}), "
                  f"extent=({scene_extent[0]:.1f},{scene_extent[1]:.1f},{scene_extent[2]:.1f})")
 
-    # Camera positions available if needed for debugging (commented out for compact logs)
-    # for i, ext in enumerate(extrinsics):
-    #     R, t = ext[:3, :3], ext[:3, 3]
-    #     cam_pos = -R.T @ t
-    #     logger.debug(f"   DA3 cam{i}=({cam_pos[0]:.2f},{cam_pos[1]:.2f},{cam_pos[2]:.2f})")
+    # Log DA3 camera positions for comparison
+    da3_cam_positions = []
+    for i, ext in enumerate(extrinsics):
+        R, t = ext[:3, :3], ext[:3, 3]
+        cam_pos = -R.T @ t
+        da3_cam_positions.append(cam_pos)
+    logger.debug(f"   DA3 cameras: {[f'({p[0]:.1f},{p[1]:.1f},{p[2]:.1f})' for p in da3_cam_positions]}")
 
     # Choose camera pose strategy: Deforum schedules OR DA3 automatic
     if deform_keys is not None:
         # Use Deforum movement schedules relative to scene center
         from deforum.rendering.deforum_camera_poses import generate_camera_poses_from_deforum_schedules
+
+        # Calculate average distance from DA3 cameras to scene centroid
+        # This gives us the "natural" viewing distance for this scene
+        da3_distances = [np.linalg.norm(cam_pos - centroid) for cam_pos in da3_cam_positions]
+        avg_da3_distance = np.mean(da3_distances)
 
         first_pose, last_pose, tween_poses_list = generate_camera_poses_from_deforum_schedules(
             keyframe_indices=keyframe_indices,
@@ -1010,10 +1017,11 @@ def generate_da3_3dgs_interpolation(
             deform_keys=deform_keys,
             scene_centroid=centroid,
             scene_bounds=(bbox_min, bbox_max),
-            base_camera_distance=None  # Auto-calculate from scene extent
+            base_camera_distance=avg_da3_distance  # Use DA3's viewing distance
         )
 
-        logger.info(f"   Camera: Deforum schedules, centroid=({centroid[0]:.1f},{centroid[1]:.1f},{centroid[2]:.1f}), {len(tween_poses_list)} poses generated")
+        logger.info(f"   Camera: Deforum schedules, centroid=({centroid[0]:.1f},{centroid[1]:.1f},{centroid[2]:.1f}), "
+                    f"dist={avg_da3_distance:.1f} (from DA3), {len(tween_poses_list)} poses")
 
     else:
         # Use DA3's automatic pose estimation from depth
