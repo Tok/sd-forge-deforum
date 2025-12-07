@@ -24,6 +24,14 @@ echo.
 
 cd /d "%FORGE_DIR%"
 
+REM Clear Python bytecode cache to ensure latest code is loaded
+echo Clearing Python bytecode cache...
+del /s /q extensions\sd-forge-deforum\*.pyc >nul 2>&1
+del /s /q extensions\sd-forge-deforum\*.pyo >nul 2>&1
+for /d /r extensions\sd-forge-deforum %%d in (__pycache__) do @if exist "%%d" rd /s /q "%%d" 2>nul
+echo Cache cleared
+echo.
+
 REM Check for --no-opt flag
 set USE_OPT=1
 set EXTRA_ARGS=
