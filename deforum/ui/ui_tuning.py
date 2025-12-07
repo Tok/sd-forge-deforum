@@ -176,58 +176,41 @@ def create_tuning_tab() -> tuple:
                     lines=3,
                 )
 
-            # Right column: Results and visualization
-            with gr.Column(scale=2):
-                gr.Markdown("## Results")
-
                 # Progress tracking
                 progress_bar = gr.Progress()
 
-                with gr.Tabs():
-                    # Summary tab
-                    with gr.Tab("Summary"):
-                        gr.Markdown("### Best Parameters Found")
+                # Results components (updated via event handlers)
+                results_table = gr.DataFrame(
+                    headers=[
+                        "Steps",
+                        "Normal Strength",
+                        "KF Strength",
+                        "Iterations",
+                        "Final Color",
+                        "Avg Temporal",
+                        "Overall Score",
+                    ],
+                    label="Test Results",
+                    interactive=False,
+                )
 
-                        best_params_json = gr.JSON(
-                            label="Optimal Settings",
-                            value={},
-                        )
+                best_params_json = gr.JSON(
+                    label="Optimal Settings",
+                    value={},
+                )
 
-                        apply_best_btn = gr.Button(
-                            f"{sparkles} Apply to Deforum Defaults",
-                            variant="secondary",
-                        )
+                apply_best_btn = gr.Button(
+                    f"{sparkles} Apply to Deforum Defaults",
+                    variant="secondary",
+                )
 
-                        gr.Markdown("### All Results")
+                metrics_plot = gr.Plot(
+                    label="Quality Metrics",
+                )
 
-                        results_table = gr.DataFrame(
-                            headers=[
-                                "Steps",
-                                "Normal Strength",
-                                "KF Strength",
-                                "Iterations",
-                                "Final Color",
-                                "Avg Temporal",
-                                "Overall Score",
-                            ],
-                            label="Test Results",
-                            interactive=False,
-                        )
-
-                    # Charts tab
-                    with gr.Tab("Charts"):
-                        gr.Markdown("### Quality Metrics Visualization")
-
-                        # Placeholder for charts
-                        metrics_plot = gr.Plot(
-                            label="Quality Metrics",
-                        )
-
-                        # Heatmap for parameter combinations
-                        heatmap_plot = gr.Plot(
-                            label="Parameter Heatmap (Overall Score)",
-                        )
-
+                heatmap_plot = gr.Plot(
+                    label="Parameter Heatmap (Overall Score)",
+                )
 
             # Orbit Tests Tab
             with gr.Tab("Orbit Tests"):
