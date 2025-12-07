@@ -1,6 +1,4 @@
 from torchvision import transforms
-# noinspection PyUnresolvedReferences
-from transformers import pipeline  # provided by Forge
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
@@ -17,6 +15,10 @@ class DepthAnything:
             device: torch device (cpu/cuda)
             model_size: 'small', 'base', or 'large' (default: 'small')
         """
+        # Lazy import to avoid breaking tests without transformers
+        # noinspection PyUnresolvedReferences
+        from transformers import pipeline  # provided by Forge
+
         model_map = {
             'small': 'depth-anything/Depth-Anything-V2-Small-hf',
             'base': 'depth-anything/Depth-Anything-V2-Base-hf',
