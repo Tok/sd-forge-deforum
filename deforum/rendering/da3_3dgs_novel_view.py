@@ -340,7 +340,9 @@ def render_novel_view_from_gaussians(
                 threshold = np.percentile(negative_depths, 100 - percentile)
 
                 # Keep splats beyond (more negative than) threshold
-                mask = depth < threshold
+                # Also keep all positive depths (behind camera) - they're not in front so can't cause artifacts
+                depth_tensor = torch.from_numpy(depth_np).to(device)
+                mask = (depth_tensor >= 0) | (depth_tensor < threshold)
 
                 kept_pct = (mask.sum().item() / means.shape[0]) * 100
                 removed = (~mask).sum().item()
