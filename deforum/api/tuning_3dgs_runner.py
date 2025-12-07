@@ -211,16 +211,16 @@ def run_3dgs_test_configuration(
         # This would be a minimal animation with just a few keyframes
         # to test the 3DGS rendering with the specified parameters
 
-        api_request = {
+        deforum_settings = {
             # Minimal animation settings
             "max_frames": test_frames,
             "animation_mode": "3D",
-            "width": width,
-            "height": height,
+            "W": width,
+            "H": height,
             "fps": 12,
 
             # 3DGS-specific settings
-            "wan_flf2v_method": "DA3-3DGS",
+            "flux_flf2v_interpolation_method": "DA3-3DGS",
             "da3_3dgs_scene_strategy": scene_strategy,
             "da3_3dgs_model": model,
             "da3_3dgs_neighbor_segments": neighbor_segments,
@@ -234,18 +234,22 @@ def run_3dgs_test_configuration(
             "rotation_3d_y": "0:(0), 5:(-0.25), 9:(0)",  # Matching rotation
 
             # Simple test prompts
-            "prompts": "0: test scene --neg bad quality",
+            "animation_prompts": "0: test scene --neg bad quality",
 
             # Output settings
             "outdir": str(test_dir),
-            "save_frames": True,
+        }
+
+        # Wrap settings in API request format
+        api_request = {
+            "deforum_settings": deforum_settings
         }
 
         # Submit job via API
         response = requests.post(
             "http://localhost:7860/deforum_api/batches",
             json=api_request,
-            headers={"accept": "application/json"}
+            headers={"accept": "application/json", "Content-Type": "application/json"}
         )
         response.raise_for_status()
         job_data = response.json()
