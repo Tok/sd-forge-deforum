@@ -20,8 +20,8 @@ BB0_MIDNIGHT='\033[38;2;55;87;255m'   # #3757FF - Mid blue (secondary)
 NC='\033[0m' # No Color
 
 echo -e "${BB0_ZENITH}========================================"
-echo "Deforum Tuning Lab"
-echo "========================================${NC}"
+echo -e "Deforum Tuning Lab"
+echo -e "========================================${NC}"
 echo ""
 
 # Check for existing WebUI instances to prevent duplicate launches
