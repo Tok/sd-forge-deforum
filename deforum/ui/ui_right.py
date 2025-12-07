@@ -137,7 +137,22 @@ def on_ui_tabs():
     i1_store = i1_store_backup
 
     # Slopcore gradient aesthetic for Generate button and hide unwanted buttons
-    slopcore_css = """
+    # Add timestamp to force CSS cache bust on every restart
+    import time
+    cache_bust = int(time.time())
+
+    slopcore_css = f"""
+    /* ========================================================================== */
+    /* DEFORUM SLOPCORE CSS v2.0 - Loaded at: {cache_bust} */
+    /* Gradient Direction Fix: BB0=Vertical(180deg) DA3=Horizontal(135deg) */
+    /* If buttons still wrong: Clear ALL browser cache + hard refresh (Ctrl+Shift+F5) */
+    /* ========================================================================== */
+
+    /* Visual confirmation that CSS loaded - adds subtle indicator */
+    #deforum_interface {{
+        --css-version: "{cache_bust}";
+    }}
+
     /* BB0 Slopcore gradient for OTHER buttons (audio sync, etc.) - TOP TO BOTTOM (VERTICAL) */
     /* Electric purple at top (#5606ff) → Azure cyan at bottom (#17a7fe) - matching BB0 album */
     #audio_sync_button,
