@@ -1250,6 +1250,13 @@ def create_tuning_tab() -> tuple:
         ):
             """Start DA3-3DGS tuning tests via API."""
             try:
+                # DEBUG: Log received values to diagnose Gradio caching issue
+                logger.info(f"[UI DEBUG] Received DA3-3DGS test parameters:")
+                logger.info(f"  models: {dgs_models_val}")
+                logger.info(f"  neighbor_segments: {dgs_neighbor_segments_min_val}-{dgs_neighbor_segments_max_val} step {dgs_neighbor_segments_step_val}")
+                logger.info(f"  densification: {dgs_densification_min_val}-{dgs_densification_max_val} step {dgs_densification_step_val}")
+                logger.info(f"  nearclip: {dgs_nearclip_min_val}-{dgs_nearclip_max_val} step {dgs_nearclip_step_val}")
+
                 # Parse aspect ratios
                 aspect_configs = []
                 for aspect_str in dgs_aspect_ratios_val:
@@ -1261,25 +1268,26 @@ def create_tuning_tab() -> tuple:
                         aspect_configs.append([1.0, 512, 512])
 
                 # Create DA3-3DGS test config (using synthetic test images, no diffusion)
+                # IMPORTANT: Keys must match TuningTestConfig field names (with dgs_ prefix)
                 config = {
                     "test_type": "da3_3dgs_synthetic",
                     "aspect_ratios": aspect_configs,
                     "rotation_factor": dgs_rotation_factor_val,
                     "orbit_radius": dgs_orbit_radius_val,
                     "test_iterations": int(dgs_test_iterations_val),
-                    "scene_strategies": dgs_scene_strategies_val,
-                    "rolling_window_size": int(dgs_rolling_window_size_val),
-                    "max_prompt_keyframes": int(dgs_max_prompt_keyframes_val),
-                    "models": dgs_models_val,
-                    "neighbor_segments_min": int(dgs_neighbor_segments_min_val),
-                    "neighbor_segments_max": int(dgs_neighbor_segments_max_val),
-                    "neighbor_segments_step": int(dgs_neighbor_segments_step_val),
-                    "densification_min": int(dgs_densification_min_val),
-                    "densification_max": int(dgs_densification_max_val),
-                    "densification_step": int(dgs_densification_step_val),
-                    "nearclip_min": float(dgs_nearclip_min_val),
-                    "nearclip_max": float(dgs_nearclip_max_val),
-                    "nearclip_step": float(dgs_nearclip_step_val),
+                    "dgs_scene_strategies": dgs_scene_strategies_val,
+                    "dgs_rolling_window_size": int(dgs_rolling_window_size_val),
+                    "dgs_max_prompt_keyframes": int(dgs_max_prompt_keyframes_val),
+                    "dgs_models": dgs_models_val,
+                    "dgs_neighbor_segments_min": int(dgs_neighbor_segments_min_val),
+                    "dgs_neighbor_segments_max": int(dgs_neighbor_segments_max_val),
+                    "dgs_neighbor_segments_step": int(dgs_neighbor_segments_step_val),
+                    "dgs_densification_min": int(dgs_densification_min_val),
+                    "dgs_densification_max": int(dgs_densification_max_val),
+                    "dgs_densification_step": int(dgs_densification_step_val),
+                    "dgs_nearclip_min": float(dgs_nearclip_min_val),
+                    "dgs_nearclip_max": float(dgs_nearclip_max_val),
+                    "dgs_nearclip_step": float(dgs_nearclip_step_val),
                 }
 
                 # Submit test
