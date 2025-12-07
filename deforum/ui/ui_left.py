@@ -18,7 +18,7 @@ from types import SimpleNamespace
 import gradio as gr
 from deforum.config.defaults import get_gradio_html
 from deforum.ui.gradio_funcs import change_css, handle_change_functions
-from deforum.config.args import DeforumArgs, DeforumAnimArgs, ParseqArgs, AudioSyncArgs, DeforumOutputArgs, RootArgs, LoopArgs, WanArgs
+from deforum.config.args import DeforumArgs, DeforumAnimArgs, ParseqArgs, AudioSyncArgs, DeforumOutputArgs, RootArgs, LoopArgs, WanArgs, DA33DGSArgs
 from deforum.utils.system.logging import emoji as emoji_utils, get_logger
 
 logger = get_logger()
@@ -46,8 +46,9 @@ def set_arg_lists():
     dv = SimpleNamespace(**DeforumOutputArgs())  # default video args
     dr = SimpleNamespace(**RootArgs())  # ROOT args
     dw = SimpleNamespace(**WanArgs())  # Wan args
+    d3dgs = SimpleNamespace(**DA33DGSArgs())  # DA3-3DGS args
     dloopArgs = SimpleNamespace(**LoopArgs())  # Guided imgs args
-    return d, da, dp, dau, dv, dr, dw, dloopArgs
+    return d, da, dp, dau, dv, dr, dw, d3dgs, dloopArgs
 
 def wan_generate_video():
     """
@@ -126,7 +127,7 @@ Error: {str(e)}
         return f"{cross} Error: {str(e)}"
 
 def setup_deforum_left_side_ui():
-    d, da, dp, dau, dv, dr, dw, dloopArgs = set_arg_lists()
+    d, da, dp, dau, dv, dr, dw, d3dgs, dloopArgs = set_arg_lists()
 
     # FLUX AVAILABILITY CHECK - All Deforum modes require Flux
     from deforum.utils.system.flux_check import should_show_flux_blocker, get_flux_setup_message
@@ -277,7 +278,7 @@ def setup_deforum_left_side_ui():
             # Mode-specific tabs (with visibility control):
             # 3D mode only tabs:
             with gr.TabItem(f"{emoji_utils.hole()} 3D Depth", visible=True) as tab_depth:
-                tab_depth_params = get_tab_depth_warping(da, skip_tabitem=True)  # 5. 3D Depth - 3D mode only
+                tab_depth_params = get_tab_depth_warping(da, d3dgs, skip_tabitem=True)  # 5. 3D Depth - 3D mode only
             with gr.TabItem(f"{emoji_utils.bicycle()} Shakify", visible=True) as tab_shakify:
                 tab_shakify_params = get_tab_shakify(da, skip_tabitem=True)  # 6. Shakify - 3D mode only
             with gr.TabItem(f"{emoji_utils.masking()} Masking", visible=True) as tab_masking:
@@ -290,7 +291,7 @@ def setup_deforum_left_side_ui():
 
             from deforum.ui.tabs.tab_da3_3dgs import get_tab_da3_3dgs
             with gr.TabItem(f"{emoji_if_enabled('🔍')} DA3-3DGS", visible=True) as tab_da3_3dgs:
-                tab_da3_3dgs_params = get_tab_da3_3dgs(dw, skip_tabitem=True)  # 8b. DA3-3DGS - Flux + Interpolation mode
+                tab_da3_3dgs_params = get_tab_da3_3dgs(d3dgs, skip_tabitem=True)  # 8b. DA3-3DGS - Flux + Interpolation mode
 
             # Always visible tabs:
             tab_run_params = get_tab_run(d, da)  # 8. Run - all modes

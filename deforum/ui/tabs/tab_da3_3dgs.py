@@ -12,11 +12,11 @@ from deforum.utils.system.logging.themes import (
 )
 
 
-def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
+def get_tab_da3_3dgs(d3dgs: SimpleNamespace, skip_tabitem=False):
     """DA3-3DGS Settings Tab - 3D Gaussian Splatting interpolation settings.
 
     Args:
-        dw: DeforumWanArgs namespace (contains DA3-3DGS params)
+        d3dgs: DA33DGSArgs namespace (contains DA3-3DGS params)
         skip_tabitem: If True, don't create TabItem wrapper
 
     Returns:
@@ -60,33 +60,33 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
     # Scene Strategy
     gr.Markdown(f"### {emoji_if_enabled('🏗️')} Scene Building Strategy")
     with gr.Row():
-        da3_3dgs_scene_strategy = create_gr_elem(dw.da3_3dgs_scene_strategy)
+        da3_3dgs_scene_strategy = create_gr_elem(d3dgs.da3_3dgs_scene_strategy)
 
     with gr.Row():
-        da3_3dgs_rolling_window_size = create_gr_elem(dw.da3_3dgs_rolling_window_size)
-        da3_3dgs_max_prompt_keyframes = create_gr_elem(dw.da3_3dgs_max_prompt_keyframes)
+        da3_3dgs_rolling_window_size = create_gr_elem(d3dgs.da3_3dgs_rolling_window_size)
+        da3_3dgs_max_prompt_keyframes = create_gr_elem(d3dgs.da3_3dgs_max_prompt_keyframes)
 
     # Model Selection
     gr.Markdown(f"### {emoji_if_enabled('🎛')} Model Configuration")
     with gr.Row():
-        da3_3dgs_model = create_gr_elem(dw.da3_3dgs_model)
-        da3_3dgs_neighbor_segments = create_gr_elem(dw.da3_3dgs_neighbor_segments)
+        da3_3dgs_model = create_gr_elem(d3dgs.da3_3dgs_model)
+        da3_3dgs_neighbor_segments = create_gr_elem(d3dgs.da3_3dgs_neighbor_segments)
 
     # Quality Settings
     gr.Markdown(f"### {emoji_if_enabled('✨')} Quality Settings")
     with gr.Row():
-        da3_3dgs_densification_factor = create_gr_elem(dw.da3_3dgs_densification_factor)
-        da3_3dgs_near_clip_distance = create_gr_elem(dw.da3_3dgs_near_clip_distance)
+        da3_3dgs_densification_factor = create_gr_elem(d3dgs.da3_3dgs_densification_factor)
+        da3_3dgs_near_clip_distance = create_gr_elem(d3dgs.da3_3dgs_near_clip_distance)
 
     # Camera Motion (hidden - DA3 automatic pose estimation works better)
     # Create component but hide it to keep parameter passing intact
     with gr.Row(visible=False):
-        da3_3dgs_use_deforum_motion = create_gr_elem(dw.da3_3dgs_use_deforum_motion)
+        da3_3dgs_use_deforum_motion = create_gr_elem(d3dgs.da3_3dgs_use_deforum_motion)
 
     # Output Settings
     gr.Markdown(f"### {emoji_if_enabled('💾')} Output Settings")
     with gr.Row():
-        da3_3dgs_render_keyframes = create_gr_elem(dw.da3_3dgs_render_keyframes)
+        da3_3dgs_render_keyframes = create_gr_elem(d3dgs.da3_3dgs_render_keyframes)
 
     # Technical Info
     with gr.Accordion(f"{emoji_if_enabled('ℹ️')} Technical Details", open=False):

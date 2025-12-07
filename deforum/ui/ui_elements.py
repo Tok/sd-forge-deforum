@@ -388,7 +388,7 @@ The RobustVideoMatting resnet50 model auto-downloads from PyTorch Hub on first u
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 
-def get_tab_depth_warping(da, skip_tabitem=False):
+def get_tab_depth_warping(da, d3dgs, skip_tabitem=False):
     """3D Depth Warping & FOV Tab - Configure depth estimation and 3D camera settings"""
     # FIXME this should only be visible if animation mode is "3D".
     is_visible = True
@@ -431,8 +431,8 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             da3_use_ray_pose = create_gr_elem(da.da3_use_ray_pose)
             da3_conf_thresh_percentile = create_gr_elem(da.da3_conf_thresh_percentile)
         with FormRow(visible=is_visible) as depth_warp_row_1d:
-            da3_3dgs_frame_collection = create_gr_elem(da.da3_3dgs_frame_collection)
-            da3_3dgs_max_frames = create_gr_elem(da.da3_3dgs_max_frames)
+            da3_3dgs_frame_collection = create_gr_elem(d3dgs.da3_3dgs_frame_collection)
+            da3_3dgs_max_frames = create_gr_elem(d3dgs.da3_3dgs_max_frames)
         with FormRow(visible=is_visible) as depth_warp_row_2:
             padding_mode = create_gr_elem(da.padding_mode)
             sampling_mode = create_gr_elem(da.sampling_mode)

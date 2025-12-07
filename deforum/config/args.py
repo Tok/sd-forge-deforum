@@ -661,23 +661,6 @@ def DeforumAnimArgs():
             "step": 5.0,
             "info": "Adaptive confidence threshold for DA3 depth estimation (0-100). Lower = more strict, higher = more permissive. Default 40.0 works well for most scenes."
         },
-        "da3_3dgs_frame_collection": {
-            "label": "3DGS: Frame Collection Strategy",
-            "type": "dropdown",
-            "choices": ['all', 'diffusion', 'keyframes'],
-            "value": "all",
-            "info": "Which frames to use for 3D Gaussian scene building: 'all' (keyframes + diffusion + tweens, maximum quality, default), 'diffusion' (keyframes + non-key diffusion frames in New 3D mode), 'keyframes' (keyframes only, minimal memory)"
-        },
-        "da3_3dgs_max_frames": {
-            "label": "3DGS: Max Frames for Scene Building",
-            "type": "number",
-            "precision": 0,
-            "value": 30,
-            "minimum": 2,
-            "maximum": 100,
-            "step": 5,
-            "info": "Maximum number of frames to use for 3D Gaussian scene building (when 'Use All Frames' enabled). Limits memory usage. Default 30 provides good balance between quality and performance."
-        },
         "padding_mode": {
             "label": "Padding mode",
             "type": "radio",
@@ -1285,75 +1268,6 @@ def WanArgs():
             "value": "Wan",
             "info": "Interpolation method for Flux FLF2V mode: 'Wan' (AI-generated video, recommended), 'FILM' (smearcore - sharp motion mixing like dragging paint), 'DA3-3DGS' (3D Gaussian Splatting with novel view synthesis - requires DA3-GIANT models, geometric interpolation with multi-view consistency). Note: RIFE is available in post-processing for framerate doubling."
         },
-        "da3_3dgs_model": {
-            "label": "DA3-3DGS Model",
-            "type": "dropdown",
-            "choices": ["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
-            "value": "DA3NESTED-GIANT-LARGE",
-            "info": "3DGS-capable DA3 model (only used when FLF2V method is DA3-3DGS): 'DA3-GIANT' (1.15B params, ~3GB VRAM), 'DA3NESTED-GIANT-LARGE' (1.40B params, ~4GB VRAM, default - combines multi-view with metric depth for better geometry). Both models support feed-forward 3D Gaussian Splatting for novel view synthesis."
-        },
-        "da3_3dgs_neighbor_segments": {
-            "label": "Neighbor Segments for 3DGS",
-            "type": "slider",
-            "minimum": 0,
-            "maximum": 8,
-            "step": 1,
-            "value": 6,
-            "info": "How many neighboring segments to include for multi-view 3DGS reconstruction. Uses ACTUAL keyframes from your prompt schedule (not arbitrary count). Higher values = more keyframes = better 3D geometry but more VRAM. VRAM usage scales with: keyframe_count × resolution × gaussian_count (~705k splats). 0: just segment (2 keyframes, fastest, lowest VRAM), 4: ~9 keyframes (good, ~16GB VRAM @ 1024x1024), 6: ~13 keyframes (default, better quality, ~20GB VRAM), 8: ~17 keyframes (best quality, 24GB+ VRAM recommended). Reduce if OOM errors occur."
-        },
-        "da3_3dgs_render_keyframes": {
-            "label": "Render 3DGS Keyframes",
-            "type": "checkbox",
-            "value": True,
-            "info": "Render 3DGS versions of the segment boundary keyframes for visual consistency with tweens. When enabled: original diffusion keyframes moved to '_diffusion/' subdirectory, all 3DGS frames (keyframes + tweens) saved to main directory for seamless final video. When disabled: only tweens are 3DGS-rendered, original keyframes remain (causes visual mismatch)."
-        },
-        "da3_3dgs_use_deforum_motion": {
-            "label": "Use Deforum Camera Motion",
-            "type": "checkbox",
-            "value": False,
-            "info": "EXPERIMENTAL: Use Deforum's scheduled camera motion (translation_x/y/z, rotation_3d_x/y/z) instead of DA3's auto-estimated poses. DA3 depth builds 3D scene, Deforum schedules control camera movement. Pros: Smooth continuous motion matching your animation. Cons: DA3's auto-estimation may be more geometrically accurate. Requires non-zero camera schedules to work."
-        },
-        "da3_3dgs_densification_factor": {
-            "label": "Gaussian Densification",
-            "type": "dropdown",
-            "choices": ["Auto (Max Quality for VRAM)", "1", "2", "3", "4", "5", "6", "7", "8"],
-            "value": "Auto (Max Quality for VRAM)",
-            "info": "Subdivide each gaussian splat for higher quality rendering. DA3 generates ~705k base splats. AUTO: Detects available VRAM and selects maximum quality tier. Manual tiers: 1: 705k splats (fastest, ~2GB VRAM), 2: 1.4M (good, ~3GB), 3: 2.1M (high, ~4GB), 4: 2.8M (very high, ~5GB), 5: 3.5M (excellent, ~7GB), 6: 4.2M (ultra, ~9GB), 7: 4.9M (extreme, ~11GB), 8: 5.6M (maximum, ~14GB). Higher = finer detail but more VRAM. Each splat subdivided into N smaller splats with positional offsets."
-        },
-        "da3_3dgs_near_clip_distance": {
-            "label": "Near Clip Filter (Percentile)",
-            "type": "slider",
-            "minimum": 0.0,
-            "maximum": 1.0,
-            "step": 0.01,
-            "value": 0.0,
-            "info": "Remove closest N% of gaussian splats to eliminate 'straw' artifacts. ADAPTIVE: Uses percentile of depth distribution instead of absolute world units. 0.0 = disabled (show all splats), 0.01 = remove closest 1%, 0.05 = remove closest 5%, 0.10 = remove closest 10%. Higher values may cause visible holes. Percentile-based filtering adapts to DA3's arbitrary scene scales automatically. Values >1.0 revert to legacy absolute mode."
-        },
-        "da3_3dgs_scene_strategy": {
-            "label": "3DGS Scene Rebuild Strategy",
-            "type": "dropdown",
-            "choices": ["per_segment", "per_prompt", "rolling_window"],
-            "value": "per_segment",
-            "info": "How to build 3DGS scenes. PER-SEGMENT (default, RECOMMENDED): Build NEW 3DGS world at each segment - KEEPS MOVEMENT IN SYNC WITH RHYTHM/BEAT, more dynamic/interesting, fast render, minimal VRAM, minor coordinate drift acceptable. KEY INSIGHT: 'Fresh start' at each segment maintains visual rhythm matching music/pacing. PER-PROMPT: Build ONE scene per prompt change - semantically coherent, eliminates drift, but LOSES rhythm sync (feels 'floaty/disconnected'), VRAM scales with prompt length. ROLLING WINDOW: Fixed-size windows (30-50 keyframes) - predictable VRAM. Choose: rhythm sync (per-segment), semantic coherence (per-prompt), or fixed VRAM (rolling-window)."
-        },
-        "da3_3dgs_rolling_window_size": {
-            "label": "Rolling Window Size (keyframes)",
-            "type": "slider",
-            "minimum": 10,
-            "maximum": 100,
-            "step": 5,
-            "value": 30,
-            "info": "For ROLLING WINDOW mode: How many keyframes to include in each 3DGS scene. Larger window = better consistency, more VRAM. 30 keyframes @ 1024x1024 ≈ 18-22GB VRAM (estimated). Adjust based on available VRAM and total keyframe count. Windows overlap to maintain continuity across scene boundaries. Not used in per-segment or per-prompt modes."
-        },
-        "da3_3dgs_max_prompt_keyframes": {
-            "label": "Max Keyframes Per Prompt Scene",
-            "type": "slider",
-            "minimum": 10,
-            "maximum": 200,
-            "step": 10,
-            "value": 50,
-            "info": "For PER-PROMPT mode: Maximum keyframes to include in a single 3DGS scene. If a prompt segment has more keyframes than this, it will be split into sub-scenes. Prevents VRAM overflow on very long prompt segments. 50 keyframes @ 1024x1024 ≈ 24-28GB VRAM (estimated). Reduce if you hit OOM errors."
-        },
 
         # Advanced Generation Settings
         "wan_negative_prompt": {
@@ -1494,6 +1408,109 @@ def WanArgs():
             "value": False,
             "info": "Trade compute speed for VRAM (~15-20% slower, saves ~2-3GB). Enable if you get OOM errors on 16GB GPUs."
         }
+    }
+
+
+def DA33DGSArgs():
+    """DA3-3DGS (Depth Anything V3 + 3D Gaussian Splatting) arguments.
+
+    Separate namespace for 3D Gaussian Splatting settings used for novel view synthesis
+    between keyframes. Uses DA3-GIANT models for multi-view reconstruction.
+    """
+    return {
+        # Model and Scene Configuration
+        "da3_3dgs_model": {
+            "label": "DA3-3DGS Model",
+            "type": "dropdown",
+            "choices": ["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
+            "value": "DA3NESTED-GIANT-LARGE",
+            "info": "3DGS-capable DA3 model: 'DA3-GIANT' (1.15B params, ~3GB VRAM), 'DA3NESTED-GIANT-LARGE' (1.40B params, ~4GB VRAM, default - combines multi-view with metric depth for better geometry). Both models support feed-forward 3D Gaussian Splatting for novel view synthesis."
+        },
+        "da3_3dgs_scene_strategy": {
+            "label": "3DGS Scene Rebuild Strategy",
+            "type": "dropdown",
+            "choices": ["per_segment", "per_prompt", "rolling_window"],
+            "value": "per_segment",
+            "info": "How to build 3DGS scenes. PER-SEGMENT (default, RECOMMENDED): Build NEW 3DGS world at each segment - KEEPS MOVEMENT IN SYNC WITH RHYTHM/BEAT, more dynamic/interesting, fast render, minimal VRAM, minor coordinate drift acceptable. KEY INSIGHT: 'Fresh start' at each segment maintains visual rhythm matching music/pacing. PER-PROMPT: Build ONE scene per prompt change - semantically coherent, eliminates drift, but LOSES rhythm sync (feels 'floaty/disconnected'), VRAM scales with prompt length. ROLLING WINDOW: Fixed-size windows (30-50 keyframes) - predictable VRAM. Choose: rhythm sync (per-segment), semantic coherence (per-prompt), or fixed VRAM (rolling-window)."
+        },
+
+        # Frame Collection and Multi-View Settings
+        "da3_3dgs_frame_collection": {
+            "label": "3DGS: Frame Collection Strategy",
+            "type": "dropdown",
+            "choices": ['all', 'diffusion', 'keyframes'],
+            "value": "all",
+            "info": "Which frames to use for 3D Gaussian scene building: 'all' (keyframes + diffusion + tweens, maximum quality, default), 'diffusion' (keyframes + non-key diffusion frames in New 3D mode), 'keyframes' (keyframes only, minimal memory)"
+        },
+        "da3_3dgs_max_frames": {
+            "label": "3DGS: Max Frames for Scene Building",
+            "type": "number",
+            "precision": 0,
+            "value": 30,
+            "minimum": 2,
+            "maximum": 100,
+            "step": 5,
+            "info": "Maximum number of frames to use for 3D Gaussian scene building (when 'Use All Frames' enabled). Limits memory usage. Default 30 provides good balance between quality and performance."
+        },
+        "da3_3dgs_neighbor_segments": {
+            "label": "Neighbor Segments for 3DGS",
+            "type": "slider",
+            "minimum": 0,
+            "maximum": 8,
+            "step": 1,
+            "value": 6,
+            "info": "How many neighboring segments to include for multi-view 3DGS reconstruction. Uses ACTUAL keyframes from your prompt schedule (not arbitrary count). Higher values = more keyframes = better 3D geometry but more VRAM. VRAM usage scales with: keyframe_count × resolution × gaussian_count (~705k splats). 0: just segment (2 keyframes, fastest, lowest VRAM), 4: ~9 keyframes (good, ~16GB VRAM @ 1024x1024), 6: ~13 keyframes (default, better quality, ~20GB VRAM), 8: ~17 keyframes (best quality, 24GB+ VRAM recommended). Reduce if OOM errors occur."
+        },
+        "da3_3dgs_rolling_window_size": {
+            "label": "Rolling Window Size (keyframes)",
+            "type": "slider",
+            "minimum": 10,
+            "maximum": 100,
+            "step": 5,
+            "value": 30,
+            "info": "For ROLLING WINDOW mode: How many keyframes to include in each 3DGS scene. Larger window = better consistency, more VRAM. 30 keyframes @ 1024x1024 ≈ 18-22GB VRAM (estimated). Adjust based on available VRAM and total keyframe count. Windows overlap to maintain continuity across scene boundaries. Not used in per-segment or per-prompt modes."
+        },
+        "da3_3dgs_max_prompt_keyframes": {
+            "label": "Max Keyframes Per Prompt Scene",
+            "type": "slider",
+            "minimum": 10,
+            "maximum": 200,
+            "step": 10,
+            "value": 50,
+            "info": "For PER-PROMPT mode: Maximum keyframes to include in a single 3DGS scene. If a prompt segment has more keyframes than this, it will be split into sub-scenes. Prevents VRAM overflow on very long prompt segments. 50 keyframes @ 1024x1024 ≈ 24-28GB VRAM (estimated). Reduce if you hit OOM errors."
+        },
+
+        # Quality and Rendering Settings
+        "da3_3dgs_densification_factor": {
+            "label": "Gaussian Densification",
+            "type": "dropdown",
+            "choices": ["Auto (Max Quality for VRAM)", "1", "2", "3", "4", "5", "6", "7", "8"],
+            "value": "Auto (Max Quality for VRAM)",
+            "info": "Subdivide each gaussian splat for higher quality rendering. DA3 generates ~705k base splats. AUTO: Detects available VRAM and selects maximum quality tier. Manual tiers: 1: 705k splats (fastest, ~2GB VRAM), 2: 1.4M (good, ~3GB), 3: 2.1M (high, ~4GB), 4: 2.8M (very high, ~5GB), 5: 3.5M (excellent, ~7GB), 6: 4.2M (ultra, ~9GB), 7: 4.9M (extreme, ~11GB), 8: 5.6M (maximum, ~14GB). Higher = finer detail but more VRAM. Each splat subdivided into N smaller splats with positional offsets."
+        },
+        "da3_3dgs_near_clip_distance": {
+            "label": "Near Clip Filter (Percentile)",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "step": 0.01,
+            "value": 0.0,
+            "info": "Remove closest N% of gaussian splats to eliminate 'straw' artifacts. ADAPTIVE: Uses percentile of depth distribution instead of absolute world units. 0.0 = disabled (show all splats), 0.01 = remove closest 1%, 0.05 = remove closest 5%, 0.10 = remove closest 10%. Higher values may cause visible holes. Percentile-based filtering adapts to DA3's arbitrary scene scales automatically. Values >1.0 revert to legacy absolute mode."
+        },
+
+        # Camera and Output Settings
+        "da3_3dgs_use_deforum_motion": {
+            "label": "Use Deforum Camera Motion",
+            "type": "checkbox",
+            "value": False,
+            "info": "EXPERIMENTAL: Use Deforum's scheduled camera motion (translation_x/y/z, rotation_3d_x/y/z) instead of DA3's auto-estimated poses. DA3 depth builds 3D scene, Deforum schedules control camera movement. Pros: Smooth continuous motion matching your animation. Cons: DA3's auto-estimation may be more geometrically accurate. Requires non-zero camera schedules to work."
+        },
+        "da3_3dgs_render_keyframes": {
+            "label": "Render 3DGS Keyframes",
+            "type": "checkbox",
+            "value": True,
+            "info": "Render 3DGS versions of the segment boundary keyframes for visual consistency with tweens. When enabled: original diffusion keyframes moved to '_diffusion/' subdirectory, all 3DGS frames (keyframes + tweens) saved to main directory for seamless final video. When disabled: only tweens are 3DGS-rendered, original keyframes remain (causes visual mismatch)."
+        },
     }
 
 
@@ -1643,7 +1660,7 @@ def get_component_names():
             'animation_prompts_positive', 'animation_prompts_negative',
             *DeforumArgs().keys(), *DeforumOutputArgs().keys(), *ParseqArgs().keys(), *AudioSyncArgs().keys(), *LoopArgs().keys(),
             # *controlnet_component_names(),  # Disabled - ControlNet temporarily removed
-            *WanArgs().keys()]
+            *WanArgs().keys(), *DA33DGSArgs().keys()]
 
 
 def get_settings_component_names():

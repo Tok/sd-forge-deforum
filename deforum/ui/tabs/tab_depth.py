@@ -10,11 +10,12 @@ from deforum.utils.system.logging import emoji as emoji_utils
 from deforum.utils.ui.builders import create_gr_elem, create_row
 
 
-def get_tab_depth_warping(da, skip_tabitem=False):
+def get_tab_depth_warping(da, d3dgs, skip_tabitem=False):
     """Create the 3D Depth Warping & FOV tab.
 
     Args:
         da: DeforumAnimArgs namespace
+        d3dgs: DA33DGSArgs namespace
         skip_tabitem: If True, don't create TabItem wrapper (default: False)
 
     Returns:
@@ -61,8 +62,8 @@ def get_tab_depth_warping(da, skip_tabitem=False):
             da3_use_ray_pose = create_gr_elem(da.da3_use_ray_pose)
             da3_conf_thresh_percentile = create_gr_elem(da.da3_conf_thresh_percentile)
         with FormRow(visible=is_visible) as depth_warp_row_1d:
-            da3_3dgs_frame_collection = create_gr_elem(da.da3_3dgs_frame_collection)
-            da3_3dgs_max_frames = create_gr_elem(da.da3_3dgs_max_frames)
+            da3_3dgs_frame_collection = create_gr_elem(d3dgs.da3_3dgs_frame_collection)
+            da3_3dgs_max_frames = create_gr_elem(d3dgs.da3_3dgs_max_frames)
         with FormRow(visible=is_visible) as depth_warp_row_2:
             padding_mode = create_gr_elem(da.padding_mode)
             sampling_mode = create_gr_elem(da.sampling_mode)
