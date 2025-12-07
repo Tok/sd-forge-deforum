@@ -432,7 +432,8 @@ def generate_preset_path(
             speed_multiplier=speed_multiplier,
             speed_randomization=speed_randomization,
             random_seed=seed,
-            look_at_mode=schedule_look_at_mode
+            look_at_mode=schedule_look_at_mode,
+            stabilize_camera=True  # Use stable camera (minimal roll) by default
         )
 
         # Apply truncation for large animations
