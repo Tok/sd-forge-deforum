@@ -1028,15 +1028,16 @@ def create_tuning_tab() -> tuple:
                     # Detect test type from results structure
                     first_result = status["results"][0]
                     is_orbit = 'rotation_factor' in first_result
-                    is_3dgs_synthetic = 'neighbor_segments' in first_result and 'pattern' in first_result
+                    # 3DGS tests (both synthetic and real) have 'densification' and 'neighbor_segments'
+                    is_3dgs_test = 'densification' in first_result and 'neighbor_segments' in first_result
 
                     if is_orbit:
                         # Orbit test visualization
                         best_config = find_best_orbit_configuration(status["results"])
                         metrics_fig = create_orbit_metrics_plot(status["results"])
                         heatmap_fig = create_orbit_heatmap(status["results"], 'iterations_until_offscreen')
-                    elif is_3dgs_synthetic:
-                        # 3DGS synthetic test visualization (plotly for interactivity)
+                    elif is_3dgs_test:
+                        # 3DGS test visualization (both synthetic and real) - plotly for interactivity
                         best_config = find_best_3dgs_configuration(status["results"])
                         metrics_fig = create_3dgs_plotly_metrics(status["results"])  # Returns HTML string
                         heatmap_fig = create_3dgs_plotly_heatmap(status["results"], 'overall_score')  # Returns HTML string
