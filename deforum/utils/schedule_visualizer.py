@@ -392,7 +392,7 @@ def visualize_schedules(
     yaw = ry_coords[idx]
     roll = rz_coords[idx]
     forward = euler_to_forward_vector(pitch, yaw, roll)
-    arrow_length = 5  # Reduced from 10 to make camera direction indicators smaller
+    arrow_length = 1  # Reduced from 10→5→1 to make camera direction indicators much smaller
     forward_x = forward.x * arrow_length
     forward_y = forward.y * arrow_length
     forward_z = forward.z * arrow_length
