@@ -1767,22 +1767,29 @@ def process_args(args_dict_main, run_id):
     current_arg_list = [args, anim_args, video_args, parseq_args, root, additional_substitutions]
 
     # Use Deforum output directory with priority:
-    # 1. Test override (outdir_samples in opts.data) for test isolation
-    # 2. User setting (opts.outdir_videos) from Forge settings
-    # 3. Default fallback (output/deforum)
-    if 'outdir_samples' in sh.opts.data and sh.opts.data['outdir_samples']:
-        deforum_outpath = sh.opts.data['outdir_samples']
-    elif sh.opts.outdir_videos:
-        deforum_outpath = sh.opts.outdir_videos
+    # 1. Explicit outdir from API request (takes precedence for tuning tests)
+    # 2. Test override (outdir_samples in opts.data) for test isolation
+    # 3. User setting (opts.outdir_videos) from Forge settings
+    # 4. Default fallback (output/deforum)
+    if 'outdir' in args_dict_main and args_dict_main['outdir']:
+        # Explicit outdir provided (e.g., from tuning test API) - use as-is
+        args.outdir = os.path.realpath(args_dict_main['outdir'])
+        os.makedirs(args.outdir, exist_ok=True)
     else:
-        from deforum.utils.output_paths import OutputPaths
-        deforum_outpath = os.path.join(os.getcwd(), OutputPaths.DEFORUM)
-    full_base_folder_path = deforum_outpath
-    root.raw_batch_name = args.batch_name
-    args.batch_name = substitute_placeholders(args.batch_name, current_arg_list, full_base_folder_path)
-    args.outdir = os.path.join(deforum_outpath, str(args.batch_name))
-    args.outdir = os.path.realpath(args.outdir)
-    os.makedirs(args.outdir, exist_ok=True)
+        # Construct outdir from Forge settings + batch_name
+        if 'outdir_samples' in sh.opts.data and sh.opts.data['outdir_samples']:
+            deforum_outpath = sh.opts.data['outdir_samples']
+        elif sh.opts.outdir_videos:
+            deforum_outpath = sh.opts.outdir_videos
+        else:
+            from deforum.utils.output_paths import OutputPaths
+            deforum_outpath = os.path.join(os.getcwd(), OutputPaths.DEFORUM)
+        full_base_folder_path = deforum_outpath
+        root.raw_batch_name = args.batch_name
+        args.batch_name = substitute_placeholders(args.batch_name, current_arg_list, full_base_folder_path)
+        args.outdir = os.path.join(deforum_outpath, str(args.batch_name))
+        args.outdir = os.path.realpath(args.outdir)
+        os.makedirs(args.outdir, exist_ok=True)
 
     # Load Deforum logo from project root (deforum/config/ -> deforum/ -> extension root)
     extension_root = pathlib.Path(__file__).parent.parent.parent
