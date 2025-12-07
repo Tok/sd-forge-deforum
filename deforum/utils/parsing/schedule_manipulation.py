@@ -259,13 +259,13 @@ def get_shake_values_from_production(
     # Create minimal mock objects that Shaker.create() needs
     @dataclass
     class MockVideoArgs:
-        fps: int = target_fps
+        fps: int
 
     @dataclass
     class MockAnimArgs:
-        shake_name: str = shake_name
-        shake_intensity: float = shake_intensity
-        shake_speed: float = shake_speed
+        shake_name: str
+        shake_intensity: float
+        shake_speed: float
 
     @dataclass
     class MockRenderInitArgs:
