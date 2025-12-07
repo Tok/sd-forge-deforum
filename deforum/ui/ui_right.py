@@ -171,7 +171,7 @@ def on_ui_tabs():
         transform: translateY(-1px) !important;
     }
 
-    /* BB0 Slopcore gradient for OTHER buttons (audio sync, etc.) */
+    /* BB0 Slopcore gradient for OTHER buttons (audio sync, etc.) - TOP TO BOTTOM */
     #audio_sync_button,
     #audio_sync_button *,
     button#audio_sync_button,
@@ -205,9 +205,9 @@ def on_ui_tabs():
     *[class*="slopcore-button"] button,
     .generate-box-generating,
     .generate-box-interrupting {
-        background: linear-gradient(135deg, #5606ff 0%, #17a7fe 100%) !important;
-        background-image: linear-gradient(135deg, #5606ff 0%, #17a7fe 100%) !important;
-        background-color: #5606ff !important;
+        background: linear-gradient(180deg, #17a7fe 0%, #5606ff 100%) !important;
+        background-image: linear-gradient(180deg, #17a7fe 0%, #5606ff 100%) !important;
+        background-color: #17a7fe !important;
         border: none !important;
         color: white !important;
         font-weight: 600 !important;
@@ -215,7 +215,7 @@ def on_ui_tabs():
         box-shadow: 0 4px 6px rgba(86, 6, 255, 0.3) !important;
         transition: all 0.3s ease !important;
     }
-    /* BB0 Hover states for OTHER buttons */
+    /* BB0 Hover states for OTHER buttons - REVERSED TOP TO BOTTOM */
     #audio_sync_button:hover,
     #audio_sync_button *:hover,
     button#audio_sync_button:hover,
@@ -247,9 +247,9 @@ def on_ui_tabs():
     button.slopcore-button:hover,
     *[class*="slopcore-button"]:hover,
     *[class*="slopcore-button"] button:hover {
-        background: linear-gradient(135deg, #17a7fe 0%, #5606ff 100%) !important;
-        background-image: linear-gradient(135deg, #17a7fe 0%, #5606ff 100%) !important;
-        background-color: #17a7fe !important;
+        background: linear-gradient(180deg, #5606ff 0%, #17a7fe 100%) !important;
+        background-image: linear-gradient(180deg, #5606ff 0%, #17a7fe 100%) !important;
+        background-color: #5606ff !important;
         box-shadow: 0 6px 12px rgba(86, 6, 255, 0.4) !important;
         transform: translateY(-1px) !important;
     }
