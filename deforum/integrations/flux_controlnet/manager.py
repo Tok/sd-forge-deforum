@@ -10,7 +10,7 @@ import torch
 import numpy as np
 from PIL import Image
 from typing import Optional, Union, Tuple
-from diffusers import FluxControlNetModel, AutoencoderKL
+# Note: diffusers imports moved to lazy loading to avoid breaking tests
 
 from .models import (
     load_flux_controlnet_model,
