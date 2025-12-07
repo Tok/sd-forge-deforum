@@ -629,11 +629,12 @@ class TuningTestManager:
         }
 
         # Build config using values from test config or defaults
+        # IMPORTANT: Output keys must have dgs_ prefix to match run_real_3dgs_sweep expectations
         sweep_config = {}
         for key, default_value in defaults.items():
             config_key = f"dgs_{key}"
             value = getattr(config, config_key, None)
-            sweep_config[key] = value if value is not None else default_value
+            sweep_config[config_key] = value if value is not None else default_value
 
         return sweep_config
 
