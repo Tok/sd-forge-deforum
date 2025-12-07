@@ -113,6 +113,44 @@ def _rgb_to_ansi_color_block(rgb):
     # Set both foreground (38;2) and background (48;2) to same color for solid block
     return f"\033[38;2;{r};{g};{b}m\033[48;2;{r};{g};{b}m"
 
+def _get_color_name_with_brightness(rgb):
+    """Get user-friendly color name with brightness classification.
+
+    Args:
+        rgb: Tuple of (r, g, b) with values 0-255
+
+    Returns:
+        String with brightness prefix and color name (e.g., "dark red", "bright cyan")
+    """
+    from deforum.utils.image.color_namer import name_color_simple, rgb_to_hsv
+
+    # Convert RGB to hex for color naming
+    hex_color = f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
+
+    # Get simplified color name
+    color_name = name_color_simple(hex_color)
+
+    # Get brightness classification from HSV value
+    _, _, v = rgb_to_hsv(rgb[0], rgb[1], rgb[2])
+
+    # Add brightness prefix based on value
+    if v < 20:
+        brightness = "very dark"
+    elif v < 40:
+        brightness = "dark"
+    elif v > 80:
+        brightness = "bright"
+    elif v > 90:
+        brightness = "very bright"
+    else:
+        brightness = ""  # Medium brightness, no prefix
+
+    # Combine brightness and color name
+    if brightness:
+        return f"{brightness} {color_name}"
+    else:
+        return color_name
+
 def _get_movement_indicators(anim_args, keys, frame_idx):
     """Generate Unicode movement indicators for current frame with dominant movement names.
 
@@ -254,7 +292,8 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
 
     Displays all relevant parameters for the current frame including:
     - Seed with color indicator and movement arrows
-    - Mean color of previous frame (if available) shown as colored block ██
+    - Mean color of previous frame (if available) shown as colored block ██ with name
+      Examples: "Color: ██ (bright cyan)", "Color: ██ (dark red)"
     - Movement indicators: < > (left/right), ^ v (up/down), + - (forward/back)
     - Rotation indicators: ↑ ↓ (pitch), ← → (yaw), ↶ ↷ (roll)
     - Prompts (printed separately above table)
@@ -293,8 +332,9 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
     if previous_image is not None:
         mean_color = _get_mean_color(previous_image)
         color_block = _rgb_to_ansi_color_block(mean_color)
+        color_name = _get_color_name_with_brightness(mean_color)
         # Use █ with both fg and bg set to same color for solid block
-        seed_info += f", Color: {color_block}██{_RESET_BG}"
+        seed_info += f", Color: {color_block}██{_RESET_BG} ({color_name})"
 
     # Add movement indicators
     movement = _get_movement_indicators(anim_args, keys, frame_idx)

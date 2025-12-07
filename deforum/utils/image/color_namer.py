@@ -37,67 +37,103 @@ def rgb_to_hsv(r: int, g: int, b: int) -> Tuple[float, float, float]:
 def get_hue_name(hue: float) -> str:
     """Get precise hue name from hue angle (0-360°).
 
-    High-resolution hue wheel with 24 named segments:
-    - 15° resolution for pure colors
-    - Descriptive intermediate shades
+    High-resolution hue wheel with 36 named segments (~10° resolution):
+    - Finer granularity for accurate color naming
+    - Based on standard color theory and common color names
+    - Special attention to red-pink transition (335-360°)
 
     Args:
         hue: Hue angle in degrees (0-360)
 
     Returns:
         Precise hue name
+
+    References:
+        - Standard 12-color wheel: https://www.canva.com/colors/color-wheel/
+        - Coral/Salmon hues: https://creativebooster.net/blogs/colors/shades-of-coral-color
+        - Watermelon pink (350°): https://colors.artyclick.com/color-names-dictionary/color-names/watermelon-pink-color
     """
     # Normalize to 0-360
     hue = hue % 360
 
-    # 24-segment hue wheel (15° per segment)
-    # Tuned to match Deforum gradient aesthetics
-    if 0 <= hue < 10 or 350 <= hue < 360:
+    # 36-segment hue wheel (~10° per segment)
+    # Tuned with research-based color names
+    if 0 <= hue < 8:
         return "red"
-    elif 10 <= hue < 25:
+    elif 8 <= hue < 16:
         return "scarlet"
-    elif 25 <= hue < 40:
-        return "coral"
-    elif 40 <= hue < 55:
+    elif 16 <= hue < 24:
+        return "coral"  # Standard coral at ~16°
+    elif 24 <= hue < 32:
+        return "vermillion"
+    elif 32 <= hue < 40:
+        return "orange-red"
+    elif 40 <= hue < 48:
         return "orange"
-    elif 55 <= hue < 70:
+    elif 48 <= hue < 56:
         return "amber"
-    elif 70 <= hue < 85:
+    elif 56 <= hue < 64:
+        return "gold"
+    elif 64 <= hue < 72:
         return "yellow"
-    elif 85 <= hue < 100:
+    elif 72 <= hue < 80:
+        return "lemon"
+    elif 80 <= hue < 88:
+        return "lime-yellow"
+    elif 88 <= hue < 96:
         return "chartreuse"
-    elif 100 <= hue < 115:
+    elif 96 <= hue < 104:
         return "lime"
-    elif 115 <= hue < 130:
+    elif 104 <= hue < 112:
+        return "grass"
+    elif 112 <= hue < 128:
         return "green"
-    elif 130 <= hue < 145:
+    elif 128 <= hue < 136:
+        return "forest"
+    elif 136 <= hue < 144:
         return "emerald"
-    elif 145 <= hue < 160:
+    elif 144 <= hue < 152:
+        return "mint"
+    elif 152 <= hue < 160:
         return "teal"
-    elif 160 <= hue < 175:
+    elif 160 <= hue < 168:
         return "turquoise"
-    elif 175 <= hue < 195:
-        return "cyan"
-    elif 195 <= hue < 210:
-        return "azure"
-    elif 210 <= hue < 225:
+    elif 168 <= hue < 176:
+        return "aqua"
+    elif 176 <= hue < 192:
+        return "cyan"  # Standard cyan at 180°
+    elif 192 <= hue < 200:
+        return "sky"
+    elif 200 <= hue < 212:
+        return "azure"  # Standard azure at ~210°
+    elif 212 <= hue < 228:
         return "blue"
-    elif 225 <= hue < 240:
+    elif 228 <= hue < 236:
         return "cobalt"
-    elif 240 <= hue < 260:
-        return "indigo"
-    elif 260 <= hue < 275:
+    elif 236 <= hue < 252:
+        return "indigo"  # Centered around 240°
+    elif 252 <= hue < 264:
         return "purple"
-    elif 275 <= hue < 290:
-        return "violet"
-    elif 290 <= hue < 305:
-        return "magenta"
-    elif 305 <= hue < 320:
-        return "rose"
-    elif 320 <= hue < 335:
+    elif 264 <= hue < 276:
+        return "violet"  # Standard violet at ~270°
+    elif 276 <= hue < 288:
+        return "amethyst"
+    elif 288 <= hue < 304:
+        return "magenta"  # Standard magenta at ~300°
+    elif 304 <= hue < 312:
+        return "fuchsia"
+    elif 312 <= hue < 320:
+        return "hot pink"
+    elif 320 <= hue < 328:
+        return "rose"  # Standard rose at ~330°
+    elif 328 <= hue < 336:
         return "pink"
-    elif 335 <= hue < 350:
-        return "watermelon"
+    elif 336 <= hue < 344:
+        return "salmon"
+    elif 344 <= hue < 352:
+        return "flamingo"  # Flamingo pink at ~344°
+    elif 352 <= hue < 360:
+        return "watermelon"  # Watermelon pink at ~350°
     else:
         return "red"  # Fallback
 
@@ -239,20 +275,76 @@ def describe_gradient(start_hex: str, end_hex: str) -> str:
     return f"{start_name} → {end_name}"
 
 
+def name_color_simple(hex_color: str) -> str:
+    """Get simplified, user-friendly color name (no verbose prefixes).
+
+    Perfect for UI elements, ASCII pixels, and user-facing text.
+    Strips "very bright" and similar verbose modifiers, keeping only
+    the essential saturation prefix and hue name.
+
+    Args:
+        hex_color: Hex color string (with or without #)
+
+    Returns:
+        Simplified color name (e.g., "electric cyan", "coral red")
+
+    Examples:
+        >>> name_color_simple("#f64a5e")
+        "coral red"
+        >>> name_color_simple("#1cc4e6")
+        "electric cyan"
+        >>> name_color_simple("#5606ff")
+        "electric purple"
+        >>> name_color_simple("#17a7fe")
+        "electric azure"
+    """
+    r, g, b = hex_to_rgb(hex_color)
+    h, s, v = rgb_to_hsv(r, g, b)
+
+    # Get hue name
+    hue_name = get_hue_name(h)
+
+    # Get saturation prefix (skip value prefix for simplicity)
+    sat_prefix = get_saturation_prefix(s)
+
+    # Special case: very dark/black colors need value prefix
+    if v < 30:
+        val_prefix = get_value_prefix(v, s)
+        if val_prefix:
+            parts = [val_prefix, hue_name]
+        else:
+            parts = [sat_prefix, hue_name] if sat_prefix else [hue_name]
+    # Special case: very pale/white colors
+    elif v > 75 and s < 20:
+        val_prefix = get_value_prefix(v, s)
+        if val_prefix in ["pale", "white"]:
+            parts = [val_prefix, hue_name]
+        else:
+            parts = [sat_prefix, hue_name] if sat_prefix else [hue_name]
+    # Normal case: just saturation + hue
+    else:
+        parts = [sat_prefix, hue_name] if sat_prefix else [hue_name]
+
+    return " ".join(parts)
+
+
 # Convenience exports for common Deforum gradients
 if __name__ == "__main__":
     # Test with Deforum gradient colors
     print("BB0 Gradient Colors:")
-    print(f"  #5606FF: {name_color('#5606FF', include_technical=True)}")
-    print(f"  #17A7FE: {name_color('#17A7FE', include_technical=True)}")
-    print(f"  Gradient: {describe_gradient('#5606FF', '#17A7FE')}")
+    print(f"  #5606FF: {name_color_simple('#5606FF')} (full: {name_color('#5606FF')})")
+    print(f"  #17A7FE: {name_color_simple('#17A7FE')} (full: {name_color('#17A7FE')})")
     print()
     print("DA3 Gradient Colors:")
-    print(f"  #1CC4E6: {name_color('#1CC4E6', include_technical=True)}")
-    print(f"  #F64A5E: {name_color('#F64A5E', include_technical=True)}")
-    print(f"  Gradient: {describe_gradient('#1CC4E6', '#F64A5E')}")
+    print(f"  #1CC4E6: {name_color_simple('#1CC4E6')} (full: {name_color('#1CC4E6')})")
+    print(f"  #F64A5E: {name_color_simple('#F64A5E')} (full: {name_color('#F64A5E')})")
     print()
-    print("DA3 7-Shade Gradient:")
+    print("All BB0 Shades (simplified):")
+    bb0_shades = ['#5606FF', '#4C21FF', '#413CFF', '#3757FF', '#2C71FE', '#228CFE', '#17A7FE']
+    for shade in bb0_shades:
+        print(f"  {shade}: {name_color_simple(shade)}")
+    print()
+    print("All DA3 Shades (simplified):")
     da3_shades = ['#1CC4E6', '#40AFCF', '#649BB8', '#8987A2', '#AD728B', '#D15E74', '#F64A5E']
     for shade in da3_shades:
-        print(f"  {shade}: {name_color(shade, include_technical=True)}")
+        print(f"  {shade}: {name_color_simple(shade)}")
