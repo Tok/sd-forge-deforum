@@ -730,7 +730,8 @@ def render_tween_frames(
     device: torch.device,
     densification_factor: int,
     near_clip_distance: float = 0.0,
-    dashboard=None
+    dashboard=None,
+    tween_poses: List[np.ndarray] = None
 ) -> List[str]:
     """Render interpolated tween frames between segment boundaries.
 
@@ -747,6 +748,7 @@ def render_tween_frames(
         output_dir: Directory to save rendered frames
         device: Torch device
         densification_factor: Gaussian densification factor
+        tween_poses: Precomputed camera poses for tweens (if None, will interpolate)
 
     Returns:
         List of paths to rendered frame images
@@ -802,11 +804,14 @@ def render_tween_frames(
             dashboard.update_3dgs_tweens(idx + 1, len(target_frame_indices))
             dashboard.update_vram_from_torch()
 
-        # Calculate interpolation parameter (0 to 1) within SEGMENT span
-        t = (target_idx - first_frame_idx) / total_span if total_span > 0 else 0.5
-
-        # Interpolate camera pose
-        interp_pose = interpolate_camera_pose(first_pose, last_pose, t)
+        # Get camera pose for this frame
+        if tween_poses is not None:
+            # Use precomputed pose from Deforum schedules
+            interp_pose = tween_poses[idx]
+        else:
+            # Interpolate between segment boundaries (old behavior)
+            t = (target_idx - first_frame_idx) / total_span if total_span > 0 else 0.5
+            interp_pose = interpolate_camera_pose(first_pose, last_pose, t)
 
         # Render novel view from 3DGS scene
         rendered_image = render_novel_view_from_gaussians(
@@ -843,14 +848,15 @@ def generate_da3_3dgs_interpolation(
     segment_last_idx: int = None,
     densification_factor: int = 1,
     near_clip_distance: float = 0.0,
-    dashboard=None
+    dashboard=None,
+    deform_keys=None
 ) -> List[str]:
     """Generate interpolated frames using DA3 3D Gaussian Splatting.
 
-    3DGS interpolation workflow (using DA3 automatic pose estimation):
-    1. Build 3DGS scene from multiple nearby keyframes
-    2. DA3 automatically estimates camera poses for each keyframe
-    3. Interpolate camera pose smoothly between first and last segment keyframes
+    3DGS interpolation workflow (using Deforum movement schedules):
+    1. Build 3DGS scene from multiple nearby keyframes (via DA3)
+    2. Use Deforum animation schedules (translation/rotation) for camera movement
+    3. Scale Deforum movement to match 3DGS scene coordinates
     4. Render novel views by moving camera through 3DGS scene
 
     Args:
@@ -860,6 +866,7 @@ def generate_da3_3dgs_interpolation(
         model_selection: 'DA3-GIANT' or 'DA3NESTED-GIANT-LARGE'
         output_dir: Directory to save generated frames
         device: torch device
+        deform_keys: Deforum animation keys (translation/rotation schedules)
 
     Returns:
         List of paths to generated frame files
@@ -950,17 +957,39 @@ def generate_da3_3dgs_interpolation(
         cam_pos = -R.T @ t  # Camera position in world coordinates
         logger.debug(f"   Camera {i} position: ({cam_pos[0]:.4f}, {cam_pos[1]:.4f}, {cam_pos[2]:.4f})")
 
-    # Reorient camera poses to look at centroid for better framing
-    # This ensures cameras point at the dense center of the scene, not empty space
-    extrinsics = reorient_cameras_to_target(extrinsics, centroid)
-    logger.info(f"   Reoriented cameras to look at point cloud center")
+    # Choose camera pose generation method based on deform_keys availability
+    if deform_keys is not None:
+        # USE DEFORUM SCHEDULES for camera movement
+        logger.info(f"   Using Deforum animation schedules for camera movement")
 
-    # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
-    # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
-    # but we MUST interpolate between segment boundaries to stay in sync
-    first_pose, last_pose = get_segment_boundary_poses(
-        extrinsics, keyframe_indices, segment_first_idx, segment_last_idx
-    )
+        from deforum.rendering.deforum_camera_poses import get_interpolated_poses
+
+        # Get camera poses from Deforum schedules (scaled to match 3DGS scene)
+        first_pose, last_pose, tween_poses_list = get_interpolated_poses(
+            first_frame_idx=segment_first_idx,
+            last_frame_idx=segment_last_idx,
+            target_frame_indices=target_frame_indices,
+            deform_keys=deform_keys,
+            scene_bbox_min=bbox_min,
+            scene_bbox_max=bbox_max,
+            scene_centroid=centroid
+        )
+    else:
+        # FALLBACK: Use DA3's automatic pose estimation (old behavior)
+        logger.info(f"   Using DA3 automatic pose estimation (deform_keys not provided)")
+
+        # Reorient camera poses to look at centroid for better framing
+        # This ensures cameras point at the dense center of the scene, not empty space
+        extrinsics = reorient_cameras_to_target(extrinsics, centroid)
+        logger.info(f"   Reoriented cameras to look at point cloud center")
+
+        # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
+        # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
+        # but we MUST interpolate between segment boundaries to stay in sync
+        first_pose, last_pose = get_segment_boundary_poses(
+            extrinsics, keyframe_indices, segment_first_idx, segment_last_idx
+        )
+        tween_poses_list = None  # Will be interpolated in render_tween_frames
 
     # Use average intrinsics (usually constant across views)
     avg_intrinsics = np.mean(intrinsics, axis=0)
@@ -1013,7 +1042,8 @@ def generate_da3_3dgs_interpolation(
         device=device,
         densification_factor=densification_factor,
         near_clip_distance=near_clip_distance,
-        dashboard=dashboard
+        dashboard=dashboard,
+        tween_poses=tween_poses_list  # Pass precomputed Deforum schedule poses
     )
 
     logger.info(
