@@ -975,45 +975,35 @@ def generate_da3_3dgs_interpolation(
     intrinsics = result.intrinsics  # [N, 3, 3]
     gaussians = result.gaussians
 
-    # DEBUG: Log intrinsics to diagnose principal point issue
-    logger.debug(f"   Intrinsics shape: {intrinsics.shape}")
-    logger.debug(f"   First intrinsics matrix:\n{intrinsics[0]}")
-    logger.debug(f"   Image size from keyframes: {keyframe_images[0].size}")
+    # Log intrinsics (compact)
+    fx, fy = intrinsics[0, 0, 0], intrinsics[0, 1, 1]
+    cx, cy = intrinsics[0, 0, 2], intrinsics[0, 1, 2]
+    img_w, img_h = keyframe_images[0].size
+    logger.debug(f"   Intrinsics: fx={fx:.1f}, fy={fy:.1f}, cx={cx:.1f}, cy={cy:.1f}, img={img_w}x{img_h}")
 
     # Convert [N, 3, 4] to [N, 4, 4] by adding bottom row [0, 0, 0, 1]
     extrinsics = convert_extrinsics_to_4x4(extrinsics)
 
-    logger.info(f"   3DGS scene built: {gaussians.means.shape[1]} gaussian splats")
-    logger.debug(f"   Camera poses: {extrinsics.shape}")
-    logger.debug(f"   Camera intrinsics: {intrinsics.shape}")
+    logger.info(f"   3DGS: {gaussians.means.shape[1]} splats, {len(extrinsics)} cameras")
 
-    # Calculate point cloud centroid to orient cameras toward dense region
-    # gaussians.means shape: [batch, N, 3] where N is number of splats
+    # Calculate point cloud centroid and bounding box
     means = gaussians.means[0].cpu().numpy()  # [N, 3]
-    centroid = np.mean(means, axis=0)  # [3] - (x, y, z) center of point cloud
-    logger.debug(f"   Point cloud centroid: ({centroid[0]:.2f}, {centroid[1]:.2f}, {centroid[2]:.2f})")
-
-    # Debug: Log scene scale statistics
+    centroid = np.mean(means, axis=0)
     bbox_min = np.min(means, axis=0)
     bbox_max = np.max(means, axis=0)
     scene_extent = bbox_max - bbox_min
-    logger.debug(f"   Scene bounding box: min=({bbox_min[0]:.4f}, {bbox_min[1]:.4f}, {bbox_min[2]:.4f}), "
-                 f"max=({bbox_max[0]:.4f}, {bbox_max[1]:.4f}, {bbox_max[2]:.4f})")
-    logger.debug(f"   Scene extent: ({scene_extent[0]:.4f}, {scene_extent[1]:.4f}, {scene_extent[2]:.4f})")
+    logger.debug(f"   Scene: centroid=({centroid[0]:.1f},{centroid[1]:.1f},{centroid[2]:.1f}), "
+                 f"extent=({scene_extent[0]:.1f},{scene_extent[1]:.1f},{scene_extent[2]:.1f})")
 
-    # Debug: Log camera positions
-    for i, ext in enumerate(extrinsics):
-        R = ext[:3, :3]
-        t = ext[:3, 3]
-        cam_pos = -R.T @ t  # Camera position in world coordinates
-        logger.debug(f"   Camera {i} position: ({cam_pos[0]:.4f}, {cam_pos[1]:.4f}, {cam_pos[2]:.4f})")
+    # Camera positions available if needed for debugging (commented out for compact logs)
+    # for i, ext in enumerate(extrinsics):
+    #     R, t = ext[:3, :3], ext[:3, 3]
+    #     cam_pos = -R.T @ t
+    #     logger.debug(f"   DA3 cam{i}=({cam_pos[0]:.2f},{cam_pos[1]:.2f},{cam_pos[2]:.2f})")
 
     # Choose camera pose strategy: Deforum schedules OR DA3 automatic
     if deform_keys is not None:
         # Use Deforum movement schedules relative to scene center
-        logger.info(f"   Using Deforum movement schedules for camera path")
-        logger.info(f"   Camera positioned relative to scene centroid: ({centroid[0]:.2f}, {centroid[1]:.2f}, {centroid[2]:.2f})")
-
         from deforum.rendering.deforum_camera_poses import generate_camera_poses_from_deforum_schedules
 
         first_pose, last_pose, tween_poses_list = generate_camera_poses_from_deforum_schedules(
@@ -1027,14 +1017,11 @@ def generate_da3_3dgs_interpolation(
             base_camera_distance=None  # Auto-calculate from scene extent
         )
 
-        logger.info(f"   Generated {len(tween_poses_list)} camera poses from Deforum schedules")
+        logger.info(f"   Camera: Deforum schedules, centroid=({centroid[0]:.1f},{centroid[1]:.1f},{centroid[2]:.1f}), {len(tween_poses_list)} poses generated")
 
     else:
         # Use DA3's automatic pose estimation from depth
-        # DA3 generates camera poses that are optimally positioned based on actual scene geometry
-        logger.info(f"   Using DA3 automatic pose estimation from depth")
-        logger.info(f"   NOTE: Deforum movement schedules not provided (DA3 controls camera path)")
-        logger.info(f"   Using DA3's original camera poses (scene and cameras at consistent scale)")
+        logger.info(f"   Camera: DA3 automatic (Deforum schedules not provided)")
 
         # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
         # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)

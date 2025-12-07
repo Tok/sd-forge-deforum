@@ -164,10 +164,8 @@ def generate_camera_poses_from_deforum_schedules(
     max_extent = np.max(scene_extent)
 
     # Auto-calculate camera distance if not provided
-    # Position camera outside the scene bounding box
     if base_camera_distance is None:
         base_camera_distance = max_extent * 0.75  # 75% of max extent
-        logger.info(f"   Auto camera distance: {base_camera_distance:.2f} (scene extent: {max_extent:.2f})")
 
     # Get schedules for segment boundaries
     first_tx = deform_keys.translation_x_series[segment_first_idx]
@@ -184,12 +182,9 @@ def generate_camera_poses_from_deforum_schedules(
     last_ry = deform_keys.rotation_3d_y_series[segment_last_idx]
     last_rz = deform_keys.rotation_3d_z_series[segment_last_idx]
 
-    logger.debug(f"   First keyframe ({segment_first_idx}): "
-                f"pos=({first_tx:.2f}, {first_ty:.2f}, {first_tz:.2f}), "
-                f"rot=({first_rx:.2f}, {first_ry:.2f}, {first_rz:.2f})")
-    logger.debug(f"   Last keyframe ({segment_last_idx}): "
-                f"pos=({last_tx:.2f}, {last_ty:.2f}, {last_tz:.2f}), "
-                f"rot=({last_rx:.2f}, {last_ry:.2f}, {last_rz:.2f})")
+    logger.debug(f"   Schedules: frames {segment_first_idx}->{segment_last_idx}, "
+                f"pos ({first_tx:.1f},{first_ty:.1f},{first_tz:.1f})->({last_tx:.1f},{last_ty:.1f},{last_tz:.1f}), "
+                f"rot ({first_rx:.1f},{first_ry:.1f},{first_rz:.1f})->({last_rx:.1f},{last_ry:.1f},{last_rz:.1f})")
 
     def build_camera_pose(tx: float, ty: float, tz: float,
                          rx: float, ry: float, rz: float) -> np.ndarray:
@@ -243,8 +238,7 @@ def generate_camera_poses_from_deforum_schedules(
         tween_pose = build_camera_pose(tx, ty, tz, rx, ry, rz)
         tween_poses.append(tween_pose)
 
-    logger.info(f"   Generated {len(tween_poses)} camera poses from Deforum schedules")
-    logger.info(f"   Camera positioned at {base_camera_distance:.2f} units from scene center")
+    logger.debug(f"   Generated {len(tween_poses)} poses, cam_dist={base_camera_distance:.1f}, scene_extent={max_extent:.1f}")
 
     return first_pose, last_pose, tween_poses
 
