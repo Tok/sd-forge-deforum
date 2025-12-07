@@ -167,11 +167,19 @@ def calculate_tangent_vectors(spline_points: np.ndarray) -> np.ndarray:
     return tangents
 
 
-def tangent_to_rotation(tangent: np.ndarray) -> Tuple[float, float, float]:
+def tangent_to_rotation(
+    tangent: np.ndarray,
+    camera_pos: Tuple[float, float, float] | None = None,
+    stabilize: bool = True
+) -> Tuple[float, float, float]:
     """Convert tangent vector to rotation angles (Euler angles).
 
     Args:
         tangent: Normalized tangent vector (forward direction)
+        camera_pos: Camera position (x, y, z) for proper quaternion-based look-at.
+                    If None, uses simplified calculation (legacy behavior).
+        stabilize: If True, minimize roll by aligning with world up vector.
+                   If False, allow natural roll (default: True for compatibility).
 
     Returns:
         (rot_x, rot_y, rot_z) in degrees
@@ -179,6 +187,17 @@ def tangent_to_rotation(tangent: np.ndarray) -> Tuple[float, float, float]:
     # Extract components
     dx, dy, dz = tangent
 
+    # If camera_pos provided, use full quaternion-based look-at for proper roll calculation
+    if camera_pos is not None:
+        # Target is camera_pos + tangent direction
+        target_pos = (
+            camera_pos[0] + dx,
+            camera_pos[1] + dy,
+            camera_pos[2] + dz
+        )
+        return look_at_target(camera_pos, target_pos, stabilize=stabilize)
+
+    # Simplified calculation (legacy behavior when camera_pos not available)
     # Pan (rotation_y): horizontal angle
     rot_y = np.degrees(np.arctan2(dx, dz))
 
@@ -186,8 +205,14 @@ def tangent_to_rotation(tangent: np.ndarray) -> Tuple[float, float, float]:
     horizontal_dist = np.sqrt(dx**2 + dz**2)
     rot_x = -np.degrees(np.arctan2(dy, horizontal_dist + 1e-8))
 
-    # Roll (rotation_z): typically 0 for camera following path
-    rot_z = 0.0
+    # Roll: controlled by stabilize parameter
+    if stabilize:
+        rot_z = 0.0  # Minimize roll for stable camera
+    else:
+        # For unstabilized mode, calculate natural roll from curve geometry
+        # This requires curve curvature (second derivative) - approximate as 0 for now
+        # TODO: Calculate actual roll from curve second derivative for banking effect
+        rot_z = 0.0
 
     return (rot_x, rot_y, rot_z)
 
@@ -257,7 +282,13 @@ def generate_camera_path(
         x, y, z = spline_points[frame_idx]
 
         if look_at_curve:
-            rot_x, rot_y, rot_z = tangent_to_rotation(tangents[frame_idx])
+            # Pass camera position and stabilize flag for proper roll calculation
+            camera_pos = (x, y, z)
+            rot_x, rot_y, rot_z = tangent_to_rotation(
+                tangents[frame_idx],
+                camera_pos=camera_pos,
+                stabilize=stabilize_camera
+            )
         else:
             rot_x = rot_y = rot_z = 0.0
 
@@ -468,7 +499,11 @@ def _calculate_look_at_target(
 def _create_camera_points_empirical(
     positions: List[Tuple[float, float, float]],
     frames_per_loop: float,
-    rotation_factor: float
+    rotation_factor: float,
+    center_x: float = 0.0,
+    center_y: float = 0.0,
+    center_z: float = 0.0,
+    stabilize_camera: bool = True
 ) -> List[CameraPoint]:
     """Create camera points using empirical rotation factor.
 
@@ -476,18 +511,30 @@ def _create_camera_points_empirical(
         positions: Position tuples (x, y, z)
         frames_per_loop: Frames for one orbit
         rotation_factor: Counter-rotation strength (validated optimal: -8.0)
+        center_x, center_y, center_z: Center coords for look-at
+        stabilize_camera: If True, minimize roll (default: True)
 
     Returns:
         List of CameraPoint with empirical rotations
     """
     camera_path = []
     for frame_idx, (x, y, z) in enumerate(positions):
+        # Use quaternion look-at for proper roll calculation
+        target = (center_x, center_y, center_z)
+        camera_pos = (x, y, z)
+        rot_x, rot_y, rot_z = look_at_target(camera_pos, target, stabilize=stabilize_camera)
+
+        # Apply empirical rotation factor to rot_y
         angle = 2 * np.pi * frame_idx / frames_per_loop
-        rot_y = np.degrees(angle) / rotation_factor
+        rot_y_empirical = np.degrees(angle) / rotation_factor
+
+        # Blend or replace with empirical value
+        # For now, use empirical value directly for compatibility
+        rot_y = rot_y_empirical
 
         camera_path.append(CameraPoint(
             x=x, y=y, z=z,
-            rot_x=0.0, rot_y=rot_y, rot_z=0.0,
+            rot_x=rot_x, rot_y=rot_y, rot_z=rot_z,
             frame=frame_idx
         ))
 
@@ -588,7 +635,10 @@ def generate_rotate_around_path(
 
     # Calculate rotations based on mode
     if rotation_mode == "empirical":
-        return _create_camera_points_empirical(positions, loop_frames, rotation_factor)
+        return _create_camera_points_empirical(
+            positions, loop_frames, rotation_factor,
+            center_x, center_y, center_z, stabilize_camera
+        )
     else:
         return _create_camera_points_quaternion(
             positions, center_x, center_y, center_z, height,
