@@ -305,24 +305,25 @@ def render_novel_view_from_gaussians(
     # DA3 provides extrinsics as [4, 4], gsplat expects viewmat
     viewmat = torch.from_numpy(camera_pose).float().to(device)  # [4, 4]
 
+    # Transform means to camera space to get depth (ALWAYS needed for far plane calculation)
+    # viewmat is world-to-camera, so: cam_pos = viewmat @ world_pos
+    means_homogeneous = torch.cat([means, torch.ones(means.shape[0], 1, device=device)], dim=1]  # [N, 4]
+    means_cam = (viewmat @ means_homogeneous.T).T  # [N, 4]
+    depth = means_cam[:, 2]  # Z coordinate in camera space (negative = in front of camera)
+
+    # Debug: Log depth distribution (use INFO so it always shows)
+    depth_np = depth.detach().cpu().numpy()
+    logger.info(f"   Depth distribution: min={depth_np.min():.4f}, max={depth_np.max():.4f}, "
+                f"mean={depth_np.mean():.4f}, median={np.median(depth_np):.4f}")
+
+    # Store depth range for dynamic far plane calculation
+    global _last_depth_range
+    _last_depth_range = (float(depth_np.min()), float(depth_np.max()))
+
     # Apply adaptive near-clip filtering to remove splats too close to camera
     # NOTE: near_clip_distance is now interpreted as a PERCENTILE (0.0-1.0), not absolute world units
     # This makes filtering work consistently across DA3's arbitrary scene scales
     if near_clip_distance > 0.0:
-        # Transform means to camera space to get depth
-        # viewmat is world-to-camera, so: cam_pos = viewmat @ world_pos
-        means_homogeneous = torch.cat([means, torch.ones(means.shape[0], 1, device=device)], dim=1)  # [N, 4]
-        means_cam = (viewmat @ means_homogeneous.T).T  # [N, 4]
-        depth = means_cam[:, 2]  # Z coordinate in camera space (negative = in front of camera)
-
-        # Debug: Log depth distribution (use INFO so it always shows)
-        depth_np = depth.detach().cpu().numpy()
-        logger.info(f"   Depth distribution: min={depth_np.min():.4f}, max={depth_np.max():.4f}, "
-                    f"mean={depth_np.mean():.4f}, median={np.median(depth_np):.4f}")
-
-        # Store depth range for dynamic far plane calculation
-        global _last_depth_range
-        _last_depth_range = (float(depth_np.min()), float(depth_np.max()))
 
         # ADAPTIVE NEAR-CLIP: Use percentile-based filtering instead of absolute world units
         # near_clip_distance interpreted as percentile: 0.01 = remove closest 1% of splats
