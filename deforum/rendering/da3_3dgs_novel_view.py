@@ -106,6 +106,58 @@ def interpolate_camera_pose(pose1: np.ndarray, pose2: np.ndarray, t: float) -> n
     return pose_interp
 
 
+def reorient_cameras_to_target(extrinsics: np.ndarray, target: np.ndarray) -> np.ndarray:
+    """Reorient camera poses to look at a target point (e.g., point cloud centroid).
+
+    Keeps camera positions unchanged but adjusts rotation matrices to point at target.
+
+    Args:
+        extrinsics: Camera extrinsics [N, 4, 4] in world-to-camera format
+        target: Target position [3] to look at (e.g., point cloud center)
+
+    Returns:
+        Reoriented extrinsics [N, 4, 4] with updated rotation matrices
+    """
+    N = extrinsics.shape[0]
+    reoriented = extrinsics.copy()
+
+    for i in range(N):
+        # Extract camera position from extrinsic matrix
+        # Extrinsic is [R|t] where R is rotation, t is translation
+        # Camera position in world coords: -R^T @ t
+        R = extrinsics[i, :3, :3]
+        t = extrinsics[i, :3, 3]
+        cam_pos = -R.T @ t
+
+        # Calculate direction from camera to target
+        forward = target - cam_pos
+        forward = forward / (np.linalg.norm(forward) + 1e-8)
+
+        # Calculate right vector (perpendicular to forward and world up)
+        world_up = np.array([0.0, 1.0, 0.0])
+        right = np.cross(forward, world_up)
+        right = right / (np.linalg.norm(right) + 1e-8)
+
+        # Calculate up vector (perpendicular to forward and right)
+        up = np.cross(right, forward)
+
+        # Build new rotation matrix (camera-to-world)
+        # Convention: camera looks down -Z axis, Y is up, X is right
+        R_new_c2w = np.column_stack([right, up, -forward])
+
+        # Convert to world-to-camera (invert rotation)
+        R_new = R_new_c2w.T
+
+        # Recalculate translation for new rotation
+        t_new = -R_new @ cam_pos
+
+        # Update extrinsic matrix
+        reoriented[i, :3, :3] = R_new
+        reoriented[i, :3, 3] = t_new
+
+    return reoriented
+
+
 def densify_gaussians(gaussians, densification_factor: int, device):
     """Densify gaussians by subdividing each gaussian into multiple splats.
 
@@ -730,6 +782,17 @@ def generate_da3_3dgs_interpolation(
     logger.info(f"   3DGS scene built: {gaussians.means.shape[1]} gaussian splats")
     logger.debug(f"   Camera poses: {extrinsics.shape}")
     logger.debug(f"   Camera intrinsics: {intrinsics.shape}")
+
+    # Calculate point cloud centroid to orient cameras toward dense region
+    # gaussians.means shape: [batch, N, 3] where N is number of splats
+    means = gaussians.means[0].cpu().numpy()  # [N, 3]
+    centroid = np.mean(means, axis=0)  # [3] - (x, y, z) center of point cloud
+    logger.debug(f"   Point cloud centroid: ({centroid[0]:.2f}, {centroid[1]:.2f}, {centroid[2]:.2f})")
+
+    # Reorient camera poses to look at centroid for better framing
+    # This ensures cameras point at the dense center of the scene, not empty space
+    extrinsics = reorient_cameras_to_target(extrinsics, centroid)
+    logger.info(f"   Reoriented cameras to look at point cloud center")
 
     # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
     # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
