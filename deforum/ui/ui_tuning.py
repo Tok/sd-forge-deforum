@@ -655,8 +655,8 @@ def create_tuning_tab() -> tuple:
                         dgs_models = gr.CheckboxGroup(
                             label="DA3 models",
                             choices=["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
-                            value=["DA3NESTED-GIANT-LARGE"],
-                            info="GIANT = 4GB VRAM, LARGE = 4.5GB VRAM + better quality",
+                            value=["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
+                            info="GIANT = 4GB VRAM, LARGE = 4.5GB VRAM + better quality (compare both)",
                         )
                         dgs_neighbor_segments_min = gr.Slider(
                             label="Min neighbor segments",
