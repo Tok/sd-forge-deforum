@@ -692,7 +692,7 @@ def stitch_keyframe_interpolation_video(data, frame_paths, video_args, interp_me
     ffmpeg_location, ffmpeg_crf, ffmpeg_preset = get_ffmpeg_params()
 
     # Build output path with model-aware filename
-    checkpoint_name = data.args.args.checkpoint or ""
+    checkpoint_name = getattr(data.args.args, 'checkpoint', '') or ""
     model_prefix = detect_model_prefix(checkpoint_name)
     output_filename = build_output_filename(
         data.args.root.timestring,
