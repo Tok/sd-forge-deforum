@@ -84,6 +84,80 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     # Extract only keyframes (frames with is_keyframe=True)
     keyframes = [f for f in all_frames if f.is_keyframe]
 
+    # Initialize dashboard if enabled (same as core.py)
+    from deforum.rendering import options as opt_utils
+    dashboard = None
+    if opt_utils.is_dashboard_enabled():
+        from deforum.utils.ui.dashboard import FixedDashboard
+        dashboard = FixedDashboard()
+        # Initialize progress totals (only keyframes, not all frames)
+        dashboard.progress_data['diffusion_frames'] = (0, len(keyframes))
+        total_steps = sum(frame.actual_steps(data) for frame in keyframes)
+        dashboard.progress_data['total_steps'] = (0, total_steps)
+
+        # Set up signal handler for clean Ctrl+C (same as core.py)
+        import signal
+        import threading
+        import time
+
+        if threading.current_thread() is threading.main_thread():
+            original_sigint = signal.getsignal(signal.SIGINT)
+
+            sigint_state = {
+                'count': 0,
+                'first_time': 0,
+                'confirmation_window': 3.0
+            }
+
+            def sigint_handler(sig, frame_obj):
+                current_time = time.time()
+                sigint_state['count'] += 1
+
+                if sigint_state['count'] >= 3:
+                    print("\n\n⚠️  FORCE QUIT - Exiting immediately without cleanup")
+                    signal.signal(signal.SIGINT, original_sigint)
+                    if dashboard:
+                        try:
+                            dashboard._is_active = False
+                        except:
+                            pass
+                    raise KeyboardInterrupt
+
+                if sigint_state['count'] == 1:
+                    sigint_state['first_time'] = current_time
+                    print("\n\n⚠️  Interrupt detected. Press Ctrl+C again within 3 seconds to confirm exit")
+                    print("   (Press Ctrl+C a 3rd time anytime to force quit)")
+                    return
+
+                if sigint_state['count'] == 2:
+                    time_since_first = current_time - sigint_state['first_time']
+
+                    if time_since_first <= sigint_state['confirmation_window']:
+                        print("\n\n✓ Exit confirmed. Cleaning up...")
+                        if dashboard:
+                            try:
+                                dashboard.stop()
+                            except:
+                                pass
+                        signal.signal(signal.SIGINT, original_sigint)
+                        if callable(original_sigint):
+                            original_sigint(sig, frame_obj)
+                        else:
+                            raise KeyboardInterrupt
+                    else:
+                        sigint_state['count'] = 1
+                        sigint_state['first_time'] = current_time
+                        print("\n\n⚠️  Interrupt detected. Press Ctrl+C again within 3 seconds to confirm exit")
+                        print("   (Press Ctrl+C a 3rd time anytime to force quit)")
+                        return
+
+            signal.signal(signal.SIGINT, sigint_handler)
+
+        dashboard.start()
+
+        # Store dashboard on data so Taqaddumat can access it
+        data.dashboard = dashboard
+
     logger.info(f"{emoji_if_enabled('📊')} Flux/Wan Workflow:")
     logger.info(f"   Total frames: {anim_args.max_frames}")
     logger.info(f"   Keyframes to generate: {len(keyframes)}")
@@ -506,6 +580,10 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     # Cleanup Wan if it was loaded
     if wan_integration is not None:
         wan_integration.unload_model()
+
+    # Stop dashboard when done
+    if dashboard:
+        dashboard.stop()
 
 
 def save_keyframe(data: RenderData, frame: DiffusionFrame, image, use_diffusion_subdir=False):
