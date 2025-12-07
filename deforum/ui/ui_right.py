@@ -416,7 +416,46 @@ def on_ui_tabs():
     # Combine CSS header with body (header already formatted above)
     slopcore_css = css_header + css_body
 
-    with gr.Blocks(analytics_enabled=False, css=slopcore_css) as deforum_interface:
+    # JavaScript to force-apply gradient styles after page load
+    # This ensures styles override Gradio's built-in variant="primary" styles
+    js_force_gradients = """
+    <script>
+    (function() {
+        // Apply slopcore gradients after DOM is ready
+        function applySlopcoreGradients() {
+            // BB0 gradient (vertical top-to-bottom: purple → cyan) for ALL buttons
+            const bb0Buttons = document.querySelectorAll('.slopcore-button');
+            bb0Buttons.forEach(btn => {
+                btn.style.background = 'linear-gradient(180deg, #5606ff 0%, #17a7fe 100%)';
+                btn.style.backgroundImage = 'linear-gradient(180deg, #5606ff 0%, #17a7fe 100%)';
+            });
+
+            // DA3 gradient (horizontal left-to-right: cyan → watermelon) for generate button ONLY
+            const generateBtn = document.querySelector('#deforum_generate');
+            if (generateBtn) {
+                generateBtn.style.background = 'linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%)';
+                generateBtn.style.backgroundImage = 'linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%)';
+                generateBtn.style.backgroundColor = '#1cc4e6';
+                generateBtn.style.color = 'white';
+                generateBtn.style.fontWeight = '600';
+            }
+        }
+
+        // Run after page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', applySlopcoreGradients);
+        } else {
+            applySlopcoreGradients();
+        }
+
+        // Also run after a short delay to catch Gradio's dynamic updates
+        setTimeout(applySlopcoreGradients, 500);
+        setTimeout(applySlopcoreGradients, 2000);
+    })();
+    </script>
+    """
+
+    with gr.Blocks(analytics_enabled=False, css=slopcore_css, head=js_force_gradients) as deforum_interface:
         components = {}
         dummy_component = gr.Button(visible=False)
         with gr.Row(elem_id="deforum_progress_row", equal_height=False, variant="compact"):
