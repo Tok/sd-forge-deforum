@@ -29,6 +29,7 @@ class TuningTestType(str, Enum):
     DEPTH_WARPING_ORBIT = "depth_warping_orbit"
     RAFT_TUNING = "raft_tuning"
     DA3_3DGS_TUNING = "da3_3dgs_tuning"
+    DA3_3DGS_SYNTHETIC = "da3_3dgs_synthetic"  # Synthetic test images (no diffusion)
 
 
 class TuningTestConfig(BaseModel):
@@ -194,6 +195,8 @@ class TuningTestManager:
                 self._run_raft_tests(test_id, config)
             elif config.test_type == TuningTestType.DA3_3DGS_TUNING:
                 self._run_3dgs_tests(test_id, config)
+            elif config.test_type == TuningTestType.DA3_3DGS_SYNTHETIC:
+                self._run_synthetic_3dgs_tests(test_id, config)
             else:
                 # Run standard I2V chaining tests (color preservation, temporal, flux)
                 self._run_i2v_chaining_tests(test_id, config)
@@ -532,6 +535,48 @@ class TuningTestManager:
 
         # Generate visualization
         self._generate_3dgs_tuning_graph(test_id)
+
+    def _run_synthetic_3dgs_tests(self, test_id: str, config: TuningTestConfig):
+        """Run DA3-3DGS synthetic tests (no diffusion).
+
+        Uses synthetically generated images to test DA3 pose estimation
+        and 3DGS parameters in a reproducible way.
+
+        Args:
+            test_id: Test identifier
+            config: Test configuration with parameters
+        """
+        from pathlib import Path
+        from deforum.api.tuning_3dgs_synthetic import run_synthetic_3dgs_sweep
+        import os
+
+        logger.info(f"Starting synthetic DA3-3DGS tests for test {test_id}")
+
+        # Create output directory
+        forge_root = Path(os.getcwd())
+        tuning_dir = forge_root / "output" / "deforum-tuning"
+        test_output_dir = tuning_dir / f"synthetic_3dgs_{test_id}"
+        test_output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build sweep config (reuse existing helper)
+        sweep_config = self._build_3dgs_sweep_config(config)
+
+        # Add synthetic-specific parameters
+        sweep_config["patterns"] = config.patterns if hasattr(config, 'patterns') else ["gradient_sphere"]
+
+        logger.info(f"Synthetic sweep config: {sweep_config}")
+
+        # Run the parameter sweep (synthetic)
+        results = run_synthetic_3dgs_sweep(sweep_config, test_output_dir)
+
+        # Update test status with results
+        with self.test_lock:
+            if test_id in self.active_tests:
+                self.active_tests[test_id].results = results
+
+        logger.info(f"Synthetic DA3-3DGS sweep complete: {len(results)} tests run")
+
+        # TODO: Generate visualization for synthetic tests
 
     def _create_3dgs_test_directory(self, test_id: str) -> Path:
         """Create output directory for 3DGS test.
