@@ -21,7 +21,7 @@ completely refactored and modernized to work with **Flux.1**, **Lumina 2.0**, **
 - [📥 Model Downloads](#-model-downloads)
 - [🎛️ Render Modes](#️-render-modes)
 - [🎨 Keyframe Scheduling](#-keyframe-scheduling)
-- [🧪 Camera Path Tuning Lab](#-camera-path-tuning-lab)
+- [🧪 Tuning Lab](#-tuning-lab)
 - [🔧 Helper Scripts](#-helper-scripts)
 - [🏛️ Architecture & Documentation](#️-architecture--documentation)
 - [🤝 Contributing](#-contributing)
@@ -127,14 +127,15 @@ ls output/videos/
 
 **Audio Embedding Best Practices:**
 
-1. **Always Re-Load Audio on Resume:**
-   - When resuming, **re-upload or re-specify your audio file**
+1. **Always Re-Load Audio on Resume (and after Page Refresh):**
+   - When resuming generation, **re-upload or re-specify your audio file**
+   - **Also required after page refresh** - browser refresh clears the audio file path
    - This ensures audio is properly embedded in the final video
    - Location: **Deforum** → **Init** → **Sync Audio** tab
-   - ⚠️ **Known Issue**: Audio path IS saved in settings file, but the UI field doesn't auto-populate on resume
+   - ⚠️ **Known Issue**: Audio path IS saved in settings file, but the UI field doesn't auto-populate on resume or after page refresh
    - **Result**: Empty UI field overrides saved audio path (gets set to empty string)
    - **Workaround**: Manually re-enter or re-upload the audio file before clicking Generate
-   - **Future Fix**: UI should auto-load audio path from settings file on resume
+   - **Future Fix**: UI should auto-load audio path from settings file on resume and page load
 
 2. **If Audio Embedding Fails:**
    The generated video is saved in `output/videos/Deforum_<timestring>/`:
@@ -425,6 +426,16 @@ A powerful workflow for **iterative testing** of different interpolation methods
 - **Unified Model**: Single model replaces 5 legacy options (MiDaS, AdaBins, LeReS, ZoeDepth, DPT-Large)
 - **Migration**: DA3 Mono models are drop-in replacements with better quality
 - **Recommendation**: Switch to DA3-Mono-Small for improved depth estimation
+
+### 🧪 **DA3-3DGS Parameter Tuning Lab** (NEW)
+- **Empirical Optimization**: Automated parameter sweep testing for DA3-3DGS interpolation
+- **54-Configuration Sweep**: Tests 2 models × 3 neighbor segments × 3 densification factors × 3 near-clip values
+- **Frame Similarity Metrics**: SSIM-based temporal smoothness and confidence scoring
+- **Realistic Test Datasets**: Generate reusable test images with Z-Image-Turbo for consistent DA3 tuning
+- **Synthetic Fallback**: Gradient sphere patterns for reproducible testing without diffusion overhead
+- **Visual Results**: Comprehensive charts showing optimal parameter combinations
+- **Access**: Launch with `./shell_scripts/run-tuning-lab.sh` → Navigate to Tuning tab → DA3-3DGS Tests
+- **See**: `docs/TUNING.md` for complete tuning documentation
 
 ### 🌌 **Depth-Anything V3 + 3D Gaussian Splatting** (NEW - Default Depth Model)
 - **State-of-Art (2025)**: Latest depth estimation with multi-view geometry and 3DGS capabilities
@@ -1097,6 +1108,75 @@ After installation, verify everything works with the Quick Test tab:
 - Steps: 20
 - Cadence: 5 (keyframes at every 5th frame)
 - Depth warping enabled with simple camera movement
+
+## 🧪 Tuning Lab
+
+The Tuning Lab provides empirical parameter optimization tools for advanced Deforum features.
+
+### Launch Tuning Lab
+
+```bash
+./shell_scripts/run-tuning-lab.sh           # Linux/Mac
+shell_scripts\run-tuning-lab.bat            # Windows
+```
+
+This launches Forge with an additional **Tuning** tab containing automated testing tools.
+
+### Available Tests
+
+#### **DA3-3DGS Parameter Sweep**
+Optimize 3D Gaussian Splatting interpolation quality:
+
+**What it tests:**
+- **Models**: DA3-GIANT vs DA3NESTED-GIANT-LARGE (quality comparison)
+- **Neighbor Segments**: How many keyframes to include in 3DGS scene (2-10)
+- **Densification Factor**: Gaussian splat density (1x = 705k, 8x = 5.6M splats)
+- **Near-Clip Distance**: Filter out close splats to reduce "straw" artifacts (0.0-1.0)
+
+**Default sweep:** 54 tests (2 models × 3 neighbors × 3 densification × 3 near-clip)
+
+**Test approaches:**
+1. **Realistic Images**: Generate once with `dev-tools/generate_test_dataset.py`, reuse for all tests
+2. **Synthetic Patterns**: Fast gradient spheres for reproducible testing (no diffusion overhead)
+
+**Metrics:**
+- Frame similarity (SSIM-based temporal smoothness)
+- Confidence score (variance-based quality metric)
+- Visual consistency across parameter combinations
+
+**Access:** Tuning tab → DA3-3DGS Tests
+
+#### **I2V Strength Tuning**
+Find optimal strength values for Wan I2V chaining workflows (see `docs/TUNING.md`)
+
+#### **Orbital Camera Path Tuning**
+Empirically validate rotation factors for depth warping orbital camera movements (see `ORBIT_TESTS.md`)
+
+### Creating Realistic Test Datasets
+
+For best DA3-3DGS tuning results, generate realistic test images once and reuse:
+
+```bash
+# Generate 20 realistic interior images with Z-Image-Turbo
+cd extensions/sd-forge-deforum
+python dev-tools/generate_test_dataset.py
+
+# Custom dataset
+python dev-tools/generate_test_dataset.py \
+  --num-images 30 \
+  --prompt "modern office interior with windows" \
+  --dataset-name office-scene
+```
+
+**Output:** `output/deforum-tuning/test-datasets/{dataset_name}/`
+
+The tuning tests automatically detect and use these pre-generated images if available, falling back to synthetic patterns otherwise.
+
+### Documentation
+
+- **`docs/TUNING.md`**: Complete tuning guide with 18 test case configurations
+- **`ORBIT_TESTS.md`**: Empirical results from orbital camera rotation factor testing
+- **`dev-tools/README.md`**: Development utilities including dataset generation
 
 ## Troubleshooting
 

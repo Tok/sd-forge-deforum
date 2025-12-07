@@ -90,7 +90,28 @@ source ~/.bashrc                           # Reload environment
 **Script Organization:**
 - **Root:** `setup.sh/bat`, `start-forge.sh/bat` (quick access)
 - **`shell_scripts/`:** Download, install, test, and launch scripts
-- **`scripts/`:** Python development tools only
+- **`dev-tools/`:** Development utilities (generate test datasets, migrate prints, test logger themes)
+- **`scripts/`:** ⚠️ **FORGE EXTENSION ENTRY POINT ONLY** - Do NOT add new files here!
+
+**⚠️ CRITICAL: `scripts/` Directory**
+
+The `scripts/` directory is Forge's extension discovery mechanism and MUST only contain:
+- `deforum.py` - Main extension registration
+- `deforum_helpers/` - Core implementation subdirectory
+- `deforum_extend_paths.py` - Python path setup
+- `README.txt` - Warning file (prevents accidental additions)
+
+**DO NOT add utility scripts, tools, or other files to `scripts/`!** Adding files here can cause conflicts with Forge's extension loading system and may break the extension or interfere with other extensions.
+
+**For new code, use:**
+- `deforum/` - Core functionality
+- `deforum/api/` - API endpoints
+- `deforum/ui/` - UI components
+- `deforum/utils/` - Utilities
+- `dev-tools/` - Development scripts (NOT loaded by Forge)
+- `shell_scripts/` - Shell/batch launcher scripts
+
+See `scripts/README.txt` and `dev-tools/README.md` for details.
 
 ## Architecture
 
