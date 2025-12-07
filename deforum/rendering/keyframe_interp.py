@@ -525,7 +525,9 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
             densification_input = getattr(wan_args, 'da3_3dgs_densification_factor', 'Auto (Max Quality for VRAM)')
             densification_factor = parse_densification_factor(densification_input)
 
-            near_clip_distance = getattr(wan_args, 'da3_3dgs_near_clip_distance', 0.1)
+            # Disable near-clip filtering (0.0) because DA3's camera poses can be inside the scene
+            # This prevents filtering out 99%+ of splats when cameras are positioned incorrectly
+            near_clip_distance = getattr(wan_args, 'da3_3dgs_near_clip_distance', 0.0)
 
             # Log VRAM usage estimate
             resolution = (data.width(), data.height())
