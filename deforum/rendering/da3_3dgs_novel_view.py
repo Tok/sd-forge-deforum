@@ -1110,3 +1110,147 @@ def generate_da3_3dgs_interpolation(
         f"{f' + {num_keyframes_rendered} keyframes' if num_keyframes_rendered > 0 else ''}"
     )
     return frame_paths
+
+
+def generate_da3_3dgs_global_interpolation(
+    all_keyframe_images: dict,
+    keyframe_segments: List[Tuple[int, int]],
+    model_selection: str,
+    output_dir: str,
+    device: torch.device,
+    render_keyframes: bool = False,
+    densification_factor: int = 1,
+    near_clip_distance: float = 0.0,
+    dashboard=None,
+    deform_keys=None
+) -> List[str]:
+    """Generate ALL interpolated frames using ONE global 3DGS scene.
+
+    This eliminates coordinate drift by building a single coherent 3D world from ALL keyframes.
+
+    Args:
+        all_keyframe_images: Dict mapping frame_idx → PIL Image for ALL keyframes
+        keyframe_segments: List of (first_idx, last_idx) tuples defining segments
+        model_selection: DA3 model ('DA3-GIANT' or 'DA3NESTED-GIANT-LARGE')
+        output_dir: Directory to save generated frames
+        device: torch device
+        render_keyframes: Whether to render 3DGS versions of keyframes
+        densification_factor: Gaussian densification multiplier
+        near_clip_distance: Percentile-based near-clip filtering
+        dashboard: Progress dashboard
+        deform_keys: Deforum animation keys (translation/rotation schedules)
+
+    Returns:
+        List of paths to generated frame files (tweens only, unless render_keyframes=True)
+    """
+    logger.info(f"{emoji_if_enabled('🌌')} DA3-3DGS GLOBAL MODE: Building ONE scene from ALL {len(all_keyframe_images)} keyframes")
+
+    # Build ONE global 3DGS scene from ALL keyframes
+    all_keyframe_indices = sorted(all_keyframe_images.keys())
+    all_keyframe_pil = [all_keyframe_images[idx] for idx in all_keyframe_indices]
+
+    logger.info(f"   Keyframes: {all_keyframe_indices}")
+    logger.info(f"   Building global 3DGS scene (may take a moment)...")
+
+    # Use DA3 to build 3DGS scene from all keyframes
+    from depth_anything_3.api import DepthAnything3
+    import trimesh
+    from deforum.depth.depth_anything_v3 import _get_model_name
+
+    model_name = _get_model_name('multiview', 'large')  # Use NESTED-GIANT-LARGE for best multi-view
+    da3_model = DepthAnything3.from_pretrained(model_name)
+    da3_model.to(device)
+
+    # Convert PIL images to numpy (BGR for DA3)
+    images_bgr = [cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR) for img in all_keyframe_pil]
+
+    # Build 3DGS scene
+    gaussians, extrinsics, intrinsics_list = da3_model.feed_forward_gaussian(images_bgr)
+
+    logger.info(f"{emoji_if_enabled('✅')} Global 3DGS scene built: {len(gaussians)} gaussians from {len(images_bgr)} keyframes")
+
+    # Extract camera positions for logging
+    da3_cam_positions = []
+    for ext in extrinsics:
+        R, t = ext[:3, :3], ext[:3, 3]
+        cam_pos = -R.T @ t
+        da3_cam_positions.append(cam_pos)
+
+    logger.debug(f"   DA3 cameras: {[f'({p[0]:.1f},{p[1]:.1f},{p[2]:.1f})' for p in da3_cam_positions]}")
+
+    # Calculate scene centroid and bounds for camera positioning
+    centroid = np.mean(da3_cam_positions, axis=0)
+    bbox_min = np.min(da3_cam_positions, axis=0)
+    bbox_max = np.max(da3_cam_positions, axis=0)
+
+    logger.info(f"   Scene: centroid=({centroid[0]:.1f},{centroid[1]:.1f},{centroid[2]:.1f}), "
+                f"bounds=[{bbox_min[0]:.1f},{bbox_max[0]:.1f}]×[{bbox_min[1]:.1f},{bbox_max[1]:.1f}]×[{bbox_min[2]:.1f},{bbox_max[2]:.1f}]")
+
+    # Average intrinsics
+    avg_intrinsics = np.mean(intrinsics_list, axis=0)
+
+    # Now render ALL tween frames from this single global scene
+    frame_paths = []
+
+    for seg_idx, (first_idx, last_idx) in enumerate(keyframe_segments):
+        logger.info(f"\n{emoji_if_enabled('🎞')}️ Segment {seg_idx + 1}/{len(keyframe_segments)}: Rendering tweens {first_idx} → {last_idx}")
+
+        if dashboard:
+            dashboard.set_operation(f"Rendering segment {seg_idx + 1}/{len(keyframe_segments)}")
+
+        # Get keyframe positions in global scene
+        first_kf_pos = all_keyframe_indices.index(first_idx)
+        last_kf_pos = all_keyframe_indices.index(last_idx)
+
+        # Extract camera poses for this segment's boundaries
+        first_pose = extrinsics[first_kf_pos]
+        last_pose = extrinsics[last_kf_pos]
+
+        # Generate target frame indices (tweens between keyframes)
+        target_indices = list(range(first_idx + 1, last_idx))
+
+        if not target_indices:
+            logger.debug(f"   No tweens to generate for segment {first_idx}→{last_idx}")
+            continue
+
+        # Interpolate camera poses for tweens
+        tween_poses = []
+        for tween_idx in target_indices:
+            # Calculate interpolation factor
+            t = (tween_idx - first_idx) / (last_idx - first_idx)
+
+            # Interpolate pose
+            interp_pose = interpolate_poses(first_pose, last_pose, t)
+            tween_poses.append((tween_idx, interp_pose))
+
+        logger.debug(f"   Rendering {len(tween_poses)} tween frames with interpolated camera poses")
+
+        # Render each tween
+        img_width, img_height = all_keyframe_pil[0].size
+
+        for tween_idx, tween_pose in tween_poses:
+            # Render from 3DGS scene
+            rendered_image = render_gaussian_splats_with_pose(
+                gaussians=gaussians,
+                camera_pose=tween_pose,
+                camera_intrinsics=avg_intrinsics,
+                image_size=(img_width, img_height),
+                device=device,
+                densification_factor=densification_factor,
+                near_clip_distance=near_clip_distance
+            )
+
+            # Save frame
+            target_filename = f"{tween_idx:09d}.png"
+            target_path = os.path.join(output_dir, target_filename)
+            rendered_image.save(target_path)
+            frame_paths.append(target_path)
+
+            if dashboard:
+                dashboard.increment_tween_count()
+
+        logger.info(f"{emoji_if_enabled('✅')} Segment {seg_idx + 1} complete: {len(tween_poses)} frames")
+
+    logger.info(f"\n{emoji_if_enabled('✅')} GLOBAL MODE complete: {len(frame_paths)} total tween frames from ONE global scene")
+
+    return frame_paths

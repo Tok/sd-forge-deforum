@@ -5,7 +5,7 @@ Supports Canny and Depth ControlNet models.
 """
 
 import torch
-from diffusers import FluxControlNetModel
+# Note: diffusers imported lazily in functions to avoid breaking tests
 from typing import Optional, Dict
 import os
 from contextlib import contextmanager
@@ -84,7 +84,8 @@ FLUX_CONTROLNET_MODELS = {
 }
 
 # Model cache (only for ControlNet models, not full pipelines)
-_model_cache: Dict[str, FluxControlNetModel] = {}
+# Type annotation uses string to avoid import at module level
+_model_cache: Dict[str, 'FluxControlNetModel'] = {}
 
 
 def get_available_models(control_type: str) -> Dict[str, str]:
@@ -104,7 +105,7 @@ def load_flux_controlnet_model(
     model_name: str = "instantx",
     torch_dtype: torch.dtype = torch.bfloat16,
     device: str = "cuda"
-) -> FluxControlNetModel:
+) -> 'FluxControlNetModel':
     """Load a Flux ControlNet model.
 
     Args:
@@ -119,6 +120,9 @@ def load_flux_controlnet_model(
     Raises:
         ValueError: If control_type or model_name is invalid
     """
+    # Lazy import to avoid breaking tests
+    from diffusers import FluxControlNetModel
+
     # Check if model is already cached
     cache_key = f"{control_type}_{model_name}"
     if cache_key in _model_cache:

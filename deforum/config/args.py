@@ -1329,6 +1329,31 @@ def WanArgs():
             "value": 0.0,
             "info": "Remove closest N% of gaussian splats to eliminate 'straw' artifacts. ADAPTIVE: Uses percentile of depth distribution instead of absolute world units. 0.0 = disabled (show all splats), 0.01 = remove closest 1%, 0.05 = remove closest 5%, 0.10 = remove closest 10%. Higher values may cause visible holes. Percentile-based filtering adapts to DA3's arbitrary scene scales automatically. Values >1.0 revert to legacy absolute mode."
         },
+        "da3_3dgs_scene_strategy": {
+            "label": "3DGS Scene Rebuild Strategy",
+            "type": "dropdown",
+            "choices": ["per_segment", "per_prompt", "rolling_window"],
+            "value": "per_segment",
+            "info": "How to build 3DGS scenes. PER-SEGMENT (default): Build new scene for each tween segment from nearby keyframes (~9 keyframes) - fast, but coordinate drift between segments. PER-PROMPT: Build ONE scene per prompt change, shared across all segments with same prompt - semantically coherent, eliminates drift within same subject/setting, VRAM scales with prompt segment size. ROLLING WINDOW: Build scenes from fixed-size windows (30-50 keyframes) - consistent window size regardless of prompts. Choose: speed (per-segment), semantic coherence (per-prompt), or fixed VRAM (rolling-window)."
+        },
+        "da3_3dgs_rolling_window_size": {
+            "label": "Rolling Window Size (keyframes)",
+            "type": "slider",
+            "minimum": 10,
+            "maximum": 100,
+            "step": 5,
+            "value": 30,
+            "info": "For ROLLING WINDOW mode: How many keyframes to include in each 3DGS scene. Larger window = better consistency, more VRAM. 30 keyframes @ 1024x1024 ≈ 18-22GB VRAM (estimated). Adjust based on available VRAM and total keyframe count. Windows overlap to maintain continuity across scene boundaries. Not used in per-segment or per-prompt modes."
+        },
+        "da3_3dgs_max_prompt_keyframes": {
+            "label": "Max Keyframes Per Prompt Scene",
+            "type": "slider",
+            "minimum": 10,
+            "maximum": 200,
+            "step": 10,
+            "value": 50,
+            "info": "For PER-PROMPT mode: Maximum keyframes to include in a single 3DGS scene. If a prompt segment has more keyframes than this, it will be split into sub-scenes. Prevents VRAM overflow on very long prompt segments. 50 keyframes @ 1024x1024 ≈ 24-28GB VRAM (estimated). Reduce if you hit OOM errors."
+        },
 
         # Advanced Generation Settings
         "wan_negative_prompt": {

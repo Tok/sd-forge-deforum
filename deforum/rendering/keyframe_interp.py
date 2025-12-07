@@ -364,13 +364,127 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         if not success:
             raise RuntimeError(f"Failed to load Wan model: {model_info['name']}")
 
-    # Generate FLF2V segments
-    all_segment_frames = []
+    # Check scene strategy
+    scene_strategy = getattr(wan_args, 'da3_3dgs_scene_strategy', 'per_segment')
 
-    for idx in range(len(keyframes) - 1):
-        # Update dashboard operation (3DGS sub-operations will update their own progress)
-        if dashboard:
-            dashboard.set_operation(f"Interpolating segment {idx + 1}/{len(keyframes) - 1}")
+    # For per-prompt mode with DA3-3DGS, group segments by prompt first
+    if interp_method == "DA3-3DGS" and scene_strategy == "per_prompt":
+        logger.info(f"{emoji_if_enabled('📦')} Using PER-PROMPT scene strategy: Grouping segments by prompt")
+
+        # Group segments by prompt
+        def group_segments_by_prompt(keyframes, prompt_series):
+            """Group consecutive segments that share the same prompt."""
+            prompt_groups = []
+            current_group = []
+            current_prompt = None
+
+            for idx in range(len(keyframes) - 1):
+                first_kf = keyframes[idx]
+                last_kf = keyframes[idx + 1]
+
+                # Get prompt for this segment (use first keyframe's prompt)
+                segment_prompt = prompt_series[first_kf.i]
+
+                # Start new group if prompt changed
+                if segment_prompt != current_prompt:
+                    if current_group:
+                        prompt_groups.append((current_prompt, current_group))
+                    current_group = [(first_kf.i, last_kf.i)]
+                    current_prompt = segment_prompt
+                else:
+                    current_group.append((first_kf.i, last_kf.i))
+
+            # Add final group
+            if current_group:
+                prompt_groups.append((current_prompt, current_group))
+
+            return prompt_groups
+
+        prompt_groups = group_segments_by_prompt(keyframes, data.prompt_series)
+
+        logger.info(f"   Found {len(prompt_groups)} distinct prompt regions")
+        for i, (prompt, segments) in enumerate(prompt_groups):
+            keyframe_span = f"{segments[0][0]}-{segments[-1][1]}"
+            logger.info(f"   Group {i+1}: {len(segments)} segments ({keyframe_span}), prompt: {prompt[:60]}...")
+
+        # Now generate interpolations for each prompt group using shared 3DGS scene
+        all_segment_frames = []
+
+        # Import DA3-3DGS modules once
+        from deforum.rendering.da3_3dgs_novel_view import generate_da3_3dgs_global_interpolation
+        from deforum.rendering.da3_3dgs_quality import parse_densification_factor, log_vram_usage_estimate
+        from PIL import Image
+        import torch
+
+        # Load all keyframe images into memory
+        all_keyframes_pil = {}
+        for kf_idx, kf_path in keyframe_images.items():
+            all_keyframes_pil[kf_idx] = Image.open(kf_path)
+
+        # Parse quality settings once
+        densification_input = getattr(wan_args, 'da3_3dgs_densification_factor', 'Auto (Max Quality for VRAM)')
+        densification_factor = parse_densification_factor(densification_input)
+        near_clip_distance = getattr(wan_args, 'da3_3dgs_near_clip_distance', 0.0)
+        resolution = (data.width(), data.height())
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model_selection = getattr(wan_args, 'da3_3dgs_model', 'DA3-GIANT')
+        max_prompt_keyframes = getattr(wan_args, 'da3_3dgs_max_prompt_keyframes', 50)
+
+        # Process each prompt group
+        for group_idx, (prompt, segments) in enumerate(prompt_groups):
+            logger.info(f"\n{emoji_if_enabled('🌌')} Prompt Group {group_idx + 1}/{len(prompt_groups)}")
+            logger.info(f"   Prompt: {prompt[:80]}...")
+            logger.info(f"   Segments: {len(segments)} ({segments[0][0]}-{segments[-1][1]})")
+
+            if dashboard:
+                dashboard.set_operation(f"Prompt group {group_idx + 1}/{len(prompt_groups)}")
+
+            # Collect all keyframes for this prompt group
+            group_keyframe_indices = set()
+            for first_idx, last_idx in segments:
+                group_keyframe_indices.add(first_idx)
+                group_keyframe_indices.add(last_idx)
+            group_keyframe_indices = sorted(group_keyframe_indices)
+
+            logger.info(f"   Keyframes in group: {len(group_keyframe_indices)} ({min(group_keyframe_indices)}-{max(group_keyframe_indices)})")
+
+            # Check if we need to split this group (too many keyframes for VRAM)
+            if len(group_keyframe_indices) > max_prompt_keyframes:
+                logger.warning(f"   ⚠️  Group has {len(group_keyframe_indices)} keyframes, exceeds max {max_prompt_keyframes}")
+                logger.warning(f"   Splitting into sub-groups of {max_prompt_keyframes} keyframes each")
+                # TODO: Implement sub-group splitting if needed
+                # For now, just use the first max_prompt_keyframes
+                group_keyframe_indices = group_keyframe_indices[:max_prompt_keyframes]
+                logger.warning(f"   Using first {len(group_keyframe_indices)} keyframes (TODO: implement proper splitting)")
+
+            # Build ONE 3DGS scene for this entire prompt group
+            group_frames = generate_da3_3dgs_global_interpolation(
+                all_keyframe_images=all_keyframes_pil,
+                keyframe_segments=segments,
+                model_selection=model_selection,
+                output_dir=data.output_directory,
+                device=device,
+                render_keyframes=getattr(wan_args, 'da3_3dgs_render_keyframes', True),
+                densification_factor=densification_factor,
+                near_clip_distance=near_clip_distance,
+                dashboard=dashboard,
+                deform_keys=data.animation_keys.deform_keys if getattr(wan_args, 'da3_3dgs_use_deforum_motion', False) else None
+            )
+
+            all_segment_frames.extend(group_frames)
+            logger.info(f"{emoji_if_enabled('✅')} Prompt group {group_idx + 1} complete: {len(group_frames)} frames")
+
+        logger.info(f"\n{emoji_if_enabled('✅')} Phase 2 Complete: {len(all_segment_frames)} total frames from PER-PROMPT DA3-3DGS")
+
+    else:
+        # Original per-segment mode (default)
+        # Generate FLF2V segments
+        all_segment_frames = []
+
+        for idx in range(len(keyframes) - 1):
+            # Update dashboard operation (3DGS sub-operations will update their own progress)
+            if dashboard:
+                dashboard.set_operation(f"Interpolating segment {idx + 1}/{len(keyframes) - 1}")
 
         first_kf = keyframes[idx]
         last_kf = keyframes[idx + 1]
