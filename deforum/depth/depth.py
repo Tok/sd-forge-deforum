@@ -21,11 +21,16 @@ import torch
 from PIL import Image
 from einops import rearrange, repeat
 from modules import devices
-from .depth_anything_v2 import DepthAnything
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
+
+# Lazy import to avoid requiring transformers at module load time
+def _get_depth_anything():
+    """Lazy import DepthAnything to avoid requiring transformers in CI."""
+    from .depth_anything_v2 import DepthAnything
+    return DepthAnything
 
 class DepthModel:
     """
@@ -114,11 +119,13 @@ class DepthModel:
                     "Depth Anything V3 not available. Install with: pip install depth-anything-3 xformers"
                 )
                 logger.warning("Falling back to Depth Anything V2 Small")
+                DepthAnything = _get_depth_anything()
                 self.depth_anything = DepthAnything(self.device, model_size='small')
                 self.is_v3 = False
         else:
             # DA2 model
             logger.info(f"Loading Depth Anything V2 ({model_size})")
+            DepthAnything = _get_depth_anything()
             self.depth_anything = DepthAnything(self.device, model_size=model_size)
             self.is_v3 = False
 
