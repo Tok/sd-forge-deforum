@@ -186,9 +186,10 @@ def create_camera_poses_from_deforum_schedules(
     scene_extent = scene_bbox_max - scene_bbox_min
     camera_distance = max(scene_extent) * 0.5  # Start 50% of max extent away from centroid
 
-    # Camera starts in front of scene (negative Z in world space)
-    # Since camera looks at centroid, we offset in NEGATIVE Z direction to be in front
-    camera_start_pos = scene_centroid + np.array([0, 0, -camera_distance])
+    # Camera starts behind scene (positive Z in world space)
+    # DA3 cameras are mostly at negative Z, scene extends to positive Z
+    # So we position camera at POSITIVE Z (behind scene) to match DA3 convention
+    camera_start_pos = scene_centroid + np.array([0, 0, camera_distance])
 
     logger.info(f"   Creating {num_frames} camera poses from Deforum schedules:")
     logger.info(f"      First frame baseline: tx={tx_base:.2f}, ty={ty_base:.2f}, tz={tz_base:.2f}")
