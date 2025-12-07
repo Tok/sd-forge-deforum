@@ -411,7 +411,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         all_segment_frames = []
 
         # Import DA3-3DGS modules once
-        from deforum.rendering.da3_3dgs_novel_view import generate_da3_3dgs_global_interpolation
+        from deforum.rendering.da3_3dgs_novel_view import generate_da3_3dgs_interpolation
         from deforum.rendering.da3_3dgs_quality import parse_densification_factor, log_vram_usage_estimate
         from PIL import Image
         import torch
@@ -457,14 +457,29 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 group_keyframe_indices = group_keyframe_indices[:max_prompt_keyframes]
                 logger.warning(f"   Using first {len(group_keyframe_indices)} keyframes (TODO: implement proper splitting)")
 
+            # Collect keyframes for this group as PIL images
+            group_keyframe_pil = [all_keyframes_pil[idx] for idx in group_keyframe_indices]
+
+            # Collect ALL target frame indices for all segments in this group
+            all_group_targets = []
+            for first_idx, last_idx in segments:
+                segment_targets = list(range(first_idx + 1, last_idx))
+                all_group_targets.extend(segment_targets)
+
+            logger.info(f"   Generating {len(all_group_targets)} tween frames from ONE shared 3DGS scene")
+
             # Build ONE 3DGS scene for this entire prompt group
-            group_frames = generate_da3_3dgs_global_interpolation(
-                all_keyframe_images=all_keyframes_pil,
-                keyframe_segments=segments,
+            # Use existing generate_da3_3dgs_interpolation - it handles everything correctly
+            group_frames = generate_da3_3dgs_interpolation(
+                keyframe_images=group_keyframe_pil,
+                keyframe_indices=group_keyframe_indices,
+                target_frame_indices=all_group_targets,
                 model_selection=model_selection,
                 output_dir=data.output_directory,
                 device=device,
                 render_keyframes=getattr(wan_args, 'da3_3dgs_render_keyframes', True),
+                segment_first_idx=segments[0][0],  # First segment's first frame
+                segment_last_idx=segments[-1][1],  # Last segment's last frame
                 densification_factor=densification_factor,
                 near_clip_distance=near_clip_distance,
                 dashboard=dashboard,
