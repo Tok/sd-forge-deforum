@@ -486,201 +486,201 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
             if dashboard:
                 dashboard.set_operation(f"Interpolating segment {idx + 1}/{len(keyframes) - 1}")
 
-        first_kf = keyframes[idx]
-        last_kf = keyframes[idx + 1]
+            first_kf = keyframes[idx]
+            last_kf = keyframes[idx + 1]
 
-        first_frame_idx = first_kf.i
-        last_frame_idx = last_kf.i
-        num_tween_frames = last_frame_idx - first_frame_idx - 1  # ONLY in-between frames (exclude both keyframes)
+            first_frame_idx = first_kf.i
+            last_frame_idx = last_kf.i
+            num_tween_frames = last_frame_idx - first_frame_idx - 1  # ONLY in-between frames (exclude both keyframes)
 
-        logger.info(f"\n{emoji_if_enabled('🎞')}️ Interpolation Segment {idx + 1}/{len(keyframes) - 1}:")
-        logger.info(f"   From keyframe: {first_frame_idx}")
-        logger.info(f"   To keyframe: {last_frame_idx}")
-        logger.info(f"   In-between frames to generate: {num_tween_frames} (frames {first_frame_idx+1} to {last_frame_idx-1})")
+            logger.info(f"\n{emoji_if_enabled('🎞')}️ Interpolation Segment {idx + 1}/{len(keyframes) - 1}:")
+            logger.info(f"   From keyframe: {first_frame_idx}")
+            logger.info(f"   To keyframe: {last_frame_idx}")
+            logger.info(f"   In-between frames to generate: {num_tween_frames} (frames {first_frame_idx+1} to {last_frame_idx-1})")
 
-        # Check if all frames in this segment already exist (resume mode)
-        # Skip only if NOT regenerating tweens
-        if is_resuming and not anim_args.resume_regenerate_tweens:
-            segment_complete = True
-            segment_existing_frames = []
-            for frame_offset in range(num_tween_frames):
-                check_frame_idx = first_frame_idx + frame_offset + 1  # +1 to skip first keyframe
+            # Check if all frames in this segment already exist (resume mode)
+            # Skip only if NOT regenerating tweens
+            if is_resuming and not anim_args.resume_regenerate_tweens:
+                segment_complete = True
+                segment_existing_frames = []
+                for frame_offset in range(num_tween_frames):
+                    check_frame_idx = first_frame_idx + frame_offset + 1  # +1 to skip first keyframe
 
-                # Check simple format first (matches our save format: 000000001.png)
-                simple_filename = f"{check_frame_idx:09d}.png"
-                simple_path = os.path.join(data.output_directory, simple_filename)
+                    # Check simple format first (matches our save format: 000000001.png)
+                    simple_filename = f"{check_frame_idx:09d}.png"
+                    simple_path = os.path.join(data.output_directory, simple_filename)
 
-                # Also check timestring format (legacy from old runs)
-                timestring_filename = filename_utils.frame_filename(data, check_frame_idx)
-                timestring_path = os.path.join(data.output_directory, timestring_filename)
+                    # Also check timestring format (legacy from old runs)
+                    timestring_filename = filename_utils.frame_filename(data, check_frame_idx)
+                    timestring_path = os.path.join(data.output_directory, timestring_filename)
 
-                if os.path.exists(simple_path):
-                    segment_existing_frames.append(simple_path)
-                elif os.path.exists(timestring_path):
-                    segment_existing_frames.append(timestring_path)
-                else:
-                    segment_complete = False
-                    break
+                    if os.path.exists(simple_path):
+                        segment_existing_frames.append(simple_path)
+                    elif os.path.exists(timestring_path):
+                        segment_existing_frames.append(timestring_path)
+                    else:
+                        segment_complete = False
+                        break
 
-            if segment_complete:
-                logger.debug(f"{emoji_if_enabled('⏭')}️  Skipping segment {idx + 1} - all {num_tween_frames} frames already exist")
-                all_segment_frames.extend(segment_existing_frames)
-                continue
-        elif is_resuming and anim_args.resume_regenerate_tweens:
-            logger.info(f"{emoji_if_enabled('🔄')} Regenerating tweens for segment {idx + 1} (resume_regenerate_tweens=True)")
+                if segment_complete:
+                    logger.debug(f"{emoji_if_enabled('⏭')}️  Skipping segment {idx + 1} - all {num_tween_frames} frames already exist")
+                    all_segment_frames.extend(segment_existing_frames)
+                    continue
+            elif is_resuming and anim_args.resume_regenerate_tweens:
+                logger.info(f"{emoji_if_enabled('🔄')} Regenerating tweens for segment {idx + 1} (resume_regenerate_tweens=True)")
 
-        # Get prompts for BOTH keyframes
-        first_prompt_idx = min(first_frame_idx, len(data.prompt_series) - 1)
-        last_prompt_idx = min(last_frame_idx, len(data.prompt_series) - 1)
-        first_prompt_raw = data.prompt_series[first_prompt_idx]
-        last_prompt_raw = data.prompt_series[last_prompt_idx]
+            # Get prompts for BOTH keyframes
+            first_prompt_idx = min(first_frame_idx, len(data.prompt_series) - 1)
+            last_prompt_idx = min(last_frame_idx, len(data.prompt_series) - 1)
+            first_prompt_raw = data.prompt_series[first_prompt_idx]
+            last_prompt_raw = data.prompt_series[last_prompt_idx]
 
-        # Strip --neg negative prompts (Wan doesn't understand this syntax and will interpret them positively!)
-        def strip_negative_prompt(prompt_text):
-            """Remove --neg ... portion from Deforum prompts to avoid Wan interpreting them as positive."""
-            if '--neg' in prompt_text:
-                return prompt_text.split('--neg')[0].strip()
-            return prompt_text.strip()
+            # Strip --neg negative prompts (Wan doesn't understand this syntax and will interpret them positively!)
+            def strip_negative_prompt(prompt_text):
+                """Remove --neg ... portion from Deforum prompts to avoid Wan interpreting them as positive."""
+                if '--neg' in prompt_text:
+                    return prompt_text.split('--neg')[0].strip()
+                return prompt_text.strip()
 
-        first_prompt = strip_negative_prompt(first_prompt_raw)
-        last_prompt = strip_negative_prompt(last_prompt_raw)
+            first_prompt = strip_negative_prompt(first_prompt_raw)
+            last_prompt = strip_negative_prompt(last_prompt_raw)
 
-        # Load keyframe images - use PIL since they were saved with PIL (RGB format)
-        # Using cv2.imread() on PIL-saved images causes BGR/RGB confusion
-        from PIL import Image
-        first_image = Image.open(keyframe_images[first_frame_idx])
-        last_image = Image.open(keyframe_images[last_frame_idx])
-
-        # Resize keyframes if resolution changed (e.g., for VRAM savings)
-        target_width = data.width()
-        target_height = data.height()
-        if first_image.size != (target_width, target_height):
-            logger.debug(f"   Resizing keyframes from {first_image.size} to {target_width}x{target_height}")
-            first_image = first_image.resize((target_width, target_height), Image.LANCZOS)
-            last_image = last_image.resize((target_width, target_height), Image.LANCZOS)
-
-        # For FLF2V interpolation, use balanced guidance for semantic interpolation
-        # High guidance forces prompt adherence, low guidance allows natural interpolation
-        flf2v_guidance = getattr(wan_args, 'wan_flf2v_guidance_scale', 3.5)  # Default 3.5 for smooth morphing
-
-        # Decide how to handle prompts for FLF2V
-        # Options: 'none', 'first', 'last', 'blend'
-        flf2v_prompt_mode = getattr(wan_args, 'wan_flf2v_prompt_mode', 'blend')  # Default to blend for semantic guidance
-        
-        if flf2v_prompt_mode == 'none':
-            flf2v_prompt = ""
-        elif flf2v_prompt_mode == 'first':
-            flf2v_prompt = first_prompt
-        elif flf2v_prompt_mode == 'last':
-            flf2v_prompt = last_prompt
-        elif flf2v_prompt_mode == 'blend':
-            # Create a blended prompt describing the transition
-            flf2v_prompt = f"{first_prompt} transitioning to {last_prompt}"
-        else:
-            flf2v_prompt = ""  # Default to no prompt
-        
-        # Route to appropriate interpolation function
-        if interp_method == "FILM":
-            logger.info(f"   {emoji_if_enabled('🎯')} Interpolation: FILM (Frame Interpolation for Large Motion)")
-            segment_frames = generate_film_segment(
-                first_image=first_image,
-                last_image=last_image,
-                num_frames=num_tween_frames,
-                height=data.height(),
-                width=data.width(),
-                first_frame_idx=first_frame_idx,
-                output_dir=data.output_directory,
-                fps=video_args.fps
-            )
-        elif interp_method == "DA3-3DGS":
-            model_selection = getattr(wan_args, 'da3_3dgs_model', 'DA3-GIANT')
-            neighbor_segments = getattr(wan_args, 'da3_3dgs_neighbor_segments', 1)
-            logger.info(f"   {emoji_if_enabled('🎯')} Interpolation: DA3-3DGS, model={model_selection}, neighbors={neighbor_segments}")
-
-            # Use new proper 3DGS interpolation module
-            from deforum.rendering.da3_3dgs_novel_view import (
-                collect_nearby_keyframes,
-                generate_da3_3dgs_interpolation
-            )
+            # Load keyframe images - use PIL since they were saved with PIL (RGB format)
+            # Using cv2.imread() on PIL-saved images causes BGR/RGB confusion
             from PIL import Image
-            import torch
+            first_image = Image.open(keyframe_images[first_frame_idx])
+            last_image = Image.open(keyframe_images[last_frame_idx])
 
-            # Load all keyframe images into memory for collection
-            all_keyframes_pil = {}
-            for kf_idx, kf_path in keyframe_images.items():
-                all_keyframes_pil[kf_idx] = Image.open(kf_path)
+            # Resize keyframes if resolution changed (e.g., for VRAM savings)
+            target_width = data.width()
+            target_height = data.height()
+            if first_image.size != (target_width, target_height):
+                logger.debug(f"   Resizing keyframes from {first_image.size} to {target_width}x{target_height}")
+                first_image = first_image.resize((target_width, target_height), Image.LANCZOS)
+                last_image = last_image.resize((target_width, target_height), Image.LANCZOS)
 
-            # Collect keyframes from current segment + neighbors
-            collected_images, collected_indices = collect_nearby_keyframes(
-                all_keyframe_images=all_keyframes_pil,
-                segment_first_idx=first_frame_idx,
-                segment_last_idx=last_frame_idx,
-                num_neighbor_segments=neighbor_segments
-            )
+            # For FLF2V interpolation, use balanced guidance for semantic interpolation
+            # High guidance forces prompt adherence, low guidance allows natural interpolation
+            flf2v_guidance = getattr(wan_args, 'wan_flf2v_guidance_scale', 3.5)  # Default 3.5 for smooth morphing
 
-            # Generate target frame indices (tweens to create)
-            target_indices = list(range(first_frame_idx + 1, last_frame_idx))
+            # Decide how to handle prompts for FLF2V
+            # Options: 'none', 'first', 'last', 'blend'
+            flf2v_prompt_mode = getattr(wan_args, 'wan_flf2v_prompt_mode', 'blend')  # Default to blend for semantic guidance
+        
+            if flf2v_prompt_mode == 'none':
+                flf2v_prompt = ""
+            elif flf2v_prompt_mode == 'first':
+                flf2v_prompt = first_prompt
+            elif flf2v_prompt_mode == 'last':
+                flf2v_prompt = last_prompt
+            elif flf2v_prompt_mode == 'blend':
+                # Create a blended prompt describing the transition
+                flf2v_prompt = f"{first_prompt} transitioning to {last_prompt}"
+            else:
+                flf2v_prompt = ""  # Default to no prompt
+        
+            # Route to appropriate interpolation function
+            if interp_method == "FILM":
+                logger.info(f"   {emoji_if_enabled('🎯')} Interpolation: FILM (Frame Interpolation for Large Motion)")
+                segment_frames = generate_film_segment(
+                    first_image=first_image,
+                    last_image=last_image,
+                    num_frames=num_tween_frames,
+                    height=data.height(),
+                    width=data.width(),
+                    first_frame_idx=first_frame_idx,
+                    output_dir=data.output_directory,
+                    fps=video_args.fps
+                )
+            elif interp_method == "DA3-3DGS":
+                model_selection = getattr(wan_args, 'da3_3dgs_model', 'DA3-GIANT')
+                neighbor_segments = getattr(wan_args, 'da3_3dgs_neighbor_segments', 1)
+                logger.info(f"   {emoji_if_enabled('🎯')} Interpolation: DA3-3DGS, model={model_selection}, neighbors={neighbor_segments}")
 
-            # Note: Original diffusion keyframes are already in _diffusion/ subdirectory (saved during Phase 1)
-            # This ensures they're available for Phase 2 retries without polluting the root directory
+                # Use new proper 3DGS interpolation module
+                from deforum.rendering.da3_3dgs_novel_view import (
+                    collect_nearby_keyframes,
+                    generate_da3_3dgs_interpolation
+                )
+                from PIL import Image
+                import torch
 
-            # Generate interpolated frames using 3DGS
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                # Load all keyframe images into memory for collection
+                all_keyframes_pil = {}
+                for kf_idx, kf_path in keyframe_images.items():
+                    all_keyframes_pil[kf_idx] = Image.open(kf_path)
 
-            # Parse densification factor (handle "Auto" mode)
-            from deforum.rendering.da3_3dgs_quality import (
-                parse_densification_factor, log_vram_usage_estimate
-            )
-            densification_input = getattr(wan_args, 'da3_3dgs_densification_factor', 'Auto (Max Quality for VRAM)')
-            densification_factor = parse_densification_factor(densification_input)
+                # Collect keyframes from current segment + neighbors
+                collected_images, collected_indices = collect_nearby_keyframes(
+                    all_keyframe_images=all_keyframes_pil,
+                    segment_first_idx=first_frame_idx,
+                    segment_last_idx=last_frame_idx,
+                    num_neighbor_segments=neighbor_segments
+                )
 
-            # Disable near-clip filtering (0.0) because DA3's camera poses can be inside the scene
-            # This prevents filtering out 99%+ of splats when cameras are positioned incorrectly
-            near_clip_distance = getattr(wan_args, 'da3_3dgs_near_clip_distance', 0.0)
+                # Generate target frame indices (tweens to create)
+                target_indices = list(range(first_frame_idx + 1, last_frame_idx))
 
-            # Log VRAM usage estimate
-            resolution = (data.width(), data.height())
-            log_vram_usage_estimate(densification_factor, resolution)
+                # Note: Original diffusion keyframes are already in _diffusion/ subdirectory (saved during Phase 1)
+                # This ensures they're available for Phase 2 retries without polluting the root directory
 
-            segment_frames = generate_da3_3dgs_interpolation(
-                keyframe_images=collected_images,
-                keyframe_indices=collected_indices,
-                target_frame_indices=target_indices,
-                model_selection=model_selection,
-                output_dir=data.output_directory,
-                device=device,
-                render_keyframes=getattr(wan_args, 'da3_3dgs_render_keyframes', True),
-                segment_first_idx=first_frame_idx,
-                segment_last_idx=last_frame_idx,
-                densification_factor=densification_factor,
-                near_clip_distance=near_clip_distance,
-                dashboard=dashboard,
-                deform_keys=data.animation_keys.deform_keys if getattr(wan_args, 'da3_3dgs_use_deforum_motion', False) else None
-            )
-        else:  # Default: Wan
-            logger.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}")
-            logger.info(f"      Prompt mode: {flf2v_prompt_mode}")
-            logger.info(f"      First keyframe prompt: {first_prompt[:60]}...")
-            logger.info(f"      Last keyframe prompt: {last_prompt[:60]}...")
-            logger.info(f"      → Using: '{flf2v_prompt[:80]}...' {'(empty = pure interpolation)' if not flf2v_prompt else ''}")
-            logger.info(f"      Inference steps: {wan_args.wan_inference_steps}")
+                # Generate interpolated frames using 3DGS
+                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-            # Call Wan FLF2V
-            segment_frames = generate_flf2v_segment(
-                wan_integration=wan_integration,
-                first_image=first_image,
-                last_image=last_image,
-                prompt=flf2v_prompt,
-                num_frames=num_tween_frames,
-                height=data.height(),
-                width=data.width(),
-                num_inference_steps=wan_args.wan_inference_steps,
-                guidance_scale=flf2v_guidance,
-                first_frame_idx=first_frame_idx,
-                output_dir=data.output_directory
-            )
+                # Parse densification factor (handle "Auto" mode)
+                from deforum.rendering.da3_3dgs_quality import (
+                    parse_densification_factor, log_vram_usage_estimate
+                )
+                densification_input = getattr(wan_args, 'da3_3dgs_densification_factor', 'Auto (Max Quality for VRAM)')
+                densification_factor = parse_densification_factor(densification_input)
 
-        all_segment_frames.extend(segment_frames)
+                # Disable near-clip filtering (0.0) because DA3's camera poses can be inside the scene
+                # This prevents filtering out 99%+ of splats when cameras are positioned incorrectly
+                near_clip_distance = getattr(wan_args, 'da3_3dgs_near_clip_distance', 0.0)
+
+                # Log VRAM usage estimate
+                resolution = (data.width(), data.height())
+                log_vram_usage_estimate(densification_factor, resolution)
+
+                segment_frames = generate_da3_3dgs_interpolation(
+                    keyframe_images=collected_images,
+                    keyframe_indices=collected_indices,
+                    target_frame_indices=target_indices,
+                    model_selection=model_selection,
+                    output_dir=data.output_directory,
+                    device=device,
+                    render_keyframes=getattr(wan_args, 'da3_3dgs_render_keyframes', True),
+                    segment_first_idx=first_frame_idx,
+                    segment_last_idx=last_frame_idx,
+                    densification_factor=densification_factor,
+                    near_clip_distance=near_clip_distance,
+                    dashboard=dashboard,
+                    deform_keys=data.animation_keys.deform_keys if getattr(wan_args, 'da3_3dgs_use_deforum_motion', False) else None
+                )
+            else:  # Default: Wan
+                logger.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}")
+                logger.info(f"      Prompt mode: {flf2v_prompt_mode}")
+                logger.info(f"      First keyframe prompt: {first_prompt[:60]}...")
+                logger.info(f"      Last keyframe prompt: {last_prompt[:60]}...")
+                logger.info(f"      → Using: '{flf2v_prompt[:80]}...' {'(empty = pure interpolation)' if not flf2v_prompt else ''}")
+                logger.info(f"      Inference steps: {wan_args.wan_inference_steps}")
+
+                # Call Wan FLF2V
+                segment_frames = generate_flf2v_segment(
+                    wan_integration=wan_integration,
+                    first_image=first_image,
+                    last_image=last_image,
+                    prompt=flf2v_prompt,
+                    num_frames=num_tween_frames,
+                    height=data.height(),
+                    width=data.width(),
+                    num_inference_steps=wan_args.wan_inference_steps,
+                    guidance_scale=flf2v_guidance,
+                    first_frame_idx=first_frame_idx,
+                    output_dir=data.output_directory
+                )
+
+            all_segment_frames.extend(segment_frames)
 
         logger.info(f"{emoji_if_enabled('✅')} Segment {idx + 1} complete: {len(segment_frames)} frames")
 
