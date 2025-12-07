@@ -176,14 +176,16 @@ def get_theme_colors(theme: str) -> dict:
         Dictionary mapping semantic names to ANSI color codes
     """
     if theme == 'slopcore':
-        # INFO, WARNING, ERROR always use BB0 colors (fixed, not gradient-dependent)
-        # This ensures INFO stays cyan and never turns red with DA3 gradient
-        info_color = from_hex_color(HEX_SLOPCORE_BB0_7)  # Always BB0 cyan (#17A7FE)
+        # TRACE, DEBUG, INFO, WARNING, ERROR always use BB0 colors (fixed, not gradient-dependent)
+        # This ensures consistent log colors regardless of active gradient (BB0/DA3)
+        trace_color = from_hex_color(HEX_SLOPCORE_BB0_6)   # Always BB0 bright blue (#228CFE)
+        debug_color = from_hex_color(HEX_SLOPCORE_BB0_5)   # Always BB0 blue (#2C71FE)
+        info_color = from_hex_color(HEX_SLOPCORE_BB0_7)    # Always BB0 cyan (#17A7FE)
 
         return {
-            'trace': SLOPCORE_1,         # Brightest purple-blue (ultra-verbose internals)
-            'debug': SLOPCORE_2,         # Blue-purple (debugging info)
-            'info': info_color,          # ALWAYS BB0 cyan (never changes with gradient)
+            'trace': trace_color,        # BB0 bright blue (ultra-verbose internals)
+            'debug': debug_color,        # BB0 blue (debugging info)
+            'info': info_color,          # BB0 cyan (normal operation)
             'warning': FUNCTIONAL_YELLOW, # Yellow (NOT slopcore - functional color)
             'error': FUNCTIONAL_RED,      # Red (NOT slopcore - functional color)
             'critical': SLOPCORE_5,      # Purple (critical failures)
