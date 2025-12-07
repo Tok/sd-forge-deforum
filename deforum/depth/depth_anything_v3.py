@@ -207,6 +207,12 @@ def _convert_images_to_pil(images: List[Union[np.ndarray, Image.Image]]) -> List
 _DA3_MODEL_CACHE = {}
 
 
+def clear_model_cache():
+    """Clear the DA3 model cache. Useful for tests and memory management."""
+    global _DA3_MODEL_CACHE
+    _DA3_MODEL_CACHE.clear()
+
+
 class DepthAnythingV3:
     """Depth Anything V3 model wrapper.
 

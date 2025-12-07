@@ -52,6 +52,15 @@ _normalize_depth_range = da3_module._normalize_depth_range
 _resize_depth_to_match_image = da3_module._resize_depth_to_match_image
 _convert_images_to_pil = da3_module._convert_images_to_pil
 DepthAnythingV3 = da3_module.DepthAnythingV3
+clear_model_cache = da3_module.clear_model_cache
+
+
+@pytest.fixture(autouse=True)
+def clear_da3_cache():
+    """Clear DA3 model cache before each test to avoid mock pollution."""
+    clear_model_cache()
+    yield
+    clear_model_cache()
 
 
 class TestModelNameMapping:

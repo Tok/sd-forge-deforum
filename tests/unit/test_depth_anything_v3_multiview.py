@@ -44,6 +44,15 @@ spec.loader.exec_module(da3_module)
 
 # Extract what we need
 DepthAnythingV3 = da3_module.DepthAnythingV3
+clear_model_cache = da3_module.clear_model_cache
+
+
+@pytest.fixture(autouse=True)
+def clear_da3_cache():
+    """Clear DA3 model cache before each test to avoid mock pollution."""
+    clear_model_cache()
+    yield
+    clear_model_cache()
 
 
 class TestMultiviewPrediction:
