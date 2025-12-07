@@ -191,18 +191,17 @@ def generate_camera_poses_from_deforum_schedules(
         """Build camera extrinsic from Deforum schedules.
 
         Process:
-        1. Start at scene centroid
-        2. Add base camera distance along -Z axis (camera looks down +Z)
-        3. Apply Deforum translations
-        4. Apply Deforum rotations
-        5. Build extrinsic matrix
-        """
-        # Base position: centroid + offset along camera's initial view direction
-        # Camera initially at (0, 0, -base_distance) looking at centroid (0, 0, 0)
-        base_position = scene_centroid + np.array([0, 0, -base_camera_distance])
+        1. Start at scene centroid (where DA3 cameras are clustered)
+        2. Apply Deforum translations (for movement)
+        3. Apply Deforum rotations
+        4. Build extrinsic matrix
 
-        # Apply Deforum translations
-        position = base_position + np.array([tx, ty, tz])
+        Note: We use scene_centroid directly as base, not offset by distance.
+        DA3's cameras are already near the centroid, so we should be too.
+        """
+        # Base position: scene centroid (where DA3 cameras are)
+        # Apply Deforum translations for movement
+        position = scene_centroid + np.array([tx, ty, tz])
 
         # Apply Deforum rotations
         rotation = euler_to_rotation_matrix(rx, ry, rz)
@@ -238,7 +237,7 @@ def generate_camera_poses_from_deforum_schedules(
         tween_pose = build_camera_pose(tx, ty, tz, rx, ry, rz)
         tween_poses.append(tween_pose)
 
-    # Log first few camera positions for debugging
+    # Log camera positions for debugging
     def extract_cam_pos(extrinsic: np.ndarray) -> np.ndarray:
         """Extract camera position from extrinsic matrix."""
         R, t = extrinsic[:3, :3], extrinsic[:3, 3]
@@ -247,8 +246,7 @@ def generate_camera_poses_from_deforum_schedules(
     first_cam_pos = extract_cam_pos(first_pose)
     last_cam_pos = extract_cam_pos(last_pose)
     logger.debug(f"   Camera positions: first=({first_cam_pos[0]:.1f},{first_cam_pos[1]:.1f},{first_cam_pos[2]:.1f}), "
-                 f"last=({last_cam_pos[0]:.1f},{last_cam_pos[1]:.1f},{last_cam_pos[2]:.1f}), "
-                 f"dist={base_camera_distance:.1f}")
+                 f"last=({last_cam_pos[0]:.1f},{last_cam_pos[1]:.1f},{last_cam_pos[2]:.1f})")
 
     return first_pose, last_pose, tween_poses
 

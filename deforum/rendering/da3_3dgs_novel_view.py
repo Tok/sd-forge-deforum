@@ -1035,8 +1035,8 @@ def generate_da3_3dgs_interpolation(
             base_camera_distance=avg_da3_distance  # Use DA3's viewing distance
         )
 
-        logger.info(f"   Camera: Deforum schedules, centroid=({centroid[0]:.1f},{centroid[1]:.1f},{centroid[2]:.1f}), "
-                    f"dist={avg_da3_distance:.1f} (from DA3), {len(tween_poses_list)} poses")
+        logger.info(f"   Camera: Deforum schedules at centroid=({centroid[0]:.1f},{centroid[1]:.1f},{centroid[2]:.1f}), "
+                    f"{len(tween_poses_list)} poses generated")
 
     else:
         # Use DA3's automatic pose estimation from depth
