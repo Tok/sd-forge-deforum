@@ -1319,8 +1319,17 @@ def WanArgs():
             "minimum": 1,
             "maximum": 4,
             "step": 1,
-            "value": 2,
-            "info": "Subdivide each gaussian splat for higher quality rendering. DA3 generates ~705k base splats. 1: use base splats (fastest, lowest quality), 2: 1.4M splats (default, good balance), 3: 2.1M splats (high quality, more VRAM), 4: 2.8M splats (maximum quality, highest VRAM). Each gaussian is subdivided into N smaller splats with slight positional offsets for finer detail."
+            "value": 3,
+            "info": "Subdivide each gaussian splat for higher quality rendering. DA3 generates ~705k base splats. 1: use base splats (fastest, lowest quality), 2: 1.4M splats (good balance), 3: 2.1M splats (default, high quality, more VRAM), 4: 2.8M splats (maximum quality, highest VRAM). Each gaussian is subdivided into N smaller splats with slight positional offsets for finer detail."
+        },
+        "da3_3dgs_near_clip_distance": {
+            "label": "Near Clip Distance",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 5.0,
+            "step": 0.1,
+            "value": 0.5,
+            "info": "Remove gaussian splats closer than this distance to the camera (in world units). Helps eliminate 'straw' artifacts that appear too close to the camera lens. 0.0 = no filtering (show all splats), 0.5 = default (remove very near splats), higher values = more aggressive filtering."
         },
 
         # Advanced Generation Settings

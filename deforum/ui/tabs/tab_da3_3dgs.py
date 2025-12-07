@@ -45,6 +45,7 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
     gr.Markdown(f"### {emoji_if_enabled('✨')} Quality Settings")
     with gr.Row():
         da3_3dgs_densification_factor = create_gr_elem(dw.da3_3dgs_densification_factor)
+        da3_3dgs_near_clip_distance = create_gr_elem(dw.da3_3dgs_near_clip_distance)
 
     # Camera Motion
     gr.Markdown(f"### {emoji_if_enabled('📹')} Camera Motion")
@@ -93,6 +94,7 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
     locals()['da3_3dgs_model'] = da3_3dgs_model
     locals()['da3_3dgs_neighbor_segments'] = da3_3dgs_neighbor_segments
     locals()['da3_3dgs_densification_factor'] = da3_3dgs_densification_factor
+    locals()['da3_3dgs_near_clip_distance'] = da3_3dgs_near_clip_distance
     locals()['da3_3dgs_use_deforum_motion'] = da3_3dgs_use_deforum_motion
     locals()['da3_3dgs_render_keyframes'] = da3_3dgs_render_keyframes
 

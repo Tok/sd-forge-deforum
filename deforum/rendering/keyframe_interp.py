@@ -429,7 +429,8 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
 
             # Generate interpolated frames using 3DGS
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            densification_factor = getattr(wan_args, 'da3_3dgs_densification_factor', 2)
+            densification_factor = getattr(wan_args, 'da3_3dgs_densification_factor', 3)
+            near_clip_distance = getattr(wan_args, 'da3_3dgs_near_clip_distance', 0.5)
 
             segment_frames = generate_da3_3dgs_interpolation(
                 keyframe_images=collected_images,
@@ -441,7 +442,8 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 render_keyframes=getattr(wan_args, 'da3_3dgs_render_keyframes', True),
                 segment_first_idx=first_frame_idx,
                 segment_last_idx=last_frame_idx,
-                densification_factor=densification_factor
+                densification_factor=densification_factor,
+                near_clip_distance=near_clip_distance
             )
         else:  # Default: Wan
             logger.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}")

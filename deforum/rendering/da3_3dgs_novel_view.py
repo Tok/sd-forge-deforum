@@ -236,7 +236,8 @@ def render_novel_view_from_gaussians(
     camera_intrinsics: np.ndarray,
     image_size: Tuple[int, int],
     device: torch.device,
-    densification_factor: int = 1
+    densification_factor: int = 1,
+    near_clip_distance: float = 0.5
 ) -> Image.Image:
     """Render a novel view from 3D Gaussian Splatting parameters using gsplat.
 
@@ -246,6 +247,8 @@ def render_novel_view_from_gaussians(
         camera_intrinsics: Camera intrinsic matrix [3, 3]
         image_size: (width, height)
         device: torch device
+        densification_factor: Gaussian densification factor (1-4)
+        near_clip_distance: Remove splats closer than this distance (default 0.5)
 
     Returns:
         Rendered PIL Image
@@ -295,6 +298,27 @@ def render_novel_view_from_gaussians(
     # Convert camera pose to view matrix (camera-to-world → world-to-camera)
     # DA3 provides extrinsics as [4, 4], gsplat expects viewmat
     viewmat = torch.from_numpy(camera_pose).float().to(device)  # [4, 4]
+
+    # Apply near-clip filtering to remove splats too close to camera
+    if near_clip_distance > 0.0:
+        # Transform means to camera space to get depth
+        # viewmat is world-to-camera, so: cam_pos = viewmat @ world_pos
+        means_homogeneous = torch.cat([means, torch.ones(means.shape[0], 1, device=device)], dim=1)  # [N, 4]
+        means_cam = (viewmat @ means_homogeneous.T).T  # [N, 4]
+        depth = means_cam[:, 2]  # Z coordinate in camera space (negative = in front of camera)
+
+        # Keep only splats beyond near clip distance
+        # Negative depth = in front of camera, so we want depth < -near_clip_distance
+        mask = depth < -near_clip_distance
+        if mask.sum() < means.shape[0]:
+            logger.debug(f"   Near-clip filter: keeping {mask.sum()}/{means.shape[0]} splats (removed {(~mask).sum()} too close)")
+
+        # Apply mask to all gaussian parameters
+        means = means[mask]
+        scales = scales[mask]
+        rotations = rotations[mask]
+        opacities = opacities[mask]
+        sh_coeffs = sh_coeffs[mask]
 
     # Build projection matrix from intrinsics
     fx = float(camera_intrinsics[0, 0])
@@ -582,7 +606,8 @@ def render_3dgs_keyframes(
     image_size: tuple[int, int],
     output_dir: str,
     device: torch.device,
-    densification_factor: int
+    densification_factor: int,
+    near_clip_distance: float = 0.5
 ) -> List[str]:
     """Render 3DGS versions of segment boundary keyframes for visual consistency.
 
@@ -601,6 +626,8 @@ def render_3dgs_keyframes(
     Returns:
         List of paths to rendered keyframe images
     """
+    from tqdm import tqdm
+
     logger.info(f"   Rendering 3DGS keyframes for visual consistency...")
 
     img_width, img_height = image_size
@@ -615,14 +642,15 @@ def render_3dgs_keyframes(
         idx_pos = keyframe_indices.index(segment_last_idx)
         keyframe_to_render.append((segment_last_idx, extrinsics[idx_pos]))
 
-    for kf_idx, kf_pose in keyframe_to_render:
+    for kf_idx, kf_pose in tqdm(keyframe_to_render, desc="  Rendering 3DGS keyframes", unit="frame"):
         rendered_kf = render_novel_view_from_gaussians(
             gaussians=gaussians,
             camera_pose=kf_pose,
             camera_intrinsics=avg_intrinsics,
             image_size=(img_width, img_height),
             device=device,
-            densification_factor=densification_factor
+            densification_factor=densification_factor,
+            near_clip_distance=near_clip_distance
         )
         kf_filename = f"{kf_idx:09d}.png"
         kf_path = os.path.join(output_dir, kf_filename)
@@ -645,7 +673,8 @@ def render_tween_frames(
     image_size: tuple[int, int],
     output_dir: str,
     device: torch.device,
-    densification_factor: int
+    densification_factor: int,
+    near_clip_distance: float = 0.5
 ) -> List[str]:
     """Render interpolated tween frames between segment boundaries.
 
@@ -666,6 +695,8 @@ def render_tween_frames(
     Returns:
         List of paths to rendered frame images
     """
+    from tqdm import tqdm
+
     img_width, img_height = image_size
     frame_paths = []
 
@@ -681,7 +712,7 @@ def render_tween_frames(
 
     total_span = last_frame_idx - first_frame_idx
 
-    for target_idx in target_frame_indices:
+    for target_idx in tqdm(target_frame_indices, desc="  Rendering 3DGS tweens", unit="frame"):
         # Calculate interpolation parameter (0 to 1) within SEGMENT span
         t = (target_idx - first_frame_idx) / total_span if total_span > 0 else 0.5
 
@@ -695,7 +726,8 @@ def render_tween_frames(
             camera_intrinsics=avg_intrinsics,
             image_size=(img_width, img_height),
             device=device,
-            densification_factor=densification_factor
+            densification_factor=densification_factor,
+            near_clip_distance=near_clip_distance
         )
 
         # Save frame
@@ -717,7 +749,8 @@ def generate_da3_3dgs_interpolation(
     render_keyframes: bool = False,
     segment_first_idx: int = None,
     segment_last_idx: int = None,
-    densification_factor: int = 1
+    densification_factor: int = 1,
+    near_clip_distance: float = 0.5
 ) -> List[str]:
     """Generate interpolated frames using DA3 3D Gaussian Splatting.
 
@@ -825,7 +858,8 @@ def generate_da3_3dgs_interpolation(
             image_size=(img_width, img_height),
             output_dir=output_dir,
             device=device,
-            densification_factor=densification_factor
+            densification_factor=densification_factor,
+            near_clip_distance=near_clip_distance
         )
 
     # Generate interpolated tween frames
@@ -848,7 +882,8 @@ def generate_da3_3dgs_interpolation(
         image_size=(img_width, img_height),
         output_dir=output_dir,
         device=device,
-        densification_factor=densification_factor
+        densification_factor=densification_factor,
+        near_clip_distance=near_clip_distance
     )
 
     logger.info(
