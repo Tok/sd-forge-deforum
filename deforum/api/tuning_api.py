@@ -192,6 +192,8 @@ class TuningTestManager:
                 self._run_orbit_tests(test_id, config)
             elif config.test_type == TuningTestType.RAFT_TUNING:
                 self._run_raft_tests(test_id, config)
+            elif config.test_type == TuningTestType.DA3_3DGS_TUNING:
+                self._run_3dgs_tests(test_id, config)
             else:
                 # Run standard I2V chaining tests (color preservation, temporal, flux)
                 self._run_i2v_chaining_tests(test_id, config)
@@ -497,6 +499,61 @@ class TuningTestManager:
 
         # Generate visualization graph after all tests complete
         self._generate_raft_tuning_graph(test_id)
+
+    def _run_3dgs_tests(self, test_id: str, config: TuningTestConfig):
+        """Run DA3-3DGS parameter sweep tests.
+
+        Tests different 3DGS configurations and measures quality/performance metrics.
+
+        Args:
+            test_id: Test identifier
+            config: Test configuration with DA3-3DGS parameters
+        """
+        from pathlib import Path
+        from deforum.api.tuning_3dgs_runner import run_3dgs_parameter_sweep
+        import os
+
+        logger.info(f"Starting DA3-3DGS parameter sweep for test {test_id}")
+
+        # Create output directory for this test
+        forge_root = Path(os.getcwd())
+        tuning_dir = forge_root / "output" / "deforum-tuning"
+        test_output_dir = tuning_dir / f"3dgs_{test_id}"
+        test_output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build sweep config from test config
+        sweep_config = {
+            "scene_strategies": config.dgs_scene_strategies or ["per_segment"],
+            "models": config.dgs_models or ["DA3NESTED-GIANT-LARGE"],
+            "neighbor_segments_min": config.dgs_neighbor_segments_min or 6,
+            "neighbor_segments_max": config.dgs_neighbor_segments_max or 6,
+            "neighbor_segments_step": config.dgs_neighbor_segments_step or 1,
+            "densification_min": config.dgs_densification_min or 4,
+            "densification_max": config.dgs_densification_max or 4,
+            "densification_step": config.dgs_densification_step or 1,
+            "nearclip_min": config.dgs_nearclip_min or 0.1,
+            "nearclip_max": config.dgs_nearclip_max or 0.1,
+            "nearclip_step": config.dgs_nearclip_step or 1.0,
+            "aspect_ratios": config.aspect_ratios or [[1.78, 512, 288]],
+            "test_iterations": config.dgs_test_iterations or 10,
+        }
+
+        logger.info(f"Sweep config: {sweep_config}")
+
+        # Run the parameter sweep
+        results = run_3dgs_parameter_sweep(sweep_config, test_output_dir)
+
+        # Update test status with results
+        with self.test_lock:
+            status = self.active_tests[test_id]
+            # Convert DA33DGSTestResult objects to dicts
+            status.results = [r.to_dict() for r in results]
+            status.progress = 1.0
+
+        logger.info(f"DA3-3DGS sweep complete: {len(results)} tests run")
+
+        # Generate visualization
+        self._generate_3dgs_tuning_graph(test_id)
 
     def _generate_orbit_tuning_graph(self, test_id: str):
         """Generate plotly visualization of orbit tuning results.
@@ -815,6 +872,165 @@ class TuningTestManager:
 
         fig.write_html(str(output_path))
         logger.info(f"RAFT tuning graph saved to: {output_path}")
+
+    def _generate_3dgs_tuning_graph(self, test_id: str):
+        """Generate plotly visualization of DA3-3DGS tuning results.
+
+        Creates interactive graphs showing parameter effects on quality metrics.
+
+        Args:
+            test_id: Test identifier to get results from
+        """
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        from pathlib import Path
+        import os
+
+        # Get test results
+        with self.test_lock:
+            if test_id not in self.active_tests:
+                logger.warning(f"Test {test_id} not found, skipping graph generation")
+                return
+            results = self.active_tests[test_id].results
+
+        if not results:
+            logger.warning("No 3DGS results to plot")
+            return
+
+        logger.info(f"Generating 3DGS tuning visualization for {len(results)} test results")
+
+        # Create subplots: 2 rows × 2 cols
+        # Row 1: Temporal Consistency, Render Time
+        # Row 2: Sharpness, VRAM Usage
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=(
+                "Temporal Consistency (SSIM)",
+                "Render Time per Frame",
+                "Frame Sharpness",
+                "Peak VRAM Usage"
+            ),
+            vertical_spacing=0.12,
+            horizontal_spacing=0.10,
+        )
+
+        # Group results by scene strategy for color coding
+        strategy_colors = {
+            "per_segment": "blue",
+            "per_prompt": "red",
+            "rolling_window": "green",
+        }
+
+        # Prepare data structures
+        data_by_strategy = {}
+        for result in results:
+            if not result.get("render_success", False):
+                continue  # Skip failed renders
+
+            strategy = result.get("scene_strategy", "per_segment")
+            if strategy not in data_by_strategy:
+                data_by_strategy[strategy] = {
+                    "densification": [],
+                    "temporal_consistency": [],
+                    "render_time": [],
+                    "sharpness": [],
+                    "vram": [],
+                }
+
+            data_by_strategy[strategy]["densification"].append(result.get("densification", 0))
+            data_by_strategy[strategy]["temporal_consistency"].append(result.get("temporal_consistency_ssim", 0))
+            data_by_strategy[strategy]["render_time"].append(result.get("render_time_per_frame", 0))
+            data_by_strategy[strategy]["sharpness"].append(result.get("avg_frame_sharpness", 0))
+            data_by_strategy[strategy]["vram"].append(result.get("peak_vram_gb", 0))
+
+        # Add traces for each strategy
+        for strategy, data in data_by_strategy.items():
+            color = strategy_colors.get(strategy, "gray")
+
+            # Plot 1: Temporal Consistency vs Densification
+            fig.add_trace(
+                go.Scatter(
+                    x=data["densification"],
+                    y=data["temporal_consistency"],
+                    mode="markers+lines",
+                    name=strategy,
+                    marker=dict(size=10, color=color),
+                    line=dict(color=color, width=2),
+                    showlegend=True,
+                ),
+                row=1, col=1
+            )
+
+            # Plot 2: Render Time vs Densification
+            fig.add_trace(
+                go.Scatter(
+                    x=data["densification"],
+                    y=data["render_time"],
+                    mode="markers+lines",
+                    name=strategy,
+                    marker=dict(size=10, color=color),
+                    line=dict(color=color, width=2),
+                    showlegend=False,
+                ),
+                row=1, col=2
+            )
+
+            # Plot 3: Sharpness vs Densification
+            fig.add_trace(
+                go.Scatter(
+                    x=data["densification"],
+                    y=data["sharpness"],
+                    mode="markers+lines",
+                    name=strategy,
+                    marker=dict(size=10, color=color),
+                    line=dict(color=color, width=2),
+                    showlegend=False,
+                ),
+                row=2, col=1
+            )
+
+            # Plot 4: VRAM vs Densification
+            fig.add_trace(
+                go.Scatter(
+                    x=data["densification"],
+                    y=data["vram"],
+                    mode="markers+lines",
+                    name=strategy,
+                    marker=dict(size=10, color=color),
+                    line=dict(color=color, width=2),
+                    showlegend=False,
+                ),
+                row=2, col=2
+            )
+
+        # Update axes
+        fig.update_xaxes(title_text="Densification Factor", row=1, col=1)
+        fig.update_xaxes(title_text="Densification Factor", row=1, col=2)
+        fig.update_xaxes(title_text="Densification Factor", row=2, col=1)
+        fig.update_xaxes(title_text="Densification Factor", row=2, col=2)
+
+        fig.update_yaxes(title_text="SSIM (0-1, higher=smoother)", row=1, col=1)
+        fig.update_yaxes(title_text="Seconds per Frame", row=1, col=2)
+        fig.update_yaxes(title_text="Laplacian Variance", row=2, col=1)
+        fig.update_yaxes(title_text="VRAM (GB)", row=2, col=2)
+
+        # Update overall layout
+        fig.update_layout(
+            title="DA3-3DGS Parameter Sweep Results",
+            height=800,
+            hovermode="closest",
+            showlegend=True,
+            legend=dict(x=1.05, y=1.0),
+        )
+
+        # Save graph
+        forge_root = Path(os.getcwd())
+        output_dir = forge_root / "output" / "deforum-tuning" / "3dgs_tests"
+        output_path = output_dir / f"3dgs_tuning_results_{test_id}.html"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        fig.write_html(str(output_path))
+        logger.info(f"DA3-3DGS tuning graph saved to: {output_path}")
 
     def _generate_sphere_init_image(self, output_path: Path, width: int, height: int):
         """Generate a synthetic 3D sphere image with proper depth gradients.
