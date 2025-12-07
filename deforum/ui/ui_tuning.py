@@ -582,6 +582,279 @@ def create_tuning_tab() -> tuple:
                                     value={},
                                 )
 
+            # DA3-3DGS Tuning Tab
+            with gr.Tab("DA3-3DGS Tuning"):
+                gr.Markdown("""
+                **DA3-3DGS (Depth Anything V3 + 3D Gaussian Splatting) parameter tuning:**
+                - Test different scene strategies (per-segment, per-prompt, rolling-window)
+                - Tune neighbor segments and densification factors
+                - Optimize near-clip distance for quality
+                - Find best balance between keyframe count and splat density
+
+                **What DA3-3DGS Does:**
+                1. Collects N consecutive keyframes around each segment
+                2. Estimates camera poses using DA3 GIANT model
+                3. Builds 3D Gaussian Splatting scene (~705k base splats)
+                4. Renders novel views via camera pose interpolation
+                5. Applies densification to increase splat count (1-8x)
+
+                **Quality Tradeoffs:**
+                - **More keyframes** = Better geometry coverage, slower, more VRAM
+                - **Higher densification** = Finer detail per scene, more VRAM
+                - **Per-segment** = Fast, minimal VRAM, but coordinate drift
+                - **Per-prompt** = Semantic coherence, eliminates drift, VRAM scales with prompt length
+                - **Rolling window** = Predictable VRAM, fixed window size
+
+                **Goal:** Find optimal parameters for your use case (speed vs quality vs VRAM).
+                """)
+
+                with gr.Row():
+                    # Left column: 3DGS test configuration
+                    with gr.Column(scale=1):
+                        gr.Markdown("## DA3-3DGS Test Configuration")
+
+                        gr.Markdown("### Test Setup")
+                        dgs_aspect_ratios = gr.CheckboxGroup(
+                            label="Aspect ratios to test",
+                            choices=["16:9 (Landscape)", "9:16 (Portrait)", "1:1 (Square)"],
+                            value=["16:9 (Landscape)"],
+                        )
+                        dgs_rotation_factor = gr.Slider(
+                            label="Rotation factor (fixed)",
+                            minimum=-50.0,
+                            maximum=-1.0,
+                            value=-8.0,
+                            step=0.05,
+                            info="Empirically validated optimal from orbit tests (range: -6 to -9)",
+                        )
+                        dgs_orbit_radius = gr.Slider(
+                            label="Movement scale (translation amount)",
+                            minimum=1.0,
+                            maximum=20.0,
+                            value=5.0,
+                            step=0.5,
+                            info="Translation per orbit (2-3 = gentle, 5 = moderate, 10+ = aggressive)",
+                        )
+                        dgs_test_iterations = gr.Slider(
+                            label="Test iterations (frames to generate)",
+                            minimum=10,
+                            maximum=200,
+                            value=50,
+                            step=5,
+                            info="How many frames to generate per test configuration",
+                        )
+
+                        gr.Markdown("### Scene Strategy")
+                        dgs_scene_strategies = gr.CheckboxGroup(
+                            label="Scene strategies to test",
+                            choices=["per_segment", "per_prompt", "rolling_window"],
+                            value=["per_segment"],
+                            info="per_segment = fast, per_prompt = semantic coherence, rolling_window = fixed VRAM",
+                        )
+                        dgs_rolling_window_size = gr.Slider(
+                            label="Rolling window size (keyframes)",
+                            minimum=10,
+                            maximum=100,
+                            step=5,
+                            value=30,
+                            info="For rolling_window mode only",
+                        )
+                        dgs_max_prompt_keyframes = gr.Slider(
+                            label="Max keyframes per prompt scene",
+                            minimum=10,
+                            maximum=200,
+                            step=10,
+                            value=50,
+                            info="For per_prompt mode only: Split large prompt segments if they exceed this",
+                        )
+
+                        gr.Markdown("### Quality Parameters to Sweep")
+                        dgs_models = gr.CheckboxGroup(
+                            label="DA3 models",
+                            choices=["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
+                            value=["DA3NESTED-GIANT-LARGE"],
+                            info="GIANT = 4GB VRAM, LARGE = 4.5GB VRAM + better quality",
+                        )
+                        dgs_neighbor_segments_min = gr.Slider(
+                            label="Min neighbor segments",
+                            minimum=2,
+                            maximum=10,
+                            value=4,
+                            step=1,
+                            info="Minimum keyframes to include around each segment",
+                        )
+                        dgs_neighbor_segments_max = gr.Slider(
+                            label="Max neighbor segments",
+                            minimum=2,
+                            maximum=10,
+                            value=8,
+                            step=1,
+                            info="Maximum keyframes to include (sweep 4, 6, 8)",
+                        )
+                        dgs_neighbor_segments_step = gr.Slider(
+                            label="Neighbor segments step",
+                            minimum=1,
+                            maximum=4,
+                            value=2,
+                            step=1,
+                            info="Step between values (4, 6, 8)",
+                        )
+                        dgs_densification_min = gr.Slider(
+                            label="Min densification factor",
+                            minimum=1,
+                            maximum=8,
+                            value=2,
+                            step=1,
+                            info="1x = 705k splats, 2x = 1.4M splats (sweep 2, 4, 6)",
+                        )
+                        dgs_densification_max = gr.Slider(
+                            label="Max densification factor",
+                            minimum=1,
+                            maximum=8,
+                            value=6,
+                            step=1,
+                            info="8x = 5.6M splats (may OOM on 24GB GPUs)",
+                        )
+                        dgs_densification_step = gr.Slider(
+                            label="Densification step",
+                            minimum=1,
+                            maximum=4,
+                            value=2,
+                            step=1,
+                            info="Step between values (2, 4, 6)",
+                        )
+                        dgs_nearclip_min = gr.Slider(
+                            label="Min near-clip distance",
+                            minimum=0.01,
+                            maximum=1.0,
+                            value=0.05,
+                            step=0.05,
+                            info="Filter out splats too close (reduces 'straw' artifacts)",
+                        )
+                        dgs_nearclip_max = gr.Slider(
+                            label="Max near-clip distance",
+                            minimum=0.01,
+                            maximum=1.0,
+                            value=0.15,
+                            step=0.05,
+                            info="Test range: 0.05, 0.10, 0.15",
+                        )
+                        dgs_nearclip_step = gr.Slider(
+                            label="Near-clip step",
+                            minimum=0.01,
+                            maximum=0.5,
+                            value=0.05,
+                            step=0.01,
+                            info="Step between values",
+                        )
+
+                        # 3DGS test action buttons
+                        with gr.Row():
+                            dgs_run_btn = gr.Button(f"{rocket} Run 3DGS Tests", variant="primary", size="lg")
+                            dgs_stop_btn = gr.Button(f"{stop} Stop", variant="stop")
+
+                        with gr.Row():
+                            dgs_refresh_btn = gr.Button(f"{refresh} Refresh Results", size="sm")
+                            dgs_open_dir_btn = gr.Button(f"{folder} Open Results Directory", size="sm")
+
+                        dgs_status_box = gr.Textbox(
+                            label="Status",
+                            value="Ready",
+                            interactive=False,
+                            lines=3,
+                        )
+
+                    # Right column: 3DGS test results
+                    with gr.Column(scale=2):
+                        gr.Markdown("## DA3-3DGS Test Results")
+                        dgs_progress_bar = gr.Progress()
+
+                        with gr.Tabs():
+                            with gr.Tab("Graph"):
+                                gr.Markdown("""
+                                ### Quality vs Parameters
+
+                                **Y-axis:** Quality metric (iterations until off-screen / temporal consistency)
+                                **X-axis:** Parameter being swept
+
+                                Compare different DA3-3DGS configurations to find optimal settings.
+                                """)
+
+                                dgs_graph_html = gr.HTML(
+                                    label="3DGS Tuning Graph",
+                                    value="<p>Run tests to generate graph...</p>",
+                                )
+
+                            with gr.Tab("Results Table"):
+                                gr.Markdown("""
+                                ### All DA3-3DGS Test Configurations
+
+                                **DA3-3DGS Parameters:**
+                                - Scene Strategy: How scenes are built (per-segment/per-prompt/rolling-window)
+                                - Model: DA3-GIANT (4GB) or DA3NESTED-GIANT-LARGE (4.5GB)
+                                - Neighbor Segments: Keyframes around each segment (4-10)
+                                - Densification: Splat count multiplier (1-8x)
+                                - Near-Clip: Distance filtering threshold (0.01-1.0)
+
+                                **Quality Metrics:**
+                                - Visual Quality: Subjective quality score (1-10)
+                                - Temporal Consistency: Frame-to-frame stability (SSIM)
+                                - Coordinate Drift: How much scenes drift between segments
+                                - VRAM Usage: Peak memory usage in GB
+                                - Render Time: Time per frame in seconds
+                                """)
+
+                                dgs_results_table = gr.DataFrame(
+                                    headers=[
+                                        "Aspect Ratio",
+                                        "Scene Strategy",
+                                        "Model",
+                                        "Neighbor Segments",
+                                        "Densification",
+                                        "Near-Clip",
+                                        "Visual Quality",
+                                        "Temporal Consistency",
+                                        "Coordinate Drift",
+                                        "VRAM (GB)",
+                                        "Render Time (s/frame)",
+                                    ],
+                                    label="DA3-3DGS Test Results",
+                                    interactive=False,
+                                )
+
+                            with gr.Tab("Best Parameters"):
+                                gr.Markdown("### Optimal DA3-3DGS Configuration")
+
+                                dgs_best_params = gr.JSON(
+                                    label="Best 3DGS Settings for Each Aspect Ratio",
+                                    value={},
+                                )
+
+                            with gr.Tab("VRAM Analysis"):
+                                gr.Markdown("""
+                                ### VRAM Usage Analysis
+
+                                **Key Insights:**
+                                - Base model: DA3-GIANT ~4GB, DA3NESTED-GIANT-LARGE ~4.5GB
+                                - Per keyframe overhead: ~200MB
+                                - Splat memory: (705k × densification) splats × ~2.5MB per million
+                                - Resolution overhead: (W×H / 1024²) × 500MB
+
+                                **Examples:**
+                                - 10 keyframes @ 8x density @ 512×512: ~20GB VRAM
+                                - 50 keyframes @ 2x density @ 512×512: ~17GB VRAM
+                                - 30 keyframes @ 4x density @ 1024×1024: ~24GB VRAM
+
+                                **Recommendations:**
+                                - 16GB GPU: max 4x densification, 30 keyframes
+                                - 24GB GPU: max 6x densification, 50 keyframes
+                                - 40GB GPU: max 8x densification, 100 keyframes
+                                """)
+
+                                dgs_vram_plot = gr.Plot(
+                                    label="VRAM Usage vs Parameters",
+                                )
+
         # Wire up event handlers
         import requests
         import time
@@ -963,6 +1236,119 @@ def create_tuning_tab() -> tuple:
             fn=poll_test_status,
             inputs=[],
             outputs=[raft_status_box, raft_results_table, raft_best_params, raft_graph_html, gr.State(None)],
+        )
+
+        # DA3-3DGS Tests button handlers
+        def on_run_dgs_tests(
+            dgs_aspect_ratios_val,
+            dgs_rotation_factor_val,
+            dgs_orbit_radius_val,
+            dgs_test_iterations_val,
+            dgs_scene_strategies_val,
+            dgs_rolling_window_size_val,
+            dgs_max_prompt_keyframes_val,
+            dgs_models_val,
+            dgs_neighbor_segments_min_val,
+            dgs_neighbor_segments_max_val,
+            dgs_neighbor_segments_step_val,
+            dgs_densification_min_val,
+            dgs_densification_max_val,
+            dgs_densification_step_val,
+            dgs_nearclip_min_val,
+            dgs_nearclip_max_val,
+            dgs_nearclip_step_val,
+        ):
+            """Start DA3-3DGS tuning tests via API."""
+            try:
+                # Parse aspect ratios
+                aspect_configs = []
+                for aspect_str in dgs_aspect_ratios_val:
+                    if "16:9" in aspect_str:
+                        aspect_configs.append([1.78, 512, 288])
+                    elif "9:16" in aspect_str:
+                        aspect_configs.append([0.56, 288, 512])
+                    elif "1:1" in aspect_str:
+                        aspect_configs.append([1.0, 512, 512])
+
+                # Create DA3-3DGS test config
+                config = {
+                    "test_type": "da3_3dgs_tuning",
+                    "aspect_ratios": aspect_configs,
+                    "rotation_factor": dgs_rotation_factor_val,
+                    "orbit_radius": dgs_orbit_radius_val,
+                    "test_iterations": int(dgs_test_iterations_val),
+                    "scene_strategies": dgs_scene_strategies_val,
+                    "rolling_window_size": int(dgs_rolling_window_size_val),
+                    "max_prompt_keyframes": int(dgs_max_prompt_keyframes_val),
+                    "models": dgs_models_val,
+                    "neighbor_segments_min": int(dgs_neighbor_segments_min_val),
+                    "neighbor_segments_max": int(dgs_neighbor_segments_max_val),
+                    "neighbor_segments_step": int(dgs_neighbor_segments_step_val),
+                    "densification_min": int(dgs_densification_min_val),
+                    "densification_max": int(dgs_densification_max_val),
+                    "densification_step": int(dgs_densification_step_val),
+                    "nearclip_min": float(dgs_nearclip_min_val),
+                    "nearclip_max": float(dgs_nearclip_max_val),
+                    "nearclip_step": float(dgs_nearclip_step_val),
+                }
+
+                # Submit test
+                response = requests.post(
+                    "http://localhost:7860/deforum_api/tuning/start",
+                    json=config
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                # Store test ID
+                current_test_id["id"] = data["test_id"]
+
+                return f"{check} DA3-3DGS tests started. Test ID: {data['test_id']}\nRunning..."
+
+            except Exception as e:
+                logger.error(f"Failed to start DA3-3DGS tests: {e}")
+                return f"{cross} Error starting DA3-3DGS tests: {e}"
+
+        dgs_run_btn.click(
+            fn=on_run_dgs_tests,
+            inputs=[
+                dgs_aspect_ratios,
+                dgs_rotation_factor,
+                dgs_orbit_radius,
+                dgs_test_iterations,
+                dgs_scene_strategies,
+                dgs_rolling_window_size,
+                dgs_max_prompt_keyframes,
+                dgs_models,
+                dgs_neighbor_segments_min,
+                dgs_neighbor_segments_max,
+                dgs_neighbor_segments_step,
+                dgs_densification_min,
+                dgs_densification_max,
+                dgs_densification_step,
+                dgs_nearclip_min,
+                dgs_nearclip_max,
+                dgs_nearclip_step,
+            ],
+            outputs=[dgs_status_box],
+        )
+
+        dgs_stop_btn.click(
+            fn=on_stop_tests,
+            inputs=[],
+            outputs=[dgs_status_box],
+        )
+
+        dgs_open_dir_btn.click(
+            fn=on_open_tuning_dir,
+            inputs=[],
+            outputs=[dgs_status_box],
+        )
+
+        dgs_refresh_btn.click(
+            fn=poll_test_status,
+            inputs=[],
+            outputs=[dgs_status_box, dgs_results_table, dgs_best_params, dgs_graph_html, dgs_vram_plot],
         )
 
     return tuning_interface, "Deforum Tuning", "deforum_tuning"
