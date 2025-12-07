@@ -139,6 +139,16 @@ def on_ui_tabs():
     # Slopcore gradient aesthetic for Generate button and hide unwanted buttons
     slopcore_css = """
     /* DA3 slopcore gradient for MAIN GENERATE BUTTON ONLY (cyan → red/pink) */
+    /* MAXIMUM SPECIFICITY - Must override Gradio AND BB0 button styles */
+    div#deforum_generate,
+    div#deforum_generate button,
+    #deforum_generate.generate-button,
+    #deforum_generate button.generate-button,
+    button#deforum_generate.primary,
+    #component-123,
+    [id^="component-"][id*="generate"],
+    #deforum_results button#deforum_generate,
+    #deforum_results div#deforum_generate button,
     #deforum_generate,
     #deforum_generate *,
     #deforum_generate.primary,
@@ -159,6 +169,15 @@ def on_ui_tabs():
         transition: all 0.3s ease !important;
     }
     /* Main generate button hover - reversed DA3 gradient */
+    div#deforum_generate:hover,
+    div#deforum_generate button:hover,
+    #deforum_generate.generate-button:hover,
+    #deforum_generate button.generate-button:hover,
+    button#deforum_generate.primary:hover,
+    #component-123:hover,
+    [id^="component-"][id*="generate"]:hover,
+    #deforum_results button#deforum_generate:hover,
+    #deforum_results div#deforum_generate button:hover,
     #deforum_generate:hover,
     #deforum_generate *:hover,
     button#deforum_generate:hover,
