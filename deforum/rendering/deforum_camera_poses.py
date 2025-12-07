@@ -44,6 +44,7 @@ def deforum_pose_to_extrinsic(
     rx: float,
     ry: float,
     rz: float,
+    scene_centroid: np.ndarray,
     scene_scale: float = 1.0
 ) -> np.ndarray:
     """Convert Deforum translation/rotation to 4x4 camera extrinsic matrix (world-to-camera).
@@ -57,23 +58,40 @@ def deforum_pose_to_extrinsic(
     - World-to-camera transform
 
     Args:
-        tx, ty, tz: Deforum translation values
-        rx, ry, rz: Deforum rotation values (degrees)
+        tx, ty, tz: Camera position in world space
+        rx, ry, rz: Additional Deforum rotation values (degrees)
+        scene_centroid: Scene center to look at
         scene_scale: Scaling factor to match 3DGS scene coordinates
 
     Returns:
         4x4 extrinsic matrix [R|t] where camera_pos = viewmat @ world_pos
     """
-    # Build rotation matrix from Euler angles
-    R_cam_to_world = euler_to_rotation_matrix(rx, ry, rz)
+    # Camera position in world space
+    cam_pos_world = np.array([tx, ty, tz])
 
-    # Deforum translation represents camera position in world space
-    # Scale by scene_scale to match 3DGS coordinate system
-    cam_pos_world = np.array([tx, ty, tz]) * scene_scale
+    # Calculate direction from camera to scene centroid (look-at vector)
+    forward = scene_centroid - cam_pos_world
+    forward = forward / (np.linalg.norm(forward) + 1e-8)
 
-    # Convert to world-to-camera extrinsic matrix:
-    # For extrinsic [R|t], camera position is: -R^T @ t
-    # So: t = -R @ cam_pos_world
+    # World up vector
+    world_up = np.array([0.0, 1.0, 0.0])
+
+    # Calculate right vector (perpendicular to forward and world up)
+    right = np.cross(forward, world_up)
+    right = right / (np.linalg.norm(right) + 1e-8)
+
+    # Calculate up vector (perpendicular to forward and right)
+    up = np.cross(right, forward)
+
+    # Build camera-to-world rotation matrix (camera looks down -Z, so negate forward)
+    # Camera space: X=right, Y=up, Z=backward
+    R_cam_to_world = np.column_stack([right, up, -forward])
+
+    # Apply Deforum rotation on top of look-at rotation
+    R_deforum = euler_to_rotation_matrix(rx, ry, rz)
+    R_cam_to_world = R_cam_to_world @ R_deforum
+
+    # Convert to world-to-camera extrinsic matrix
     R_world_to_cam = R_cam_to_world.T
     t = -R_world_to_cam @ cam_pos_world
 
@@ -195,10 +213,11 @@ def create_camera_poses_from_deforum_schedules(
         ty_world = camera_start_pos[1] + ty_rel * scene_scale
         tz_world = camera_start_pos[2] + tz_rel * scene_scale
 
-        # Create extrinsic matrix
+        # Create extrinsic matrix (camera looks at scene centroid)
         extrinsic = deforum_pose_to_extrinsic(
             tx_world, ty_world, tz_world,
             rx, ry, rz,
+            scene_centroid=scene_centroid,
             scene_scale=1.0  # Already scaled translations above
         )
 
