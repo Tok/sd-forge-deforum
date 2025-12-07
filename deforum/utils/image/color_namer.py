@@ -34,6 +34,54 @@ def rgb_to_hsv(r: int, g: int, b: int) -> Tuple[float, float, float]:
     return h * 360, s * 100, v * 100
 
 
+# High-resolution hue wheel with 36 named segments (~10° resolution)
+# Format: (max_hue, name)
+# References:
+# - Standard 12-color wheel: https://www.canva.com/colors/color-wheel/
+# - Coral/Salmon hues: https://creativebooster.net/blogs/colors/shades-of-coral-color
+# - Watermelon pink (350°): https://colors.artyclick.com/color-names-dictionary/color-names/watermelon-pink-color
+_HUE_RANGES = [
+    (8, "red"),
+    (16, "scarlet"),
+    (24, "coral"),          # Standard coral at ~16°
+    (32, "vermillion"),
+    (40, "orange-red"),
+    (48, "orange"),
+    (56, "amber"),
+    (64, "gold"),
+    (72, "yellow"),
+    (80, "lemon"),
+    (88, "lime-yellow"),
+    (96, "chartreuse"),
+    (104, "lime"),
+    (112, "grass"),
+    (128, "green"),
+    (136, "forest"),
+    (144, "emerald"),
+    (152, "mint"),
+    (160, "teal"),
+    (168, "turquoise"),
+    (176, "aqua"),
+    (192, "cyan"),          # Standard cyan at 180°
+    (200, "sky"),
+    (212, "azure"),         # Standard azure at ~210°
+    (228, "blue"),
+    (236, "cobalt"),
+    (252, "indigo"),        # Centered around 240°
+    (264, "purple"),
+    (276, "violet"),        # Standard violet at ~270°
+    (288, "amethyst"),
+    (304, "magenta"),       # Standard magenta at ~300°
+    (312, "fuchsia"),
+    (320, "hot pink"),
+    (328, "rose"),          # Standard rose at ~330°
+    (336, "pink"),
+    (344, "salmon"),
+    (352, "flamingo"),      # Flamingo pink at ~344°
+    (360, "watermelon"),    # Watermelon pink at ~350°
+]
+
+
 def get_hue_name(hue: float) -> str:
     """Get precise hue name from hue angle (0-360°).
 
@@ -47,95 +95,17 @@ def get_hue_name(hue: float) -> str:
 
     Returns:
         Precise hue name
-
-    References:
-        - Standard 12-color wheel: https://www.canva.com/colors/color-wheel/
-        - Coral/Salmon hues: https://creativebooster.net/blogs/colors/shades-of-coral-color
-        - Watermelon pink (350°): https://colors.artyclick.com/color-names-dictionary/color-names/watermelon-pink-color
     """
     # Normalize to 0-360
-    hue = hue % 360
+    normalized_hue = hue % 360
 
-    # 36-segment hue wheel (~10° per segment)
-    # Tuned with research-based color names
-    if 0 <= hue < 8:
-        return "red"
-    elif 8 <= hue < 16:
-        return "scarlet"
-    elif 16 <= hue < 24:
-        return "coral"  # Standard coral at ~16°
-    elif 24 <= hue < 32:
-        return "vermillion"
-    elif 32 <= hue < 40:
-        return "orange-red"
-    elif 40 <= hue < 48:
-        return "orange"
-    elif 48 <= hue < 56:
-        return "amber"
-    elif 56 <= hue < 64:
-        return "gold"
-    elif 64 <= hue < 72:
-        return "yellow"
-    elif 72 <= hue < 80:
-        return "lemon"
-    elif 80 <= hue < 88:
-        return "lime-yellow"
-    elif 88 <= hue < 96:
-        return "chartreuse"
-    elif 96 <= hue < 104:
-        return "lime"
-    elif 104 <= hue < 112:
-        return "grass"
-    elif 112 <= hue < 128:
-        return "green"
-    elif 128 <= hue < 136:
-        return "forest"
-    elif 136 <= hue < 144:
-        return "emerald"
-    elif 144 <= hue < 152:
-        return "mint"
-    elif 152 <= hue < 160:
-        return "teal"
-    elif 160 <= hue < 168:
-        return "turquoise"
-    elif 168 <= hue < 176:
-        return "aqua"
-    elif 176 <= hue < 192:
-        return "cyan"  # Standard cyan at 180°
-    elif 192 <= hue < 200:
-        return "sky"
-    elif 200 <= hue < 212:
-        return "azure"  # Standard azure at ~210°
-    elif 212 <= hue < 228:
-        return "blue"
-    elif 228 <= hue < 236:
-        return "cobalt"
-    elif 236 <= hue < 252:
-        return "indigo"  # Centered around 240°
-    elif 252 <= hue < 264:
-        return "purple"
-    elif 264 <= hue < 276:
-        return "violet"  # Standard violet at ~270°
-    elif 276 <= hue < 288:
-        return "amethyst"
-    elif 288 <= hue < 304:
-        return "magenta"  # Standard magenta at ~300°
-    elif 304 <= hue < 312:
-        return "fuchsia"
-    elif 312 <= hue < 320:
-        return "hot pink"
-    elif 320 <= hue < 328:
-        return "rose"  # Standard rose at ~330°
-    elif 328 <= hue < 336:
-        return "pink"
-    elif 336 <= hue < 344:
-        return "salmon"
-    elif 344 <= hue < 352:
-        return "flamingo"  # Flamingo pink at ~344°
-    elif 352 <= hue < 360:
-        return "watermelon"  # Watermelon pink at ~350°
-    else:
-        return "red"  # Fallback
+    # Binary search through hue ranges
+    for max_hue, name in _HUE_RANGES:
+        if normalized_hue < max_hue:
+            return name
+
+    # Fallback (should never reach here due to 360 entry)
+    return "red"
 
 
 def get_saturation_prefix(saturation: float) -> str:
@@ -163,6 +133,59 @@ def get_saturation_prefix(saturation: float) -> str:
         return "electric"  # Maximum saturation
 
 
+def _get_dark_prefix(value: float) -> str:
+    """Get prefix for dark colors based on value.
+
+    Args:
+        value: Value/brightness percentage (0-100)
+
+    Returns:
+        Dark prefix or empty string
+    """
+    if value < 15:
+        return "black"
+    if value < 30:
+        return "very dark"
+    if value < 45:
+        return "dark"
+    return ""
+
+
+def _get_desaturated_prefix(value: float, saturation: float) -> str:
+    """Get prefix for desaturated colors (white/pale).
+
+    Args:
+        value: Value/brightness percentage (0-100)
+        saturation: Saturation percentage (0-100)
+
+    Returns:
+        Desaturated prefix or empty string
+    """
+    if saturation < 15 and value > 90:
+        return "white"
+    if saturation < 20 and value > 75:
+        return "pale"
+    return ""
+
+
+def _get_bright_prefix(value: float, saturation: float) -> str:
+    """Get prefix for bright saturated colors.
+
+    Args:
+        value: Value/brightness percentage (0-100)
+        saturation: Saturation percentage (0-100)
+
+    Returns:
+        Bright prefix or empty string
+    """
+    if saturation > 20:
+        if value > 85:
+            return "very bright"
+        if value > 70:
+            return "bright"
+    return ""
+
+
 def get_value_prefix(value: float, saturation: float) -> str:
     """Get value (brightness)-based prefix.
 
@@ -173,29 +196,18 @@ def get_value_prefix(value: float, saturation: float) -> str:
     Returns:
         Descriptive prefix for brightness level
     """
-    # For very dark colors
-    if value < 15:
-        return "black"
-    elif value < 30:
-        return "very dark"
-    elif value < 45:
-        return "dark"
+    # Check dark colors first
+    dark = _get_dark_prefix(value)
+    if dark:
+        return dark
 
-    # For light colors (only if saturated enough to matter)
-    elif value > 85 and saturation > 20:
-        return "very bright"
-    elif value > 70 and saturation > 20:
-        return "bright"
+    # Check desaturated colors
+    desaturated = _get_desaturated_prefix(value, saturation)
+    if desaturated:
+        return desaturated
 
-    # For white/near-white (low saturation + high value)
-    elif value > 90 and saturation < 15:
-        return "white"
-    elif value > 75 and saturation < 20:
-        return "pale"
-
-    # Normal value range
-    else:
-        return ""
+    # Check bright saturated colors
+    return _get_bright_prefix(value, saturation)
 
 
 def name_color(hex_color: str, include_technical: bool = False) -> str:
