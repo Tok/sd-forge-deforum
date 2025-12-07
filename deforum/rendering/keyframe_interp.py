@@ -368,11 +368,9 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     all_segment_frames = []
 
     for idx in range(len(keyframes) - 1):
-        # Update dashboard for Phase 2
+        # Update dashboard operation (3DGS sub-operations will update their own progress)
         if dashboard:
-            dashboard.update_phase2(idx, len(keyframes) - 1)
             dashboard.set_operation(f"Interpolating segment {idx + 1}/{len(keyframes) - 1}")
-            dashboard.update_vram_from_torch()
 
         first_kf = keyframes[idx]
         last_kf = keyframes[idx + 1]
@@ -544,7 +542,8 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 segment_first_idx=first_frame_idx,
                 segment_last_idx=last_frame_idx,
                 densification_factor=densification_factor,
-                near_clip_distance=near_clip_distance
+                near_clip_distance=near_clip_distance,
+                dashboard=dashboard
             )
         else:  # Default: Wan
             logger.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}")

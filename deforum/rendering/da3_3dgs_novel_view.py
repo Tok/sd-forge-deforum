@@ -310,13 +310,23 @@ def render_novel_view_from_gaussians(
         means_cam = (viewmat @ means_homogeneous.T).T  # [N, 4]
         depth = means_cam[:, 2]  # Z coordinate in camera space (negative = in front of camera)
 
+        # Debug: Log depth distribution
+        depth_np = depth.detach().cpu().numpy()
+        logger.trace(f"   Depth distribution: min={depth_np.min():.4f}, max={depth_np.max():.4f}, "
+                     f"mean={depth_np.mean():.4f}, median={np.median(depth_np):.4f}")
+
         # Keep only splats beyond near clip distance
         # Negative depth = in front of camera, so we want depth < -near_clip_distance
         mask = depth < -near_clip_distance
 
         # Safety check: don't filter out ALL splats (would cause black frame)
         if mask.sum() == 0:
-            logger.warning(f"   Near-clip filter would remove ALL {means.shape[0]} splats! Disabling filter for this frame.")
+            logger.warning(
+                f"   Near-clip filter would remove ALL {means.shape[0]} splats! "
+                f"near_clip={near_clip_distance}, depth range=[{depth_np.min():.4f}, {depth_np.max():.4f}]. "
+                f"Disabling filter for this frame."
+            )
+            # DO NOT apply the mask - keep all splats to avoid black frame
         elif mask.sum() < means.shape[0]:
             num_removed = (~mask).sum()
             logger.trace(f"   Near-clip filter: keeping {mask.sum()}/{means.shape[0]} splats (removed {num_removed} too close)")
@@ -615,7 +625,8 @@ def render_3dgs_keyframes(
     output_dir: str,
     device: torch.device,
     densification_factor: int,
-    near_clip_distance: float = 0.0
+    near_clip_distance: float = 0.0,
+    dashboard=None
 ) -> List[str]:
     """Render 3DGS versions of segment boundary keyframes for visual consistency.
 
@@ -659,15 +670,31 @@ def render_3dgs_keyframes(
     # Check if ASCII preview is enabled
     show_ascii = opt_utils.is_dashboard_ascii_preview_enabled()
 
-    for kf_idx, kf_pose in tqdm(
-        keyframe_to_render,
-        desc="  Rendering 3DGS keyframes",
-        unit="frame",
-        colour=bar_color,
-        dynamic_ncols=True,
-        file=shared.progress_print_out,
-        disable=shared.cmd_opts.disable_console_progressbars
-    ):
+    # Disable tqdm when using dashboard (dashboard will show progress instead)
+    use_dashboard = dashboard is not None
+
+    # Conditionally wrap iterator with tqdm
+    if use_dashboard:
+        # No tqdm - dashboard shows progress
+        iterator = keyframe_to_render
+    else:
+        # Use tqdm for progress
+        iterator = tqdm(
+            keyframe_to_render,
+            desc="  Rendering 3DGS keyframes",
+            unit="keyframe",
+            colour=bar_color,
+            dynamic_ncols=True,
+            file=shared.progress_print_out,
+            disable=shared.cmd_opts.disable_console_progressbars
+        )
+
+    for idx, (kf_idx, kf_pose) in enumerate(iterator):
+        # Update dashboard if available
+        if dashboard:
+            dashboard.update_3dgs_keyframes(idx + 1, len(keyframe_to_render))
+            dashboard.update_vram_from_torch()
+
         rendered_kf = render_novel_view_from_gaussians(
             gaussians=gaussians,
             camera_pose=kf_pose,
@@ -702,7 +729,8 @@ def render_tween_frames(
     output_dir: str,
     device: torch.device,
     densification_factor: int,
-    near_clip_distance: float = 0.0
+    near_clip_distance: float = 0.0,
+    dashboard=None
 ) -> List[str]:
     """Render interpolated tween frames between segment boundaries.
 
@@ -749,15 +777,31 @@ def render_tween_frames(
     # Check if ASCII preview is enabled
     show_ascii = opt_utils.is_dashboard_ascii_preview_enabled()
 
-    for target_idx in tqdm(
-        target_frame_indices,
-        desc="  Rendering 3DGS tweens",
-        unit="frame",
-        colour=bar_color,
-        dynamic_ncols=True,
-        file=shared.progress_print_out,
-        disable=shared.cmd_opts.disable_console_progressbars
-    ):
+    # Disable tqdm when using dashboard (dashboard will show progress instead)
+    use_dashboard = dashboard is not None
+
+    # Conditionally wrap iterator with tqdm
+    if use_dashboard:
+        # No tqdm - dashboard shows progress
+        iterator = target_frame_indices
+    else:
+        # Use tqdm for progress
+        iterator = tqdm(
+            target_frame_indices,
+            desc="  Rendering 3DGS tweens",
+            unit="frame",
+            colour=bar_color,
+            dynamic_ncols=True,
+            file=shared.progress_print_out,
+            disable=shared.cmd_opts.disable_console_progressbars
+        )
+
+    for idx, target_idx in enumerate(iterator):
+        # Update dashboard if available
+        if dashboard:
+            dashboard.update_3dgs_tweens(idx + 1, len(target_frame_indices))
+            dashboard.update_vram_from_torch()
+
         # Calculate interpolation parameter (0 to 1) within SEGMENT span
         t = (target_idx - first_frame_idx) / total_span if total_span > 0 else 0.5
 
@@ -798,7 +842,8 @@ def generate_da3_3dgs_interpolation(
     segment_first_idx: int = None,
     segment_last_idx: int = None,
     densification_factor: int = 1,
-    near_clip_distance: float = 0.0
+    near_clip_distance: float = 0.0,
+    dashboard=None
 ) -> List[str]:
     """Generate interpolated frames using DA3 3D Gaussian Splatting.
 
@@ -825,6 +870,16 @@ def generate_da3_3dgs_interpolation(
     logger.info(f"   Model: {model_selection}")
     logger.info(f"   Densification factor: {densification_factor}")
     logger.info(f"   Near-clip distance: {near_clip_distance}")
+
+    # Initialize dashboard totals if available
+    if dashboard:
+        # Phase 2a: 3DGS Build = number of keyframes to process
+        dashboard.update_3dgs_build(0, len(keyframe_images))
+        # Phase 2b: 3DGS Keyframes = number of segment boundary keyframes (0-2)
+        num_boundary_keyframes = 2 if render_keyframes and segment_first_idx != segment_last_idx else 0
+        dashboard.update_3dgs_keyframes(0, num_boundary_keyframes)
+        # Phase 2c: 3DGS Tweens = number of target frames
+        dashboard.update_3dgs_tweens(0, len(target_frame_indices))
 
     # Log VRAM status
     if torch.cuda.is_available():
@@ -880,6 +935,21 @@ def generate_da3_3dgs_interpolation(
     centroid = np.mean(means, axis=0)  # [3] - (x, y, z) center of point cloud
     logger.debug(f"   Point cloud centroid: ({centroid[0]:.2f}, {centroid[1]:.2f}, {centroid[2]:.2f})")
 
+    # Debug: Log scene scale statistics
+    bbox_min = np.min(means, axis=0)
+    bbox_max = np.max(means, axis=0)
+    scene_extent = bbox_max - bbox_min
+    logger.debug(f"   Scene bounding box: min=({bbox_min[0]:.4f}, {bbox_min[1]:.4f}, {bbox_min[2]:.4f}), "
+                 f"max=({bbox_max[0]:.4f}, {bbox_max[1]:.4f}, {bbox_max[2]:.4f})")
+    logger.debug(f"   Scene extent: ({scene_extent[0]:.4f}, {scene_extent[1]:.4f}, {scene_extent[2]:.4f})")
+
+    # Debug: Log camera positions
+    for i, ext in enumerate(extrinsics):
+        R = ext[:3, :3]
+        t = ext[:3, 3]
+        cam_pos = -R.T @ t  # Camera position in world coordinates
+        logger.debug(f"   Camera {i} position: ({cam_pos[0]:.4f}, {cam_pos[1]:.4f}, {cam_pos[2]:.4f})")
+
     # Reorient camera poses to look at centroid for better framing
     # This ensures cameras point at the dense center of the scene, not empty space
     extrinsics = reorient_cameras_to_target(extrinsics, centroid)
@@ -917,7 +987,8 @@ def generate_da3_3dgs_interpolation(
             output_dir=output_dir,
             device=device,
             densification_factor=densification_factor,
-            near_clip_distance=near_clip_distance
+            near_clip_distance=near_clip_distance,
+            dashboard=dashboard
         )
 
     # Generate interpolated tween frames
@@ -941,7 +1012,8 @@ def generate_da3_3dgs_interpolation(
         output_dir=output_dir,
         device=device,
         densification_factor=densification_factor,
-        near_clip_distance=near_clip_distance
+        near_clip_distance=near_clip_distance,
+        dashboard=dashboard
     )
 
     logger.info(
