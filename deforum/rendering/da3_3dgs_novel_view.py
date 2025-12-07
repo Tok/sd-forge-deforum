@@ -106,12 +106,85 @@ def interpolate_camera_pose(pose1: np.ndarray, pose2: np.ndarray, t: float) -> n
     return pose_interp
 
 
+def densify_gaussians(gaussians, densification_factor: int, device):
+    """Densify gaussians by subdividing each gaussian into multiple splats.
+
+    Args:
+        gaussians: Original gaussians object with means, scales, rotations, harmonics, opacities
+        densification_factor: How many splats to create per original splat (2 or 3 recommended)
+        device: torch device
+
+    Returns:
+        Densified gaussians object with increased splat count
+    """
+    import torch
+    from types import SimpleNamespace
+
+    # Extract original parameters
+    means = gaussians.means  # [batch, N, 3]
+    scales = gaussians.scales  # [batch, N, 3]
+    rotations = gaussians.rotations  # [batch, N, 4]
+    opacities = gaussians.opacities  # [batch, N] or [batch, N, 1, d_sh]
+    sh_coeffs = gaussians.harmonics  # [batch, N, 3, d_sh]
+
+    batch_size, N, _ = means.shape
+
+    # Create subdivisions: for each gaussian, create densification_factor copies with slight offsets
+    # Offsets are based on the gaussian's scale to create sub-splats within the original volume
+    densified_means = []
+    densified_scales = []
+    densified_rotations = []
+    densified_opacities = []
+    densified_sh_coeffs = []
+
+    # Generate offset pattern (e.g., for factor=2: [-0.25, +0.25] along each axis)
+    offset_range = 0.3  # Offset as fraction of scale
+
+    for i in range(densification_factor):
+        # Random offset within gaussian volume
+        offset = torch.randn(batch_size, N, 3, device=device) * offset_range
+        offset_world = offset * scales  # Scale offset by gaussian scale
+
+        new_means = means + offset_world
+        # Reduce scale of sub-splats to avoid overlap artifacts
+        new_scales = scales * (1.0 / (densification_factor ** 0.333))  # Cube root for 3D
+        # Keep rotations the same
+        new_rotations = rotations.clone()
+        # Reduce opacity to account for multiple overlapping splats
+        if opacities.dim() == 2:
+            new_opacities = opacities / densification_factor
+        else:
+            new_opacities = opacities.clone()
+        # Keep colors the same
+        new_sh_coeffs = sh_coeffs.clone()
+
+        densified_means.append(new_means)
+        densified_scales.append(new_scales)
+        densified_rotations.append(new_rotations)
+        densified_opacities.append(new_opacities)
+        densified_sh_coeffs.append(new_sh_coeffs)
+
+    # Concatenate all subdivisions along the N dimension
+    densified_gaussians = SimpleNamespace(
+        means=torch.cat(densified_means, dim=1),  # [batch, N*factor, 3]
+        scales=torch.cat(densified_scales, dim=1),
+        rotations=torch.cat(densified_rotations, dim=1),
+        opacities=torch.cat(densified_opacities, dim=1),
+        harmonics=torch.cat(densified_sh_coeffs, dim=1)
+    )
+
+    logger.debug(f"   Densified gaussians: {N:,} → {N * densification_factor:,} splats (×{densification_factor})")
+
+    return densified_gaussians
+
+
 def render_novel_view_from_gaussians(
     gaussians,
     camera_pose: np.ndarray,
     camera_intrinsics: np.ndarray,
     image_size: Tuple[int, int],
-    device: torch.device
+    device: torch.device,
+    densification_factor: int = 1
 ) -> Image.Image:
     """Render a novel view from 3D Gaussian Splatting parameters using gsplat.
 
@@ -137,6 +210,10 @@ def render_novel_view_from_gaussians(
         return Image.fromarray(placeholder)
 
     width, height = image_size
+
+    # Apply gaussian densification if requested (subdivide each splat for higher quality)
+    if densification_factor > 1:
+        gaussians = densify_gaussians(gaussians, densification_factor, device)
 
     # Extract gaussian parameters (all should be torch tensors on device)
     means = gaussians.means  # [batch, N, 3] - world space positions
@@ -302,7 +379,8 @@ def generate_da3_3dgs_interpolation(
     device: torch.device,
     render_keyframes: bool = False,
     segment_first_idx: int = None,
-    segment_last_idx: int = None
+    segment_last_idx: int = None,
+    densification_factor: int = 1
 ) -> List[str]:
     """Generate interpolated frames using DA3 3D Gaussian Splatting.
 
@@ -477,7 +555,8 @@ def generate_da3_3dgs_interpolation(
                 camera_pose=kf_pose,
                 camera_intrinsics=avg_intrinsics,
                 image_size=(img_width, img_height),
-                device=device
+                device=device,
+                densification_factor=densification_factor
             )
             kf_filename = f"{kf_idx:09d}.png"
             kf_path = os.path.join(output_dir, kf_filename)  # Save to main output dir
@@ -516,7 +595,8 @@ def generate_da3_3dgs_interpolation(
             camera_pose=interp_pose,
             camera_intrinsics=avg_intrinsics,
             image_size=(img_width, img_height),
-            device=device
+            device=device,
+            densification_factor=densification_factor
         )
 
         # Save frame

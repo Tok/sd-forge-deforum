@@ -1313,6 +1313,15 @@ def WanArgs():
             "value": False,
             "info": "EXPERIMENTAL: Use Deforum's scheduled camera motion (translation_x/y/z, rotation_3d_x/y/z) instead of DA3's auto-estimated poses. DA3 depth builds 3D scene, Deforum schedules control camera movement. Pros: Smooth continuous motion matching your animation. Cons: DA3's auto-estimation may be more geometrically accurate. Requires non-zero camera schedules to work."
         },
+        "da3_3dgs_densification_factor": {
+            "label": "Gaussian Densification",
+            "type": "slider",
+            "minimum": 1,
+            "maximum": 4,
+            "step": 1,
+            "value": 2,
+            "info": "Subdivide each gaussian splat for higher quality rendering. DA3 generates ~705k base splats. 1: use base splats (fastest, lowest quality), 2: 1.4M splats (default, good balance), 3: 2.1M splats (high quality, more VRAM), 4: 2.8M splats (maximum quality, highest VRAM). Each gaussian is subdivided into N smaller splats with slight positional offsets for finer detail."
+        },
 
         # Advanced Generation Settings
         "wan_negative_prompt": {

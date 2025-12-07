@@ -41,6 +41,11 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
         da3_3dgs_model = create_gr_elem(dw.da3_3dgs_model)
         da3_3dgs_neighbor_segments = create_gr_elem(dw.da3_3dgs_neighbor_segments)
     
+    # Quality Settings
+    gr.Markdown(f"### {emoji_if_enabled('✨')} Quality Settings")
+    with gr.Row():
+        da3_3dgs_densification_factor = create_gr_elem(dw.da3_3dgs_densification_factor)
+
     # Camera Motion
     gr.Markdown(f"### {emoji_if_enabled('📹')} Camera Motion")
     with gr.Row():
@@ -87,6 +92,7 @@ def get_tab_da3_3dgs(dw: SimpleNamespace, skip_tabitem=False):
     # CRITICAL: Immediately capture components in locals() for registration
     locals()['da3_3dgs_model'] = da3_3dgs_model
     locals()['da3_3dgs_neighbor_segments'] = da3_3dgs_neighbor_segments
+    locals()['da3_3dgs_densification_factor'] = da3_3dgs_densification_factor
     locals()['da3_3dgs_use_deforum_motion'] = da3_3dgs_use_deforum_motion
     locals()['da3_3dgs_render_keyframes'] = da3_3dgs_render_keyframes
 
