@@ -428,12 +428,16 @@ def on_ui_tabs():
                         size="sm",
                         scale=0,
                     )
+                # Get visualization visibility default from settings (persistent)
+                from modules import shared
+                show_viz_default = getattr(shared.opts, 'deforum_show_visualizations', False)
+
                 with gr.Row(variant="compact"):
                     camera_path_plot = gr.Plot(
                         label="Camera Path Visualization (Real-time)",
                         show_label=False,
                         elem_id="deforum_camera_path_viz",
-                        visible=True,
+                        visible=show_viz_default,  # Uses persistent setting from Settings > Deforum
                     )
 
                 # Frame Overlap Simulator (shows preservation/novelty metrics)
@@ -442,6 +446,12 @@ def on_ui_tabs():
                     if frame_emoji:
                         frame_emoji += " "
                     gr.Markdown(f"### {frame_emoji}Frame Overlap Simulator (Worm Trail)")
+                    show_visualizations = gr.Checkbox(
+                        value=show_viz_default,  # Uses persistent setting from Settings > Deforum
+                        label="Show Visualizations",
+                        info="Toggle camera path and wormtrail preview visibility",
+                        scale=0,
+                    )
                     show_shakify_in_overlap = gr.Checkbox(
                         value=False,
                         label="Show Shakify Preview",
@@ -470,7 +480,7 @@ def on_ui_tabs():
                         label="Frame Overlap Simulator",
                         show_label=False,
                         elem_id="deforum_frame_overlap_sim",
-                        visible=True,
+                        visible=show_viz_default,  # Uses persistent setting from Settings > Deforum
                     )
 
                 # Path Analysis & Optimization (depth warping suitability)
@@ -508,6 +518,7 @@ def on_ui_tabs():
                 components["camera_path_plot"] = camera_path_plot
                 components["refresh_camera_path_btn"] = refresh_camera_path_btn
                 components["frame_overlap_simulator"] = frame_overlap_simulator
+                components["show_visualizations"] = show_visualizations
                 components["show_shakify_in_camera_path"] = show_shakify_in_camera_path
                 components["show_shakify_in_overlap"] = show_shakify_in_overlap
                 components["wormtrail_quality_full"] = wormtrail_quality_full
@@ -515,6 +526,13 @@ def on_ui_tabs():
                 components["analyze_path_btn"] = analyze_path_btn
                 components["optimize_path_btn"] = optimize_path_btn
                 components["path_analysis_output"] = path_analysis_output
+
+                # Wire up visualization visibility toggle
+                show_visualizations.change(
+                    fn=lambda visible: (gr.update(visible=visible), gr.update(visible=visible)),
+                    inputs=[show_visualizations],
+                    outputs=[camera_path_plot, frame_overlap_simulator],
+                )
 
         # Camera Path visualization - load on UI startup (independent of tab selection)
         if camera_path_plot:
