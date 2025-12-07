@@ -247,9 +247,19 @@ A powerful workflow for **iterative testing** of different interpolation methods
   - **Phase 2**: Multi-view 3DGS scene reconstruction + novel view rendering
     - Collects 5 consecutive keyframes per segment (configurable 2-10)
     - DA3 auto-estimates camera poses from keyframe content
-    - Builds 3DGS scene with ~705k gaussian splats
+    - Builds 3DGS scene with ~705k gaussian splats (base), up to 2.8M with densification
+    - **Quality Control**: Gaussian Densification Factor (1-4, default 3 = 2.1M splats)
+      - Factor 1: Base 705k splats (fastest, lowest quality)
+      - Factor 2: 1.4M splats (good balance)
+      - Factor 3: 2.1M splats (default, high quality, more VRAM)
+      - Factor 4: 2.8M splats (maximum quality, highest VRAM)
+    - **Near-Clip Filtering**: Removes "straw" artifacts too close to camera lens
+      - Default: 0.1 (minimal filtering, removes very close splats)
+      - Range: 0.0-5.0 (0.0 = disabled, higher = more aggressive)
+      - Safety: Auto-disables if would filter ALL splats (prevents black frames)
     - Renders novel views via linear camera interpolation (SLERP for rotation)
     - **Camera movement**: DA3 auto-estimated poses only (Deforum schedules NOT used)
+    - **Progress bars**: Real-time tqdm progress for keyframe and tween rendering
     - **Visual consistency**: Original diffusion keyframes moved to `_diffusion/` subdirectory
     - **3DGS outputs**: All frames (keyframes + tweens) rendered in main directory
   - **Phase 3**: Stitch final video with ffmpeg
