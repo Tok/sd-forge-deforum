@@ -18,7 +18,36 @@ echo Deforum Tuning Lab
 echo ========================================
 echo.
 
+REM Check for existing WebUI instances to prevent duplicate launches
+REM This prevents VRAM exhaustion from multiple instances running simultaneously
+tasklist /FI "IMAGENAME eq python.exe" /FI "WINDOWTITLE eq *launch.py*" 2>nul | find /I "python.exe" >nul
+if %ERRORLEVEL%==0 (
+    echo.
+    echo ========================================
+    echo ERROR: WebUI is already running!
+    echo ========================================
+    echo.
+    echo Running multiple instances causes VRAM exhaustion and OOM errors.
+    echo.
+    echo To stop existing instances:
+    echo   1. Close the WebUI browser tab
+    echo   2. Press Ctrl+C in the WebUI terminal
+    echo   3. Or: taskkill /F /IM python.exe /FI "WINDOWTITLE eq *launch.py*"
+    echo.
+    echo Then restart with:
+    echo   .\shell_scripts\run-tuning-lab.bat
+    echo.
+    exit /b 1
+)
+
 cd /d "%FORGE_DIR%"
+
+REM Clear Python bytecode cache to ensure latest code is loaded
+echo Clearing Python bytecode cache...
+del /s /q "extensions\sd-forge-deforum\*.pyc" >nul 2>&1
+for /d /r "extensions\sd-forge-deforum" %%d in (__pycache__) do @if exist "%%d" rd /s /q "%%d" 2>nul
+echo Cache cleared
+echo.
 
 REM Check for --no-opt flag
 set USE_OPT=1
