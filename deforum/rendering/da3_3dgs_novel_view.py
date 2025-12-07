@@ -225,7 +225,7 @@ def densify_gaussians(gaussians, densification_factor: int, device):
         harmonics=torch.cat(densified_sh_coeffs, dim=1)
     )
 
-    logger.debug(f"   Densified gaussians: {N:,} → {N * densification_factor:,} splats (×{densification_factor})")
+    logger.trace(f"   Densified gaussians: {N:,} → {N * densification_factor:,} splats (×{densification_factor})")
 
     return densified_gaussians
 
@@ -237,7 +237,7 @@ def render_novel_view_from_gaussians(
     image_size: Tuple[int, int],
     device: torch.device,
     densification_factor: int = 1,
-    near_clip_distance: float = 0.5
+    near_clip_distance: float = 0.0
 ) -> Image.Image:
     """Render a novel view from 3D Gaussian Splatting parameters using gsplat.
 
@@ -310,15 +310,20 @@ def render_novel_view_from_gaussians(
         # Keep only splats beyond near clip distance
         # Negative depth = in front of camera, so we want depth < -near_clip_distance
         mask = depth < -near_clip_distance
-        if mask.sum() < means.shape[0]:
-            logger.debug(f"   Near-clip filter: keeping {mask.sum()}/{means.shape[0]} splats (removed {(~mask).sum()} too close)")
 
-        # Apply mask to all gaussian parameters
-        means = means[mask]
-        scales = scales[mask]
-        rotations = rotations[mask]
-        opacities = opacities[mask]
-        sh_coeffs = sh_coeffs[mask]
+        # Safety check: don't filter out ALL splats (would cause black frame)
+        if mask.sum() == 0:
+            logger.warning(f"   Near-clip filter would remove ALL {means.shape[0]} splats! Disabling filter for this frame.")
+        elif mask.sum() < means.shape[0]:
+            num_removed = (~mask).sum()
+            logger.trace(f"   Near-clip filter: keeping {mask.sum()}/{means.shape[0]} splats (removed {num_removed} too close)")
+
+            # Apply mask to all gaussian parameters
+            means = means[mask]
+            scales = scales[mask]
+            rotations = rotations[mask]
+            opacities = opacities[mask]
+            sh_coeffs = sh_coeffs[mask]
 
     # Build projection matrix from intrinsics
     fx = float(camera_intrinsics[0, 0])
@@ -607,7 +612,7 @@ def render_3dgs_keyframes(
     output_dir: str,
     device: torch.device,
     densification_factor: int,
-    near_clip_distance: float = 0.5
+    near_clip_distance: float = 0.0
 ) -> List[str]:
     """Render 3DGS versions of segment boundary keyframes for visual consistency.
 
@@ -674,7 +679,7 @@ def render_tween_frames(
     output_dir: str,
     device: torch.device,
     densification_factor: int,
-    near_clip_distance: float = 0.5
+    near_clip_distance: float = 0.0
 ) -> List[str]:
     """Render interpolated tween frames between segment boundaries.
 
@@ -750,7 +755,7 @@ def generate_da3_3dgs_interpolation(
     segment_first_idx: int = None,
     segment_last_idx: int = None,
     densification_factor: int = 1,
-    near_clip_distance: float = 0.5
+    near_clip_distance: float = 0.0
 ) -> List[str]:
     """Generate interpolated frames using DA3 3D Gaussian Splatting.
 

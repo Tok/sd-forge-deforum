@@ -291,10 +291,10 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         last_frame_idx = last_kf.i
         num_tween_frames = last_frame_idx - first_frame_idx - 1  # ONLY in-between frames (exclude both keyframes)
 
-        logger.warning(f"\n{emoji_if_enabled('🎞')}️ Interpolation Segment {idx + 1}/{len(keyframes) - 1}:")
-        logger.warning(f"   From keyframe: {first_frame_idx}")
-        logger.warning(f"   To keyframe: {last_frame_idx}")
-        logger.warning(f"   In-between frames to generate: {num_tween_frames} (frames {first_frame_idx+1} to {last_frame_idx-1})")
+        logger.info(f"\n{emoji_if_enabled('🎞')}️ Interpolation Segment {idx + 1}/{len(keyframes) - 1}:")
+        logger.info(f"   From keyframe: {first_frame_idx}")
+        logger.info(f"   To keyframe: {last_frame_idx}")
+        logger.info(f"   In-between frames to generate: {num_tween_frames} (frames {first_frame_idx+1} to {last_frame_idx-1})")
 
         # Check if all frames in this segment already exist (resume mode)
         # Skip only if NOT regenerating tweens
@@ -430,7 +430,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
             # Generate interpolated frames using 3DGS
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             densification_factor = getattr(wan_args, 'da3_3dgs_densification_factor', 3)
-            near_clip_distance = getattr(wan_args, 'da3_3dgs_near_clip_distance', 0.5)
+            near_clip_distance = getattr(wan_args, 'da3_3dgs_near_clip_distance', 0.0)
 
             segment_frames = generate_da3_3dgs_interpolation(
                 keyframe_images=collected_images,
