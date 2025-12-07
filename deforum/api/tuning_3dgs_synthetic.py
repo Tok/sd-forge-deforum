@@ -1,10 +1,15 @@
 """DA3-3DGS synthetic test runner.
 
-Tests DA3 pose estimation using reproducible synthetic images (no diffusion).
+Tests DA3 pose estimation using pre-generated or synthetic test images.
 
 IMPORTANT: This tests DA3 PARAMETERS ONLY, not the full 3DGS rendering pipeline.
 For actual 3DGS rendering tests, use render_mode="Keyframes + Interpolation"
 (Flux + Interpolation workflow) which is the ONLY mode with 3DGS support.
+
+Test Image Sources:
+1. Pre-generated realistic images (if available): Reusable ZIT-generated images
+   with depth cues, saved in output/deforum-tuning/test-datasets/
+2. Synthetic images (fallback): Simple gradient spheres for basic testing
 
 What this tests:
 - DA3 model pose estimation quality with different parameters
@@ -13,10 +18,16 @@ What this tests:
 - Quality metrics on consistent reproducible test data
 
 What this does NOT test:
-- Diffusion generation quality (no diffusion involved)
+- Diffusion generation quality (no per-test diffusion)
 - Actual 3DGS rendering (no splat generation, requires gsplat + Flux workflow)
 - Tween interpolation quality (no tweens generated)
 - Full Deforum pipeline integration
+
+Test Dataset Generation:
+- Use generate_test_dataset.py to create reusable realistic images
+- Saves to: output/deforum-tuning/test-datasets/{dataset_name}/
+- Prompts: Interior rooms, architecture, scenes with depth
+- All tuning tests then reuse these images
 """
 
 import time
@@ -87,6 +98,70 @@ class DA3SyntheticTestResult:
         return data
 
 
+def find_test_dataset(dataset_name: str = "realistic-interior") -> Optional[Path]:
+    """Check if pre-generated test dataset exists.
+
+    Args:
+        dataset_name: Name of the test dataset to look for
+
+    Returns:
+        Path to dataset directory if exists, None otherwise
+    """
+    import os
+    forge_root = Path(os.getcwd())
+    dataset_dir = forge_root / "output" / "deforum-tuning" / "test-datasets" / dataset_name
+
+    if dataset_dir.exists():
+        # Check if it has at least some images
+        image_files = list(dataset_dir.glob("*.png")) + list(dataset_dir.glob("*.jpg"))
+        if len(image_files) >= 10:
+            logger.info(f"Found pre-generated test dataset: {dataset_dir} ({len(image_files)} images)")
+            return dataset_dir
+
+    logger.info(f"No pre-generated test dataset found at {dataset_dir}")
+    return None
+
+
+def load_test_images_from_dataset(
+    dataset_dir: Path,
+    num_frames: int,
+    output_dir: Path
+) -> List[Path]:
+    """Load and optionally copy images from pre-generated test dataset.
+
+    Args:
+        dataset_dir: Directory containing test dataset
+        num_frames: Number of frames to use
+        output_dir: Directory to copy images to (for test isolation)
+
+    Returns:
+        List of paths to test images
+    """
+    import shutil
+
+    # Find all images in dataset
+    image_files = sorted(list(dataset_dir.glob("*.png")) + list(dataset_dir.glob("*.jpg")))
+
+    if len(image_files) < num_frames:
+        logger.warning(f"Dataset only has {len(image_files)} images, requested {num_frames}")
+        num_frames = len(image_files)
+
+    # Use first num_frames images
+    selected_images = image_files[:num_frames]
+
+    # Copy to output_dir with standardized names
+    output_dir.mkdir(parents=True, exist_ok=True)
+    copied_paths = []
+
+    for idx, img_path in enumerate(selected_images):
+        dest_path = output_dir / f"{idx:09d}.png"
+        shutil.copy(img_path, dest_path)
+        copied_paths.append(dest_path)
+
+    logger.info(f"Loaded {len(copied_paths)} images from test dataset")
+    return copied_paths
+
+
 def generate_synthetic_test_images(
     num_frames: int,
     width: int,
@@ -97,6 +172,9 @@ def generate_synthetic_test_images(
     """Generate reproducible synthetic test images for 3DGS testing.
 
     Creates images with depth cues and motion for pose estimation testing.
+
+    NOTE: For better DA3 testing, use pre-generated realistic images instead.
+    See: generate_test_dataset.py
 
     Args:
         num_frames: Number of frames to generate
@@ -305,14 +383,27 @@ def run_synthetic_3dgs_test(
     peak_vram = initial_vram
 
     try:
-        # Generate synthetic test images
-        image_paths = generate_synthetic_test_images(
-            num_frames=num_frames,
-            width=width,
-            height=height,
-            output_dir=test_dir,
-            pattern=pattern
-        )
+        # Try to use pre-generated realistic test dataset first
+        dataset_dir = find_test_dataset("realistic-interior")
+
+        if dataset_dir:
+            # Use pre-generated realistic images (better for DA3)
+            logger.info("Using pre-generated realistic test images")
+            image_paths = load_test_images_from_dataset(
+                dataset_dir=dataset_dir,
+                num_frames=num_frames,
+                output_dir=test_dir
+            )
+        else:
+            # Fall back to synthetic test images
+            logger.info("No pre-generated dataset found, using synthetic images")
+            image_paths = generate_synthetic_test_images(
+                num_frames=num_frames,
+                width=width,
+                height=height,
+                output_dir=test_dir,
+                pattern=pattern
+            )
 
         # Test DA3 pose estimation
         pose_success, avg_confidence, temporal_smoothness = test_da3_pose_estimation(
