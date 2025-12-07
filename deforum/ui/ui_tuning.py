@@ -574,7 +574,15 @@ def create_tuning_tab() -> tuple:
                 - Optimize near-clip distance for quality
                 - Find best balance between keyframe count and splat density
 
-                **What DA3-3DGS Does:**
+                **⚠️ IMPORTANT: Synthetic Tests Use Gradient Spheres, NOT Actual Splats**
+                - **Synthetic tests** analyze pre-generated gradient sphere frame sequences
+                - Tests measure pose estimation confidence and temporal smoothness ONLY
+                - **NO depth estimation or actual 3DGS rendering** occurs (for speed)
+                - VRAM values will be 0 (no models loaded)
+                - Use these tests to quickly find optimal parameter ranges
+                - For actual splat quality, run real rendering tests with Deforum
+
+                **What DA3-3DGS Does (in real rendering):**
                 1. Collects N consecutive keyframes around each segment
                 2. Estimates camera poses using DA3 GIANT model
                 3. Builds 3D Gaussian Splatting scene (~705k base splats)
@@ -708,19 +716,19 @@ def create_tuning_tab() -> tuple:
                         )
                         dgs_nearclip_min = gr.Slider(
                             label="Min near-clip distance",
-                            minimum=0.01,
+                            minimum=0.00,
                             maximum=1.0,
                             value=0.05,
-                            step=0.05,
-                            info="Filter out splats too close (reduces 'straw' artifacts)",
+                            step=0.01,
+                            info="Filter out splats too close (0.00 = disabled, reduces 'straw' artifacts)",
                         )
                         dgs_nearclip_max = gr.Slider(
                             label="Max near-clip distance",
-                            minimum=0.01,
+                            minimum=0.00,
                             maximum=1.0,
                             value=0.15,
-                            step=0.05,
-                            info="Test range: 0.05, 0.10, 0.15",
+                            step=0.01,
+                            info="Test range: 0.05, 0.10, 0.15 (0.00 = disabled)",
                         )
                         dgs_nearclip_step = gr.Slider(
                             label="Near-clip step",
@@ -834,8 +842,9 @@ def create_tuning_tab() -> tuple:
                                 - 40GB GPU: max 8x densification, 100 keyframes
                                 """)
 
-                                dgs_vram_plot = gr.Plot(
+                                dgs_vram_plot = gr.HTML(
                                     label="VRAM Usage vs Parameters",
+                                    value="<p>Run tests to generate VRAM analysis...</p>",
                                 )
 
         # Wire up event handlers
@@ -1008,8 +1017,8 @@ def create_tuning_tab() -> tuple:
                         create_orbit_metrics_plot,
                         create_orbit_heatmap,
                         find_best_orbit_configuration,
-                        create_3dgs_metrics_plot,
-                        create_3dgs_heatmap,
+                        create_3dgs_plotly_metrics,
+                        create_3dgs_plotly_heatmap,
                         find_best_3dgs_configuration,
                     )
 
@@ -1026,10 +1035,10 @@ def create_tuning_tab() -> tuple:
                         metrics_fig = create_orbit_metrics_plot(status["results"])
                         heatmap_fig = create_orbit_heatmap(status["results"], 'iterations_until_offscreen')
                     elif is_3dgs_synthetic:
-                        # 3DGS synthetic test visualization
+                        # 3DGS synthetic test visualization (plotly for interactivity)
                         best_config = find_best_3dgs_configuration(status["results"])
-                        metrics_fig = create_3dgs_metrics_plot(status["results"])
-                        heatmap_fig = create_3dgs_heatmap(status["results"], 'overall_score')
+                        metrics_fig = create_3dgs_plotly_metrics(status["results"])  # Returns HTML string
+                        heatmap_fig = create_3dgs_plotly_heatmap(status["results"], 'overall_score')  # Returns HTML string
                     else:
                         # Standard I2V chaining test visualization
                         best_config = find_best_configuration(status["results"])

@@ -1,6 +1,6 @@
 """Chart generation for tuning metrics visualization.
 
-This module provides functions to generate matplotlib charts for
+This module provides functions to generate matplotlib and plotly charts for
 displaying tuning test results with slopcore gradient aesthetics.
 """
 
@@ -9,6 +9,8 @@ import matplotlib
 import matplotlib.colors as mcolors
 import numpy as np
 from typing import List, Dict, Any, Optional
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Use non-interactive backend for server-side generation
 matplotlib.use('Agg')
@@ -683,3 +685,233 @@ def generate_3dgs_summary_stats(results: List[Dict[str, Any]]) -> Dict[str, Any]
         'min_pose_confidence': min(pose_confidences),
         'max_pose_confidence': max(pose_confidences),
     }
+
+
+# ============================================================================
+# 3DGS Plotly Visualization (Interactive Charts)
+# ============================================================================
+
+def create_3dgs_plotly_metrics(results: List[Dict[str, Any]]) -> str:
+    """Create interactive plotly chart showing DA3-3DGS parameter impact on quality.
+
+    Args:
+        results: List of 3DGS test result dictionaries
+
+    Returns:
+        HTML string containing the plotly chart
+    """
+    if not results:
+        return "<p>No results yet. Run tests to generate charts.</p>"
+
+    # Get unique models
+    models = sorted(list(set(r['model'] for r in results)))
+
+    # Create subplots (3 rows, 1 column)
+    fig = make_subplots(
+        rows=3, cols=1,
+        subplot_titles=(
+            'Quality vs Neighbor Segments',
+            'Quality vs Densification',
+            'Quality vs Near Clip Distance'
+        ),
+        vertical_spacing=0.12,
+    )
+
+    # Color palette for models
+    colors = [SLOPCORE_3, SLOPCORE_6]
+
+    # Plot 1: Overall Score vs Neighbor Segments
+    for i, model in enumerate(models):
+        model_results = [r for r in results if r['model'] == model]
+        neighbor_segments = sorted(list(set(r['neighbor_segments'] for r in model_results)))
+        avg_scores = []
+        for ns in neighbor_segments:
+            ns_results = [r for r in model_results if r['neighbor_segments'] == ns]
+            avg_scores.append(np.mean([r['overall_score'] for r in ns_results]))
+
+        fig.add_trace(
+            go.Scatter(
+                x=neighbor_segments,
+                y=avg_scores,
+                mode='lines+markers',
+                name=model.split('-')[0],
+                line=dict(color=colors[i % 2], width=3),
+                marker=dict(size=10),
+                legendgroup=f'model{i}',
+                showlegend=(i == 0),  # Only show legend for first subplot
+                hovertemplate='<b>%{fullData.name}</b><br>Neighbor Segments: %{x}<br>Overall Score: %{y:.2f}<extra></extra>',
+            ),
+            row=1, col=1
+        )
+
+    # Plot 2: Overall Score vs Densification
+    for i, model in enumerate(models):
+        model_results = [r for r in results if r['model'] == model]
+        densifications = sorted(list(set(r['densification'] for r in model_results)))
+        avg_scores = []
+        for dens in densifications:
+            dens_results = [r for r in model_results if r['densification'] == dens]
+            avg_scores.append(np.mean([r['overall_score'] for r in dens_results]))
+
+        fig.add_trace(
+            go.Scatter(
+                x=densifications,
+                y=avg_scores,
+                mode='lines+markers',
+                name=model.split('-')[0],
+                line=dict(color=colors[i % 2], width=3),
+                marker=dict(size=10),
+                legendgroup=f'model{i}',
+                showlegend=False,
+                hovertemplate='<b>%{fullData.name}</b><br>Densification: %{x}<br>Overall Score: %{y:.2f}<extra></extra>',
+            ),
+            row=2, col=1
+        )
+
+    # Plot 3: Overall Score vs Nearclip
+    for i, model in enumerate(models):
+        model_results = [r for r in results if r['model'] == model]
+        nearclips = sorted(list(set(r['nearclip'] for r in model_results)))
+        avg_scores = []
+        for nc in nearclips:
+            nc_results = [r for r in model_results if r['nearclip'] == nc]
+            avg_scores.append(np.mean([r['overall_score'] for r in nc_results]))
+
+        fig.add_trace(
+            go.Scatter(
+                x=nearclips,
+                y=avg_scores,
+                mode='lines+markers',
+                name=model.split('-')[0],
+                line=dict(color=colors[i % 2], width=3),
+                marker=dict(size=10),
+                legendgroup=f'model{i}',
+                showlegend=False,
+                hovertemplate='<b>%{fullData.name}</b><br>Near Clip: %{x:.2f}<br>Overall Score: %{y:.2f}<extra></extra>',
+            ),
+            row=3, col=1
+        )
+
+    # Update axes
+    fig.update_xaxes(title_text="Neighbor Segments", row=1, col=1)
+    fig.update_xaxes(title_text="Densification", row=2, col=1)
+    fig.update_xaxes(title_text="Near Clip Distance", row=3, col=1)
+
+    fig.update_yaxes(title_text="Overall Score", range=[0, 100], row=1, col=1)
+    fig.update_yaxes(title_text="Overall Score", range=[0, 100], row=2, col=1)
+    fig.update_yaxes(title_text="Overall Score", range=[0, 100], row=3, col=1)
+
+    # Update layout
+    fig.update_layout(
+        height=1000,
+        title_text="DA3-3DGS Parameter Impact on Quality (averaged across other dimensions)",
+        template="plotly_dark",
+        hovermode='closest',
+    )
+
+    return fig.to_html(include_plotlyjs='cdn', div_id='3dgs_metrics_plot')
+
+
+def create_3dgs_plotly_heatmap(results: List[Dict[str, Any]], metric: str = 'overall_score') -> str:
+    """Create interactive plotly heatmap showing DA3-3DGS parameter combinations.
+
+    Args:
+        results: List of 3DGS test result dictionaries
+        metric: Metric to visualize (overall_score, avg_pose_confidence, temporal_smoothness)
+
+    Returns:
+        HTML string containing the plotly heatmap
+    """
+    if not results:
+        return "<p>No results yet. Run tests to generate heatmap.</p>"
+
+    # Get unique models
+    models = sorted(list(set(r['model'] for r in results)))
+
+    # Create subplots (1 row, N columns for N models)
+    num_models = len(models)
+    fig = make_subplots(
+        rows=1, cols=num_models,
+        subplot_titles=[model.split('-')[0] for model in models],
+        horizontal_spacing=0.15,
+    )
+
+    metric_labels = {
+        'overall_score': 'Overall Quality Score',
+        'avg_pose_confidence': 'Average Pose Confidence',
+        'temporal_smoothness': 'Temporal Smoothness',
+    }
+
+    for idx, model in enumerate(models):
+        model_results = [r for r in results if r['model'] == model]
+
+        # Get unique parameter values
+        neighbor_segments = sorted(list(set(r['neighbor_segments'] for r in model_results)))
+        densifications = sorted(list(set(r['densification'] for r in model_results)))
+        nearclips = sorted(list(set(r['nearclip'] for r in model_results)))
+
+        # Create combined parameter labels for Y-axis (densification × nearclip)
+        param_combos = []
+        for dens in densifications:
+            for nc in nearclips:
+                param_combos.append((dens, nc))
+
+        # Create matrix (Y=densification×nearclip combos, X=neighbor_segments)
+        matrix = np.zeros((len(param_combos), len(neighbor_segments)))
+        hover_text = [['' for _ in neighbor_segments] for _ in param_combos]
+
+        for result in model_results:
+            i = param_combos.index((result['densification'], result['nearclip']))
+            j = neighbor_segments.index(result['neighbor_segments'])
+            matrix[i, j] = result[metric]
+            hover_text[i][j] = (
+                f"<b>{model.split('-')[0]}</b><br>"
+                f"Neighbor Segments: {result['neighbor_segments']}<br>"
+                f"Densification: {result['densification']}<br>"
+                f"Near Clip: {result['nearclip']:.2f}<br>"
+                f"{metric_labels.get(metric, metric)}: {result[metric]:.2f}"
+            )
+
+        # Create heatmap
+        fig.add_trace(
+            go.Heatmap(
+                z=matrix,
+                x=[f'{ns}' for ns in neighbor_segments],
+                y=[f'D{d} NC{nc:.2f}' for d, nc in param_combos],
+                colorscale=[
+                    [0.0, SLOPCORE_1],
+                    [0.2, SLOPCORE_2],
+                    [0.4, SLOPCORE_4],
+                    [0.6, SLOPCORE_5],
+                    [0.8, SLOPCORE_6],
+                    [1.0, SLOPCORE_7],
+                ],
+                zmin=0,
+                zmax=100,
+                text=matrix,
+                texttemplate='%{text:.1f}',
+                textfont=dict(size=10),
+                hovertext=hover_text,
+                hoverinfo='text',
+                colorbar=dict(
+                    title="Score",
+                    x=1.0 + (idx * 0.05) if num_models > 1 else 1.02,
+                ),
+                showscale=(idx == num_models - 1),  # Only show colorbar on last heatmap
+            ),
+            row=1, col=idx+1
+        )
+
+        # Update axes for this subplot
+        fig.update_xaxes(title_text="Neighbor Segments", row=1, col=idx+1)
+        if idx == 0:
+            fig.update_yaxes(title_text="Densification × Near Clip", row=1, col=idx+1)
+
+    # Update layout
+    fig.update_layout(
+        height=600,
+        title_text=f"DA3-3DGS Parameter Heatmap: {metric_labels.get(metric, metric)}",
+        template="plotly_dark",
+    )
+
+    return fig.to_html(include_plotlyjs='cdn', div_id='3dgs_heatmap')
