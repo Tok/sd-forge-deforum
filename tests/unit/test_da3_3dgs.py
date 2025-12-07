@@ -428,5 +428,179 @@ class TestIntrinsicsScaling:
         assert cy_scaled == pytest.approx(expected_cy, abs=1.0)
 
 
+class TestExtrinsicsConversion:
+    """Test camera extrinsics matrix conversion."""
+
+    def test_converts_3x4_to_4x4(self):
+        """Should add homogeneous bottom row [0, 0, 0, 1]."""
+        from deforum.rendering.da3_3dgs_novel_view import convert_extrinsics_to_4x4
+
+        # Create [N, 3, 4] extrinsics
+        extrinsics_3x4 = np.array([
+            [[1, 0, 0, 10],
+             [0, 1, 0, 20],
+             [0, 0, 1, 30]]
+        ], dtype=np.float32)
+
+        result = convert_extrinsics_to_4x4(extrinsics_3x4)
+
+        assert result.shape == (1, 4, 4)
+        assert np.allclose(result[0, 3, :], [0, 0, 0, 1])
+        assert np.allclose(result[0, :3, :], extrinsics_3x4[0])
+
+    def test_preserves_4x4_input(self):
+        """Should return unchanged if already 4x4."""
+        from deforum.rendering.da3_3dgs_novel_view import convert_extrinsics_to_4x4
+
+        # Create [N, 4, 4] extrinsics
+        extrinsics_4x4 = np.eye(4, dtype=np.float32).reshape(1, 4, 4)
+
+        result = convert_extrinsics_to_4x4(extrinsics_4x4)
+
+        assert result.shape == (1, 4, 4)
+        assert np.allclose(result, extrinsics_4x4)
+
+    def test_handles_multiple_cameras(self):
+        """Should convert multiple camera poses."""
+        from deforum.rendering.da3_3dgs_novel_view import convert_extrinsics_to_4x4
+
+        # Create [5, 3, 4] extrinsics
+        N = 5
+        extrinsics_3x4 = np.random.randn(N, 3, 4).astype(np.float32)
+
+        result = convert_extrinsics_to_4x4(extrinsics_3x4)
+
+        assert result.shape == (N, 4, 4)
+        for i in range(N):
+            assert np.allclose(result[i, 3, :], [0, 0, 0, 1])
+            assert np.allclose(result[i, :3, :], extrinsics_3x4[i])
+
+
+class TestSegmentBoundaryPoses:
+    """Test segment boundary pose extraction."""
+
+    def test_extracts_boundary_poses(self):
+        """Should extract poses for segment first and last keyframes."""
+        from deforum.rendering.da3_3dgs_novel_view import get_segment_boundary_poses
+
+        # Collected keyframes: [0, 10, 20, 30, 40]
+        keyframe_indices = [0, 10, 20, 30, 40]
+        extrinsics = np.random.randn(5, 4, 4).astype(np.float32)
+
+        # Segment: 10-30
+        segment_first_idx = 10
+        segment_last_idx = 30
+
+        first_pose, last_pose = get_segment_boundary_poses(
+            extrinsics, keyframe_indices, segment_first_idx, segment_last_idx
+        )
+
+        # Should return poses at indices 1 and 3
+        assert np.allclose(first_pose, extrinsics[1])
+        assert np.allclose(last_pose, extrinsics[3])
+
+    def test_fallback_when_boundary_not_found(self):
+        """Should use first/last poses if segment boundaries not in collection."""
+        from deforum.rendering.da3_3dgs_novel_view import get_segment_boundary_poses
+
+        keyframe_indices = [0, 10, 20, 30, 40]
+        extrinsics = np.random.randn(5, 4, 4).astype(np.float32)
+
+        # Request non-existent boundaries
+        segment_first_idx = 5
+        segment_last_idx = 35
+
+        first_pose, last_pose = get_segment_boundary_poses(
+            extrinsics, keyframe_indices, segment_first_idx, segment_last_idx
+        )
+
+        # Should fallback to first/last
+        assert np.allclose(first_pose, extrinsics[0])
+        assert np.allclose(last_pose, extrinsics[-1])
+
+    def test_uses_first_last_when_no_segment_info(self):
+        """Should use first/last when segment indices are None."""
+        from deforum.rendering.da3_3dgs_novel_view import get_segment_boundary_poses
+
+        keyframe_indices = [0, 10, 20, 30, 40]
+        extrinsics = np.random.randn(5, 4, 4).astype(np.float32)
+
+        first_pose, last_pose = get_segment_boundary_poses(
+            extrinsics, keyframe_indices, None, None
+        )
+
+        assert np.allclose(first_pose, extrinsics[0])
+        assert np.allclose(last_pose, extrinsics[-1])
+
+
+class TestPILtoBGRConversion:
+    """Test PIL image to BGR numpy array conversion."""
+
+    def test_converts_single_image(self):
+        """Should convert PIL RGB to BGR numpy array."""
+        from deforum.rendering.da3_3dgs_novel_view import convert_pil_to_bgr
+        from PIL import Image
+
+        # Create test image (red, green, blue)
+        img = Image.new('RGB', (10, 10), (255, 0, 0))
+        images = [img]
+
+        result = convert_pil_to_bgr(images)
+
+        assert len(result) == 1
+        assert result[0].shape == (10, 10, 3)
+        # Red in RGB becomes Blue channel in BGR
+        assert result[0][0, 0, 2] == 255  # R channel now in B position
+        assert result[0][0, 0, 1] == 0    # G stays
+        assert result[0][0, 0, 0] == 0    # B channel now in R position
+
+    def test_converts_multiple_images(self):
+        """Should handle batch conversion."""
+        from deforum.rendering.da3_3dgs_novel_view import convert_pil_to_bgr
+        from PIL import Image
+
+        images = [
+            Image.new('RGB', (10, 10), (255, 0, 0)),
+            Image.new('RGB', (10, 10), (0, 255, 0)),
+            Image.new('RGB', (10, 10), (0, 0, 255))
+        ]
+
+        result = convert_pil_to_bgr(images)
+
+        assert len(result) == 3
+        assert all(arr.shape == (10, 10, 3) for arr in result)
+
+
+class TestModelConfigSelection:
+    """Test DA3 model configuration selection."""
+
+    def test_selects_giant_config(self):
+        """Should return giant variant and size for DA3-GIANT."""
+        from deforum.rendering.da3_3dgs_novel_view import get_da3_model_config
+
+        variant, size = get_da3_model_config('DA3-GIANT')
+
+        assert variant == 'giant'
+        assert size == 'giant'
+
+    def test_selects_nested_giant_large_config(self):
+        """Should return correct config for DA3NESTED-GIANT-LARGE."""
+        from deforum.rendering.da3_3dgs_novel_view import get_da3_model_config
+
+        variant, size = get_da3_model_config('DA3NESTED-GIANT-LARGE')
+
+        assert variant == 'giant'
+        assert size == 'nested-giant-large'
+
+    def test_fallback_to_giant_for_unknown(self):
+        """Should default to giant config for unknown models."""
+        from deforum.rendering.da3_3dgs_novel_view import get_da3_model_config
+
+        variant, size = get_da3_model_config('UNKNOWN-MODEL')
+
+        assert variant == 'giant'
+        assert size == 'giant'
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
