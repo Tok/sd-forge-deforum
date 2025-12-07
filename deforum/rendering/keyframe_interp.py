@@ -480,7 +480,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     logger.separator(char="=")
 
     # Stitch video using existing utilities
-    output_video_path = stitch_wan_flux_video(
+    output_video_path = stitch_keyframe_interpolation_video(
         data=data,
         frame_paths=all_segment_frames,
         video_args=video_args,
@@ -636,8 +636,54 @@ def generate_flf2v_segment(wan_integration, first_image, last_image, prompt, num
     return frame_paths
 
 
-def stitch_wan_flux_video(data, frame_paths, video_args, interp_method="Wan"):
-    """Stitch all frames into final video using ffmpeg concat demuxer"""
+def detect_model_prefix(checkpoint_name: str) -> str:
+    """Detect diffusion model type from checkpoint name.
+
+    Args:
+        checkpoint_name: Name of the checkpoint file
+
+    Returns:
+        Model prefix string: 'flux', 'zit', 'lumina', or 'diffusion'
+    """
+    name_lower = checkpoint_name.lower()
+
+    if "flux" in name_lower:
+        return "flux"
+    elif any(keyword in name_lower for keyword in ["z-image", "zimage", "zit"]):
+        return "zit"
+    elif "lumina" in name_lower:
+        return "lumina"
+    else:
+        return "diffusion"
+
+
+def build_output_filename(timestring: str, model_prefix: str, interp_method: str) -> str:
+    """Build output video filename from components.
+
+    Args:
+        timestring: Timestamp string for the render
+        model_prefix: Model type ('flux', 'zit', 'lumina', 'diffusion')
+        interp_method: Interpolation method ('Wan', 'FILM', 'DA3-3DGS')
+
+    Returns:
+        Filename string (e.g., '20251207002039_zit_da3-3dgs.mp4')
+    """
+    method_suffix = interp_method.lower()
+    return f"{timestring}_{model_prefix}_{method_suffix}.mp4"
+
+
+def stitch_keyframe_interpolation_video(data, frame_paths, video_args, interp_method="Wan"):
+    """Stitch all frames into final video using ffmpeg concat demuxer.
+
+    Args:
+        data: RenderData object containing output directory and settings
+        frame_paths: List of frame file paths (may be unused, frames collected from disk)
+        video_args: Video arguments containing fps, audio settings
+        interp_method: Interpolation method name for filename
+
+    Returns:
+        str: Path to output video file
+    """
     from deforum.media.video_audio_utilities import get_ffmpeg_params
     import glob
     import subprocess
@@ -645,22 +691,14 @@ def stitch_wan_flux_video(data, frame_paths, video_args, interp_method="Wan"):
     # Get ffmpeg parameters from settings
     ffmpeg_location, ffmpeg_crf, ffmpeg_preset = get_ffmpeg_params()
 
-    # Detect model type from checkpoint name
+    # Build output path with model-aware filename
     checkpoint_name = data.args.args.checkpoint or ""
-    if "flux" in checkpoint_name.lower():
-        model_prefix = "flux"
-    elif "z-image" in checkpoint_name.lower() or "zimage" in checkpoint_name.lower() or "zit" in checkpoint_name.lower():
-        model_prefix = "zit"
-    elif "lumina" in checkpoint_name.lower():
-        model_prefix = "lumina"
-    else:
-        # Fallback to generic "diffusion"
-        model_prefix = "diffusion"
-
-    # Output video path - use model + interpolation method in filename
-    # e.g., zit_da3-3dgs, flux_wan, lumina_film
-    method_suffix = interp_method.lower().replace("da3-3dgs", "da3-3dgs")  # Keep DA3-3DGS as-is
-    output_filename = f"{data.args.root.timestring}_{model_prefix}_{method_suffix}.mp4"
+    model_prefix = detect_model_prefix(checkpoint_name)
+    output_filename = build_output_filename(
+        data.args.root.timestring,
+        model_prefix,
+        interp_method
+    )
     output_path = os.path.join(data.output_directory, output_filename)
 
     # Collect ALL frame files (keyframes + tweens) sorted numerically
