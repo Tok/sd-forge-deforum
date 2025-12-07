@@ -515,45 +515,90 @@ class TuningTestManager:
 
         logger.info(f"Starting DA3-3DGS parameter sweep for test {test_id}")
 
-        # Create output directory for this test
-        forge_root = Path(os.getcwd())
-        tuning_dir = forge_root / "output" / "deforum-tuning"
-        test_output_dir = tuning_dir / f"3dgs_{test_id}"
-        test_output_dir.mkdir(parents=True, exist_ok=True)
+        # Create output directory
+        test_output_dir = self._create_3dgs_test_directory(test_id)
 
-        # Build sweep config from test config
-        sweep_config = {
-            "scene_strategies": config.dgs_scene_strategies or ["per_segment"],
-            "models": config.dgs_models or ["DA3NESTED-GIANT-LARGE"],
-            "neighbor_segments_min": config.dgs_neighbor_segments_min or 6,
-            "neighbor_segments_max": config.dgs_neighbor_segments_max or 6,
-            "neighbor_segments_step": config.dgs_neighbor_segments_step or 1,
-            "densification_min": config.dgs_densification_min or 4,
-            "densification_max": config.dgs_densification_max or 4,
-            "densification_step": config.dgs_densification_step or 1,
-            "nearclip_min": config.dgs_nearclip_min or 0.1,
-            "nearclip_max": config.dgs_nearclip_max or 0.1,
-            "nearclip_step": config.dgs_nearclip_step or 1.0,
-            "aspect_ratios": config.aspect_ratios or [[1.78, 512, 288]],
-            "test_iterations": config.dgs_test_iterations or 10,
-        }
-
+        # Build sweep config
+        sweep_config = self._build_3dgs_sweep_config(config)
         logger.info(f"Sweep config: {sweep_config}")
 
         # Run the parameter sweep
         results = run_3dgs_parameter_sweep(sweep_config, test_output_dir)
 
         # Update test status with results
-        with self.test_lock:
-            status = self.active_tests[test_id]
-            # Convert DA33DGSTestResult objects to dicts
-            status.results = [r.to_dict() for r in results]
-            status.progress = 1.0
+        self._update_3dgs_test_results(test_id, results)
 
         logger.info(f"DA3-3DGS sweep complete: {len(results)} tests run")
 
         # Generate visualization
         self._generate_3dgs_tuning_graph(test_id)
+
+    def _create_3dgs_test_directory(self, test_id: str) -> Path:
+        """Create output directory for 3DGS test.
+
+        Args:
+            test_id: Test identifier
+
+        Returns:
+            Path to test output directory
+        """
+        from pathlib import Path
+        import os
+
+        forge_root = Path(os.getcwd())
+        tuning_dir = forge_root / "output" / "deforum-tuning"
+        test_output_dir = tuning_dir / f"3dgs_{test_id}"
+        test_output_dir.mkdir(parents=True, exist_ok=True)
+
+        return test_output_dir
+
+    def _build_3dgs_sweep_config(self, config: TuningTestConfig) -> Dict[str, Any]:
+        """Build sweep configuration from test config.
+
+        Args:
+            config: Test configuration with DA3-3DGS parameters
+
+        Returns:
+            Sweep configuration dict
+        """
+        # Default values for 3DGS sweep parameters
+        defaults = {
+            "scene_strategies": ["per_segment"],
+            "models": ["DA3NESTED-GIANT-LARGE"],
+            "neighbor_segments_min": 6,
+            "neighbor_segments_max": 6,
+            "neighbor_segments_step": 1,
+            "densification_min": 4,
+            "densification_max": 4,
+            "densification_step": 1,
+            "nearclip_min": 0.1,
+            "nearclip_max": 0.1,
+            "nearclip_step": 1.0,
+            "aspect_ratios": [[1.78, 512, 288]],
+            "test_iterations": 10,
+        }
+
+        # Build config using values from test config or defaults
+        sweep_config = {}
+        for key, default_value in defaults.items():
+            config_key = f"dgs_{key}"
+            value = getattr(config, config_key, None)
+            sweep_config[key] = value if value is not None else default_value
+
+        return sweep_config
+
+    def _update_3dgs_test_results(self, test_id: str, results: List[Any]):
+        """Update test status with 3DGS results.
+
+        Args:
+            test_id: Test identifier
+            results: List of DA33DGSTestResult objects
+        """
+        with self.test_lock:
+            status = self.active_tests[test_id]
+            # Convert DA33DGSTestResult objects to dicts
+            status.results = [r.to_dict() for r in results]
+            status.progress = 1.0
 
     def _generate_orbit_tuning_graph(self, test_id: str):
         """Generate plotly visualization of orbit tuning results.
