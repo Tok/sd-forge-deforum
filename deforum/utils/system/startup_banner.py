@@ -50,15 +50,14 @@ def print_startup_banner():
         return f"#{r:02x}{g:02x}{b:02x}"
 
     # Generate smooth slopcore gradient (more shades for smoother background)
-    # BB0: Reverse order for left-to-right (cyan/blue → purple)
-    # DA3: Keep order for left-to-right (cyan → red/pink)
+    # BB0 original order: Purple (#5606FF) → Cyan (#17A7FE) - perfect for top-to-bottom
+    # DA3 original order: Cyan (#1CC4E6) → Red/Pink (#F64A5E) - perfect for left-to-right
     slopcore_base_colors = [HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
                             HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7]
 
-    # For BB0, reverse the gradient so it goes cyan→purple (left to right)
-    # For DA3, keep as-is (already cyan→red)
-    if gradient_variant == 'BB0':
-        slopcore_base_colors = list(reversed(slopcore_base_colors))  # Cyan → Purple
+    # No need to reverse - original orders work perfectly for their respective orientations
+    # BB0: Purple(top) → Cyan(bottom) for vertical gradient
+    # DA3: Cyan(left) → Red(right) for horizontal gradient
 
     slopcore_gradient = []
     # Interpolate between each pair for smoother slopcore gradient
@@ -86,11 +85,15 @@ def print_startup_banner():
         b = int(hex_color[5:7], 16)
         return f"\033[48;2;{r};{g};{b}m"
 
-    # Helper to get slopcore gradient background color by horizontal position (0.0 to 1.0)
-    # Simple left-to-right gradient: BB0 (blue→purple) or DA3 (cyan→red)
+    # Helper to get slopcore gradient background color by position (0.0 to 1.0)
+    # DA3: Horizontal (left→right), BB0: Vertical (top→bottom)
     def get_slopcore_bg_by_position(position):
         idx = min(int(position * len(slopcore_gradient)), len(slopcore_gradient) - 1)
         return hex_to_bg_ansi(slopcore_gradient[idx])
+
+    # Determine gradient direction based on variant
+    # DA3: left-to-right (horizontal), BB0: top-to-bottom (vertical)
+    use_vertical_gradient = (gradient_variant == 'BB0')
 
     # Slopcore rounded button characters (tailwind-hegemony punk, bootstrap default-css-wave)
     ROUND_TL = "◤"  # Top-left rounded
@@ -170,11 +173,16 @@ def print_startup_banner():
     max_shift = cumulative_shifts[-1]
 
     # Top line: ◤ with slopcore gradient bg, then spaces with slopcore gradient, ending with ◥
-    # Simple horizontal gradient: left (0.0) to right (1.0)
+    # DA3: horizontal (left→right), BB0: vertical (top→bottom, so top row = start of gradient)
     top_line = ""
+    row_idx = 0  # Top border row
     for char_pos in range(box_width):
-        # Simple left-to-right gradient position
-        gradient_pos = char_pos / (box_width - 1) if box_width > 1 else 0.0
+        if use_vertical_gradient:
+            # BB0: Vertical gradient - use row position (top row = 0.0)
+            gradient_pos = row_idx / (total_rows - 1) if total_rows > 1 else 0.0
+        else:
+            # DA3: Horizontal gradient - use char position (left = 0.0)
+            gradient_pos = char_pos / (box_width - 1) if box_width > 1 else 0.0
         bg = get_slopcore_bg_by_position(gradient_pos)
 
         if char_pos == 0:
@@ -189,8 +197,11 @@ def print_startup_banner():
     top_line += RESET  # Single reset at end of line
     banner_lines.append(top_line)
 
-    # Content lines with horizontal slopcore gradient background (left to right)
-    for row_idx, line in enumerate(lines):
+    # Content lines with gradient background
+    # DA3: horizontal (left to right), BB0: vertical (top to bottom)
+    for content_row_idx, line in enumerate(lines):
+        # Content rows start after top border (row 1 in total_rows)
+        actual_row_idx = content_row_idx + 1
         # Strip ANSI codes to get visible text
         visible_text = re.sub(r'\033\[[0-9;]*m', '', line)
         text_display_width = display_width(visible_text)  # Actual terminal width
@@ -204,8 +215,17 @@ def print_startup_banner():
         content_line = ""
         display_pos = 0
 
-        # Special handling for title row (row_idx == 0): black pill button effect
-        is_title_row = (row_idx == 0)
+        # Helper to calculate gradient position based on gradient direction
+        def calc_gradient_pos(char_pos):
+            if use_vertical_gradient:
+                # BB0: Vertical - use row position
+                return actual_row_idx / (total_rows - 1) if total_rows > 1 else 0.0
+            else:
+                # DA3: Horizontal - use char position
+                return char_pos / (box_width - 1) if box_width > 1 else 0.0
+
+        # Special handling for title row (content_row_idx == 0): black pill button effect
+        is_title_row = (content_row_idx == 0)
 
         # Helper to get gradient foreground color (for brackets)
         def hex_to_fg_ansi(hex_color):
@@ -226,7 +246,7 @@ def print_startup_banner():
 
         # Left padding (2 spaces)
         for i in range(2):
-            gradient_pos = display_pos / (box_width - 1) if box_width > 1 else 0.0
+            gradient_pos = calc_gradient_pos(display_pos)
             bg = get_slopcore_bg_by_position(gradient_pos)
             content_line += f"{bg} "
             display_pos += 1
@@ -238,8 +258,8 @@ def print_startup_banner():
             char_width = 2 if unicodedata.east_asian_width(char) in ('F', 'W') else 1
 
             if is_title_row:
-                # Calculate gradient position for this character (simple horizontal)
-                gradient_pos = display_pos / (box_width - 1) if box_width > 1 else 0.0
+                # Calculate gradient position for this character
+                gradient_pos = calc_gradient_pos(display_pos)
 
                 if char in ('▓', '▒', '░'):
                     # Shade characters: gradient foreground on terminal-black background
@@ -270,8 +290,8 @@ def print_startup_banner():
                     bg = get_slopcore_bg_by_position(gradient_pos)
                     content_line += f"{bg}{WHITE}{char}"
             else:
-                # Regular content: slopcore gradient background, white text (simple horizontal)
-                gradient_pos = display_pos / (box_width - 1) if box_width > 1 else 0.0
+                # Regular content: slopcore gradient background, white text
+                gradient_pos = calc_gradient_pos(display_pos)
                 bg = get_slopcore_bg_by_position(gradient_pos)
                 content_line += f"{bg}{WHITE}{char}"
 
@@ -280,7 +300,7 @@ def print_startup_banner():
 
         # Right padding
         for i in range(right_padding_width):
-            gradient_pos = display_pos / (box_width - 1) if box_width > 1 else 0.0
+            gradient_pos = calc_gradient_pos(display_pos)
             bg = get_slopcore_bg_by_position(gradient_pos)
             content_line += f"{bg} "
             display_pos += 1
@@ -288,10 +308,17 @@ def print_startup_banner():
         content_line += RESET  # Single reset at end of line
         banner_lines.append(content_line)
 
-    # Bottom border with slopcore rounded corners and horizontal slopcore gradient
+    # Bottom border with slopcore rounded corners and gradient
+    # DA3: horizontal (left→right), BB0: vertical (bottom row = end of gradient)
     bottom_line = ""
+    bottom_row_idx = total_rows - 1  # Bottom border row
     for char_pos in range(box_width):
-        gradient_pos = char_pos / (box_width - 1) if box_width > 1 else 0.0
+        if use_vertical_gradient:
+            # BB0: Vertical gradient - use row position (bottom row = 1.0)
+            gradient_pos = bottom_row_idx / (total_rows - 1) if total_rows > 1 else 0.0
+        else:
+            # DA3: Horizontal gradient - use char position
+            gradient_pos = char_pos / (box_width - 1) if box_width > 1 else 0.0
         bg = get_slopcore_bg_by_position(gradient_pos)
 
         if char_pos == 0:

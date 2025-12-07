@@ -138,59 +138,7 @@ def on_ui_tabs():
 
     # Slopcore gradient aesthetic for Generate button and hide unwanted buttons
     slopcore_css = """
-    /* DA3 slopcore gradient for MAIN GENERATE BUTTON ONLY (cyan → red/pink) */
-    /* MAXIMUM SPECIFICITY - Must override Gradio AND BB0 button styles */
-    div#deforum_generate,
-    div#deforum_generate button,
-    #deforum_generate.generate-button,
-    #deforum_generate button.generate-button,
-    button#deforum_generate.primary,
-    #component-123,
-    [id^="component-"][id*="generate"],
-    #deforum_results button#deforum_generate,
-    #deforum_results div#deforum_generate button,
-    #deforum_generate,
-    #deforum_generate *,
-    #deforum_generate.primary,
-    #deforum_generate.secondary,
-    button#deforum_generate,
-    #deforum_generate > button,
-    #deforum_generate button,
-    [id*="deforum_generate"] button,
-    [id="deforum_generate"] {
-        background: linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%) !important;
-        background-image: linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%) !important;
-        background-color: #1cc4e6 !important;
-        border: none !important;
-        color: white !important;
-        font-weight: 600 !important;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
-        box-shadow: 0 4px 6px rgba(28, 196, 230, 0.3) !important;
-        transition: all 0.3s ease !important;
-    }
-    /* Main generate button hover - reversed DA3 gradient */
-    div#deforum_generate:hover,
-    div#deforum_generate button:hover,
-    #deforum_generate.generate-button:hover,
-    #deforum_generate button.generate-button:hover,
-    button#deforum_generate.primary:hover,
-    #component-123:hover,
-    [id^="component-"][id*="generate"]:hover,
-    #deforum_results button#deforum_generate:hover,
-    #deforum_results div#deforum_generate button:hover,
-    #deforum_generate:hover,
-    #deforum_generate *:hover,
-    button#deforum_generate:hover,
-    #deforum_generate > button:hover,
-    [id*="deforum_generate"] button:hover {
-        background: linear-gradient(135deg, #f64a5e 0%, #1cc4e6 100%) !important;
-        background-image: linear-gradient(135deg, #f64a5e 0%, #1cc4e6 100%) !important;
-        background-color: #f64a5e !important;
-        box-shadow: 0 6px 12px rgba(246, 74, 94, 0.4) !important;
-        transform: translateY(-1px) !important;
-    }
-
-    /* BB0 Slopcore gradient for OTHER buttons (audio sync, etc.) - TOP TO BOTTOM */
+    /* BB0 Slopcore gradient for OTHER buttons (audio sync, etc.) - TOP TO BOTTOM (VERTICAL) */
     #audio_sync_button,
     #audio_sync_button *,
     button#audio_sync_button,
@@ -400,6 +348,59 @@ def on_ui_tabs():
     #deforum_depth_preview img {
         border-radius: 8px !important;
         display: block !important;
+    }
+
+    /* DA3 slopcore gradient for MAIN GENERATE BUTTON ONLY (cyan → red/pink) LEFT TO RIGHT */
+    /* MUST COME LAST - Overrides BB0 button styles above */
+    /* MAXIMUM SPECIFICITY to override .slopcore-button class */
+    div#deforum_generate,
+    div#deforum_generate button,
+    #deforum_generate.generate-button,
+    #deforum_generate button.generate-button,
+    button#deforum_generate.primary,
+    button#deforum_generate.slopcore-button,
+    #deforum_generate.slopcore-button,
+    #deforum_results button#deforum_generate,
+    #deforum_results div#deforum_generate button,
+    #deforum_generate,
+    #deforum_generate *,
+    #deforum_generate.primary,
+    #deforum_generate.secondary,
+    button#deforum_generate,
+    #deforum_generate > button,
+    #deforum_generate button,
+    [id*="deforum_generate"] button,
+    [id="deforum_generate"] {
+        background: linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%) !important;
+        background-image: linear-gradient(135deg, #1cc4e6 0%, #f64a5e 100%) !important;
+        background-color: #1cc4e6 !important;
+        border: none !important;
+        color: white !important;
+        font-weight: 600 !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+        box-shadow: 0 4px 6px rgba(28, 196, 230, 0.3) !important;
+        transition: all 0.3s ease !important;
+    }
+    /* Main generate button hover - reversed DA3 gradient (LEFT TO RIGHT) */
+    div#deforum_generate:hover,
+    div#deforum_generate button:hover,
+    #deforum_generate.generate-button:hover,
+    #deforum_generate button.generate-button:hover,
+    button#deforum_generate.primary:hover,
+    button#deforum_generate.slopcore-button:hover,
+    #deforum_generate.slopcore-button:hover,
+    #deforum_results button#deforum_generate:hover,
+    #deforum_results div#deforum_generate button:hover,
+    #deforum_generate:hover,
+    #deforum_generate *:hover,
+    button#deforum_generate:hover,
+    #deforum_generate > button:hover,
+    [id*="deforum_generate"] button:hover {
+        background: linear-gradient(135deg, #f64a5e 0%, #1cc4e6 100%) !important;
+        background-image: linear-gradient(135deg, #f64a5e 0%, #1cc4e6 100%) !important;
+        background-color: #f64a5e !important;
+        box-shadow: 0 6px 12px rgba(246, 74, 94, 0.4) !important;
+        transform: translateY(-1px) !important;
     }
     """
 
