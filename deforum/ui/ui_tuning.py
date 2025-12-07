@@ -574,13 +574,14 @@ def create_tuning_tab() -> tuple:
                 - Optimize near-clip distance for quality
                 - Find best balance between keyframe count and splat density
 
-                **⚠️ IMPORTANT: Synthetic Tests Use Gradient Spheres, NOT Actual Splats**
-                - **Synthetic tests** analyze pre-generated gradient sphere frame sequences
-                - Tests measure pose estimation confidence and temporal smoothness ONLY
-                - **NO depth estimation or actual 3DGS rendering** occurs (for speed)
-                - VRAM values will be 0 (no models loaded)
-                - Use these tests to quickly find optimal parameter ranges
-                - For actual splat quality, run real rendering tests with Deforum
+                **✨ REAL 3DGS Testing with Actual Depth Estimation & Rendering**
+                - Tests use **gradient sphere images** as input (no ZIT diffusion needed)
+                - Runs **ACTUAL DA3 depth estimation** on keyframes
+                - Builds **REAL 3DGS splat scenes** from depth maps
+                - Renders **novel views** with actual splat rendering
+                - Measures **real VRAM usage**, render times, and quality (SSIM)
+                - **All rendered frames saved** to output directory
+                - Generates **markdown report** for easy copy-paste to Claude
 
                 **What DA3-3DGS Does (in real rendering):**
                 1. Collects N consecutive keyframes around each segment

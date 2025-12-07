@@ -537,37 +537,37 @@ class TuningTestManager:
         self._generate_3dgs_tuning_graph(test_id)
 
     def _run_synthetic_3dgs_tests(self, test_id: str, config: TuningTestConfig):
-        """Run DA3-3DGS synthetic tests (no diffusion).
+        """Run REAL DA3-3DGS tests with actual depth estimation and splat rendering.
 
-        Uses synthetically generated images to test DA3 pose estimation
-        and 3DGS parameters in a reproducible way.
+        Uses gradient sphere test images to run ACTUAL DA3 depth estimation,
+        build REAL 3DGS scenes, and render novel views with actual splat rendering.
+
+        This replaces the old placeholder synthetic tests that only measured
+        frame similarity without using DA3 or 3DGS at all.
 
         Args:
             test_id: Test identifier
             config: Test configuration with parameters
         """
         from pathlib import Path
-        from deforum.api.tuning_3dgs_synthetic import run_synthetic_3dgs_sweep
+        from deforum.api.tuning_3dgs_real import run_real_3dgs_sweep
         import os
 
-        logger.info(f"Starting synthetic DA3-3DGS tests for test {test_id}")
+        logger.info(f"Starting REAL DA3-3DGS tests for test {test_id}")
 
         # Create output directory
         forge_root = Path(os.getcwd())
         tuning_dir = forge_root / "output" / "deforum-tuning"
-        test_output_dir = tuning_dir / f"synthetic_3dgs_{test_id}"
+        test_output_dir = tuning_dir / f"real_3dgs_{test_id}"
         test_output_dir.mkdir(parents=True, exist_ok=True)
 
         # Build sweep config (reuse existing helper)
         sweep_config = self._build_3dgs_sweep_config(config)
 
-        # Add synthetic-specific parameters
-        sweep_config["patterns"] = config.patterns if hasattr(config, 'patterns') else ["gradient_sphere"]
+        logger.info(f"Real DA3-3DGS sweep config: {sweep_config}")
 
-        logger.info(f"Synthetic sweep config: {sweep_config}")
-
-        # Run the parameter sweep (synthetic) with cancellation support
-        results = run_synthetic_3dgs_sweep(
+        # Run the parameter sweep (REAL) with cancellation support
+        results = run_real_3dgs_sweep(
             sweep_config,
             test_output_dir,
             test_manager=self,
@@ -579,9 +579,9 @@ class TuningTestManager:
             if test_id in self.active_tests:
                 self.active_tests[test_id].results = [r.to_dict() for r in results]
 
-        logger.info(f"Synthetic DA3-3DGS sweep complete: {len(results)} tests run")
+        logger.info(f"Real DA3-3DGS sweep complete: {len(results)} tests run")
 
-        # TODO: Generate visualization for synthetic tests
+        # Markdown report is generated automatically by run_real_3dgs_sweep()
 
     def _create_3dgs_test_directory(self, test_id: str) -> Path:
         """Create output directory for 3DGS test.
