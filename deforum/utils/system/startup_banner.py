@@ -50,14 +50,14 @@ def print_startup_banner():
         return f"#{r:02x}{g:02x}{b:02x}"
 
     # Generate smooth slopcore gradient (more shades for smoother background)
-    # BB0 original order: Purple (#5606FF) → Cyan (#17A7FE) - perfect for top-to-bottom
-    # DA3 original order: Cyan (#1CC4E6) → Red/Pink (#F64A5E) - perfect for left-to-right
+    # BB0 original order: Purple (#5606FF) → Cyan (#17A7FE)
+    # DA3 original order: Cyan (#1CC4E6) → Red/Pink (#F64A5E)
     slopcore_base_colors = [HEX_SLOPCORE_1, HEX_SLOPCORE_2, HEX_SLOPCORE_3, HEX_SLOPCORE_4,
                             HEX_SLOPCORE_5, HEX_SLOPCORE_6, HEX_SLOPCORE_7]
 
-    # No need to reverse - original orders work perfectly for their respective orientations
-    # BB0: Purple(top) → Cyan(bottom) for vertical gradient
-    # DA3: Cyan(left) → Red(right) for horizontal gradient
+    # No reversal needed - original orders work for vertical BB0 and horizontal DA3
+    # BB0 vertical: Purple(top) → Cyan(bottom)
+    # DA3 horizontal: Cyan(left) → Red(right)
 
     slopcore_gradient = []
     # Interpolate between each pair for smoother slopcore gradient
