@@ -1317,10 +1317,10 @@ def WanArgs():
             "label": "Gaussian Densification",
             "type": "slider",
             "minimum": 1,
-            "maximum": 4,
+            "maximum": 8,
             "step": 1,
             "value": 3,
-            "info": "Subdivide each gaussian splat for higher quality rendering. DA3 generates ~705k base splats. 1: use base splats (fastest, lowest quality), 2: 1.4M splats (good balance), 3: 2.1M splats (default, high quality, more VRAM), 4: 2.8M splats (maximum quality, highest VRAM). Each gaussian is subdivided into N smaller splats with slight positional offsets for finer detail."
+            "info": "Subdivide each gaussian splat for higher quality rendering. DA3 generates ~705k base splats. Quality tiers: 1: 705k splats (fastest, 8GB VRAM), 2: 1.4M (good, 12GB), 3: 2.1M (default, high quality, 16GB), 4: 2.8M (very high, 20GB), 5: 3.5M (excellent, 24GB), 6: 4.2M (ultra, 28GB), 7: 4.9M (extreme, 32GB), 8: 5.6M (maximum, 40GB+). Higher values = finer detail but exponentially more VRAM. Each splat is subdivided into N smaller splats with slight positional offsets."
         },
         "da3_3dgs_near_clip_distance": {
             "label": "Near Clip Distance",

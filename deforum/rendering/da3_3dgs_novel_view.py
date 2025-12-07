@@ -17,6 +17,9 @@ from PIL import Image
 import cv2
 
 from deforum.utils.system.logging import get_logger, emoji_if_enabled
+from deforum.utils.system.logging.log import HEX_BLUE, HEX_PURPLE
+from deforum.utils.system.logging.themes import get_tqdm_color_for_theme
+from deforum.rendering.options import get_log_theme
 
 logger = get_logger()
 
@@ -632,6 +635,8 @@ def render_3dgs_keyframes(
         List of paths to rendered keyframe images
     """
     from tqdm import tqdm
+    import modules.shared as shared
+    from deforum.rendering import options as opt_utils
 
     logger.info(f"   Rendering 3DGS keyframes for visual consistency...")
 
@@ -647,7 +652,22 @@ def render_3dgs_keyframes(
         idx_pos = keyframe_indices.index(segment_last_idx)
         keyframe_to_render.append((segment_last_idx, extrinsics[idx_pos]))
 
-    for kf_idx, kf_pose in tqdm(keyframe_to_render, desc="  Rendering 3DGS keyframes", unit="frame"):
+    # Use themed tqdm color (blue for keyframes, matching standard tween color)
+    theme = get_log_theme()
+    bar_color = get_tqdm_color_for_theme(HEX_BLUE, theme)
+
+    # Check if ASCII preview is enabled
+    show_ascii = opt_utils.is_dashboard_ascii_preview_enabled()
+
+    for kf_idx, kf_pose in tqdm(
+        keyframe_to_render,
+        desc="  Rendering 3DGS keyframes",
+        unit="frame",
+        colour=bar_color,
+        dynamic_ncols=True,
+        file=shared.progress_print_out,
+        disable=shared.cmd_opts.disable_console_progressbars
+    ):
         rendered_kf = render_novel_view_from_gaussians(
             gaussians=gaussians,
             camera_pose=kf_pose,
@@ -662,6 +682,12 @@ def render_3dgs_keyframes(
         rendered_kf.save(kf_path)
         keyframe_paths.append(kf_path)
         logger.debug(f"   Saved 3DGS keyframe: {kf_filename}")
+
+        # Add ASCII preview if enabled
+        if show_ascii:
+            from deforum.utils.ui.dashboard import image_to_ascii_art
+            ascii_art = image_to_ascii_art(rendered_kf, width=32, height=18, use_color=True)
+            logger.info(f"\n{emoji_if_enabled('🎨')} Frame {kf_idx:09d} (3DGS Keyframe):\n{ascii_art}")
 
     return keyframe_paths
 
@@ -701,6 +727,8 @@ def render_tween_frames(
         List of paths to rendered frame images
     """
     from tqdm import tqdm
+    import modules.shared as shared
+    from deforum.rendering import options as opt_utils
 
     img_width, img_height = image_size
     frame_paths = []
@@ -717,7 +745,22 @@ def render_tween_frames(
 
     total_span = last_frame_idx - first_frame_idx
 
-    for target_idx in tqdm(target_frame_indices, desc="  Rendering 3DGS tweens", unit="frame"):
+    # Use themed tqdm color (purple for tweens, matching standard diffusion frame color)
+    theme = get_log_theme()
+    bar_color = get_tqdm_color_for_theme(HEX_PURPLE, theme)
+
+    # Check if ASCII preview is enabled
+    show_ascii = opt_utils.is_dashboard_ascii_preview_enabled()
+
+    for target_idx in tqdm(
+        target_frame_indices,
+        desc="  Rendering 3DGS tweens",
+        unit="frame",
+        colour=bar_color,
+        dynamic_ncols=True,
+        file=shared.progress_print_out,
+        disable=shared.cmd_opts.disable_console_progressbars
+    ):
         # Calculate interpolation parameter (0 to 1) within SEGMENT span
         t = (target_idx - first_frame_idx) / total_span if total_span > 0 else 0.5
 
@@ -740,6 +783,12 @@ def render_tween_frames(
         target_path = os.path.join(output_dir, target_filename)
         rendered_image.save(target_path)
         frame_paths.append(target_path)
+
+        # Add ASCII preview if enabled
+        if show_ascii:
+            from deforum.utils.ui.dashboard import image_to_ascii_art
+            ascii_art = image_to_ascii_art(rendered_image, width=32, height=18, use_color=True)
+            logger.info(f"\n{emoji_if_enabled('🎨')} Frame {target_idx:09d} (3DGS Tween):\n{ascii_art}")
 
     return frame_paths
 
@@ -780,6 +829,16 @@ def generate_da3_3dgs_interpolation(
     logger.info(f"   Keyframes: {len(keyframe_images)} frames at indices {keyframe_indices}")
     logger.info(f"   Targets: {len(target_frame_indices)} frames to generate")
     logger.info(f"   Model: {model_selection}")
+    logger.info(f"   Densification factor: {densification_factor}")
+    logger.info(f"   Near-clip distance: {near_clip_distance}")
+
+    # Log VRAM status
+    if torch.cuda.is_available():
+        free_mem, total_mem = torch.cuda.mem_get_info()
+        free_gb = free_mem / (1024 ** 3)
+        total_gb = total_mem / (1024 ** 3)
+        used_gb = total_gb - free_gb
+        logger.info(f"   VRAM: {used_gb:.2f}GB / {total_gb:.2f}GB used ({free_gb:.2f}GB free)")
 
     # Import DA3 depth model
     from deforum.depth.depth_anything_v3 import DepthAnythingV3
