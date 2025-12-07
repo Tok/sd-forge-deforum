@@ -1326,8 +1326,8 @@ def WanArgs():
             "minimum": 0.0,
             "maximum": 5.0,
             "step": 0.05,
-            "value": 0.1,
-            "info": "Remove gaussian splats closer than this distance to the camera (in world units). Helps eliminate 'straw' artifacts that appear too close to the camera lens. 0.0 = no filtering (show all splats), 0.1 = minimal filtering (default, removes very close splats), 0.5 = moderate filtering, higher values = more aggressive. WARNING: Values >1.0 may cause black frames."
+            "value": 0.0,
+            "info": "Remove gaussian splats closer than this distance to the camera (in world units). DEFAULT: 0.0 (disabled) because DA3's camera positioning can place cameras inside the scene, causing 99%+ of splats to be filtered. Only enable if you experience 'straw' artifacts extending from camera. WARNING: Values >0.1 often cause black frames."
         },
 
         # Advanced Generation Settings
