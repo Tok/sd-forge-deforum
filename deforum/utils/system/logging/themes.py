@@ -12,56 +12,56 @@ from deforum.utils.image.color import hex_to_ansi_foreground as from_hex_color
 # SLOPCORE THEME - Authentic BLANK BANSHEE 0 gradient (Default)
 # ============================================================================
 # Exact colors pipetted from BB0 album cover
-# Original album gradient: #5606ff (top) → #17a7fe (bottom), straight vertical
+# Original album gradient: #5606ff (electric purple, top) → #17a7fe (azure cyan, bottom), straight vertical
 
 # 7-shade gradient (for CLI banner, charts, general use)
-HEX_SLOPCORE_BB0_1 = '#5606FF'  # Deep purple-blue (album top)
+HEX_SLOPCORE_BB0_1 = '#5606FF'  # Electric purple (album top)
 HEX_SLOPCORE_BB0_2 = '#4C21FF'  # Purple-blue
 HEX_SLOPCORE_BB0_3 = '#413CFF'  # Blue-purple (banner start)
 HEX_SLOPCORE_BB0_4 = '#3757FF'  # Mid blue
 HEX_SLOPCORE_BB0_5 = '#2C71FE'  # Blue
 HEX_SLOPCORE_BB0_6 = '#228CFE'  # Bright blue
-HEX_SLOPCORE_BB0_7 = '#17A7FE'  # Cyan (album bottom, banner end)
+HEX_SLOPCORE_BB0_7 = '#17A7FE'  # Azure cyan (album bottom, banner end)
 
 # 5-shade gradient (specifically for tqdm progress bars)
 # Maps to the 5 parallel dashboard bars in display order
-HEX_SLOPCORE_BB0_TQDM_1 = '#5606FF'  # Deep purple-blue [Current Tweens - FASTEST]
+HEX_SLOPCORE_BB0_TQDM_1 = '#5606FF'  # Electric purple [Current Tweens - FASTEST]
 HEX_SLOPCORE_BB0_TQDM_2 = '#462EFF'  # Purple-blue [Current Steps - FAST]
 HEX_SLOPCORE_BB0_TQDM_3 = '#3757FF'  # Mid blue [Total Steps - MEDIUM]
 HEX_SLOPCORE_BB0_TQDM_4 = '#277FFE'  # Bright blue [Total Diffusion Frames - SLOW]
-HEX_SLOPCORE_BB0_TQDM_5 = '#17A7FE'  # Cyan [Total Frames - SLOWEST]
+HEX_SLOPCORE_BB0_TQDM_5 = '#17A7FE'  # Azure cyan [Total Frames - SLOWEST]
 
 # ============================================================================
 # SLOPCORE THEME - Depth Anything V3 gradient (DA3 mode)
 # ============================================================================
 # Exact colors pipetted from Depth Anything V3 website header
-# Original gradient: #1cc4e6 (cyan) → #f64a5e (red/pink), left to right
+# Original gradient: #1cc4e6 (electric cyan) → #f64a5e (coral red), left to right
 # Reference: https://depth-anything-3.github.io/
 
 # 7-shade gradient (for CLI banner, charts, general use)
-HEX_SLOPCORE_DA3_1 = '#1CC4E6'  # Cyan (gradient start)
+HEX_SLOPCORE_DA3_1 = '#1CC4E6'  # Electric cyan (gradient start)
 HEX_SLOPCORE_DA3_2 = '#40AFCF'  # Cyan-blue blend
 HEX_SLOPCORE_DA3_3 = '#649BB8'  # Blue-teal
 HEX_SLOPCORE_DA3_4 = '#8987A2'  # Mid purple-grey
 HEX_SLOPCORE_DA3_5 = '#AD728B'  # Purple-pink
-HEX_SLOPCORE_DA3_6 = '#D15E74'  # Pink-red
-HEX_SLOPCORE_DA3_7 = '#F64A5E'  # Red/pink (gradient end)
+HEX_SLOPCORE_DA3_6 = '#D15E74'  # Rose pink
+HEX_SLOPCORE_DA3_7 = '#F64A5E'  # Coral red (gradient end)
 
 # 5-shade gradient (specifically for tqdm progress bars)
 # Maps to the 5 parallel dashboard bars in display order
-HEX_SLOPCORE_DA3_TQDM_1 = '#1CC4E6'  # Cyan [Current Tweens - FASTEST]
+HEX_SLOPCORE_DA3_TQDM_1 = '#1CC4E6'  # Electric cyan [Current Tweens - FASTEST]
 HEX_SLOPCORE_DA3_TQDM_2 = '#52A5C4'  # Blue-teal [Current Steps - FAST]
 HEX_SLOPCORE_DA3_TQDM_3 = '#8987A2'  # Mid purple-grey [Total Steps - MEDIUM]
 HEX_SLOPCORE_DA3_TQDM_4 = '#BF6880'  # Pink-purple [Total Diffusion Frames - SLOW]
-HEX_SLOPCORE_DA3_TQDM_5 = '#F64A5E'  # Red/pink [Total Frames - SLOWEST]
+HEX_SLOPCORE_DA3_TQDM_5 = '#F64A5E'  # Coral red [Total Frames - SLOWEST]
 
 # Global DA3 colors for UI buttons and DA3/3DGS-related features
 # Using key gradient points for visual consistency
-HEX_DA3_CYAN = HEX_SLOPCORE_DA3_1      # '#1CC4E6' - Bright cyan (DA3 start)
+HEX_DA3_CYAN = HEX_SLOPCORE_DA3_1      # '#1CC4E6' - Electric cyan (DA3 start)
 HEX_DA3_BLUE = HEX_SLOPCORE_DA3_2      # '#40AFCF' - Cyan-blue
 HEX_DA3_PURPLE = HEX_SLOPCORE_DA3_4    # '#8987A2' - Mid purple-grey
-HEX_DA3_PINK = HEX_SLOPCORE_DA3_6      # '#D15E74' - Pink-red
-HEX_DA3_RED = HEX_SLOPCORE_DA3_7       # '#F64A5E' - Red/pink (DA3 end)
+HEX_DA3_PINK = HEX_SLOPCORE_DA3_6      # '#D15E74' - Rose pink
+HEX_DA3_RED = HEX_SLOPCORE_DA3_7       # '#F64A5E' - Coral red (DA3 end)
 
 # ============================================================================
 # Active Slopcore Gradient Selection
@@ -235,7 +235,7 @@ SLOPCORE_GRADIENTS = {
                     HEX_SLOPCORE_BB0_4, HEX_SLOPCORE_BB0_5, HEX_SLOPCORE_BB0_6, HEX_SLOPCORE_BB0_7],
         '5_tqdm': [HEX_SLOPCORE_BB0_TQDM_1, HEX_SLOPCORE_BB0_TQDM_2, HEX_SLOPCORE_BB0_TQDM_3,
                    HEX_SLOPCORE_BB0_TQDM_4, HEX_SLOPCORE_BB0_TQDM_5],
-        'description': 'BLANK BANSHEE 0 - Deep purple-blue → Bright cyan',
+        'description': 'BLANK BANSHEE 0 - Electric purple → Azure cyan',
         'reference': 'BB0 album cover gradient (#5606ff → #17a7fe)'
     },
     'DA3': {
@@ -243,7 +243,7 @@ SLOPCORE_GRADIENTS = {
                     HEX_SLOPCORE_DA3_4, HEX_SLOPCORE_DA3_5, HEX_SLOPCORE_DA3_6, HEX_SLOPCORE_DA3_7],
         '5_tqdm': [HEX_SLOPCORE_DA3_TQDM_1, HEX_SLOPCORE_DA3_TQDM_2, HEX_SLOPCORE_DA3_TQDM_3,
                    HEX_SLOPCORE_DA3_TQDM_4, HEX_SLOPCORE_DA3_TQDM_5],
-        'description': 'Depth Anything V3 - Bright cyan → Red/pink',
+        'description': 'Depth Anything V3 - Electric cyan → Coral red',
         'reference': 'https://depth-anything-3.github.io/ (#1cc4e6 → #f64a5e)'
     }
 }

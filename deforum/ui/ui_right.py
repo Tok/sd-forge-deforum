@@ -139,7 +139,7 @@ def on_ui_tabs():
     # Slopcore gradient aesthetic for Generate button and hide unwanted buttons
     slopcore_css = """
     /* BB0 Slopcore gradient for OTHER buttons (audio sync, etc.) - TOP TO BOTTOM (VERTICAL) */
-    /* Purple at top (#5606ff) → Cyan at bottom (#17a7fe) - matching BB0 album */
+    /* Electric purple at top (#5606ff) → Azure cyan at bottom (#17a7fe) - matching BB0 album */
     #audio_sync_button,
     #audio_sync_button *,
     button#audio_sync_button,
@@ -184,7 +184,7 @@ def on_ui_tabs():
         transition: all 0.3s ease !important;
     }
     /* BB0 Hover states for OTHER buttons - REVERSED TOP TO BOTTOM */
-    /* Cyan at top → Purple at bottom (reversed from normal) */
+    /* Azure cyan at top → Electric purple at bottom (reversed from normal) */
     #audio_sync_button:hover,
     #audio_sync_button *:hover,
     button#audio_sync_button:hover,
@@ -352,7 +352,7 @@ def on_ui_tabs():
         display: block !important;
     }
 
-    /* DA3 slopcore gradient for MAIN GENERATE BUTTON ONLY (cyan → red/pink) LEFT TO RIGHT */
+    /* DA3 slopcore gradient for MAIN GENERATE BUTTON ONLY (electric cyan → coral red) LEFT TO RIGHT */
     /* MUST COME LAST - Overrides BB0 button styles above */
     /* MAXIMUM SPECIFICITY to override .slopcore-button class */
     div#deforum_generate,
