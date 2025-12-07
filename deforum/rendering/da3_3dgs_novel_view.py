@@ -683,11 +683,8 @@ def render_3dgs_keyframes(
         keyframe_paths.append(kf_path)
         logger.debug(f"   Saved 3DGS keyframe: {kf_filename}")
 
-        # Add ASCII preview if enabled
-        if show_ascii:
-            from deforum.utils.ui.dashboard import image_to_ascii_art
-            ascii_art = image_to_ascii_art(rendered_kf, width=32, height=18, use_color=True)
-            logger.info(f"\n{emoji_if_enabled('🎨')} Frame {kf_idx:09d} (3DGS Keyframe):\n{ascii_art}")
+        # Don't show ASCII preview for 3DGS keyframes (these are re-rendered, not original diffusion)
+        # ASCII preview is only shown for original diffusion-generated keyframes in Phase 1
 
     return keyframe_paths
 
@@ -784,11 +781,8 @@ def render_tween_frames(
         rendered_image.save(target_path)
         frame_paths.append(target_path)
 
-        # Add ASCII preview if enabled
-        if show_ascii:
-            from deforum.utils.ui.dashboard import image_to_ascii_art
-            ascii_art = image_to_ascii_art(rendered_image, width=32, height=18, use_color=True)
-            logger.info(f"\n{emoji_if_enabled('🎨')} Frame {target_idx:09d} (3DGS Tween):\n{ascii_art}")
+        # Don't show ASCII preview for tweens (they're 3DGS-rendered, often poor quality)
+        # ASCII preview is only shown for diffusion-generated keyframes
 
     return frame_paths
 

@@ -69,6 +69,8 @@ def get_optimal_densification_factor(
 
     # Find highest factor that fits
     optimal_factor = 1
+    reason = None  # Initialize to avoid UnboundLocalError
+
     for factor in sorted(DENSIFICATION_VRAM_REQUIREMENTS.keys(), reverse=True):
         min_req, recommended_req = DENSIFICATION_VRAM_REQUIREMENTS[factor]
 
@@ -88,16 +90,20 @@ def get_optimal_densification_factor(
                 f"{usable_vram:.1f}GB available, slightly tight)"
             )
 
-    # Build reason message
-    if optimal_factor == 1 and usable_vram < DENSIFICATION_VRAM_REQUIREMENTS[1][0]:
-        reason = (
-            f"Low VRAM: {usable_vram:.1f}GB available after safety margin, "
-            f"using minimum factor 1 ({DENSIFICATION_VRAM_REQUIREMENTS[1][0]:.1f}GB required)"
-        )
-    elif optimal_factor not in DENSIFICATION_VRAM_REQUIREMENTS:
-        # Fallback to factor 3 if something went wrong
-        optimal_factor = 3
-        reason = f"Fallback to default factor 3 ({usable_vram:.1f}GB available)"
+    # Build reason message if not already set
+    if reason is None:
+        if optimal_factor == 1 and usable_vram < DENSIFICATION_VRAM_REQUIREMENTS[1][0]:
+            reason = (
+                f"Low VRAM: {usable_vram:.1f}GB available after safety margin, "
+                f"using minimum factor 1 ({DENSIFICATION_VRAM_REQUIREMENTS[1][0]:.1f}GB required)"
+            )
+        elif optimal_factor not in DENSIFICATION_VRAM_REQUIREMENTS:
+            # Fallback to factor 3 if something went wrong
+            optimal_factor = 3
+            reason = f"Fallback to default factor 3 ({usable_vram:.1f}GB available)"
+        else:
+            # Fallback message if somehow reason is still None
+            reason = f"Selected factor {optimal_factor} ({usable_vram:.1f}GB available)"
 
     logger.info(f"VRAM-based quality selection: {reason}")
     return optimal_factor, reason
