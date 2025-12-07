@@ -51,6 +51,8 @@ class DA3SyntheticTestResult:
     # Test configuration
     model: str
     neighbor_segments: int
+    densification: int
+    nearclip: float
     width: int
     height: int
     num_frames: int
@@ -362,16 +364,18 @@ def run_synthetic_3dgs_test(
     # Extract configuration
     model = config.get("model", "DA3NESTED-GIANT-LARGE")
     neighbor_segments = config.get("neighbor_segments", 6)
+    densification = config.get("densification", 2)
+    nearclip = config.get("nearclip", 0.1)
     width = config.get("width", 512)
     height = config.get("height", 288)
     num_frames = config.get("test_frames", 20)
     pattern = config.get("pattern", "gradient_sphere")
 
     logger.info(f"Running synthetic 3DGS test: {model}, {neighbor_segments} neighbors, "
-                f"{num_frames} frames, {width}x{height}")
+                f"densify={densification}, nearclip={nearclip}, {num_frames} frames, {width}x{height}")
 
     # Create test-specific output directory
-    test_name = f"synthetic_{model}_{neighbor_segments}seg_{pattern}"
+    test_name = f"synthetic_{model}_{neighbor_segments}seg_d{densification}_n{nearclip:.2f}_{pattern}"
     test_dir = test_output_dir / test_name
     test_dir.mkdir(parents=True, exist_ok=True)
 
@@ -424,6 +428,8 @@ def run_synthetic_3dgs_test(
         result = DA3SyntheticTestResult(
             model=model,
             neighbor_segments=neighbor_segments,
+            densification=densification,
+            nearclip=nearclip,
             width=width,
             height=height,
             num_frames=num_frames,
@@ -452,6 +458,8 @@ def run_synthetic_3dgs_test(
         result = DA3SyntheticTestResult(
             model=model,
             neighbor_segments=neighbor_segments,
+            densification=densification,
+            nearclip=nearclip,
             width=width,
             height=height,
             num_frames=num_frames,
@@ -490,6 +498,20 @@ def run_synthetic_3dgs_sweep(
         sweep_config.get("neighbor_segments_max", 8) + 1,
         sweep_config.get("neighbor_segments_step", 2),
     )
+    densification_range = range(
+        sweep_config.get("densification_min", 2),
+        sweep_config.get("densification_max", 6) + 1,
+        sweep_config.get("densification_step", 2),
+    )
+    nearclip_values = []
+    nearclip_min = sweep_config.get("nearclip_min", 0.05)
+    nearclip_max = sweep_config.get("nearclip_max", 0.15)
+    nearclip_step = sweep_config.get("nearclip_step", 0.05)
+    current = nearclip_min
+    while current <= nearclip_max + 0.001:  # Small epsilon for float comparison
+        nearclip_values.append(round(current, 3))
+        current += nearclip_step
+
     aspect_ratios = sweep_config.get("aspect_ratios", [[1.78, 512, 288]])
     test_frames = sweep_config.get("test_iterations", 20)
     patterns = sweep_config.get("patterns", ["gradient_sphere"])
@@ -498,6 +520,8 @@ def run_synthetic_3dgs_sweep(
     total_tests = (
         len(models) *
         len(list(neighbor_segments_range)) *
+        len(densification_range) *
+        len(nearclip_values) *
         len(aspect_ratios) *
         len(patterns)
     )
@@ -509,27 +533,31 @@ def run_synthetic_3dgs_sweep(
     # Run all combinations
     for model in models:
         for neighbor_segments in neighbor_segments_range:
-            for aspect_config in aspect_ratios:
-                for pattern in patterns:
-                    test_count += 1
+            for densification in densification_range:
+                for nearclip in nearclip_values:
+                    for aspect_config in aspect_ratios:
+                        for pattern in patterns:
+                            test_count += 1
 
-                    aspect_ratio, width, height = aspect_config
+                            aspect_ratio, width, height = aspect_config
 
-                    logger.info(f"\n{'='*60}")
-                    logger.info(f"Test {test_count}/{total_tests}")
-                    logger.info(f"{'='*60}")
+                            logger.info(f"\n{'='*60}")
+                            logger.info(f"Test {test_count}/{total_tests}")
+                            logger.info(f"{'='*60}")
 
-                    config = {
-                        "model": model,
-                        "neighbor_segments": neighbor_segments,
-                        "width": width,
-                        "height": height,
-                        "test_frames": test_frames,
-                        "pattern": pattern,
-                    }
+                            config = {
+                                "model": model,
+                                "neighbor_segments": neighbor_segments,
+                                "densification": densification,
+                                "nearclip": nearclip,
+                                "width": width,
+                                "height": height,
+                                "test_frames": test_frames,
+                                "pattern": pattern,
+                            }
 
-                    result = run_synthetic_3dgs_test(config, output_dir)
-                    results.append(result)
+                            result = run_synthetic_3dgs_test(config, output_dir)
+                            results.append(result)
 
                     # Save intermediate results
                     results_file = output_dir / "synthetic_sweep_results.json"
