@@ -449,3 +449,237 @@ def generate_orbit_summary_stats(results: List[Dict[str, Any]]) -> Dict[str, Any
         'min_max_drift': min(max_drifts),
         'max_max_drift': max(max_drifts),
     }
+
+
+# ============================================================================
+# 3DGS Synthetic Test Visualization (DA3 + 3D Gaussian Splatting)
+# ============================================================================
+
+def create_3dgs_metrics_plot(results: List[Dict[str, Any]]) -> plt.Figure:
+    """Create multi-subplot line plot showing DA3-3DGS parameter impact on quality.
+
+    Args:
+        results: List of 3DGS test result dictionaries
+
+    Returns:
+        Matplotlib figure object with 3 subplots showing impact of:
+        - neighbor_segments (4, 6, 8)
+        - densification (2, 4, 6)
+        - nearclip (0.05, 0.10, 0.15)
+    """
+    if not results:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.text(0.5, 0.5, 'No results yet', ha='center', va='center')
+        ax.set_title('DA3-3DGS Quality Metrics')
+        return fig
+
+    # Get unique models
+    models = sorted(list(set(r['model'] for r in results)))
+
+    # Create 3 subplots (one for each parameter dimension)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 14))
+
+    # Subplot 1: Overall Score vs Neighbor Segments
+    for i, model in enumerate(models):
+        model_results = [r for r in results if r['model'] == model]
+
+        # Group by neighbor_segments, average over other dimensions
+        neighbor_segments = sorted(list(set(r['neighbor_segments'] for r in model_results)))
+        avg_scores = []
+        for ns in neighbor_segments:
+            ns_results = [r for r in model_results if r['neighbor_segments'] == ns]
+            avg_scores.append(np.mean([r['overall_score'] for r in ns_results]))
+
+        color = [SLOPCORE_3, SLOPCORE_6][i % 2]
+        ax1.plot(neighbor_segments, avg_scores, 'o-', label=model.split('-')[0],
+                linewidth=2, markersize=8, color=color)
+
+    ax1.set_xlabel('Neighbor Segments')
+    ax1.set_ylabel('Overall Score')
+    ax1.set_title('Quality vs Neighbor Segments (averaged over densification & nearclip)')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    ax1.set_ylim(0, 100)
+
+    # Subplot 2: Overall Score vs Densification
+    for i, model in enumerate(models):
+        model_results = [r for r in results if r['model'] == model]
+
+        # Group by densification, average over other dimensions
+        densifications = sorted(list(set(r['densification'] for r in model_results)))
+        avg_scores = []
+        for dens in densifications:
+            dens_results = [r for r in model_results if r['densification'] == dens]
+            avg_scores.append(np.mean([r['overall_score'] for r in dens_results]))
+
+        color = [SLOPCORE_3, SLOPCORE_6][i % 2]
+        ax2.plot(densifications, avg_scores, 'o-', label=model.split('-')[0],
+                linewidth=2, markersize=8, color=color)
+
+    ax2.set_xlabel('Densification')
+    ax2.set_ylabel('Overall Score')
+    ax2.set_title('Quality vs Densification (averaged over neighbor_segments & nearclip)')
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    ax2.set_ylim(0, 100)
+
+    # Subplot 3: Overall Score vs Nearclip
+    for i, model in enumerate(models):
+        model_results = [r for r in results if r['model'] == model]
+
+        # Group by nearclip, average over other dimensions
+        nearclips = sorted(list(set(r['nearclip'] for r in model_results)))
+        avg_scores = []
+        for nc in nearclips:
+            nc_results = [r for r in model_results if r['nearclip'] == nc]
+            avg_scores.append(np.mean([r['overall_score'] for r in nc_results]))
+
+        color = [SLOPCORE_3, SLOPCORE_6][i % 2]
+        ax3.plot(nearclips, avg_scores, 'o-', label=model.split('-')[0],
+                linewidth=2, markersize=8, color=color)
+
+    ax3.set_xlabel('Near Clip Distance')
+    ax3.set_ylabel('Overall Score')
+    ax3.set_title('Quality vs Near Clip (averaged over neighbor_segments & densification)')
+    ax3.legend()
+    ax3.grid(True, alpha=0.3)
+    ax3.set_ylim(0, 100)
+
+    plt.tight_layout()
+    return fig
+
+
+def create_3dgs_heatmap(results: List[Dict[str, Any]], metric: str = 'overall_score') -> plt.Figure:
+    """Create heatmap showing metric across 3DGS parameter combinations.
+
+    Args:
+        results: List of 3DGS test result dictionaries
+        metric: Metric to visualize (overall_score, avg_pose_confidence, temporal_smoothness)
+
+    Returns:
+        Matplotlib figure object with separate heatmaps for each model
+    """
+    if not results:
+        fig, ax = plt.subplots(figsize=(10, 8))
+        ax.text(0.5, 0.5, 'No results yet', ha='center', va='center')
+        ax.set_title('DA3-3DGS Parameter Heatmap')
+        return fig
+
+    # Get unique models
+    models = sorted(list(set(r['model'] for r in results)))
+
+    # Create subplots (one per model)
+    num_models = len(models)
+    fig, axes = plt.subplots(1, num_models, figsize=(8 * num_models, 8))
+
+    # Handle single model case
+    if num_models == 1:
+        axes = [axes]
+
+    for idx, model in enumerate(models):
+        ax = axes[idx]
+        model_results = [r for r in results if r['model'] == model]
+
+        # Get unique parameter values
+        neighbor_segments = sorted(list(set(r['neighbor_segments'] for r in model_results)))
+        densifications = sorted(list(set(r['densification'] for r in model_results)))
+        nearclips = sorted(list(set(r['nearclip'] for r in model_results)))
+
+        # Create combined parameter labels for Y-axis (densification × nearclip)
+        param_combos = []
+        for dens in densifications:
+            for nc in nearclips:
+                param_combos.append((dens, nc))
+
+        # Create matrix (Y=densification×nearclip combos, X=neighbor_segments)
+        matrix = np.zeros((len(param_combos), len(neighbor_segments)))
+
+        for result in model_results:
+            i = param_combos.index((result['densification'], result['nearclip']))
+            j = neighbor_segments.index(result['neighbor_segments'])
+            matrix[i, j] = result[metric]
+
+        # Create heatmap
+        im = ax.imshow(matrix, cmap=SLOPCORE_CMAP, aspect='auto', vmin=0, vmax=100)
+
+        # Set ticks
+        ax.set_xticks(np.arange(len(neighbor_segments)))
+        ax.set_yticks(np.arange(len(param_combos)))
+        ax.set_xticklabels([f'{ns}' for ns in neighbor_segments])
+        ax.set_yticklabels([f'D{d} NC{nc:.2f}' for d, nc in param_combos])
+
+        # Labels
+        ax.set_xlabel('Neighbor Segments')
+        ax.set_ylabel('Densification × Near Clip')
+
+        metric_labels = {
+            'overall_score': 'Overall Quality Score',
+            'avg_pose_confidence': 'Average Pose Confidence',
+            'temporal_smoothness': 'Temporal Smoothness',
+        }
+        ax.set_title(f'{model.split("-")[0]}\n{metric_labels.get(metric, metric)}')
+
+        # Add colorbar
+        cbar = plt.colorbar(im, ax=ax)
+        cbar.set_label('Score', rotation=270, labelpad=20)
+
+        # Add text annotations
+        for i in range(len(param_combos)):
+            for j in range(len(neighbor_segments)):
+                text = ax.text(j, i, f'{matrix[i, j]:.1f}',
+                              ha="center", va="center", color="black", fontsize=8)
+
+    plt.tight_layout()
+    return fig
+
+
+def find_best_3dgs_configuration(results: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Find the best 3DGS parameter configuration from results.
+
+    Best is defined as highest overall_score.
+
+    Args:
+        results: List of 3DGS test result dictionaries
+
+    Returns:
+        Best configuration dict or None if no results
+    """
+    if not results:
+        return None
+
+    return max(results, key=lambda r: r['overall_score'])
+
+
+def generate_3dgs_summary_stats(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Generate summary statistics from 3DGS test results.
+
+    Args:
+        results: List of 3DGS test result dictionaries
+
+    Returns:
+        Dictionary of summary statistics
+    """
+    if not results:
+        return {
+            'total_tests': 0,
+            'best_overall_score': 0,
+            'avg_overall_score': 0,
+            'best_config': None,
+            'avg_pose_confidence': 0,
+        }
+
+    overall_scores = [r['overall_score'] for r in results]
+    pose_confidences = [r['avg_pose_confidence'] for r in results]
+    best_config = find_best_3dgs_configuration(results)
+
+    return {
+        'total_tests': len(results),
+        'best_overall_score': max(overall_scores),
+        'avg_overall_score': np.mean(overall_scores),
+        'std_overall_score': np.std(overall_scores),
+        'best_config': best_config,
+        'worst_overall_score': min(overall_scores),
+        'avg_pose_confidence': np.mean(pose_confidences),
+        'min_pose_confidence': min(pose_confidences),
+        'max_pose_confidence': max(pose_confidences),
+    }
