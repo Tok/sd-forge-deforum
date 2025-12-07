@@ -544,7 +544,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 densification_factor=densification_factor,
                 near_clip_distance=near_clip_distance,
                 dashboard=dashboard,
-                deform_keys=None  # TEMP: Disable to test if DA3 automatic poses work correctly
+                # Note: Not passing deform_keys - DA3 generates better camera paths from depth
             )
         else:  # Default: Wan
             logger.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}")

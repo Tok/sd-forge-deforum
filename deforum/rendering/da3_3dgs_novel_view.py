@@ -302,8 +302,8 @@ def render_novel_view_from_gaussians(
     # DA3 provides extrinsics as [4, 4], gsplat expects viewmat
     viewmat = torch.from_numpy(camera_pose).float().to(device)  # [4, 4]
 
-    # TEMP DEBUG: Disable near-clip filtering to test if it's causing black frames
-    if False and near_clip_distance > 0.0:
+    # Apply near-clip filtering to remove splats too close to camera
+    if near_clip_distance > 0.0:
         # Transform means to camera space to get depth
         # viewmat is world-to-camera, so: cam_pos = viewmat @ world_pos
         means_homogeneous = torch.cat([means, torch.ones(means.shape[0], 1, device=device)], dim=1)  # [N, 4]
@@ -848,15 +848,14 @@ def generate_da3_3dgs_interpolation(
     segment_last_idx: int = None,
     densification_factor: int = 1,
     near_clip_distance: float = 0.0,
-    dashboard=None,
-    deform_keys=None
+    dashboard=None
 ) -> List[str]:
     """Generate interpolated frames using DA3 3D Gaussian Splatting.
 
-    3DGS interpolation workflow (using Deforum movement schedules):
+    3DGS interpolation workflow:
     1. Build 3DGS scene from multiple nearby keyframes (via DA3)
-    2. Use Deforum animation schedules (translation/rotation) for camera movement
-    3. Scale Deforum movement to match 3DGS scene coordinates
+    2. Extract camera poses automatically from DA3's depth estimation
+    3. Interpolate camera movement between segment boundary keyframes
     4. Render novel views by moving camera through 3DGS scene
 
     Args:
@@ -912,6 +911,10 @@ def generate_da3_3dgs_interpolation(
     logger.info(f"   Building 3DGS scene from {len(keyframe_arrays)} keyframes...")
     result = depth_model.estimate_3d_gaussians(keyframe_arrays)
 
+    # Update dashboard: scene build complete
+    if dashboard:
+        dashboard.update_3dgs_build(len(keyframe_images), len(keyframe_images))
+
     if result is None or result.gaussians is None:
         raise RuntimeError(
             f"Model {model_selection} doesn't support 3DGS (no gs_head/gs_adapter). "
@@ -957,39 +960,25 @@ def generate_da3_3dgs_interpolation(
         cam_pos = -R.T @ t  # Camera position in world coordinates
         logger.debug(f"   Camera {i} position: ({cam_pos[0]:.4f}, {cam_pos[1]:.4f}, {cam_pos[2]:.4f})")
 
-    # Choose camera pose generation method based on deform_keys availability
-    if deform_keys is not None:
-        # USE DEFORUM SCHEDULES for camera movement
-        logger.info(f"   Using Deforum animation schedules for camera movement")
+    # Use DA3's automatic pose estimation from depth
+    # DA3 generates camera poses that are optimally positioned based on actual scene geometry
+    # NOTE: Deforum translation/rotation schedules are NOT used for 3DGS interpolation
+    # DA3 automatically determines optimal camera movement based on scene depth
+    logger.info(f"   Using DA3 automatic pose estimation from depth")
+    logger.info(f"   NOTE: Deforum movement schedules are ignored (DA3 controls camera path)")
 
-        from deforum.rendering.deforum_camera_poses import get_interpolated_poses
+    # Reorient camera poses to look at centroid for better framing
+    # This ensures cameras point at the dense center of the scene, not empty space
+    extrinsics = reorient_cameras_to_target(extrinsics, centroid)
+    logger.info(f"   Reoriented cameras to look at point cloud center")
 
-        # Get camera poses from Deforum schedules (scaled to match 3DGS scene)
-        first_pose, last_pose, tween_poses_list = get_interpolated_poses(
-            first_frame_idx=segment_first_idx,
-            last_frame_idx=segment_last_idx,
-            target_frame_indices=target_frame_indices,
-            deform_keys=deform_keys,
-            scene_bbox_min=bbox_min,
-            scene_bbox_max=bbox_max,
-            scene_centroid=centroid
-        )
-    else:
-        # FALLBACK: Use DA3's automatic pose estimation (old behavior)
-        logger.info(f"   Using DA3 automatic pose estimation (deform_keys not provided)")
-
-        # Reorient camera poses to look at centroid for better framing
-        # This ensures cameras point at the dense center of the scene, not empty space
-        extrinsics = reorient_cameras_to_target(extrinsics, centroid)
-        logger.info(f"   Reoriented cameras to look at point cloud center")
-
-        # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
-        # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
-        # but we MUST interpolate between segment boundaries to stay in sync
-        first_pose, last_pose = get_segment_boundary_poses(
-            extrinsics, keyframe_indices, segment_first_idx, segment_last_idx
-        )
-        tween_poses_list = None  # Will be interpolated in render_tween_frames
+    # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
+    # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
+    # but we MUST interpolate between segment boundaries to stay in sync
+    first_pose, last_pose = get_segment_boundary_poses(
+        extrinsics, keyframe_indices, segment_first_idx, segment_last_idx
+    )
+    tween_poses_list = None  # Will be interpolated in render_tween_frames
 
     # Use average intrinsics (usually constant across views)
     avg_intrinsics = np.mean(intrinsics, axis=0)
