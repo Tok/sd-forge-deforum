@@ -48,9 +48,47 @@ class DA33DGSTestResult:
     # Error information
     error_message: Optional[str] = None
 
+    def calculate_overall_score(self) -> float:
+        """Calculate overall quality score (0-100).
+
+        Weighted combination of:
+        - Temporal consistency (SSIM): 40%
+        - Frame sharpness: 30%
+        - Render success: 20%
+        - Performance (speed): 10%
+
+        Returns:
+            Score from 0-100 (higher is better)
+        """
+        if not self.render_success:
+            return 0.0
+
+        # Normalize metrics to 0-100 scale
+        ssim_score = self.temporal_consistency_ssim * 100  # Already 0-1
+
+        # Sharpness: typical range 0-500, normalize to 0-100
+        sharpness_score = min(self.avg_frame_sharpness / 5.0, 100.0)
+
+        # Speed: faster is better (inverse of render time)
+        # Typical range: 0.5-5.0 seconds per frame
+        # Convert to score: 2s/frame = 50, 1s/frame = 100, 4s/frame = 25
+        speed_score = min(200.0 / max(self.render_time_per_frame, 0.1), 100.0)
+
+        # Weighted combination
+        overall = (
+            ssim_score * 0.4 +
+            sharpness_score * 0.3 +
+            100.0 * 0.2 +  # Success bonus
+            speed_score * 0.1
+        )
+
+        return round(overall, 2)
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
-        return asdict(self)
+        data = asdict(self)
+        data['overall_score'] = self.calculate_overall_score()
+        return data
 
 
 def measure_vram_usage() -> float:
@@ -201,6 +239,8 @@ def run_3dgs_test_configuration(
     test_dir = test_output_dir / test_name
     test_dir.mkdir(parents=True, exist_ok=True)
 
+    logger.info(f"Test output directory: {test_dir}")
+
     # Start time and VRAM tracking
     start_time = time.time()
     initial_vram = measure_vram_usage()
@@ -253,9 +293,10 @@ def run_3dgs_test_configuration(
         )
         response.raise_for_status()
         job_data = response.json()
-        job_id = job_data["id"]
+        batch_id = job_data["batch_id"]
+        job_id = job_data["job_ids"][0]  # Get first job from list
 
-        logger.info(f"Started 3DGS test job: {job_id}")
+        logger.info(f"Started 3DGS test batch: {batch_id}, job: {job_id}")
 
         # Wait for completion
         job_status = wait_for_job_to_complete(job_id)
