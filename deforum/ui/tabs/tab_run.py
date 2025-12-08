@@ -22,7 +22,6 @@ def get_tab_run(d, da):
         dict: Component dictionary for event binding
     """
     with gr.TabItem(f"{emoji_run()} Run"):
-        motion_preview_mode = create_row(d.motion_preview_mode)
         sampler, scheduler = create_row(d, 'sampler', 'scheduler')
         W, H = create_row(d, 'W', 'H')
         seed, batch_name = create_row(d, 'seed', 'batch_name')
