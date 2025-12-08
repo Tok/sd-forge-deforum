@@ -123,22 +123,22 @@ MODEL_CONFIGS = {
     "z_image": ModelConfig(
         model_type="z_image",
         display_name="Z-Image-Turbo",
-        recommended_steps=9,
-        min_steps=4,
-        max_steps=30,
+        recommended_steps=9,  # Results in 8 DiT forward passes
+        min_steps=4,  # Speed mode (lower quality)
+        max_steps=20,  # Quality mode (slower, diminishing returns beyond 20)
         uses_cfg=False,  # Z-Image is a distilled model with NO CFG support
         cfg_scale_default=0.0,  # Must be 0.0 (no CFG)
         cfg_scale_min=0.0,
         cfg_scale_max=0.0,
-        uses_distilled_cfg=False,
-        distilled_cfg_scale_default=0.0,  # No CFG at all
-        distilled_cfg_scale_min=0.0,
-        distilled_cfg_scale_max=0.0,
-        recommended_scheduler="simple",
-        compatible_schedulers=["simple", "normal"],
+        uses_distilled_cfg=True,  # Repurposed for shift parameter in Forge
+        distilled_cfg_scale_default=3.0,  # FlowMatch shift value (NOT CFG!)
+        distilled_cfg_scale_min=1.0,  # Lower shift = less noise scaling
+        distilled_cfg_scale_max=5.0,  # Higher shift = more variation
+        recommended_scheduler="beta",  # Euler Beta scheduler (use_beta_sigmas=True)
+        compatible_schedulers=["beta", "simple", "normal"],
         recommended_sampler="euler",
-        compatible_samplers=["euler", "dpmpp_2m"],
-        notes="Z-Image-Turbo is a distilled few-step model with NO CFG support (neither traditional nor distilled). Set cfg_scale=0.0. Use in-prompt constraints instead of negative prompts (e.g., 'no watermark', 'plain background'). Native resolution: 1024x1024."
+        compatible_samplers=["euler", "euler_a", "dpmpp_2m", "dpmpp_sde"],
+        notes="Z-Image-Turbo uses FlowMatchEulerDiscreteScheduler with shift=3.0 (controlled via distilled_cfg_scale in Forge). NO traditional CFG support - guidance_scale must be 0.0. Recommended: Euler Beta scheduler (warmer colors, sharper micro-contrast). Use in-prompt constraints instead of negative prompts (e.g., 'no watermark', 'plain background'). Native resolution: 1024x1024."
     ),
 
     "sdxl": ModelConfig(

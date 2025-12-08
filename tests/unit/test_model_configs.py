@@ -124,7 +124,9 @@ class TestModelConfigRetrieval:
         # Z-Image is a distilled model with NO CFG support (verified from official sources)
         assert config.uses_cfg is False
         assert config.cfg_scale_default == 0.0
-        assert config.uses_distilled_cfg is False
+        # distilled_cfg_scale repurposed for FlowMatch shift parameter (default 3.0)
+        assert config.uses_distilled_cfg is True  # Repurposed for shift in Forge
+        assert config.distilled_cfg_scale_default == 3.0  # Shift value, not CFG
 
     def test_get_sdxl_config(self):
         """Test retrieving SDXL configuration."""

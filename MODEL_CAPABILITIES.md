@@ -4,23 +4,23 @@ Comprehensive reference for model-specific features, parameters, and behaviors i
 
 ## Quick Reference Table
 
-| Model | Negative Prompts | Traditional CFG | Distilled CFG | Recommended Steps | CFG Range | Notes |
-|-------|-----------------|-----------------|---------------|-------------------|-----------|-------|
-| **Flux.1 Dev** | ⚠️ Via true_cfg | ⚠️ Via true_cfg | ✅ Yes (3.5) | 50 (28 min) | dist: 3.5 default (>1 to enable) | Best quality, slower |
-| **Flux.1 Schnell** | ❌ No | ❌ No (must be 0) | ❌ No (must be 0) | 4 | N/A (guidance=0) | Fast, 1-8 steps max |
-| **Lumina 2.0** | ✅ Yes | ✅ Yes (4.0) | ❌ Ignored | 30 | 4.0-5.5 | Anime-optimized, requires linear_quadratic |
-| **Z-Image-Turbo** | ❌ No | ❌ No CFG | ❌ Ignored | 9 | N/A (no CFG) | Distilled model, no CFG/negative prompts |
-| **SDXL** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | 4.0-15.0 | Standard diffusion |
-| **SD 1.5** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | 4.0-15.0 | Classic SD |
+| Model | Negative Prompts | Traditional CFG | Distilled CFG / Shift | Recommended Steps | CFG/Shift Range | Notes |
+|-------|-----------------|-----------------|----------------------|-------------------|-----------------|-------|
+| **Flux.1 Dev** | ⚠️ Via true_cfg | ⚠️ Via true_cfg | ✅ Dist CFG (3.5) | 50 (28 min) | dist: 3.5 default (>1 to enable) | Best quality, slower |
+| **Flux.1 Schnell** | ❌ No | ❌ No (must be 0) | ❌ Must be 0 | 4 | N/A (guidance=0) | Fast, 1-8 steps max |
+| **Lumina 2.0** | ✅ Yes | ✅ Yes (4.0) | ❌ Ignored | 30 | CFG: 4.0-5.5 | Anime-optimized, requires linear_quadratic |
+| **Z-Image-Turbo** | ❌ No | ❌ No CFG | ✅ Shift (3.0) | 9 (8 passes) | shift: 1.0-5.0 | FlowMatch scheduler, Beta sigmas recommended |
+| **SDXL** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | CFG: 4.0-15.0 | Standard diffusion |
+| **SD 1.5** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | CFG: 4.0-15.0 | Classic SD |
 
 ## Optimal Settings Summary
 
-| Model | Steps | Sampler | Scheduler | CFG | Dist CFG | Strength (Normal/KF) | Resolution |
-|-------|-------|---------|-----------|-----|----------|---------------------|------------|
-| **Flux Dev** | 50 (28 min) | Euler | Simple | true_cfg:1.0 | 3.5 | 0.85 / 0.20 | 1024x1024 |
+| Model | Steps | Sampler | Scheduler | CFG | Dist CFG / Shift | Strength (Normal/KF) | Resolution |
+|-------|-------|---------|-----------|-----|------------------|---------------------|------------|
+| **Flux Dev** | 50 (28 min) | Euler | Simple | true_cfg:1.0 | dist:3.5 | 0.85 / 0.20 | 1024x1024 |
 | **Flux Schnell** | 4 | Euler | Simple | 0.0 | 0.0 | 0.85 / 0.20 | 1024x1024 |
 | **Lumina 2.0** | 30 | Euler | linear_quadratic | 4.0 | - | 0.85 / 0.20 | 1024x1024 |
-| **Z-Image** | 9 | Euler | Simple | 0.0 | - | 0.85 / 0.20 | 1024x1024 |
+| **Z-Image** | 9 (8 passes) | Euler | Beta | 0.0 | shift:3.0 | 0.85 / 0.20 | 1024x1024 |
 | **SDXL** | 25 | DPM++ 2M | Normal | 7.5 | - | 0.85 / 0.20 | 1024x1024 |
 | **SD 1.5** | 25 | DPM++ 2M | Normal | 7.5 | - | 0.85 / 0.20 | 512x512 |
 
@@ -314,42 +314,87 @@ Schnell is **timestep-distilled**, meaning:
 
 ### Z-Image-Turbo
 
-**Type:** Distilled diffusion model (few-step)
+**Type:** Distilled diffusion model (few-step, FlowMatch-based)
 **Display Name:** Z-Image-Turbo
-**Developer:** Alibaba Tongyi
+**Developer:** Alibaba Tongyi Lab
 
 **Parameters:**
-- **Steps:** 9 recommended (actual forward passes: 8)
+- **Steps:** 9 recommended (actual forward passes: 8, range: 4-20)
+  - Speed mode: 4-6 steps (lower quality, faster)
+  - Quality mode: 15-20 steps (higher quality, slower, diminishing returns)
 - **Traditional CFG:** 0.0 (no classifier-free guidance)
-- **Distilled CFG:** Ignored
-- **Scheduler:** `simple` (compatible: simple, normal)
-- **Sampler:** `euler` (compatible: euler, dpmpp_2m)
-- **Resolution:** 1024x1024 (native)
+- **Shift Parameter:** 3.0 (FlowMatch timestep schedule shift)
+  - Controlled via `distilled_cfg_scale` in Forge (repurposed parameter)
+  - Range: 1.0-5.0 (higher = more variation, lower = more consistent)
+  - Purpose: Resolution-dependent noise scaling in FlowMatchEulerDiscreteScheduler
+- **Scheduler:** `beta` recommended (Euler Beta - warmer colors, sharper micro-contrast)
+  - Compatible: beta, simple, normal
+  - Technical: FlowMatchEulerDiscreteScheduler with `use_beta_sigmas=True`
+- **Sampler:** `euler` (compatible: euler, euler_a, dpmpp_2m, dpmpp_sde)
+- **Resolution:** 1024x1024 (native, max 2048x2048)
 
 **Capabilities:**
 - ❌ Negative prompts (NOT supported - distilled model)
-- ❌ CFG guidance (model doesn't use CFG at all)
-- ❌ Distilled CFG (ignored)
-- ✅ Fast generation (few-step distilled model)
+- ❌ CFG guidance (model doesn't use CFG at all - must set guidance_scale=0.0)
+- ✅ Shift parameter (FlowMatch timestep schedule tuning)
+- ✅ Fast generation (few-step distilled via Decoupled-DMD)
 - ✅ Full img2img support
-- ✅ Good quality at low steps
+- ✅ Good quality at low steps (8 forward passes)
 - ✅ Strong instruction-following
+- ✅ Sub-second latency on H800 GPUs, works on 16GB VRAM
+
+**Scheduler System (FlowMatchEulerDiscreteScheduler):**
+
+Z-Image uses a flow-matching scheduler with these parameters:
+
+1. **Shift (`shift`)** - Default: 3.0
+   - Controls timestep schedule scaling
+   - Higher values = more noise variation/stylization
+   - Lower values = more stable/consistent output
+   - Forge implementation: Exposed via `distilled_cfg_scale` parameter
+
+2. **Dynamic Shifting (`use_dynamic_shifting`)** - Default: False
+   - When enabled: Adjusts shift based on image resolution on-the-fly
+   - Z-Image keeps this disabled for consistent Turbo performance
+
+3. **Base Shift (`base_shift`)** - Default: 0.5
+   - Stabilizes image generation baseline
+   - Increasing reduces variation and improves consistency
+
+4. **Max Shift (`max_shift`)** - Default: 1.15
+   - Maximum change allowed to latent vectors
+   - Increasing encourages more variation/stylization
+
+5. **Beta Sigmas (`use_beta_sigmas`)** - Recommended: True
+   - Enables Euler Beta scheduler variant
+   - Results in warmer colors and slightly sharper micro-contrast
+   - Popular community preference for Z-Image
 
 **Notes:**
-- Distilled model that does NOT rely on classifier-free guidance
-- Set guidance_scale=0.0 (no CFG support)
+- Distilled model using Decoupled-DMD that does NOT rely on classifier-free guidance
+- **Critical:** Must set `guidance_scale=0.0` (no CFG support whatsoever)
 - Use in-prompt constraints instead of negative prompts (e.g., "no watermark", "plain background")
-- Works best with long, detailed prompts
-- 1024x1024 native resolution
-- Official recommendation: Feed prompt to LLM for enhancement before generation
+- Works best with long, detailed prompts (recommended: LLM enhancement before generation)
+- 1024x1024 native resolution (max 2048x2048, must be divisible by 8)
+- Official steps: 9 (results in 8 actual DiT forward passes due to scheduler implementation)
+- Recommended data type: `torch.bfloat16` for optimal performance
+
+**Forge-Specific Implementation:**
+- `distilled_cfg_scale` parameter repurposed to control `shift` value
+- Retrieved as: `shift = getattr(prompt, 'distilled_cfg_scale', 3.0)`
+- This allows runtime adjustment while maintaining backward compatibility
 
 **UI Visibility:**
 - Negative prompt field: Hidden/grayed (not supported)
 - Traditional CFG scale: Hidden/grayed (not used)
-- Distilled CFG: Hidden (ignored)
+- Distilled CFG scale: Shown as "Shift" (controls FlowMatch shift parameter, NOT CFG!)
 
 **References:**
-- [Hugging Face Discussion: Z-Image-Turbo does not use negative prompts](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo/discussions/8)
+- [Z-Image-Turbo Official Model Card](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)
+- [FlowMatchEulerDiscreteScheduler Documentation](https://huggingface.co/docs/diffusers/api/schedulers/flow_match_euler_discrete)
+- [ComfyUI Z-Image-Turbo Configuration](https://github.com/erosDiffusion/ComfyUI-EulerDiscreteScheduler/blob/master/Z-IMAGE-TURBO.md)
+- [Forge Neo Z-Image Implementation](https://github.com/Haoming02/sd-webui-forge-classic/commit/93fd1ab26b3b376687a91ca99cf7862255ace064)
+- [HuggingFace Discussion: Z-Image-Turbo does not use negative prompts](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo/discussions/8)
 - [Official Prompting Guide](https://gist.github.com/illuminatianon/c42f8e57f1e3ebf037dd58043da9de32)
 
 ---
