@@ -85,6 +85,10 @@ def suppress_forge_output(patterns=None, important_patterns=None, callback=None)
             "[Unload]",  # VRAM unload messages (too verbose during generation)
             "Skipping unconditional conditioning",  # CFG=1 message (user knows this from table)
             "Done.\n",  # Forge backend memory management completion messages
+            "Done.",  # Also catch without trailing newline
+            "Unload model",  # Model unload messages
+            "Memory cleanup has taken",  # Memory cleanup timing
+            "Moving model(s) has taken",  # Model moving timing
         ]
 
     # Save original stdout

@@ -22,6 +22,17 @@ from deforum.utils.system.logging import get_logger
 # Initialize logger
 logger = get_logger()
 
+# Suppress verbose DA3 internal logging at module level
+# DA3 logs timing info during inference - suppress before any imports
+import logging
+for logger_name in ['dinov2', 'depth_anything_v2', '__main__']:
+    try:
+        da_logger = logging.getLogger(logger_name)
+        da_logger.setLevel(logging.WARNING)
+        da_logger.propagate = False
+    except:
+        pass
+
 
 def _ensure_da3_package_installed() -> bool:
     """Ensure depth-anything-3 package is installed, auto-install if needed.
@@ -396,12 +407,31 @@ class DepthAnythingV3:
         pil_image, original_h, original_w = _prepare_image_for_inference(image)
 
         # Run DA3 inference (may downsample internally for processing)
-        # Pass tuning parameters to DA3 model
-        result = self.model.inference(
-            [pil_image],
-            use_ray_pose=use_ray_pose,
-            conf_thresh_percentile=conf_thresh_percentile
-        )
+        # Temporarily suppress DA3's verbose INFO logging during inference
+        import logging
+        saved_levels = {}
+        for logger_name in ['dinov2', 'depth_anything_v2', '__main__', '']:
+            try:
+                log = logging.getLogger(logger_name)
+                saved_levels[logger_name] = log.level
+                log.setLevel(logging.WARNING)
+            except:
+                pass
+
+        try:
+            # Pass tuning parameters to DA3 model
+            result = self.model.inference(
+                [pil_image],
+                use_ray_pose=use_ray_pose,
+                conf_thresh_percentile=conf_thresh_percentile
+            )
+        finally:
+            # Restore original logging levels
+            for logger_name, level in saved_levels.items():
+                try:
+                    logging.getLogger(logger_name).setLevel(level)
+                except:
+                    pass
 
         # Extract depth map from Prediction object (dataclass with .depth attribute)
         # result.depth is np.ndarray with shape [N, H, W] where N is number of images
