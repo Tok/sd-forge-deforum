@@ -367,16 +367,18 @@ def get_tab_prompts(da, dw, dv=None):
     if 'refresh_model_ui_btn' in locals():
         from deforum.ui.handlers.model_ui_updater import update_ui_for_model
 
-        # Note: We can only update components defined in THIS tab
-        # CFG schedules are in Keyframes tab, so we can't update them from here
-        # For now, just update negative prompt and status
+        # Wrapper to extract only outputs we can update from this tab
+        def update_prompts_tab_only():
+            """Update only components in Prompts tab (negative prompt and status)."""
+            negative_update, cfg_update, distilled_cfg_update, status = update_ui_for_model()
+            # Return only the components we have access to in this tab
+            return negative_update, status
+
         refresh_model_ui_btn.click(
-            fn=update_ui_for_model,
+            fn=update_prompts_tab_only,
             inputs=[],
             outputs=[
                 animation_prompts_negative,  # Update interactivity
-                gr.update(),  # Placeholder for CFG (not in this tab)
-                gr.update(),  # Placeholder for distilled CFG (not in this tab)
                 model_ui_status  # Status message
             ],
             queue=False,
