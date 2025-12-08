@@ -45,6 +45,22 @@ def get_tab_depth_warping(da, d3dgs, skip_tabitem=False):
         else:  # depth_warp
             return 'Depth-Anything-V3-Mono-Small'
 
+    def update_ray_pose_availability(depth_model: str) -> dict:
+        """Enable/disable ray pose based on depth model variant.
+
+        DA3Mono models do NOT support ray pose estimation (no ray maps).
+        Only DA3 AnyView and Giant variants support ray pose.
+
+        Args:
+            depth_model: Selected depth model name
+
+        Returns:
+            Gradio update dict with interactive state
+        """
+        is_mono = 'mono' in depth_model.lower()
+        # Disable if Mono, enable otherwise
+        return gr.update(interactive=not is_mono)
+
     # Controls first - most important
     with gr.Accordion(f"{emoji_utils.gear()} Depth Settings", open=True):
         depth_warp_msg_html = gr.HTML(
@@ -195,6 +211,14 @@ def get_tab_depth_warping(da, d3dgs, skip_tabitem=False):
         fn=auto_switch_depth_model,
         inputs=[tween_generation_mode],
         outputs=[depth_algorithm]
+    )
+
+    # Wire up ray_pose availability based on depth model selection
+    # DA3Mono models don't support ray pose (no ray maps)
+    depth_algorithm.change(
+        fn=update_ray_pose_availability,
+        inputs=[depth_algorithm],
+        outputs=[da3_use_ray_pose]
     )
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
