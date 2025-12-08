@@ -11,6 +11,16 @@ from deforum.utils.system.logging import get_logger
 
 logger = get_logger()
 
+# Cache for model detection results (keyed by checkpoint filename)
+_detection_cache = {
+    'checkpoint': None,
+    'is_flux': None,
+    'is_lumina': None,
+    'is_zimage': None,
+    'is_sdxl': None,
+    'model_name': None,
+}
+
 
 # Model-specific configuration constants
 @dataclass(frozen=True)
@@ -53,6 +63,32 @@ def _get_shared_module() -> Optional[Any]:
     except ImportError:
         logger.debug("modules.shared not available")
         return None
+
+
+def _invalidate_cache_if_model_changed(checkpoint_name: str) -> bool:
+    """Check if model changed and invalidate cache if needed.
+
+    Args:
+        checkpoint_name: Current checkpoint filename
+
+    Returns:
+        True if cache was invalidated (model changed), False otherwise
+    """
+    global _detection_cache
+
+    if _detection_cache['checkpoint'] != checkpoint_name:
+        # Model changed - invalidate all cached detection results
+        _detection_cache = {
+            'checkpoint': checkpoint_name,
+            'is_flux': None,
+            'is_lumina': None,
+            'is_zimage': None,
+            'is_sdxl': None,
+            'model_name': None,
+        }
+        logger.debug(f"Model detection cache invalidated for new checkpoint: {checkpoint_name}")
+        return True
+    return False
 
 
 def _get_model_class_name(model: Any) -> Optional[str]:
@@ -223,9 +259,13 @@ def is_sdxl_model() -> bool:
 def is_zimage_model() -> bool:
     """Detect if Z-Image-Turbo is the currently loaded model.
 
+    Uses caching to avoid repeated detection calls during rendering.
+
     Returns:
         True if Z-Image-Turbo is loaded, False otherwise
     """
+    global _detection_cache
+
     try:
         shared = _get_shared_module()
         if shared is None or not hasattr(shared, 'sd_model'):
@@ -233,10 +273,15 @@ def is_zimage_model() -> bool:
             return False
 
         model = shared.sd_model
+        checkpoint_name = _get_checkpoint_name(shared)
+
+        # Check cache first
+        _invalidate_cache_if_model_changed(checkpoint_name)
+        if _detection_cache['is_zimage'] is not None:
+            return _detection_cache['is_zimage']
 
         # Get all detection data upfront for logging
         class_name = _get_model_class_name(model)
-        checkpoint_name = _get_checkpoint_name(shared)
         full_path = getattr(shared.sd_model.sd_checkpoint_info, 'filename', '') if hasattr(shared.sd_model, 'sd_checkpoint_info') else ''
 
         logger.debug(f"Z-Image detection attempt:")
@@ -247,6 +292,7 @@ def is_zimage_model() -> bool:
         # Check 1: Model class name is exactly 'ZImage' (most reliable!)
         if class_name and class_name == 'ZImage':
             logger.debug(f"✓ Detected Z-Image model via class name: {class_name}")
+            _detection_cache['is_zimage'] = True
             return True
 
         # Check 2: Full path or checkpoint name contains z-image/z_image patterns
@@ -256,21 +302,25 @@ def is_zimage_model() -> bool:
             full_path_lower = full_path.lower()
             if any(pattern in full_path_lower for pattern in z_image_patterns):
                 logger.debug(f"✓ Detected Z-Image model via path: {full_path}")
+                _detection_cache['is_zimage'] = True
                 return True
 
         if checkpoint_name:
             checkpoint_lower = checkpoint_name.lower()
             if any(pattern in checkpoint_lower for pattern in z_image_patterns):
                 logger.debug(f"✓ Detected Z-Image model via checkpoint name: {checkpoint_name}")
+                _detection_cache['is_zimage'] = True
                 return True
 
         logger.debug("✗ Z-Image model not detected")
+        _detection_cache['is_zimage'] = False
         return False
 
     except Exception as e:
         logger.warning(f"Z-Image detection failed with error: {e}")
         import traceback
         logger.debug(traceback.format_exc())
+        _detection_cache['is_zimage'] = False
         return False
 
 

@@ -340,15 +340,21 @@ class DepthAnythingV3:
             self.model = DepthAnything3.from_pretrained(model_name)
             self.model.to(device)
 
-            # Suppress verbose DA3 internal logging (uses dinov2 logger internally)
-            import logging
-            dinov2_logger = logging.getLogger('dinov2')
-            dinov2_logger.setLevel(logging.WARNING)  # Only show warnings/errors, not INFO
-
             # Cache the model for future use
             _DA3_MODEL_CACHE[cache_key] = self.model
 
             logger.info(f"✓ DA3 loaded on {device}")
+
+        # Suppress verbose DA3 internal logging after model is ready
+        # DA3 logs timing info during inference - suppress to INFO level
+        import logging
+        for logger_name in ['dinov2', 'depth_anything_v2', '__main__']:
+            try:
+                da_logger = logging.getLogger(logger_name)
+                da_logger.setLevel(logging.WARNING)
+                da_logger.propagate = False
+            except:
+                pass
 
         except ImportError as e:
             logger.error(
