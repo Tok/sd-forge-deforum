@@ -83,6 +83,17 @@ class Tween:
         if self.i == 1:
             log_utils.info(f"Tween Generation Mode: {tween_mode}")
 
+            # Warn if using AnyView model with depth_warp mode (wasted resources)
+            if tween_mode == 'depth_warp' and data.depth_model is not None:
+                depth_algorithm = getattr(data.args.anim_args, 'depth_algorithm', '')
+                if 'anyview' in depth_algorithm.lower():
+                    log_utils.warning(
+                        "⚠️  Using AnyView model with depth_warp mode is inefficient!\n"
+                        "   AnyView's multi-view capabilities are NOT used for single-view depth warping.\n"
+                        "   Recommendation: Switch to 'Depth-Anything-V3-Mono-Small' for better performance.\n"
+                        "   Alternative: Use 'da3_multiview' tween mode to actually use AnyView features."
+                    )
+
         if tween_mode == 'da3_multiview':
             # Phase 2: Multi-view tween generation
             return self._generate_multiview(data, last_frame, prev_image)
