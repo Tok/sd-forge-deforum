@@ -105,10 +105,10 @@ def get_tab_prompts(da, dw, dv=None):
         animation_prompts_negative = create_row(
             gr.Textbox(
                 label="Prompts negative",
-                value="nsfw, nude",
+                value="",
                 lines=1,
                 interactive=True,
-                placeholder="words here will be added to the end of all negative prompts.  ignored with Flux."
+                placeholder="words here will be added to the end of all negative prompts.  ignored with Flux/Lumina."
             )
         )
 

@@ -9,7 +9,7 @@ Comprehensive reference for model-specific features, parameters, and behaviors i
 | **Flux.1 Dev** | ❌ No | ❌ Ignored (1.0) | ✅ Yes (3.5) | 20 | dist: 1.0-10.0 | Best quality, slower |
 | **Flux.1 Schnell** | ❌ No | ❌ Ignored (1.0) | ✅ Yes (3.5) | 4 | dist: 1.0-10.0 | Fast, 1-8 steps max |
 | **Lumina 2.0** | ✅ Yes | ✅ Yes (5.0) | ❌ Ignored | 30 | 4.0-5.5 | Anime-optimized, requires linear_quadratic |
-| **Z-Image-Turbo** | ✅ Yes | ✅ Yes (2.0) | ❌ Ignored | 9 | 1.0-4.0 | Fast turbo model, 4-30 steps |
+| **Z-Image-Turbo** | ❌ No | ❌ No CFG | ❌ Ignored | 9 | N/A (no CFG) | Distilled model, no CFG/negative prompts |
 | **SDXL** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | 4.0-15.0 | Standard diffusion |
 | **SD 1.5** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | 4.0-15.0 | Classic SD |
 
@@ -20,7 +20,7 @@ Comprehensive reference for model-specific features, parameters, and behaviors i
 | **Flux Dev** | 20 | Euler | Simple | 1.0 | 3.5 | 0.85 / 0.20 | 1280x720 |
 | **Flux Schnell** | 4 | Euler | Simple | 1.0 | 3.5 | 0.85 / 0.20 | 1280x720 |
 | **Lumina 2.0** | 30 | Euler | linear_quadratic | 4.5 | - | 0.85 / 0.20 | 1024x1024 |
-| **Z-Image** | 9 | Euler | Simple | 2.0 | - | 0.85 / 0.20 | 1280x720 |
+| **Z-Image** | 9 | Euler | Simple | 0.0 | - | 0.85 / 0.20 | 1024x1024 |
 | **SDXL** | 25 | DPM++ 2M | Normal | 7.5 | - | 0.85 / 0.20 | 1024x1024 |
 | **SD 1.5** | 25 | DPM++ 2M | Normal | 7.5 | - | 0.85 / 0.20 | 512x512 |
 
@@ -52,7 +52,7 @@ Example validation output:
 ```
 ⚠️ Steps too high for Flux.1 Schnell: 20 > 8 (recommended: 4). This wastes computation without improving quality.
 ⚠️ Scheduler 'normal' may not work optimally with Lumina 2.0. Recommended: linear_quadratic
-⚠️ Z-Image-Turbo ignores distilled CFG scale. Setting distilled_cfg_scale=3.5 has no effect (Flux-only parameter).
+⚠️ Z-Image-Turbo does NOT support CFG at all (neither traditional nor distilled). Set cfg_scale=0.0. Uses in-prompt constraints instead of negative prompts.
 ```
 
 **Validation Implementation:**
@@ -208,35 +208,43 @@ Example validation output:
 
 ### Z-Image-Turbo
 
-**Type:** Turbo diffusion model
+**Type:** Distilled diffusion model (few-step)
 **Display Name:** Z-Image-Turbo
 **Developer:** Alibaba Tongyi
 
 **Parameters:**
-- **Steps:** 9 recommended (range: 4-30)
-- **Traditional CFG:** 2.0 (range: 1.0-4.0)
+- **Steps:** 9 recommended (actual forward passes: 8)
+- **Traditional CFG:** 0.0 (no classifier-free guidance)
 - **Distilled CFG:** Ignored
 - **Scheduler:** `simple` (compatible: simple, normal)
 - **Sampler:** `euler` (compatible: euler, dpmpp_2m)
+- **Resolution:** 1024x1024 (native)
 
 **Capabilities:**
-- ✅ Negative prompts (fully supported)
-- ✅ Traditional CFG guidance (low range)
+- ❌ Negative prompts (NOT supported - distilled model)
+- ❌ CFG guidance (model doesn't use CFG at all)
 - ❌ Distilled CFG (ignored)
-- ✅ Fast generation (turbo model)
+- ✅ Fast generation (few-step distilled model)
 - ✅ Full img2img support
 - ✅ Good quality at low steps
+- ✅ Strong instruction-following
 
 **Notes:**
-- Uses traditional CFG but in lower range (1.0-4.0 vs SD's 4.0-15.0)
-- Optimized for 4-15 steps, supports up to 30
-- CFG 2.0 recommended (higher values may degrade quality)
-- Fast turbo architecture, good for iteration
+- Distilled model that does NOT rely on classifier-free guidance
+- Set guidance_scale=0.0 (no CFG support)
+- Use in-prompt constraints instead of negative prompts (e.g., "no watermark", "plain background")
+- Works best with long, detailed prompts
+- 1024x1024 native resolution
+- Official recommendation: Feed prompt to LLM for enhancement before generation
 
 **UI Visibility:**
-- Negative prompt field: Shown
-- Traditional CFG scale: Shown
+- Negative prompt field: Hidden/grayed (not supported)
+- Traditional CFG scale: Hidden/grayed (not used)
 - Distilled CFG: Hidden (ignored)
+
+**References:**
+- [Hugging Face Discussion: Z-Image-Turbo does not use negative prompts](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo/discussions/8)
+- [Official Prompting Guide](https://gist.github.com/illuminatianon/c42f8e57f1e3ebf037dd58043da9de32)
 
 ---
 
@@ -314,16 +322,16 @@ Example validation output:
 
 **Supported:**
 - ✅ Lumina 2.0
-- ✅ Z-Image-Turbo
 - ✅ SDXL
 - ✅ SD 1.5
 
 **NOT Supported:**
-- ❌ Flux.1 Dev (model architecture ignores them)
-- ❌ Flux.1 Schnell (model architecture ignores them)
+- ❌ Flux.1 Dev (distilled architecture, no CFG)
+- ❌ Flux.1 Schnell (distilled architecture, no CFG)
+- ❌ Z-Image-Turbo (distilled few-step model, no CFG)
 
-**Why Flux doesn't support negative prompts:**
-Flux uses a distilled diffusion process that doesn't have a separate unconditional path for negative guidance. The model architecture fundamentally doesn't support CFG-style negative prompting.
+**Why distilled models don't support negative prompts:**
+Flux and Z-Image-Turbo use distilled diffusion processes that don't have a separate unconditional path for negative guidance. The model architectures fundamentally don't support CFG-style negative prompting. For Z-Image, use in-prompt constraints like "no watermark", "plain background" instead.
 
 ---
 
