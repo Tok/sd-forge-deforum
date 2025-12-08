@@ -235,10 +235,10 @@ def DeforumAnimArgs():
             "info": "how closely the image should conform to the prompt. Lower values produce more creative results. (recommended value for Flux.1: 1.0, 5-15 with other models)"
         },
         "distilled_cfg_scale_schedule": {
-            "label": "Distilled CFG scale schedule",
+            "label": "Distilled CFG / Shift schedule",
             "type": "textbox",
             "value": "0: (3.5)",
-            "info": "how closely the image should conform to the prompt. Lower values produce more creative results. (recommended value for Flux.1: 3.5, ignored for most other models)`"
+            "info": "Flux: Distilled CFG (3.5 default, guidance strength). Z-Image: Shift parameter (3.0 default, timestep schedule scaling, range 1.0-5.0). Ignored for other models."
         },
         "enable_steps_scheduling": {
             "label": "Enable steps scheduling",

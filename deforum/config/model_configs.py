@@ -335,11 +335,15 @@ def validate_settings(args, model_name: str) -> List[str]:
                 f"Setting cfg_scale={cfg_scale} has no effect (should be {config.cfg_scale_default})."
             )
 
-    # DISTILLED CFG VALIDATION
+    # DISTILLED CFG / SHIFT VALIDATION
     if config.uses_distilled_cfg:
+        # Check if this is Z-Image (uses shift parameter) or Flux (uses distilled CFG)
+        is_zimage = config.model_type == "z_image"
+        param_name = "shift" if is_zimage else "distilled CFG scale"
+
         if distilled_cfg < config.distilled_cfg_scale_min or distilled_cfg > config.distilled_cfg_scale_max:
             warnings.append(
-                f"⚠️ Distilled CFG scale out of range for {config.display_name}: {distilled_cfg} "
+                f"⚠️ {param_name.capitalize()} out of range for {config.display_name}: {distilled_cfg} "
                 f"(recommended range: {config.distilled_cfg_scale_min}-{config.distilled_cfg_scale_max})"
             )
     else:
@@ -392,7 +396,10 @@ def log_model_config(model_name: str) -> None:
         logger.info(f"CFG Scale: IGNORED (model doesn't use traditional CFG)")
 
     if config.uses_distilled_cfg:
-        logger.info(f"Distilled CFG: {config.distilled_cfg_scale_default} (range: {config.distilled_cfg_scale_min}-{config.distilled_cfg_scale_max})")
+        # Z-Image uses this for shift parameter, Flux uses it for distilled CFG
+        is_zimage = config.model_type == "z_image"
+        param_name = "Shift" if is_zimage else "Distilled CFG"
+        logger.info(f"{param_name}: {config.distilled_cfg_scale_default} (range: {config.distilled_cfg_scale_min}-{config.distilled_cfg_scale_max})")
     else:
         logger.info(f"Distilled CFG: IGNORED (Flux-only parameter)")
 

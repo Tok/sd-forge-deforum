@@ -386,9 +386,12 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
         columns.append("CFG")
         values.append(str(p.cfg_scale))
 
-    # Distilled CFG - Only show for Flux models
+    # Distilled CFG / Shift - Show for Flux (distilled CFG) and Z-Image (shift parameter)
     if is_flux_model():
         columns.append("Dist. CFG")
+        values.append(str(p.distilled_cfg_scale))
+    elif is_zimage_model():
+        columns.append("Shift")
         values.append(str(p.distilled_cfg_scale))
 
     # Denoise (skip for Interpolation mode)

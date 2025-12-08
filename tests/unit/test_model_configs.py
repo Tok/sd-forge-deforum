@@ -196,23 +196,23 @@ class TestSettingsValidation:
         assert len(warnings) > 0
         assert any("ignores traditional CFG" in w for w in warnings)
 
-    def test_z_image_with_flux_settings(self):
-        """Test Z-Image with Flux distilled_cfg (should warn when non-default)."""
+    def test_z_image_with_out_of_range_shift(self):
+        """Test Z-Image with out-of-range shift parameter (should warn)."""
         args = SimpleNamespace(
-            steps=4,
-            cfg_scale=2.0,  # Correct for Z-Image
+            steps=9,
+            cfg_scale=0.0,  # Correct for Z-Image
             sampler='euler',
-            sampler_schedule_type='simple',
+            sampler_schedule_type='beta',  # Recommended scheduler
             anim_args=SimpleNamespace(
-                distilled_cfg_scale_schedule='0: (7.0)'  # Non-default! Z-Image doesn't use this
+                distilled_cfg_scale_schedule='0: (7.0)'  # Out of range! (max 5.0)
             )
         )
 
         warnings = validate_settings(args, "z-image.safetensors")
 
-        # Should warn about distilled_cfg being ignored (when changed from default)
+        # Should warn about shift being out of range (repurposed distilled_cfg parameter)
         assert len(warnings) > 0
-        assert any("ignores distilled CFG" in w for w in warnings)
+        assert any("Shift out of range" in w for w in warnings)
 
     def test_steps_too_low(self):
         """Test warning for steps below minimum."""
