@@ -106,7 +106,7 @@ MODEL_CONFIGS = {
         min_steps=20,
         max_steps=50,
         uses_cfg=True,
-        cfg_scale_default=5.0,
+        cfg_scale_default=4.0,  # Official default (was 5.0)
         cfg_scale_min=4.0,
         cfg_scale_max=5.5,
         uses_distilled_cfg=False,
@@ -116,8 +116,8 @@ MODEL_CONFIGS = {
         recommended_scheduler="linear_quadratic",
         compatible_schedulers=["linear_quadratic", "normal", "karras"],
         recommended_sampler="euler",
-        compatible_samplers=["euler", "dpmpp_2m"],
-        notes="Lumina 2.0 uses traditional CFG (4.0-5.5). Distilled CFG is ignored. Requires linear_quadratic scheduler."
+        compatible_samplers=["euler", "dpmpp_2m", "res_multistep"],
+        notes="Lumina 2.0 uses traditional CFG (4.0 default, 4.0-5.5 range). Supports negative prompts. Requires linear_quadratic scheduler. Native resolution: 1024x1024."
     ),
 
     "z_image": ModelConfig(

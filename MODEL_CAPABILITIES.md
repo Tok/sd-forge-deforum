@@ -6,9 +6,9 @@ Comprehensive reference for model-specific features, parameters, and behaviors i
 
 | Model | Negative Prompts | Traditional CFG | Distilled CFG | Recommended Steps | CFG Range | Notes |
 |-------|-----------------|-----------------|---------------|-------------------|-----------|-------|
-| **Flux.1 Dev** | ❌ No | ❌ Ignored (1.0) | ✅ Yes (3.5) | 20 | dist: 1.0-10.0 | Best quality, slower |
-| **Flux.1 Schnell** | ❌ No | ❌ Ignored (1.0) | ✅ Yes (3.5) | 4 | dist: 1.0-10.0 | Fast, 1-8 steps max |
-| **Lumina 2.0** | ✅ Yes | ✅ Yes (5.0) | ❌ Ignored | 30 | 4.0-5.5 | Anime-optimized, requires linear_quadratic |
+| **Flux.1 Dev** | ⚠️ Via true_cfg | ⚠️ Via true_cfg | ✅ Yes (3.5) | 50 (28 min) | dist: 1.5-5.0 | Best quality, slower |
+| **Flux.1 Schnell** | ❌ No | ❌ No (must be 0) | ❌ No (must be 0) | 4 | N/A (guidance=0) | Fast, 1-8 steps max |
+| **Lumina 2.0** | ✅ Yes | ✅ Yes (4.0) | ❌ Ignored | 30 | 4.0-5.5 | Anime-optimized, requires linear_quadratic |
 | **Z-Image-Turbo** | ❌ No | ❌ No CFG | ❌ Ignored | 9 | N/A (no CFG) | Distilled model, no CFG/negative prompts |
 | **SDXL** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | 4.0-15.0 | Standard diffusion |
 | **SD 1.5** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | 4.0-15.0 | Classic SD |
@@ -17,9 +17,9 @@ Comprehensive reference for model-specific features, parameters, and behaviors i
 
 | Model | Steps | Sampler | Scheduler | CFG | Dist CFG | Strength (Normal/KF) | Resolution |
 |-------|-------|---------|-----------|-----|----------|---------------------|------------|
-| **Flux Dev** | 20 | Euler | Simple | 1.0 | 3.5 | 0.85 / 0.20 | 1280x720 |
-| **Flux Schnell** | 4 | Euler | Simple | 1.0 | 3.5 | 0.85 / 0.20 | 1280x720 |
-| **Lumina 2.0** | 30 | Euler | linear_quadratic | 4.5 | - | 0.85 / 0.20 | 1024x1024 |
+| **Flux Dev** | 50 (28 min) | Euler | Simple | true_cfg:1.0 | 3.5 | 0.85 / 0.20 | 1024x1024 |
+| **Flux Schnell** | 4 | Euler | Simple | 0.0 | 0.0 | 0.85 / 0.20 | 1024x1024 |
+| **Lumina 2.0** | 30 | Euler | linear_quadratic | 4.0 | - | 0.85 / 0.20 | 1024x1024 |
 | **Z-Image** | 9 | Euler | Simple | 0.0 | - | 0.85 / 0.20 | 1024x1024 |
 | **SDXL** | 25 | DPM++ 2M | Normal | 7.5 | - | 0.85 / 0.20 | 1024x1024 |
 | **SD 1.5** | 25 | DPM++ 2M | Normal | 7.5 | - | 0.85 / 0.20 | 512x512 |
@@ -66,77 +66,117 @@ Example validation output:
 
 ### Flux.1 Dev
 
-**Type:** Flux (distilled diffusion)
+**Type:** Flux (guidance-distilled diffusion)
 **Display Name:** Flux.1 Dev
 **Developer:** Black Forest Labs
 
 **Parameters:**
-- **Steps:** 20 recommended (range: 8-50)
-- **Traditional CFG:** Ignored (always 1.0)
-- **Distilled CFG:** 3.5 (range: 1.0-10.0)
+- **Steps:** 50 recommended (range: 28-50, absolute min: 8)
+- **Distilled CFG (guidance_scale):** 3.5 default (range: 1.5-5.0)
+- **True CFG (true_cfg_scale):** 1.0 default (enable > 1 for negative prompts)
 - **Scheduler:** `simple` (compatible: simple, normal, karras, exponential)
 - **Sampler:** `euler` (compatible: euler, dpmpp_2m)
+- **Resolution:** 1024x1024 (native)
+- **Max Sequence Length:** 512 tokens
 
 **Capabilities:**
-- ❌ Negative prompts (model ignores them)
-- ✅ Distilled CFG guidance
+- ⚠️ **Negative prompts:** Supported ONLY via `true_cfg_scale > 1` (advanced feature)
+- ✅ **Distilled CFG guidance** (primary guidance mechanism)
+- ✅ **True CFG guidance** (optional, for negative prompts)
 - ✅ High quality output
-- ✅ Text understanding
+- ✅ Strong text understanding
 - ✅ Full img2img support
 
+**Guidance System (Dual Mechanism):**
+
+Flux Dev has TWO guidance modes:
+
+1. **Embedded Guidance (`guidance_scale`)** - Default mode
+   - Default: 3.5 (range: 1.5-5.0)
+   - Guidance baked into distilled model
+   - No negative prompts needed
+   - Faster inference
+   - Recommended for most use cases
+
+2. **True CFG (`true_cfg_scale`)** - Advanced mode
+   - Default: 1.0 (disabled)
+   - Enable by setting > 1 (e.g., 3.0)
+   - **Requires** `negative_prompt` parameter
+   - Uses traditional classifier-free guidance
+   - Slower (2x forward passes)
+   - More precise control when you have good negative prompts
+
 **Notes:**
-- Uses distilled CFG instead of traditional CFG
-- Higher quality than Schnell but slower
-- Negative prompts are ignored by the model architecture
+- **Deforum implementation:** Uses embedded guidance (`guidance_scale=3.5`)
+- **Negative prompts:** Currently not supported in Deforum (would require `true_cfg_scale` implementation)
+- Official recommendation: 50 steps for best quality (28 minimum)
+- Higher quality than Schnell but slower generation
 - Best for final renders where quality matters
 
 **UI Visibility:**
-- Negative prompt field: Hidden
+- Negative prompt field: Hidden (Deforum uses embedded guidance mode)
 - Distilled CFG scale: Shown
-- Traditional CFG: Hidden (locked to 1.0)
+- True CFG: Not implemented in Deforum (future enhancement)
 
 **Optimal Settings (from preset):**
 ```json
 {
-  "steps": 20,
+  "steps": 50,
   "sampler": "Euler",
   "scheduler": "Simple",
-  "cfg_scale_schedule": "0: (1.0)",
+  "cfg_scale_schedule": "0: (1.0)",  // Not used
   "distilled_cfg_scale_schedule": "0: (3.5)",
   "strength_schedule": "0: (0.85)",
   "keyframe_strength_schedule": "0: (0.20)",
-  "W": 1280,
-  "H": 720
+  "W": 1024,
+  "H": 1024
 }
 ```
+
+**References:**
+- [Flux Pipeline - HuggingFace Diffusers](https://huggingface.co/docs/diffusers/en/api/pipelines/flux)
+- [FLUX.1-dev Model Card](https://huggingface.co/black-forest-labs/FLUX.1-dev)
 
 ---
 
 ### Flux.1 Schnell
 
-**Type:** Flux (distilled diffusion)
+**Type:** Flux (timestep-distilled diffusion)
 **Display Name:** Flux.1 Schnell
 **Developer:** Black Forest Labs
 
 **Parameters:**
-- **Steps:** 4 recommended (range: 1-8)
-- **Traditional CFG:** Ignored (always 1.0)
-- **Distilled CFG:** 3.5 (range: 1.0-10.0)
+- **Steps:** 4 recommended (range: 1-4, absolute max: 8)
+- **Guidance Scale:** **MUST be 0.0** (timestep-distilled, no guidance)
+- **True CFG:** Not supported (timestep-distilled model)
 - **Scheduler:** `simple` (only compatible scheduler)
 - **Sampler:** `euler` (only compatible sampler)
+- **Resolution:** 1024x1024 (native)
+- **Max Sequence Length:** 256 tokens (half of Dev)
 
 **Capabilities:**
-- ❌ Negative prompts (model ignores them)
-- ✅ Distilled CFG guidance
-- ✅ Very fast generation
+- ❌ **Negative prompts:** NOT supported (timestep-distilled)
+- ❌ **Distilled CFG:** NOT supported (must be 0.0)
+- ❌ **True CFG:** NOT supported
+- ✅ Very fast generation (1-4 steps)
 - ✅ Good quality at low steps
 - ✅ Full img2img support
 
+**Guidance System:**
+
+Schnell is **timestep-distilled**, meaning:
+- ALL guidance is baked into the model
+- `guidance_scale` MUST be 0.0
+- No negative prompts possible
+- No CFG adjustments possible
+- Trade-off: speed for flexibility
+
 **Notes:**
-- Optimized for 1-4 steps (more steps waste computation)
+- **Optimized for 1-4 steps** - More steps waste computation without improving quality
 - Much faster than Dev but slightly lower quality
-- Uses same distilled CFG system as Dev
-- Best for previews or when speed is critical
+- Official documentation: "guidance_scale=0" (no guidance parameter)
+- Best for previews, rapid iteration, or when speed is critical
+- Not suitable for workflows requiring negative prompts or CFG tuning
 
 **Strength Resolution:**
 - 4 steps = 0.25 resolution (coarse control)
@@ -144,9 +184,9 @@ Example validation output:
 - Consider using Flux Dev for strength-heavy workflows
 
 **UI Visibility:**
-- Negative prompt field: Hidden
-- Distilled CFG scale: Shown
-- Traditional CFG: Hidden (locked to 1.0)
+- Negative prompt field: Hidden (not supported)
+- Distilled CFG scale: Hidden/disabled (must be 0)
+- True CFG: Not available
 
 **Optimal Settings (from preset):**
 ```json
@@ -154,16 +194,21 @@ Example validation output:
   "steps": 4,
   "sampler": "Euler",
   "scheduler": "Simple",
-  "cfg_scale_schedule": "0: (1.0)",
-  "distilled_cfg_scale_schedule": "0: (3.5)",
+  "cfg_scale_schedule": "0: (0.0)",  // Must be 0
+  "distilled_cfg_scale_schedule": "0: (0.0)",  // Must be 0
   "strength_schedule": "0: (0.85)",
   "keyframe_strength_schedule": "0: (0.20)",
-  "W": 1280,
-  "H": 720
+  "W": 1024,
+  "H": 1024,
+  "max_sequence_length": 256
 }
 ```
 
 **Note:** With only 4 steps, strength resolution is 0.25 (coarse). Consider Flux Dev for workflows requiring fine strength control.
+
+**References:**
+- [Flux Pipeline - HuggingFace Diffusers](https://huggingface.co/docs/diffusers/en/api/pipelines/flux)
+- [FLUX.1-schnell Model Card](https://huggingface.co/black-forest-labs/FLUX.1-schnell)
 
 ---
 
@@ -175,34 +220,43 @@ Example validation output:
 
 **Parameters:**
 - **Steps:** 30 recommended (range: 20-50)
-- **Traditional CFG:** 5.0 (range: 4.0-5.5)
+- **Traditional CFG:** 4.0 default (range: 4.0-5.5)
 - **Distilled CFG:** Ignored
 - **Scheduler:** `linear_quadratic` (REQUIRED, compatible: linear_quadratic, normal, karras)
-- **Sampler:** `euler` (compatible: euler, dpmpp_2m)
+- **Sampler:** `euler` (compatible: euler, dpmpp_2m, res_multistep)
+- **Resolution:** 1024x1024 (native)
 
 **Capabilities:**
-- ✅ Negative prompts (fully supported)
-- ✅ Traditional CFG guidance
+- ✅ Negative prompts (fully supported via `negative_prompt` parameter)
+- ✅ Traditional CFG guidance (classifier-free guidance)
 - ❌ Distilled CFG (ignored)
 - ✅ Anime-style optimization
 - ✅ Full img2img support
 - ✅ 1024x1024 native resolution
+- ✅ Advanced CFG features (normalization, truncation)
 
 **Notes:**
 - REQUIRES `linear_quadratic` scheduler (compatibility patch applied automatically)
-- Optimized for anime/illustration styles
-- Uses traditional CFG in 4.0-5.5 range (lower than SD)
+- Optimized for anime/illustration styles (Neta-Art fork)
+- Uses traditional CFG with lower range (4.0-5.5) compared to SD (7.0-12.0)
+- Official default: `guidance_scale=4.0` (HuggingFace Diffusers)
+- Advanced features: `cfg_normalization=True`, `cfg_trunc_ratio=0.25`
 - May produce suboptimal results for photorealistic content
-- 2B parameters, efficient VRAM usage
+- 2B parameters (Gemma-2B text encoder), efficient VRAM usage (≥8GB minimum)
 
 **Known Issues:**
 - `KeyError: 'num_tokens'` - Fixed via automatic compatibility patch in `deforum/integrations/lumina/compat_patch.py`
 - Patch ensures `dynamic_args["num_tokens"]` is populated before sampling
 
 **UI Visibility:**
-- Negative prompt field: Shown
-- Traditional CFG scale: Shown
+- Negative prompt field: Shown (fully functional)
+- Traditional CFG scale: Shown (4.0-5.5 range)
 - Distilled CFG: Hidden (ignored)
+
+**References:**
+- [Lumina2 Pipeline - HuggingFace Diffusers](https://huggingface.co/docs/diffusers/en/api/pipelines/lumina2)
+- [Neta-Lumina Model Card](https://huggingface.co/neta-art/Neta-Lumina)
+- [Lumina-Image 2.0 GitHub](https://github.com/Alpha-VLLM/Lumina-Image-2.0)
 
 ---
 
