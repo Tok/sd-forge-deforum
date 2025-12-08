@@ -661,6 +661,12 @@ def DeforumAnimArgs():
             "step": 5.0,
             "info": "Adaptive confidence threshold for DA3 depth estimation (0-100). Lower = more strict, higher = more permissive. Default 40.0 works well for most scenes."
         },
+        "da3_visualize_rays": {
+            "label": "DA3: Visualize Ray Directions",
+            "type": "checkbox",
+            "value": False,
+            "info": "Overlay ray direction arrows on depth preview (AnyView/Giant models only). Shows 3D direction vectors as green arrows, useful for debugging camera pose estimation."
+        },
         "padding_mode": {
             "label": "Padding mode",
             "type": "radio",
