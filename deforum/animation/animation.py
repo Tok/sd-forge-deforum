@@ -288,7 +288,16 @@ def transform_image_3d_new(device, prev_img_cv2, depth_tensor, rot_mat, translat
 
     # get perspective cams old (still) and new (transformed)
     persp_cam_old = p3d.FoVPerspectiveCameras(near, far, aspect_ratio, fov=fov_deg, degrees=True, device=device)
-    persp_cam_new = p3d.FoVPerspectiveCameras(near, far, aspect_ratio, fov=fov_deg, degrees=True, R=rot_mat, T=torch.tensor([translate]), device=device)
+
+    # Handle translate parameter - can be list/tuple or already a tensor (from DA3-Multiview)
+    if isinstance(translate, torch.Tensor):
+        # Already a tensor - ensure it's shape (1, 3) for PyTorch3D
+        translate_tensor = translate.unsqueeze(0) if translate.dim() == 1 else translate
+    else:
+        # List/tuple - convert to tensor
+        translate_tensor = torch.tensor([translate], device=device)
+
+    persp_cam_new = p3d.FoVPerspectiveCameras(near, far, aspect_ratio, fov=fov_deg, degrees=True, R=rot_mat, T=translate_tensor, device=device)
 
     # make xy meshgrid - range of [-1,1] is important to torch grid_sample's padding handling
     y,x = torch.meshgrid(torch.linspace(-1.,1.,h,dtype=torch.float32,device=device),torch.linspace(-1.,1.,w,dtype=torch.float32,device=device))
