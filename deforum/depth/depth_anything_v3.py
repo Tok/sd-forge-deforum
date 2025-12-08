@@ -36,17 +36,21 @@ def _ensure_da3_package_installed() -> bool:
     except ImportError:
         logger.warning("Depth Anything V3 package not found, attempting auto-install...")
         logger.info(f"Installing to: {sys.executable}")
-        logger.info("Running: pip install git+https://github.com/ByteDance-Seed/Depth-Anything-3.git xformers")
+        logger.info("Running: pip install --upgrade depth-anything-3 xformers numpy<2.0")
         logger.info("This may take a few minutes (downloading ~50MB + dependencies)...")
+        logger.info("Note: Using --upgrade to resolve dependency conflicts (numpy, pillow, trimesh)")
 
         try:
-            # Auto-install DA3 package
+            # Auto-install DA3 package with dependency resolution
+            # Use --upgrade to resolve version conflicts (numpy, pillow, etc.)
             subprocess.check_call([
                 sys.executable, '-m', 'pip', 'install',
+                '--upgrade',
                 'git+https://github.com/ByteDance-Seed/Depth-Anything-3.git',
                 'xformers',
-                '--quiet'
-            ])
+                'numpy>=1.23.0,<2.0.0',  # Compatible numpy version
+                'trimesh',  # Ensure trimesh uses compatible numpy
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             logger.info("✓ Depth Anything V3 package installed successfully to venv")
 
             # Verify installation
@@ -58,10 +62,37 @@ def _ensure_da3_package_installed() -> bool:
             logger.error("You may need to install manually:")
             logger.error(f"  {sys.executable} -m pip install git+https://github.com/ByteDance-Seed/Depth-Anything-3.git xformers")
             return False
-        except ImportError:
+        except ImportError as e:
             logger.error("DA3 package installed but import still failed")
-            logger.error("Try restarting the application")
-            return False
+            logger.error(f"Import error: {str(e)}")
+
+            # Check if it's a dependency conflict
+            if 'numpy' in str(e).lower() or 'trimesh' in str(e).lower():
+                logger.error("")
+                logger.error("⚠️  Dependency conflict detected (numpy/trimesh).")
+                logger.error("Attempting to fix by upgrading conflicting packages...")
+
+                try:
+                    # Try to fix by upgrading numpy and trimesh
+                    subprocess.check_call([
+                        sys.executable, '-m', 'pip', 'install',
+                        '--upgrade', '--force-reinstall',
+                        'numpy>=1.23.0,<2.0.0',
+                        'trimesh'
+                    ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+
+                    logger.info("✓ Dependencies upgraded. RESTART THE APPLICATION for changes to take effect.")
+                    logger.info("   Then try your generation again.")
+                    return False  # Still return False since restart needed
+
+                except subprocess.CalledProcessError:
+                    logger.error("Failed to auto-fix dependency conflicts.")
+                    logger.error("Manual fix required - restart application after running:")
+                    logger.error(f"  {sys.executable} -m pip install --upgrade numpy trimesh")
+                    return False
+            else:
+                logger.error("Try restarting the application")
+                return False
 
 # Constants
 DEPTH_OUTPUT_FORMAT = (1, 1)  # Target depth tensor format: [1, 1, H, W]
