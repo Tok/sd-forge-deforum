@@ -293,42 +293,104 @@ echo ""
 # 8. Depth Anything V3 (Advanced Depth Estimation)
 # =====================================
 echo -e "${BB0_MIDNIGHT}=== Depth Anything V3 (DA3) ===${NC}"
-echo "DA3 provides enhanced depth estimation for 3D depth warping"
+echo "DA3 provides enhanced depth estimation for 3D depth warping and multi-view geometry"
 echo ""
-echo -e "${BB0_ZENITH}Standard Models (for 3D depth warp modes):${NC}"
-echo "  1) DA3MONO-LARGE (Recommended, single-view depth, ~350MB)"
+echo -e "${BB0_ZENITH}Mono Variants (Single-view depth warping - fastest):${NC}"
+echo "  1) DA3MONO-Small (~120MB) - Fast, lower quality"
+echo "  2) DA3MONO-Base (~390MB) - Balanced"
+echo "  3) DA3MONO-Large (~1.4GB) - Best quality"
 echo ""
-echo -e "${BB0_GLITCH}GIANT Models (for DA3-3DGS interpolation, 8GB+ VRAM required):${NC}"
-echo "  2) DA3-GIANT (3DGS model, 1.15B params, ~5GB VRAM)"
+echo -e "${BB0_VOID}AnyView Variants (Multi-view geometry with ray maps):${NC}"
+echo "  4) Depth-Anything-V3-AnyView-Small (~120MB) - For da3_multiview tween mode"
+echo "  5) Depth-Anything-V3-AnyView-Base (~390MB) - For da3_multiview tween mode"
+echo "  6) Depth-Anything-V3-AnyView-Large (~1.4GB) - For da3_multiview tween mode"
 echo ""
-echo "  3) All standard + GIANT models"
-echo "  4) Skip DA3 models (package auto-installs but models won't cache)"
+echo -e "${BB0_GLITCH}Giant Variant (3D Gaussian Splatting reconstruction):${NC}"
+echo "  7) Depth-Anything-V3-Giant (1.15B params, ~4.6GB) - For da3_gaussian tween mode"
 echo ""
-echo -e "${BB0_VOID}NOTE: DA3MONO-LARGE for standard depth, DA3-GIANT for 3DGS interpolation${NC}"
-read -p "Enter choice [1-4]: " da3_choice
+echo "  8) Recommended set (Mono-Small + AnyView-Small)"
+echo "  9) All models (Downloads all variants)"
+echo "  0) Skip DA3 models (package auto-installs, models download on first use)"
+echo ""
+echo -e "${BB0_MIDNIGHT}Usage Guide:${NC}"
+echo "  • Mono: Use with tween_generation_mode='depth_warp' (default, fastest)"
+echo "  • AnyView: Use with tween_generation_mode='da3_multiview' (camera pose estimation)"
+echo "  • Giant: Use with tween_generation_mode='da3_gaussian' (3DGS reconstruction)"
+echo ""
+read -p "Enter choice [0-9]: " da3_choice
 
 # Create DA3 directory
 mkdir -p models/Deforum/depth-anything-v3
 
 case $da3_choice in
-    1|3)
-        echo -e "${BB0_GLITCH}Downloading DA3MONO-LARGE (single-view depth)...${NC}"
-        huggingface-cli download depth-anything/DA3MONO-LARGE \
-            --local-dir models/Deforum/depth-anything-v3/DA3MONO-LARGE \
+    1|8|9)
+        echo -e "${BB0_GLITCH}Downloading DA3MONO-Small (single-view depth)...${NC}"
+        huggingface-cli download depth-anything/DA3MONO-SMALL \
+            --local-dir models/Deforum/depth-anything-v3/DA3MONO-SMALL \
             --resume-download
-        echo -e "${BB0_ZENITH}✓ DA3MONO-LARGE downloaded${NC}"
-        ;&  # Fall through if choice was 3
+        echo -e "${BB0_ZENITH}✓ DA3MONO-Small downloaded${NC}"
+        ;&  # Fall through if choice was 8 or 9
 esac
 
 case $da3_choice in
-    2|3)
-        echo -e "${BB0_GLITCH}Downloading DA3-GIANT (3DGS model, 1.15B params, ~5GB VRAM)...${NC}"
-        huggingface-cli download depth-anything/DA3-GIANT \
-            --local-dir models/Deforum/depth-anything-v3/DA3-GIANT \
+    2|9)
+        echo -e "${BB0_GLITCH}Downloading DA3MONO-Base (single-view depth)...${NC}"
+        huggingface-cli download depth-anything/DA3MONO-BASE \
+            --local-dir models/Deforum/depth-anything-v3/DA3MONO-BASE \
             --resume-download
-        echo -e "${BB0_ZENITH}✓ DA3-GIANT downloaded${NC}"
+        echo -e "${BB0_ZENITH}✓ DA3MONO-Base downloaded${NC}"
+        ;&  # Fall through if choice was 9
+esac
+
+case $da3_choice in
+    3|9)
+        echo -e "${BB0_GLITCH}Downloading DA3MONO-Large (single-view depth)...${NC}"
+        huggingface-cli download depth-anything/DA3MONO-LARGE \
+            --local-dir models/Deforum/depth-anything-v3/DA3MONO-LARGE \
+            --resume-download
+        echo -e "${BB0_ZENITH}✓ DA3MONO-Large downloaded${NC}"
+        ;&  # Fall through if choice was 9
+esac
+
+case $da3_choice in
+    4|8|9)
+        echo -e "${BB0_GLITCH}Downloading Depth-Anything-V3-AnyView-Small (multi-view + ray maps)...${NC}"
+        huggingface-cli download depth-anything/Depth-Anything-V3-AnyView-Small \
+            --local-dir models/Deforum/depth-anything-v3/Depth-Anything-V3-AnyView-Small \
+            --resume-download
+        echo -e "${BB0_ZENITH}✓ AnyView-Small downloaded${NC}"
+        ;&  # Fall through if choice was 8 or 9
+esac
+
+case $da3_choice in
+    5|9)
+        echo -e "${BB0_GLITCH}Downloading Depth-Anything-V3-AnyView-Base (multi-view + ray maps)...${NC}"
+        huggingface-cli download depth-anything/Depth-Anything-V3-AnyView-Base \
+            --local-dir models/Deforum/depth-anything-v3/Depth-Anything-V3-AnyView-Base \
+            --resume-download
+        echo -e "${BB0_ZENITH}✓ AnyView-Base downloaded${NC}"
+        ;&  # Fall through if choice was 9
+esac
+
+case $da3_choice in
+    6|9)
+        echo -e "${BB0_GLITCH}Downloading Depth-Anything-V3-AnyView-Large (multi-view + ray maps)...${NC}"
+        huggingface-cli download depth-anything/Depth-Anything-V3-AnyView-Large \
+            --local-dir models/Deforum/depth-anything-v3/Depth-Anything-V3-AnyView-Large \
+            --resume-download
+        echo -e "${BB0_ZENITH}✓ AnyView-Large downloaded${NC}"
+        ;&  # Fall through if choice was 9
+esac
+
+case $da3_choice in
+    7|9)
+        echo -e "${BB0_GLITCH}Downloading Depth-Anything-V3-Giant (3DGS model, 1.15B params)...${NC}"
+        huggingface-cli download depth-anything/Depth-Anything-V3-Giant \
+            --local-dir models/Deforum/depth-anything-v3/Depth-Anything-V3-Giant \
+            --resume-download
+        echo -e "${BB0_ZENITH}✓ Giant downloaded${NC}"
         ;;
-    4)
+    0)
         echo -e "${BB0_GLITCH}Skipping DA3 models (package auto-installs, models will download on first use)${NC}"
         ;;
 esac
@@ -460,9 +522,10 @@ echo "  • ControlNet: models/ControlNet/"
 echo "  • FILM: models/Deforum/film_interpolation/"
 echo "  • Wan AI Video: models/Deforum/wan/"
 echo "  • Qwen Prompts: models/Deforum/qwen/"
+echo "  • DA3 Depth Models: models/Deforum/depth-anything-v3/"
 echo ""
 echo -e "${BB0_MIDNIGHT}Note:${NC} Depth-Anything V3 package auto-installs from GitHub (requirements.txt)"
-echo "Models download from HuggingFace on first use if not cached locally."
+echo "DA3 models download from HuggingFace on first use if not cached locally."
 echo "Gifski and Real-ESRGAN binaries are also auto-downloaded."
 echo ""
 echo -e "${BB0_ZENITH}✅ You can now use Deforum with all render modes!${NC}"
