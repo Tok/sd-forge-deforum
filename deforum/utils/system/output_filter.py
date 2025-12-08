@@ -78,10 +78,12 @@ def suppress_forge_output(patterns=None, important_patterns=None, callback=None)
         ...     processing.process_images(p)
     """
     if patterns is None:
-        # Default patterns to suppress (info already shown in Deforum's table)
+        # Default patterns to suppress (info already shown in Deforum's table or too verbose)
         patterns = [
             "Distilled CFG Scale:",
             "Distilled CFG Scale will be ignored for Schnell",
+            "[Unload]",  # VRAM unload messages (too verbose during generation)
+            "Skipping unconditional conditioning",  # CFG=1 message (user knows this from table)
         ]
 
     # Save original stdout
