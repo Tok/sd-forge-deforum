@@ -470,7 +470,34 @@ class DepthAnythingV3:
         # Run DA3 multi-view inference
         result = self.model.inference(pil_images)
 
-        return result
+        # Convert Prediction object to dictionary
+        # Extract depth maps (convert to tensors for consistency)
+        depths = []
+        for i in range(len(result.depth)):
+            depth_np = result.depth[i]  # [H, W]
+            depth = _convert_depth_to_tensor(depth_np)  # [1, 1, H, W]
+            depth = _normalize_depth_range(depth)
+            depths.append(depth)
+
+        # Build result dictionary
+        multiview_result = {
+            'depth': depths,
+            'confidence': None,
+            'camera_extrinsics': None,
+            'camera_intrinsics': None,
+        }
+
+        # Extract optional multi-view data
+        if hasattr(result, 'confidence') and result.confidence is not None:
+            multiview_result['confidence'] = result.confidence  # [N, H, W]
+
+        if hasattr(result, 'extrinsics') and result.extrinsics is not None:
+            multiview_result['camera_extrinsics'] = result.extrinsics  # [N, 4, 4]
+
+        if hasattr(result, 'intrinsics') and result.intrinsics is not None:
+            multiview_result['camera_intrinsics'] = result.intrinsics  # [N, 3, 3]
+
+        return multiview_result
 
     def estimate_3d_gaussians(
         self,
