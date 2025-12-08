@@ -32,7 +32,6 @@
     "full_res_mask_padding": 4,
     "reroll_blank_frames": "ignore",
     "reroll_patience": 10.0,
-    "motion_preview_mode": false,
     "prompts": {
         "0": "A cute bunny, hopping on grass, photorealistic",
         "12": "A cute bunny with sunglasses, hopping at a neon-lit construction site",

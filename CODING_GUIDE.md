@@ -6,7 +6,7 @@
 - All code migrated from `scripts/deforum_helpers/` to `deforum/` package
 - Clean package structure established
 - Functional programming patterns applied throughout
-
+ver
 **Scope:** These standards apply to all new code and refactoring work. They prioritize:
 - **Functional programming patterns** - Pure functions, immutability, composition
 - **Code quality** - Type hints, documentation, complexity limits

@@ -141,7 +141,6 @@ def build_args_from_slopcore(
         'init_image': None,
         'tiling': False,
         'restore_faces': False,
-        'motion_preview_mode': False,  # Not in preview mode, full render
 
         # Blank frame handling
         'reroll_blank_frames': 'ignore',  # Options: 'reroll', 'interrupt', 'ignore'

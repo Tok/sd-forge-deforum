@@ -127,8 +127,7 @@ class DiffusionFrame:
     def maybe_redo_diffusion(self, data: RenderData):
         is_pos_redo = data.has_positive_diffusion_redo
         is_diffusion_redo = is_pos_redo and data.images.has_previous() and self.has_strength()
-        is_not_preview = data.is_not_in_motion_preview_mode()
-        if is_diffusion_redo and is_not_preview:
+        if is_diffusion_redo:
             self.do_diffusion_redo(data)
 
     def has_strength(self):

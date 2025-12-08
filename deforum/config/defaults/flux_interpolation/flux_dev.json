@@ -31,7 +31,6 @@
     "full_res_mask_padding": 4,
     "reroll_blank_frames": "ignore",
     "reroll_patience": 10.0,
-    "motion_preview_mode": false,
     "prompts": {},
     "positive_prompts": "",
     "negative_prompts": "",

@@ -179,9 +179,6 @@ class RenderData:
     def is_using_init_image_or_box(self) -> bool:
         return self.args.args.use_init and self._has_init_image_or_box()
 
-    def is_not_in_motion_preview_mode(self) -> bool:
-        return not self.args.args.motion_preview_mode
-
     def color_coherence_mode(self):
         return self.args.anim_args.color_coherence
 
@@ -195,8 +192,7 @@ class RenderData:
         return self.diffusion_redo_as_int() > 0
 
     def optical_flow_redo_generation_if_not_in_preview_mode(self):
-        is_not_preview = self.is_not_in_motion_preview_mode()
-        return self.args.anim_args.optical_flow_redo_generation if is_not_preview else 'None'
+        return self.args.anim_args.optical_flow_redo_generation
 
     def is_do_color_match_conversion(self, frame) -> bool:
         is_legacy_cm = self.args.anim_args.legacy_colormatch

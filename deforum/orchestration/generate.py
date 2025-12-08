@@ -706,12 +706,9 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
         dashboard = getattr(root, 'dashboard', None)
         print_combined_table(args, anim_args, p, keys, frame, root.init_sample, dashboard)  # print dynamic table to cli
 
-        if args.motion_preview_mode:
-            processed = mock_process_images(args, p, init_image)
-        else:
-            initialise_forge_scripts(p)
+        initialise_forge_scripts(p)
 
-            if is_controlnet_enabled(controlnet_args):
+        if is_controlnet_enabled(controlnet_args):
                 cnet_args = get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=frame)
                 add_forge_script_to_deforum_run(p, "ControlNet", cnet_args)
 

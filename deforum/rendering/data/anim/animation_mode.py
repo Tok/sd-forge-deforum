@@ -38,13 +38,13 @@ class AnimationMode:
     def _is_load_depth_model_for_3d(args, anim_args):
         is_depth_warped_3d = anim_args.animation_mode == '3D' and anim_args.use_depth_warping
         is_depth_used = is_depth_warped_3d or anim_args.save_depth_maps
-        return is_depth_used and not args.motion_preview_mode
+        return is_depth_used
 
     @staticmethod
     def load_raft_if_active(anim_args, args):
         is_cadenced_raft = anim_args.optical_flow_cadence == "RAFT" and int(anim_args.diffusion_cadence) > 1
         is_raft_redo = anim_args.optical_flow_redo_generation == "RAFT"
-        is_load_raft = (is_cadenced_raft or is_raft_redo) and not args.motion_preview_mode
+        is_load_raft = is_cadenced_raft or is_raft_redo
         if is_load_raft:
             model_size = getattr(anim_args, 'raft_model_size', 'Large').lower()
             flow_iterations = getattr(anim_args, 'raft_flow_iterations', 12)
