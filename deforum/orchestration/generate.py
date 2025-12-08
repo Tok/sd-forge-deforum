@@ -618,62 +618,62 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
             logger.info(f"Not using an init image (doing pure txt2img)")
 
         p_txt = processing.StableDiffusionProcessingTxt2Img(
-                sd_model=sd_model,
-                outpath_samples=root.tmp_deforum_run_duplicated_folder,
-                outpath_grids=root.tmp_deforum_run_duplicated_folder,
-                prompt=p.prompt,
-                styles=p.styles,
-                negative_prompt=p.negative_prompt,
-                seed=p.seed,
-                subseed=p.subseed,
-                subseed_strength=p.subseed_strength,
-                seed_resize_from_h=p.seed_resize_from_h,
-                seed_resize_from_w=p.seed_resize_from_w,
-                sampler_name=p.sampler_name,
-                scheduler=p.scheduler_name,
-                batch_size=p.batch_size,
-                n_iter=p.n_iter,
-                steps=p.steps,
-                cfg_scale=p.cfg_scale,
-                distilled_cfg_scale=p.distilled_cfg_scale,
-                width=p.width,
-                height=p.height,
-                restore_faces=p.restore_faces,
-                tiling=p.tiling,
-                enable_hr=False,
-                denoising_strength=0,
-            )
+            sd_model=sd_model,
+            outpath_samples=root.tmp_deforum_run_duplicated_folder,
+            outpath_grids=root.tmp_deforum_run_duplicated_folder,
+            prompt=p.prompt,
+            styles=p.styles,
+            negative_prompt=p.negative_prompt,
+            seed=p.seed,
+            subseed=p.subseed,
+            subseed_strength=p.subseed_strength,
+            seed_resize_from_h=p.seed_resize_from_h,
+            seed_resize_from_w=p.seed_resize_from_w,
+            sampler_name=p.sampler_name,
+            scheduler=p.scheduler_name,
+            batch_size=p.batch_size,
+            n_iter=p.n_iter,
+            steps=p.steps,
+            cfg_scale=p.cfg_scale,
+            distilled_cfg_scale=p.distilled_cfg_scale,
+            width=p.width,
+            height=p.height,
+            restore_faces=p.restore_faces,
+            tiling=p.tiling,
+            enable_hr=False,
+            denoising_strength=0,
+        )
 
-            # Get dashboard from root if available
-            dashboard = getattr(root, 'dashboard', None)
-            print_combined_table(args, anim_args, p_txt, keys, frame, root.init_sample, dashboard)  # print dynamic table to cli
+        # Get dashboard from root if available
+        dashboard = getattr(root, 'dashboard', None)
+        print_combined_table(args, anim_args, p_txt, keys, frame, root.init_sample, dashboard)  # print dynamic table to cli
 
-            initialise_forge_scripts(p_txt)
+        initialise_forge_scripts(p_txt)
 
-            if is_controlnet_enabled(controlnet_args):
-                cnet_args = get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=frame)
-                add_forge_script_to_deforum_run(p_txt, "ControlNet", cnet_args)
+        if is_controlnet_enabled(controlnet_args):
+            cnet_args = get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=frame)
+            add_forge_script_to_deforum_run(p_txt, "ControlNet", cnet_args)
 
-            # Lumina compatibility: Ensure num_tokens is set before sampling
-            try:
-                from deforum.integrations.lumina import apply_lumina_patch_if_needed
-                apply_lumina_patch_if_needed(p_txt)
-            except Exception as e:
-                logger.debug(f"Lumina patch not applied: {e}")
+        # Lumina compatibility: Ensure num_tokens is set before sampling
+        try:
+            from deforum.integrations.lumina import apply_lumina_patch_if_needed
+            apply_lumina_patch_if_needed(p_txt)
+        except Exception as e:
+            logger.debug(f"Lumina patch not applied: {e}")
 
-            # Note: Flux ControlNet V2 control samples are retrieved from global storage
-            # by the patched KModel.apply_model during sampling (no injection needed here)
+        # Note: Flux ControlNet V2 control samples are retrieved from global storage
+        # by the patched KModel.apply_model during sampling (no injection needed here)
 
-            p_txt.scheduler = "Simple"  # FIXME provide
-            # Suppress redundant Forge output (info already shown in Deforum's table)
-            # No callback needed for simplified dashboard (would cause recursion)
-            with suppress_forge_output():
-                processed = processing.process_images(p_txt)
+        p_txt.scheduler = "Simple"  # FIXME provide
+        # Suppress redundant Forge output (info already shown in Deforum's table)
+        # No callback needed for simplified dashboard (would cause recursion)
+        with suppress_forge_output():
+            processed = processing.process_images(p_txt)
 
-            try:
-                p_txt.close()
-            except Exception as e:
-                ...
+        try:
+            p_txt.close()
+        except Exception as e:
+            ...
 
     if processed is None:
         # Mask functions
