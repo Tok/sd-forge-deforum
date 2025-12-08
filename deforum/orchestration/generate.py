@@ -671,8 +671,11 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
             p_txt.scheduler = "Simple"  # FIXME provide
             # Suppress redundant Forge output (info already shown in Deforum's table)
             # No callback needed for simplified dashboard (would cause recursion)
+            logger.debug(f"DEBUG: About to call processing.process_images(p_txt) for frame {frame}")
+            logger.debug(f"DEBUG: p_txt.steps={p_txt.steps}, p_txt.width={p_txt.width}, p_txt.height={p_txt.height}")
             with suppress_forge_output():
                 processed = processing.process_images(p_txt)
+            logger.debug(f"DEBUG: processing.process_images returned, processed={processed}, images={len(processed.images) if processed and hasattr(processed, 'images') else 'None'}")
 
             try:
                 p_txt.close()
