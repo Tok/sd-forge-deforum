@@ -112,7 +112,7 @@ def get_tab_prompts(da, dw, dv=None):
                 scale=4
             )
             refresh_model_ui_btn = gr.Button(
-                value=f"{emoji_utils.refresh()} Detect Model",
+                value=f"{emoji_utils.refresh_icon()} Detect Model",
                 variant="secondary",
                 size="sm",
                 scale=1,
