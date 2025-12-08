@@ -709,23 +709,23 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
         initialise_forge_scripts(p)
 
         if is_controlnet_enabled(controlnet_args):
-                cnet_args = get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=frame)
-                add_forge_script_to_deforum_run(p, "ControlNet", cnet_args)
+            cnet_args = get_controlnet_script_args(args, anim_args, controlnet_args, root, parseq_adapter, frame_idx=frame)
+            add_forge_script_to_deforum_run(p, "ControlNet", cnet_args)
 
-            # Lumina compatibility: Ensure num_tokens is set before sampling
-            try:
-                from deforum.integrations.lumina import apply_lumina_patch_if_needed
-                apply_lumina_patch_if_needed(p)
-            except Exception as e:
-                logger.debug(f"Lumina patch not applied: {e}")
+        # Lumina compatibility: Ensure num_tokens is set before sampling
+        try:
+            from deforum.integrations.lumina import apply_lumina_patch_if_needed
+            apply_lumina_patch_if_needed(p)
+        except Exception as e:
+            logger.debug(f"Lumina patch not applied: {e}")
 
-            # Fractional strength is applied via monkey patches at extension init
-            # No per-frame intervention needed here - patches are always active
+        # Fractional strength is applied via monkey patches at extension init
+        # No per-frame intervention needed here - patches are always active
 
-            # Suppress redundant Forge output (info already shown in Deforum's table)
-            # No callback needed for simplified dashboard (would cause recursion)
-            with suppress_forge_output():
-                processed = processing.process_images(p)
+        # Suppress redundant Forge output (info already shown in Deforum's table)
+        # No callback needed for simplified dashboard (would cause recursion)
+        with suppress_forge_output():
+            processed = processing.process_images(p)
 
 
     if root.initial_info is None:
