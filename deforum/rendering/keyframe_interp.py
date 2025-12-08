@@ -319,7 +319,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     logger.info(f"{emoji_if_enabled('✓')} VRAM cleanup complete - ready for interpolation models")
 
     # ====================
-    # PHASE 2: Batch Frame Interpolation (Wan/FILM/DA3-3DGS)
+    # PHASE 2: Batch Frame Interpolation (Wan/FILM/DA3-Multiview/DA3-3DGS)
     # ====================
     logger.separator(char="=")
     logger.info("PHASE 2: Batch Frame Interpolation")
@@ -332,6 +332,33 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     memory_management.unload_all_models()
     memory_management.soft_empty_cache()
     logger.info(f"{emoji_if_enabled('✅')} GPU memory freed")
+
+    # Initialize depth model if needed for DA3-Multiview
+    if interp_method == "DA3-Multiview":
+        logger.info(f"{emoji_if_enabled('🔍')} Initializing DA3 depth model for multi-view geometry...")
+
+        # Get depth algorithm from args (should be DA3-AnyView variant)
+        depth_algorithm = getattr(anim_args, 'depth_algorithm', 'Depth-Anything-V3-AnyView-Small')
+
+        # Ensure it's an AnyView variant
+        if 'anyview' not in depth_algorithm.lower():
+            logger.warning(f"⚠️  DA3-Multiview requires AnyView model, got '{depth_algorithm}'")
+            logger.warning(f"   Auto-switching to Depth-Anything-V3-AnyView-Small")
+            depth_algorithm = 'Depth-Anything-V3-AnyView-Small'
+
+        # Initialize depth model
+        from deforum.depth.depth import DepthModel
+        from modules import devices
+
+        models_path = os.path.join(os.getcwd(), 'models', 'Deforum')
+        data.depth_model = DepthModel(
+            models_path=models_path,
+            device=devices.get_optimal_device(),
+            keep_in_vram=True,  # Keep loaded for all segments
+            depth_algorithm=depth_algorithm
+        )
+
+        logger.info(f"{emoji_if_enabled('✅')} Depth model loaded: {depth_algorithm}")
 
     # Initialize Wan only if needed
     wan_integration = None
@@ -606,6 +633,18 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                     first_frame_idx=first_frame_idx,
                     output_dir=data.output_directory,
                     fps=video_args.fps
+                )
+            elif interp_method == "DA3-Multiview":
+                logger.info(f"   {emoji_if_enabled('🎯')} Interpolation: DA3-Multiview (depth warping with multi-view geometry)")
+                segment_frames = generate_da3_multiview_segment(
+                    first_image=first_image,
+                    last_image=last_image,
+                    num_frames=num_tween_frames,
+                    height=data.height(),
+                    width=data.width(),
+                    first_frame_idx=first_frame_idx,
+                    output_dir=data.output_directory,
+                    data=data
                 )
             elif interp_method == "DA3-3DGS":
                 model_selection = getattr(wan_args, 'da3_3dgs_model', 'DA3-GIANT')
@@ -1015,6 +1054,142 @@ def stitch_keyframe_interpolation_video(data, frame_paths, video_args, interp_me
             os.remove(concat_file)
 
     return output_path
+
+
+def generate_da3_multiview_segment(first_image, last_image, num_frames, height, width,
+                                   first_frame_idx, output_dir, data):
+    """
+    Generate frames for one DA3-Multiview segment.
+
+    Uses Depth Anything V3's multi-view geometry (depth + camera pose estimation)
+    to create smooth tweens between keyframes via depth warping.
+
+    Args:
+        first_image: PIL Image of first keyframe
+        last_image: PIL Image of last keyframe
+        num_frames: Number of tween frames to generate (excluding keyframes)
+        height: Frame height
+        width: Frame width
+        first_frame_idx: Global index of first keyframe
+        output_dir: Directory to save generated frames
+        data: RenderData object (for depth model and animation keys)
+
+    Returns:
+        List of paths to generated tween frames
+    """
+    import numpy as np
+    import torch
+    from PIL import Image
+    from deforum.animation.animation import transform_image_3d_switcher
+
+    logger.info(f"   {emoji_if_enabled('🎯')} DA3-Multiview interpolation: {num_frames} frames")
+
+    # Ensure depth model is initialized and is DA3-AnyView
+    if data.depth_model is None:
+        raise RuntimeError("DA3-Multiview requires depth model to be initialized")
+
+    if not hasattr(data.depth_model, 'is_v3') or not data.depth_model.is_v3:
+        raise RuntimeError("DA3-Multiview requires Depth Anything V3 (not V2)")
+
+    # Check if model is AnyView variant
+    da3_model = data.depth_model.depth_anything
+    if not hasattr(da3_model, 'variant') or da3_model.variant != 'any-view':
+        raise RuntimeError(
+            f"DA3-Multiview requires AnyView variant, got '{getattr(da3_model, 'variant', 'unknown')}'. "
+            "Select a Depth-Anything-V3-AnyView-* model in 3D Depth tab."
+        )
+
+    logger.debug(f"   Using DA3 AnyView model for multi-view geometry")
+
+    # Convert PIL images to numpy BGR (OpenCV format)
+    first_img_np = np.array(first_image)[:, :, ::-1]  # RGB -> BGR
+    last_img_np = np.array(last_image)[:, :, ::-1]    # RGB -> BGR
+
+    # Run DA3 multi-view inference to get depths + camera poses
+    logger.debug(f"   Running DA3 multi-view inference...")
+    result = da3_model.predict_multiview([first_img_np, last_img_np])
+
+    # Extract multi-view data
+    depth_maps = result.get('depth', None)
+    camera_extrinsics = result.get('camera_extrinsics', None)
+
+    if depth_maps is None or len(depth_maps) < 2:
+        raise RuntimeError("DA3 multi-view inference failed to return depth maps")
+
+    if camera_extrinsics is None or len(camera_extrinsics) < 2:
+        logger.warning("DA3 did not return camera extrinsics, using identity transforms")
+        # Fallback: identity matrices
+        camera_extrinsics = [np.eye(4), np.eye(4)]
+
+    depth_first = depth_maps[0]  # [1, 1, H, W] tensor
+    depth_last = depth_maps[1]   # [1, 1, H, W] tensor
+    pose_first = camera_extrinsics[0]  # [4, 4] matrix
+    pose_last = camera_extrinsics[1]   # [4, 4] matrix
+
+    logger.debug(f"   First depth: {depth_first.shape}, pose: {pose_first.shape if hasattr(pose_first, 'shape') else type(pose_first)}")
+    logger.debug(f"   Last depth: {depth_last.shape}, pose: {pose_last.shape if hasattr(pose_last, 'shape') else type(pose_last)}")
+
+    # Convert poses to numpy if they're tensors
+    if hasattr(pose_first, 'cpu'):
+        pose_first = pose_first.cpu().numpy()
+    if hasattr(pose_last, 'cpu'):
+        pose_last = pose_last.cpu().numpy()
+
+    # Generate tween frames by interpolating camera pose and warping first keyframe
+    frame_paths = []
+    device = data.depth_model.device
+
+    for tween_idx in range(num_frames):
+        # Calculate interpolation factor (0 < t < 1)
+        # tween_idx goes from 0 to num_frames-1
+        # t should go from 1/(num_frames+1) to num_frames/(num_frames+1)
+        t = (tween_idx + 1) / (num_frames + 1)
+
+        logger.debug(f"   Generating tween {tween_idx + 1}/{num_frames} (t={t:.3f})")
+
+        # Interpolate camera pose (simple linear for now)
+        # TODO: Use proper SLERP for rotation component
+        pose_interp = pose_first * (1.0 - t) + pose_last * t
+
+        # Interpolate depth map
+        depth_interp = depth_first * (1.0 - t) + depth_last * t
+
+        # Extract rotation and translation from interpolated pose
+        # Camera extrinsics are typically [R|t] where R is 3x3 rotation, t is 3x1 translation
+        # pose_interp is 4x4: [[R, t], [0, 1]]
+        rot_mat = pose_interp[:3, :3]  # 3x3 rotation
+        translate = pose_interp[:3, 3]  # 3x1 translation
+
+        # Convert to torch tensors for transform_image_3d
+        rot_mat_tensor = torch.from_numpy(rot_mat).float().to(device)
+        translate_tensor = torch.from_numpy(translate).float().to(device)
+
+        # Warp first keyframe using interpolated pose and depth
+        # Note: transform_image_3d expects rotation in specific format
+        warped_img = transform_image_3d_switcher(
+            device=device,
+            prev_img_cv2=first_img_np,
+            depth_tensor=depth_interp,
+            rot_mat=rot_mat_tensor,
+            translate=translate_tensor,
+            anim_args=data.args.anim_args,
+            keys=data.animation_keys.deform_keys,
+            frame_idx=first_frame_idx + tween_idx + 1
+        )
+
+        # Save tween frame
+        global_frame_idx = first_frame_idx + tween_idx + 1
+        filename = f"{global_frame_idx:09d}.png"
+        filepath = os.path.join(output_dir, filename)
+
+        # Convert BGR numpy to RGB PIL and save
+        warped_img_rgb = warped_img[:, :, ::-1]  # BGR -> RGB
+        Image.fromarray(warped_img_rgb).save(filepath)
+
+        frame_paths.append(filepath)
+
+    logger.info(f"   {emoji_if_enabled('✅')} DA3-Multiview generated {len(frame_paths)} tween frames")
+    return frame_paths
 
 
 def generate_film_segment(first_image, last_image, num_frames, height, width,

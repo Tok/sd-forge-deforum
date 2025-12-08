@@ -1273,9 +1273,9 @@ def WanArgs():
         "flux_flf2v_interpolation_method": {
             "label": "FLF2V Interpolation Method",
             "type": "dropdown",
-            "choices": ["Wan", "FILM", "DA3-3DGS"],
+            "choices": ["Wan", "FILM", "DA3-Multiview", "DA3-3DGS"],
             "value": "Wan",
-            "info": "Interpolation method for Flux FLF2V mode: 'Wan' (AI-generated video, recommended), 'FILM' (smearcore - sharp motion mixing like dragging paint), 'DA3-3DGS' (3D Gaussian Splatting with novel view synthesis - requires DA3-GIANT models, geometric interpolation with multi-view consistency). Note: RIFE is available in post-processing for framerate doubling."
+            "info": "Interpolation method for Flux FLF2V mode: 'Wan' (AI-generated video, recommended), 'FILM' (smearcore - sharp motion mixing like dragging paint), 'DA3-Multiview' (depth warping with DA3 multi-view geometry - requires DA3-AnyView models, fast geometric interpolation), 'DA3-3DGS' (3D Gaussian Splatting with novel view synthesis - requires DA3-GIANT models, highest quality geometric interpolation). Note: RIFE is available in post-processing for framerate doubling."
         },
 
         # Advanced Generation Settings
