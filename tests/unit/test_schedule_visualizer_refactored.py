@@ -9,7 +9,7 @@ import pytest
 import numpy as np
 from typing import Dict, Set
 
-from deforum.utils.schedule_visualizer_refactored import (
+from deforum.utils.schedule_visualizer import (
     # Data structures
     ColorPalette,
     Coordinates,
