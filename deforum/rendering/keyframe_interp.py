@@ -1155,6 +1155,17 @@ def generate_da3_multiview_segment(first_image, last_image, num_frames, height, 
         # Interpolate depth map
         depth_interp = depth_first * (1.0 - t) + depth_last * t
 
+        # Resize depth to match image dimensions (DA3 outputs smaller depth for efficiency)
+        # depth_interp shape: [1, 1, H_depth, W_depth], need [1, 1, H_img, W_img]
+        import torch.nn.functional as F
+        img_h, img_w = first_img_np.shape[:2]
+        depth_interp = F.interpolate(
+            depth_interp,
+            size=(img_h, img_w),
+            mode='bilinear',
+            align_corners=False
+        )
+
         # Extract rotation and translation from interpolated pose
         # Camera extrinsics are typically [R|t] where R is 3x3 rotation, t is 3x1 translation
         # pose_interp is 4x4: [[R, t], [0, 1]]
