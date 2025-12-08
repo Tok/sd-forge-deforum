@@ -44,7 +44,7 @@ jobs:
           # Install UI dependencies
           pip install gradio
           # Install other requirements from requirements.txt
-          pip install numexpr matplotlib av pims imageio_ffmpeg rich gdown easydict
+          pip install numexpr matplotlib av pims imageio_ffmpeg rich gdown easydict plotly
           echo "Installed packages:"
           pip list
 
