@@ -171,7 +171,9 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         logger.debug(f"Existing images in output dir: {img_count}")
 
     # Check interpolation method early (needed for Phase 1 keyframe saving logic)
-    interp_method = getattr(wan_args, 'flux_flf2v_interpolation_method', 'Wan')
+    # Try new parameter name first, fallback to old for backward compatibility
+    interp_method = getattr(wan_args, 'diffusion_interpolation_method',
+                           getattr(wan_args, 'flux_flf2v_interpolation_method', 'Wan'))
     use_da3_3dgs = (interp_method == "DA3-3DGS")
 
     # ====================

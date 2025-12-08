@@ -1267,12 +1267,20 @@ def WanArgs():
             "value": "blend",
             "info": "How to use prompts for FLF2V interpolation: 'blend' (RECOMMENDED - combine both prompts describing transition), 'last' (use end keyframe prompt as target), 'first' (use start keyframe prompt), 'none' (empty prompt, may not interpolate correctly)"
         },
-        "flux_flf2v_interpolation_method": {
-            "label": "FLF2V Interpolation Method",
+        "diffusion_interpolation_method": {
+            "label": "Interpolation Method",
             "type": "dropdown",
             "choices": ["Wan", "FILM", "DA3-Multiview", "DA3-3DGS"],
             "value": "Wan",
             "info": "Interpolation method for Keyframes + Interpolation mode: 'Wan' (AI-generated video, recommended), 'FILM' (optical flow, handles large motion), 'DA3-Multiview' (depth warping with multi-view geometry - auto-loads AnyView-Small, 120MB, fast geometric interpolation), 'DA3-3DGS' (3D Gaussian Splatting reconstruction - auto-loads DA3-GIANT, 4.6GB, highest quality geometric interpolation). Note: RIFE is available in post-processing for framerate doubling."
+        },
+        # DEPRECATED: Old name for backward compatibility
+        "flux_flf2v_interpolation_method": {
+            "label": "FLF2V Interpolation Method (DEPRECATED)",
+            "type": "dropdown",
+            "choices": ["Wan", "FILM", "DA3-Multiview", "DA3-3DGS"],
+            "value": "Wan",
+            "info": "DEPRECATED: Use 'diffusion_interpolation_method' instead. This parameter is kept for backward compatibility only."
         },
 
         # Advanced Generation Settings

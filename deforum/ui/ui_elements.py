@@ -1199,7 +1199,7 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     # INTERPOLATION METHOD SELECTOR - ALWAYS VISIBLE AT TOP
     gr.Markdown("### 🎯 Select Interpolation Method")
     with gr.Row():
-        flux_flf2v_interpolation_method = create_gr_elem(dw.flux_flf2v_interpolation_method)
+        diffusion_interpolation_method = create_gr_elem(dw.diffusion_interpolation_method)
 
     gr.Markdown("---")
 
