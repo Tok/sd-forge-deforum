@@ -340,10 +340,10 @@ class DepthAnythingV3:
             self.model = DepthAnything3.from_pretrained(model_name)
             self.model.to(device)
 
-            # Suppress verbose DA3 internal logging
+            # Suppress verbose DA3 internal logging (uses dinov2 logger internally)
             import logging
-            da3_logger = logging.getLogger('depth_anything_3')
-            da3_logger.setLevel(logging.WARNING)  # Only show warnings/errors, not INFO
+            dinov2_logger = logging.getLogger('dinov2')
+            dinov2_logger.setLevel(logging.WARNING)  # Only show warnings/errors, not INFO
 
             # Cache the model for future use
             _DA3_MODEL_CACHE[cache_key] = self.model

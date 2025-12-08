@@ -312,7 +312,7 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
     """
     from rich.table import Table
     from rich import box
-    from deforum.utils.model_detection import is_flux_model, is_lumina_model
+    from deforum.utils.model_detection import is_flux_model, is_lumina_model, is_zimage_model
     from deforum.rendering import options as opt_utils
 
     # If dashboard provided, update it (but still print table to log)
@@ -321,7 +321,8 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
         # Continue to print table to scrolling log below
 
     # Detect if model ignores negative prompts
-    model_ignores_negative = is_flux_model() or is_lumina_model()
+    # Note: Z-Image technically supports negative prompts but they have minimal effect
+    model_ignores_negative = is_flux_model() or is_lumina_model() or is_zimage_model()
 
     # ========================================================================
     # Print seed, color, and movement info BEFORE table

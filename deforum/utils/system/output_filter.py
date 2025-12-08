@@ -84,6 +84,7 @@ def suppress_forge_output(patterns=None, important_patterns=None, callback=None)
             "Distilled CFG Scale will be ignored for Schnell",
             "[Unload]",  # VRAM unload messages (too verbose during generation)
             "Skipping unconditional conditioning",  # CFG=1 message (user knows this from table)
+            "Done.\n",  # Forge backend memory management completion messages
         ]
 
     # Save original stdout
