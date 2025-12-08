@@ -372,7 +372,16 @@ class FixedDashboard:
         if self.frame_info.get('color_rgb'):
             r, g, b = self.frame_info['color_rgb']
             color_block = f"\033[48;2;{r};{g};{b}m  \033[0m"
-            line1_left += f" | Mean Color: {color_block}"
+
+            # Add color name
+            try:
+                from deforum.utils.image.color_namer import name_color
+                hex_color = f"#{r:02x}{g:02x}{b:02x}"
+                color_name = name_color(hex_color)
+                line1_left += f" | Mean Color: {color_block} {color_name}"
+            except Exception:
+                # Fallback to just the color block if naming fails
+                line1_left += f" | Mean Color: {color_block}"
 
         # Add movement indicators if available
         movement = self.frame_info.get('movement', '')
