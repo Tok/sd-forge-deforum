@@ -65,7 +65,7 @@ class TestMultiviewPrediction:
         mock_model = Mock()
         mock_result = Mock()
         mock_result.depth = [np.random.rand(480, 640) for _ in range(3)]
-        mock_result.conf = [np.ones((480, 640)) for _ in range(3)]
+        mock_result.confidence = [np.ones((480, 640)) for _ in range(3)]
         mock_result.extrinsics = np.random.rand(3, 4, 4)
         mock_result.intrinsics = np.random.rand(3, 3, 3)
         mock_model.inference.return_value = mock_result
@@ -81,8 +81,21 @@ class TestMultiviewPrediction:
         # Run multiview prediction
         result = da3.predict_multiview(images)
 
-        # Check result
-        assert result == mock_result
+        # Check result structure (now returns dictionary, not raw mock)
+        assert isinstance(result, dict)
+        assert 'depth' in result
+        assert 'confidence' in result
+        assert 'camera_extrinsics' in result
+        assert 'camera_intrinsics' in result
+
+        # Check depth maps were converted to tensors
+        assert len(result['depth']) == 3
+        assert all(isinstance(d, torch.Tensor) for d in result['depth'])
+
+        # Check camera data was preserved
+        np.testing.assert_array_equal(result['camera_extrinsics'], mock_result.extrinsics)
+        np.testing.assert_array_equal(result['camera_intrinsics'], mock_result.intrinsics)
+
         mock_model.inference.assert_called_once()
 
     @patch('depth_anything_3.api.DepthAnything3')
