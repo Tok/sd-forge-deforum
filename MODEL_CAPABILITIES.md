@@ -26,6 +26,56 @@ Comprehensive reference for model-specific features, parameters, and behaviors i
 
 **Note:** Strength values shown are for cadence frames (Normal) and keyframes (KF). Deforum uses inverted strength semantics (higher = more preservation).
 
+## Resolution Recommendations
+
+### Common 16:9 Resolutions (Landscape/Portrait)
+
+All dimensions divisible by 8 (VAE requirement for most models):
+
+| Aspect Ratio | Width × Height | Megapixels | Best For |
+|--------------|---------------|-----------|----------|
+| **16:9 Landscape** | 1280 × 720 | 0.92 MP | HD, standard deforum |
+| **16:9 Landscape** | 1536 × 864 | 1.33 MP | Higher quality 16:9 |
+| **16:9 Landscape** | 1920 × 1080 | 2.07 MP | Full HD (Flux max) |
+| **9:16 Portrait** | 720 × 1280 | 0.92 MP | Mobile/vertical |
+| **9:16 Portrait** | 864 × 1536 | 1.33 MP | Higher quality vertical |
+| **9:16 Portrait** | 1080 × 1920 | 2.07 MP | Full HD vertical |
+
+### Model-Specific Resolutions
+
+**Flux.1 (Dev/Schnell):**
+- **Native:** 1024 × 1024 (1:1)
+- **Max:** 2.0 MP (e.g., 1920 × 1080 or 1408 × 1408)
+- **16:9:** 1344 × 768 (1.0 MP), 1920 × 1088 (2.0 MP)
+- **Divisibility:** 32 or 64 recommended (Flux architecture)
+- **Trained range:** 0.2 to 2.0 megapixels, various aspect ratios
+
+**Lumina 2.0:**
+- **Native:** 1024 × 1024 (1:1)
+- **Supported:** 768 × 1532, 968 × 1322, ≥ 1024
+- **16:9:** 1216 × 684, 1536 × 864
+- **Divisibility:** 8 (VAE requirement)
+
+**Z-Image-Turbo:**
+- **Native:** 1024 × 1024 (1:1, official recommendation)
+- **Max:** 2048 × 2048
+- **16:9:** 1216 × 684, 1536 × 864, 1280 × 720
+- **Portrait:** 684 × 1216, 864 × 1536, 720 × 1280
+- **Divisibility:** 8 (VAE requirement)
+
+**SDXL:**
+- **Native:** 1024 × 1024 (1:1)
+- **16:9:** 1280 × 720, 1536 × 864
+- **Divisibility:** 8 (VAE requirement)
+
+**SD 1.5:**
+- **Native:** 512 × 512 (1:1)
+- **16:9:** 768 × 432, 640 × 360
+- **Max recommended:** 768 × 768 (quality degrades beyond training resolution)
+- **Divisibility:** 8 (VAE requirement)
+
+**Technical Note:** Most models require dimensions divisible by 8 due to VAE architecture. Flux recommends divisibility by 32/64 for optimal results.
+
 ---
 
 ## Optimal Settings Presets
