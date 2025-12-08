@@ -6,7 +6,7 @@ Comprehensive reference for model-specific features, parameters, and behaviors i
 
 | Model | Negative Prompts | Traditional CFG | Distilled CFG | Recommended Steps | CFG Range | Notes |
 |-------|-----------------|-----------------|---------------|-------------------|-----------|-------|
-| **Flux.1 Dev** | ⚠️ Via true_cfg | ⚠️ Via true_cfg | ✅ Yes (3.5) | 50 (28 min) | dist: 1.5-5.0 | Best quality, slower |
+| **Flux.1 Dev** | ⚠️ Via true_cfg | ⚠️ Via true_cfg | ✅ Yes (3.5) | 50 (28 min) | dist: 3.5 default (>1 to enable) | Best quality, slower |
 | **Flux.1 Schnell** | ❌ No | ❌ No (must be 0) | ❌ No (must be 0) | 4 | N/A (guidance=0) | Fast, 1-8 steps max |
 | **Lumina 2.0** | ✅ Yes | ✅ Yes (4.0) | ❌ Ignored | 30 | 4.0-5.5 | Anime-optimized, requires linear_quadratic |
 | **Z-Image-Turbo** | ❌ No | ❌ No CFG | ❌ Ignored | 9 | N/A (no CFG) | Distilled model, no CFG/negative prompts |
@@ -122,7 +122,7 @@ Example validation output:
 
 **Parameters:**
 - **Steps:** 50 recommended (range: 28-50, absolute min: 8)
-- **Distilled CFG (guidance_scale):** 3.5 default (range: 1.5-5.0)
+- **Distilled CFG (guidance_scale):** 3.5 default (enable by setting > 1, higher = more prompt alignment but lower quality)
 - **True CFG (true_cfg_scale):** 1.0 default (enable > 1 for negative prompts)
 - **Scheduler:** `simple` (compatible: simple, normal, karras, exponential)
 - **Sampler:** `euler` (compatible: euler, dpmpp_2m)
@@ -142,7 +142,9 @@ Example validation output:
 Flux Dev has TWO guidance modes:
 
 1. **Embedded Guidance (`guidance_scale`)** - Default mode
-   - Default: 3.5 (range: 1.5-5.0)
+   - Default: 3.5 (official Black Forest Labs default)
+   - Enable by setting > 1
+   - Higher values = more prompt alignment, lower quality
    - Guidance baked into distilled model
    - No negative prompts needed
    - Faster inference
