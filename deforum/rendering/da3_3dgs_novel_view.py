@@ -530,15 +530,13 @@ def get_da3_model_config(model_selection: str) -> tuple[str, str]:
     """Get DA3 model variant and size from selection name.
 
     Args:
-        model_selection: Model name ('DA3-GIANT' or 'DA3NESTED-GIANT-LARGE')
+        model_selection: Model name ('DA3-GIANT')
 
     Returns:
         Tuple of (variant, size) for model initialization
     """
     if model_selection == 'DA3-GIANT':
         return 'giant', 'giant'
-    elif model_selection == 'DA3NESTED-GIANT-LARGE':
-        return 'giant', 'nested-giant-large'
     else:
         logger.warning(f"Unknown model '{model_selection}', using DA3-GIANT")
         return 'giant', 'giant'
@@ -925,7 +923,7 @@ def generate_da3_3dgs_interpolation(
         keyframe_images: List of PIL Images (keyframes to build scene from)
         keyframe_indices: Global frame indices of keyframes (must match keyframe_images)
         target_frame_indices: Global frame indices to generate (tween frames)
-        model_selection: 'DA3-GIANT' or 'DA3NESTED-GIANT-LARGE'
+        model_selection: 'DA3-GIANT'
         output_dir: Directory to save generated frames
         device: torch device
         deform_keys: Deforum animation keys (translation/rotation schedules)

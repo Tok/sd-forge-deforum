@@ -44,9 +44,8 @@ def _get_model_name(variant: str, size: str) -> str:
         ('any-view', 'small'): 'depth-anything/DA3-SMALL',
         ('any-view', 'base'): 'depth-anything/DA3-BASE',
         ('any-view', 'large'): 'depth-anything/DA3-LARGE',
-        # GIANT models - 3DGS capable (1.15B and 1.40B params)
+        # GIANT models - 3DGS capable
         ('giant', 'giant'): 'depth-anything/DA3-GIANT',
-        ('giant', 'nested-giant-large'): 'depth-anything/DA3NESTED-GIANT-LARGE',
     }
 
     key = (variant.lower(), size.lower())

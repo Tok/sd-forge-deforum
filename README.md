@@ -448,12 +448,13 @@ A powerful workflow for **iterative testing** of different interpolation methods
     - **Default**: DA3MONO-LARGE (only option for mono depth)
   - **GIANT Models** (Experimental) - For DA3-3DGS interpolation only
     - Feed-forward 3D Gaussian Splatting with novel view synthesis (~705k splats per scene)
-    - **High VRAM** (24GB+ recommended, 16GB minimum with aggressive cleanup)
-    - Models: DA3-GIANT (1.15B params, ~3GB) or DA3NESTED-GIANT-LARGE (1.40B params, ~4GB)
-    - **⚠️ VERY EXPERIMENTAL**: Working proof-of-concept, two-phase workflow (Flux → DA3-3DGS)
+    - **VRAM Requirements**: 8GB+ minimum, 12GB+ recommended
+    - Model: DA3-GIANT (1.15B params, ~5GB VRAM)
+    - **⚠️ VERY EXPERIMENTAL**: Working proof-of-concept, two-phase workflow (Diffusion models → DA3-3DGS)
+    - Compatible with Flux, Z-Image-Turbo (ZIT), Lumina, and other img2img models
 - **3DGS Integration** (⚠️ Experimental - Working PoC):
   - **NEW**: DA3-3DGS interpolation method in "Keyframes + Interpolation" mode
-  - **Phase 1**: Generate ALL keyframes with Flux/Z-Image
+  - **Phase 1**: Generate ALL keyframes with your diffusion model (Flux, ZIT, Lumina, etc.)
   - **VRAM Cleanup**: Aggressive model unload between phases
   - **Phase 2**: Multi-view 3DGS scene reconstruction + novel view rendering
     - Collects 5 consecutive keyframes per segment (configurable 2-10)
@@ -490,7 +491,7 @@ A powerful workflow for **iterative testing** of different interpolation methods
 - **Auto-Download**: Models download from HuggingFace on first use
 - **Model Options**:
   - Standard: DA3MONO-LARGE (~350MB) - only mono variant available
-  - GIANT: DA3-GIANT (1.15B, ~3GB) or DA3NESTED-GIANT-LARGE (1.40B, ~4GB)
+  - GIANT: DA3-GIANT (1.15B params, ~5GB VRAM) - for 3DGS interpolation
 - **Backwards Compatible**: Existing DA2 workflows continue working unchanged
 - **See**: `docs/DEPTH_ANYTHING_V3_PLAN.md` and `docs/DA3_TESTING_GUIDE.md` for technical details
 
@@ -616,7 +617,7 @@ Hybrid Flux keyframes + multi-method interpolation:
 - Features: Qwen prompt enhancement, movement analysis (Wan/FILM only)
 - **Depth Models Used**:
   - Wan/FILM: No depth model needed
-  - DA3-3DGS: DA3-GIANT or DA3NESTED-GIANT-LARGE (selected in Wan Models tab)
+  - DA3-3DGS: DA3-GIANT (selected in Wan Models tab)
 - **Why Different Models for Different Modes?**
   - **Standard 3D modes** (Classic/New/Keyframes Only) use **Mono models** for depth warping:
     - Fast single-view depth estimation (~350MB VRAM)

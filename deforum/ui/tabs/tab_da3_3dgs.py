@@ -92,33 +92,34 @@ def get_tab_da3_3dgs(d3dgs: SimpleNamespace, skip_tabitem=False):
     with gr.Accordion(f"{emoji_if_enabled('ℹ️')} Technical Details", open=False):
         gr.Markdown("""
         **How DA3-3DGS Works:**
-        
+
         1. **Multi-View Collection**: Gathers N consecutive keyframes around each segment
         2. **3D Reconstruction**: DA3 GIANT model estimates camera poses and builds gaussian scene
         3. **Novel View Synthesis**: Interpolates camera poses and renders intermediate views
         4. **Visual Consistency**: Optionally renders 3DGS versions of keyframes
-        
+
         **Camera Pose Estimation:**
         - DA3 automatically estimates poses from image content
         - Uses SLERP for rotation interpolation
         - Linear interpolation for translation
         - Deforum movement schedules are ignored
-        
+
         **Output Organization:**
         - Original diffusion keyframes → `_diffusion/` subdirectory
         - 3DGS-rendered keyframes → main directory
         - 3DGS tweens → main directory
         - Result: Seamless 3DGS video
-        
+
         **VRAM Requirements:**
-        - DA3-GIANT: ~3GB for model, ~1-2GB per scene
-        - DA3NESTED-GIANT-LARGE: ~4GB for model, ~1-2GB per scene
-        - Recommended: 16GB minimum, 24GB+ for best quality
-        
+        - DA3-GIANT: ~5.1-5.3 GB (stable across all parameter settings)
+        - Minimum: 8GB VRAM, Recommended: 12GB+ for stability
+        - VRAM usage is consistent regardless of neighbor count or densification
+
         **Performance:**
-        - ~705k gaussian splats per scene
-        - 5 keyframes = good balance of quality/speed
-        - More keyframes = better geometry but slower
+        - Lower densification values produce better quality and render faster
+        - Optimal: Densification 1-2 (~705k-1.4M splats)
+        - Neighbor segments: 9 recommended, but 2-10 all work well
+        - Near-clip filter: Minimal quality impact, leave at 0.0 unless artifacts observed
         """)
     
     # CRITICAL: Immediately capture components in locals() for registration

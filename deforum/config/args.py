@@ -1422,9 +1422,9 @@ def DA33DGSArgs():
         "da3_3dgs_model": {
             "label": "DA3-3DGS Model",
             "type": "dropdown",
-            "choices": ["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
-            "value": "DA3NESTED-GIANT-LARGE",
-            "info": "3DGS-capable DA3 model: 'DA3-GIANT' (1.15B params, ~3GB VRAM), 'DA3NESTED-GIANT-LARGE' (1.40B params, ~4GB VRAM, default - combines multi-view with metric depth for better geometry). Both models support feed-forward 3D Gaussian Splatting for novel view synthesis."
+            "choices": ["DA3-GIANT"],
+            "value": "DA3-GIANT",
+            "info": "DA3-GIANT model for 3D Gaussian Splatting. Uses ~5.1-5.3 GB VRAM with consistent quality across all parameter combinations. DA3NESTED-GIANT-LARGE was removed due to poor compatibility."
         },
         "da3_3dgs_scene_strategy": {
             "label": "3DGS Scene Rebuild Strategy",
@@ -1456,10 +1456,10 @@ def DA33DGSArgs():
             "label": "Neighbor Segments for 3DGS",
             "type": "slider",
             "minimum": 0,
-            "maximum": 8,
+            "maximum": 10,
             "step": 1,
-            "value": 6,
-            "info": "How many neighboring segments to include for multi-view 3DGS reconstruction. Uses ACTUAL keyframes from your prompt schedule (not arbitrary count). Higher values = more keyframes = better 3D geometry but more VRAM. VRAM usage scales with: keyframe_count × resolution × gaussian_count (~705k splats). 0: just segment (2 keyframes, fastest, lowest VRAM), 4: ~9 keyframes (good, ~16GB VRAM @ 1024x1024), 6: ~13 keyframes (default, better quality, ~20GB VRAM), 8: ~17 keyframes (best quality, 24GB+ VRAM recommended). Reduce if OOM errors occur."
+            "value": 9,
+            "info": "Number of neighboring segments for multi-view 3DGS reconstruction. Uses actual keyframes from your prompt schedule. Optimal value is 9, but values from 2-10 all produce good results with minimal quality difference. VRAM usage is stable (~5.1-5.3 GB) regardless of neighbor count. Reduce if OOM errors occur."
         },
         "da3_3dgs_rolling_window_size": {
             "label": "Rolling Window Size (keyframes)",
@@ -1486,7 +1486,7 @@ def DA33DGSArgs():
             "type": "dropdown",
             "choices": ["Auto (Max Quality for VRAM)", "1", "2", "3", "4", "5", "6", "7", "8"],
             "value": "Auto (Max Quality for VRAM)",
-            "info": "Subdivide each gaussian splat for higher quality rendering. DA3 generates ~705k base splats. AUTO: Detects available VRAM and selects maximum quality tier. Manual tiers: 1: 705k splats (fastest, ~2GB VRAM), 2: 1.4M (good, ~3GB), 3: 2.1M (high, ~4GB), 4: 2.8M (very high, ~5GB), 5: 3.5M (excellent, ~7GB), 6: 4.2M (ultra, ~9GB), 7: 4.9M (extreme, ~11GB), 8: 5.6M (maximum, ~14GB). Higher = finer detail but more VRAM. Each splat subdivided into N smaller splats with positional offsets."
+            "info": "Controls gaussian splat subdivision. Lower values produce better quality and render faster. Recommended: 1-2 for best results (~705k-1.4M splats, ~5.1GB VRAM). Higher values (3-8) degrade quality while using similar VRAM. Auto mode selects optimal value based on available VRAM."
         },
         "da3_3dgs_near_clip_distance": {
             "label": "Near Clip Filter (Percentile)",
@@ -1495,7 +1495,7 @@ def DA33DGSArgs():
             "maximum": 1.0,
             "step": 0.01,
             "value": 0.0,
-            "info": "Remove closest N% of gaussian splats to eliminate 'straw' artifacts. ADAPTIVE: Uses percentile of depth distribution instead of absolute world units. 0.0 = disabled (show all splats), 0.01 = remove closest 1%, 0.05 = remove closest 5%, 0.10 = remove closest 10%. Higher values may cause visible holes. Percentile-based filtering adapts to DA3's arbitrary scene scales automatically. Values >1.0 revert to legacy absolute mode."
+            "info": "Remove closest N% of gaussian splats to reduce 'straw' artifacts. Uses percentile of depth distribution. 0.0 = disabled (recommended, minimal quality impact), 0.01 = remove closest 1%, 0.05 = remove closest 5%, 0.10 = remove closest 10%. Higher values may cause visible holes. Only adjust if you observe artifacts."
         },
 
         # Camera and Output Settings

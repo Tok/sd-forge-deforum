@@ -134,10 +134,10 @@ def run_deforum(*args):
 
                         # Validate da3_3dgs_model - fix invalid values from old UI state
                         if 'da3_3dgs_model' in args_dict:
-                            valid_models = ["DA3-GIANT", "DA3NESTED-GIANT-LARGE"]
+                            valid_models = ["DA3-GIANT"]
                             current_value = args_dict['da3_3dgs_model']
                             if current_value not in valid_models:
-                                logger.warning(f"Invalid da3_3dgs_model value '{current_value}' (not in {valid_models}), using default 'DA3-GIANT'")
+                                logger.warning(f"Invalid da3_3dgs_model value '{current_value}' (DA3NESTED removed due to poor compatibility), using 'DA3-GIANT'")
                                 args_dict['da3_3dgs_model'] = 'DA3-GIANT'
 
                         # Validate da3_3dgs_neighbor_segments - fix invalid values

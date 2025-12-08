@@ -298,51 +298,37 @@ echo ""
 echo -e "${BB0_ZENITH}Standard Models (for 3D depth warp modes):${NC}"
 echo "  1) DA3MONO-LARGE (Recommended, single-view depth, ~350MB)"
 echo ""
-echo -e "${BB0_GLITCH}GIANT Models (for DA3-3DGS interpolation only, 24GB+ VRAM required):${NC}"
-echo "  2) DA3-GIANT (3DGS capable, 1.15B params, ~3GB)"
-echo "  3) DA3NESTED-GIANT-LARGE (Recommended for 3DGS, 1.40B params, ~4GB)"
+echo -e "${BB0_GLITCH}GIANT Models (for DA3-3DGS interpolation, 8GB+ VRAM required):${NC}"
+echo "  2) DA3-GIANT (3DGS model, 1.15B params, ~5GB VRAM)"
 echo ""
-echo "  4) All standard + GIANT models"
-echo "  5) Skip DA3 models (package auto-installs but models won't cache)"
+echo "  3) All standard + GIANT models"
+echo "  4) Skip DA3 models (package auto-installs but models won't cache)"
 echo ""
-echo -e "${BB0_VOID}NOTE: Only DA3MONO-LARGE exists for mono depth (no Small/Base variants)${NC}"
-echo -e "${BB0_VOID}      GIANT models ONLY work with DA3-3DGS FLF2V interpolation mode${NC}"
-read -p "Enter choice [1-5]: " da3_choice
+echo -e "${BB0_VOID}NOTE: DA3MONO-LARGE for standard depth, DA3-GIANT for 3DGS interpolation${NC}"
+read -p "Enter choice [1-4]: " da3_choice
 
 # Create DA3 directory
 mkdir -p models/Deforum/depth-anything-v3
 
 case $da3_choice in
-    1|4)
+    1|3)
         echo -e "${BB0_GLITCH}Downloading DA3MONO-LARGE (single-view depth)...${NC}"
         huggingface-cli download depth-anything/DA3MONO-LARGE \
             --local-dir models/Deforum/depth-anything-v3/DA3MONO-LARGE \
             --resume-download
         echo -e "${BB0_ZENITH}✓ DA3MONO-LARGE downloaded${NC}"
-        ;&  # Fall through if choice was 4
+        ;&  # Fall through if choice was 3
 esac
 
 case $da3_choice in
-    2|4)
-        echo -e "${BB0_GLITCH}Downloading DA3-GIANT (3DGS capable, 1.15B params, ~3GB)...${NC}"
-        echo -e "${BB0_VOID}⚠️  Requires 24GB+ VRAM for DA3-3DGS interpolation mode${NC}"
+    2|3)
+        echo -e "${BB0_GLITCH}Downloading DA3-GIANT (3DGS model, 1.15B params, ~5GB VRAM)...${NC}"
         huggingface-cli download depth-anything/DA3-GIANT \
             --local-dir models/Deforum/depth-anything-v3/DA3-GIANT \
             --resume-download
         echo -e "${BB0_ZENITH}✓ DA3-GIANT downloaded${NC}"
-        ;&  # Fall through if choice was 4
-esac
-
-case $da3_choice in
-    3|4)
-        echo -e "${BB0_GLITCH}Downloading DA3NESTED-GIANT-LARGE (Recommended for 3DGS, 1.40B params, ~4GB)...${NC}"
-        echo -e "${BB0_VOID}⚠️  Requires 24GB+ VRAM for DA3-3DGS interpolation mode${NC}"
-        huggingface-cli download depth-anything/DA3NESTED-GIANT-LARGE \
-            --local-dir models/Deforum/depth-anything-v3/DA3NESTED-GIANT-LARGE \
-            --resume-download
-        echo -e "${BB0_ZENITH}✓ DA3NESTED-GIANT-LARGE downloaded${NC}"
         ;;
-    5)
+    4)
         echo -e "${BB0_GLITCH}Skipping DA3 models (package auto-installs, models will download on first use)${NC}"
         ;;
 esac
