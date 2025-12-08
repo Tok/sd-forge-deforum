@@ -634,20 +634,19 @@ def DeforumAnimArgs():
                 'Depth-Anything-V3-AnyView-Small',
                 'Depth-Anything-V3-AnyView-Base',
                 'Depth-Anything-V3-AnyView-Large',
-                'Depth-Anything-V3-Giant',
                 'Depth-Anything-V2-Small',
                 'Depth-Anything-V2-Base',
                 'Depth-Anything-V2-Large'
             ],
             "value": "Depth-Anything-V3-Mono-Small",
-            "info": "Depth model: Mono (single-view depth warping, fastest), AnyView (multi-view geometry for da3_multiview mode), Giant (3DGS reconstruction), V2 (legacy). Auto-switches based on tween mode."
+            "info": "Depth model: Mono (preferred for depth_warp, 120MB/390MB/1.4GB), AnyView (required for da3_multiview, 120MB/390MB/1.4GB), V2 (legacy). Auto-switches based on tween mode. For 3DGS, use Keyframes + Interpolation mode with DA3-3DGS method (4.6GB)."
         },
         "tween_generation_mode": {
             "label": "Tween Generation Mode",
             "type": "dropdown",
             "choices": ['depth_warp', 'da3_multiview'],
             "value": "depth_warp",
-            "info": "Tween generation: depth_warp (classic depth warping, stable - default), da3_multiview (multi-view geometry, experimental). For 3D Gaussian Splatting, use 'Keyframes + Interpolation' mode with DA3-3DGS interpolation method."
+            "info": "Tween generation: depth_warp (classic warping, uses Mono models - default), da3_multiview (camera pose estimation, requires AnyView models). For 3D Gaussian Splatting, use 'Keyframes + Interpolation' mode with DA3-3DGS interpolation method (uses Giant model)."
         },
         "da3_use_ray_pose": {
             "label": "DA3: Use Ray Pose Estimation",
