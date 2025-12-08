@@ -66,6 +66,12 @@ def get_tab_da3_3dgs(d3dgs: SimpleNamespace, skip_tabitem=False):
         da3_3dgs_rolling_window_size = create_gr_elem(d3dgs.da3_3dgs_rolling_window_size)
         da3_3dgs_max_prompt_keyframes = create_gr_elem(d3dgs.da3_3dgs_max_prompt_keyframes)
 
+    # Frame Collection
+    gr.Markdown(f"### {emoji_if_enabled('📐')} Frame Collection")
+    with gr.Row():
+        da3_3dgs_frame_collection = create_gr_elem(d3dgs.da3_3dgs_frame_collection)
+        da3_3dgs_max_frames = create_gr_elem(d3dgs.da3_3dgs_max_frames)
+
     # Model Selection
     gr.Markdown(f"### {emoji_if_enabled('🎛')} Model Configuration")
     with gr.Row():
@@ -126,6 +132,8 @@ def get_tab_da3_3dgs(d3dgs: SimpleNamespace, skip_tabitem=False):
     locals()['da3_3dgs_scene_strategy'] = da3_3dgs_scene_strategy
     locals()['da3_3dgs_rolling_window_size'] = da3_3dgs_rolling_window_size
     locals()['da3_3dgs_max_prompt_keyframes'] = da3_3dgs_max_prompt_keyframes
+    locals()['da3_3dgs_frame_collection'] = da3_3dgs_frame_collection
+    locals()['da3_3dgs_max_frames'] = da3_3dgs_max_frames
     locals()['da3_3dgs_model'] = da3_3dgs_model
     locals()['da3_3dgs_neighbor_segments'] = da3_3dgs_neighbor_segments
     locals()['da3_3dgs_densification_factor'] = da3_3dgs_densification_factor
