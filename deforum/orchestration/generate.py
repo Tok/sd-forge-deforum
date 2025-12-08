@@ -743,11 +743,8 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
 
     results = processed.images[0]
 
-    # Update dashboard with diffusion output for ASCII preview
-    # (show actual generated frame, not the transformed input)
-    if dashboard is not None:
-        dashboard.last_frame_image = results
-        dashboard.last_frame_idx = frame  # Track frame index of generated image
+    # NOTE: Dashboard updates are handled in core.py where dashboard is accessible via data.dashboard
+    # No need to update here since dashboard is not passed as a parameter
 
     return results
 
