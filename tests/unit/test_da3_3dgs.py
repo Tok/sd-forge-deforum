@@ -600,14 +600,16 @@ class TestModelConfigSelection:
         assert variant == 'giant'
         assert size == 'giant'
 
-    def test_selects_nested_giant_large_config(self):
-        """Should return correct config for DA3NESTED-GIANT-LARGE."""
+    def test_fallback_for_removed_nested_model(self):
+        """DA3NESTED removed - should fallback to DA3-GIANT."""
         from deforum.rendering.da3_3dgs_novel_view import get_da3_model_config
 
         variant, size = get_da3_model_config('DA3NESTED-GIANT-LARGE')
 
+        # DA3NESTED was removed due to poor compatibility (0% success rate in 3024 tests)
+        # Should now fallback to DA3-GIANT
         assert variant == 'giant'
-        assert size == 'nested-giant-large'
+        assert size == 'giant'
 
     def test_fallback_to_giant_for_unknown(self):
         """Should default to giant config for unknown models."""
