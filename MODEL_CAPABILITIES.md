@@ -1,0 +1,532 @@
+# Model Capabilities Reference
+
+Comprehensive reference for model-specific features, parameters, and behaviors in Deforum.
+
+## Quick Reference Table
+
+| Model | Negative Prompts | Traditional CFG | Distilled CFG | Recommended Steps | CFG Range | Notes |
+|-------|-----------------|-----------------|---------------|-------------------|-----------|-------|
+| **Flux.1 Dev** | ❌ No | ❌ Ignored (1.0) | ✅ Yes (3.5) | 20 | dist: 1.0-10.0 | Best quality, slower |
+| **Flux.1 Schnell** | ❌ No | ❌ Ignored (1.0) | ✅ Yes (3.5) | 4 | dist: 1.0-10.0 | Fast, 1-8 steps max |
+| **Lumina 2.0** | ✅ Yes | ✅ Yes (5.0) | ❌ Ignored | 30 | 4.0-5.5 | Anime-optimized, requires linear_quadratic |
+| **Z-Image-Turbo** | ✅ Yes | ✅ Yes (2.0) | ❌ Ignored | 9 | 1.0-4.0 | Fast turbo model, 4-30 steps |
+| **SDXL** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | 4.0-15.0 | Standard diffusion |
+| **SD 1.5** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | 4.0-15.0 | Classic SD |
+
+## Optimal Settings Summary
+
+| Model | Steps | Sampler | Scheduler | CFG | Dist CFG | Strength (Normal/KF) | Resolution |
+|-------|-------|---------|-----------|-----|----------|---------------------|------------|
+| **Flux Dev** | 20 | Euler | Simple | 1.0 | 3.5 | 0.85 / 0.20 | 1280x720 |
+| **Flux Schnell** | 4 | Euler | Simple | 1.0 | 3.5 | 0.85 / 0.20 | 1280x720 |
+| **Lumina 2.0** | 30 | Euler | linear_quadratic | 4.5 | - | 0.85 / 0.20 | 1024x1024 |
+| **Z-Image** | 9 | Euler | Simple | 2.0 | - | 0.85 / 0.20 | 1280x720 |
+| **SDXL** | 25 | DPM++ 2M | Normal | 7.5 | - | 0.85 / 0.20 | 1024x1024 |
+| **SD 1.5** | 25 | DPM++ 2M | Normal | 7.5 | - | 0.85 / 0.20 | 512x512 |
+
+**Note:** Strength values shown are for cadence frames (Normal) and keyframes (KF). Deforum uses inverted strength semantics (higher = more preservation).
+
+---
+
+## Optimal Settings Presets
+
+Deforum includes pre-configured preset files with optimal settings for each model. These presets are battle-tested configurations that work well for most use cases.
+
+**Preset Locations:**
+- `deforum/config/defaults/new_3d/flux_dev.json` - Flux Dev 3D animation
+- `deforum/config/defaults/new_3d/flux_schnell.json` - Flux Schnell 3D animation
+- `deforum/config/defaults/new_3d/lumina.json` - Lumina 2.0 3D animation
+- `deforum/config/defaults/flux_interpolation/flux_dev.json` - Flux Dev + Interpolation mode
+
+**Loading Presets:**
+Load these via the Deforum UI or manually in your settings file to get optimal starting points for each model.
+
+**Automatic Validation:**
+Deforum validates your settings against each model's capabilities and displays warnings if:
+- Steps are outside recommended range (e.g., using 20 steps with Flux Schnell when 4 is optimal)
+- CFG scale is out of range or being used with models that ignore it
+- Scheduler is incompatible (e.g., using 'normal' with Lumina when 'linear_quadratic' is required)
+- Sampler is not in the compatible list for the model
+
+Example validation output:
+```
+⚠️ Steps too high for Flux.1 Schnell: 20 > 8 (recommended: 4). This wastes computation without improving quality.
+⚠️ Scheduler 'normal' may not work optimally with Lumina 2.0. Recommended: linear_quadratic
+⚠️ Z-Image-Turbo ignores distilled CFG scale. Setting distilled_cfg_scale=3.5 has no effect (Flux-only parameter).
+```
+
+**Validation Implementation:**
+- **Location:** `deforum/config/model_configs.py:274` - `validate_settings()`
+- **Called:** Automatically during `run_deforum()` before generation starts
+- **Logged:** Warnings printed to console at start of generation
+
+---
+
+## Detailed Model Specifications
+
+### Flux.1 Dev
+
+**Type:** Flux (distilled diffusion)
+**Display Name:** Flux.1 Dev
+**Developer:** Black Forest Labs
+
+**Parameters:**
+- **Steps:** 20 recommended (range: 8-50)
+- **Traditional CFG:** Ignored (always 1.0)
+- **Distilled CFG:** 3.5 (range: 1.0-10.0)
+- **Scheduler:** `simple` (compatible: simple, normal, karras, exponential)
+- **Sampler:** `euler` (compatible: euler, dpmpp_2m)
+
+**Capabilities:**
+- ❌ Negative prompts (model ignores them)
+- ✅ Distilled CFG guidance
+- ✅ High quality output
+- ✅ Text understanding
+- ✅ Full img2img support
+
+**Notes:**
+- Uses distilled CFG instead of traditional CFG
+- Higher quality than Schnell but slower
+- Negative prompts are ignored by the model architecture
+- Best for final renders where quality matters
+
+**UI Visibility:**
+- Negative prompt field: Hidden
+- Distilled CFG scale: Shown
+- Traditional CFG: Hidden (locked to 1.0)
+
+**Optimal Settings (from preset):**
+```json
+{
+  "steps": 20,
+  "sampler": "Euler",
+  "scheduler": "Simple",
+  "cfg_scale_schedule": "0: (1.0)",
+  "distilled_cfg_scale_schedule": "0: (3.5)",
+  "strength_schedule": "0: (0.85)",
+  "keyframe_strength_schedule": "0: (0.20)",
+  "W": 1280,
+  "H": 720
+}
+```
+
+---
+
+### Flux.1 Schnell
+
+**Type:** Flux (distilled diffusion)
+**Display Name:** Flux.1 Schnell
+**Developer:** Black Forest Labs
+
+**Parameters:**
+- **Steps:** 4 recommended (range: 1-8)
+- **Traditional CFG:** Ignored (always 1.0)
+- **Distilled CFG:** 3.5 (range: 1.0-10.0)
+- **Scheduler:** `simple` (only compatible scheduler)
+- **Sampler:** `euler` (only compatible sampler)
+
+**Capabilities:**
+- ❌ Negative prompts (model ignores them)
+- ✅ Distilled CFG guidance
+- ✅ Very fast generation
+- ✅ Good quality at low steps
+- ✅ Full img2img support
+
+**Notes:**
+- Optimized for 1-4 steps (more steps waste computation)
+- Much faster than Dev but slightly lower quality
+- Uses same distilled CFG system as Dev
+- Best for previews or when speed is critical
+
+**Strength Resolution:**
+- 4 steps = 0.25 resolution (coarse control)
+- Harder to tune for I2V chaining
+- Consider using Flux Dev for strength-heavy workflows
+
+**UI Visibility:**
+- Negative prompt field: Hidden
+- Distilled CFG scale: Shown
+- Traditional CFG: Hidden (locked to 1.0)
+
+**Optimal Settings (from preset):**
+```json
+{
+  "steps": 4,
+  "sampler": "Euler",
+  "scheduler": "Simple",
+  "cfg_scale_schedule": "0: (1.0)",
+  "distilled_cfg_scale_schedule": "0: (3.5)",
+  "strength_schedule": "0: (0.85)",
+  "keyframe_strength_schedule": "0: (0.20)",
+  "W": 1280,
+  "H": 720
+}
+```
+
+**Note:** With only 4 steps, strength resolution is 0.25 (coarse). Consider Flux Dev for workflows requiring fine strength control.
+
+---
+
+### Lumina 2.0
+
+**Type:** DiT (Diffusion Transformer)
+**Display Name:** Lumina 2.0
+**Developer:** Neta-Art (anime-optimized)
+
+**Parameters:**
+- **Steps:** 30 recommended (range: 20-50)
+- **Traditional CFG:** 5.0 (range: 4.0-5.5)
+- **Distilled CFG:** Ignored
+- **Scheduler:** `linear_quadratic` (REQUIRED, compatible: linear_quadratic, normal, karras)
+- **Sampler:** `euler` (compatible: euler, dpmpp_2m)
+
+**Capabilities:**
+- ✅ Negative prompts (fully supported)
+- ✅ Traditional CFG guidance
+- ❌ Distilled CFG (ignored)
+- ✅ Anime-style optimization
+- ✅ Full img2img support
+- ✅ 1024x1024 native resolution
+
+**Notes:**
+- REQUIRES `linear_quadratic` scheduler (compatibility patch applied automatically)
+- Optimized for anime/illustration styles
+- Uses traditional CFG in 4.0-5.5 range (lower than SD)
+- May produce suboptimal results for photorealistic content
+- 2B parameters, efficient VRAM usage
+
+**Known Issues:**
+- `KeyError: 'num_tokens'` - Fixed via automatic compatibility patch in `deforum/integrations/lumina/compat_patch.py`
+- Patch ensures `dynamic_args["num_tokens"]` is populated before sampling
+
+**UI Visibility:**
+- Negative prompt field: Shown
+- Traditional CFG scale: Shown
+- Distilled CFG: Hidden (ignored)
+
+---
+
+### Z-Image-Turbo
+
+**Type:** Turbo diffusion model
+**Display Name:** Z-Image-Turbo
+**Developer:** Alibaba Tongyi
+
+**Parameters:**
+- **Steps:** 9 recommended (range: 4-30)
+- **Traditional CFG:** 2.0 (range: 1.0-4.0)
+- **Distilled CFG:** Ignored
+- **Scheduler:** `simple` (compatible: simple, normal)
+- **Sampler:** `euler` (compatible: euler, dpmpp_2m)
+
+**Capabilities:**
+- ✅ Negative prompts (fully supported)
+- ✅ Traditional CFG guidance (low range)
+- ❌ Distilled CFG (ignored)
+- ✅ Fast generation (turbo model)
+- ✅ Full img2img support
+- ✅ Good quality at low steps
+
+**Notes:**
+- Uses traditional CFG but in lower range (1.0-4.0 vs SD's 4.0-15.0)
+- Optimized for 4-15 steps, supports up to 30
+- CFG 2.0 recommended (higher values may degrade quality)
+- Fast turbo architecture, good for iteration
+
+**UI Visibility:**
+- Negative prompt field: Shown
+- Traditional CFG scale: Shown
+- Distilled CFG: Hidden (ignored)
+
+---
+
+### SDXL
+
+**Type:** Stable Diffusion XL
+**Display Name:** SDXL
+**Developer:** Stability AI
+
+**Parameters:**
+- **Steps:** 25 recommended (range: 15-50)
+- **Traditional CFG:** 7.5 (range: 4.0-15.0)
+- **Distilled CFG:** Ignored
+- **Scheduler:** `normal` (compatible: normal, karras, exponential, simple)
+- **Sampler:** `dpmpp_2m` (compatible: euler_a, dpmpp_2m, dpmpp_2m_sde, ddim)
+
+**Capabilities:**
+- ✅ Negative prompts (fully supported)
+- ✅ Traditional CFG guidance
+- ❌ Distilled CFG (ignored)
+- ✅ High resolution (1024x1024 native)
+- ✅ Full img2img support
+- ✅ Excellent quality
+
+**Notes:**
+- Standard Stable Diffusion architecture
+- Uses traditional CFG in 4.0-15.0 range
+- 1024x1024 native resolution
+- Widely compatible with LoRAs and extensions
+
+**UI Visibility:**
+- Negative prompt field: Shown
+- Traditional CFG scale: Shown
+- Distilled CFG: Hidden (ignored)
+
+---
+
+### SD 1.5
+
+**Type:** Stable Diffusion 1.5
+**Display Name:** SD 1.5
+**Developer:** Stability AI
+
+**Parameters:**
+- **Steps:** 25 recommended (range: 15-50)
+- **Traditional CFG:** 7.5 (range: 4.0-15.0)
+- **Distilled CFG:** Ignored
+- **Scheduler:** `normal` (compatible: normal, karras, exponential, simple)
+- **Sampler:** `dpmpp_2m` (compatible: euler_a, dpmpp_2m, dpmpp_2m_sde, ddim)
+
+**Capabilities:**
+- ✅ Negative prompts (fully supported)
+- ✅ Traditional CFG guidance
+- ❌ Distilled CFG (ignored)
+- ✅ 512x512 native resolution
+- ✅ Full img2img support
+- ✅ Massive ecosystem of LoRAs/embeddings
+
+**Notes:**
+- Classic Stable Diffusion model
+- Same parameters as SDXL but 512x512 resolution
+- Huge community ecosystem
+- Best compatibility with existing workflows
+
+**UI Visibility:**
+- Negative prompt field: Shown
+- Traditional CFG scale: Shown
+- Distilled CFG: Hidden (ignored)
+
+---
+
+## Feature Support Matrix
+
+### Negative Prompts
+
+**Supported:**
+- ✅ Lumina 2.0
+- ✅ Z-Image-Turbo
+- ✅ SDXL
+- ✅ SD 1.5
+
+**NOT Supported:**
+- ❌ Flux.1 Dev (model architecture ignores them)
+- ❌ Flux.1 Schnell (model architecture ignores them)
+
+**Why Flux doesn't support negative prompts:**
+Flux uses a distilled diffusion process that doesn't have a separate unconditional path for negative guidance. The model architecture fundamentally doesn't support CFG-style negative prompting.
+
+---
+
+### CFG Guidance Systems
+
+**Traditional CFG (Classifier-Free Guidance):**
+- ✅ Lumina 2.0 (4.0-5.5)
+- ✅ Z-Image-Turbo (1.0-4.0)
+- ✅ SDXL (4.0-15.0)
+- ✅ SD 1.5 (4.0-15.0)
+
+**Distilled CFG (Flux-specific):**
+- ✅ Flux.1 Dev (1.0-10.0, default 3.5)
+- ✅ Flux.1 Schnell (1.0-10.0, default 3.5)
+
+**How Distilled CFG differs:**
+- Uses single forward pass instead of conditional + unconditional
+- Guidance is "baked into" the model during distillation
+- Faster than traditional CFG (no dual forward pass)
+- Different scale range and meaning
+
+---
+
+### Scheduler Requirements
+
+**Flexible (most schedulers work):**
+- Flux.1 Dev: simple, normal, karras, exponential
+- SDXL: normal, karras, exponential, simple
+- SD 1.5: normal, karras, exponential, simple
+
+**Restricted (limited scheduler compatibility):**
+- Flux.1 Schnell: `simple` only
+- Z-Image-Turbo: simple, normal
+
+**Specific Requirement:**
+- Lumina 2.0: `linear_quadratic` REQUIRED (compatibility patch handles this)
+
+---
+
+### Strength Resolution (Steps Impact)
+
+**High Resolution (fine control):**
+- Flux.1 Dev: 20 steps = 1/20 = 0.05 resolution
+- SDXL/SD 1.5: 25 steps = 1/25 = 0.04 resolution
+- Lumina 2.0: 30 steps = 1/30 = 0.033 resolution
+
+**Medium Resolution:**
+- Z-Image-Turbo: 9 steps = 1/9 = 0.11 resolution
+
+**Low Resolution (coarse control):**
+- Flux.1 Schnell: 4 steps = 1/4 = 0.25 resolution
+
+**Note:** With fractional strength patches (always enabled), all models get 0.01 (1%) precision regardless of steps.
+
+---
+
+## Implementation Details
+
+### Model Detection
+
+**Location:** `deforum/utils/model_detection.py`
+
+**Functions:**
+- `is_flux_model()` - Detects both Flux Dev and Schnell
+- `is_lumina_model()` - Detects Lumina 2.0
+- `is_zimage_model()` - Detects Z-Image-Turbo
+- `is_sdxl_model()` - Detects SDXL
+- `get_current_model_name()` - Returns friendly model name
+
+**Detection Methods:**
+1. Model class name (most reliable)
+2. Checkpoint filename patterns
+3. Full path patterns
+4. Fallback to "Unknown"
+
+---
+
+### Model Configs
+
+**Location:** `deforum/config/model_configs.py`
+
+**Structure:**
+```python
+ModelConfig(
+    model_type: str
+    display_name: str
+    recommended_steps: int
+    min_steps: int
+    max_steps: int
+    uses_cfg: bool  # Traditional CFG
+    cfg_scale_default: float
+    cfg_scale_min: float
+    cfg_scale_max: float
+    uses_distilled_cfg: bool  # Flux distilled CFG
+    distilled_cfg_scale_default: float
+    distilled_cfg_scale_min: float
+    distilled_cfg_scale_max: float
+    recommended_scheduler: str
+    compatible_schedulers: List[str]
+    recommended_sampler: str
+    compatible_samplers: List[str]
+    notes: str
+)
+```
+
+**Functions:**
+- `get_model_config(model_name)` - Get config for current model
+- `validate_settings(args, model_name)` - Validate settings against config
+- `log_model_config(model_name)` - Log detected config to console
+
+---
+
+### UI Adaptation
+
+**Negative Prompt Visibility:**
+```python
+# deforum/orchestration/generate.py:323
+model_ignores_negative = is_flux_model() or is_lumina_model()
+
+# Only print if model uses negatives and prompt is not empty
+if not model_ignores_negative:
+    if neg_prompt and neg_prompt.strip():
+        logger.info(f"Neg Prompt: {neg_prompt}")
+```
+
+**Distilled CFG Column:**
+```python
+# deforum/orchestration/generate.py:382-385
+# Only show Distilled CFG for Flux models
+if is_flux_model():
+    columns.append("Dist. CFG")
+    values.append(str(p.distilled_cfg_scale))
+```
+
+---
+
+## Testing Model-Specific Behavior
+
+### Flux Models
+```python
+# Should show distilled CFG, hide traditional CFG
+assert is_flux_model() == True
+assert config.uses_distilled_cfg == True
+assert config.uses_cfg == False
+```
+
+### Z-Image/Lumina
+```python
+# Should show traditional CFG, hide distilled CFG
+assert config.uses_cfg == True
+assert config.uses_distilled_cfg == False
+```
+
+### Negative Prompts
+```python
+# Flux should ignore negative prompts
+if is_flux_model():
+    assert model_ignores_negative == True
+    # Negative prompt field should not be shown/logged
+```
+
+---
+
+## Adding New Models
+
+To add support for a new model:
+
+1. **Add detection in `deforum/utils/model_detection.py`:**
+   ```python
+   def is_new_model() -> bool:
+       """Detect if NewModel is loaded."""
+       class_name = _get_model_class_name(model)
+       return class_name == 'NewModelClass'
+   ```
+
+2. **Add config in `deforum/config/model_configs.py`:**
+   ```python
+   "new_model": ModelConfig(
+       model_type="new_model",
+       display_name="New Model Name",
+       # ... all parameters
+   )
+   ```
+
+3. **Update detection in `detect_model_type_extended()`:**
+   ```python
+   if is_new_model():
+       return "new_model"
+   ```
+
+4. **Update UI logic if needed:**
+   - Negative prompt visibility
+   - CFG column display
+   - Any model-specific UI elements
+
+5. **Update this document** with new model's capabilities!
+
+---
+
+## Changelog
+
+- **2025-01-08:** Initial documentation
+  - Documented all 6 supported models
+  - Feature support matrix
+  - Implementation details
+  - Testing guidelines
