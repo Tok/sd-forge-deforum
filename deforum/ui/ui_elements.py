@@ -56,38 +56,6 @@ logger = get_logger()
 # unless we have a gr.File inside that row/column, then we use gr.Row()/gr.Column() instead.
 # ******** Important message ********
 # NOTE: Tab functions below are now imported from deforum.ui.tabs.* modules
-# The old inline definitions are kept for reference but should be removed after testing
-
-def get_tab_run_OLD(d, da):
-    with (gr.TabItem(f"{emoji_utils.run()} Run")):  # RUN TAB
-        motion_preview_mode = create_row(d.motion_preview_mode)
-        sampler, scheduler, steps = create_row(d, 'sampler', 'scheduler', 'steps')
-        W, H = create_row(d, 'W', 'H')
-        seed, batch_name = create_row(d, 'seed', 'batch_name')
-        with FormRow():
-            restore_faces = create_gr_elem(d.restore_faces)
-            tiling = create_gr_elem(d.tiling)
-            enable_ddim_eta_scheduling = create_gr_elem(da.enable_ddim_eta_scheduling)
-            enable_ancestral_eta_scheduling = create_gr_elem(da.enable_ancestral_eta_scheduling)
-        with gr.Row(variant='compact') as eta_sch_row:
-            ddim_eta_schedule = create_gr_elem(da.ddim_eta_schedule)
-            ancestral_eta_schedule = create_gr_elem(da.ancestral_eta_schedule)
-
-        # RUN FROM SETTING FILE ACCORD
-        with gr.Accordion('Batch Mode, Resume and more', open=True):
-            with gr.Tab('Batch Mode/ run from setting files'):
-                with gr.Row():  # TODO: handle this inside one of the args functions?
-                    override_settings_with_file = gr.Checkbox(label="Enable batch mode", value=False, interactive=True,
-                                                              elem_id='override_settings',
-                                                              info="run from a list of setting .txt files. Upload them to the box on the right (visible when enabled)")
-                    custom_settings_file = gr.File(label="Setting files", interactive=True, file_count="multiple",
-                                                   file_types=[".txt"], elem_id="custom_setting_file", visible=False)
-            # RESUME ANIMATION ACCORD
-            with gr.Tab('Resume Animation', selected=True):
-                resume_from_timestring, resume_timestring = create_row(
-                    da, 'resume_from_timestring', 'resume_timestring')
-    return {k: v for k, v in {**locals(), **vars()}.items()}
-
 
 def get_tab_keyframes(d, da, dloopArgs):
     components = {}

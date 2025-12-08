@@ -1014,12 +1014,6 @@ def DeforumArgs():
             "value": 10,
             "info": ""
         },
-        "motion_preview_mode": {
-            "label": "Motion preview mode (dry run).",
-            "type": "checkbox",
-            "value": False,
-            "info": "Preview motion only. Uses a static picture for init, and draw motion reference rectangle."
-        },
     }
 
 
