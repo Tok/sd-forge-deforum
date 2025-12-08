@@ -224,12 +224,15 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     # Count how many keyframes need to be generated
     keyframes_to_generate = [f for f in keyframes if f.i not in keyframe_images]
     keyframes_existing = [f for f in keyframes if f.i in keyframe_images]
-    
+
     if keyframes_existing:
         logger.info(f"{emoji_if_enabled('✅')} Found {len(keyframes_existing)} existing keyframes from previous run")
     if keyframes_to_generate:
         logger.debug(f"{emoji_if_enabled('📸')} Need to generate {len(keyframes_to_generate)} new keyframes")
-    
+
+    # Track previous keyframe for I2I chaining (better consistency between keyframes)
+    prev_keyframe_image = None
+
     for idx, frame in enumerate(keyframes):
         # Update dashboard for Phase 1
         if dashboard:
@@ -242,6 +245,9 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
             if dashboard:
                 dashboard.update_phase1(idx + 1, len(keyframes))
                 dashboard.set_operation(f"Skipped existing keyframe {idx + 1}/{len(keyframes)}")
+            # Load existing keyframe for chaining
+            from PIL import Image
+            prev_keyframe_image = Image.open(keyframe_images[frame.i])
             continue
 
         logger.debug(f"\n{emoji_if_enabled('📸')} Generating NEW keyframe {idx + 1}/{len(keyframes)} (frame {frame.i})...")
@@ -260,10 +266,21 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         else:
             data.args.args.checkpoint = None
 
+        # I2I chaining: Use previous keyframe as init_image for consistency
+        if prev_keyframe_image is not None and idx > 0:
+            data.args.args.init_images = [prev_keyframe_image]
+            # Use keyframe_strength for I2I (higher = more preservation, less change)
+            # frame.strength is already set to keyframe_strength in distribution logic
+            logger.debug(f"   {emoji_if_enabled('🔗')} Chaining from previous keyframe (strength={frame.strength:.3f})")
+        else:
+            # First keyframe: txt2img (no init_image)
+            data.args.args.init_images = None
+            logger.debug(f"   {emoji_if_enabled('🎨')} First keyframe: txt2img generation")
+
         # Reset progress tracking for this frame
         shared.total_tqdm.reset_step_count(frame.actual_steps(data))
 
-        # Generate keyframe image using diffusion model
+        # Generate keyframe image using diffusion model (txt2img or img2img based on init_images)
         web_ui_utils.update_job(data, frame.i)
         image = frame.generate(data, shared.total_tqdm)
 
@@ -275,6 +292,9 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         keyframe_images[frame.i] = keyframe_path
 
         logger.info(f"{emoji_if_enabled('✅')} Keyframe {idx + 1} saved: {os.path.basename(keyframe_path)}")
+
+        # Store for next keyframe's I2I chaining
+        prev_keyframe_image = image
 
         # Set first_frame for UI display (use first generated keyframe)
         if idx == 0:
