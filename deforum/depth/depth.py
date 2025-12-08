@@ -115,13 +115,17 @@ class DepthModel:
                 )
                 self.is_v3 = True
             except ImportError as e:
+                # NEVER fall back to DA2 when user explicitly selected DA3
+                # DA2 lacks critical features (multi-view, ray maps, etc.)
                 logger.error(
-                    "Depth Anything V3 not available. Install with: pip install depth-anything-3 xformers"
+                    f"❌ Depth Anything V3 package not installed but required for '{self.depth_algorithm}'"
                 )
-                logger.warning("Falling back to Depth Anything V2 Small")
-                DepthAnything = _get_depth_anything()
-                self.depth_anything = DepthAnything(self.device, model_size='small')
-                self.is_v3 = False
+                logger.error("Install with: pip install depth-anything-3 xformers")
+                logger.error("Or use a Depth-Anything-V2 model instead (legacy, limited features)")
+                raise ImportError(
+                    f"DA3 package required for {self.depth_algorithm}. "
+                    "Install: pip install depth-anything-3 xformers"
+                ) from e
         else:
             # DA2 model
             logger.info(f"Loading Depth Anything V2 ({model_size})")

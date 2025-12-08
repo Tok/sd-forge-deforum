@@ -263,9 +263,12 @@ class DepthAnythingV3:
 
         except ImportError as e:
             logger.error(
-                "Depth Anything V3 package not found. "
-                "Install with: pip install depth-anything-3"
+                "❌ Depth Anything V3 Python package not installed."
             )
+            logger.error("Install with: pip install depth-anything-3 xformers")
+            logger.error("")
+            logger.error("Note: Model files auto-download from HuggingFace AFTER package is installed.")
+            logger.error("      This error means the Python package itself is missing, not the model files.")
             raise ImportError(
                 "depth-anything-3 package required for DA3 support. "
                 "Run: pip install depth-anything-3 xformers"
