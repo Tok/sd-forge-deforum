@@ -9,8 +9,37 @@ Integrates dynamic camera shake effects with data sourced from EatTheFutures 'Ca
 
 This fork of the extension is _basically working_.
 
-&#x26A0;&#xFE0F; Configurations that use the **experimental render core** by enabling the 
+&#x26A0;&#xFE0F; Configurations that use the **experimental render core** by enabling the
 new keyframe distribution feature, may require that some unsupported features are being kept disabled.
+
+---
+
+## Try the Next Version (Dev Branch)
+
+**Want to try the latest features before they're released?** The `dev` branch is actively developed with cutting-edge improvements and new capabilities:
+
+**[View the Dev Branch README](https://github.com/Tok/sd-forge-deforum/tree/dev)** for full feature documentation and installation instructions.
+
+**What's New in Dev:**
+- DA3-3DGS (Depth Anything V3 + 3D Gaussian Splatting) interpolation
+- Empirically tuned parameters from extensive testing
+- Enhanced Flux/Lumina/Z-Image-Turbo support
+- And much more!
+
+**To install the dev branch:**
+
+```bash
+# From Forge Extensions tab - Install from URL:
+https://github.com/Tok/sd-forge-deforum.git -b dev
+
+# Or from commandline in your Forge directory:
+cd extensions
+git clone -b dev https://github.com/Tok/sd-forge-deforum.git
+```
+
+**Note:** The dev branch is ~1630 commits ahead with active development. While thoroughly tested, it may contain experimental features.
+
+---
 
 ## Requirements
 
