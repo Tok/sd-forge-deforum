@@ -616,11 +616,14 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
 
         if anim_args.animation_mode != 'Interpolation':
             logger.info(f"Not using an init image (doing pure txt2img)")
-        
+
+        logger.debug(f"DEBUG: motion_preview_mode={args.motion_preview_mode}")
         if args.motion_preview_mode:
+            logger.debug("DEBUG: Using motion preview mode")
             state.assign_current_image(root.default_img)
             processed = SimpleNamespace(images = [root.default_img], info = "Generating motion preview...")
         else:
+            logger.debug("DEBUG: Creating StableDiffusionProcessingTxt2Img object")
             p_txt = processing.StableDiffusionProcessingTxt2Img(
                 sd_model=sd_model,
                 outpath_samples=root.tmp_deforum_run_duplicated_folder,
@@ -650,8 +653,10 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args,
 
             # Get dashboard from root if available
             dashboard = getattr(root, 'dashboard', None)
+            logger.debug("DEBUG: About to call print_combined_table")
             print_combined_table(args, anim_args, p_txt, keys, frame, root.init_sample, dashboard)  # print dynamic table to cli
 
+            logger.debug("DEBUG: About to call initialise_forge_scripts")
             initialise_forge_scripts(p_txt)
 
             if is_controlnet_enabled(controlnet_args):
