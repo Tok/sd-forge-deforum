@@ -1285,16 +1285,16 @@ def on_ui_tabs():
                         try:
                             wormtrail_html = update_overlap_viz(
                                 tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
-                                args[20],  # zoom
-                                args[21],  # width
-                                args[22],  # height
-                                args[23],  # shake_name
-                                args[24],  # shake_intensity
-                                args[25],  # shake_speed
-                                args[26],  # apply_shakify_toggle
-                                args[27],  # prompts
-                                args[28],  # max_frames
-                                args[29],  # use_full_quality
+                                args[19],  # zoom
+                                args[20],  # width (W)
+                                args[21],  # height (H)
+                                args[22],  # shake_name
+                                args[23],  # shake_intensity
+                                args[24],  # shake_speed
+                                args[25],  # apply_shakify_toggle (show_shakify_in_overlap)
+                                args[26],  # prompts (animation_prompts)
+                                args[27],  # max_frames
+                                args[28],  # use_full_quality (wormtrail_quality_full)
                             )
                         except Exception as e:
                             import traceback
@@ -1373,16 +1373,16 @@ def on_ui_tabs():
                         try:
                             wormtrail_html = update_overlap_viz(
                                 tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
-                                args[20],  # zoom
-                                args[21],  # width
-                                args[22],  # height
-                                args[23],  # shake_name
-                                args[24],  # shake_intensity
-                                args[25],  # shake_speed
-                                args[26],  # apply_shakify_toggle
-                                args[27],  # prompts
-                                args[28],  # max_frames
-                                args[29],  # use_full_quality
+                                args[19],  # zoom
+                                args[20],  # width (W)
+                                args[21],  # height (H)
+                                args[22],  # shake_name
+                                args[23],  # shake_intensity
+                                args[24],  # shake_speed
+                                args[25],  # apply_shakify_toggle (show_shakify_in_overlap)
+                                args[26],  # prompts (animation_prompts)
+                                args[27],  # max_frames
+                                args[28],  # use_full_quality (wormtrail_quality_full)
                             )
                         except Exception as e:
                             import traceback
