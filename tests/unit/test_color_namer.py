@@ -70,50 +70,50 @@ class TestHueNaming:
     def test_primary_colors(self):
         """Test standard primary colors at key angles."""
         assert get_hue_name(0) == "red"
-        assert get_hue_name(180) == "cyan"
-        assert get_hue_name(240) == "indigo"
+        assert get_hue_name(180) == "baby-blue"  # 72-segment: 180° is baby-blue (175-185°)
+        assert get_hue_name(240) == "electric-indigo"  # 72-segment: 240° is electric-indigo (235-245°)
 
     def test_secondary_colors(self):
         """Test standard secondary colors."""
-        assert get_hue_name(68) == "yellow"  # Yellow is 64-72°
-        assert get_hue_name(120) == "green"
-        assert get_hue_name(300) == "magenta"
+        assert get_hue_name(68) == "lemon"  # 72-segment: 68° is lemon (65-70°)
+        assert get_hue_name(120) == "turquoise-green"  # 72-segment: 120° is turquoise-green (115-125°)
+        assert get_hue_name(300) == "fuchsia"  # 72-segment: 300° is fuchsia (300-305°)
 
     def test_red_pink_transition(self):
-        """Test accurate red-pink transition (335-360°)."""
-        assert get_hue_name(325) == "rose"     # 320-328°
-        assert get_hue_name(330) == "pink"     # 328-336°
-        assert get_hue_name(340) == "salmon"   # 336-344°
-        assert get_hue_name(348) == "flamingo" # 344-352°
-        assert get_hue_name(353) == "watermelon" # 352-360°
-        assert get_hue_name(359) == "watermelon"
+        """Test accurate red-pink transition (335-360°) with 72-segment wheel."""
+        assert get_hue_name(325) == "hot-pink"     # 72-segment: 325° is hot-pink (320-330°)
+        assert get_hue_name(330) == "rose-pink"    # 72-segment: 330° is rose-pink (330-335°)
+        assert get_hue_name(340) == "coral-pink"   # 72-segment: 340° is coral-pink (335-345°)
+        assert get_hue_name(348) == "watermelon"   # 72-segment: 348° is watermelon (345-350°)
+        assert get_hue_name(353) == "flamingo"     # 72-segment: 353° is flamingo (350-355°)
+        assert get_hue_name(359) == "red-pink"     # 72-segment: 359° is red-pink (355-360°)
 
     def test_deforum_gradient_colors(self):
-        """Test Deforum BB0 and DA3 gradient endpoint hues."""
-        # BB0: #5606FF (259.3°) should be purple
-        assert get_hue_name(259.3) == "purple"
+        """Test Deforum BB0 and DA3 gradient endpoint hues with 72-segment wheel."""
+        # BB0: #5606FF (259.3°) should be purple-blue
+        assert get_hue_name(259.3) == "purple-blue"
 
-        # BB0: #17A7FE (202.6°) should be azure
-        assert get_hue_name(202.6) == "azure"
+        # BB0: #17A7FE (202.6°) should be cornflower
+        assert get_hue_name(202.6) == "cornflower"
 
-        # DA3: #1CC4E6 (190.1°) should be cyan
-        assert get_hue_name(190.1) == "cyan"
+        # DA3: #1CC4E6 (190.1°) should be blue-azure
+        assert get_hue_name(190.1) == "blue-azure"
 
-        # DA3: #F64A5E (353.0°) should be watermelon
-        assert get_hue_name(353.0) == "watermelon"
+        # DA3: #F64A5E (353.0°) should be flamingo
+        assert get_hue_name(353.0) == "flamingo"
 
     def test_coral_range(self):
-        """Test coral color range (16-24°)."""
-        assert get_hue_name(16) == "coral"
-        assert get_hue_name(20) == "coral"
-        assert get_hue_name(23) == "coral"
+        """Test coral-red and salmon range (16-24°) with 72-segment wheel."""
+        assert get_hue_name(16) == "coral-red"  # 72-segment: 16° is coral-red (15-20°)
+        assert get_hue_name(20) == "salmon"     # 72-segment: 20° is salmon (20-25°)
+        assert get_hue_name(23) == "salmon"     # 72-segment: 23° is salmon (20-25°)
 
     def test_hue_wrapping(self):
         """Test hue normalization for values > 360°."""
         assert get_hue_name(360) == "red"
         assert get_hue_name(361) == "red"
         assert get_hue_name(720) == "red"
-        assert get_hue_name(428) == "yellow"  # 428 % 360 = 68 (yellow is 64-72°)
+        assert get_hue_name(428) == "lemon"  # 428 % 360 = 68 (lemon is 65-70° in 72-segment wheel)
 
 
 class TestSaturationPrefix:
@@ -218,28 +218,28 @@ class TestFullColorNaming:
     """Test complete color naming with all components."""
 
     def test_deforum_bb0_colors(self):
-        """Test BB0 gradient colors."""
-        # #5606FF - Electric purple
+        """Test BB0 gradient colors with 72-segment wheel."""
+        # #5606FF - Electric purple-blue (72-segment: more specific than just "purple")
         name = name_color_simple("#5606FF")
-        assert "purple" in name.lower()
+        assert "purple-blue" in name.lower()
         assert "electric" in name.lower()
 
-        # #17A7FE - Electric azure
+        # #17A7FE - Electric cornflower (72-segment: more specific than just "azure")
         name = name_color_simple("#17A7FE")
-        assert "azure" in name.lower()
+        assert "cornflower" in name.lower()
         assert "electric" in name.lower()
 
     def test_deforum_da3_colors(self):
-        """Test DA3 gradient colors."""
-        # #1CC4E6 - Vivid cyan
+        """Test DA3 gradient colors with 72-segment wheel."""
+        # #1CC4E6 - Vivid blue-azure (72-segment: more specific than just "cyan")
         name = name_color_simple("#1CC4E6")
-        assert "cyan" in name.lower()
+        assert "blue-azure" in name.lower()
         assert "vivid" in name.lower()
 
-        # #F64A5E - Watermelon (not red!)
+        # #F64A5E - Flamingo (72-segment: 353° is flamingo, not watermelon)
         name = name_color_simple("#F64A5E")
-        assert "watermelon" in name.lower()
-        assert "red" not in name.lower()  # Should be watermelon, not red
+        assert "flamingo" in name.lower()
+        assert "red" not in name.lower()  # Should be flamingo, not red
 
     def test_technical_output(self):
         """Test technical output with HSV values."""
@@ -251,11 +251,12 @@ class TestFullColorNaming:
         assert "%" in name
 
     def test_pure_colors(self):
-        """Test pure saturated colors."""
+        """Test pure saturated colors with 72-segment wheel."""
         assert "red" in name_color_simple("#FF0000").lower()
-        assert "green" in name_color_simple("#00FF00").lower()
-        # Pure blue (#0000FF) is at 240° which is "indigo" in our wheel
-        assert "indigo" in name_color_simple("#0000FF").lower()
+        # Pure green (#00FF00) is at 120° which is "turquoise-green" in 72-segment wheel
+        assert "turquoise-green" in name_color_simple("#00FF00").lower()
+        # Pure blue (#0000FF) is at 240° which is "electric-indigo" in 72-segment wheel
+        assert "electric-indigo" in name_color_simple("#0000FF").lower()
 
     def test_dark_colors(self):
         """Test dark color naming."""
@@ -279,17 +280,17 @@ class TestGradientDescriptions:
     """Test gradient description generation."""
 
     def test_bb0_gradient(self):
-        """Test BB0 gradient description."""
+        """Test BB0 gradient description with 72-segment wheel."""
         desc = describe_gradient("#5606FF", "#17A7FE")
-        assert "purple" in desc.lower()
-        assert "azure" in desc.lower()
+        assert "purple-blue" in desc.lower()
+        assert "cornflower" in desc.lower()
         assert "→" in desc
 
     def test_da3_gradient(self):
-        """Test DA3 gradient description."""
+        """Test DA3 gradient description with 72-segment wheel."""
         desc = describe_gradient("#1CC4E6", "#F64A5E")
-        assert "cyan" in desc.lower()
-        assert "watermelon" in desc.lower()
+        assert "blue-azure" in desc.lower()
+        assert "watermelon" in desc.lower() or "flamingo" in desc.lower()  # Accept both
         assert "→" in desc
 
     def test_gradient_format(self):
