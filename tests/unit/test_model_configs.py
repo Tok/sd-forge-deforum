@@ -121,8 +121,9 @@ class TestModelConfigRetrieval:
         assert config.model_type == "z_image"
         assert config.display_name == "Z-Image-Turbo"
         assert config.recommended_steps == 9
-        assert config.uses_cfg is True
-        assert config.cfg_scale_default == 2.0
+        # Z-Image is a distilled model with NO CFG support (verified from official sources)
+        assert config.uses_cfg is False
+        assert config.cfg_scale_default == 0.0
         assert config.uses_distilled_cfg is False
 
     def test_get_sdxl_config(self):
