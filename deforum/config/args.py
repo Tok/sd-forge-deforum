@@ -631,12 +631,16 @@ def DeforumAnimArgs():
                 'Depth-Anything-V3-Mono-Small',
                 'Depth-Anything-V3-Mono-Base',
                 'Depth-Anything-V3-Mono-Large',
+                'Depth-Anything-V3-AnyView-Small',
+                'Depth-Anything-V3-AnyView-Base',
+                'Depth-Anything-V3-AnyView-Large',
+                'Depth-Anything-V3-Giant',
                 'Depth-Anything-V2-Small',
                 'Depth-Anything-V2-Base',
                 'Depth-Anything-V2-Large'
             ],
             "value": "Depth-Anything-V3-Mono-Small",
-            "info": "Depth model for 3D warping: V3 (recommended, better quality) or V2 (legacy, stable). Mono variants only - for 3D Gaussian Splatting, use 'Keyframes + Interpolation' mode with DA3-3DGS method. V2 will be phased out in future releases."
+            "info": "Depth model: Mono (single-view depth warping, fastest), AnyView (multi-view geometry for da3_multiview mode), Giant (3DGS reconstruction), V2 (legacy). Auto-switches based on tween mode."
         },
         "tween_generation_mode": {
             "label": "Tween Generation Mode",
