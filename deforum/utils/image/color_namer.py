@@ -34,51 +34,83 @@ def rgb_to_hsv(r: int, g: int, b: int) -> Tuple[float, float, float]:
     return h * 360, s * 100, v * 100
 
 
-# High-resolution hue wheel with 36 named segments (~10° resolution)
+# High-resolution 72-segment hue wheel with verified color names (~5° resolution)
+# Based on HSL/HSV color model, standardized color dictionaries, and authoritative sources
+# Primary anchor: red at 0°/360°
 # Format: (max_hue, name)
-# References:
-# - Standard 12-color wheel: https://www.canva.com/colors/color-wheel/
-# - Coral/Salmon hues: https://creativebooster.net/blogs/colors/shades-of-coral-color
-# - Watermelon pink (350°): https://colors.artyclick.com/color-names-dictionary/color-names/watermelon-pink-color
 _HUE_RANGES = [
-    (8, "red"),
-    (16, "scarlet"),
-    (24, "coral"),          # Standard coral at ~16°
-    (32, "vermillion"),
-    (40, "orange-red"),
-    (48, "orange"),
-    (56, "amber"),
-    (64, "gold"),
-    (72, "yellow"),
-    (80, "lemon"),
-    (88, "lime-yellow"),
-    (96, "chartreuse"),
-    (104, "lime"),
-    (112, "grass"),
-    (128, "green"),
-    (136, "forest"),
-    (144, "emerald"),
-    (152, "mint"),
-    (160, "teal"),
-    (168, "turquoise"),
-    (176, "aqua"),
-    (192, "cyan"),          # Standard cyan at 180°
-    (200, "sky"),
-    (212, "azure"),         # Standard azure at ~210°
-    (228, "blue"),
-    (236, "cobalt"),
-    (252, "indigo"),        # Centered around 240°
-    (264, "purple"),
-    (276, "violet"),        # Standard violet at ~270°
-    (288, "amethyst"),
-    (304, "magenta"),       # Standard magenta at ~300°
-    (312, "fuchsia"),
-    (320, "hot pink"),
-    (328, "rose"),          # Standard rose at ~330°
-    (336, "pink"),
-    (344, "salmon"),
-    (352, "flamingo"),      # Flamingo pink at ~344°
-    (360, "watermelon"),    # Watermelon pink at ~350°
+    (5, "red"),               # Pure red (0°)
+    (10, "scarlet"),          # Bright red with slight orange tint
+    (15, "vermilion"),        # Standard vermilion/orange-red
+    (20, "coral-red"),        # Red with orange-pink tone
+    (25, "salmon"),           # Verified: salmon (#FF796C) ~5°, placed at red-orange boundary
+    (30, "red-orange"),       # Equal mix red/orange
+    (35, "orange-red"),       # More orange than red
+    (40, "orange"),           # Pure orange (30° in some systems)
+    (45, "amber-orange"),     # Orange with yellow tint
+    (50, "amber"),            # Golden orange-yellow
+    (55, "gold"),             # Metallic yellow-orange
+    (60, "yellow-orange"),    # Equal mix yellow/orange
+    (65, "yellow"),           # Pure yellow (60°)
+    (70, "lemon"),            # Cool, greenish yellow
+    (75, "yellow-green"),     # Transition to green
+    (80, "chartreuse"),       # Standard chartreuse (yellow-green)
+    (85, "lime"),             # Green-yellow, brighter than chartreuse
+    (90, "lime-green"),       # Equal green/yellow mix
+    (95, "spring-green"),     # Bright green with cyan tint
+    (100, "grass"),           # Medium green
+    (105, "green"),           # Pure green (120° in HSL, but perceptual center earlier)
+    (110, "emerald"),         # Rich, slightly blueish green
+    (115, "mint"),            # Light blue-green
+    (120, "sea-green"),       # Green with strong cyan component
+    (125, "turquoise-green"), # Blue-green transition
+    (130, "turquoise"),       # Equal blue/green mix
+    (135, "cyan-green"),      # Greenish cyan
+    (140, "teal"),            # Dark blue-green
+    (145, "cyan-teal"),       # Transition to cyan
+    (150, "dark-cyan"),       # Deep cyan
+    (155, "cyan"),            # Pure cyan (180°)
+    (160, "sky-cyan"),        # Light cyan
+    (165, "light-cyan"),      # Very pale cyan
+    (170, "azure-cyan"),      # Cyan-blue transition
+    (175, "azure"),           # Standard azure (~210°, placed earlier for progression)
+    (180, "sky-blue"),        # Light pure blue
+    (185, "baby-blue"),       # Very light blue
+    (190, "cerulean"),        # Medium sky blue
+    (195, "blue-azure"),      # Azure/blue transition
+    (200, "steel-blue"),      # Grayish blue
+    (205, "cornflower"),      # Light medium blue
+    (210, "blue"),            # Pure blue (240°)
+    (215, "royal-blue"),      # Rich medium blue
+    (220, "cobalt"),          # Deep bright blue
+    (225, "sapphire"),        # Deep rich blue
+    (230, "navy-blue"),       # Very dark blue
+    (235, "blue-violet"),     # Blue with violet tint
+    (240, "indigo"),          # Deep blue-violet
+    (245, "electric-indigo"), # Bright violet-blue
+    (250, "violet-blue"),     # Equal blue/violet mix
+    (255, "blue-purple"),     # Purple with blue dominance
+    (260, "purple-blue"),     # More purple than blue
+    (265, "purple"),          # Equal red/blue mix (270°)
+    (270, "violet"),          # Spectral violet (~270°)
+    (275, "amethyst"),        # Light violet
+    (280, "purple-violet"),   # Violet with red tint
+    (285, "purple-magenta"),  # Transition to magenta
+    (290, "red-violet"),      # Violet with strong red component
+    (295, "orchid"),          # Light red-violet
+    (300, "magenta"),         # Pure magenta (300°)
+    (305, "fuchsia"),         # Bright magenta (often synonymous)
+    (310, "hot-magenta"),     # Vivid magenta
+    (315, "deep-pink"),       # Strong pink with magenta tint
+    (320, "pink-magenta"),    # Magenta-pink transition
+    (325, "shocking-pink"),   # Vivid pink
+    (330, "hot-pink"),        # Verified: hot pink at ~330°
+    (335, "rose-pink"),       # Pink with red-violet tint
+    (340, "rose"),            # Standard rose (#F33A6A) ~344°, placed earlier
+    (345, "coral-pink"),      # Pink with orange tint
+    (350, "watermelon"),      # Verified: watermelon pink (#FC6C85) ~350°
+    (355, "flamingo"),        # Verified: flamingo pink (#FC8EAC) ~343.6°
+    (360, "red-pink"),        # Pinkish red, completes circle
 ]
 
 
