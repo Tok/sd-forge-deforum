@@ -284,14 +284,52 @@ def setup_deforum_left_side_ui():
             with gr.TabItem(f"{emoji_utils.masking()} Masking", visible=True) as tab_masking:
                 tab_masking_params = get_tab_masking(d, da, skip_tabitem=True)  # 7. Masking - all modes
 
-            # Flux + Interpolation mode tabs:
+            # Flux + Interpolation mode tab with method-specific subtabs:
             from .ui_elements import get_tab_wan
-            with gr.TabItem(f"{emoji_utils.frames()} Interpolation", visible=True) as tab_wan:
-                tab_wan_params = get_tab_wan(dw, da, skip_tabitem=True)  # 8a. Interpolation methods (Wan/FILM/DA3-Multiview/DA3-3DGS)
-
             from deforum.ui.tabs.tab_da3_3dgs import get_tab_da3_3dgs
-            with gr.TabItem(f"{emoji_if_enabled('🔍')} DA3-3DGS Settings", visible=True) as tab_da3_3dgs:
-                tab_da3_3dgs_params = get_tab_da3_3dgs(d3dgs, skip_tabitem=True)  # 8b. DA3-3DGS advanced settings
+
+            with gr.TabItem(f"{emoji_utils.frames()} Interpolation", visible=True) as tab_wan:
+                # Method selector at top (before subtabs)
+                gr.Markdown(f"### {emoji_if_enabled('🎯')} Select Interpolation Method")
+                with gr.Row():
+                    from deforum.utils.ui.builders import create_gr_elem
+                    diffusion_interpolation_method_top = create_gr_elem(dw.diffusion_interpolation_method)
+
+                gr.Markdown("---")
+
+                # Method-specific settings in subtabs
+                with gr.Tabs():
+                    with gr.TabItem("Wan FLF2V"):
+                        tab_wan_params = get_tab_wan(dw, da, skip_tabitem=True)  # Wan AI video settings
+
+                    with gr.TabItem("FILM"):
+                        gr.Markdown("""
+                        ### FILM Interpolation Settings
+
+                        FILM (Frame Interpolation for Large Motion) uses optical flow and works out of the box.
+                        No additional settings required - it automatically handles large motion between keyframes.
+
+                        Model auto-downloads on first use (~200MB).
+                        """)
+
+                    with gr.TabItem("DA3-Multiview"):
+                        gr.Markdown("""
+                        ### DA3-Multiview Interpolation Settings
+
+                        Uses Depth Anything V3's multi-view geometry for depth-aware interpolation.
+
+                        **Model:** Auto-loads AnyView-Small (120MB) when selected
+
+                        **How it works:**
+                        1. Estimates depth maps and camera poses for keyframe pairs
+                        2. Interpolates camera movement between keyframes
+                        3. Warps frames using depth and interpolated camera pose
+
+                        **No additional settings required** - uses standard depth warping parameters from 3D Depth tab.
+                        """)
+
+                    with gr.TabItem("DA3-3DGS"):
+                        tab_da3_3dgs_params = get_tab_da3_3dgs(d3dgs, skip_tabitem=True)  # DA3-3DGS advanced settings
 
             # Always visible tabs:
             tab_run_params = get_tab_run(d, da)  # 8. Run - all modes

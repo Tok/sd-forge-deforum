@@ -24,28 +24,19 @@ def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=Fa
     """
 
     gr.Markdown(f"""
-    ## {emoji_if_enabled('🎬')} Interpolation Methods
+    ## {emoji_if_enabled('🎬')} Wan FLF2V Settings
 
-    **Choose your interpolation method for smooth transitions between keyframes:**
+    AI-generated video interpolation with semantic understanding.
 
-    - **Wan FLF2V:** AI-generated video with semantic understanding (requires FLF2V model download)
-    - **FILM:** Smearcore - sharp motion mixing like dragging paint, Google's ML interpolation (works out of the box)
+    **Features:**
+    - Smooth semantic transitions between keyframes
+    - Understands scene changes (morphing objects, changing perspectives)
+    - Uses Deforum's prompt scheduling and strength control
 
     **Note:** RIFE is available in the post-processing tab for framerate doubling/tripling on completed videos.
 
     ---
     """)
-
-    # INTERPOLATION METHOD SELECTOR - ALWAYS VISIBLE AT TOP
-    gr.Markdown(f"### {emoji_if_enabled('🎯')} Select Interpolation Method")
-    with gr.Row():
-        diffusion_interpolation_method = create_gr_elem(dw.diffusion_interpolation_method)
-
-    gr.Markdown("""
-    **Note:** DA3-3DGS settings are now in a dedicated tab for better organization.
-    """)
-
-    gr.Markdown("---")
 
     # Deforum Integration Info - Shows what settings are used
     link = emoji_utils.link()
