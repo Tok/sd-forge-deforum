@@ -345,16 +345,16 @@ class DepthAnythingV3:
 
             logger.info(f"✓ DA3 loaded on {device}")
 
-        # Suppress verbose DA3 internal logging after model is ready
-        # DA3 logs timing info during inference - suppress to INFO level
-        import logging
-        for logger_name in ['dinov2', 'depth_anything_v2', '__main__']:
-            try:
-                da_logger = logging.getLogger(logger_name)
-                da_logger.setLevel(logging.WARNING)
-                da_logger.propagate = False
-            except:
-                pass
+            # Suppress verbose DA3 internal logging after model is ready
+            # DA3 logs timing info during inference - suppress to INFO level
+            import logging
+            for logger_name in ['dinov2', 'depth_anything_v2', '__main__']:
+                try:
+                    da_logger = logging.getLogger(logger_name)
+                    da_logger.setLevel(logging.WARNING)
+                    da_logger.propagate = False
+                except:
+                    pass
 
         except ImportError as e:
             logger.error(
