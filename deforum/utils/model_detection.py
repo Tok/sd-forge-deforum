@@ -239,14 +239,14 @@ def is_zimage_model() -> bool:
         checkpoint_name = _get_checkpoint_name(shared)
         full_path = getattr(shared.sd_model.sd_checkpoint_info, 'filename', '') if hasattr(shared.sd_model, 'sd_checkpoint_info') else ''
 
-        logger.info(f"Z-Image detection attempt:")
-        logger.info(f"  - Class name: {class_name}")
-        logger.info(f"  - Checkpoint name: {checkpoint_name}")
-        logger.info(f"  - Full path: {full_path}")
+        logger.debug(f"Z-Image detection attempt:")
+        logger.debug(f"  - Class name: {class_name}")
+        logger.debug(f"  - Checkpoint name: {checkpoint_name}")
+        logger.debug(f"  - Full path: {full_path}")
 
         # Check 1: Model class name is exactly 'ZImage' (most reliable!)
         if class_name and class_name == 'ZImage':
-            logger.info(f"✓ Detected Z-Image model via class name: {class_name}")
+            logger.debug(f"✓ Detected Z-Image model via class name: {class_name}")
             return True
 
         # Check 2: Full path or checkpoint name contains z-image/z_image patterns
@@ -255,16 +255,16 @@ def is_zimage_model() -> bool:
         if full_path:
             full_path_lower = full_path.lower()
             if any(pattern in full_path_lower for pattern in z_image_patterns):
-                logger.info(f"✓ Detected Z-Image model via path: {full_path}")
+                logger.debug(f"✓ Detected Z-Image model via path: {full_path}")
                 return True
 
         if checkpoint_name:
             checkpoint_lower = checkpoint_name.lower()
             if any(pattern in checkpoint_lower for pattern in z_image_patterns):
-                logger.info(f"✓ Detected Z-Image model via checkpoint name: {checkpoint_name}")
+                logger.debug(f"✓ Detected Z-Image model via checkpoint name: {checkpoint_name}")
                 return True
 
-        logger.info("✗ Z-Image model not detected")
+        logger.debug("✗ Z-Image model not detected")
         return False
 
     except Exception as e:

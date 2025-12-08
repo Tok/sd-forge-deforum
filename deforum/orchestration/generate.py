@@ -367,7 +367,7 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
     values = []
 
     # Core parameters
-    columns.extend(["Steps", "CFG", "Dist. CFG"])
+    columns.extend(["Steps", "CFG"])
 
     # Calculate actual steps used based on denoise strength
     total_steps = p.steps
@@ -377,7 +377,12 @@ def print_combined_table(args, anim_args, p, keys, frame_idx, previous_image=Non
     else:
         steps_display = str(total_steps)
 
-    values.extend([steps_display, str(p.cfg_scale), str(p.distilled_cfg_scale)])
+    values.extend([steps_display, str(p.cfg_scale)])
+
+    # Only show Distilled CFG for Flux models (Z-Image ignores it)
+    if is_flux_model():
+        columns.append("Dist. CFG")
+        values.append(str(p.distilled_cfg_scale))
 
     # Denoise (skip for Interpolation mode)
     if anim_args.animation_mode != 'Interpolation':
