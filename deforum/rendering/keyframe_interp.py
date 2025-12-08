@@ -1152,42 +1152,67 @@ def generate_da3_multiview_segment(first_image, last_image, num_frames, height, 
         # TODO: Use proper SLERP for rotation component
         pose_interp = pose_first * (1.0 - t) + pose_last * t
 
-        # Interpolate depth map
-        depth_interp = depth_first * (1.0 - t) + depth_last * t
-
-        # Resize depth to match image dimensions (DA3 outputs smaller depth for efficiency)
-        # depth_interp shape: [1, 1, H_depth, W_depth], need [1, 1, H_img, W_img]
         import torch.nn.functional as F
         img_h, img_w = first_img_np.shape[:2]
-        depth_interp = F.interpolate(
-            depth_interp,
+
+        # Bidirectional warping: warp from BOTH keyframes and blend
+        # This reduces cumulative distortion vs always warping from first frame
+
+        # Resize both depth maps to image size
+        depth_first_resized = F.interpolate(
+            depth_first,
+            size=(img_h, img_w),
+            mode='bilinear',
+            align_corners=False
+        )
+        depth_last_resized = F.interpolate(
+            depth_last,
             size=(img_h, img_w),
             mode='bilinear',
             align_corners=False
         )
 
-        # Extract rotation and translation from interpolated pose
-        # Camera extrinsics are typically [R|t] where R is 3x3 rotation, t is 3x1 translation
-        # pose_interp is 4x4: [[R, t], [0, 1]]
-        rot_mat = pose_interp[:3, :3]  # 3x3 rotation
-        translate = pose_interp[:3, 3]  # 3x1 translation
+        # Calculate relative transforms FROM first frame TO interpolated pose
+        # We need the inverse transform: how to go from tween pose back to first frame
+        pose_first_inv = np.linalg.inv(pose_first)
+        pose_from_first = pose_first_inv @ pose_interp  # Transform from first to tween
+        rot_from_first = torch.from_numpy(pose_from_first[:3, :3]).float().to(device)
+        trans_from_first = torch.from_numpy(pose_from_first[:3, 3]).float().to(device)
 
-        # Convert to torch tensors for transform_image_3d
-        rot_mat_tensor = torch.from_numpy(rot_mat).float().to(device)
-        translate_tensor = torch.from_numpy(translate).float().to(device)
+        # Calculate relative transforms FROM last frame TO interpolated pose
+        pose_last_inv = np.linalg.inv(pose_last)
+        pose_from_last = pose_last_inv @ pose_interp  # Transform from last to tween
+        rot_from_last = torch.from_numpy(pose_from_last[:3, :3]).float().to(device)
+        trans_from_last = torch.from_numpy(pose_from_last[:3, 3]).float().to(device)
 
-        # Warp first keyframe using interpolated pose and depth
-        # Note: transform_image_3d expects rotation in specific format
-        warped_img = transform_image_3d_switcher(
+        # Warp first keyframe to tween position
+        warped_from_first = transform_image_3d_switcher(
             device=device,
             prev_img_cv2=first_img_np,
-            depth_tensor=depth_interp,
-            rot_mat=rot_mat_tensor,
-            translate=translate_tensor,
+            depth_tensor=depth_first_resized,
+            rot_mat=rot_from_first,
+            translate=trans_from_first,
             anim_args=data.args.anim_args,
             keys=data.animation_keys.deform_keys,
             frame_idx=first_frame_idx + tween_idx + 1
         )
+
+        # Warp last keyframe to tween position
+        warped_from_last = transform_image_3d_switcher(
+            device=device,
+            prev_img_cv2=last_img_np,
+            depth_tensor=depth_last_resized,
+            rot_mat=rot_from_last,
+            translate=trans_from_last,
+            anim_args=data.args.anim_args,
+            keys=data.animation_keys.deform_keys,
+            frame_idx=first_frame_idx + tween_idx + 1
+        )
+
+        # Blend the two warped frames based on t
+        # When t=0 (near first), use mostly warped_from_first
+        # When t=1 (near last), use mostly warped_from_last
+        warped_img = (warped_from_first * (1.0 - t) + warped_from_last * t).astype(np.uint8)
 
         # Save tween frame
         global_frame_idx = first_frame_idx + tween_idx + 1

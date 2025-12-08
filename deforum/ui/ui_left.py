@@ -320,15 +320,14 @@ def setup_deforum_left_side_ui():
 
                         **How it works:**
                         1. Estimates depth maps and camera poses for keyframe pairs
-                        2. Interpolates camera movement between keyframes
-                        3. Warps frames using depth and interpolated camera pose
+                        2. Warps BOTH keyframes to each tween position using relative transforms
+                        3. Blends the two warped results based on interpolation factor
 
-                        ⚠️ **Experimental Limitations:**
-                        - **Cumulative distortion**: Depth warping artifacts accumulate across tweens
-                        - **Not true multi-view**: Warps first keyframe only, doesn't use full 3D geometry
-                        - **Better alternative**: Use **DA3-3DGS** mode for proper 3D reconstruction with Gaussian Splatting
-
-                        DA3-3DGS builds actual 3D scenes from multi-view data and renders novel views without cumulative errors.
+                        **Quality vs DA3-3DGS:**
+                        - **Faster**: Depth warping is simpler than 3DGS rendering
+                        - **Limited**: Can't handle disocclusions or complex 3D structure
+                        - **Best for**: Smooth camera movements with minimal occlusion changes
+                        - **Better alternative**: DA3-3DGS builds full 3D scenes for higher quality
                         """)
 
                         with gr.Row():
