@@ -1,10 +1,14 @@
-"""Wan interpolation tab for Deforum UI.
+"""Interpolation tab for Deforum UI.
 
-Large complex tab containing Wan/RIFE/FILM interpolation settings, model management,
-VRAM optimization, generation settings, FLF2V configuration, and extensive documentation.
+Contains Wan FLF2V settings subtab content. The main Interpolation tab structure
+with method selector and all subtabs is in ui_left.py.
 
-Note: This is a very large tab (750+ lines) that could benefit from further modularization
-into sub-components in the future.
+This file provides the Wan FLF2V subtab content:
+- Model selection and management
+- VRAM optimization settings
+- Generation settings (steps, guidance, seed)
+- FLF2V configuration (prompts, strength scheduling)
+- Extensive documentation and usage notes
 """
 
 import gradio as gr
@@ -14,13 +18,13 @@ from deforum.utils.system.logging import emoji as emoji_utils, emoji_if_enabled
 from deforum.utils.ui.builders import create_gr_elem, create_row
 
 
-def get_tab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=False):
-    """Interpolation Settings Tab - Multi-method interpolation (Wan/RIFE/FILM)
+def get_subtab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem=False):
+    """Wan FLF2V Subtab - AI video interpolation settings
 
     Args:
         dw: DeforumWanArgs namespace
         da: DeforumAnimArgs namespace (optional, needed for FLF2V tween settings)
-        skip_tabitem: If True, don't create TabItem wrapper
+        skip_tabitem: If True, don't create TabItem wrapper (always True for subtabs)
     """
 
     gr.Markdown(f"""

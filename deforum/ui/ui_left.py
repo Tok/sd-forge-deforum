@@ -285,10 +285,10 @@ def setup_deforum_left_side_ui():
                 tab_masking_params = get_tab_masking(d, da, skip_tabitem=True)  # 7. Masking - all modes
 
             # Flux + Interpolation mode tab with method-specific subtabs:
-            from .ui_elements import get_tab_wan
+            from deforum.ui.tabs.tab_interpolation import get_subtab_wan
             from deforum.ui.tabs.tab_da3_3dgs import get_tab_da3_3dgs
 
-            with gr.TabItem(f"{emoji_utils.frames()} Interpolation", visible=True) as tab_wan:
+            with gr.TabItem(f"{emoji_utils.frames()} Interpolation", visible=True) as tab_interpolation:
                 # Method selector at top (before subtabs)
                 gr.Markdown(f"### {emoji_if_enabled('🎯')} Select Interpolation Method")
                 with gr.Row():
@@ -300,7 +300,7 @@ def setup_deforum_left_side_ui():
                 # Method-specific settings in subtabs
                 with gr.Tabs():
                     with gr.TabItem("Wan FLF2V"):
-                        tab_wan_params = get_tab_wan(dw, da, skip_tabitem=True)  # Wan AI video settings
+                        tab_wan_params = get_subtab_wan(dw, da, skip_tabitem=True)  # Wan AI video settings
 
                     with gr.TabItem("FILM"):
                         gr.Markdown("""
