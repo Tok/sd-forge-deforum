@@ -118,13 +118,13 @@ class DepthModel:
                 # NEVER fall back to DA2 when user explicitly selected DA3
                 # DA2 lacks critical features (multi-view, ray maps, etc.)
                 logger.error(
-                    f"❌ Depth Anything V3 package not installed but required for '{self.depth_algorithm}'"
+                    f"❌ Failed to load Depth Anything V3 model: {self.depth_algorithm}"
                 )
-                logger.error("Install with: pip install depth-anything-3 xformers")
-                logger.error("Or use a Depth-Anything-V2 model instead (legacy, limited features)")
+                logger.error("DA3 auto-install failed. Check the error messages above.")
+                logger.error("You can use a Depth-Anything-V2 model instead (legacy, limited features)")
                 raise ImportError(
-                    f"DA3 package required for {self.depth_algorithm}. "
-                    "Install: pip install depth-anything-3 xformers"
+                    f"DA3 failed to load for {self.depth_algorithm}. "
+                    "Check auto-install errors above or try manual installation."
                 ) from e
         else:
             # DA2 model

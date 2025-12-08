@@ -15,10 +15,53 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from PIL import Image
+import subprocess
+import sys
 from deforum.utils.system.logging import get_logger
 
 # Initialize logger
 logger = get_logger()
+
+
+def _ensure_da3_package_installed() -> bool:
+    """Ensure depth-anything-3 package is installed, auto-install if needed.
+
+    Returns:
+        True if package is available (already installed or just installed)
+        False if installation failed
+    """
+    try:
+        import depth_anything_3
+        return True
+    except ImportError:
+        logger.warning("Depth Anything V3 package not found, attempting auto-install...")
+        logger.info(f"Installing to: {sys.executable}")
+        logger.info("Running: pip install git+https://github.com/ByteDance-Seed/Depth-Anything-3.git xformers")
+        logger.info("This may take a few minutes (downloading ~50MB + dependencies)...")
+
+        try:
+            # Auto-install DA3 package
+            subprocess.check_call([
+                sys.executable, '-m', 'pip', 'install',
+                'git+https://github.com/ByteDance-Seed/Depth-Anything-3.git',
+                'xformers',
+                '--quiet'
+            ])
+            logger.info("✓ Depth Anything V3 package installed successfully to venv")
+
+            # Verify installation
+            import depth_anything_3
+            return True
+
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to auto-install DA3 package: {e}")
+            logger.error("You may need to install manually:")
+            logger.error(f"  {sys.executable} -m pip install git+https://github.com/ByteDance-Seed/Depth-Anything-3.git xformers")
+            return False
+        except ImportError:
+            logger.error("DA3 package installed but import still failed")
+            logger.error("Try restarting the application")
+            return False
 
 # Constants
 DEPTH_OUTPUT_FORMAT = (1, 1)  # Target depth tensor format: [1, 1, H, W]
@@ -250,8 +293,15 @@ class DepthAnythingV3:
 
         logger.info(f"Loading DA3 ({variant} {model_size})...")
 
+        # Ensure DA3 package is installed (auto-install if needed)
+        if not _ensure_da3_package_installed():
+            raise ImportError(
+                "Failed to install depth-anything-3 package. "
+                "Try manually: pip install git+https://github.com/ByteDance-Seed/Depth-Anything-3.git xformers"
+            )
+
         try:
-            # Try to import DA3
+            # Import DA3 (package is now guaranteed to be installed)
             from depth_anything_3.api import DepthAnything3
             self.model = DepthAnything3.from_pretrained(model_name)
             self.model.to(device)
@@ -263,15 +313,11 @@ class DepthAnythingV3:
 
         except ImportError as e:
             logger.error(
-                "❌ Depth Anything V3 Python package not installed."
+                "❌ DA3 package installed but import failed. Try restarting the application."
             )
-            logger.error("Install with: pip install depth-anything-3 xformers")
-            logger.error("")
-            logger.error("Note: Model files auto-download from HuggingFace AFTER package is installed.")
-            logger.error("      This error means the Python package itself is missing, not the model files.")
             raise ImportError(
-                "depth-anything-3 package required for DA3 support. "
-                "Run: pip install depth-anything-3 xformers"
+                "depth-anything-3 import failed after installation. "
+                "Restart the application and try again."
             ) from e
 
         except Exception as e:
