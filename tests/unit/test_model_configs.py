@@ -111,7 +111,7 @@ class TestModelConfigRetrieval:
         assert config.display_name == "Lumina 2.0"
         assert config.recommended_steps == 30
         assert config.uses_cfg is True
-        assert config.cfg_scale_default == 5.0
+        assert config.cfg_scale_default == 4.0  # Official default (verified from HF Diffusers docs)
         assert config.uses_distilled_cfg is False
 
     def test_get_z_image_config(self):
