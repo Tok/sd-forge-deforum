@@ -82,7 +82,7 @@ def get_latest_frames():
 
         # Look for fixed preview filenames
         frame_preview = os.path.join(latest_dir, "frame-preview.png")
-        depth_preview = os.path.join(latest_dir, "depth-raft-preview.png")
+        depth_preview = os.path.join(latest_dir, "depth-preview.png")
 
         # Check if preview files are fresh (modified within last 5 seconds)
         # This prevents showing stale previews and stops polling when generation ends

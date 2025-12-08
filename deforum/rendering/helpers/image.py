@@ -46,7 +46,7 @@ def save_cadence_frame_and_depth_map_if_active(data: RenderData, frame, image):
     # Create depth preview whenever depth is available (always in 3D mode)
     # regardless of save_depth_maps setting
     if frame.depth is not None and data.depth_model is not None:
-        depth_preview_path = os.path.join(data.args.args.outdir, "depth-raft-preview.png")
+        depth_preview_path = os.path.join(data.args.args.outdir, "depth-preview.png")
 
         # Convert depth to image format (depth_model has the conversion logic)
         # We need to save to a temp location first to get the converted image

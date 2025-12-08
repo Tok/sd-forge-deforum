@@ -208,7 +208,7 @@ def prepare_flux_controlnet_for_frame(
     logger.info(f"   Control image shape: {control_image.shape}")
     logger.info(f"   Control image dtype: {control_image.dtype}, range: [{control_image.min():.3f}, {control_image.max():.3f}]")
 
-    # Overlay canny edges on depth-raft-preview.png if canny mode
+    # Overlay canny edges on depth-preview.png if canny mode
     if control_type == "canny":
         try:
             # Compute canny edges for visualization
@@ -218,9 +218,9 @@ def prepare_flux_controlnet_for_frame(
             kernel = np.ones((3, 3), np.uint8)
             canny_edges_bold = cv2.dilate(canny_edges, kernel, iterations=2)
 
-            # Find depth-raft-preview.png (directly in batch directory)
+            # Find depth-preview.png (directly in batch directory)
             import os
-            depth_preview_path = os.path.join(args.outdir, "depth-raft-preview.png")
+            depth_preview_path = os.path.join(args.outdir, "depth-preview.png")
 
             if os.path.exists(depth_preview_path):
                 # Load existing depth preview
