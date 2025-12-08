@@ -517,6 +517,16 @@ class FixedDashboard:
                 if total_bytes > 0:
                     return bytes_to_gb(total_bytes)
 
+        # Try Forge's DiT models (Z-Image, SD3, etc.) - check unet.model.diffusion_model
+        if hasattr(model, 'forge_objects') and hasattr(model.forge_objects, 'unet'):
+            unet = model.forge_objects.unet
+            if hasattr(unet, 'model') and hasattr(unet.model, 'diffusion_model'):
+                diffusion_model = unet.model.diffusion_model
+                if hasattr(diffusion_model, 'parameters'):
+                    total_bytes = self._sum_cuda_params(diffusion_model.parameters())
+                    if total_bytes > 0:
+                        return bytes_to_gb(total_bytes)
+
         # Try standard model.parameters()
         if hasattr(model, 'parameters'):
             total_bytes = self._sum_cuda_params(model.parameters())
