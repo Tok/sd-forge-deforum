@@ -649,7 +649,7 @@ def DeforumAnimArgs():
             "label": "DA3: Use Ray Pose Estimation",
             "type": "checkbox",
             "value": False,
-            "info": "Enable more accurate camera pose estimation from ray head (slower but better for complex movements). Only applies to DA3 AnyView models with da3_gaussian or da3_multiview tween modes."
+            "info": "Enable more accurate depth estimation using ray-based pose estimation (slower but better quality). Only available with DA3 Mono models (AnyView models always use ray pose). Used in 3D mode depth warping."
         },
         "da3_conf_thresh_percentile": {
             "label": "DA3: Confidence Threshold Percentile",
@@ -665,7 +665,7 @@ def DeforumAnimArgs():
             "label": "DA3: Visualize Ray Directions",
             "type": "checkbox",
             "value": False,
-            "info": "Overlay ray direction arrows on depth preview (AnyView/Giant models only). Shows 3D direction vectors as green arrows, useful for debugging camera pose estimation."
+            "info": "Overlay ray direction arrows on depth preview (DA3 models only, requires ray pose estimation enabled). Shows 3D direction vectors as green arrows on depth-preview.png, useful for debugging depth quality."
         },
         "padding_mode": {
             "label": "Padding mode",
