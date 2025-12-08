@@ -267,6 +267,20 @@ def run_deforum(*args):
         try:  # dispatch to appropriate renderer
             JobStatusTracker().update_phase(job_id, DeforumJobPhase.GENERATING)
             JobStatusTracker().update_output_info(job_id, outdir=args.outdir, timestring=root.timestring)
+
+            # Write timing file for live UI timer display
+            # Format: Line 1 = start timestamp, Line 2 (optional) = "RESUME" flag
+            import time as time_module
+            timing_file_path = os.path.join(args.outdir, ".generation-timing")
+            try:
+                with open(timing_file_path, 'w') as f:
+                    f.write(f"{time_module.time()}\n")
+                    # Check if this is a resume operation
+                    if anim_args.resume_from_timestring:
+                        f.write("RESUME\n")
+            except IOError:
+                pass  # Silently fail if can't write timing file
+
             logger.debug(f"\n{emoji_if_enabled('🎬')} Dispatching to renderer for mode: '{anim_args.animation_mode}'")
             if anim_args.animation_mode == '2D' or anim_args.animation_mode == '3D':
                 if anim_args.use_mask_video: 

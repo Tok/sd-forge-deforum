@@ -45,7 +45,7 @@ logger = get_logger()
 
 
 # State tracking to prevent UI flashing when no previews available
-_last_preview_state = {"frame": None, "depth": None}
+_last_preview_state = {"frame": None, "depth": None, "timer": None}
 
 
 def get_latest_frames():
@@ -54,7 +54,7 @@ def get_latest_frames():
     Uses state tracking to prevent UI updates when previews haven't changed.
     This eliminates blinking/flashing when backend disconnects or no generation active.
 
-    Returns gr.skip() for both outputs if state unchanged to avoid UI updates.
+    Returns gr.skip() for all three outputs if state unchanged to avoid UI updates.
     """
     import glob
     from pathlib import Path
@@ -72,17 +72,21 @@ def get_latest_frames():
         ]
         if not subdirs:
             # No output directories - check if state unchanged
-            if _last_preview_state["frame"] is None and _last_preview_state["depth"] is None:
-                return gr.skip(), gr.skip()  # Skip update if already showing nothing
+            if (_last_preview_state["frame"] is None and
+                _last_preview_state["depth"] is None and
+                _last_preview_state["timer"] is None):
+                return gr.skip(), gr.skip(), gr.skip()  # Skip update if already showing nothing
             _last_preview_state["frame"] = None
             _last_preview_state["depth"] = None
-            return None, None
+            _last_preview_state["timer"] = None
+            return None, None, None
 
         latest_dir = max(subdirs, key=os.path.getmtime)
 
         # Look for fixed preview filenames
         frame_preview = os.path.join(latest_dir, "frame-preview.png")
         depth_preview = os.path.join(latest_dir, "depth-preview.png")
+        timing_file = os.path.join(latest_dir, ".generation-timing")
 
         # Check if preview files are fresh (modified within last 5 seconds)
         # This prevents showing stale previews and stops polling when generation ends
@@ -94,6 +98,33 @@ def get_latest_frames():
             os.path.exists(depth_preview) and (current_time - os.path.getmtime(depth_preview)) < 5.0
         )
 
+        # Read timing info if available
+        timer_text = None
+        if os.path.exists(timing_file):
+            try:
+                with open(timing_file, 'r') as f:
+                    lines = f.readlines()
+                    if len(lines) >= 1:
+                        start_time = float(lines[0].strip())
+                        is_resume = len(lines) >= 2 and lines[1].strip() == "RESUME"
+
+                        if not is_resume:
+                            elapsed = current_time - start_time
+                            hours = int(elapsed // 3600)
+                            minutes = int((elapsed % 3600) // 60)
+                            seconds = int(elapsed % 60)
+                            if hours > 0:
+                                timer_text = f"⏱️ {hours}h {minutes}m {seconds}s"
+                            elif minutes > 0:
+                                timer_text = f"⏱️ {minutes}m {seconds}s"
+                            else:
+                                timer_text = f"⏱️ {seconds}s"
+                        else:
+                            # On resume, don't show misleading timing stats
+                            timer_text = None
+            except (ValueError, IndexError, IOError):
+                timer_text = None
+
         # Determine new preview paths
         latest_frame = frame_preview if frame_is_fresh else None
         latest_depth = depth_preview if depth_is_fresh else None
@@ -102,23 +133,28 @@ def get_latest_frames():
         if (
             latest_frame == _last_preview_state["frame"]
             and latest_depth == _last_preview_state["depth"]
+            and timer_text == _last_preview_state["timer"]
         ):
-            return gr.skip(), gr.skip()
+            return gr.skip(), gr.skip(), gr.skip()
 
         # Update state
         _last_preview_state["frame"] = latest_frame
         _last_preview_state["depth"] = latest_depth
+        _last_preview_state["timer"] = timer_text
 
-        return latest_frame, latest_depth
+        return latest_frame, latest_depth, timer_text
 
     except Exception:
         # Silently handle errors (e.g., backend disconnected, filesystem issues)
         # Only update UI if state actually changes
-        if _last_preview_state["frame"] is None and _last_preview_state["depth"] is None:
-            return gr.skip(), gr.skip()  # Skip update if already showing nothing
+        if (_last_preview_state["frame"] is None and
+            _last_preview_state["depth"] is None and
+            _last_preview_state["timer"] is None):
+            return gr.skip(), gr.skip(), gr.skip()  # Skip update if already showing nothing
         _last_preview_state["frame"] = None
         _last_preview_state["depth"] = None
-        return None, None
+        _last_preview_state["timer"] = None
+        return None, None, None
 
 
 def on_ui_tabs():
@@ -488,6 +524,17 @@ def on_ui_tabs():
                     interactive=False,
                     visible=True,
                     height=200,
+                )
+
+                # Generation timer - shows elapsed time during generation
+                generation_timer = gr.Textbox(
+                    label="",
+                    value="",
+                    interactive=False,
+                    show_label=False,
+                    elem_id="deforum_generation_timer",
+                    container=False,
+                    visible=True,
                 )
 
                 # Buttons and Depth Preview side by side
@@ -1043,7 +1090,7 @@ def on_ui_tabs():
         # Smart polling: only shows fresh previews (< 5 sec old), silently handles errors
         live_preview_timer = gr.Timer(value=0.5, active=True)
         live_preview_timer.tick(
-            fn=get_latest_frames, inputs=[], outputs=[live_preview_image, depth_preview_image]
+            fn=get_latest_frames, inputs=[], outputs=[live_preview_image, depth_preview_image, generation_timer]
         )
 
         # Check if Flux blocker is active (minimal component set)
