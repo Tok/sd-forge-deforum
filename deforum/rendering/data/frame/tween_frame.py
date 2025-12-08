@@ -343,12 +343,16 @@ class Tween:
         has_image = image is not None
         has_depth = data.depth_model is not None
         if has_image and has_depth:
+            from deforum.utils.timing_tracker import get_timing_tracker
+            timing_tracker = get_timing_tracker()
+
             image = Tween.ensure_image_is_a_numpy_array(image)
-            return data.depth_model.predict(
-                image,
-                use_ray_pose=data.args.anim_args.da3_use_ray_pose,
-                conf_thresh_percentile=data.args.anim_args.da3_conf_thresh_percentile
-            )
+            with timing_tracker.track('depth_estimation'):
+                return data.depth_model.predict(
+                    image,
+                    use_ray_pose=data.args.anim_args.da3_use_ray_pose,
+                    conf_thresh_percentile=data.args.anim_args.da3_conf_thresh_percentile
+                )
         else:
             return None
 

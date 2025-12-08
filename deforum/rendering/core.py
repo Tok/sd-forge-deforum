@@ -24,6 +24,7 @@ from deforum.rendering.helpers import memory as memory_utils
 from deforum.rendering.helpers import subtitle as subtitle_utils
 from deforum.rendering.helpers import webui as web_ui_utils
 from deforum.utils.system.logging import get_logger
+from deforum.utils.timing_tracker import get_timing_tracker
 
 # Initialize logger (now safe at module level - returns lazy proxy)
 logger = get_logger()
@@ -70,6 +71,10 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         pass
 
     logger.debug("VRAM cleanup complete")
+
+    # Initialize timing tracker for performance profiling
+    timing_tracker = get_timing_tracker()
+    timing_tracker.start_generation()
 
     # Pre-download soundtrack if specified
     if video_args.add_soundtrack == 'File' and video_args.soundtrack_path is not None:
@@ -198,6 +203,10 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
         if dashboard:
             dashboard.stop()
 
+    # Print timing report before cleanup
+    timing_tracker.end_generation()
+    timing_tracker.print_report()
+
     data.animation_mode.unload_raft_and_depth_model()
 
 
@@ -277,23 +286,32 @@ def run_render_animation(data: RenderData, frames: List[DiffusionFrame], dashboa
 
 
 def process_frame(data, frame):
-    prepare_generation(data, frame)
+    timing_tracker = get_timing_tracker()
+
+    with timing_tracker.track('preprocessing'):
+        prepare_generation(data, frame)
 
     # Skip traditional tweens if using Wan FLF2V
     use_wan_flf2v = should_use_wan_flf2v(data, frame)
     if not use_wan_flf2v:
-        emit_tweens(data, frame)
+        with timing_tracker.track('depth_warping'):
+            emit_tweens(data, frame)
 
-    pre_process(data, frame)
-    image = frame.generate(data, shared.total_tqdm)
-    if image is None:
-        raise NoImageGenerated()
+    with timing_tracker.track('preprocessing'):
+        pre_process(data, frame)
+
+    with timing_tracker.track('diffusion'):
+        image = frame.generate(data, shared.total_tqdm)
+        if image is None:
+            raise NoImageGenerated()
 
     # Emit Wan FLF2V tweens AFTER keyframe generation
     if use_wan_flf2v:
-        emit_wan_flf2v_tweens(data, frame, image)
+        with timing_tracker.track('wan_interpolation'):
+            emit_wan_flf2v_tweens(data, frame, image)
 
-    post_process(data, frame, image)
+    with timing_tracker.track('postprocessing'):
+        post_process(data, frame, image)
 
 
 def prepare_generation(data: RenderData, frame: DiffusionFrame):

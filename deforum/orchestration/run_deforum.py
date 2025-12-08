@@ -355,7 +355,11 @@ def run_deforum(*args):
                     **vars(wan_args),
                 })
 
-                ffmpeg_stitch_video(ffmpeg_location=f_location, fps=video_args.fps, outmp4_path=mp4_path, stitch_from_frame=0, stitch_to_frame=anim_args.max_frames, imgs_path=image_path, add_soundtrack=video_args.add_soundtrack, audio_path=real_audio_track, crf=f_crf, preset=f_preset, srt_path=srt_path, settings_metadata=settings_metadata)
+                # Track video stitching time
+                from deforum.utils.timing_tracker import get_timing_tracker
+                timing_tracker = get_timing_tracker()
+                with timing_tracker.track('video_stitching'):
+                    ffmpeg_stitch_video(ffmpeg_location=f_location, fps=video_args.fps, outmp4_path=mp4_path, stitch_from_frame=0, stitch_to_frame=anim_args.max_frames, imgs_path=image_path, add_soundtrack=video_args.add_soundtrack, audio_path=real_audio_track, crf=f_crf, preset=f_preset, srt_path=srt_path, settings_metadata=settings_metadata)
                 # Use context manager to ensure file is properly closed (prevents file locking)
                 with open(mp4_path, 'rb') as f:
                     mp4 = f.read()
