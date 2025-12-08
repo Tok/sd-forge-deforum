@@ -533,6 +533,7 @@ def on_ui_tabs():
                     interactive=False,
                     show_label=False,
                     elem_id="deforum_generation_timer",
+                    elem_classes=["deforum-ephemeral"],  # Exclude from Forge settings persistence
                     container=False,
                     visible=True,
                 )
