@@ -126,19 +126,19 @@ MODEL_CONFIGS = {
         recommended_steps=9,
         min_steps=4,
         max_steps=30,
-        uses_cfg=True,
-        cfg_scale_default=2.0,
-        cfg_scale_min=1.0,
-        cfg_scale_max=4.0,
+        uses_cfg=False,  # Z-Image is a distilled model with NO CFG support
+        cfg_scale_default=0.0,  # Must be 0.0 (no CFG)
+        cfg_scale_min=0.0,
+        cfg_scale_max=0.0,
         uses_distilled_cfg=False,
-        distilled_cfg_scale_default=3.5,  # Ignored
-        distilled_cfg_scale_min=1.0,
-        distilled_cfg_scale_max=10.0,
+        distilled_cfg_scale_default=0.0,  # No CFG at all
+        distilled_cfg_scale_min=0.0,
+        distilled_cfg_scale_max=0.0,
         recommended_scheduler="simple",
         compatible_schedulers=["simple", "normal"],
         recommended_sampler="euler",
         compatible_samplers=["euler", "dpmpp_2m"],
-        notes="Z-Image-Turbo uses traditional CFG (2.0 recommended). Distilled CFG is ignored. Optimized for 4-15 steps (9 recommended), supports up to 30."
+        notes="Z-Image-Turbo is a distilled few-step model with NO CFG support (neither traditional nor distilled). Set cfg_scale=0.0. Use in-prompt constraints instead of negative prompts (e.g., 'no watermark', 'plain background'). Native resolution: 1024x1024."
     ),
 
     "sdxl": ModelConfig(

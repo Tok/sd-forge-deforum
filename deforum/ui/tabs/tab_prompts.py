@@ -102,14 +102,29 @@ def get_tab_prompts(da, dw, dv=None):
             )
         )
 
-        animation_prompts_negative = create_row(
-            gr.Textbox(
+        with FormRow():
+            animation_prompts_negative = gr.Textbox(
                 label="Prompts negative",
                 value="",
                 lines=1,
                 interactive=True,
-                placeholder="words here will be added to the end of all negative prompts.  ignored with Flux/Lumina."
+                placeholder="words here will be added to the end of all negative prompts.  ignored with Flux/Lumina/Z-Image.",
+                scale=4
             )
+            refresh_model_ui_btn = gr.Button(
+                value=f"{emoji_utils.refresh()} Detect Model",
+                variant="secondary",
+                size="sm",
+                scale=1,
+                elem_id="refresh_model_ui_btn"
+            )
+
+        model_ui_status = gr.Textbox(
+            label="Model Status",
+            value="Click 'Detect Model' to update UI for current model",
+            interactive=False,
+            lines=1,
+            elem_id="model_ui_status"
         )
 
         # PROMPT TIMING SETTINGS
@@ -344,6 +359,28 @@ def get_tab_prompts(da, dw, dv=None):
                 prompts_pseudo_cadence_display,
                 prompts_max_frames_display
             ]
+        )
+
+    # ========================================================================
+    # Wire up model UI refresh button
+    # ========================================================================
+    if 'refresh_model_ui_btn' in locals():
+        from deforum.ui.handlers.model_ui_updater import update_ui_for_model
+
+        # Note: We can only update components defined in THIS tab
+        # CFG schedules are in Keyframes tab, so we can't update them from here
+        # For now, just update negative prompt and status
+        refresh_model_ui_btn.click(
+            fn=update_ui_for_model,
+            inputs=[],
+            outputs=[
+                animation_prompts_negative,  # Update interactivity
+                gr.update(),  # Placeholder for CFG (not in this tab)
+                gr.update(),  # Placeholder for distilled CFG (not in this tab)
+                model_ui_status  # Status message
+            ],
+            queue=False,
+            show_progress=False
         )
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
