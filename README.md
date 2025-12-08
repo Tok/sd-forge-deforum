@@ -16,14 +16,16 @@ new keyframe distribution feature, may require that some unsupported features ar
 
 ## Try the Next Version (Dev Branch)
 
-**Want to try the latest features before they're released?** The `dev` branch is actively developed with cutting-edge improvements and new capabilities:
+**Want to try the latest features before they're released?** The `dev` branch is actively developed with cutting-edge improvements and new capabilities.
+
+**IMPORTANT:** The dev branch requires **[Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)** (not classic Forge). If you're using an older Forge version, stay on the main branch.
 
 **[View the Dev Branch README](https://github.com/Tok/sd-forge-deforum/tree/dev)** for full feature documentation and installation instructions.
 
 **What's New in Dev:**
 - DA3-3DGS (Depth Anything V3 + 3D Gaussian Splatting) interpolation
 - Empirically tuned parameters from extensive testing
-- Enhanced Flux/Lumina/Z-Image-Turbo support
+- Enhanced Flux/Lumina/Z-Image-Turbo support (Forge Neo only)
 - And much more!
 
 **To install the dev branch:**
@@ -37,7 +39,7 @@ cd extensions
 git clone -b dev https://github.com/Tok/sd-forge-deforum.git
 ```
 
-**Note:** The dev branch is ~1630 commits ahead with active development. While thoroughly tested, it may contain experimental features.
+**Note:** The dev branch is ~1630 commits ahead with active development. While thoroughly tested, it may contain experimental features. Requires Forge Neo.
 
 ---
 
