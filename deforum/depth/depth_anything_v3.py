@@ -334,6 +334,9 @@ class DepthAnythingV3:
         try:
             # Import DA3 (package is now guaranteed to be installed)
             from depth_anything_3.api import DepthAnything3
+
+            # DA3's from_pretrained() uses HF Hub internally (whatever version is in venv)
+            # Model files (~1.4GB for Large) auto-download to HF cache on first use
             self.model = DepthAnything3.from_pretrained(model_name)
             self.model.to(device)
 
