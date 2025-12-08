@@ -281,8 +281,9 @@ class DepthAnythingV3:
         weight: float = 0.5,
         half_precision: bool = False,
         use_ray_pose: bool = False,
-        conf_thresh_percentile: float = 40.0
-    ) -> torch.Tensor:
+        conf_thresh_percentile: float = 40.0,
+        return_full_result: bool = False
+    ) -> Union[torch.Tensor, Dict[str, Any]]:
         """Predict depth map from single image (drop-in replacement for DA2).
 
         Args:
@@ -291,9 +292,11 @@ class DepthAnythingV3:
             half_precision: Use FP16 precision (not used by DA3, kept for compatibility)
             use_ray_pose: Use ray-based pose estimation (more accurate but slower)
             conf_thresh_percentile: Adaptive confidence threshold percentile (0-100)
+            return_full_result: If True, return dict with depth, confidence, rays, etc.
 
         Returns:
-            Depth map tensor [1, 1, H, W] compatible with DA2 output format
+            If return_full_result=False: Depth map tensor [1, 1, H, W] (default)
+            If return_full_result=True: Dict with all DA3 outputs
         """
         # Prepare image and extract dimensions
         pil_image, original_h, original_w = _prepare_image_for_inference(image)
@@ -318,6 +321,33 @@ class DepthAnythingV3:
 
         # Resize depth map to match original image dimensions
         depth = _resize_depth_to_match_image(depth, original_h, original_w)
+
+        # Return full result if requested (for visualization/debugging)
+        if return_full_result:
+            full_result = {
+                'depth': depth,
+                'raw_result': result,  # Store original result object
+                'original_h': original_h,
+                'original_w': original_w,
+            }
+
+            # Extract additional data if available (AnyView models only)
+            if hasattr(result, 'confidence') and result.confidence is not None:
+                full_result['confidence'] = result.confidence[0]  # [H, W]
+
+            if hasattr(result, 'ray_direction') and result.ray_direction is not None:
+                full_result['ray_direction'] = result.ray_direction[0]  # [H, W, 3]
+
+            if hasattr(result, 'ray_origin') and result.ray_origin is not None:
+                full_result['ray_origin'] = result.ray_origin[0]  # [H, W, 3]
+
+            if hasattr(result, 'extrinsics') and result.extrinsics is not None:
+                full_result['extrinsics'] = result.extrinsics[0]  # [4, 4]
+
+            if hasattr(result, 'intrinsics') and result.intrinsics is not None:
+                full_result['intrinsics'] = result.intrinsics[0]  # [3, 3]
+
+            return full_result
 
         return depth
 

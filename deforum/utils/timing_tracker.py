@@ -111,7 +111,7 @@ class TimingTracker:
             self.end_generation()  # Auto-calculate total if not done
 
         if self.total_time == 0:
-            logger.info("No timing data available")
+            print("No timing data available")
             return
 
         # Calculate actual total from categories
