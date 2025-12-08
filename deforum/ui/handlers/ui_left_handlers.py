@@ -219,7 +219,7 @@ def handle_render_mode_change(mode: str, fractional_enabled: bool) -> list:
         fractional_enabled: Whether fractional strength is enabled
 
     Returns:
-        List of gr.update() for: tab_depth, tab_shakify, tab_wan, cadence, pseudo_cadence,
+        List of gr.update() for: tab_depth, tab_shakify, tab_interpolation, cadence, pseudo_cadence,
                                  fps, steps, sliders, strength_columns, animation_mode
     """
     from deforum.rendering.data.render_mode import RenderMode
@@ -229,7 +229,7 @@ def handle_render_mode_change(mode: str, fractional_enabled: bool) -> list:
 
     # Determine tab visibility
     show_3d_tabs = render_mode_enum.should_show_3d_tabs()
-    show_wan_tab = render_mode_enum.should_show_wan_tab()
+    show_interpolation_tab = render_mode_enum.should_show_interpolation_tab()
 
     # Determine cadence/pseudo-cadence visibility
     show_real_cadence = render_mode_enum.should_show_cadence_slider()
@@ -262,7 +262,7 @@ def handle_render_mode_change(mode: str, fractional_enabled: bool) -> list:
     return [
         gr.update(visible=show_3d_tabs),           # tab_depth
         gr.update(visible=show_3d_tabs),           # tab_shakify
-        gr.update(visible=show_wan_tab),           # tab_wan
+        gr.update(visible=show_interpolation_tab), # tab_interpolation
         gr.update(visible=show_real_cadence),      # cadence_column
         gr.update(visible=show_pseudo_cadence),    # pseudo_cadence_column
         gr.update(value=config.default_fps),       # fps

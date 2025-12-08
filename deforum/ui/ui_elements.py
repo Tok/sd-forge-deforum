@@ -964,7 +964,7 @@ def wan_generate_video(*component_args):
 1. {emojis['memo']} Go to the **Prompts tab** and configure your animation prompts
 2. {emojis['movie_camera']} Set your desired FPS in the **Output tab**
 3. {emojis['target']} Optionally configure seeds in **Keyframes → Seed & SubSeed tab**
-4. {emojis['movie_camera']} Click **Generate Flux/Wan** again
+4. {emojis['movie_camera']} Click **Generate Diffusion/Wan** again
 
 {emojis['bulb']} I2V chaining needs your prompt schedule to know what to generate!
 

@@ -93,8 +93,8 @@ class RenderMode(Enum):
         """Return True if 3D-specific tabs (Depth, Shakify, RAFT, ControlNet) should be visible."""
         return self in [RenderMode.CLASSIC_3D, RenderMode.NEW_3D, RenderMode.KEYFRAMES_ONLY]
 
-    def should_show_wan_tab(self) -> bool:
-        """Return True if Wan Models tab should be visible."""
+    def should_show_interpolation_tab(self) -> bool:
+        """Return True if Interpolation tab should be visible."""
         return self == RenderMode.KEYFRAMES_INTERP
 
     def should_show_cadence_slider(self) -> bool:

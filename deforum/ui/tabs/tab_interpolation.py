@@ -49,6 +49,7 @@ def get_subtab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem
         memo = emoji_utils.memo()
         dice = emoji_utils.dice()
         strength_emoji = emoji_utils.strength()
+        movie_camera = emoji_utils.movie_camera()
         gr.Markdown(f"""
         **{check} Wan seamlessly integrates with your Deforum settings:**
 
@@ -195,15 +196,15 @@ def get_subtab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem
 
     # GENERATION SECTION - Moved outside deprecated accordion for accessibility
     gr.Markdown("---")
-    gr.Markdown(f"### {emoji_utils.movie_camera()} Generate Flux/Wan")
+    gr.Markdown(f"### {emoji_utils.movie_camera()} Generate Diffusion/Wan")
 
     # Generate Button with Validation
     with FormRow():
         wan_generate_button = gr.Button(
-            f"{emoji_utils.movie_camera()} Generate Flux/Wan (I2V Chaining)",
+            f"{emoji_utils.movie_camera()} Generate Diffusion/Wan (I2V Chaining)",
             variant="primary",
-            size="lg",
-            elem_id="wan_generate_button"
+            elem_id="wan_generate_button",
+            elem_classes=["slopcore-button"]
         )
 
     # Status output for Wan generation
@@ -666,11 +667,11 @@ def get_subtab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem
                 
                 **Before Frame-Specific Analysis:**
                 ```json
-                {
+                {{
                   "0": "...complex camera movement with complex panning movement with 5 phases",
                   "43": "...complex camera movement with complex panning movement with 5 phases",
                   "106": "...complex camera movement with complex panning movement with 5 phases"
-                }
+                }}
                 ```
                 
                 **After Frame-Specific Analysis:**
@@ -723,7 +724,7 @@ def get_subtab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem
             - **For variety**: Leave as 'iter' or 'random'
             
             #### Step 6: Generate
-            - Click "Generate Flux/Wan" button
+            - Click "Generate Diffusion/Wan" button
             - Wan reads all settings from Deforum automatically
             - Each prompt becomes a seamless video clip with strength-controlled transitions
             """)

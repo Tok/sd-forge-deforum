@@ -1272,7 +1272,14 @@ def WanArgs():
             "type": "dropdown",
             "choices": ["Wan", "FILM", "DA3-Multiview", "DA3-3DGS"],
             "value": "Wan",
-            "info": "Interpolation method for Keyframes + Interpolation mode: 'Wan' (AI-generated video, recommended), 'FILM' (optical flow, handles large motion), 'DA3-Multiview' (depth warping with multi-view geometry - auto-loads AnyView-Small, 120MB, fast geometric interpolation), 'DA3-3DGS' (3D Gaussian Splatting reconstruction - auto-loads DA3-GIANT, 4.6GB, highest quality geometric interpolation). Note: RIFE is available in post-processing for framerate doubling."
+            "info": "Interpolation method for Keyframes + Interpolation mode: 'Wan' (AI-generated video, recommended), 'FILM' (optical flow, handles large motion), 'DA3-Multiview' (depth warping with multi-view geometry, geometric interpolation), 'DA3-3DGS' (3D Gaussian Splatting reconstruction, highest quality geometric interpolation). Note: RIFE is available in post-processing for framerate doubling."
+        },
+        "da3_multiview_model_size": {
+            "label": "DA3-Multiview Model Size",
+            "type": "dropdown",
+            "choices": ["Small", "Base", "Large"],
+            "value": "Small",
+            "info": "DA3-AnyView model size for multiview interpolation: Small (120MB, fast), Base (390MB, balanced), Large (1.4GB, highest quality). Only used when interpolation method is DA3-Multiview."
         },
         # DEPRECATED: Old name for backward compatibility
         "flux_flf2v_interpolation_method": {

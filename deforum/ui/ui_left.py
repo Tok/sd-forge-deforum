@@ -318,14 +318,17 @@ def setup_deforum_left_side_ui():
 
                         Uses Depth Anything V3's multi-view geometry for depth-aware interpolation.
 
-                        **Model:** Auto-loads AnyView-Small (120MB) when selected
-
                         **How it works:**
                         1. Estimates depth maps and camera poses for keyframe pairs
                         2. Interpolates camera movement between keyframes
                         3. Warps frames using depth and interpolated camera pose
+                        """)
 
-                        **No additional settings required** - uses standard depth warping parameters from 3D Depth tab.
+                        with gr.Row():
+                            da3_multiview_model_size = create_gr_elem(dw.da3_multiview_model_size)
+
+                        gr.Markdown("""
+                        **Note:** Uses standard depth warping parameters from 3D Depth tab (padding mode, sampling mode, etc.).
                         """)
 
                     with gr.TabItem("DA3-3DGS"):
@@ -354,6 +357,18 @@ def setup_deforum_left_side_ui():
             audio_ai_start_prompt = tab_init_params.get('audio_ai_start_prompt')
             audio_ai_end_prompt = tab_init_params.get('audio_ai_end_prompt')
             audio_sync_prompts = tab_init_params.get('audio_sync_prompts')
+
+            # Explicitly unpack Interpolation tab components (created outside subtabs)
+            diffusion_interpolation_method = diffusion_interpolation_method_top
+            # da3_multiview_model_size already created as local variable at line 328
+
+            # Create hidden deprecated component for backward compatibility
+            flux_flf2v_interpolation_method = gr.Dropdown(
+                choices=["Wan", "FILM", "DA3-Multiview", "DA3-3DGS"],
+                value="Wan",
+                visible=False,
+                label="FLF2V Interpolation Method (DEPRECATED)"
+            )
 
             # Explicitly unpack DA3-3DGS components from dedicated tab
             da3_3dgs_model = tab_da3_3dgs_params.get('da3_3dgs_model')
@@ -400,7 +415,7 @@ def setup_deforum_left_side_ui():
             # Store tab references for visibility control
             locals()['tab_depth'] = tab_depth
             locals()['tab_shakify'] = tab_shakify
-            locals()['tab_wan'] = tab_wan
+            locals()['tab_interpolation'] = tab_interpolation
 
             # ====== AUDIO SYNC BUTTON WIRING (moved inside tabs context) ======
             # Wire up audio upload to use actual FPS and update max_frames
@@ -703,7 +718,7 @@ def setup_deforum_left_side_ui():
         outputs=[
             tab_depth,
             tab_shakify,
-            tab_wan,
+            tab_interpolation,
             cadence_column,
             pseudo_cadence_column,
             fps,

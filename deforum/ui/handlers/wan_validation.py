@@ -95,7 +95,7 @@ def _build_validation_message(
         return f"""{emojis['check']} **Ready to Generate!**
 
 {emojis['movie_camera']} **Found {num_prompts} prompt{'s' if num_prompts != 1 else ''}** for Wan video generation
-{emojis['fire']} **Click "Generate Flux/Wan" above** to start I2V chaining generation
+{emojis['fire']} **Click "Generate Diffusion/Wan" above** to start I2V chaining generation
 {emojis['zap']} **Optional:** Add movement descriptions or AI enhancement first"""
 
     return f"{emojis['cross']} **Unknown validation status**"

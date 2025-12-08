@@ -339,23 +339,22 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     if interp_method == "DA3-Multiview":
         logger.info(f"{emoji_if_enabled('🔍')} Initializing DA3 depth model for multi-view geometry...")
 
-        # Get depth algorithm from args (should be DA3-AnyView variant)
-        depth_algorithm = getattr(anim_args, 'depth_algorithm', 'Depth-Anything-V3-AnyView-Small')
-
-        # Ensure it's an AnyView variant
-        if 'anyview' not in depth_algorithm.lower():
-            logger.warning(f"⚠️  DA3-Multiview requires AnyView model, got '{depth_algorithm}'")
-            logger.warning(f"   Auto-switching to Depth-Anything-V3-AnyView-Small")
-            depth_algorithm = 'Depth-Anything-V3-AnyView-Small'
+        # Get model size from user parameter and build full model name
+        model_size = getattr(wan_args, 'da3_multiview_model_size', 'Small')
+        depth_algorithm = f'Depth-Anything-V3-AnyView-{model_size}'
+        logger.info(f"{emoji_if_enabled('🎯')} DA3-Multiview will use {depth_algorithm}")
 
         # Initialize depth model
         from deforum.depth.depth import DepthModel
         from modules import devices
 
         models_path = os.path.join(os.getcwd(), 'models', 'Deforum')
+        device = devices.get_optimal_device()
+
+        # DepthModel uses __new__ with positional args (models_path, device) + kwargs
         data.depth_model = DepthModel(
-            models_path=models_path,
-            device=devices.get_optimal_device(),
+            models_path,  # Positional arg 0
+            device,       # Positional arg 1
             keep_in_vram=True,  # Keep loaded for all segments
             depth_algorithm=depth_algorithm
         )
