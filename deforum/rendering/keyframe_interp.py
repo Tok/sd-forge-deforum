@@ -1144,8 +1144,8 @@ def generate_da3_multiview_segment(first_image, last_image, num_frames, height, 
 
     depth_first = depth_maps[0]  # [1, 1, H, W] tensor
     depth_last = depth_maps[1]   # [1, 1, H, W] tensor
-    pose_first = camera_extrinsics[0]  # [4, 4] matrix
-    pose_last = camera_extrinsics[1]   # [4, 4] matrix
+    pose_first = camera_extrinsics[0]  # [3, 4] or [4, 4] matrix
+    pose_last = camera_extrinsics[1]   # [3, 4] or [4, 4] matrix
 
     logger.debug(f"   First depth: {depth_first.shape}, pose: {pose_first.shape if hasattr(pose_first, 'shape') else type(pose_first)}")
     logger.debug(f"   Last depth: {depth_last.shape}, pose: {pose_last.shape if hasattr(pose_last, 'shape') else type(pose_last)}")
@@ -1155,6 +1155,22 @@ def generate_da3_multiview_segment(first_image, last_image, num_frames, height, 
         pose_first = pose_first.cpu().numpy()
     if hasattr(pose_last, 'cpu'):
         pose_last = pose_last.cpu().numpy()
+
+    # Convert (3, 4) [R|t] format to (4, 4) homogeneous matrix if needed
+    def to_homogeneous_matrix(pose):
+        """Convert (3, 4) [R|t] camera extrinsics to (4, 4) homogeneous matrix."""
+        if pose.shape == (3, 4):
+            # Add bottom row [0, 0, 0, 1]
+            bottom_row = np.array([[0, 0, 0, 1]])
+            return np.vstack([pose, bottom_row])
+        elif pose.shape == (4, 4):
+            # Already homogeneous
+            return pose
+        else:
+            raise ValueError(f"Unexpected pose shape: {pose.shape}")
+
+    pose_first = to_homogeneous_matrix(pose_first)
+    pose_last = to_homogeneous_matrix(pose_last)
 
     # Generate tween frames by interpolating camera pose and warping first keyframe
     frame_paths = []
