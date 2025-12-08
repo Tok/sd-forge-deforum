@@ -1113,15 +1113,16 @@ def on_ui_tabs():
         if 'apply_model_defaults_btn' in components:
             def apply_preset_wrapper(render_mode):
                 """Wrapper to apply model defaults and return component updates."""
-                from deforum.config.model_presets import get_preset_for_model, detect_loaded_model, detect_model_type
+                from deforum.config.model_presets import get_preset_for_model, detect_model_type
+                from deforum.utils.model_detection import get_model_name
                 from deforum.utils.system.logging import get_logger
 
                 logger = get_logger()
                 logger.info("Apply Model Defaults clicked", emoji='target')
 
                 # Get current model
-                model_name = detect_loaded_model()
-                logger.info(f"Detected model file: {model_name}")
+                model_name = get_model_name()
+                logger.info(f"Detected model: {model_name}")
 
                 if not model_name:
                     cross = emoji_if_enabled("❌")
