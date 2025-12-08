@@ -286,12 +286,12 @@ def setup_deforum_left_side_ui():
 
             # Flux + Interpolation mode tabs:
             from .ui_elements import get_tab_wan
-            with gr.TabItem(f"{emoji_utils.wan_video()} Wan Settings", visible=True) as tab_wan:
-                tab_wan_params = get_tab_wan(dw, da, skip_tabitem=True)  # 8a. Wan - Flux + Interpolation mode
+            with gr.TabItem(f"{emoji_utils.frames()} Interpolation", visible=True) as tab_wan:
+                tab_wan_params = get_tab_wan(dw, da, skip_tabitem=True)  # 8a. Interpolation methods (Wan/FILM/DA3-Multiview/DA3-3DGS)
 
             from deforum.ui.tabs.tab_da3_3dgs import get_tab_da3_3dgs
-            with gr.TabItem(f"{emoji_if_enabled('🔍')} DA3-3DGS", visible=True) as tab_da3_3dgs:
-                tab_da3_3dgs_params = get_tab_da3_3dgs(d3dgs, skip_tabitem=True)  # 8b. DA3-3DGS - Flux + Interpolation mode
+            with gr.TabItem(f"{emoji_if_enabled('🔍')} DA3-3DGS Settings", visible=True) as tab_da3_3dgs:
+                tab_da3_3dgs_params = get_tab_da3_3dgs(d3dgs, skip_tabitem=True)  # 8b. DA3-3DGS advanced settings
 
             # Always visible tabs:
             tab_run_params = get_tab_run(d, da)  # 8. Run - all modes
