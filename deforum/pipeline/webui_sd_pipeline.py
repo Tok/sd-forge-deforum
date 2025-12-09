@@ -58,6 +58,8 @@ def get_webui_sd_pipeline(args, root):
     p.image_cfg_scale = args.cfg_scale  # image specific, only used in "StableDiffusionProcessingImg2Img" (img2img.py)
 
     # Shift parameter handling (Z-Image uses dedicated shift_schedule, Flux uses distilled_cfg_scale)
+    from deforum.utils.model_detection import is_zimage_model
+
     if is_zimage_model():
         from deforum.utils.system.logging import get_logger
         logger = get_logger()
