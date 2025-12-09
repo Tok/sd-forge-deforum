@@ -30,14 +30,23 @@ class FilteredOutput(io.StringIO):
         self.filter_patterns = filter_patterns
         self.important_patterns = important_patterns or []
         self.callback = callback
+        self.last_suppressed = False  # Track if last write was suppressed
 
     def write(self, text):
         """Write text to original stream unless it matches filter patterns."""
+        # Suppress standalone newlines that follow suppressed content
+        if self.last_suppressed and text == '\n':
+            self.last_suppressed = False
+            return len(text)
+
         # Check if should be completely suppressed
         should_suppress = any(pattern in text for pattern in self.filter_patterns)
 
         if should_suppress:
+            self.last_suppressed = True
             return len(text)  # Suppress completely
+
+        self.last_suppressed = False
 
         # Check if should be intercepted for dashboard
         is_important = any(pattern in text for pattern in self.important_patterns)

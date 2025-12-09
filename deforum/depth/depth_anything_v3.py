@@ -407,14 +407,25 @@ class DepthAnythingV3:
         pil_image, original_h, original_w = _prepare_image_for_inference(image)
 
         # Run DA3 inference (may downsample internally for processing)
-        # Temporarily suppress DA3's verbose INFO logging during inference
+        # Temporarily suppress ALL INFO logging during inference to eliminate spam
         import logging
+
+        # Get all active loggers and set them to WARNING
         saved_levels = {}
-        for logger_name in ['dinov2', 'depth_anything_v2', '__main__', '']:
+        root_logger = logging.getLogger()
+        saved_levels['root'] = root_logger.level
+        root_logger.setLevel(logging.WARNING)
+
+        # Also explicitly suppress known DA3 loggers
+        for logger_name in ['dinov2', 'depth_anything_v2', '__main__', 'depth_anything_3']:
             try:
                 log = logging.getLogger(logger_name)
                 saved_levels[logger_name] = log.level
                 log.setLevel(logging.WARNING)
+                # Disable all handlers on this logger
+                for handler in log.handlers:
+                    saved_levels[f'{logger_name}_handler_{id(handler)}'] = handler.level
+                    handler.setLevel(logging.WARNING)
             except:
                 pass
 
@@ -427,9 +438,17 @@ class DepthAnythingV3:
             )
         finally:
             # Restore original logging levels
-            for logger_name, level in saved_levels.items():
+            root_logger.setLevel(saved_levels.get('root', logging.INFO))
+            for logger_name in ['dinov2', 'depth_anything_v2', '__main__', 'depth_anything_3']:
                 try:
-                    logging.getLogger(logger_name).setLevel(level)
+                    log = logging.getLogger(logger_name)
+                    if logger_name in saved_levels:
+                        log.setLevel(saved_levels[logger_name])
+                    # Restore handler levels
+                    for handler in log.handlers:
+                        key = f'{logger_name}_handler_{id(handler)}'
+                        if key in saved_levels:
+                            handler.setLevel(saved_levels[key])
                 except:
                     pass
 
