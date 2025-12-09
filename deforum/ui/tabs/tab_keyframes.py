@@ -109,79 +109,56 @@ def get_tab_keyframes(d, da, dloopArgs):
 
             # COHERENCE INNER TAB
             with gr.TabItem(f"{emoji_utils.palette()} Coherence", open=False) as coherence_accord:
-                # Vibrancy Preservation (NEW DEFAULT)
                 gr.Markdown("""
-                ### Vibrancy Preservation (Recommended)
+                ## Vibrancy Preservation
                 Prevents brownout and maintains brightness/saturation from frame 0.
-                **Allows hue to change** - perfect for prompt changes (white bunny → red apple stays vibrant).
+
+                **How it works:**
+                - Locks **brightness** and **color saturation** to frame 0
+                - Allows **hue to change freely** with prompts
+                - Perfect for: white bunny → red apple (both stay vibrant!)
+
+                **Prevents:**
+                - Cumulative darkening (brownout)
+                - Color desaturation (everything turns gray/brown)
+                - Requires zero tuning - works automatically
                 """)
 
                 enable_vibrancy_preservation = gr.Checkbox(
                     label="Enable Vibrancy Preservation",
                     value=True,
-                    info="Locks brightness and color saturation to frame 0. Prevents cumulative darkening and color desaturation while allowing hue changes with prompts."
+                    info="ON by default. Prevents cumulative darkening and desaturation."
                 )
 
                 vibrancy_preservation_strength = gr.Slider(
-                    label="Vibrancy Preservation Strength",
+                    label="Correction Strength",
                     minimum=0.0,
                     maximum=1.0,
                     step=0.05,
                     value=0.7,
-                    info="How aggressively to correct (0=off, 0.7=recommended, 1.0=maximum)"
+                    info="How aggressively to correct drift (0=off, 0.7=recommended, 1.0=maximum)"
                 )
 
-                gr.Markdown("""
-                ### Color Coherence (Legacy)
-                Matches **full color palette** to frame 0 (HSV/LAB/RGB matching).
-                ⚠️ **Conflicts with prompt changes** - if prompt says "dark forest", coherence pulls it back to bright.
-                """)
-
-                color_coherence, color_force_grayscale = create_row(
-                    da, 'color_coherence', 'color_force_grayscale'
-                )
-                gr.Markdown("""
-                **Color Coherence Modes:**
-                - **None:** Disabled (use Vibrancy Preservation instead)
-                - **HSV:** Match hue/saturation/value to frame 0
-                - **LAB:** Perceptually accurate color matching
-                - **RGB:** Simple channel matching
-                - **Image:** Match to reference image
-
-                *Only use for single-prompt animations where you want exact color palette preservation.*
-                """)
-                legacy_colormatch = create_row(da.legacy_colormatch)
-                with FormRow(visible=False) as color_coherence_image_path_row:
-                    color_coherence_image_path = create_gr_elem(da.color_coherence_image_path)
-                with FormRow(visible=False) as color_coherence_video_every_N_frames_row:
-                    color_coherence_video_every_N_frames = create_gr_elem(da.color_coherence_video_every_N_frames)
-                # NOTE: Optical flow settings moved to 3D Depth tab
-                with FormRow():
-                    contrast_schedule = gr.Textbox(
-                        label="Contrast schedule",
-                        lines=1,
-                        value=da.contrast_schedule,
-                        interactive=True,
-                        info="""adjusts the overall contrast per frame
-                            [neutral at 1.0, recommended to *not* play with this param]"""
-                    )
-                    diffusion_redo = gr.Slider(
-                        label="Redo generation",
-                        minimum=0,
-                        maximum=50,
-                        step=1,
-                        value=da.diffusion_redo,
-                        interactive=True,
-                        info="""this option renders N times before the final render.
-                            it is suggested to lower your steps if you up your redo.
-                            seed is randomized during redo generations and restored afterwards"""
-                    )
-
-                # what to do with blank frames (they may result from glitches or the NSFW filter being turned on):
-                # reroll with +1 seed, interrupt the animation generation, or do nothing
+                # Blank frame handling
+                gr.Markdown("---")
+                gr.Markdown("### Blank Frame Handling")
                 reroll_blank_frames, reroll_patience = create_row(
                     d, 'reroll_blank_frames', 'reroll_patience'
                 )
+
+                # Hidden legacy components for backwards compatibility
+                color_coherence = gr.Dropdown(
+                    label="Color coherence (deprecated)",
+                    choices=['None', 'HSV', 'LAB', 'RGB', 'Image'],
+                    value="None",
+                    visible=False
+                )
+                color_force_grayscale = gr.Checkbox(value=False, visible=False)
+                legacy_colormatch = gr.Checkbox(value=False, visible=False)
+                color_coherence_image_path = gr.Textbox(value="", visible=False)
+                color_coherence_video_every_N_frames = gr.Number(value=1, visible=False)
+                contrast_schedule = gr.Textbox(value=da.contrast_schedule, visible=False)
+                diffusion_redo = gr.Slider(value=da.diffusion_redo, visible=False)
 
             # ANTI BLUR TAB
             with gr.TabItem(f"{emoji_utils.broom()} Anti Blur", elem_id='anti_blur_accord') as anti_blur_tab:
