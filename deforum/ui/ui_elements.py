@@ -135,6 +135,7 @@ def get_tab_keyframes(d, da, dloopArgs):
             with gr.TabItem(f"{emoji_utils.scale()} CFG"):
                 cfg_scale_schedule = create_row(da.cfg_scale_schedule)
                 distilled_cfg_scale_schedule = create_row(da.distilled_cfg_scale_schedule)
+                shift_schedule = create_row(da.shift_schedule)
                 enable_clipskip_scheduling = create_row(da.enable_clipskip_scheduling)
                 clipskip_schedule = create_row(da.clipskip_schedule)
 
@@ -182,6 +183,38 @@ def get_tab_keyframes(d, da, dloopArgs):
                     noise_multiplier_schedule = create_row(da.noise_multiplier_schedule)
             # COHERENCE INNER TAB
             with gr.TabItem(f"{emoji_utils.palette()} Coherence", open=False) as coherence_accord:
+                gr.Markdown("""
+                ## Vibrancy Preservation
+                Prevents brownout and maintains brightness/saturation from frame 0.
+
+                **How it works:**
+                - Locks **brightness** and **color saturation** to frame 0
+                - Allows **hue to change freely** with prompts
+                - Perfect for: white bunny → red apple (both stay vibrant!)
+
+                **Prevents:**
+                - Cumulative darkening (brownout)
+                - Color desaturation (everything turns gray/brown)
+                - Requires zero tuning - works automatically
+                """)
+
+                components['enable_vibrancy_preservation'] = gr.Checkbox(
+                    label="Enable Vibrancy Preservation",
+                    value=True,
+                    info="ON by default. Prevents cumulative darkening and desaturation."
+                )
+
+                components['vibrancy_preservation_strength'] = gr.Slider(
+                    label="Correction Strength",
+                    minimum=0.0,
+                    maximum=1.0,
+                    step=0.05,
+                    value=0.7,
+                    info="How aggressively to correct drift (0=off, 0.7=recommended, 1.0=maximum)"
+                )
+
+                gr.Markdown("---")
+                gr.Markdown("### Legacy Color Coherence (Deprecated)")
                 color_coherence, color_force_grayscale = create_row(
                     da, 'color_coherence', 'color_force_grayscale')
                 legacy_colormatch = create_row(da.legacy_colormatch)
@@ -213,7 +246,13 @@ def get_tab_keyframes(d, da, dloopArgs):
                 sigma_schedule = create_row(da.sigma_schedule)
                 threshold_schedule = create_row(da.threshold_schedule)
 
-    return {k: v for k, v in {**locals(), **vars()}.items()}
+    # Return all components including those in components dict
+    result = dict(locals())
+    result.pop('d', None)
+    result.pop('da', None)
+    result.pop('dloopArgs', None)
+    result.update(components)
+    return result
 
 
 def get_tab_shakify(da, skip_tabitem=False):
