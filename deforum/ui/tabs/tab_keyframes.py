@@ -183,4 +183,13 @@ def get_tab_keyframes(d, da, dloopArgs):
                 sigma_schedule = create_row(da.sigma_schedule)
                 threshold_schedule = create_row(da.threshold_schedule)
 
-    return {k: v for k, v in {**locals(), **vars()}.items()}
+    # Explicitly return all components including nested ones
+    result = {k: v for k, v in {**locals(), **vars()}.items()}
+
+    # Ensure vibrancy preservation components are in result
+    if 'enable_vibrancy_preservation' not in result:
+        result['enable_vibrancy_preservation'] = enable_vibrancy_preservation
+    if 'vibrancy_preservation_strength' not in result:
+        result['vibrancy_preservation_strength'] = vibrancy_preservation_strength
+
+    return result
