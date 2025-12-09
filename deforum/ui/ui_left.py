@@ -249,6 +249,21 @@ def setup_deforum_left_side_ui():
             )
             keyframe_strength = create_gr_elem(da.keyframe_strength_schedule)
 
+    # Dynamic strength analysis displays
+    with gr.Row(variant='compact'):
+        with gr.Column(scale=1):
+            normal_strength_analysis = gr.Markdown(
+                value="**Denoise:** 0.15 (15%) | **Steps:** 3/20",
+                elem_id="normal_strength_analysis",
+                visible=True
+            )
+        with gr.Column(scale=1):
+            keyframe_strength_analysis = gr.Markdown(
+                value="**Denoise:** 0.50 (50%) | **Steps:** 10/20",
+                elem_id="keyframe_strength_analysis",
+                visible=True
+            )
+
     # Keep legacy animation_mode hidden for backwards compatibility
     animation_mode = gr.Radio(
         label="Animation mode (Legacy - Hidden)",
@@ -744,7 +759,8 @@ def setup_deforum_left_side_ui():
     from deforum.ui.handlers.ui_left_handlers import (
         on_reset_to_defaults_click,
         update_slider_step_size,
-        slider_to_textbox
+        slider_to_textbox,
+        calculate_strength_analysis
     )
 
     # Connect steps and fractional checkbox changes to update slider step size
@@ -772,6 +788,33 @@ def setup_deforum_left_side_ui():
         fn=slider_to_textbox,
         inputs=[keyframe_strength_slider],
         outputs=[keyframe_strength]
+    )
+
+    # Connect sliders and steps to analysis displays
+    # Normal strength analysis
+    normal_strength_slider.change(
+        fn=calculate_strength_analysis,
+        inputs=[normal_strength_slider, steps],
+        outputs=[normal_strength_analysis]
+    )
+
+    steps.change(
+        fn=calculate_strength_analysis,
+        inputs=[normal_strength_slider, steps],
+        outputs=[normal_strength_analysis]
+    )
+
+    # Keyframe strength analysis
+    keyframe_strength_slider.change(
+        fn=calculate_strength_analysis,
+        inputs=[keyframe_strength_slider, steps],
+        outputs=[keyframe_strength_analysis]
+    )
+
+    steps.change(
+        fn=calculate_strength_analysis,
+        inputs=[keyframe_strength_slider, steps],
+        outputs=[keyframe_strength_analysis]
     )
 
     # Connect Reset to Defaults button - shows confirmation

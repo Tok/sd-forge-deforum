@@ -411,3 +411,30 @@ def slider_to_textbox(slider_value: float) -> str:
         Formatted schedule string
     """
     return f"0: ({slider_value:.2f})"
+
+
+def calculate_strength_analysis(strength_value: float, steps_value: int) -> str:
+    """Calculate denoise strength and actual steps from Deforum strength.
+
+    Formula:
+    - Denoise strength = 1 - Deforum strength (inverted semantics)
+    - Actual steps = steps × denoise_strength
+
+    Args:
+        strength_value: Deforum strength (0.0-1.0, preservation level)
+        steps_value: Total sampling steps
+
+    Returns:
+        Formatted markdown string showing denoise strength and actual steps
+    """
+    # Deforum uses inverted strength: higher = MORE preservation
+    # Forge uses denoise_strength: higher = MORE changes
+    denoise_strength = 1.0 - strength_value
+
+    # Calculate actual steps that will be executed
+    actual_steps = int(steps_value * denoise_strength)
+
+    # Format as percentage
+    denoise_pct = int(denoise_strength * 100)
+
+    return f"**Denoise:** {denoise_strength:.2f} ({denoise_pct}%) | **Steps:** {actual_steps}/{steps_value}"
