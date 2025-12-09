@@ -185,11 +185,16 @@ def get_tab_keyframes(d, da, dloopArgs):
                 sigma_schedule = create_row(da.sigma_schedule)
                 threshold_schedule = create_row(da.threshold_schedule)
 
-    # Explicitly return all components including nested ones
-    # Merge locals() with components dict to capture nested Gradio components
-    result = {k: v for k, v in {**locals(), **vars()}.items()}
+    # Return all components created in this function
+    # locals() captures all local variables including those created by create_row()
+    result = dict(locals())
 
-    # Add components dict entries to result (includes vibrancy preservation)
+    # Remove function metadata that shouldn't be returned
+    result.pop('d', None)
+    result.pop('da', None)
+    result.pop('dloopArgs', None)
+
+    # Merge components dict (contains vibrancy preservation settings)
     result.update(components)
 
     return result
