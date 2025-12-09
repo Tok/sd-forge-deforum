@@ -52,16 +52,10 @@ def get_webui_sd_pipeline(args, root):
 
     # Guidance scales:
     # Separate CFG scale schedules for Img2Img and for Txt2Img pipes have been removed in favor of unified ones.
-    # Z-Image requires CFG=0.0 (distilled model with no CFG support)
-    from deforum.utils.model_detection import is_zimage_model
-
-    if is_zimage_model() and args.cfg_scale != 0.0:
-        # Override CFG to 0.0 for Z-Image (required for prompt adherence)
-        p.cfg_scale = 0.0
-        p.image_cfg_scale = 0.0
-    else:
-        p.cfg_scale = args.cfg_scale  # see "StableDiffusionProcessing" in <webUI-dir>/modules/processing.py
-        p.image_cfg_scale = args.cfg_scale  # image specific, only used in "StableDiffusionProcessingImg2Img" (img2img.py)
+    # Z-Image doesn't use traditional CFG - it only uses the shift parameter
+    # Setting CFG for Z-Image has no effect (shift parameter controls guidance)
+    p.cfg_scale = args.cfg_scale  # see "StableDiffusionProcessing" in <webUI-dir>/modules/processing.py
+    p.image_cfg_scale = args.cfg_scale  # image specific, only used in "StableDiffusionProcessingImg2Img" (img2img.py)
 
     # Shift parameter handling (Z-Image uses dedicated shift_schedule, Flux uses distilled_cfg_scale)
     if is_zimage_model():
