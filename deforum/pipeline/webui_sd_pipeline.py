@@ -64,6 +64,13 @@ def get_webui_sd_pipeline(args, root):
         p.image_cfg_scale = args.cfg_scale  # image specific, only used in "StableDiffusionProcessingImg2Img" (img2img.py)
 
     p.distilled_cfg_scale = args.distilled_cfg_scale
+
+    # Debug logging for Z-Image shift parameter
+    if is_zimage_model():
+        from deforum.utils.system.logging import get_logger
+        logger = get_logger()
+        logger.debug(f"Z-Image params: CFG={p.cfg_scale}, Shift={p.distilled_cfg_scale}")
+
     # p.image_distilled_cfg_scale  # <-- does not exist (which is fine).
 
     return p
