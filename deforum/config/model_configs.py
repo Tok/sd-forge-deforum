@@ -126,10 +126,10 @@ MODEL_CONFIGS = {
         recommended_steps=9,  # Results in 8 DiT forward passes
         min_steps=4,  # Speed mode (lower quality)
         max_steps=20,  # Quality mode (slower, diminishing returns beyond 20)
-        uses_cfg=False,  # Z-Image is a distilled model with NO CFG support
-        cfg_scale_default=0.0,  # Must be 0.0 (no CFG)
-        cfg_scale_min=0.0,
-        cfg_scale_max=0.0,
+        uses_cfg=True,  # Z-Image DOES use CFG despite being distilled (empirically confirmed)
+        cfg_scale_default=1.0,  # MUST be 1.0 for prompt adherence (documentation was incorrect)
+        cfg_scale_min=1.0,
+        cfg_scale_max=1.0,  # Only 1.0 works correctly
         uses_distilled_cfg=True,  # Repurposed for shift parameter in Forge
         distilled_cfg_scale_default=3.0,  # FlowMatch shift value (NOT CFG!)
         distilled_cfg_scale_min=1.0,  # Lower shift = less noise scaling
@@ -138,7 +138,7 @@ MODEL_CONFIGS = {
         compatible_schedulers=["beta", "simple", "normal"],
         recommended_sampler="euler",
         compatible_samplers=["euler", "euler_a", "dpmpp_2m", "dpmpp_sde"],
-        notes="Z-Image-Turbo uses FlowMatchEulerDiscreteScheduler with shift=3.0 (controlled via distilled_cfg_scale in Forge). NO traditional CFG support - guidance_scale must be 0.0. Recommended: Euler Beta scheduler (warmer colors, sharper micro-contrast). Use in-prompt constraints instead of negative prompts (e.g., 'no watermark', 'plain background'). Native resolution: 1024x1024."
+        notes="Z-Image-Turbo uses FlowMatchEulerDiscreteScheduler with shift=3.0 (controlled via distilled_cfg_scale in Forge). Despite documentation claiming cfg_scale=0.0 required, empirical testing shows cfg_scale=1.0 is REQUIRED for prompt adherence. Recommended: Euler Beta scheduler (warmer colors, sharper micro-contrast). Use in-prompt constraints instead of negative prompts (e.g., 'no watermark', 'plain background'). Native resolution: 1024x1024."
     ),
 
     "sdxl": ModelConfig(

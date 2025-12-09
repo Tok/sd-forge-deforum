@@ -121,9 +121,12 @@ class TestModelConfigRetrieval:
         assert config.model_type == "z_image"
         assert config.display_name == "Z-Image-Turbo"
         assert config.recommended_steps == 9
-        # Z-Image is a distilled model with NO CFG support (verified from official sources)
-        assert config.uses_cfg is False
-        assert config.cfg_scale_default == 0.0
+        # Z-Image DOES use CFG despite being distilled (empirically confirmed)
+        # Official docs say CFG=0.0, but CFG=1.0 is REQUIRED for prompt adherence
+        assert config.uses_cfg is True
+        assert config.cfg_scale_default == 1.0  # Must be 1.0 (not 0.0 as docs claim)
+        assert config.cfg_scale_min == 1.0
+        assert config.cfg_scale_max == 1.0  # Only 1.0 works correctly
         # distilled_cfg_scale repurposed for FlowMatch shift parameter (default 3.0)
         assert config.uses_distilled_cfg is True  # Repurposed for shift in Forge
         assert config.distilled_cfg_scale_default == 3.0  # Shift value, not CFG

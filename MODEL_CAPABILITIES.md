@@ -9,7 +9,7 @@ Comprehensive reference for model-specific features, parameters, and behaviors i
 | **Flux.1 Dev** | ⚠️ Via true_cfg | ⚠️ Via true_cfg | ✅ Dist CFG (3.5) | 50 (28 min) | dist: 3.5 default (>1 to enable) | Best quality, slower |
 | **Flux.1 Schnell** | ❌ No | ❌ No (must be 0) | ❌ Must be 0 | 4 | N/A (guidance=0) | Fast, 1-8 steps max |
 | **Lumina 2.0** | ✅ Yes | ✅ Yes (4.0) | ❌ Ignored | 30 | CFG: 4.0-5.5 | Anime-optimized, requires linear_quadratic |
-| **Z-Image-Turbo** | ❌ No | ❌ No CFG | ✅ Shift (3.0) | 9 (8 passes) | shift: 1.0-5.0 | FlowMatch scheduler, Beta sigmas recommended |
+| **Z-Image-Turbo** | ❌ No | ⚠️ Yes (1.0 only) | ✅ Shift (3.0) | 9 (8 passes) | shift: 1.0-5.0 | CFG=1.0 required, FlowMatch scheduler, Beta sigmas recommended |
 | **SDXL** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | CFG: 4.0-15.0 | Standard diffusion |
 | **SD 1.5** | ✅ Yes | ✅ Yes (7.5) | ❌ Ignored | 25 | CFG: 4.0-15.0 | Classic SD |
 
@@ -20,7 +20,7 @@ Comprehensive reference for model-specific features, parameters, and behaviors i
 | **Flux Dev** | 50 (28 min) | Euler | Simple | true_cfg:1.0 | dist:3.5 | 0.85 / 0.20 | 1024x1024 |
 | **Flux Schnell** | 4 | Euler | Simple | 0.0 | 0.0 | 0.85 / 0.20 | 1024x1024 |
 | **Lumina 2.0** | 30 | Euler | linear_quadratic | 4.0 | - | 0.85 / 0.20 | 1024x1024 |
-| **Z-Image** | 9 (8 passes) | Euler | Beta | 0.0 | shift:3.0 | 0.85 / 0.20 | 1024x1024 |
+| **Z-Image** | 9 (8 passes) | Euler | Beta | 1.0 | shift:3.0 | 0.85 / 0.20 | 1024x1024 |
 | **SDXL** | 25 | DPM++ 2M | Normal | 7.5 | - | 0.85 / 0.20 | 1024x1024 |
 | **SD 1.5** | 25 | DPM++ 2M | Normal | 7.5 | - | 0.85 / 0.20 | 512x512 |
 
@@ -322,7 +322,10 @@ Schnell is **timestep-distilled**, meaning:
 - **Steps:** 9 recommended (actual forward passes: 8, range: 4-20)
   - Speed mode: 4-6 steps (lower quality, faster)
   - Quality mode: 15-20 steps (higher quality, slower, diminishing returns)
-- **Traditional CFG:** 0.0 (no classifier-free guidance)
+- **Traditional CFG:** 1.0 (REQUIRED for prompt adherence - empirically confirmed)
+  - **CRITICAL:** Despite documentation claiming CFG=0.0, CFG=1.0 is REQUIRED for prompts to work
+  - Setting CFG=0.0 causes prompts to be completely ignored
+  - Only CFG=1.0 works correctly in practice
 - **Shift Parameter:** 3.0 (FlowMatch timestep schedule shift)
   - Controlled via `distilled_cfg_scale` in Forge (repurposed parameter)
   - Range: 1.0-5.0 (higher = more variation, lower = more consistent)
@@ -335,7 +338,7 @@ Schnell is **timestep-distilled**, meaning:
 
 **Capabilities:**
 - ❌ Negative prompts (NOT supported - distilled model)
-- ❌ CFG guidance (model doesn't use CFG at all - must set guidance_scale=0.0)
+- ⚠️ CFG guidance (MUST be set to 1.0, despite documentation claiming 0.0 required)
 - ✅ Shift parameter (FlowMatch timestep schedule tuning)
 - ✅ Fast generation (few-step distilled via Decoupled-DMD)
 - ✅ Full img2img support
@@ -371,8 +374,12 @@ Z-Image uses a flow-matching scheduler with these parameters:
    - Popular community preference for Z-Image
 
 **Notes:**
-- Distilled model using Decoupled-DMD that does NOT rely on classifier-free guidance
-- **Critical:** Must set `guidance_scale=0.0` (no CFG support whatsoever)
+- Distilled model using Decoupled-DMD
+- **CRITICAL CFG REQUIREMENT:** Must set `cfg_scale=1.0` (empirically confirmed, contradicts documentation)
+  - Official documentation claims CFG=0.0 required, but this is INCORRECT
+  - CFG=0.0 causes prompts to be completely ignored
+  - Only CFG=1.0 provides proper prompt adherence
+  - This discrepancy is a known issue with Z-Image-Turbo documentation
 - Use in-prompt constraints instead of negative prompts (e.g., "no watermark", "plain background")
 - Works best with long, detailed prompts (recommended: LLM enhancement before generation)
 - 1024x1024 native resolution (max 2048x2048, must be divisible by 8)
@@ -386,7 +393,7 @@ Z-Image uses a flow-matching scheduler with these parameters:
 
 **UI Visibility:**
 - Negative prompt field: Hidden/grayed (not supported)
-- Traditional CFG scale: Hidden/grayed (not used)
+- Traditional CFG scale: Shown (MUST be set to 1.0)
 - Distilled CFG scale: Shown as "Shift" (controls FlowMatch shift parameter, NOT CFG!)
 
 **References:**
@@ -490,7 +497,7 @@ Flux and Z-Image-Turbo use distilled diffusion processes that don't have a separ
 
 **Traditional CFG (Classifier-Free Guidance):**
 - ✅ Lumina 2.0 (4.0-5.5)
-- ✅ Z-Image-Turbo (1.0-4.0)
+- ⚠️ Z-Image-Turbo (MUST be 1.0 - empirically required despite docs saying 0.0)
 - ✅ SDXL (4.0-15.0)
 - ✅ SD 1.5 (4.0-15.0)
 
