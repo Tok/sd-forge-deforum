@@ -30,6 +30,7 @@ from deforum.rendering.calls.mask import call_compose_mask_with_check, call_unsh
 from deforum.rendering.calls.subtitle import call_write_subtitle_from_to
 from deforum.rendering.calls.video_and_audio import call_render_preview
 from deforum.utils.image.processing import maintain_colors
+from deforum.utils.image.adaptive_correction import preserve_vibrancy
 from deforum.media.save_images import save_image
 from deforum.utils.generation.seeds import generate_next_seed
 
@@ -254,10 +255,52 @@ class DiffusionFrame:
 
     @staticmethod
     def apply_color_matching(data: RenderData, image):
-        return DiffusionFrame.apply_color_coherence(image, data) if data.has_color_coherence() else image
+        """Apply color correction based on mode.
+
+        Modes:
+        - Vibrancy preservation (default): Locks brightness/saturation to frame 0
+        - Color coherence (legacy): Matches full color palette to reference
+        """
+        # Check if vibrancy preservation is enabled (new default behavior)
+        use_vibrancy = getattr(data.args.anim_args, 'enable_vibrancy_preservation', True)
+
+        if use_vibrancy:
+            return DiffusionFrame.apply_vibrancy_preservation(image, data)
+        elif data.has_color_coherence():
+            return DiffusionFrame.apply_color_coherence(image, data)
+        else:
+            return image
+
+    @staticmethod
+    def apply_vibrancy_preservation(image, data: RenderData):
+        """Apply vibrancy preservation - locks brightness and saturation to frame 0."""
+        import cv2
+        import numpy as np
+
+        if data.images.color_match is None:
+            # Initialize with first frame - extract reference brightness and saturation
+            if image is not None:
+                data.images.color_match = image.copy()
+
+                # Calculate and store reference stats
+                lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB).astype(np.float32)
+                data.vibrancy_reference_brightness = float(np.mean(lab[:, :, 0]))
+                data.vibrancy_reference_saturation = float(np.std(lab[:, :, 1:]))
+
+            return image
+
+        # Apply vibrancy preservation using stored reference
+        strength = getattr(data.args.anim_args, 'vibrancy_preservation_strength', 0.7)
+        return preserve_vibrancy(
+            image,
+            data.vibrancy_reference_brightness,
+            data.vibrancy_reference_saturation,
+            strength=strength
+        )
 
     @staticmethod
     def apply_color_coherence(image, data: RenderData):
+        """Apply legacy color coherence - matches full color palette to reference."""
         if data.images.color_match is None:
             # Initialize color_match for next iteration with current image, but don't do anything yet.
             if image is not None:

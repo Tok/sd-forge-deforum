@@ -109,18 +109,46 @@ def get_tab_keyframes(d, da, dloopArgs):
 
             # COHERENCE INNER TAB
             with gr.TabItem(f"{emoji_utils.palette()} Coherence", open=False) as coherence_accord:
+                # Vibrancy Preservation (NEW DEFAULT)
+                gr.Markdown("""
+                ### Vibrancy Preservation (Recommended)
+                Prevents brownout and maintains brightness/saturation from frame 0.
+                **Allows hue to change** - perfect for prompt changes (white bunny → red apple stays vibrant).
+                """)
+
+                enable_vibrancy_preservation = gr.Checkbox(
+                    label="Enable Vibrancy Preservation",
+                    value=True,
+                    info="Locks brightness and color saturation to frame 0. Prevents cumulative darkening and color desaturation while allowing hue changes with prompts."
+                )
+
+                vibrancy_preservation_strength = gr.Slider(
+                    label="Vibrancy Preservation Strength",
+                    minimum=0.0,
+                    maximum=1.0,
+                    step=0.05,
+                    value=0.7,
+                    info="How aggressively to correct (0=off, 0.7=recommended, 1.0=maximum)"
+                )
+
+                gr.Markdown("""
+                ### Color Coherence (Legacy)
+                Matches **full color palette** to frame 0 (HSV/LAB/RGB matching).
+                ⚠️ **Conflicts with prompt changes** - if prompt says "dark forest", coherence pulls it back to bright.
+                """)
+
                 color_coherence, color_force_grayscale = create_row(
                     da, 'color_coherence', 'color_force_grayscale'
                 )
                 gr.Markdown("""
                 **Color Coherence Modes:**
-                - **None:** No color matching (default)
-                - **HSV:** Good for preserving vibrant colors and saturation
-                - **LAB:** Most perceptually accurate for human vision
-                - **RGB:** Simple channel-by-channel matching
-                - **Image:** Match colors to a reference image (requires image path below)
+                - **None:** Disabled (use Vibrancy Preservation instead)
+                - **HSV:** Match hue/saturation/value to frame 0
+                - **LAB:** Perceptually accurate color matching
+                - **RGB:** Simple channel matching
+                - **Image:** Match to reference image
 
-                *Use when frames drift in color/tone. Works best with 3D mode.*
+                *Only use for single-prompt animations where you want exact color palette preservation.*
                 """)
                 legacy_colormatch = create_row(da.legacy_colormatch)
                 with FormRow(visible=False) as color_coherence_image_path_row:

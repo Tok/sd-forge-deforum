@@ -453,12 +453,27 @@ def DeforumAnimArgs():
             "value": "0: (0)",
             "info": "Contrast threshold: only sharpen edges above this value (0=sharpen all, higher=sharpen only strong edges)"
         },
+        "enable_vibrancy_preservation": {
+            "label": "Enable Vibrancy Preservation",
+            "type": "checkbox",
+            "value": True,
+            "info": "Locks brightness and color saturation to frame 0. Prevents cumulative darkening and desaturation while allowing hue changes with prompts. Recommended for most use cases."
+        },
+        "vibrancy_preservation_strength": {
+            "label": "Vibrancy Preservation Strength",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "step": 0.05,
+            "value": 0.7,
+            "info": "How aggressively to correct vibrancy drift (0=off, 0.7=recommended, 1.0=maximum correction)"
+        },
         "color_coherence": {
             "label": "Color coherence",
             "type": "dropdown",
             "choices": ['None', 'HSV', 'LAB', 'RGB', 'Image'],
             "value": "None",
-            "info": "Match color statistics between frames to prevent color drift. None=disabled, HSV=preserve hue/saturation, LAB=perceptually accurate, RGB=simple channel matching, Image=match reference image"
+            "info": "LEGACY: Match full color palette to frame 0. Conflicts with prompt changes. Use Vibrancy Preservation instead."
         },
         "color_coherence_image_path": {
             "label": "Color coherence image path",
