@@ -407,25 +407,37 @@ class DepthAnythingV3:
         pil_image, original_h, original_w = _prepare_image_for_inference(image)
 
         # Run DA3 inference (may downsample internally for processing)
-        # Temporarily suppress ALL INFO logging during inference to eliminate spam
+        # Suppress DA3's verbose INFO logging using a custom filter
         import logging
 
-        # Get all active loggers and set them to WARNING
-        saved_levels = {}
-        root_logger = logging.getLogger()
-        saved_levels['root'] = root_logger.level
-        root_logger.setLevel(logging.WARNING)
+        class DA3SpamFilter(logging.Filter):
+            """Filter to block DA3's verbose timing messages."""
+            def filter(self, record):
+                spam_phrases = [
+                    'Model Forward Pass Done',
+                    'Conversion to Prediction Done',
+                    'Processed Images Done'
+                ]
+                return not any(phrase in record.getMessage() for phrase in spam_phrases)
 
-        # Also explicitly suppress known DA3 loggers
-        for logger_name in ['dinov2', 'depth_anything_v2', '__main__', 'depth_anything_3']:
+        # Add filter to root logger and all handlers
+        spam_filter = DA3SpamFilter()
+        root_logger = logging.getLogger()
+        root_logger.addFilter(spam_filter)
+
+        saved_filters = []
+        for handler in root_logger.handlers:
+            handler.addFilter(spam_filter)
+            saved_filters.append((handler, spam_filter))
+
+        # Also add to known DA3 loggers
+        for logger_name in ['dinov2', 'depth_anything_v2', '__main__', 'depth_anything_3', '']:
             try:
                 log = logging.getLogger(logger_name)
-                saved_levels[logger_name] = log.level
-                log.setLevel(logging.WARNING)
-                # Disable all handlers on this logger
+                log.addFilter(spam_filter)
                 for handler in log.handlers:
-                    saved_levels[f'{logger_name}_handler_{id(handler)}'] = handler.level
-                    handler.setLevel(logging.WARNING)
+                    handler.addFilter(spam_filter)
+                    saved_filters.append((handler, spam_filter))
             except:
                 pass
 
@@ -437,18 +449,17 @@ class DepthAnythingV3:
                 conf_thresh_percentile=conf_thresh_percentile
             )
         finally:
-            # Restore original logging levels
-            root_logger.setLevel(saved_levels.get('root', logging.INFO))
-            for logger_name in ['dinov2', 'depth_anything_v2', '__main__', 'depth_anything_3']:
+            # Remove filters
+            root_logger.removeFilter(spam_filter)
+            for handler, filt in saved_filters:
+                try:
+                    handler.removeFilter(filt)
+                except:
+                    pass
+            for logger_name in ['dinov2', 'depth_anything_v2', '__main__', 'depth_anything_3', '']:
                 try:
                     log = logging.getLogger(logger_name)
-                    if logger_name in saved_levels:
-                        log.setLevel(saved_levels[logger_name])
-                    # Restore handler levels
-                    for handler in log.handlers:
-                        key = f'{logger_name}_handler_{id(handler)}'
-                        if key in saved_levels:
-                            handler.setLevel(saved_levels[key])
+                    log.removeFilter(spam_filter)
                 except:
                     pass
 
