@@ -52,26 +52,10 @@ def get_webui_sd_pipeline(args, root):
 
     # Guidance scales:
     # Separate CFG scale schedules for Img2Img and for Txt2Img pipes have been removed in favor of unified ones.
-    # Z-Image doesn't use traditional CFG - it only uses the shift parameter
-    # Setting CFG for Z-Image has no effect (shift parameter controls guidance)
     p.cfg_scale = args.cfg_scale  # see "StableDiffusionProcessing" in <webUI-dir>/modules/processing.py
+    p.distilled_cfg_scale = args.distilled_cfg_scale
+    # Additionally passed to the Img2Img pipe only (probably for override?), so we can just pass the same value again:
     p.image_cfg_scale = args.cfg_scale  # image specific, only used in "StableDiffusionProcessingImg2Img" (img2img.py)
-
-    # Shift parameter handling (Z-Image uses dedicated shift_schedule, Flux uses distilled_cfg_scale)
-    from deforum.utils.model_detection import is_zimage_model
-
-    if is_zimage_model():
-        from deforum.utils.system.logging import get_logger
-        logger = get_logger()
-
-        # Z-Image uses dedicated shift_schedule parameter
-        shift = getattr(args, 'shift', 3.0)  # Default to 3.0 if not set
-        p.distilled_cfg_scale = shift
-        logger.debug(f"Z-Image params: CFG={p.cfg_scale}, Shift={shift}")
-    else:
-        # Flux and other models use distilled_cfg_scale
-        p.distilled_cfg_scale = args.distilled_cfg_scale
-
     # p.image_distilled_cfg_scale  # <-- does not exist (which is fine).
 
     return p
