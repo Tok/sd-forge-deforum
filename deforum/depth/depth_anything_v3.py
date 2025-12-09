@@ -407,39 +407,24 @@ class DepthAnythingV3:
         pil_image, original_h, original_w = _prepare_image_for_inference(image)
 
         # Run DA3 inference (may downsample internally for processing)
-        # Suppress DA3's verbose INFO logging using a custom filter
+        # Suppress DA3's verbose INFO logging by temporarily redirecting stdout
         import logging
+        import sys
+        import io
 
-        class DA3SpamFilter(logging.Filter):
-            """Filter to block DA3's verbose timing messages."""
-            def filter(self, record):
-                spam_phrases = [
-                    'Model Forward Pass Done',
-                    'Conversion to Prediction Done',
-                    'Processed Images Done'
-                ]
-                return not any(phrase in record.getMessage() for phrase in spam_phrases)
-
-        # Add filter to root logger and all handlers
-        spam_filter = DA3SpamFilter()
-        root_logger = logging.getLogger()
-        root_logger.addFilter(spam_filter)
-
-        saved_filters = []
-        for handler in root_logger.handlers:
-            handler.addFilter(spam_filter)
-            saved_filters.append((handler, spam_filter))
-
-        # Also add to known DA3 loggers
-        for logger_name in ['dinov2', 'depth_anything_v2', '__main__', 'depth_anything_3', '']:
+        # Save original loggers and set all known DA3 loggers to WARNING
+        saved_levels = {}
+        for logger_name in ['dinov2', 'depth_anything_v2', 'depth_anything_3', '__main__', '']:
             try:
-                log = logging.getLogger(logger_name)
-                log.addFilter(spam_filter)
-                for handler in log.handlers:
-                    handler.addFilter(spam_filter)
-                    saved_filters.append((handler, spam_filter))
+                da_logger = logging.getLogger(logger_name)
+                saved_levels[logger_name] = da_logger.level
+                da_logger.setLevel(logging.CRITICAL)  # Suppress everything except CRITICAL
             except:
                 pass
+
+        # Also suppress stdout (DA3 may be using print())
+        original_stdout = sys.stdout
+        sys.stdout = io.StringIO()  # Redirect to dummy buffer
 
         try:
             # Pass tuning parameters to DA3 model
@@ -449,17 +434,14 @@ class DepthAnythingV3:
                 conf_thresh_percentile=conf_thresh_percentile
             )
         finally:
-            # Remove filters
-            root_logger.removeFilter(spam_filter)
-            for handler, filt in saved_filters:
+            # Restore stdout
+            sys.stdout = original_stdout
+
+            # Restore logger levels
+            for logger_name, level in saved_levels.items():
                 try:
-                    handler.removeFilter(filt)
-                except:
-                    pass
-            for logger_name in ['dinov2', 'depth_anything_v2', '__main__', 'depth_anything_3', '']:
-                try:
-                    log = logging.getLogger(logger_name)
-                    log.removeFilter(spam_filter)
+                    da_logger = logging.getLogger(logger_name)
+                    da_logger.setLevel(level)
                 except:
                     pass
 
