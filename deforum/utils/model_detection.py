@@ -44,6 +44,12 @@ FLUX_CONFIG = ModelConfig(
     recommended_steps=20,
 )
 
+ZIMAGE_CONFIG = ModelConfig(
+    name="Z-Image-Turbo",
+    cfg_range=(0.0, 0.0),  # Z-Image requires CFG=0.0 (distilled model)
+    recommended_steps=9,
+)
+
 DEFAULT_CONFIG = ModelConfig(
     name="Unknown",
     cfg_range=(7.0, 12.0),
@@ -369,6 +375,8 @@ def get_recommended_cfg_scale() -> tuple[float, float]:
     """
     if is_lumina_model():
         return LUMINA_CONFIG.cfg_range
+    if is_zimage_model():
+        return ZIMAGE_CONFIG.cfg_range
     if is_flux_model():
         return FLUX_CONFIG.cfg_range
     return DEFAULT_CONFIG.cfg_range
@@ -382,6 +390,44 @@ def get_recommended_steps() -> int:
     """
     if is_lumina_model():
         return LUMINA_CONFIG.recommended_steps
+    if is_zimage_model():
+        return ZIMAGE_CONFIG.recommended_steps
     if is_flux_model():
         return FLUX_CONFIG.recommended_steps
     return DEFAULT_CONFIG.recommended_steps
+
+
+def validate_zimage_prompt(prompt: str) -> tuple[bool, str]:
+    """Validate Z-Image prompt meets minimum requirements.
+
+    Z-Image-Turbo requires long, detailed prompts (80-250 words) to work properly.
+    Short prompts will be ignored or produce poor results.
+
+    Args:
+        prompt: Prompt text to validate
+
+    Returns:
+        Tuple of (is_valid, warning_message)
+    """
+    if not is_zimage_model():
+        return True, ""
+
+    word_count = len(prompt.split())
+
+    if word_count < 20:
+        return False, (
+            f"⚠️ Z-Image prompt too short ({word_count} words). "
+            f"Z-Image-Turbo requires detailed prompts (80-250 words) including: "
+            f"camera angle, lighting, environment, style, and explicit constraints. "
+            f"Short prompts will be ignored. "
+            f"See: https://gist.github.com/illuminatianon/c42f8e57f1e3ebf037dd58043da9de32"
+        )
+
+    if word_count < 80:
+        return True, (
+            f"⚠️ Z-Image prompt short ({word_count} words). "
+            f"Optimal range is 80-250 words for best results. "
+            f"Consider adding: camera/cinematography details, lighting, environment, style."
+        )
+
+    return True, ""
