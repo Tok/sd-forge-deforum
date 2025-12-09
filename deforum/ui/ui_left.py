@@ -379,6 +379,11 @@ def setup_deforum_left_side_ui():
             audio_ai_end_prompt = tab_init_params.get('audio_ai_end_prompt')
             audio_sync_prompts = tab_init_params.get('audio_sync_prompts')
 
+            # Explicitly unpack Keyframes tab components (new parameters)
+            shift_schedule = tab_keyframes_params.get('shift_schedule')
+            enable_vibrancy_preservation = tab_keyframes_params.get('enable_vibrancy_preservation')
+            vibrancy_preservation_strength = tab_keyframes_params.get('vibrancy_preservation_strength')
+
             # Explicitly unpack Interpolation tab components (created outside subtabs)
             diffusion_interpolation_method = diffusion_interpolation_method_top
             # da3_multiview_model_size already created as local variable at line 328
