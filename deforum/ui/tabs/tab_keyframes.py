@@ -124,13 +124,14 @@ def get_tab_keyframes(d, da, dloopArgs):
                 - Requires zero tuning - works automatically
                 """)
 
-                enable_vibrancy_preservation = gr.Checkbox(
+                # Store in components dict for proper return
+                components['enable_vibrancy_preservation'] = gr.Checkbox(
                     label="Enable Vibrancy Preservation",
                     value=True,
                     info="ON by default. Prevents cumulative darkening and desaturation."
                 )
 
-                vibrancy_preservation_strength = gr.Slider(
+                components['vibrancy_preservation_strength'] = gr.Slider(
                     label="Correction Strength",
                     minimum=0.0,
                     maximum=1.0,
