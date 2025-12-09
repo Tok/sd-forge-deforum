@@ -370,6 +370,9 @@ class DeformAnimKeys:
         self.distilled_cfg_scale_schedule_series = self.fi.parse_inbetweens(
             anim_args.distilled_cfg_scale_schedule, 'distilled_cfg_scale_schedule'
         )
+        self.shift_schedule_series = self.fi.parse_inbetweens(
+            anim_args.shift_schedule, 'shift_schedule'
+        )
         self.ddim_eta_schedule_series = self.fi.parse_inbetweens(
             anim_args.ddim_eta_schedule, 'ddim_eta_schedule'
         )

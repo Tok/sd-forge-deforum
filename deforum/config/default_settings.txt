@@ -101,6 +101,7 @@
     "contrast_schedule": "0: (1.0)",
     "cfg_scale_schedule": "0: (1.0)",
     "distilled_cfg_scale_schedule": "0: (3.5)",
+    "shift_schedule": "0: (3.0)",
     "enable_steps_scheduling": false,
     "steps_schedule": "0: (20)",
     "fov_schedule": "0: (70)",

@@ -174,6 +174,7 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
         args.prompt = prompt_to_print
         args.cfg_scale = keys.cfg_scale_schedule_series[frame_idx]
         args.distilled_cfg_scale = keys.distilled_cfg_scale_schedule_series[frame_idx]
+        args.shift = keys.shift_schedule_series[frame_idx]
 
         scheduled_sampler_name = keys.sampler_schedule_series[frame_idx].casefold() if anim_args.enable_sampler_scheduling and keys.sampler_schedule_series[frame_idx] is not None else None
         scheduled_scheduler_name = keys.scheduler_schedule_series[frame_idx].casefold() if anim_args.enable_scheduler_scheduling and keys.scheduler_schedule_series[frame_idx] is not None else None

@@ -212,6 +212,7 @@ class RenderData:
         self.args.args.prompt = self.prompt_series[i]  # grab prompt for current frame
         self.args.args.cfg_scale = frame.frame_data.cfg_scale
         self.args.args.distilled_cfg_scale = frame.frame_data.distilled_cfg_scale
+        self.args.args.shift = frame.frame_data.shift
 
     def update_checkpoint_for_current_step(self, i):
         keys = self.animation_keys.deform_keys

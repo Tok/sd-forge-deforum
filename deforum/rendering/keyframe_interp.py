@@ -259,6 +259,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         data.args.args.prompt = data.prompt_series[frame_idx]  # Set prompt for current frame
         data.args.args.cfg_scale = keys.cfg_scale_schedule_series[frame_idx]
         data.args.args.distilled_cfg_scale = keys.distilled_cfg_scale_schedule_series[frame_idx]
+        data.args.args.shift = keys.shift_schedule_series[frame_idx]
 
         # Checkpoint scheduling (disabled for Flux/Wan mode - always use loaded Flux model)
         if data.args.anim_args.enable_checkpoint_scheduling:

@@ -59,6 +59,7 @@ def get_tab_keyframes(d, da, dloopArgs):
             with gr.TabItem(f"{emoji_utils.scale()} CFG"):
                 cfg_scale_schedule = create_row(da.cfg_scale_schedule)
                 distilled_cfg_scale_schedule = create_row(da.distilled_cfg_scale_schedule)
+                shift_schedule = create_row(da.shift_schedule)
                 enable_clipskip_scheduling = create_row(da.enable_clipskip_scheduling)
                 clipskip_schedule = create_row(da.clipskip_schedule)
 
