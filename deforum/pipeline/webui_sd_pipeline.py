@@ -63,13 +63,22 @@ def get_webui_sd_pipeline(args, root):
         p.cfg_scale = args.cfg_scale  # see "StableDiffusionProcessing" in <webUI-dir>/modules/processing.py
         p.image_cfg_scale = args.cfg_scale  # image specific, only used in "StableDiffusionProcessingImg2Img" (img2img.py)
 
-    p.distilled_cfg_scale = args.distilled_cfg_scale
-
-    # Debug logging for Z-Image shift parameter
+    # Z-Image shift parameter handling
     if is_zimage_model():
         from deforum.utils.system.logging import get_logger
         logger = get_logger()
+
+        # Auto-adjust shift if user left default Flux value (3.5)
+        # Z-Image optimal shift is 3.0, not 3.5
+        if abs(args.distilled_cfg_scale - 3.5) < 0.01:
+            logger.warning(f"Z-Image detected with Flux default shift (3.5). Auto-adjusting to 3.0 for optimal results.")
+            p.distilled_cfg_scale = 3.0
+        else:
+            p.distilled_cfg_scale = args.distilled_cfg_scale
+
         logger.debug(f"Z-Image params: CFG={p.cfg_scale}, Shift={p.distilled_cfg_scale}")
+    else:
+        p.distilled_cfg_scale = args.distilled_cfg_scale
 
     # p.image_distilled_cfg_scale  # <-- does not exist (which is fine).
 
