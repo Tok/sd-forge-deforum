@@ -322,7 +322,7 @@ Unable to generate downsampled preview (no frames after sampling).
         <span id="speedInfo" class="info" style="min-width: 50px;">{playback_fps} fps</span>
     </div>
 
-    {"" if not downsampled else f'''<div style="margin-top: 12px; padding: 8px 12px; background: rgba(255,150,100,0.15); border-left: 3px solid #FF9664; border-radius: 4px; color: #FF9664; font-size: 13px;">
+    {"" if not downsampled else '''<div style="margin-top: 12px; padding: 8px 12px; background: rgba(255,150,100,0.15); border-left: 3px solid #FF9664; border-radius: 4px; color: #FF9664; font-size: 13px;">
         ℹ️ Preview Downsampled: Showing {len(metrics_list):,} of {original_frame_count:,} frames (every {DOWNSAMPLE_RATE}th frame + keyframes)
     </div>'''}
 
