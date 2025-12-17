@@ -47,31 +47,43 @@ def _ensure_da3_package_installed() -> bool:
     except ImportError:
         logger.warning("Depth Anything V3 package not found, attempting auto-install...")
         logger.info(f"Installing to: {sys.executable}")
-        logger.info("Running: pip install --upgrade depth-anything-3 xformers numpy<2.0")
+        logger.info("Running: pip install --upgrade depth-anything-3 numpy<2.0 trimesh")
         logger.info("This may take a few minutes (downloading ~50MB + dependencies)...")
         logger.info("Note: Using --upgrade to resolve dependency conflicts (numpy, pillow, trimesh)")
 
         try:
-            # Auto-install DA3 package with dependency resolution
-            # Use --upgrade to resolve version conflicts (numpy, pillow, etc.)
+            # Step 1: Install DA3 package WITHOUT xformers (xformers often fails on Python 3.12+)
             subprocess.check_call([
                 sys.executable, '-m', 'pip', 'install',
                 '--upgrade',
                 'git+https://github.com/ByteDance-Seed/Depth-Anything-3.git',
-                'xformers',
                 'numpy>=1.23.0,<2.0.0',  # Compatible numpy version
                 'trimesh',  # Ensure trimesh uses compatible numpy
             ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             logger.info("✓ Depth Anything V3 package installed successfully to venv")
 
-            # Verify installation
+            # Step 2: Try to install xformers separately (OPTIONAL - don't fail if this fails)
+            logger.info("Attempting to install xformers (optional optimization)...")
+            try:
+                subprocess.check_call([
+                    sys.executable, '-m', 'pip', 'install',
+                    'xformers>=0.0.20',
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+                logger.info("✓ xformers installed successfully")
+            except subprocess.CalledProcessError:
+                logger.warning("⚠️  xformers installation failed (common on Python 3.12+)")
+                logger.warning("   DA3 will work without it, but may be slower")
+                logger.warning("   To install manually (requires CUDA toolkit):")
+                logger.warning(f"     {sys.executable} -m pip install xformers")
+
+            # Verify DA3 installation
             import depth_anything_3
             return True
 
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to auto-install DA3 package: {e}")
             logger.error("You may need to install manually:")
-            logger.error(f"  {sys.executable} -m pip install git+https://github.com/ByteDance-Seed/Depth-Anything-3.git xformers")
+            logger.error(f"  {sys.executable} -m pip install git+https://github.com/ByteDance-Seed/Depth-Anything-3.git")
             return False
         except ImportError as e:
             logger.error("DA3 package installed but import still failed")
