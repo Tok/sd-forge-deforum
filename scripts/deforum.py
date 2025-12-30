@@ -56,31 +56,39 @@ def init_deforum():
     # create the Models/Deforum folder, where many of the deforum related models/ packages will be downloaded
     os.makedirs(ph.models_path + '/Deforum', exist_ok=True)
 
-    # Auto-download Flux model and VAE if not present
+    # Check if Flux/Wan models are installed and show helpful message if not
     try:
-        from deforum.utils.system.flux_model_downloader import auto_download_flux_if_needed
         from deforum.utils.system.flux_check import is_flux_available
+        from deforum.utils.system.wan_model_downloader import WanModelDownloader
 
-        if not is_flux_available():
-            print("[Deforum] Flux model not detected - starting auto-download...")
-            print("[Deforum] This will download ~15GB across 4 files:")
-            print("[Deforum]   - flux1-dev-bnb-nf4-v2.safetensors (~5GB)")
-            print("[Deforum]   - clip_l.safetensors (~250MB)")
-            print("[Deforum]   - t5xxl_fp16.safetensors (~9.8GB)")
-            print("[Deforum]   - ae.safetensors (~300MB)")
-            print("[Deforum] Please wait...")
-            auto_download_flux_if_needed()
-    except Exception as e:
-        print(f"⚠️ Deforum: Failed to auto-download Flux: {e}")
-        print("[Deforum] You can manually download Flux from the Wan Models tab")
+        flux_available = is_flux_available()
+        wan_downloader = WanModelDownloader()
+        wan_flf2v_available = wan_downloader.is_flf2v_installed()
 
-    # Auto-download Wan 2.1 FLF2V model if not present
-    try:
-        from deforum.utils.system.wan_model_downloader import auto_download_wan_flf2v_if_needed
-        auto_download_wan_flf2v_if_needed()
+        if not flux_available or not wan_flf2v_available:
+            print("\n" + "="*70)
+            print("⚠️  Deforum Model Setup Required")
+            print("="*70)
+
+            if not flux_available:
+                print("\n📦 Flux models NOT installed (~15GB download required)")
+                print("   Required for: Flux render modes")
+
+            if not wan_flf2v_available:
+                print("\n📦 Wan FLF2V model NOT installed (~14GB download required)")
+                print("   Required for: Flux + Interpolation mode with Wan FLF2V")
+
+            print("\n✅ Models are OPTIONAL - only download what you need:")
+            print("   • Z-Image, Lumina, SDXL: Work without Flux/Wan")
+            print("   • Qwen: Auto-downloads when you click 'Enhance Prompts'")
+            print("\n📥 To download models:")
+            print("   • Automatic: ./shell_scripts/download-all-models.sh")
+            print("   • Manual: Wan Models tab → Download buttons")
+            print("\n💡 Tip: You can use Deforum now with Z-Image, Lumina, or SDXL!")
+            print("="*70 + "\n")
     except Exception as e:
-        print(f"⚠️ Deforum: Failed to auto-download Wan FLF2V: {e}")
-        print("[Deforum] You can manually download Wan models from the Wan Models tab")
+        # Silently ignore check failures to avoid breaking extension load
+        pass
 
     # import our on_ui_tabs and on_ui_settings functions from the respected files
     from deforum.ui.ui_right import on_ui_tabs

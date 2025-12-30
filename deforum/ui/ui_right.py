@@ -161,9 +161,6 @@ def on_ui_tabs():
     # extend paths using sys.path.extend so we can access all of our files and folders
     deforum_sys_extend()
 
-    # DEBUG: Verify we're loading the correct version (Git commit fc2071bb - CSS f-string fix)
-    print("[DEFORUM DEBUG] ui_right.py loaded - CSS f-string fix applied (commit fc2071bb)")
-
     # set text above generate button
     style = '"text-align:center;font-weight:bold;padding:8px 0;min-height:60px;display:block"'
     extension_url = "https://github.com/Tok/sd-forge-deforum"

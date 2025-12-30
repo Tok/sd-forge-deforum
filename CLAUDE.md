@@ -631,15 +631,29 @@ Core dependencies (from `requirements.txt`):
 - **TI2V:** `models/Deforum/wan/Wan2.2-TI2V-5B/` (~5GB)
 - **Repository:** `Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers`, `Wan-AI/Wan2.2-TI2V-5B-Diffusers`
 
-**Auto-Downloaded Models:**
-- **Qwen:** `models/Deforum/qwen/` (3B/7B/14B variants, lazy-loaded)
-- **Depth:** `models/Deforum/` (Depth-Anything V2, auto-downloaded on first use)
-- **FILM:** `models/Deforum/film_interpolation/film_net_fp16.pt`
+**Model Download Behavior:**
 
-**Download Script:**
+**IMPORTANT: Flux and Wan models are NOT auto-downloaded to avoid forcing ~29GB download on first run!**
+
+- ✅ **Z-Image, Lumina, SDXL:** Work immediately without downloading Flux/Wan
+- ✅ **Qwen (3-14GB):** Lazy-loaded when you click "Enhance Prompts" button
+- ✅ **Depth-Anything V2:** Auto-downloads on first use (when generating with depth)
+- ✅ **FILM Interpolation:** Auto-downloads on first use (when using FILM)
+
+- ⚠️ **Flux (~15GB):** Must be manually downloaded (required for Flux render modes only)
+- ⚠️ **Wan FLF2V (~14GB):** Must be manually downloaded (required for Flux + Interpolation mode only)
+
+**To Download Models:**
 ```bash
-./shell_scripts/download-all-models.sh  # Interactive download with dependency checks
+# Option 1: Automatic download script (interactive, checks dependencies)
+./shell_scripts/download-all-models.sh
+
+# Option 2: UI download buttons (Wan Models tab)
+# - Download Flux models
+# - Download Wan models (TI2V-5B, TI2V-A14B)
 ```
+
+**On First Run:** If Flux/Wan models are missing, you'll see a helpful warning with download instructions. You can still use Deforum with other models (Z-Image, Lumina, SDXL) immediately!
 
 ## Known Limitations
 
