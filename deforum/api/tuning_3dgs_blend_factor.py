@@ -164,8 +164,15 @@ def generate_keyframe_with_zit(
             raise RuntimeError("Generation produced blank image")
 
         # Save image
+        output_path = str(output_path)  # Ensure it's a string
         image.save(output_path)
         logger.info(f"✓ Generated keyframe: {output_path}")
+
+        # Cleanup: Free VRAM after generation to prepare for DA3 loading
+        del p, processed, image, img_array
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            logger.debug("Cleared CUDA cache after keyframe generation")
 
     except Exception as e:
         # Fallback to placeholder if generation fails
@@ -208,6 +215,7 @@ def generate_keyframe_with_zit(
         draw.text((x+2, y+2), text, fill=(0, 0, 0), font=font)
         draw.text((x, y), text, fill=(255, 255, 255), font=font)
 
+        output_path = str(output_path)  # Ensure it's a string
         img.save(output_path)
         logger.info(f"Generated placeholder keyframe: {output_path}")
 
@@ -288,7 +296,27 @@ def run_blend_factor_test(
             generate_red_cube_keyframe(width, height, keyframe_0_path)
             generate_blue_sphere_keyframe(width, height, keyframe_1_path)
 
-        # Step 2: Run DA3-3DGS interpolation
+        # Step 2: Aggressive VRAM cleanup before loading DA3
+        logger.info("Clearing VRAM before loading DA3...")
+
+        # Unload Forge models to free VRAM
+        try:
+            from modules import shared
+            if hasattr(shared, 'sd_model') and shared.sd_model is not None:
+                shared.sd_model = None
+            import gc
+            gc.collect()
+        except:
+            pass
+
+        # Clear CUDA cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+            freed_mb = torch.cuda.memory_reserved() / (1024**2)
+            logger.info(f"Freed {freed_mb:.2f} MB CUDA memory")
+
+        # Step 3: Run DA3-3DGS interpolation
         logger.info("Loading keyframes and building 3DGS scene...")
 
         # Load keyframe images
