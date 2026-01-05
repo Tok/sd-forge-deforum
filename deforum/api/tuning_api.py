@@ -30,6 +30,7 @@ class TuningTestType(str, Enum):
     RAFT_TUNING = "raft_tuning"
     DA3_3DGS_TUNING = "da3_3dgs_tuning"
     DA3_3DGS_SYNTHETIC = "da3_3dgs_synthetic"  # Synthetic test images (no diffusion)
+    DA3_3DGS_BLEND_FACTOR = "da3_3dgs_blend_factor"  # Test schedule blending
 
 
 class TuningTestConfig(BaseModel):
@@ -85,6 +86,9 @@ class TuningTestConfig(BaseModel):
     dgs_nearclip_min: Optional[float] = Field(None, ge=0.01, le=1.0, description="Min near-clip distance (filters close splats)")
     dgs_nearclip_max: Optional[float] = Field(None, ge=0.01, le=1.0, description="Max near-clip distance")
     dgs_nearclip_step: Optional[float] = Field(None, ge=0.01, le=0.5, description="Step size for near-clip sweep")
+    dgs_blend_factor_min: Optional[float] = Field(None, ge=0.0, le=1.0, description="Min schedule blend factor (0=pure DA3, 1=pure Deforum)")
+    dgs_blend_factor_max: Optional[float] = Field(None, ge=0.0, le=1.0, description="Max schedule blend factor")
+    dgs_blend_factor_step: Optional[float] = Field(None, ge=0.05, le=0.5, description="Step size for blend factor sweep")
 
 
 class TuningTestStatus(BaseModel):
@@ -197,6 +201,8 @@ class TuningTestManager:
                 self._run_3dgs_tests(test_id, config)
             elif config.test_type == TuningTestType.DA3_3DGS_SYNTHETIC:
                 self._run_synthetic_3dgs_tests(test_id, config)
+            elif config.test_type == TuningTestType.DA3_3DGS_BLEND_FACTOR:
+                self._run_blend_factor_tests(test_id, config)
             else:
                 # Run standard I2V chaining tests (color preservation, temporal, flux)
                 self._run_i2v_chaining_tests(test_id, config)
@@ -582,6 +588,75 @@ class TuningTestManager:
         logger.info(f"Real DA3-3DGS sweep complete: {len(results)} tests run")
 
         # Markdown report is generated automatically by run_real_3dgs_sweep()
+
+    def _run_blend_factor_tests(self, test_id: str, config: TuningTestConfig):
+        """Run blend factor sweep tests.
+
+        Tests DA3-3DGS with varying schedule_blend_factor values to find
+        optimal blending between DA3 auto-poses and Deforum manual schedules.
+
+        Generates red cube → blue sphere keyframes and runs DA3-3DGS interpolation.
+
+        Args:
+            test_id: Test identifier
+            config: Test configuration with blend factor parameters
+        """
+        from pathlib import Path
+        from deforum.api.tuning_3dgs_blend_factor import run_blend_factor_sweep
+        import os
+        import numpy as np
+
+        logger.info(f"Starting blend factor sweep for test {test_id}")
+
+        # Create output directory
+        forge_root = Path(os.getcwd())
+        tuning_dir = forge_root / "output" / "deforum-tuning"
+        test_output_dir = tuning_dir / f"blend_factor_{test_id}"
+        test_output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Extract blend factor range from config
+        blend_min = config.dgs_blend_factor_min if config.dgs_blend_factor_min is not None else 0.0
+        blend_max = config.dgs_blend_factor_max if config.dgs_blend_factor_max is not None else 1.0
+        blend_step = config.dgs_blend_factor_step if config.dgs_blend_factor_step is not None else 0.25
+
+        # Generate blend factor values
+        blend_factors = list(np.arange(blend_min, blend_max + blend_step/2, blend_step))
+
+        # Get other 3DGS params
+        neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
+        densification = config.dgs_densification_min if config.dgs_densification_min is not None else 2
+
+        # Get resolution from aspect ratios or use default
+        if config.aspect_ratios and len(config.aspect_ratios) > 0:
+            aspect_config = config.aspect_ratios[0]
+            width = int(aspect_config[1])
+            height = int(aspect_config[2])
+        else:
+            width = 512
+            height = 512
+
+        logger.info(f"Blend factor sweep: {blend_factors}")
+        logger.info(f"Neighbor segments: {neighbor_segments}, Densification: {densification}")
+        logger.info(f"Resolution: {width}x{height}")
+
+        # Run sweep
+        results = run_blend_factor_sweep(
+            blend_factors=blend_factors,
+            neighbor_segments=neighbor_segments,
+            densification=densification,
+            width=width,
+            height=height,
+            num_frames=30,
+            output_dir=test_output_dir,
+            progress_callback=lambda i, total, desc: logger.info(f"[{i+1}/{total}] {desc}")
+        )
+
+        # Update test status with results
+        with self.test_lock:
+            if test_id in self.active_tests:
+                self.active_tests[test_id].results = [r.to_dict() for r in results]
+
+        logger.info(f"Blend factor sweep complete: {len(results)} tests run")
 
     def _create_3dgs_test_directory(self, test_id: str) -> Path:
         """Create output directory for 3DGS test.

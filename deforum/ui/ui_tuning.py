@@ -1318,10 +1318,21 @@ def create_tuning_tab() -> tuple:
                     elif "1:1" in aspect_str:
                         aspect_configs.append([1.0, 512, 512])
 
-                # Create DA3-3DGS test config (using synthetic test images, no diffusion)
+                # Create DA3-3DGS test config
+                # If blend factor params are provided, use blend factor test
+                # Otherwise use standard synthetic 3DGS test
+                has_blend_params = (
+                    dgs_blend_factor_min_val is not None and
+                    dgs_blend_factor_max_val is not None and
+                    dgs_blend_factor_step_val is not None and
+                    dgs_blend_factor_min_val != dgs_blend_factor_max_val
+                )
+
+                test_type = "da3_3dgs_blend_factor" if has_blend_params else "da3_3dgs_synthetic"
+
                 # IMPORTANT: Keys must match TuningTestConfig field names (with dgs_ prefix)
                 config = {
-                    "test_type": "da3_3dgs_synthetic",
+                    "test_type": test_type,
                     "aspect_ratios": aspect_configs,
                     "rotation_factor": dgs_rotation_factor_val,
                     "orbit_radius": dgs_orbit_radius_val,
