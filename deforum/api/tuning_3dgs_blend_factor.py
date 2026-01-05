@@ -3,16 +3,25 @@
 Tests the new schedule blending feature by generating simple animations
 with varying blend factors between DA3 auto-poses and Deforum schedules.
 
-Test Case: Red Cube → Blue Sphere
+Current Status:
+- ✅ Placeholder keyframe generation (TODO: integrate real Z-Image-Turbo)
+- ✅ DA3-3DGS scene building and gaussian splat rendering
+- ✅ Video output for easy comparison
+- ⚠️  Blend factor NOT YET APPLIED (all tests use pure DA3 poses currently)
+- TODO: Integrate Deforum camera schedules and apply blend_factor mixing
+
+Why all outputs look similar:
+Without Deforum schedules, blend_factor has no effect since there's nothing to blend.
+All tests use pure DA3 auto-estimated camera poses, so differences are minimal.
+
+Test Case: Red Cube → Blue Sphere (or Photorealistic City)
 - 2 keyframe prompts (simple subject change)
-- Simple rotation schedule (rotation_3d_y: 0→360 degrees)
 - DA3-3DGS interpolation between keyframes
-- Sweep blend_factor from 0.0 (pure DA3) to 1.0 (pure Deforum)
+- Outputs: rendered frames + MP4 video
 
 Metrics:
 - Visual quality (SSIM between frames)
 - Temporal consistency (jitter/smoothness)
-- Camera path adherence (how well it follows Deforum schedule)
 - Render time and VRAM usage
 """
 
@@ -352,6 +361,21 @@ def run_blend_factor_test(
             rendered_image.save(frame_path)
             rendered_images.append(rendered_image)
 
+        # Step 4: Stitch frames into video for easy comparison
+        logger.info("Stitching frames into video...")
+        video_path = output_dir / f"blend_{blend_factor:.2f}.mp4"
+        try:
+            import imageio
+            # Combine keyframes + tweens in order
+            all_frames = [np.array(Image.open(keyframe_0_path))]
+            all_frames.extend([np.array(img) for img in rendered_images])
+            all_frames.append(np.array(Image.open(keyframe_1_path)))
+
+            imageio.mimsave(video_path, all_frames, fps=24, format='mp4')
+            logger.info(f"✓ Video saved: {video_path}")
+        except Exception as e:
+            logger.warning(f"Failed to create video: {e}")
+
         processing_time = time.time() - start_time
         avg_frame_time = processing_time / num_frames
 
@@ -359,8 +383,18 @@ def run_blend_factor_test(
         peak_vram_gb = torch.cuda.max_memory_allocated() / (1024**3) if torch.cuda.is_available() else 0.0
 
         # Temporal consistency: average SSIM between consecutive frames
-        from deforum.rendering.da3_3dgs_metrics import calculate_multi_view_ssim
-        temporal_consistency = calculate_multi_view_ssim(rendered_images) if rendered_images else 0.85
+        # Calculate directly to avoid imagehash dependency
+        from skimage.metrics import structural_similarity as ssim
+        if len(rendered_images) >= 2:
+            ssim_scores = []
+            for i in range(len(rendered_images) - 1):
+                img1 = np.array(rendered_images[i].convert('L'))  # Grayscale
+                img2 = np.array(rendered_images[i + 1].convert('L'))
+                score = ssim(img1, img2, data_range=255)
+                ssim_scores.append(score)
+            temporal_consistency = float(np.mean(ssim_scores))
+        else:
+            temporal_consistency = 0.85
 
         # Camera path adherence: For now, measure deviation from linear interpolation
         # TODO: Calculate actual deviation when Deforum schedules are integrated
