@@ -288,19 +288,20 @@ def run_blend_factor_test(
         # Load keyframe images
         keyframe_images = [Image.open(keyframe_0_path), Image.open(keyframe_1_path)]
 
-        # Load DA3 model
-        from deforum.depth.depth import DepthModel
+        # Load DA3 model directly (not via DepthModel singleton wrapper)
+        from deforum.depth.depth_anything_v3 import DepthAnythingV3
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        da3_model = DepthModel(
+        logger.info("Loading DA3-GIANT model...")
+        da3_model = DepthAnythingV3(
             device=device,
-            model_type="DA3-GIANT",  # Use GIANT for best quality
-            half_precision=True
+            model_size="giant",
+            variant="giant"
         )
 
         # Build 3DGS scene from keyframes
         logger.info(f"Building 3DGS scene from {len(keyframe_images)} keyframes...")
-        prediction = da3_model.model.estimate_3d_gaussians(keyframe_images)
+        prediction = da3_model.estimate_3d_gaussians(keyframe_images)
 
         if prediction is None or not hasattr(prediction, 'gaussians'):
             raise RuntimeError("DA3 model doesn't support 3DGS. Need model with trained gs_head.")
@@ -384,6 +385,11 @@ def run_blend_factor_test(
             visual_quality=visual_quality,
         )
 
+        # Cleanup: Free VRAM before next test
+        del da3_model, prediction, gaussians, rendered_images
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         logger.info(f"✅ Test complete: score={result.calculate_overall_score():.1f}/100")
         return result
 
@@ -391,6 +397,16 @@ def run_blend_factor_test(
         logger.error(f"❌ Test failed: {str(e)}")
         import traceback
         traceback.print_exc()
+
+        # Cleanup: Try to free VRAM even on failure
+        try:
+            if 'da3_model' in locals():
+                del da3_model
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except:
+            pass
+
         return BlendFactorTestResult(
             blend_factor=blend_factor,
             neighbor_segments=neighbor_segments,
