@@ -140,6 +140,8 @@ def generate_keyframe_with_zit(
             cfg_scale=config.cfg_scale_default,
             sampler_name="Euler",
             seed=seed,
+            do_not_save_samples=True,  # We'll save manually - prevents auto-save to None path
+            do_not_save_grid=True,
         )
 
         # Set distilled CFG / shift parameter if model uses it
