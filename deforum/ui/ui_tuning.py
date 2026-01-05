@@ -740,6 +740,40 @@ def create_tuning_tab() -> tuple:
                             info="Large step OK (minimal impact on quality)",
                         )
 
+                        gr.Markdown("### 🎥 Schedule Blend Factor (NEW!)")
+                        gr.Markdown("""
+                        **Test blending between DA3 auto-poses and Deforum manual schedules:**
+                        - 0.0 = Pure DA3 (automatic, geometrically accurate)
+                        - 0.5 = Hybrid (DA3 baseline + Deforum offsets)
+                        - 1.0 = Pure Deforum (full manual control)
+
+                        This test uses **red cube → blue sphere** with simple rotation schedule.
+                        """)
+                        dgs_blend_factor_min = gr.Slider(
+                            label="Min blend factor",
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.0,
+                            step=0.05,
+                            info="Start with pure DA3 (0.0)",
+                        )
+                        dgs_blend_factor_max = gr.Slider(
+                            label="Max blend factor",
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=1.0,
+                            step=0.05,
+                            info="End with pure Deforum (1.0)",
+                        )
+                        dgs_blend_factor_step = gr.Slider(
+                            label="Blend factor step",
+                            minimum=0.05,
+                            maximum=0.5,
+                            value=0.25,
+                            step=0.05,
+                            info="0.25 = test [0.0, 0.25, 0.5, 0.75, 1.0] (5 tests)",
+                        )
+
                         # 3DGS test action buttons
                         with gr.Row():
                             dgs_run_btn = gr.Button(f"{rocket} Run 3DGS Tests", variant="primary", size="lg")
@@ -1247,6 +1281,9 @@ def create_tuning_tab() -> tuple:
             dgs_aspect_ratios_val,
             dgs_rotation_factor_val,
             dgs_orbit_radius_val,
+            dgs_blend_factor_min_val,
+            dgs_blend_factor_max_val,
+            dgs_blend_factor_step_val,
             dgs_test_iterations_val,
             dgs_scene_strategies_val,
             dgs_rolling_window_size_val,
@@ -1302,6 +1339,9 @@ def create_tuning_tab() -> tuple:
                     "dgs_nearclip_min": float(dgs_nearclip_min_val),
                     "dgs_nearclip_max": float(dgs_nearclip_max_val),
                     "dgs_nearclip_step": float(dgs_nearclip_step_val),
+                    "dgs_blend_factor_min": float(dgs_blend_factor_min_val),
+                    "dgs_blend_factor_max": float(dgs_blend_factor_max_val),
+                    "dgs_blend_factor_step": float(dgs_blend_factor_step_val),
                 }
 
                 # Submit test
@@ -1327,6 +1367,9 @@ def create_tuning_tab() -> tuple:
                 dgs_aspect_ratios,
                 dgs_rotation_factor,
                 dgs_orbit_radius,
+                dgs_blend_factor_min,
+                dgs_blend_factor_max,
+                dgs_blend_factor_step,
                 dgs_test_iterations,
                 dgs_scene_strategies,
                 dgs_rolling_window_size,
