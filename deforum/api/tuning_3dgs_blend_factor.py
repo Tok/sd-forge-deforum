@@ -4,9 +4,10 @@ Tests the new schedule blending feature by generating simple animations
 with varying blend factors between DA3 auto-poses and Deforum schedules.
 
 Current Status:
-- ✅ Placeholder keyframe generation (TODO: integrate real Z-Image-Turbo)
+- ✅ Real keyframe generation using Z-Image-Turbo or current loaded model
 - ✅ DA3-3DGS scene building and gaussian splat rendering
-- ✅ Video output for easy comparison
+- ✅ Video output (24fps MP4) for easy comparison
+- ✅ 300 frame clips for better visual assessment
 - ⚠️  Blend factor NOT YET APPLIED (all tests use pure DA3 poses currently)
 - TODO: Integrate Deforum camera schedules and apply blend_factor mixing
 
@@ -104,7 +105,7 @@ def generate_keyframe_with_zit(
     output_path: Path,
     seed: int = 42
 ) -> None:
-    """Generate keyframe using Z-Image-Turbo.
+    """Generate keyframe using Z-Image-Turbo or current loaded model.
 
     Args:
         prompt: Text prompt for generation
@@ -112,107 +113,104 @@ def generate_keyframe_with_zit(
         height: Output height
         output_path: Path to save generated image
         seed: Random seed for reproducibility
-
-    TODO: Z-Image-Turbo Integration
-    --------------------------------
-    This function currently generates placeholder images. To integrate real Z-Image generation:
-
-    1. Import Forge modules:
-       ```python
-       from modules import processing, shared
-       from deforum.config.model_configs import get_model_config
-       ```
-
-    2. Detect Z-Image model:
-       ```python
-       from deforum.utils.model_detection import get_current_model_name
-       model_name = get_current_model_name()
-       if "z-image" not in model_name.lower():
-           raise ValueError("Z-Image model not loaded")
-       ```
-
-    3. Create Txt2Img processing object:
-       ```python
-       config = get_model_config(model_name)
-       p = processing.StableDiffusionProcessingTxt2Img(
-           sd_model=shared.sd_model,
-           prompt=prompt,
-           negative_prompt="",
-           width=width,
-           height=height,
-           steps=config.recommended_steps,  # 9 steps
-           cfg_scale=1.0,  # MUST be 1.0 for Z-Image
-           sampler_name="Euler",
-           seed=seed,
-       )
-       # Set shift parameter (controlled via distilled_cfg_scale in Forge)
-       p.extra_generation_params["shift"] = 3.0
-       ```
-
-    4. Generate image:
-       ```python
-       processed = processing.process_images(p)
-       image = processed.images[0]
-       image.save(output_path)
-       ```
-
-    5. Handle errors:
-       - Check if Z-Image model is loaded before generation
-       - Validate image output (non-blank)
-       - Clean up VRAM after generation if needed
-
-    For reference, see:
-    - deforum/config/model_configs.py:123 - Z-Image config
-    - deforum/orchestration/generate.py:469 - Full generation pipeline
     """
-    from PIL import Image, ImageDraw, ImageFont
-    import hashlib
-    import numpy as np
-
-    logger.warning(f"[PLACEHOLDER] Generating mock keyframe for: {prompt}")
-    logger.info(f"TODO: Replace with real Z-Image-Turbo generation (see docstring for integration guide)")
-
-    # Create visually distinct placeholder based on prompt
-    prompt_hash = int(hashlib.md5(prompt.encode()).hexdigest()[:8], 16)
-
-    # Generate gradient background
-    img_array = np.zeros((height, width, 3), dtype=np.uint8)
-    color1 = np.array([
-        (prompt_hash >> 16) & 0xFF,
-        (prompt_hash >> 8) & 0xFF,
-        prompt_hash & 0xFF
-    ])
-    color2 = np.array([
-        (prompt_hash >> 24) & 0xFF,
-        (prompt_hash >> 12) & 0xFF,
-        (prompt_hash >> 4) & 0xFF
-    ])
-
-    for y in range(height):
-        blend = y / height
-        color = (color1 * (1 - blend) + color2 * blend).astype(np.uint8)
-        img_array[y, :] = color
-
-    img = Image.fromarray(img_array)
-
-    # Add prominent text overlay
-    draw = ImageDraw.Draw(img)
     try:
-        from PIL import ImageFont
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
-    except:
-        font = ImageFont.load_default()
+        # Try real generation with current model
+        from modules import processing, shared
+        from deforum.config.model_configs import get_model_config
+        from deforum.utils.model_detection import get_current_model_name
 
-    # Text with shadow for visibility
-    text = f"PLACEHOLDER\nZ-Image TODO\n\n{prompt[:40]}"
-    x, y = 10, 10
-    # Shadow
-    draw.text((x+2, y+2), text, fill=(0, 0, 0), font=font)
-    # Main text
-    draw.text((x, y), text, fill=(255, 255, 255), font=font)
+        model_name = get_current_model_name()
+        logger.info(f"Generating keyframe with {model_name}: {prompt[:50]}")
 
-    img.save(output_path)
-    logger.info(f"Generated keyframe (placeholder): {output_path}")
+        # Get model config
+        config = get_model_config(model_name)
+
+        # Create Txt2Img processing object
+        p = processing.StableDiffusionProcessingTxt2Img(
+            sd_model=shared.sd_model,
+            prompt=prompt,
+            negative_prompt="",
+            width=width,
+            height=height,
+            steps=config.recommended_steps,
+            cfg_scale=config.cfg_scale_default,
+            sampler_name="Euler",
+            seed=seed,
+        )
+
+        # Set distilled CFG / shift parameter if model uses it
+        if config.uses_distilled_cfg:
+            # For Z-Image this is the shift parameter (3.0)
+            # For Flux this is distilled CFG scale (3.5)
+            if hasattr(shared.opts, 'distilled_cfg_scale'):
+                shared.opts.distilled_cfg_scale = config.distilled_cfg_scale_default
+
+        # Generate image
+        logger.debug(f"Starting generation: {width}x{height}, {config.recommended_steps} steps")
+        processed = processing.process_images(p)
+
+        if not processed or not processed.images:
+            raise RuntimeError("Generation failed: no images returned")
+
+        image = processed.images[0]
+
+        # Validate image (check if blank)
+        import numpy as np
+        img_array = np.array(image)
+        if img_array.max() == img_array.min():
+            raise RuntimeError("Generation produced blank image")
+
+        # Save image
+        image.save(output_path)
+        logger.info(f"✓ Generated keyframe: {output_path}")
+
+    except Exception as e:
+        # Fallback to placeholder if generation fails
+        logger.warning(f"Failed to generate with model: {e}")
+        logger.info(f"Falling back to placeholder keyframe")
+
+        from PIL import Image, ImageDraw, ImageFont
+        import hashlib
+
+        # Create visually distinct placeholder based on prompt
+        prompt_hash = int(hashlib.md5(prompt.encode()).hexdigest()[:8], 16)
+
+        # Generate gradient background
+        img_array = np.zeros((height, width, 3), dtype=np.uint8)
+        color1 = np.array([
+            (prompt_hash >> 16) & 0xFF,
+            (prompt_hash >> 8) & 0xFF,
+            prompt_hash & 0xFF
+        ])
+        color2 = np.array([
+            (prompt_hash >> 24) & 0xFF,
+            (prompt_hash >> 12) & 0xFF,
+            (prompt_hash >> 4) & 0xFF
+        ])
+
+        for y in range(height):
+            blend = y / height
+            color = (color1 * (1 - blend) + color2 * blend).astype(np.uint8)
+            img_array[y, :] = color
+
+        img = Image.fromarray(img_array)
+
+        # Add prominent text overlay
+        draw = ImageDraw.Draw(img)
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+        except:
+            font = ImageFont.load_default()
+
+        # Text with shadow
+        text = f"PLACEHOLDER\n(Generation Failed)\n\n{prompt[:40]}"
+        x, y = 10, 10
+        draw.text((x+2, y+2), text, fill=(0, 0, 0), font=font)
+        draw.text((x, y), text, fill=(255, 255, 255), font=font)
+
+        img.save(output_path)
+        logger.info(f"Generated placeholder keyframe: {output_path}")
 
 
 def generate_red_cube_keyframe(width: int, height: int, output_path: Path) -> None:
@@ -243,7 +241,7 @@ def run_blend_factor_test(
     densification: int = 2,
     width: int = 512,
     height: int = 512,
-    num_frames: int = 30,
+    num_frames: int = 300,
     output_dir: Path = None,
     scene_type: str = "simple",
 ) -> BlendFactorTestResult:
@@ -465,7 +463,7 @@ def run_blend_factor_sweep(
     densification: int = 2,
     width: int = 512,
     height: int = 512,
-    num_frames: int = 30,
+    num_frames: int = 300,
     output_dir: Path = None,
     scene_type: str = "simple",
     progress_callback=None,
