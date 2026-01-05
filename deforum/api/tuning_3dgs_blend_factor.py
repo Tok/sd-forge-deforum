@@ -114,13 +114,16 @@ def generate_keyframe_with_zit(
         output_path: Path to save generated image
         seed: Random seed for reproducibility
     """
+    from PIL import Image, ImageDraw, ImageFont
+    import hashlib
+
     try:
         # Try real generation with current model
         from modules import processing, shared
         from deforum.config.model_configs import get_model_config
-        from deforum.utils.model_detection import get_current_model_name
+        from deforum.utils.model_detection import get_model_name
 
-        model_name = get_current_model_name()
+        model_name = get_model_name()
         logger.info(f"Generating keyframe with {model_name}: {prompt[:50]}")
 
         # Get model config
@@ -156,7 +159,6 @@ def generate_keyframe_with_zit(
         image = processed.images[0]
 
         # Validate image (check if blank)
-        import numpy as np
         img_array = np.array(image)
         if img_array.max() == img_array.min():
             raise RuntimeError("Generation produced blank image")
@@ -169,9 +171,6 @@ def generate_keyframe_with_zit(
         # Fallback to placeholder if generation fails
         logger.warning(f"Failed to generate with model: {e}")
         logger.info(f"Falling back to placeholder keyframe")
-
-        from PIL import Image, ImageDraw, ImageFont
-        import hashlib
 
         # Create visually distinct placeholder based on prompt
         prompt_hash = int(hashlib.md5(prompt.encode()).hexdigest()[:8], 16)
