@@ -103,32 +103,107 @@ def generate_keyframe_with_zit(
         height: Output height
         output_path: Path to save generated image
         seed: Random seed for reproducibility
+
+    TODO: Z-Image-Turbo Integration
+    --------------------------------
+    This function currently generates placeholder images. To integrate real Z-Image generation:
+
+    1. Import Forge modules:
+       ```python
+       from modules import processing, shared
+       from deforum.config.model_configs import get_model_config
+       ```
+
+    2. Detect Z-Image model:
+       ```python
+       from deforum.utils.model_detection import get_current_model_name
+       model_name = get_current_model_name()
+       if "z-image" not in model_name.lower():
+           raise ValueError("Z-Image model not loaded")
+       ```
+
+    3. Create Txt2Img processing object:
+       ```python
+       config = get_model_config(model_name)
+       p = processing.StableDiffusionProcessingTxt2Img(
+           sd_model=shared.sd_model,
+           prompt=prompt,
+           negative_prompt="",
+           width=width,
+           height=height,
+           steps=config.recommended_steps,  # 9 steps
+           cfg_scale=1.0,  # MUST be 1.0 for Z-Image
+           sampler_name="Euler",
+           seed=seed,
+       )
+       # Set shift parameter (controlled via distilled_cfg_scale in Forge)
+       p.extra_generation_params["shift"] = 3.0
+       ```
+
+    4. Generate image:
+       ```python
+       processed = processing.process_images(p)
+       image = processed.images[0]
+       image.save(output_path)
+       ```
+
+    5. Handle errors:
+       - Check if Z-Image model is loaded before generation
+       - Validate image output (non-blank)
+       - Clean up VRAM after generation if needed
+
+    For reference, see:
+    - deforum/config/model_configs.py:123 - Z-Image config
+    - deforum/orchestration/generate.py:469 - Full generation pipeline
     """
-    # TODO: Actually generate with Z-Image-Turbo
-    # This requires integrating with Deforum's generation pipeline
-    #
-    # For now, create placeholder gradients
     from PIL import Image, ImageDraw, ImageFont
     import hashlib
+    import numpy as np
 
-    # Create a colored gradient based on prompt hash (pseudo-unique per prompt)
-    prompt_hash = int(hashlib.md5(prompt.encode()).hexdigest()[:6], 16)
-    color = (
+    logger.warning(f"[PLACEHOLDER] Generating mock keyframe for: {prompt}")
+    logger.info(f"TODO: Replace with real Z-Image-Turbo generation (see docstring for integration guide)")
+
+    # Create visually distinct placeholder based on prompt
+    prompt_hash = int(hashlib.md5(prompt.encode()).hexdigest()[:8], 16)
+
+    # Generate gradient background
+    img_array = np.zeros((height, width, 3), dtype=np.uint8)
+    color1 = np.array([
         (prompt_hash >> 16) & 0xFF,
         (prompt_hash >> 8) & 0xFF,
         prompt_hash & 0xFF
-    )
+    ])
+    color2 = np.array([
+        (prompt_hash >> 24) & 0xFF,
+        (prompt_hash >> 12) & 0xFF,
+        (prompt_hash >> 4) & 0xFF
+    ])
 
-    img = Image.new('RGB', (width, height), color=color)
+    for y in range(height):
+        blend = y / height
+        color = (color1 * (1 - blend) + color2 * blend).astype(np.uint8)
+        img_array[y, :] = color
 
-    # Add text overlay showing it's a placeholder
+    img = Image.fromarray(img_array)
+
+    # Add prominent text overlay
     draw = ImageDraw.Draw(img)
-    text = f"[ZIT TODO]\n{prompt[:30]}"
-    draw.text((10, 10), text, fill=(255, 255, 255))
+    try:
+        from PIL import ImageFont
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+    except:
+        font = ImageFont.load_default()
+
+    # Text with shadow for visibility
+    text = f"PLACEHOLDER\nZ-Image TODO\n\n{prompt[:40]}"
+    x, y = 10, 10
+    # Shadow
+    draw.text((x+2, y+2), text, fill=(0, 0, 0), font=font)
+    # Main text
+    draw.text((x, y), text, fill=(255, 255, 255), font=font)
 
     img.save(output_path)
     logger.info(f"Generated keyframe (placeholder): {output_path}")
-    logger.warning(f"TODO: Replace with real Z-Image-Turbo generation for: {prompt}")
 
 
 def generate_red_cube_keyframe(width: int, height: int, output_path: Path) -> None:
