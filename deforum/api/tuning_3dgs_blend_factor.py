@@ -299,22 +299,26 @@ def run_blend_factor_test(
         # Step 2: Aggressive VRAM cleanup before loading DA3
         logger.info("Clearing VRAM before loading DA3...")
 
-        # Unload Forge models to free VRAM
+        # Use Forge's model management to move model to CPU
         try:
-            from modules import shared
+            from modules import shared, lowvram
+            # Move model to CPU/system RAM instead of unloading completely
             if hasattr(shared, 'sd_model') and shared.sd_model is not None:
-                shared.sd_model = None
+                logger.info("Moving Forge model to CPU...")
+                shared.sd_model.to('cpu')
             import gc
             gc.collect()
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Could not move model to CPU: {e}")
 
-        # Clear CUDA cache
+        # Clear CUDA cache aggressively
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
+            torch.cuda.synchronize()  # Wait for all operations to complete
             freed_mb = torch.cuda.memory_reserved() / (1024**2)
-            logger.info(f"Freed {freed_mb:.2f} MB CUDA memory")
+            available_mb = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()) / (1024**2)
+            logger.info(f"VRAM: {freed_mb:.2f} MB reserved, {available_mb:.2f} MB available")
 
         # Step 3: Run DA3-3DGS interpolation
         logger.info("Loading keyframes and building 3DGS scene...")
@@ -326,12 +330,27 @@ def run_blend_factor_test(
         from deforum.depth.depth_anything_v3 import DepthAnythingV3
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        logger.info("Loading DA3-GIANT model...")
+        logger.info("Loading DA3-GIANT model with memory optimization...")
+
+        # Load model on CPU first to avoid OOM during initialization
         da3_model = DepthAnythingV3(
-            device=device,
+            device=torch.device('cpu'),
             model_size="giant",
             variant="giant"
         )
+
+        # Convert to half precision to reduce VRAM usage
+        logger.info("Converting DA3 to half precision (FP16)...")
+        da3_model.model = da3_model.model.half()
+
+        # Move to GPU after conversion
+        logger.info(f"Moving DA3 to {device}...")
+        da3_model.model.to(device)
+        da3_model.device = device
+
+        if torch.cuda.is_available():
+            vram_used = torch.cuda.memory_allocated() / (1024**3)
+            logger.info(f"DA3 loaded successfully. VRAM used: {vram_used:.2f} GB")
 
         # Build 3DGS scene from keyframes
         logger.info(f"Building 3DGS scene from {len(keyframe_images)} keyframes...")
