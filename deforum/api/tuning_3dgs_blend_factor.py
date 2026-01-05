@@ -157,16 +157,22 @@ def generate_keyframe_with_zit(
             raise RuntimeError("Generation failed: no images returned")
 
         image = processed.images[0]
+        if image is None:
+            raise RuntimeError("Generation returned None image")
 
         # Validate image (check if blank)
         img_array = np.array(image)
         if img_array.max() == img_array.min():
             raise RuntimeError("Generation produced blank image")
 
-        # Save image
-        output_path = str(output_path)  # Ensure it's a string
-        image.save(output_path)
-        logger.info(f"✓ Generated keyframe: {output_path}")
+        # Save image - convert Path to string explicitly
+        save_path = str(output_path) if output_path is not None else None
+        if save_path is None:
+            raise RuntimeError("Output path is None")
+
+        logger.debug(f"Saving image to: {save_path}")
+        image.save(save_path)
+        logger.info(f"✓ Generated keyframe: {save_path}")
 
         # Cleanup: Free VRAM after generation to prepare for DA3 loading
         del p, processed, image, img_array
@@ -177,6 +183,8 @@ def generate_keyframe_with_zit(
     except Exception as e:
         # Fallback to placeholder if generation fails
         logger.warning(f"Failed to generate with model: {e}")
+        import traceback
+        logger.debug(f"Traceback: {traceback.format_exc()}")
         logger.info(f"Falling back to placeholder keyframe")
 
         # Create visually distinct placeholder based on prompt
@@ -330,27 +338,22 @@ def run_blend_factor_test(
         from deforum.depth.depth_anything_v3 import DepthAnythingV3
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        logger.info("Loading DA3-GIANT model with memory optimization...")
+        logger.info("Loading DA3-GIANT model (FP32 for 3DGS compatibility)...")
 
-        # Load model on CPU first to avoid OOM during initialization
+        # NOTE: Cannot use FP16 - 3DGS estimation requires FP32
+        # Error with FP16: "expected scalar type Float but found Half"
+
+        # Load directly on GPU (we've freed enough VRAM at this point)
         da3_model = DepthAnythingV3(
-            device=torch.device('cpu'),
+            device=device,
             model_size="giant",
             variant="giant"
         )
 
-        # Convert to half precision to reduce VRAM usage
-        logger.info("Converting DA3 to half precision (FP16)...")
-        da3_model.model = da3_model.model.half()
-
-        # Move to GPU after conversion
-        logger.info(f"Moving DA3 to {device}...")
-        da3_model.model.to(device)
-        da3_model.device = device
-
         if torch.cuda.is_available():
             vram_used = torch.cuda.memory_allocated() / (1024**3)
-            logger.info(f"DA3 loaded successfully. VRAM used: {vram_used:.2f} GB")
+            vram_free = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()) / (1024**3)
+            logger.info(f"DA3 loaded successfully. VRAM used: {vram_used:.2f} GB, free: {vram_free:.2f} GB")
 
         # Build 3DGS scene from keyframes
         logger.info(f"Building 3DGS scene from {len(keyframe_images)} keyframes...")
