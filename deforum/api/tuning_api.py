@@ -89,6 +89,7 @@ class TuningTestConfig(BaseModel):
     dgs_blend_factor_min: Optional[float] = Field(None, ge=0.0, le=1.0, description="Min schedule blend factor (0=pure DA3, 1=pure Deforum)")
     dgs_blend_factor_max: Optional[float] = Field(None, ge=0.0, le=1.0, description="Max schedule blend factor")
     dgs_blend_factor_step: Optional[float] = Field(None, ge=0.05, le=0.5, description="Step size for blend factor sweep")
+    dgs_test_scene_type: Optional[str] = Field(None, description="Test scene type: 'simple' or 'photorealistic'")
 
 
 class TuningTestStatus(BaseModel):
@@ -626,6 +627,12 @@ class TuningTestManager:
         neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
         densification = config.dgs_densification_min if config.dgs_densification_min is not None else 2
 
+        # Get scene type (simple vs photorealistic)
+        scene_type = "simple"
+        if config.dgs_test_scene_type:
+            if "photorealistic" in config.dgs_test_scene_type.lower():
+                scene_type = "photorealistic"
+
         # Get resolution from aspect ratios or use default
         if config.aspect_ratios and len(config.aspect_ratios) > 0:
             aspect_config = config.aspect_ratios[0]
@@ -638,6 +645,7 @@ class TuningTestManager:
         logger.info(f"Blend factor sweep: {blend_factors}")
         logger.info(f"Neighbor segments: {neighbor_segments}, Densification: {densification}")
         logger.info(f"Resolution: {width}x{height}")
+        logger.info(f"Scene type: {scene_type}")
 
         # Run sweep
         results = run_blend_factor_sweep(
@@ -648,6 +656,7 @@ class TuningTestManager:
             height=height,
             num_frames=30,
             output_dir=test_output_dir,
+            scene_type=scene_type,
             progress_callback=lambda i, total, desc: logger.info(f"[{i+1}/{total}] {desc}")
         )
 

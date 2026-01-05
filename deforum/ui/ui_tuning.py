@@ -746,9 +746,16 @@ def create_tuning_tab() -> tuple:
                         - 0.0 = Pure DA3 (automatic, geometrically accurate)
                         - 0.5 = Hybrid (DA3 baseline + Deforum offsets)
                         - 1.0 = Pure Deforum (full manual control)
-
-                        This test uses **red cube → blue sphere** with simple rotation schedule.
                         """)
+                        dgs_test_scene_type = gr.Radio(
+                            label="Test Scene Type",
+                            choices=[
+                                "Simple (Red Cube → Blue Sphere)",
+                                "Photorealistic (City/Interior with Z-Image-Turbo)"
+                            ],
+                            value="Simple (Red Cube → Blue Sphere)",
+                            info="Simple = fast validation, Photorealistic = real quality testing with depth/structure"
+                        )
                         dgs_blend_factor_min = gr.Slider(
                             label="Min blend factor",
                             minimum=0.0,
@@ -1284,6 +1291,7 @@ def create_tuning_tab() -> tuple:
             dgs_blend_factor_min_val,
             dgs_blend_factor_max_val,
             dgs_blend_factor_step_val,
+            dgs_test_scene_type_val,
             dgs_test_iterations_val,
             dgs_scene_strategies_val,
             dgs_rolling_window_size_val,
@@ -1353,6 +1361,7 @@ def create_tuning_tab() -> tuple:
                     "dgs_blend_factor_min": float(dgs_blend_factor_min_val),
                     "dgs_blend_factor_max": float(dgs_blend_factor_max_val),
                     "dgs_blend_factor_step": float(dgs_blend_factor_step_val),
+                    "dgs_test_scene_type": dgs_test_scene_type_val,
                 }
 
                 # Submit test
@@ -1381,6 +1390,7 @@ def create_tuning_tab() -> tuple:
                 dgs_blend_factor_min,
                 dgs_blend_factor_max,
                 dgs_blend_factor_step,
+                dgs_test_scene_type,
                 dgs_test_iterations,
                 dgs_scene_strategies,
                 dgs_rolling_window_size,

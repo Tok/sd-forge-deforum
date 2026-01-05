@@ -88,24 +88,69 @@ class BlendFactorTestResult:
         return data
 
 
-def generate_red_cube_keyframe(width: int, height: int, output_path: Path) -> None:
-    """Generate red cube keyframe using Z-Image-Turbo (TODO: implement)."""
+def generate_keyframe_with_zit(
+    prompt: str,
+    width: int,
+    height: int,
+    output_path: Path,
+    seed: int = 42
+) -> None:
+    """Generate keyframe using Z-Image-Turbo.
+
+    Args:
+        prompt: Text prompt for generation
+        width: Output width
+        height: Output height
+        output_path: Path to save generated image
+        seed: Random seed for reproducibility
+    """
     # TODO: Actually generate with Z-Image-Turbo
-    # For now, create a simple red gradient placeholder
-    from PIL import Image
-    img = Image.new('RGB', (width, height), color='red')
+    # This requires integrating with Deforum's generation pipeline
+    #
+    # For now, create placeholder gradients
+    from PIL import Image, ImageDraw, ImageFont
+    import hashlib
+
+    # Create a colored gradient based on prompt hash (pseudo-unique per prompt)
+    prompt_hash = int(hashlib.md5(prompt.encode()).hexdigest()[:6], 16)
+    color = (
+        (prompt_hash >> 16) & 0xFF,
+        (prompt_hash >> 8) & 0xFF,
+        prompt_hash & 0xFF
+    )
+
+    img = Image.new('RGB', (width, height), color=color)
+
+    # Add text overlay showing it's a placeholder
+    draw = ImageDraw.Draw(img)
+    text = f"[ZIT TODO]\n{prompt[:30]}"
+    draw.text((10, 10), text, fill=(255, 255, 255))
+
     img.save(output_path)
-    logger.info(f"Generated red cube keyframe: {output_path}")
+    logger.info(f"Generated keyframe (placeholder): {output_path}")
+    logger.warning(f"TODO: Replace with real Z-Image-Turbo generation for: {prompt}")
+
+
+def generate_red_cube_keyframe(width: int, height: int, output_path: Path) -> None:
+    """Generate red cube keyframe (simple test mode)."""
+    generate_keyframe_with_zit("a red cube on a table", width, height, output_path, seed=1)
 
 
 def generate_blue_sphere_keyframe(width: int, height: int, output_path: Path) -> None:
-    """Generate blue sphere keyframe using Z-Image-Turbo (TODO: implement)."""
-    # TODO: Actually generate with Z-Image-Turbo
-    # For now, create a simple blue gradient placeholder
-    from PIL import Image
-    img = Image.new('RGB', (width, height), color='blue')
-    img.save(output_path)
-    logger.info(f"Generated blue sphere keyframe: {output_path}")
+    """Generate blue sphere keyframe (simple test mode)."""
+    generate_keyframe_with_zit("a blue sphere on a table", width, height, output_path, seed=2)
+
+
+def generate_photorealistic_keyframe_1(width: int, height: int, output_path: Path) -> None:
+    """Generate first photorealistic keyframe (city exterior)."""
+    prompt = "modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k"
+    generate_keyframe_with_zit(prompt, width, height, output_path, seed=100)
+
+
+def generate_photorealistic_keyframe_2(width: int, height: int, output_path: Path) -> None:
+    """Generate second photorealistic keyframe (city interior/different angle)."""
+    prompt = "urban plaza with trees and benches, people walking, architectural photography, detailed, 8k"
+    generate_keyframe_with_zit(prompt, width, height, output_path, seed=101)
 
 
 def run_blend_factor_test(
@@ -116,11 +161,12 @@ def run_blend_factor_test(
     height: int = 512,
     num_frames: int = 30,
     output_dir: Path = None,
+    scene_type: str = "simple",
 ) -> BlendFactorTestResult:
     """Run a single blend factor test with REAL generation.
 
     This test:
-    1. Generates 2 keyframes: red cube (frame 0) and blue sphere (frame 30)
+    1. Generates 2 keyframes using selected scene type
     2. Runs DA3-3DGS interpolation with specified blend_factor
     3. Measures real quality metrics from rendered frames
 
@@ -132,6 +178,7 @@ def run_blend_factor_test(
         height: Output height
         num_frames: Total frames to generate
         output_dir: Directory to save results
+        scene_type: Test scene type ('simple' or 'photorealistic')
 
     Returns:
         BlendFactorTestResult with metrics
@@ -146,13 +193,19 @@ def run_blend_factor_test(
     start_time = time.time()
 
     try:
-        # Step 1: Generate keyframes (red cube, blue sphere)
-        logger.info("Generating keyframes...")
+        # Step 1: Generate keyframes based on scene type
+        logger.info(f"Generating keyframes (scene type: {scene_type})...")
         keyframe_0_path = output_dir / "keyframe_000.png"
         keyframe_1_path = output_dir / "keyframe_030.png"
 
-        generate_red_cube_keyframe(width, height, keyframe_0_path)
-        generate_blue_sphere_keyframe(width, height, keyframe_1_path)
+        if scene_type == "photorealistic":
+            # Photorealistic: city exterior → urban plaza
+            generate_photorealistic_keyframe_1(width, height, keyframe_0_path)
+            generate_photorealistic_keyframe_2(width, height, keyframe_1_path)
+        else:
+            # Simple: red cube → blue sphere
+            generate_red_cube_keyframe(width, height, keyframe_0_path)
+            generate_blue_sphere_keyframe(width, height, keyframe_1_path)
 
         # Step 2: Run DA3-3DGS interpolation
         # TODO: Actually call DA3-3DGS interpolation here
@@ -220,6 +273,7 @@ def run_blend_factor_sweep(
     height: int = 512,
     num_frames: int = 30,
     output_dir: Path = None,
+    scene_type: str = "simple",
     progress_callback=None,
 ) -> List[BlendFactorTestResult]:
     """Run sweep across multiple blend factors.
@@ -232,6 +286,7 @@ def run_blend_factor_sweep(
         height: Output height
         num_frames: Total frames
         output_dir: Output directory
+        scene_type: Test scene type ('simple' or 'photorealistic')
         progress_callback: Optional progress callback
 
     Returns:
@@ -246,6 +301,7 @@ def run_blend_factor_sweep(
     logger.info(f"   Blend factors: {blend_factors}")
     logger.info(f"   Neighbors: {neighbor_segments}, Densify: {densification}")
     logger.info(f"   Resolution: {width}x{height}, Frames: {num_frames}")
+    logger.info(f"   Scene type: {scene_type}")
 
     results = []
 
@@ -261,6 +317,7 @@ def run_blend_factor_sweep(
             height=height,
             num_frames=num_frames,
             output_dir=output_dir / f"blend_{blend_factor:.2f}",
+            scene_type=scene_type,
         )
 
         results.append(result)
