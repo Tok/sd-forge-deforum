@@ -574,16 +574,20 @@ def create_tuning_tab() -> tuple:
                 - Optimize near-clip distance for quality
                 - Find best balance between keyframe count and splat density
 
-                **🎯 RECOMMENDED SETTINGS (Empirically Validated):**
-                - **Densification: 2** (~1.4M splats, score 95) ← **Prevents ghosty wireframes!**
-                - **Neighbor segments: 4** (score 95.26)
-                - **Scene type: Photorealistic** (better depth estimation than simple shapes)
+                **🎯 RECOMMENDED SETTINGS (Scene-Type Dependent):**
+                - **Neighbor segments: 4** (empirically optimal, score 95.26)
+                - **Scene type: Photorealistic** (better depth estimation with lighting gradients)
                 - **Subimages per keyframe: 5** (helps DA3 find multi-view commonality)
+                - **Densification: VARIES BY SCENE TYPE** - test to find optimal:
+                  - **Photorealistic scenes:** 4-12 may work better (~22M splats at D=4)
+                  - **Simple scenes:** 2-4 optimal (~1.4M splats at D=2)
+                - **Near-clip: 0.0** (disabled) - previous tests showed minimal quality impact
 
-                **⚠️ AVOID GHOSTY WIREFRAME ISSUE:**
-                - **Densification 4+** causes hollow/transparent appearance (score drops to 84)
-                - **Simple scene type** (flat colors) → poor depth maps → sparse geometry
-                - **Gray splat filtering** (known issue, research pending)
+                **⚠️ EMPIRICAL DISCREPANCY FOUND:**
+                - **Old gradient sphere tests** (simple mode): D=2 optimal, D=4+ caused ghosting
+                - **New photorealistic tests** (city/highway/beach): D=4 looks better, ~22M splats
+                - **Hypothesis:** Scene complexity + subimages → different optimal densification
+                - **Recommendation:** Run your own sweep to find optimal values for your use case!
 
                 **✨ REAL 3DGS Testing with Actual Depth Estimation & Rendering**
                 - Tests use **gradient sphere images** as input (no ZIT diffusion needed)
@@ -622,54 +626,6 @@ def create_tuning_tab() -> tuple:
                             choices=["16:9 (Landscape)", "9:16 (Portrait)", "1:1 (Square)"],
                             value=["16:9 (Landscape)"],
                         )
-                        dgs_rotation_factor = gr.Slider(
-                            label="Rotation factor (fixed)",
-                            minimum=-50.0,
-                            maximum=-1.0,
-                            value=-8.0,
-                            step=0.05,
-                            info="Empirically validated optimal from orbit tests (range: -6 to -9)",
-                        )
-                        dgs_orbit_radius = gr.Slider(
-                            label="Movement scale (translation amount)",
-                            minimum=1.0,
-                            maximum=20.0,
-                            value=5.0,
-                            step=0.5,
-                            info="Translation per orbit (2-3 = gentle, 5 = moderate, 10+ = aggressive)",
-                        )
-                        dgs_test_iterations = gr.Slider(
-                            label="Test iterations (frames to generate)",
-                            minimum=10,
-                            maximum=200,
-                            value=50,
-                            step=5,
-                            info="How many frames to generate per test configuration",
-                        )
-
-                        gr.Markdown("### Scene Strategy")
-                        dgs_scene_strategies = gr.CheckboxGroup(
-                            label="Scene strategies to test",
-                            choices=["per_segment", "per_prompt", "rolling_window"],
-                            value=["per_segment"],
-                            info="per_segment = fast, per_prompt = semantic coherence, rolling_window = fixed VRAM",
-                        )
-                        dgs_rolling_window_size = gr.Slider(
-                            label="Rolling window size (keyframes)",
-                            minimum=10,
-                            maximum=100,
-                            step=5,
-                            value=30,
-                            info="For rolling_window mode only",
-                        )
-                        dgs_max_prompt_keyframes = gr.Slider(
-                            label="Max keyframes per prompt scene",
-                            minimum=10,
-                            maximum=200,
-                            step=10,
-                            value=50,
-                            info="For per_prompt mode only: Split large prompt segments if they exceed this",
-                        )
 
                         gr.Markdown("### Quality Parameters to Sweep")
                         dgs_models = gr.CheckboxGroup(
@@ -705,18 +661,18 @@ def create_tuning_tab() -> tuple:
                         dgs_densification_min = gr.Slider(
                             label="Min densification factor",
                             minimum=1,
-                            maximum=8,
+                            maximum=16,
                             value=2,
                             step=1,
-                            info="💎 Gaussian splat multiplier. 1=~705k splats, 2=~1.4M (OPTIMAL, score 95), 4=~2.8M (ghosty wireframes, score 84), 8=~5.6M (OOM). Lower is better!",
+                            info="💎 Gaussian splat multiplier. Photorealistic scenes: 4=~22M splats (better quality). Simple scenes: 2=~1.4M (optimal). Scene type affects optimal value! Test to find your sweet spot.",
                         )
                         dgs_densification_max = gr.Slider(
                             label="Max densification factor",
                             minimum=1,
-                            maximum=8,
+                            maximum=16,
                             value=2,
                             step=1,
-                            info="⚠️ Higher values cause hollow/ghosty appearance! Empirical: 2=excellent (95), 4=medium (84), 6=poor (70). Recommended: use 2, or sweep 1-3 max.",
+                            info="⚠️ Higher values increase VRAM and render time. Empirical results vary by scene type. Photorealistic: test 4-12. Simple: 2-4. Set equal to min to fix.",
                         )
                         dgs_densification_step = gr.Slider(
                             label="Densification step",
@@ -728,27 +684,27 @@ def create_tuning_tab() -> tuple:
                         )
                         dgs_nearclip_min = gr.Slider(
                             label="Min near-clip distance",
-                            minimum=0.00,
+                            minimum=0.0,
                             maximum=1.0,
-                            value=0.00,
+                            value=0.0,
                             step=0.01,
-                            info="Results show minimal impact (0.00-0.15 changes score <0.1)",
+                            info="Depth threshold for filtering near splats. 0.0 = disabled (include all splats). 0.01-0.15 = minimal filtering. Set to 0.0 to disable during sweeps.",
                         )
                         dgs_nearclip_max = gr.Slider(
                             label="Max near-clip distance",
-                            minimum=0.00,
+                            minimum=0.0,
                             maximum=1.0,
-                            value=0.10,
+                            value=0.0,
                             step=0.01,
-                            info="Just test extremes (0.00 disabled, 0.10 moderate filtering)",
+                            info="Previous empirical: minimal quality impact (0.00-0.15). Recommended: start at 0.0 (disabled), sweep to 0.15 if testing filtering effects.",
                         )
                         dgs_nearclip_step = gr.Slider(
                             label="Near-clip step",
                             minimum=0.01,
                             maximum=0.5,
-                            value=0.10,
+                            value=0.05,
                             step=0.01,
-                            info="Large step OK (minimal impact on quality)",
+                            info="Sweep step size. 0.05 = test [0.0, 0.05, 0.10, 0.15]. Previous tests showed minimal impact, so large steps OK.",
                         )
 
                         gr.Markdown("### 🎥 Schedule Blend Factor")
@@ -1327,8 +1283,6 @@ def create_tuning_tab() -> tuple:
         # DA3-3DGS Tests button handlers
         def on_run_dgs_tests(
             dgs_aspect_ratios_val,
-            dgs_rotation_factor_val,
-            dgs_orbit_radius_val,
             dgs_blend_factor_min_val,
             dgs_blend_factor_max_val,
             dgs_blend_factor_step_val,
@@ -1337,10 +1291,6 @@ def create_tuning_tab() -> tuple:
             dgs_scene_prompt_2_val,
             dgs_scene_prompt_3_val,
             dgs_test_scene_type_val,
-            dgs_test_iterations_val,
-            dgs_scene_strategies_val,
-            dgs_rolling_window_size_val,
-            dgs_max_prompt_keyframes_val,
             dgs_models_val,
             dgs_neighbor_segments_min_val,
             dgs_neighbor_segments_max_val,
@@ -1378,12 +1328,6 @@ def create_tuning_tab() -> tuple:
                 config = {
                     "test_type": test_type,
                     "aspect_ratios": aspect_configs,
-                    "rotation_factor": dgs_rotation_factor_val,
-                    "orbit_radius": dgs_orbit_radius_val,
-                    "test_iterations": int(dgs_test_iterations_val),
-                    "dgs_scene_strategies": dgs_scene_strategies_val,
-                    "dgs_rolling_window_size": int(dgs_rolling_window_size_val),
-                    "dgs_max_prompt_keyframes": int(dgs_max_prompt_keyframes_val),
                     "dgs_models": dgs_models_val,
                     "dgs_neighbor_segments_min": int(dgs_neighbor_segments_min_val),
                     "dgs_neighbor_segments_max": int(dgs_neighbor_segments_max_val),
@@ -1425,8 +1369,6 @@ def create_tuning_tab() -> tuple:
             fn=on_run_dgs_tests,
             inputs=[
                 dgs_aspect_ratios,
-                dgs_rotation_factor,
-                dgs_orbit_radius,
                 dgs_blend_factor_min,
                 dgs_blend_factor_max,
                 dgs_blend_factor_step,
@@ -1435,10 +1377,6 @@ def create_tuning_tab() -> tuple:
                 dgs_scene_prompt_2,
                 dgs_scene_prompt_3,
                 dgs_test_scene_type,
-                dgs_test_iterations,
-                dgs_scene_strategies,
-                dgs_rolling_window_size,
-                dgs_max_prompt_keyframes,
                 dgs_models,
                 dgs_neighbor_segments_min,
                 dgs_neighbor_segments_max,
