@@ -273,7 +273,7 @@ def run_blend_factor_test(
     densification: int = 2,
     width: int = 512,
     height: int = 512,
-    num_frames: int = 300,
+    num_frames: int = 600,
     output_dir: Path = None,
     scene_type: str = "simple",
 ) -> BlendFactorTestResult:
@@ -283,6 +283,7 @@ def run_blend_factor_test(
     1. Generates 2 keyframes using selected scene type
     2. Runs DA3-3DGS interpolation with specified blend_factor
     3. Measures real quality metrics from rendered frames
+    4. Creates MP4 video at 12fps for visual comparison
 
     Args:
         blend_factor: Schedule blend factor (0.0 = pure DA3, 1.0 = pure Deforum)
@@ -290,7 +291,7 @@ def run_blend_factor_test(
         densification: Gaussian densification factor
         width: Output width
         height: Output height
-        num_frames: Total frames to generate
+        num_frames: Total frames to generate (default: 600 = 50 seconds at 12fps)
         output_dir: Directory to save results
         scene_type: Test scene type ('simple' or 'photorealistic')
 
@@ -324,17 +325,17 @@ def run_blend_factor_test(
         # Step 2: Aggressive VRAM cleanup before loading DA3
         logger.info("Clearing VRAM before loading DA3...")
 
-        # Use Forge's model management to move model to CPU
+        # Move Forge model to CPU to free VRAM
         try:
-            from modules import shared, lowvram
+            from modules import shared
+            import gc
             # Move model to CPU/system RAM instead of unloading completely
             if hasattr(shared, 'sd_model') and shared.sd_model is not None:
                 logger.info("Moving Forge model to CPU...")
                 shared.sd_model.to('cpu')
-            import gc
             gc.collect()
         except Exception as e:
-            logger.warning(f"Could not move model to CPU: {e}")
+            logger.debug(f"Could not move model to CPU: {e}")
 
         # Clear CUDA cache aggressively
         if torch.cuda.is_available():
@@ -395,35 +396,48 @@ def run_blend_factor_test(
         rendered_images = []
 
         for tween_idx in range(num_tweens):
-            # Interpolation parameter (0 to 1 between keyframes)
-            t = (tween_idx + 1) / (num_tweens + 1)
+            try:
+                # Progress logging every 50 frames
+                if tween_idx % 50 == 0:
+                    logger.info(f"  Rendering tween {tween_idx}/{num_tweens}...")
 
-            # Get DA3 interpolated pose
-            da3_pose = interpolate_camera_pose(
-                camera_poses[0],
-                camera_poses[1],
-                t
-            )
+                # Interpolation parameter (0 to 1 between keyframes)
+                t = (tween_idx + 1) / (num_tweens + 1)
 
-            # Apply blend factor (for now, just use DA3 pose since we don't have Deforum schedules)
-            # TODO: Implement Deforum schedule blending when schedules are provided
-            blended_pose = da3_pose  # Pure DA3 for now
+                # Get DA3 interpolated pose
+                da3_pose = interpolate_camera_pose(
+                    camera_poses[0],
+                    camera_poses[1],
+                    t
+                )
 
-            # Render novel view
-            rendered_image = render_novel_view_from_gaussians(
-                gaussians=gaussians,
-                camera_pose=blended_pose,
-                camera_intrinsics=camera_intrinsics,
-                image_size=(width, height),
-                device=device,
-                densification_factor=densification,
-                near_clip_distance=0.01
-            )
+                # Apply blend factor (for now, just use DA3 pose since we don't have Deforum schedules)
+                # TODO: Implement Deforum schedule blending when schedules are provided
+                blended_pose = da3_pose  # Pure DA3 for now
 
-            # Save rendered frame
-            frame_path = output_dir / f"tween_{tween_idx:03d}.png"
-            rendered_image.save(frame_path)
-            rendered_images.append(rendered_image)
+                # Render novel view
+                rendered_image = render_novel_view_from_gaussians(
+                    gaussians=gaussians,
+                    camera_pose=blended_pose,
+                    camera_intrinsics=camera_intrinsics,
+                    image_size=(width, height),
+                    device=device,
+                    densification_factor=densification,
+                    near_clip_distance=0.01
+                )
+
+                # Save rendered frame
+                frame_path = output_dir / f"tween_{tween_idx:03d}.png"
+                rendered_image.save(frame_path)
+                rendered_images.append(rendered_image)
+
+            except Exception as e:
+                logger.error(f"Failed to render tween {tween_idx}/{num_tweens}: {e}")
+                import traceback
+                logger.debug(traceback.format_exc())
+                # Stop rendering on first error to avoid filling logs
+                logger.warning(f"Stopping render after {len(rendered_images)} successful frames")
+                break
 
         # Step 4: Stitch frames into video for easy comparison
         logger.info("Stitching frames into video...")
@@ -435,7 +449,7 @@ def run_blend_factor_test(
             all_frames.extend([np.array(img) for img in rendered_images])
             all_frames.append(np.array(Image.open(keyframe_1_path)))
 
-            imageio.mimsave(video_path, all_frames, fps=24, format='mp4')
+            imageio.mimsave(video_path, all_frames, fps=12, format='mp4')
             logger.info(f"✓ Video saved: {video_path}")
         except Exception as e:
             logger.warning(f"Failed to create video: {e}")
