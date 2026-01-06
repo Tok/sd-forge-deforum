@@ -301,7 +301,6 @@ def generate_red_cube_keyframe(width: int, height: int, output_path: Path) -> No
 def generate_blue_sphere_keyframe(width: int, height: int, output_path: Path) -> None:
     """Generate blue sphere keyframe (simple test mode) - draws actual sphere with shading."""
     from PIL import ImageDraw
-    import math
 
     img = Image.new('RGB', (width, height), color=(30, 30, 30))
     draw = ImageDraw.Draw(img)
@@ -343,6 +342,51 @@ def generate_blue_sphere_keyframe(width: int, height: int, output_path: Path) ->
     logger.info(f"Generated blue sphere keyframe: {output_path}")
 
 
+def generate_green_tetrahedron_keyframe(width: int, height: int, output_path: Path) -> None:
+    """Generate green tetrahedron keyframe (simple test mode) - draws 3D tetrahedron."""
+    from PIL import ImageDraw
+    import math
+
+    img = Image.new('RGB', (width, height), color=(30, 30, 30))
+    draw = ImageDraw.Draw(img)
+
+    # Draw tetrahedron (3-sided pyramid)
+    center_x = width // 2
+    size = min(width, height) // 3
+
+    # Adjust center_y for proper centering (tetrahedron extends upward)
+    center_y = height // 2 + size // 3
+
+    # Calculate tetrahedron vertices
+    # Base is an equilateral triangle
+    base_height = size * math.sqrt(3) / 2
+    apex_height = size * 1.2  # Height above base
+
+    # Base vertices (equilateral triangle)
+    base_top = (center_x, center_y - base_height // 2)
+    base_left = (center_x - size // 2, center_y + base_height // 2)
+    base_right = (center_x + size // 2, center_y + base_height // 2)
+
+    # Apex (top point)
+    apex = (center_x, center_y - int(apex_height))
+
+    # Draw visible faces
+    # Front-left face (darkest green)
+    front_left = [apex, base_left, base_top]
+    draw.polygon(front_left, fill=(30, 120, 30), outline=(20, 90, 20))
+
+    # Front-right face (medium green)
+    front_right = [apex, base_top, base_right]
+    draw.polygon(front_right, fill=(50, 180, 50), outline=(35, 140, 35))
+
+    # Base face (lightest green - facing camera)
+    base_face = [base_top, base_right, base_left]
+    draw.polygon(base_face, fill=(70, 220, 70), outline=(50, 170, 50))
+
+    img.save(str(output_path))
+    logger.info(f"Generated green tetrahedron keyframe: {output_path}")
+
+
 def generate_keyframe_with_real_model(
     prompt: str,
     width: int,
@@ -374,13 +418,28 @@ def generate_keyframe_with_real_model(
         # Get model config
         config = get_model_config(model_name)
 
+        # Build prompt with in-prompt constraints for Z-Image (negative prompts don't work)
+        is_zimage = config.model_type == "z_image"
+        if is_zimage:
+            # Z-Image: use in-prompt constraints, increase resolution to avoid blank output
+            enhanced_prompt = f"{prompt}, high quality, detailed, sharp, clear"
+            negative_prompt = ""
+            # Use closer to native resolution (1024x1024) - scale up from input
+            gen_width = max(width, 768)
+            gen_height = max(height, 768)
+        else:
+            enhanced_prompt = prompt
+            negative_prompt = "blurry, low quality, distorted, deformed"
+            gen_width = width
+            gen_height = height
+
         # Create Txt2Img processing object
         p = processing.StableDiffusionProcessingTxt2Img(
             sd_model=shared.sd_model,
-            prompt=prompt,
-            negative_prompt="blurry, low quality, distorted, deformed",
-            width=width,
-            height=height,
+            prompt=enhanced_prompt,
+            negative_prompt=negative_prompt,
+            width=gen_width,
+            height=gen_height,
             steps=config.recommended_steps,
             cfg_scale=config.cfg_scale_default,
             sampler_name="Euler",
@@ -412,6 +471,11 @@ def generate_keyframe_with_real_model(
             logger.warning("Falling back to placeholder")
             generate_placeholder(prompt, width, height, output_path, seed)
             return
+
+        # Resize back to target size if we scaled up for Z-Image
+        if is_zimage and (gen_width != width or gen_height != height):
+            image = image.resize((width, height), Image.Resampling.LANCZOS)
+            logger.debug(f"Resized from {gen_width}x{gen_height} to {width}x{height}")
 
         # Save image
         save_path = str(output_path)
@@ -489,16 +553,19 @@ def run_blend_factor_test(
         # Step 1: Generate keyframes based on scene type
         logger.info(f"Generating keyframes (scene type: {scene_type})...")
         keyframe_0_path = output_dir / "keyframe_000.png"
-        keyframe_1_path = output_dir / "keyframe_030.png"
+        keyframe_1_path = output_dir / "keyframe_360.png"  # Middle keyframe
+        keyframe_2_path = output_dir / "keyframe_720.png"  # End keyframe
 
         if scene_type == "photorealistic":
-            # Photorealistic: city exterior → urban plaza
+            # Photorealistic: city exterior → urban plaza → (reuse city)
             generate_photorealistic_keyframe_1(width, height, keyframe_0_path)
             generate_photorealistic_keyframe_2(width, height, keyframe_1_path)
+            generate_photorealistic_keyframe_1(width, height, keyframe_2_path)  # Back to first scene
         else:
-            # Simple: red cube → blue sphere
+            # Simple: red cube → green tetrahedron → blue sphere
             generate_red_cube_keyframe(width, height, keyframe_0_path)
-            generate_blue_sphere_keyframe(width, height, keyframe_1_path)
+            generate_green_tetrahedron_keyframe(width, height, keyframe_1_path)
+            generate_blue_sphere_keyframe(width, height, keyframe_2_path)
 
         # Step 2: Aggressive VRAM cleanup before loading DA3
         logger.info("Clearing VRAM before loading DA3...")
@@ -547,8 +614,12 @@ def run_blend_factor_test(
         # Step 3: Run DA3-3DGS interpolation
         logger.info("Loading keyframes and building 3DGS scene...")
 
-        # Load keyframe images
-        keyframe_images = [Image.open(keyframe_0_path), Image.open(keyframe_1_path)]
+        # Load keyframe images (3 keyframes for better path testing)
+        keyframe_images = [
+            Image.open(keyframe_0_path),
+            Image.open(keyframe_1_path),
+            Image.open(keyframe_2_path)
+        ]
 
         # Load DA3 model directly (not via DepthModel singleton wrapper)
         from deforum.depth.depth_anything_v3 import DepthAnythingV3
@@ -588,26 +659,37 @@ def run_blend_factor_test(
             interpolate_camera_pose
         )
 
-        num_tweens = num_frames - len(keyframe_images)
-        logger.info(f"Rendering {num_tweens} tween frames (blend_factor={blend_factor:.2f})...")
+        num_keyframes = len(keyframe_images)
+        num_segments = num_keyframes - 1  # Number of transition segments
+        frames_per_segment = num_frames // num_segments  # Evenly distribute frames
+
+        logger.info(f"Rendering {num_frames} total frames across {num_segments} segments ({num_keyframes} keyframes)...")
+        logger.info(f"  Segment 0→1: frames 0-{frames_per_segment-1}")
+        logger.info(f"  Segment 1→2: frames {frames_per_segment}-{num_frames-1}")
 
         rendered_images = []
+        all_frames = []  # Will include keyframes + tweens in order
 
-        for tween_idx in range(num_tweens):
+        for frame_idx in range(num_frames):
             try:
                 # Progress logging every 50 frames
-                if tween_idx % 50 == 0:
-                    logger.info(f"  Rendering tween {tween_idx}/{num_tweens}...")
+                if frame_idx % 50 == 0:
+                    logger.info(f"  Rendering frame {frame_idx}/{num_frames}...")
 
-                # Interpolation parameter (0 to 1 between keyframes)
-                t = (tween_idx + 1) / (num_tweens + 1)
+                # Determine which segment this frame belongs to
+                segment_idx = min(frame_idx // frames_per_segment, num_segments - 1)
 
-                # Get DA3 interpolated pose
-                da3_pose = interpolate_camera_pose(
-                    camera_poses[0],
-                    camera_poses[1],
-                    t
-                )
+                # Calculate interpolation parameter within this segment (0 to 1)
+                segment_start_frame = segment_idx * frames_per_segment
+                local_frame = frame_idx - segment_start_frame
+                t = local_frame / frames_per_segment
+
+                # Get camera poses for this segment
+                pose_start = camera_poses[segment_idx]
+                pose_end = camera_poses[segment_idx + 1]
+
+                # Interpolate camera pose
+                da3_pose = interpolate_camera_pose(pose_start, pose_end, t)
 
                 # Apply blend factor (for now, just use DA3 pose since we don't have Deforum schedules)
                 # TODO: Implement Deforum schedule blending when schedules are provided
@@ -625,12 +707,13 @@ def run_blend_factor_test(
                 )
 
                 # Save rendered frame
-                frame_path = output_dir / f"tween_{tween_idx:03d}.png"
+                frame_path = output_dir / f"frame_{frame_idx:04d}.png"
                 rendered_image.save(frame_path)
                 rendered_images.append(rendered_image)
+                all_frames.append(np.array(rendered_image))
 
             except Exception as e:
-                logger.error(f"Failed to render tween {tween_idx}/{num_tweens}: {e}")
+                logger.error(f"Failed to render frame {frame_idx}/{num_frames}: {e}")
                 import traceback
                 logger.debug(traceback.format_exc())
                 # Stop rendering on first error to avoid filling logs
@@ -642,13 +725,12 @@ def run_blend_factor_test(
         video_path = output_dir / f"blend_{blend_factor:.2f}.mp4"
         try:
             import imageio
-            # Combine keyframes + tweens in order
-            all_frames = [np.array(Image.open(keyframe_0_path))]
-            all_frames.extend([np.array(img) for img in rendered_images])
-            all_frames.append(np.array(Image.open(keyframe_1_path)))
-
-            imageio.mimsave(video_path, all_frames, fps=60, format='mp4')
-            logger.info(f"✓ Video saved: {video_path}")
+            # all_frames already populated during rendering loop
+            if len(all_frames) > 0:
+                imageio.mimsave(video_path, all_frames, fps=60, format='mp4')
+                logger.info(f"✓ Video saved: {video_path} ({len(all_frames)} frames)")
+            else:
+                logger.warning("No frames to stitch into video")
         except Exception as e:
             logger.warning(f"Failed to create video: {e}")
 
