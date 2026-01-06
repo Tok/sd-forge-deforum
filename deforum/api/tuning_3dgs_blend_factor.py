@@ -433,10 +433,11 @@ def generate_keyframe_with_real_model(
             gen_width = width
             gen_height = height
 
-        # Get sampler name (Z-Image may need specific sampler)
+        # Get sampler and scheduler from config
         sampler_name = config.recommended_sampler if hasattr(config, 'recommended_sampler') else "Euler"
+        scheduler_name = config.recommended_scheduler if hasattr(config, 'recommended_scheduler') else "Automatic"
 
-        # Create Txt2Img processing object
+        # Create Txt2Img processing object with all parameters that Deforum uses
         p = processing.StableDiffusionProcessingTxt2Img(
             sd_model=shared.sd_model,
             prompt=enhanced_prompt,
@@ -446,29 +447,17 @@ def generate_keyframe_with_real_model(
             steps=config.recommended_steps,
             cfg_scale=config.cfg_scale_default,
             sampler_name=sampler_name,
+            scheduler=scheduler_name,  # CRITICAL: Set scheduler (beta for Z-Image)
+            distilled_cfg_scale=config.distilled_cfg_scale_default if config.uses_distilled_cfg else 3.5,  # Shift parameter
             seed=seed,
             do_not_save_samples=True,
             do_not_save_grid=True,
         )
 
-        # For Z-Image, set beta scheduler explicitly
-        if is_zimage:
-            p.sampler_name = "Euler"
-            # Try to set scheduler to beta (use_beta_sigmas)
-            if hasattr(p, 'extra_generation_params'):
-                p.extra_generation_params = p.extra_generation_params or {}
-                p.extra_generation_params['use_beta_sigmas'] = True
-            logger.debug(f"  Using Euler sampler with beta scheduler for Z-Image")
-
-        # Set distilled CFG / shift parameter if model uses it
-        if config.uses_distilled_cfg:
-            if hasattr(shared.opts, 'distilled_cfg_scale'):
-                shared.opts.distilled_cfg_scale = config.distilled_cfg_scale_default
-
         # Generate image
-        logger.debug(f"Starting generation: {gen_width}x{gen_height}, {config.recommended_steps} steps, CFG={config.cfg_scale_default}")
+        logger.debug(f"Starting generation: {gen_width}x{gen_height}, {config.recommended_steps} steps, CFG={config.cfg_scale_default}, scheduler={scheduler_name}")
         if is_zimage:
-            logger.debug(f"  Z-Image mode: native 1024x1024, will resize to {width}x{height}")
+            logger.debug(f"  Z-Image mode: native 1024x1024, shift={config.distilled_cfg_scale_default}, will resize to {width}x{height}")
         processed = processing.process_images(p)
 
         if not processed or not processed.images:
