@@ -246,25 +246,192 @@ def generate_keyframe_with_zit(
 
 
 def generate_red_cube_keyframe(width: int, height: int, output_path: Path) -> None:
-    """Generate red cube keyframe (simple test mode)."""
-    generate_keyframe_with_zit("a red cube on a table", width, height, output_path, seed=1)
+    """Generate red cube keyframe (simple test mode) - draws actual 3D cube."""
+    from PIL import ImageDraw
+
+    img = Image.new('RGB', (width, height), color=(30, 30, 30))
+    draw = ImageDraw.Draw(img)
+
+    # Draw isometric cube
+    center_x, center_y = width // 2, height // 2
+    size = min(width, height) // 3
+
+    # Cube vertices (isometric projection)
+    # Front face (red)
+    front_points = [
+        (center_x, center_y - size // 2),
+        (center_x + size, center_y),
+        (center_x, center_y + size // 2),
+        (center_x - size, center_y),
+    ]
+    draw.polygon(front_points, fill=(220, 40, 40), outline=(180, 30, 30))
+
+    # Top face (lighter red)
+    top_points = [
+        (center_x, center_y - size // 2),
+        (center_x - size, center_y),
+        (center_x - size, center_y - size),
+        (center_x, center_y - size * 3 // 2),
+    ]
+    draw.polygon(top_points, fill=(250, 80, 80), outline=(200, 60, 60))
+
+    # Right face (darker red)
+    right_points = [
+        (center_x, center_y - size // 2),
+        (center_x + size, center_y),
+        (center_x + size, center_y - size),
+        (center_x, center_y - size * 3 // 2),
+    ]
+    draw.polygon(right_points, fill=(160, 30, 30), outline=(120, 20, 20))
+
+    img.save(str(output_path))
+    logger.info(f"Generated red cube keyframe: {output_path}")
 
 
 def generate_blue_sphere_keyframe(width: int, height: int, output_path: Path) -> None:
-    """Generate blue sphere keyframe (simple test mode)."""
-    generate_keyframe_with_zit("a blue sphere on a table", width, height, output_path, seed=2)
+    """Generate blue sphere keyframe (simple test mode) - draws actual sphere with shading."""
+    from PIL import ImageDraw
+    import math
+
+    img = Image.new('RGB', (width, height), color=(30, 30, 30))
+    draw = ImageDraw.Draw(img)
+
+    # Draw sphere with gradient shading
+    center_x, center_y = width // 2, height // 2
+    radius = min(width, height) // 3
+
+    # Create sphere by drawing concentric circles with varying brightness
+    for r in range(radius, 0, -1):
+        # Light source from top-left, so brightness increases towards top-left
+        light_factor = 1 - (r / radius) ** 2
+        base_blue = 40
+        max_blue = 220
+        blue = int(base_blue + (max_blue - base_blue) * light_factor)
+
+        # Slight gradient in red/green for realistic shading
+        red = int(20 + 30 * light_factor)
+        green = int(30 + 50 * light_factor)
+
+        color = (red, green, blue)
+        bbox = [
+            center_x - r, center_y - r,
+            center_x + r, center_y + r
+        ]
+        draw.ellipse(bbox, fill=color, outline=color)
+
+    # Add highlight
+    highlight_r = radius // 4
+    highlight_x = center_x - radius // 3
+    highlight_y = center_y - radius // 3
+    highlight_bbox = [
+        highlight_x - highlight_r, highlight_y - highlight_r,
+        highlight_x + highlight_r, highlight_y + highlight_r
+    ]
+    draw.ellipse(highlight_bbox, fill=(150, 180, 255), outline=(150, 180, 255))
+
+    img.save(str(output_path))
+    logger.info(f"Generated blue sphere keyframe: {output_path}")
+
+
+def generate_keyframe_with_real_model(
+    prompt: str,
+    width: int,
+    height: int,
+    output_path: Path,
+    seed: int = 42
+) -> None:
+    """Generate keyframe using ZIT or current loaded model (ALWAYS REAL GENERATION).
+
+    This function bypasses the USE_REAL_GENERATION flag and always attempts
+    real image generation. Used for photorealistic test mode.
+
+    Args:
+        prompt: Text prompt for generation
+        width: Output width
+        height: Output height
+        output_path: Path to save generated image
+        seed: Random seed for reproducibility
+    """
+    try:
+        from modules import processing, shared
+        from deforum.config.model_configs import get_model_config
+        from deforum.utils.model_detection import get_model_name
+
+        model_name = get_model_name()
+        logger.info(f"Generating keyframe with {model_name}: {prompt[:50]}")
+
+        # Get model config
+        config = get_model_config(model_name)
+
+        # Create Txt2Img processing object
+        p = processing.StableDiffusionProcessingTxt2Img(
+            sd_model=shared.sd_model,
+            prompt=prompt,
+            negative_prompt="blurry, low quality, distorted, deformed",
+            width=width,
+            height=height,
+            steps=config.recommended_steps,
+            cfg_scale=config.cfg_scale_default,
+            sampler_name="Euler",
+            seed=seed,
+            do_not_save_samples=True,
+            do_not_save_grid=True,
+        )
+
+        # Set distilled CFG / shift parameter if model uses it
+        if config.uses_distilled_cfg:
+            if hasattr(shared.opts, 'distilled_cfg_scale'):
+                shared.opts.distilled_cfg_scale = config.distilled_cfg_scale_default
+
+        # Generate image
+        logger.debug(f"Starting generation: {width}x{height}, {config.recommended_steps} steps")
+        processed = processing.process_images(p)
+
+        if not processed or not processed.images:
+            raise RuntimeError("Generation failed: no images returned")
+
+        image = processed.images[0]
+        if image is None:
+            raise RuntimeError("Generation returned None image")
+
+        # Validate image (check if blank)
+        img_array = np.array(image)
+        if img_array.max() == img_array.min():
+            logger.warning(f"Generation produced blank image (min={img_array.min()}, max={img_array.max()})")
+            logger.warning("Falling back to placeholder")
+            generate_placeholder(prompt, width, height, output_path, seed)
+            return
+
+        # Save image
+        save_path = str(output_path)
+        logger.debug(f"Saving image to: {save_path}")
+        image.save(save_path)
+        logger.info(f"✓ Generated keyframe: {save_path}")
+
+        # Cleanup: Free VRAM after generation
+        del p, processed, image, img_array
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            logger.debug("Cleared CUDA cache after keyframe generation")
+
+    except Exception as e:
+        logger.error(f"Failed to generate with model: {e}")
+        import traceback
+        logger.debug(f"Traceback: {traceback.format_exc()}")
+        logger.info(f"Falling back to placeholder keyframe")
+        generate_placeholder(prompt, width, height, output_path, seed)
 
 
 def generate_photorealistic_keyframe_1(width: int, height: int, output_path: Path) -> None:
-    """Generate first photorealistic keyframe (city exterior)."""
+    """Generate first photorealistic keyframe (city exterior) - REAL GENERATION."""
     prompt = "modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k"
-    generate_keyframe_with_zit(prompt, width, height, output_path, seed=100)
+    generate_keyframe_with_real_model(prompt, width, height, output_path, seed=100)
 
 
 def generate_photorealistic_keyframe_2(width: int, height: int, output_path: Path) -> None:
-    """Generate second photorealistic keyframe (city interior/different angle)."""
+    """Generate second photorealistic keyframe (city interior/different angle) - REAL GENERATION."""
     prompt = "urban plaza with trees and benches, people walking, architectural photography, detailed, 8k"
-    generate_keyframe_with_zit(prompt, width, height, output_path, seed=101)
+    generate_keyframe_with_real_model(prompt, width, height, output_path, seed=101)
 
 
 def run_blend_factor_test(
