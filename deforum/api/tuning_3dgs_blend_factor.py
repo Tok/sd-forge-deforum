@@ -273,7 +273,7 @@ def run_blend_factor_test(
     densification: int = 2,
     width: int = 512,
     height: int = 512,
-    num_frames: int = 600,
+    num_frames: int = 720,
     output_dir: Path = None,
     scene_type: str = "simple",
 ) -> BlendFactorTestResult:
@@ -283,7 +283,7 @@ def run_blend_factor_test(
     1. Generates 2 keyframes using selected scene type
     2. Runs DA3-3DGS interpolation with specified blend_factor
     3. Measures real quality metrics from rendered frames
-    4. Creates MP4 video at 12fps for visual comparison
+    4. Creates MP4 video at 60fps for visual comparison
 
     Args:
         blend_factor: Schedule blend factor (0.0 = pure DA3, 1.0 = pure Deforum)
@@ -291,7 +291,7 @@ def run_blend_factor_test(
         densification: Gaussian densification factor
         width: Output width
         height: Output height
-        num_frames: Total frames to generate (default: 600 = 50 seconds at 12fps)
+        num_frames: Total frames to generate (default: 720 = 12 seconds at 60fps)
         output_dir: Directory to save results
         scene_type: Test scene type ('simple' or 'photorealistic')
 
@@ -449,7 +449,7 @@ def run_blend_factor_test(
             all_frames.extend([np.array(img) for img in rendered_images])
             all_frames.append(np.array(Image.open(keyframe_1_path)))
 
-            imageio.mimsave(video_path, all_frames, fps=12, format='mp4')
+            imageio.mimsave(video_path, all_frames, fps=60, format='mp4')
             logger.info(f"✓ Video saved: {video_path}")
         except Exception as e:
             logger.warning(f"Failed to create video: {e}")
@@ -543,7 +543,7 @@ def run_blend_factor_sweep(
     densification: int = 2,
     width: int = 512,
     height: int = 512,
-    num_frames: int = 300,
+    num_frames: int = 720,
     output_dir: Path = None,
     scene_type: str = "simple",
     progress_callback=None,

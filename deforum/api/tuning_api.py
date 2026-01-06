@@ -654,7 +654,7 @@ class TuningTestManager:
             densification=densification,
             width=width,
             height=height,
-            num_frames=30,
+            num_frames=720,  # 60fps * 12 seconds = 720 frames
             output_dir=test_output_dir,
             scene_type=scene_type,
             progress_callback=lambda i, total, desc: logger.info(f"[{i+1}/{total}] {desc}")
