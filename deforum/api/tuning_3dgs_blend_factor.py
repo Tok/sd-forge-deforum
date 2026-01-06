@@ -4,10 +4,12 @@ Tests the new schedule blending feature by generating simple animations
 with varying blend factors between DA3 auto-poses and Deforum schedules.
 
 Current Status:
-- ✅ Real keyframe generation using Z-Image-Turbo or current loaded model
+- ✅ Real keyframe generation:
+  - Simple mode: PIL-drawn 3D cube/sphere (instant, no diffusion)
+  - Photorealistic mode: Current Forge model (ZIT, Flux, SDXL, etc.)
 - ✅ DA3-3DGS scene building and gaussian splat rendering
-- ✅ Video output (24fps MP4) for easy comparison
-- ✅ 300 frame clips for better visual assessment
+- ✅ Video output (60fps MP4, 12 seconds = 720 frames)
+- ✅ Proper VRAM management (unload Forge models before DA3-GIANT)
 - ⚠️  Blend factor NOT YET APPLIED (all tests use pure DA3 poses currently)
 - TODO: Integrate Deforum camera schedules and apply blend_factor mixing
 
@@ -15,10 +17,14 @@ Why all outputs look similar:
 Without Deforum schedules, blend_factor has no effect since there's nothing to blend.
 All tests use pure DA3 auto-estimated camera poses, so differences are minimal.
 
-Test Case: Red Cube → Blue Sphere (or Photorealistic City)
-- 2 keyframe prompts (simple subject change)
-- DA3-3DGS interpolation between keyframes
-- Outputs: rendered frames + MP4 video
+Test Modes:
+1. Simple: Red Cube → Blue Sphere (PIL-drawn, instant generation)
+2. Photorealistic: City Street → Urban Plaza (uses current Forge model)
+
+Pipeline:
+- 2 keyframes (generated or drawn)
+- 718 tween frames interpolated via DA3-3DGS
+- 720 total frames stitched to MP4 at 60fps
 
 Metrics:
 - Visual quality (SSIM between frames)
@@ -340,8 +346,9 @@ def generate_keyframe_with_real_model(
     output_path: Path,
     seed: int = 42
 ) -> None:
-    """Generate keyframe using ZIT or current loaded model (ALWAYS REAL GENERATION).
+    """Generate keyframe using current Forge model (ALWAYS REAL GENERATION).
 
+    Uses whatever diffusion model is currently loaded in Forge (ZIT, Flux, SDXL, etc.).
     This function bypasses the USE_REAL_GENERATION flag and always attempts
     real image generation. Used for photorealistic test mode.
 
@@ -423,13 +430,13 @@ def generate_keyframe_with_real_model(
 
 
 def generate_photorealistic_keyframe_1(width: int, height: int, output_path: Path) -> None:
-    """Generate first photorealistic keyframe (city exterior) - REAL GENERATION."""
+    """Generate first photorealistic keyframe (city exterior) using current Forge model."""
     prompt = "modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k"
     generate_keyframe_with_real_model(prompt, width, height, output_path, seed=100)
 
 
 def generate_photorealistic_keyframe_2(width: int, height: int, output_path: Path) -> None:
-    """Generate second photorealistic keyframe (city interior/different angle) - REAL GENERATION."""
+    """Generate second photorealistic keyframe (city plaza) using current Forge model."""
     prompt = "urban plaza with trees and benches, people walking, architectural photography, detailed, 8k"
     generate_keyframe_with_real_model(prompt, width, height, output_path, seed=101)
 
