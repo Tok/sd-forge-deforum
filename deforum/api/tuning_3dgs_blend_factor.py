@@ -492,26 +492,46 @@ def run_blend_factor_test(
         # Step 2: Aggressive VRAM cleanup before loading DA3
         logger.info("Clearing VRAM before loading DA3...")
 
-        # Move Forge model to CPU to free VRAM
+        # Use Forge's memory management to unload ALL models
         try:
-            from modules import shared
+            from backend import memory_management
             import gc
-            # Move model to CPU/system RAM instead of unloading completely
-            if hasattr(shared, 'sd_model') and shared.sd_model is not None:
-                logger.info("Moving Forge model to CPU...")
-                shared.sd_model.to('cpu')
-            gc.collect()
-        except Exception as e:
-            logger.debug(f"Could not move model to CPU: {e}")
 
-        # Clear CUDA cache aggressively
+            logger.info("Unloading all Forge models...")
+            memory_management.unload_all_models()
+
+            # Force VRAM release - reserved memory needs to be freed
+            memory_management.soft_empty_cache(force=True)
+            gc.collect()
+
+            # Multiple passes of cache clearing to ensure VRAM is freed
+            for _ in range(3):
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.ipc_collect()
+                gc.collect()
+
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+
+            logger.info("All models unloaded successfully")
+        except Exception as e:
+            logger.warning(f"Could not unload models via Forge: {e}")
+            # Fallback to manual cleanup
+            import gc
+            for _ in range(3):
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.ipc_collect()
+
+        # Report available VRAM
         if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
-            torch.cuda.synchronize()  # Wait for all operations to complete
-            freed_mb = torch.cuda.memory_reserved() / (1024**2)
-            available_mb = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()) / (1024**2)
-            logger.info(f"VRAM: {freed_mb:.2f} MB reserved, {available_mb:.2f} MB available")
+            allocated_mb = torch.cuda.memory_allocated() / (1024**2)
+            reserved_mb = torch.cuda.memory_reserved() / (1024**2)
+            total_mb = torch.cuda.get_device_properties(0).total_memory / (1024**2)
+            available_mb = total_mb - allocated_mb
+            logger.info(f"VRAM: {allocated_mb:.0f} MB allocated, {reserved_mb:.0f} MB reserved, {available_mb:.0f} MB available (of {total_mb:.0f} MB total)")
 
         # Step 3: Run DA3-3DGS interpolation
         logger.info("Loading keyframes and building 3DGS scene...")
