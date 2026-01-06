@@ -18,12 +18,12 @@ Without Deforum schedules, blend_factor has no effect since there's nothing to b
 All tests use pure DA3 auto-estimated camera poses, so differences are minimal.
 
 Test Modes:
-1. Simple: Red Cube → Blue Sphere (PIL-drawn, instant generation)
-2. Photorealistic: City Street → Urban Plaza (uses current Forge model)
+1. Simple: Red Cube → Green Tetrahedron → Red Cube (PIL-drawn, instant generation, loops)
+2. Photorealistic: City → Highway → City (uses current Forge model, loops seamlessly)
 
 Pipeline:
-- 2 keyframes (generated or drawn)
-- 718 tween frames interpolated via DA3-3DGS
+- 3 keyframes (frames 0, 360, 720 where 720 is copy of 0 for seamless loop)
+- 717 tween frames interpolated via DA3-3DGS (359 per segment)
 - 720 total frames stitched to MP4 at 60fps
 
 Metrics:
@@ -35,6 +35,7 @@ Metrics:
 import time
 import torch
 import numpy as np
+import shutil
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
@@ -530,15 +531,18 @@ def generate_batch_keyframes(
     Generates keyframes once with a random seed, saves to shared directory,
     and returns paths for reuse across all blend factor tests in the batch.
 
+    The keyframe sequence loops back to the start (keyframe_0 → keyframe_1 → keyframe_0)
+    to create a seamless video that shows both transitions.
+
     Args:
         width: Output width
         height: Output height
         output_dir: Directory to save keyframes
-        scene_type: 'simple' (geometric shapes) or 'photorealistic' (city/highway/beach)
+        scene_type: 'simple' (cube → tetrahedron → cube) or 'photorealistic' (city → highway → city)
         base_seed: Random seed base (if None, generates random seed)
 
     Returns:
-        List of 3 keyframe paths
+        List of 3 keyframe paths [000, 360, 720] where 720 is a copy of 000
     """
     import random
 
@@ -555,15 +559,17 @@ def generate_batch_keyframes(
     keyframe_2_path = output_dir / "keyframe_720.png"
 
     if scene_type == "photorealistic":
-        # Photorealistic: city → highway → beach
+        # Photorealistic: city → highway → city (loop back to start)
         generate_photorealistic_keyframe_city(width, height, keyframe_0_path, seed=base_seed)
         generate_photorealistic_keyframe_highway(width, height, keyframe_1_path, seed=base_seed + 1)
-        generate_photorealistic_keyframe_beach(width, height, keyframe_2_path, seed=base_seed + 2)
+        # Reuse first keyframe as last to create seamless loop
+        shutil.copy(keyframe_0_path, keyframe_2_path)
     else:
-        # Simple: red cube → green tetrahedron → blue sphere
+        # Simple: red cube → green tetrahedron → red cube (loop back to start)
         generate_red_cube_keyframe(width, height, keyframe_0_path)
         generate_green_tetrahedron_keyframe(width, height, keyframe_1_path)
-        generate_blue_sphere_keyframe(width, height, keyframe_2_path)
+        # Reuse first keyframe as last to create seamless loop
+        shutil.copy(keyframe_0_path, keyframe_2_path)
 
     logger.info(f"✓ Generated 3 batch keyframes in {output_dir}")
 
@@ -634,15 +640,17 @@ def run_blend_factor_test(
             keyframe_2_path = output_dir / "keyframe_720.png"  # End keyframe
 
             if scene_type == "photorealistic":
-                # Photorealistic: city → highway → beach
+                # Photorealistic: city → highway → city (loop back to start)
                 generate_photorealistic_keyframe_city(width, height, keyframe_0_path)
                 generate_photorealistic_keyframe_highway(width, height, keyframe_1_path)
-                generate_photorealistic_keyframe_beach(width, height, keyframe_2_path)
+                # Reuse first keyframe as last to create seamless loop
+                shutil.copy(keyframe_0_path, keyframe_2_path)
             else:
-                # Simple: red cube → green tetrahedron → blue sphere
+                # Simple: red cube → green tetrahedron → red cube (loop back to start)
                 generate_red_cube_keyframe(width, height, keyframe_0_path)
                 generate_green_tetrahedron_keyframe(width, height, keyframe_1_path)
-                generate_blue_sphere_keyframe(width, height, keyframe_2_path)
+                # Reuse first keyframe as last to create seamless loop
+                shutil.copy(keyframe_0_path, keyframe_2_path)
 
         # Step 2: Aggressive VRAM cleanup before loading DA3
         logger.info("Clearing VRAM before loading DA3...")
