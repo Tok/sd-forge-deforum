@@ -780,6 +780,14 @@ def create_tuning_tab() -> tuple:
                             step=0.05,
                             info="0.25 = test [0.0, 0.25, 0.5, 0.75, 1.0] (5 tests)",
                         )
+                        dgs_blend_densification = gr.Slider(
+                            label="Densification factor (blend factor test only)",
+                            minimum=1,
+                            maximum=8,
+                            value=4,
+                            step=1,
+                            info="Splat multiplier: 1=~705k (fast), 2=~1.4M (optimal quality), 4=~2.8M (more coverage), 6=~4.2M (max, may OOM)",
+                        )
 
                         # 3DGS test action buttons
                         with gr.Row():
@@ -1291,6 +1299,7 @@ def create_tuning_tab() -> tuple:
             dgs_blend_factor_min_val,
             dgs_blend_factor_max_val,
             dgs_blend_factor_step_val,
+            dgs_blend_densification_val,
             dgs_test_scene_type_val,
             dgs_test_iterations_val,
             dgs_scene_strategies_val,
@@ -1361,6 +1370,7 @@ def create_tuning_tab() -> tuple:
                     "dgs_blend_factor_min": float(dgs_blend_factor_min_val),
                     "dgs_blend_factor_max": float(dgs_blend_factor_max_val),
                     "dgs_blend_factor_step": float(dgs_blend_factor_step_val),
+                    "dgs_blend_densification": int(dgs_blend_densification_val),
                     "dgs_test_scene_type": dgs_test_scene_type_val,
                 }
 
@@ -1390,6 +1400,7 @@ def create_tuning_tab() -> tuple:
                 dgs_blend_factor_min,
                 dgs_blend_factor_max,
                 dgs_blend_factor_step,
+                dgs_blend_densification,
                 dgs_test_scene_type,
                 dgs_test_iterations,
                 dgs_scene_strategies,

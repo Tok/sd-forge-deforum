@@ -89,6 +89,7 @@ class TuningTestConfig(BaseModel):
     dgs_blend_factor_min: Optional[float] = Field(None, ge=0.0, le=1.0, description="Min schedule blend factor (0=pure DA3, 1=pure Deforum)")
     dgs_blend_factor_max: Optional[float] = Field(None, ge=0.0, le=1.0, description="Max schedule blend factor")
     dgs_blend_factor_step: Optional[float] = Field(None, ge=0.05, le=0.5, description="Step size for blend factor sweep")
+    dgs_blend_densification: Optional[int] = Field(None, ge=1, le=8, description="Densification factor for blend factor test (1=~705k splats, 4=~2.8M)")
     dgs_test_scene_type: Optional[str] = Field(None, description="Test scene type: 'simple' or 'photorealistic'")
 
 
@@ -625,7 +626,7 @@ class TuningTestManager:
 
         # Get other 3DGS params
         neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
-        densification = config.dgs_densification_min if config.dgs_densification_min is not None else 2
+        densification = config.dgs_blend_densification if config.dgs_blend_densification is not None else 4
 
         # Get scene type (simple vs photorealistic)
         scene_type = "simple"
