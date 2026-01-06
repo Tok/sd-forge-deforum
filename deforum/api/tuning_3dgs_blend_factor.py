@@ -354,18 +354,21 @@ def generate_green_tetrahedron_keyframe(width: int, height: int, output_path: Pa
     center_x = width // 2
     size = min(width, height) // 3
 
+    # Make tetrahedron wider (double the base width)
+    base_width = size * 2
+
     # Adjust center_y for proper centering (tetrahedron extends upward)
     center_y = height // 2 + size // 3
 
     # Calculate tetrahedron vertices
-    # Base is an equilateral triangle
-    base_height = size * math.sqrt(3) / 2
+    # Base is an equilateral triangle (but wider)
+    base_height = base_width * math.sqrt(3) / 2
     apex_height = size * 1.2  # Height above base
 
     # Base vertices (equilateral triangle)
     base_top = (center_x, center_y - base_height // 2)
-    base_left = (center_x - size // 2, center_y + base_height // 2)
-    base_right = (center_x + size // 2, center_y + base_height // 2)
+    base_left = (center_x - base_width // 2, center_y + base_height // 2)
+    base_right = (center_x + base_width // 2, center_y + base_height // 2)
 
     # Apex (top point)
     apex = (center_x, center_y - int(apex_height))
@@ -421,12 +424,12 @@ def generate_keyframe_with_real_model(
         # Build prompt with in-prompt constraints for Z-Image (negative prompts don't work)
         is_zimage = config.model_type == "z_image"
         if is_zimage:
-            # Z-Image: use in-prompt constraints, increase resolution to avoid blank output
-            enhanced_prompt = f"{prompt}, high quality, detailed, sharp, clear"
+            # Z-Image: use in-prompt constraints, use native resolution to avoid blank output
+            enhanced_prompt = f"{prompt}, high quality, detailed, sharp, clear, photorealistic"
             negative_prompt = ""
-            # Use closer to native resolution (1024x1024) - scale up from input
-            gen_width = max(width, 768)
-            gen_height = max(height, 768)
+            # Use native resolution (1024x1024) - Z-Image works best at native res
+            gen_width = 1024
+            gen_height = 1024
         else:
             enhanced_prompt = prompt
             negative_prompt = "blurry, low quality, distorted, deformed"
@@ -454,7 +457,9 @@ def generate_keyframe_with_real_model(
                 shared.opts.distilled_cfg_scale = config.distilled_cfg_scale_default
 
         # Generate image
-        logger.debug(f"Starting generation: {width}x{height}, {config.recommended_steps} steps")
+        logger.debug(f"Starting generation: {gen_width}x{gen_height}, {config.recommended_steps} steps, CFG={config.cfg_scale_default}")
+        if is_zimage:
+            logger.debug(f"  Z-Image mode: native 1024x1024, will resize to {width}x{height}")
         processed = processing.process_images(p)
 
         if not processed or not processed.images:
