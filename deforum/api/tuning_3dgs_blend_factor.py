@@ -259,8 +259,12 @@ def generate_red_cube_keyframe(width: int, height: int, output_path: Path) -> No
     draw = ImageDraw.Draw(img)
 
     # Draw isometric cube
-    center_x, center_y = width // 2, height // 2
+    center_x = width // 2
     size = min(width, height) // 3
+
+    # Adjust center_y to account for cube extending upward (top face)
+    # Total cube height is 2*size, so shift down by size//2 for true centering
+    center_y = height // 2 + size // 2
 
     # Cube vertices (isometric projection)
     # Front face (red)
