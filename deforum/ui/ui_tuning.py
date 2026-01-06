@@ -622,18 +622,70 @@ def create_tuning_tab() -> tuple:
                         gr.Markdown("## DA3-3DGS Test Configuration")
 
                         gr.Markdown("### Test Setup")
+
+                        gr.Markdown("#### Resolution (Higher = More Splats Naturally)")
+                        dgs_resolution_preset = gr.Radio(
+                            label="Resolution preset",
+                            choices=[
+                                "480p (854×480, fast)",
+                                "720p (1280×720, recommended)",
+                                "1080p (1920×1080, high quality)",
+                                "Custom"
+                            ],
+                            value="720p (1280×720, recommended)",
+                            info="Higher resolution = more pixels = more initial splats WITHOUT densification! 720p = ~6× more splats than 512×288."
+                        )
+
+                        with gr.Row():
+                            dgs_custom_width = gr.Slider(
+                                label="Custom width",
+                                minimum=256,
+                                maximum=2560,
+                                value=1280,
+                                step=64,
+                                visible=False,
+                                info="Only used if 'Custom' selected above"
+                            )
+                            dgs_custom_height = gr.Slider(
+                                label="Custom height",
+                                minimum=144,
+                                maximum=1440,
+                                value=720,
+                                step=16,
+                                visible=False,
+                                info="Only used if 'Custom' selected above"
+                            )
+
                         dgs_aspect_ratios = gr.CheckboxGroup(
-                            label="Aspect ratios to test",
+                            label="Aspect ratios to test (if multiple presets)",
                             choices=["16:9 (Landscape)", "9:16 (Portrait)", "1:1 (Square)"],
                             value=["16:9 (Landscape)"],
+                            info="Tests same resolution in different aspect ratios"
+                        )
+
+                        gr.Markdown("### DA3 Quality Parameters (NEW!)")
+
+                        dgs_use_ray_pose = gr.Checkbox(
+                            label="Use ray pose estimation",
+                            value=False,
+                            info="🎯 More accurate camera poses from DA3 ray head. Slower but better geometry. Recommended: enable for best quality!"
+                        )
+
+                        dgs_confidence_threshold = gr.Slider(
+                            label="Confidence threshold percentile",
+                            minimum=0,
+                            maximum=100,
+                            value=0,
+                            step=5,
+                            info="💎 Filter low-confidence splats. 0=disabled (keep all), 50=keep top 50% most confident, 90=only very confident splats. Higher = fewer but better quality splats!"
                         )
 
                         gr.Markdown("### Quality Parameters to Sweep")
                         dgs_models = gr.CheckboxGroup(
                             label="DA3 models",
-                            choices=["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
-                            value=["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
-                            info="GIANT = 4GB VRAM, LARGE = 4.5GB VRAM + better quality (compare both)",
+                            choices=["DA3-GIANT"],
+                            value=["DA3-GIANT"],
+                            info="DA3-GIANT: 1.15B params, 4-5GB VRAM, best quality (DA3NESTED removed due to 3DGS incompatibility)",
                         )
                         dgs_neighbor_segments_min = gr.Slider(
                             label="Min neighbor segments",
@@ -1283,7 +1335,12 @@ def create_tuning_tab() -> tuple:
 
         # DA3-3DGS Tests button handlers
         def on_run_dgs_tests(
+            dgs_resolution_preset_val,
+            dgs_custom_width_val,
+            dgs_custom_height_val,
             dgs_aspect_ratios_val,
+            dgs_use_ray_pose_val,
+            dgs_confidence_threshold_val,
             dgs_blend_factor_min_val,
             dgs_blend_factor_max_val,
             dgs_blend_factor_step_val,
@@ -1305,22 +1362,36 @@ def create_tuning_tab() -> tuple:
         ):
             """Start DA3-3DGS tuning tests via API."""
             try:
-                # DEBUG: Log received values to diagnose Gradio caching issue
+                # Parse resolution from preset or custom
+                if "480p" in dgs_resolution_preset_val:
+                    base_width, base_height = 854, 480
+                elif "720p" in dgs_resolution_preset_val:
+                    base_width, base_height = 1280, 720
+                elif "1080p" in dgs_resolution_preset_val:
+                    base_width, base_height = 1920, 1080
+                elif "Custom" in dgs_resolution_preset_val:
+                    base_width, base_height = int(dgs_custom_width_val), int(dgs_custom_height_val)
+                else:
+                    base_width, base_height = 1280, 720  # Default to 720p
+
+                # DEBUG: Log received values
                 logger.info(f"[UI DEBUG] Received DA3-3DGS test parameters:")
+                logger.info(f"  resolution: {base_width}×{base_height} (preset: {dgs_resolution_preset_val})")
+                logger.info(f"  use_ray_pose: {dgs_use_ray_pose_val}, confidence_threshold: {dgs_confidence_threshold_val}%")
                 logger.info(f"  models: {dgs_models_val}")
                 logger.info(f"  neighbor_segments: {dgs_neighbor_segments_min_val}-{dgs_neighbor_segments_max_val} step {dgs_neighbor_segments_step_val}")
                 logger.info(f"  densification: {dgs_densification_min_val}-{dgs_densification_max_val} step {dgs_densification_step_val}")
                 logger.info(f"  nearclip: {dgs_nearclip_min_val}-{dgs_nearclip_max_val} step {dgs_nearclip_step_val}")
 
-                # Parse aspect ratios
+                # Parse aspect ratios using base resolution
                 aspect_configs = []
                 for aspect_str in dgs_aspect_ratios_val:
                     if "16:9" in aspect_str:
-                        aspect_configs.append([1.78, 512, 288])
+                        aspect_configs.append([1.78, base_width, base_height])
                     elif "9:16" in aspect_str:
-                        aspect_configs.append([0.56, 288, 512])
+                        aspect_configs.append([0.56, base_height, base_width])  # Swap width/height
                     elif "1:1" in aspect_str:
-                        aspect_configs.append([1.0, 512, 512])
+                        aspect_configs.append([1.0, base_width, base_width])  # Square using width
 
                 # Always use parameter sweep test (blend_factor, neighbor_segments, densification can all be fixed or swept)
                 test_type = "da3_3dgs_blend_factor"
@@ -1329,6 +1400,8 @@ def create_tuning_tab() -> tuple:
                 config = {
                     "test_type": test_type,
                     "aspect_ratios": aspect_configs,
+                    "dgs_use_ray_pose": bool(dgs_use_ray_pose_val),
+                    "dgs_confidence_threshold": float(dgs_confidence_threshold_val),
                     "dgs_models": dgs_models_val,
                     "dgs_neighbor_segments_min": int(dgs_neighbor_segments_min_val),
                     "dgs_neighbor_segments_max": int(dgs_neighbor_segments_max_val),
@@ -1366,10 +1439,29 @@ def create_tuning_tab() -> tuple:
                 logger.error(f"Failed to start DA3-3DGS tests: {e}")
                 return f"{cross} Error starting DA3-3DGS tests: {e}"
 
+        # Resolution preset change handler (show/hide custom fields)
+        def on_resolution_preset_change(preset):
+            is_custom = "Custom" in preset
+            return {
+                dgs_custom_width: gr.update(visible=is_custom),
+                dgs_custom_height: gr.update(visible=is_custom),
+            }
+
+        dgs_resolution_preset.change(
+            fn=on_resolution_preset_change,
+            inputs=[dgs_resolution_preset],
+            outputs=[dgs_custom_width, dgs_custom_height],
+        )
+
         dgs_run_btn.click(
             fn=on_run_dgs_tests,
             inputs=[
+                dgs_resolution_preset,
+                dgs_custom_width,
+                dgs_custom_height,
                 dgs_aspect_ratios,
+                dgs_use_ray_pose,
+                dgs_confidence_threshold,
                 dgs_blend_factor_min,
                 dgs_blend_factor_max,
                 dgs_blend_factor_step,

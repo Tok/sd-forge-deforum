@@ -71,20 +71,17 @@ class TuningTestConfig(BaseModel):
     raft_flow_factor_step: Optional[float] = Field(None, ge=0.05, le=0.5, description="Step size for flow factor sweep")
 
     # DA3-3DGS-specific parameters (for da3_3dgs_tuning test type)
-    dgs_rotation_factor: Optional[float] = Field(None, ge=-50.0, le=-1.0, description="Fixed rotation factor for 3DGS tests (empirical optimal: -8.0)")
-    dgs_test_iterations: Optional[int] = Field(None, ge=10, le=200, description="Number of frames to generate per test")
-    dgs_scene_strategies: Optional[List[str]] = Field(None, description="List of scene strategies to test: ['per_segment', 'per_prompt', 'rolling_window']")
-    dgs_rolling_window_size: Optional[int] = Field(None, ge=10, le=100, description="Rolling window size for rolling_window strategy")
-    dgs_max_prompt_keyframes: Optional[int] = Field(None, ge=10, le=200, description="Max keyframes per prompt scene for per_prompt strategy")
-    dgs_models: Optional[List[str]] = Field(None, description="List of DA3 models to test: ['DA3-GIANT', 'DA3NESTED-GIANT-LARGE']")
+    dgs_use_ray_pose: Optional[bool] = Field(None, description="Use DA3 ray head for more accurate camera poses (slower but better geometry)")
+    dgs_confidence_threshold: Optional[float] = Field(None, ge=0.0, le=100.0, description="Filter splats by confidence percentile (0=disabled, 50=top 50%, 90=very confident only)")
+    dgs_models: Optional[List[str]] = Field(None, description="List of DA3 models to test: ['DA3-GIANT']")
     dgs_neighbor_segments_min: Optional[int] = Field(None, ge=2, le=10, description="Min neighbor segments (keyframes around each segment)")
     dgs_neighbor_segments_max: Optional[int] = Field(None, ge=2, le=10, description="Max neighbor segments")
     dgs_neighbor_segments_step: Optional[int] = Field(None, ge=1, le=4, description="Step size for neighbor segments sweep")
-    dgs_densification_min: Optional[int] = Field(None, ge=1, le=8, description="Min densification factor (1x = 705k splats)")
-    dgs_densification_max: Optional[int] = Field(None, ge=1, le=8, description="Max densification factor (8x = 5.6M splats)")
+    dgs_densification_min: Optional[int] = Field(None, ge=1, le=16, description="Min densification factor (1x = ~705k splats, OPTIMAL)")
+    dgs_densification_max: Optional[int] = Field(None, ge=1, le=16, description="Max densification factor (16x = many splats but lower quality)")
     dgs_densification_step: Optional[int] = Field(None, ge=1, le=4, description="Step size for densification sweep")
-    dgs_nearclip_min: Optional[float] = Field(None, ge=0.01, le=1.0, description="Min near-clip distance (filters close splats)")
-    dgs_nearclip_max: Optional[float] = Field(None, ge=0.01, le=1.0, description="Max near-clip distance")
+    dgs_nearclip_min: Optional[float] = Field(None, ge=0.0, le=1.0, description="Min near-clip distance (0.0=disabled, filters close splats)")
+    dgs_nearclip_max: Optional[float] = Field(None, ge=0.0, le=1.0, description="Max near-clip distance")
     dgs_nearclip_step: Optional[float] = Field(None, ge=0.01, le=0.5, description="Step size for near-clip sweep")
     dgs_blend_factor_min: Optional[float] = Field(None, ge=0.0, le=1.0, description="Min schedule blend factor (0=pure DA3, 1=pure Deforum)")
     dgs_blend_factor_max: Optional[float] = Field(None, ge=0.0, le=1.0, description="Max schedule blend factor")
@@ -656,11 +653,16 @@ class TuningTestManager:
         densification_max = config.dgs_densification_max if config.dgs_densification_max is not None else 4
         densification_step = config.dgs_densification_step if config.dgs_densification_step is not None else 1
 
+        # Get DA3 quality parameters
+        use_ray_pose = config.dgs_use_ray_pose if config.dgs_use_ray_pose is not None else False
+        confidence_threshold = config.dgs_confidence_threshold if config.dgs_confidence_threshold is not None else 0.0
+
         logger.info(f"Blend factor: {blend_factor_min}-{blend_factor_max} step {blend_factor_step}")
         logger.info(f"Neighbor segments: {neighbor_segments_min}-{neighbor_segments_max} step {neighbor_segments_step}")
         logger.info(f"Densification: {densification_min}-{densification_max} step {densification_step}")
         logger.info(f"Resolution: {width}x{height}")
         logger.info(f"Scene type: {scene_type}, Subimages per keyframe: {subimages_per_keyframe}")
+        logger.info(f"DA3 quality: use_ray_pose={use_ray_pose}, confidence_threshold={confidence_threshold}%")
 
         # Run parameter sweep
         from deforum.api.tuning_3dgs_blend_factor import run_parameter_sweep
@@ -682,6 +684,8 @@ class TuningTestManager:
             scene_type=scene_type,
             subimages_per_keyframe=subimages_per_keyframe,
             scene_prompts=scene_prompts,
+            use_ray_pose=use_ray_pose,
+            confidence_threshold=confidence_threshold,
         )
 
         # Update test status with results
