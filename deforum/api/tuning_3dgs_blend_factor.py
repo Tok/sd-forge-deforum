@@ -354,23 +354,20 @@ def generate_green_tetrahedron_keyframe(width: int, height: int, output_path: Pa
     center_x = width // 2
     size = min(width, height) // 3
 
-    # Make tetrahedron wider (double the base width)
-    base_width = size * 2
-
     # Adjust center_y for proper centering (tetrahedron extends upward)
     center_y = height // 2 + size // 3
 
     # Calculate tetrahedron vertices
-    # Base is an equilateral triangle (but wider)
-    base_height = base_width * math.sqrt(3) / 2
+    # Base is an equilateral triangle
+    base_height = size * math.sqrt(3) / 2
     apex_height = size * 1.2  # Height above base
 
-    # Base vertices (equilateral triangle)
+    # Base vertices (equilateral triangle) - stretch horizontally by 2x
     base_top = (center_x, center_y - base_height // 2)
-    base_left = (center_x - base_width // 2, center_y + base_height // 2)
-    base_right = (center_x + base_width // 2, center_y + base_height // 2)
+    base_left = (center_x - size, center_y + base_height // 2)  # 2x wider: -size instead of -size//2
+    base_right = (center_x + size, center_y + base_height // 2)  # 2x wider: +size instead of +size//2
 
-    # Apex (top point)
+    # Apex (top point) - no change
     apex = (center_x, center_y - int(apex_height))
 
     # Draw visible faces
@@ -436,6 +433,9 @@ def generate_keyframe_with_real_model(
             gen_width = width
             gen_height = height
 
+        # Get sampler name (Z-Image may need specific sampler)
+        sampler_name = config.recommended_sampler if hasattr(config, 'recommended_sampler') else "Euler"
+
         # Create Txt2Img processing object
         p = processing.StableDiffusionProcessingTxt2Img(
             sd_model=shared.sd_model,
@@ -445,11 +445,20 @@ def generate_keyframe_with_real_model(
             height=gen_height,
             steps=config.recommended_steps,
             cfg_scale=config.cfg_scale_default,
-            sampler_name="Euler",
+            sampler_name=sampler_name,
             seed=seed,
             do_not_save_samples=True,
             do_not_save_grid=True,
         )
+
+        # For Z-Image, set beta scheduler explicitly
+        if is_zimage:
+            p.sampler_name = "Euler"
+            # Try to set scheduler to beta (use_beta_sigmas)
+            if hasattr(p, 'extra_generation_params'):
+                p.extra_generation_params = p.extra_generation_params or {}
+                p.extra_generation_params['use_beta_sigmas'] = True
+            logger.debug(f"  Using Euler sampler with beta scheduler for Z-Image")
 
         # Set distilled CFG / shift parameter if model uses it
         if config.uses_distilled_cfg:
