@@ -18,12 +18,12 @@ Without Deforum schedules, blend_factor has no effect since there's nothing to b
 All tests use pure DA3 auto-estimated camera poses, so differences are minimal.
 
 Test Modes:
-1. Simple: Red Cube → Green Tetrahedron → Red Cube (PIL-drawn, instant generation, loops)
-2. Photorealistic: City → Highway → City (uses current Forge model, loops seamlessly)
+1. Simple: Red Cube → Green Tetrahedron → Blue Sphere → Red Cube (PIL-drawn, instant, loops)
+2. Photorealistic: City → Highway → Beach → City (uses current Forge model, loops seamlessly)
 
 Pipeline:
-- 3 keyframes (frames 0, 360, 720 where 720 is copy of 0 for seamless loop)
-- 717 tween frames interpolated via DA3-3DGS (359 per segment)
+- 4 keyframes (frames 0, 240, 480, 720 where 720 is copy of 0 for seamless loop)
+- 716 tween frames interpolated via DA3-3DGS (3 segments × ~239 frames each)
 - 720 total frames stitched to MP4 at 60fps
 
 Metrics:
@@ -526,23 +526,24 @@ def generate_batch_keyframes(
     scene_type: str = "simple",
     base_seed: int = None,
 ) -> List[Path]:
-    """Generate 3 keyframes for batch reuse across multiple tests.
+    """Generate 4 keyframes (3 unique scenes + loop) for batch reuse across multiple tests.
 
     Generates keyframes once with a random seed, saves to shared directory,
     and returns paths for reuse across all blend factor tests in the batch.
 
-    The keyframe sequence loops back to the start (keyframe_0 → keyframe_1 → keyframe_0)
-    to create a seamless video that shows both transitions.
+    The keyframe sequence loops back to the start to create a seamless video:
+    - Simple: cube → tetrahedron → sphere → cube (loop)
+    - Photorealistic: city → highway → beach → city (loop)
 
     Args:
         width: Output width
         height: Output height
         output_dir: Directory to save keyframes
-        scene_type: 'simple' (cube → tetrahedron → cube) or 'photorealistic' (city → highway → city)
+        scene_type: 'simple' or 'photorealistic'
         base_seed: Random seed base (if None, generates random seed)
 
     Returns:
-        List of 3 keyframe paths [000, 360, 720] where 720 is a copy of 000
+        List of 4 keyframe paths [000, 240, 480, 720] where 720 is a copy of 000
     """
     import random
 
@@ -555,25 +556,28 @@ def generate_batch_keyframes(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     keyframe_0_path = output_dir / "keyframe_000.png"
-    keyframe_1_path = output_dir / "keyframe_360.png"
-    keyframe_2_path = output_dir / "keyframe_720.png"
+    keyframe_1_path = output_dir / "keyframe_240.png"
+    keyframe_2_path = output_dir / "keyframe_480.png"
+    keyframe_3_path = output_dir / "keyframe_720.png"
 
     if scene_type == "photorealistic":
-        # Photorealistic: city → highway → city (loop back to start)
+        # Photorealistic: city → highway → beach → city (loop back to start)
         generate_photorealistic_keyframe_city(width, height, keyframe_0_path, seed=base_seed)
         generate_photorealistic_keyframe_highway(width, height, keyframe_1_path, seed=base_seed + 1)
+        generate_photorealistic_keyframe_beach(width, height, keyframe_2_path, seed=base_seed + 2)
         # Reuse first keyframe as last to create seamless loop
-        shutil.copy(keyframe_0_path, keyframe_2_path)
+        shutil.copy(keyframe_0_path, keyframe_3_path)
     else:
-        # Simple: red cube → green tetrahedron → red cube (loop back to start)
+        # Simple: red cube → green tetrahedron → blue sphere → red cube (loop back to start)
         generate_red_cube_keyframe(width, height, keyframe_0_path)
         generate_green_tetrahedron_keyframe(width, height, keyframe_1_path)
+        generate_blue_sphere_keyframe(width, height, keyframe_2_path)
         # Reuse first keyframe as last to create seamless loop
-        shutil.copy(keyframe_0_path, keyframe_2_path)
+        shutil.copy(keyframe_0_path, keyframe_3_path)
 
-    logger.info(f"✓ Generated 3 batch keyframes in {output_dir}")
+    logger.info(f"✓ Generated 4 batch keyframes in {output_dir} (3 unique scenes + loop)")
 
-    return [keyframe_0_path, keyframe_1_path, keyframe_2_path]
+    return [keyframe_0_path, keyframe_1_path, keyframe_2_path, keyframe_3_path]
 
 
 def run_blend_factor_test(
@@ -626,31 +630,35 @@ def run_blend_factor_test(
             keyframe_0_path = keyframe_paths[0]
             keyframe_1_path = keyframe_paths[1]
             keyframe_2_path = keyframe_paths[2]
+            keyframe_3_path = keyframe_paths[3]
 
             # Copy to output directory for reference
-            import shutil
             shutil.copy(keyframe_0_path, output_dir / "keyframe_000.png")
-            shutil.copy(keyframe_1_path, output_dir / "keyframe_360.png")
-            shutil.copy(keyframe_2_path, output_dir / "keyframe_720.png")
+            shutil.copy(keyframe_1_path, output_dir / "keyframe_240.png")
+            shutil.copy(keyframe_2_path, output_dir / "keyframe_480.png")
+            shutil.copy(keyframe_3_path, output_dir / "keyframe_720.png")
         else:
             # Generate keyframes for single test (backward compatibility)
             logger.info(f"Generating keyframes (scene type: {scene_type})...")
             keyframe_0_path = output_dir / "keyframe_000.png"
-            keyframe_1_path = output_dir / "keyframe_360.png"  # Middle keyframe
-            keyframe_2_path = output_dir / "keyframe_720.png"  # End keyframe
+            keyframe_1_path = output_dir / "keyframe_240.png"
+            keyframe_2_path = output_dir / "keyframe_480.png"
+            keyframe_3_path = output_dir / "keyframe_720.png"
 
             if scene_type == "photorealistic":
-                # Photorealistic: city → highway → city (loop back to start)
+                # Photorealistic: city → highway → beach → city (loop back to start)
                 generate_photorealistic_keyframe_city(width, height, keyframe_0_path)
                 generate_photorealistic_keyframe_highway(width, height, keyframe_1_path)
+                generate_photorealistic_keyframe_beach(width, height, keyframe_2_path)
                 # Reuse first keyframe as last to create seamless loop
-                shutil.copy(keyframe_0_path, keyframe_2_path)
+                shutil.copy(keyframe_0_path, keyframe_3_path)
             else:
-                # Simple: red cube → green tetrahedron → red cube (loop back to start)
+                # Simple: red cube → green tetrahedron → blue sphere → red cube (loop back to start)
                 generate_red_cube_keyframe(width, height, keyframe_0_path)
                 generate_green_tetrahedron_keyframe(width, height, keyframe_1_path)
+                generate_blue_sphere_keyframe(width, height, keyframe_2_path)
                 # Reuse first keyframe as last to create seamless loop
-                shutil.copy(keyframe_0_path, keyframe_2_path)
+                shutil.copy(keyframe_0_path, keyframe_3_path)
 
         # Step 2: Aggressive VRAM cleanup before loading DA3
         logger.info("Clearing VRAM before loading DA3...")
@@ -699,11 +707,12 @@ def run_blend_factor_test(
         # Step 3: Run DA3-3DGS interpolation
         logger.info("Loading keyframes and building 3DGS scene...")
 
-        # Load keyframe images (3 keyframes for better path testing)
+        # Load keyframe images (4 keyframes: 3 unique scenes + loop back to first)
         keyframe_images = [
             Image.open(keyframe_0_path),
             Image.open(keyframe_1_path),
-            Image.open(keyframe_2_path)
+            Image.open(keyframe_2_path),
+            Image.open(keyframe_3_path)
         ]
 
         # Load DA3 model directly (not via DepthModel singleton wrapper)
