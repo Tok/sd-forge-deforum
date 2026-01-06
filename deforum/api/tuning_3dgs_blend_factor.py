@@ -500,16 +500,74 @@ def generate_keyframe_with_real_model(
         generate_placeholder(prompt, width, height, output_path, seed)
 
 
-def generate_photorealistic_keyframe_1(width: int, height: int, output_path: Path) -> None:
-    """Generate first photorealistic keyframe (city exterior) using current Forge model."""
+def generate_photorealistic_keyframe_city(width: int, height: int, output_path: Path, seed: int = 100) -> None:
+    """Generate city scene keyframe using current Forge model."""
     prompt = "modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k"
-    generate_keyframe_with_real_model(prompt, width, height, output_path, seed=100)
+    generate_keyframe_with_real_model(prompt, width, height, output_path, seed=seed)
 
 
-def generate_photorealistic_keyframe_2(width: int, height: int, output_path: Path) -> None:
-    """Generate second photorealistic keyframe (city plaza) using current Forge model."""
-    prompt = "urban plaza with trees and benches, people walking, architectural photography, detailed, 8k"
-    generate_keyframe_with_real_model(prompt, width, height, output_path, seed=101)
+def generate_photorealistic_keyframe_highway(width: int, height: int, output_path: Path, seed: int = 101) -> None:
+    """Generate highway scene keyframe using current Forge model."""
+    prompt = "highway road stretching into distance, asphalt with lane markings, trees on sides, blue sky, photorealistic, detailed, 8k"
+    generate_keyframe_with_real_model(prompt, width, height, output_path, seed=seed)
+
+
+def generate_photorealistic_keyframe_beach(width: int, height: int, output_path: Path, seed: int = 102) -> None:
+    """Generate beach scene keyframe using current Forge model."""
+    prompt = "sandy beach with ocean waves, blue water, clear sky, palm trees, tropical paradise, photorealistic, detailed, 8k"
+    generate_keyframe_with_real_model(prompt, width, height, output_path, seed=seed)
+
+
+def generate_batch_keyframes(
+    width: int,
+    height: int,
+    output_dir: Path,
+    scene_type: str = "simple",
+    base_seed: int = None,
+) -> List[Path]:
+    """Generate 3 keyframes for batch reuse across multiple tests.
+
+    Generates keyframes once with a random seed, saves to shared directory,
+    and returns paths for reuse across all blend factor tests in the batch.
+
+    Args:
+        width: Output width
+        height: Output height
+        output_dir: Directory to save keyframes
+        scene_type: 'simple' (geometric shapes) or 'photorealistic' (city/highway/beach)
+        base_seed: Random seed base (if None, generates random seed)
+
+    Returns:
+        List of 3 keyframe paths
+    """
+    import random
+
+    # Use random seed if not specified
+    if base_seed is None:
+        base_seed = random.randint(1000, 9999)
+
+    logger.info(f"Generating batch keyframes (scene type: {scene_type}, base seed: {base_seed})...")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    keyframe_0_path = output_dir / "keyframe_000.png"
+    keyframe_1_path = output_dir / "keyframe_360.png"
+    keyframe_2_path = output_dir / "keyframe_720.png"
+
+    if scene_type == "photorealistic":
+        # Photorealistic: city → highway → beach
+        generate_photorealistic_keyframe_city(width, height, keyframe_0_path, seed=base_seed)
+        generate_photorealistic_keyframe_highway(width, height, keyframe_1_path, seed=base_seed + 1)
+        generate_photorealistic_keyframe_beach(width, height, keyframe_2_path, seed=base_seed + 2)
+    else:
+        # Simple: red cube → green tetrahedron → blue sphere
+        generate_red_cube_keyframe(width, height, keyframe_0_path)
+        generate_green_tetrahedron_keyframe(width, height, keyframe_1_path)
+        generate_blue_sphere_keyframe(width, height, keyframe_2_path)
+
+    logger.info(f"✓ Generated 3 batch keyframes in {output_dir}")
+
+    return [keyframe_0_path, keyframe_1_path, keyframe_2_path]
 
 
 def run_blend_factor_test(
@@ -521,11 +579,12 @@ def run_blend_factor_test(
     num_frames: int = 720,
     output_dir: Path = None,
     scene_type: str = "simple",
+    keyframe_paths: List[Path] = None,
 ) -> BlendFactorTestResult:
     """Run a single blend factor test with REAL generation.
 
     This test:
-    1. Generates 2 keyframes using selected scene type
+    1. Uses pre-generated keyframes (if provided) or generates new ones
     2. Runs DA3-3DGS interpolation with specified blend_factor
     3. Measures real quality metrics from rendered frames
     4. Creates MP4 video at 60fps for visual comparison
@@ -539,6 +598,7 @@ def run_blend_factor_test(
         num_frames: Total frames to generate (default: 720 = 12 seconds at 60fps)
         output_dir: Directory to save results
         scene_type: Test scene type ('simple' or 'photorealistic')
+        keyframe_paths: Optional pre-generated keyframe paths (for batch reuse)
 
     Returns:
         BlendFactorTestResult with metrics
@@ -553,22 +613,36 @@ def run_blend_factor_test(
     start_time = time.time()
 
     try:
-        # Step 1: Generate keyframes based on scene type
-        logger.info(f"Generating keyframes (scene type: {scene_type})...")
-        keyframe_0_path = output_dir / "keyframe_000.png"
-        keyframe_1_path = output_dir / "keyframe_360.png"  # Middle keyframe
-        keyframe_2_path = output_dir / "keyframe_720.png"  # End keyframe
+        # Step 1: Use pre-generated keyframes or generate new ones
+        if keyframe_paths is not None:
+            # Reuse pre-generated keyframes (batch mode)
+            logger.info(f"Using pre-generated batch keyframes from {keyframe_paths[0].parent}")
+            keyframe_0_path = keyframe_paths[0]
+            keyframe_1_path = keyframe_paths[1]
+            keyframe_2_path = keyframe_paths[2]
 
-        if scene_type == "photorealistic":
-            # Photorealistic: city exterior → urban plaza → (reuse city)
-            generate_photorealistic_keyframe_1(width, height, keyframe_0_path)
-            generate_photorealistic_keyframe_2(width, height, keyframe_1_path)
-            generate_photorealistic_keyframe_1(width, height, keyframe_2_path)  # Back to first scene
+            # Copy to output directory for reference
+            import shutil
+            shutil.copy(keyframe_0_path, output_dir / "keyframe_000.png")
+            shutil.copy(keyframe_1_path, output_dir / "keyframe_360.png")
+            shutil.copy(keyframe_2_path, output_dir / "keyframe_720.png")
         else:
-            # Simple: red cube → green tetrahedron → blue sphere
-            generate_red_cube_keyframe(width, height, keyframe_0_path)
-            generate_green_tetrahedron_keyframe(width, height, keyframe_1_path)
-            generate_blue_sphere_keyframe(width, height, keyframe_2_path)
+            # Generate keyframes for single test (backward compatibility)
+            logger.info(f"Generating keyframes (scene type: {scene_type})...")
+            keyframe_0_path = output_dir / "keyframe_000.png"
+            keyframe_1_path = output_dir / "keyframe_360.png"  # Middle keyframe
+            keyframe_2_path = output_dir / "keyframe_720.png"  # End keyframe
+
+            if scene_type == "photorealistic":
+                # Photorealistic: city → highway → beach
+                generate_photorealistic_keyframe_city(width, height, keyframe_0_path)
+                generate_photorealistic_keyframe_highway(width, height, keyframe_1_path)
+                generate_photorealistic_keyframe_beach(width, height, keyframe_2_path)
+            else:
+                # Simple: red cube → green tetrahedron → blue sphere
+                generate_red_cube_keyframe(width, height, keyframe_0_path)
+                generate_green_tetrahedron_keyframe(width, height, keyframe_1_path)
+                generate_blue_sphere_keyframe(width, height, keyframe_2_path)
 
         # Step 2: Aggressive VRAM cleanup before loading DA3
         logger.info("Clearing VRAM before loading DA3...")
@@ -858,6 +932,17 @@ def run_blend_factor_sweep(
     logger.info(f"   Resolution: {width}x{height}, Frames: {num_frames}")
     logger.info(f"   Scene type: {scene_type}")
 
+    # Generate batch keyframes ONCE before the sweep (with random seed)
+    batch_keyframes_dir = output_dir / "batch_keyframes"
+    keyframe_paths = generate_batch_keyframes(
+        width=width,
+        height=height,
+        output_dir=batch_keyframes_dir,
+        scene_type=scene_type,
+        base_seed=None,  # Random seed
+    )
+    logger.info(f"✓ Batch keyframes ready for reuse across {len(blend_factors)} tests")
+
     results = []
 
     for i, blend_factor in enumerate(blend_factors):
@@ -873,6 +958,7 @@ def run_blend_factor_sweep(
             num_frames=num_frames,
             output_dir=output_dir / f"blend_{blend_factor:.2f}",
             scene_type=scene_type,
+            keyframe_paths=keyframe_paths,  # Reuse batch keyframes
         )
 
         results.append(result)

@@ -311,10 +311,10 @@ def render_novel_view_from_gaussians(
     means_cam = (viewmat @ means_homogeneous.T).T  # [N, 4]
     depth = means_cam[:, 2]  # Z coordinate in camera space (negative = in front of camera)
 
-    # Debug: Log depth distribution (use INFO so it always shows)
+    # Debug: Log depth distribution (use DEBUG to avoid spamming when rendering many frames)
     depth_np = depth.detach().cpu().numpy()
-    logger.info(f"   Depth: min={depth_np.min():.2f}, max={depth_np.max():.2f}, "
-                f"mean={depth_np.mean():.2f}, median={np.median(depth_np):.2f}")
+    logger.debug(f"   Depth: min={depth_np.min():.2f}, max={depth_np.max():.2f}, "
+                 f"mean={depth_np.mean():.2f}, median={np.median(depth_np):.2f}")
 
     # Store depth range for dynamic far plane calculation
     global _last_depth_range
@@ -348,16 +348,16 @@ def render_novel_view_from_gaussians(
                 kept_pct = (mask.sum().item() / means.shape[0]) * 100
                 removed = (~mask).sum().item()
 
-                logger.info(f"   Adaptive near-clip (percentile={percentile:.1f}%): "
-                           f"threshold={threshold:.4f}, keeping {kept_pct:.1f}% ({mask.sum()}/{means.shape[0]} splats)")
+                logger.debug(f"   Adaptive near-clip (percentile={percentile:.1f}%): "
+                            f"threshold={threshold:.4f}, keeping {kept_pct:.1f}% ({mask.sum()}/{means.shape[0]} splats)")
             else:
                 # All splats behind camera, don't filter
                 mask = torch.ones(means.shape[0], dtype=torch.bool, device=device)
-                logger.info(f"   All splats behind camera, skipping near-clip filter")
+                logger.debug(f"   All splats behind camera, skipping near-clip filter")
         else:
             # Legacy absolute mode (if user sets value > 1.0)
             mask = depth < -near_clip_distance
-            logger.info(f"   Absolute near-clip (world units={near_clip_distance:.2f})")
+            logger.debug(f"   Absolute near-clip (world units={near_clip_distance:.2f})")
 
         # Safety check: don't filter out ALL splats (would cause black frame)
         if mask.sum() == 0:
