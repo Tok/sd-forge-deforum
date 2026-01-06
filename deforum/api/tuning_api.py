@@ -90,6 +90,10 @@ class TuningTestConfig(BaseModel):
     dgs_blend_factor_max: Optional[float] = Field(None, ge=0.0, le=1.0, description="Max schedule blend factor")
     dgs_blend_factor_step: Optional[float] = Field(None, ge=0.05, le=0.5, description="Step size for blend factor sweep")
     dgs_blend_densification: Optional[int] = Field(None, ge=1, le=8, description="Densification factor for blend factor test (1=~705k splats, 4=~2.8M)")
+    dgs_subimages_per_keyframe: Optional[int] = Field(None, ge=1, le=10, description="Number of subimages per keyframe (photorealistic only)")
+    dgs_scene_prompt_1: Optional[str] = Field(None, description="Custom scene 1 prompt (keyframe 0)")
+    dgs_scene_prompt_2: Optional[str] = Field(None, description="Custom scene 2 prompt (keyframe 240)")
+    dgs_scene_prompt_3: Optional[str] = Field(None, description="Custom scene 3 prompt (keyframe 480)")
     dgs_test_scene_type: Optional[str] = Field(None, description="Test scene type: 'simple' or 'photorealistic'")
 
 
@@ -643,10 +647,20 @@ class TuningTestManager:
             width = 512
             height = 512
 
+        # Get subimage and prompt parameters
+        subimages_per_keyframe = config.dgs_subimages_per_keyframe if config.dgs_subimages_per_keyframe is not None else 5
+        scene_prompts = None
+        if scene_type == "photorealistic":
+            scene_prompts = [
+                config.dgs_scene_prompt_1 if config.dgs_scene_prompt_1 else "modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k",
+                config.dgs_scene_prompt_2 if config.dgs_scene_prompt_2 else "highway road stretching into distance, asphalt with lane markings, trees on sides, blue sky, photorealistic, detailed, 8k",
+                config.dgs_scene_prompt_3 if config.dgs_scene_prompt_3 else "sandy beach with ocean waves, blue water, clear sky, palm trees, tropical paradise, photorealistic, detailed, 8k",
+            ]
+
         logger.info(f"Blend factor sweep: {blend_factors}")
         logger.info(f"Neighbor segments: {neighbor_segments}, Densification: {densification}")
         logger.info(f"Resolution: {width}x{height}")
-        logger.info(f"Scene type: {scene_type}")
+        logger.info(f"Scene type: {scene_type}, Subimages per keyframe: {subimages_per_keyframe}")
 
         # Run sweep
         results = run_blend_factor_sweep(
@@ -658,6 +672,8 @@ class TuningTestManager:
             num_frames=720,  # 60fps * 12 seconds = 720 frames
             output_dir=test_output_dir,
             scene_type=scene_type,
+            subimages_per_keyframe=subimages_per_keyframe,
+            scene_prompts=scene_prompts,
             progress_callback=lambda i, total, desc: logger.info(f"[{i+1}/{total}] {desc}")
         )
 

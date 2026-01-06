@@ -525,15 +525,20 @@ def generate_batch_keyframes(
     output_dir: Path,
     scene_type: str = "simple",
     base_seed: int = None,
+    subimages_per_keyframe: int = 5,
+    scene_prompts: List[str] = None,
 ) -> List[Path]:
-    """Generate 4 keyframes (3 unique scenes + loop) for batch reuse across multiple tests.
+    """Generate keyframes (with subimages) for batch reuse across multiple tests.
 
     Generates keyframes once with a random seed, saves to shared directory,
     and returns paths for reuse across all blend factor tests in the batch.
 
+    For photorealistic mode, generates N subimages per keyframe with different seeds
+    to help DA3 find commonality in synthetic scenes (e.g., 5 variations of "city").
+
     The keyframe sequence loops back to the start to create a seamless video:
     - Simple: cube → tetrahedron → sphere → cube (loop)
-    - Photorealistic: city → highway → beach → city (loop)
+    - Photorealistic: city → highway → beach → city (loop, each with N subimages)
 
     Args:
         width: Output width
@@ -541,9 +546,11 @@ def generate_batch_keyframes(
         output_dir: Directory to save keyframes
         scene_type: 'simple' or 'photorealistic'
         base_seed: Random seed base (if None, generates random seed)
+        subimages_per_keyframe: Number of variations per keyframe (photorealistic only)
+        scene_prompts: Custom prompts for 3 scenes [city, highway, beach] (photorealistic only)
 
     Returns:
-        List of 4 keyframe paths [000, 240, 480, 720] where 720 is a copy of 000
+        List of all image paths (4 keyframes × N subimages for photorealistic, 4 for simple)
     """
     import random
 
@@ -551,33 +558,90 @@ def generate_batch_keyframes(
     if base_seed is None:
         base_seed = random.randint(1000, 9999)
 
-    logger.info(f"Generating batch keyframes (scene type: {scene_type}, base seed: {base_seed})...")
+    logger.info(f"Generating batch keyframes (scene type: {scene_type}, base seed: {base_seed}, subimages: {subimages_per_keyframe})...")
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    keyframe_0_path = output_dir / "keyframe_000.png"
-    keyframe_1_path = output_dir / "keyframe_240.png"
-    keyframe_2_path = output_dir / "keyframe_480.png"
-    keyframe_3_path = output_dir / "keyframe_720.png"
+    all_image_paths = []
 
     if scene_type == "photorealistic":
-        # Photorealistic: city → highway → beach → city (loop back to start)
-        generate_photorealistic_keyframe_city(width, height, keyframe_0_path, seed=base_seed)
-        generate_photorealistic_keyframe_highway(width, height, keyframe_1_path, seed=base_seed + 1)
-        generate_photorealistic_keyframe_beach(width, height, keyframe_2_path, seed=base_seed + 2)
-        # Reuse first keyframe as last to create seamless loop
-        shutil.copy(keyframe_0_path, keyframe_3_path)
+        # Default prompts if not provided
+        if scene_prompts is None or len(scene_prompts) < 3:
+            scene_prompts = [
+                "modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k",
+                "highway road stretching into distance, asphalt with lane markings, trees on sides, blue sky, photorealistic, detailed, 8k",
+                "sandy beach with ocean waves, blue water, clear sky, palm trees, tropical paradise, photorealistic, detailed, 8k",
+            ]
+
+        # Photorealistic: Generate N subimages per keyframe with different seeds
+        # Keyframe 0 (city) - multiple variations
+        logger.info(f"Generating keyframe 0 (city) with {subimages_per_keyframe} subimages...")
+        for sub_idx in range(subimages_per_keyframe):
+            subimage_path = output_dir / f"keyframe_000_sub{sub_idx}.png"
+            generate_keyframe_with_real_model(
+                scene_prompts[0],
+                width,
+                height,
+                subimage_path,
+                seed=base_seed + sub_idx
+            )
+            all_image_paths.append(subimage_path)
+
+        # Keyframe 1 (highway) - multiple variations
+        logger.info(f"Generating keyframe 1 (highway) with {subimages_per_keyframe} subimages...")
+        for sub_idx in range(subimages_per_keyframe):
+            subimage_path = output_dir / f"keyframe_240_sub{sub_idx}.png"
+            generate_keyframe_with_real_model(
+                scene_prompts[1],
+                width,
+                height,
+                subimage_path,
+                seed=base_seed + 100 + sub_idx
+            )
+            all_image_paths.append(subimage_path)
+
+        # Keyframe 2 (beach) - multiple variations
+        logger.info(f"Generating keyframe 2 (beach) with {subimages_per_keyframe} subimages...")
+        for sub_idx in range(subimages_per_keyframe):
+            subimage_path = output_dir / f"keyframe_480_sub{sub_idx}.png"
+            generate_keyframe_with_real_model(
+                scene_prompts[2],
+                width,
+                height,
+                subimage_path,
+                seed=base_seed + 200 + sub_idx
+            )
+            all_image_paths.append(subimage_path)
+
+        # Keyframe 3 (loop back to city) - copy first keyframe's subimages
+        logger.info(f"Generating keyframe 3 (city loop) by copying keyframe 0 subimages...")
+        for sub_idx in range(subimages_per_keyframe):
+            src_path = output_dir / f"keyframe_000_sub{sub_idx}.png"
+            dst_path = output_dir / f"keyframe_720_sub{sub_idx}.png"
+            shutil.copy(src_path, dst_path)
+            all_image_paths.append(dst_path)
+
+        logger.info(f"✓ Generated {len(all_image_paths)} images (4 keyframes × {subimages_per_keyframe} subimages)")
+
     else:
         # Simple: red cube → green tetrahedron → blue sphere → red cube (loop back to start)
+        # PIL drawings don't need variations, just generate once per keyframe
+        keyframe_0_path = output_dir / "keyframe_000.png"
+        keyframe_1_path = output_dir / "keyframe_240.png"
+        keyframe_2_path = output_dir / "keyframe_480.png"
+        keyframe_3_path = output_dir / "keyframe_720.png"
+
         generate_red_cube_keyframe(width, height, keyframe_0_path)
         generate_green_tetrahedron_keyframe(width, height, keyframe_1_path)
         generate_blue_sphere_keyframe(width, height, keyframe_2_path)
         # Reuse first keyframe as last to create seamless loop
         shutil.copy(keyframe_0_path, keyframe_3_path)
 
-    logger.info(f"✓ Generated 4 batch keyframes in {output_dir} (3 unique scenes + loop)")
+        all_image_paths = [keyframe_0_path, keyframe_1_path, keyframe_2_path, keyframe_3_path]
 
-    return [keyframe_0_path, keyframe_1_path, keyframe_2_path, keyframe_3_path]
+        logger.info(f"✓ Generated 4 batch keyframes in {output_dir} (simple mode, no subimages)")
+
+    return all_image_paths
 
 
 def run_blend_factor_test(
@@ -625,18 +689,12 @@ def run_blend_factor_test(
     try:
         # Step 1: Use pre-generated keyframes or generate new ones
         if keyframe_paths is not None:
-            # Reuse pre-generated keyframes (batch mode)
-            logger.info(f"Using pre-generated batch keyframes from {keyframe_paths[0].parent}")
-            keyframe_0_path = keyframe_paths[0]
-            keyframe_1_path = keyframe_paths[1]
-            keyframe_2_path = keyframe_paths[2]
-            keyframe_3_path = keyframe_paths[3]
+            # Reuse pre-generated keyframes (batch mode) - includes all subimages
+            logger.info(f"Using {len(keyframe_paths)} pre-generated images from {keyframe_paths[0].parent}")
 
-            # Copy to output directory for reference
-            shutil.copy(keyframe_0_path, output_dir / "keyframe_000.png")
-            shutil.copy(keyframe_1_path, output_dir / "keyframe_240.png")
-            shutil.copy(keyframe_2_path, output_dir / "keyframe_480.png")
-            shutil.copy(keyframe_3_path, output_dir / "keyframe_720.png")
+            # Copy all keyframe images to output directory for reference
+            for kf_path in keyframe_paths:
+                shutil.copy(kf_path, output_dir / kf_path.name)
         else:
             # Generate keyframes for single test (backward compatibility)
             logger.info(f"Generating keyframes (scene type: {scene_type})...")
@@ -707,13 +765,20 @@ def run_blend_factor_test(
         # Step 3: Run DA3-3DGS interpolation
         logger.info("Loading keyframes and building 3DGS scene...")
 
-        # Load keyframe images (4 keyframes: 3 unique scenes + loop back to first)
-        keyframe_images = [
-            Image.open(keyframe_0_path),
-            Image.open(keyframe_1_path),
-            Image.open(keyframe_2_path),
-            Image.open(keyframe_3_path)
-        ]
+        # Load keyframe images (includes all subimages if in batch mode)
+        if keyframe_paths is not None:
+            # Batch mode: load all subimages from keyframe_paths
+            keyframe_images = [Image.open(kf_path) for kf_path in keyframe_paths]
+            logger.info(f"Loaded {len(keyframe_images)} images for DA3 3DGS reconstruction")
+        else:
+            # Single test mode: load 4 keyframes (backward compatibility)
+            keyframe_images = [
+                Image.open(keyframe_0_path),
+                Image.open(keyframe_1_path),
+                Image.open(keyframe_2_path),
+                Image.open(keyframe_3_path)
+            ]
+            logger.info(f"Loaded 4 keyframes for DA3 3DGS reconstruction")
 
         # Load DA3 model directly (not via DepthModel singleton wrapper)
         from deforum.depth.depth_anything_v3 import DepthAnythingV3
@@ -920,6 +985,8 @@ def run_blend_factor_sweep(
     num_frames: int = 720,
     output_dir: Path = None,
     scene_type: str = "simple",
+    subimages_per_keyframe: int = 5,
+    scene_prompts: List[str] = None,
     progress_callback=None,
 ) -> List[BlendFactorTestResult]:
     """Run sweep across multiple blend factors.
@@ -933,6 +1000,8 @@ def run_blend_factor_sweep(
         num_frames: Total frames
         output_dir: Output directory
         scene_type: Test scene type ('simple' or 'photorealistic')
+        subimages_per_keyframe: Number of subimages per keyframe (variations with different seeds)
+        scene_prompts: Custom prompts for 3 scenes [city, highway, beach] (photorealistic only)
         progress_callback: Optional progress callback
 
     Returns:
@@ -947,7 +1016,7 @@ def run_blend_factor_sweep(
     logger.info(f"   Blend factors: {blend_factors}")
     logger.info(f"   Neighbors: {neighbor_segments}, Densify: {densification}")
     logger.info(f"   Resolution: {width}x{height}, Frames: {num_frames}")
-    logger.info(f"   Scene type: {scene_type}")
+    logger.info(f"   Scene type: {scene_type}, Subimages per keyframe: {subimages_per_keyframe}")
 
     # Generate batch keyframes ONCE before the sweep (with random seed)
     batch_keyframes_dir = output_dir / "batch_keyframes"
@@ -957,8 +1026,11 @@ def run_blend_factor_sweep(
         output_dir=batch_keyframes_dir,
         scene_type=scene_type,
         base_seed=None,  # Random seed
+        subimages_per_keyframe=subimages_per_keyframe,
+        scene_prompts=scene_prompts,
     )
-    logger.info(f"✓ Batch keyframes ready for reuse across {len(blend_factors)} tests")
+    total_images = len(keyframe_paths)
+    logger.info(f"✓ Batch keyframes ready: {total_images} images ({total_images // subimages_per_keyframe} keyframes × {subimages_per_keyframe} subimages)")
 
     results = []
 

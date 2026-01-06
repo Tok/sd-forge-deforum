@@ -788,6 +788,34 @@ def create_tuning_tab() -> tuple:
                             step=1,
                             info="Splat multiplier: 1=~705k (fast), 2=~1.4M (optimal quality), 4=~2.8M (more coverage), 6=~4.2M (max, may OOM)",
                         )
+                        dgs_subimages_per_keyframe = gr.Slider(
+                            label="Subimages per keyframe (photorealistic only)",
+                            minimum=1,
+                            maximum=10,
+                            value=5,
+                            step=1,
+                            info="Generate N variations per keyframe with different seeds. Helps DA3 find commonality in synthetic scenes. 5 = 15 total images (3 keyframes × 5 subimages)",
+                        )
+
+                        gr.Markdown("### Custom Scene Prompts (photorealistic only)")
+                        dgs_scene_prompt_1 = gr.Textbox(
+                            label="Scene 1 prompt (keyframe 0)",
+                            value="modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k",
+                            lines=2,
+                            info="First scene prompt (default: city)",
+                        )
+                        dgs_scene_prompt_2 = gr.Textbox(
+                            label="Scene 2 prompt (keyframe 240)",
+                            value="highway road stretching into distance, asphalt with lane markings, trees on sides, blue sky, photorealistic, detailed, 8k",
+                            lines=2,
+                            info="Second scene prompt (default: highway)",
+                        )
+                        dgs_scene_prompt_3 = gr.Textbox(
+                            label="Scene 3 prompt (keyframe 480)",
+                            value="sandy beach with ocean waves, blue water, clear sky, palm trees, tropical paradise, photorealistic, detailed, 8k",
+                            lines=2,
+                            info="Third scene prompt (default: beach)",
+                        )
 
                         # 3DGS test action buttons
                         with gr.Row():
@@ -1300,6 +1328,10 @@ def create_tuning_tab() -> tuple:
             dgs_blend_factor_max_val,
             dgs_blend_factor_step_val,
             dgs_blend_densification_val,
+            dgs_subimages_per_keyframe_val,
+            dgs_scene_prompt_1_val,
+            dgs_scene_prompt_2_val,
+            dgs_scene_prompt_3_val,
             dgs_test_scene_type_val,
             dgs_test_iterations_val,
             dgs_scene_strategies_val,
@@ -1371,6 +1403,10 @@ def create_tuning_tab() -> tuple:
                     "dgs_blend_factor_max": float(dgs_blend_factor_max_val),
                     "dgs_blend_factor_step": float(dgs_blend_factor_step_val),
                     "dgs_blend_densification": int(dgs_blend_densification_val),
+                    "dgs_subimages_per_keyframe": int(dgs_subimages_per_keyframe_val),
+                    "dgs_scene_prompt_1": dgs_scene_prompt_1_val,
+                    "dgs_scene_prompt_2": dgs_scene_prompt_2_val,
+                    "dgs_scene_prompt_3": dgs_scene_prompt_3_val,
                     "dgs_test_scene_type": dgs_test_scene_type_val,
                 }
 
@@ -1401,6 +1437,10 @@ def create_tuning_tab() -> tuple:
                 dgs_blend_factor_max,
                 dgs_blend_factor_step,
                 dgs_blend_densification,
+                dgs_subimages_per_keyframe,
+                dgs_scene_prompt_1,
+                dgs_scene_prompt_2,
+                dgs_scene_prompt_3,
                 dgs_test_scene_type,
                 dgs_test_iterations,
                 dgs_scene_strategies,
