@@ -574,6 +574,17 @@ def create_tuning_tab() -> tuple:
                 - Optimize near-clip distance for quality
                 - Find best balance between keyframe count and splat density
 
+                **🎯 RECOMMENDED SETTINGS (Empirically Validated):**
+                - **Densification: 2** (~1.4M splats, score 95) ← **Prevents ghosty wireframes!**
+                - **Neighbor segments: 4** (score 95.26)
+                - **Scene type: Photorealistic** (better depth estimation than simple shapes)
+                - **Subimages per keyframe: 5** (helps DA3 find multi-view commonality)
+
+                **⚠️ AVOID GHOSTY WIREFRAME ISSUE:**
+                - **Densification 4+** causes hollow/transparent appearance (score drops to 84)
+                - **Simple scene type** (flat colors) → poor depth maps → sparse geometry
+                - **Gray splat filtering** (known issue, research pending)
+
                 **✨ REAL 3DGS Testing with Actual Depth Estimation & Rendering**
                 - Tests use **gradient sphere images** as input (no ZIT diffusion needed)
                 - Runs **ACTUAL DA3 depth estimation** on keyframes
@@ -588,11 +599,11 @@ def create_tuning_tab() -> tuple:
                 2. Estimates camera poses using DA3 GIANT model
                 3. Builds 3D Gaussian Splatting scene (~705k base splats)
                 4. Renders novel views via camera pose interpolation
-                5. Applies densification to increase splat count (1-8x)
+                5. Applies densification to increase splat count (1-8x, **but 2 is optimal!**)
 
                 **Quality Tradeoffs:**
                 - **More keyframes** = Better geometry coverage, slower, more VRAM
-                - **Higher densification** = Finer detail per scene, more VRAM
+                - **Lower densification** = Denser, more solid surfaces (counterintuitive but empirically true!)
                 - **Per-segment** = Fast, minimal VRAM, but coordinate drift
                 - **Per-prompt** = Semantic coherence, eliminates drift, VRAM scales with prompt length
                 - **Rolling window** = Predictable VRAM, fixed window size
@@ -695,17 +706,17 @@ def create_tuning_tab() -> tuple:
                             label="Min densification factor",
                             minimum=1,
                             maximum=8,
-                            value=4,
+                            value=2,
                             step=1,
-                            info="💎 Gaussian splat multiplier. 1=~705k splats (fast), 2=~1.4M (optimal quality), 4=~2.8M, 8=~5.6M (may OOM). Lower is better! Fix: set min=max. Sweep: set different values.",
+                            info="💎 Gaussian splat multiplier. 1=~705k splats, 2=~1.4M (OPTIMAL, score 95), 4=~2.8M (ghosty wireframes, score 84), 8=~5.6M (OOM). Lower is better!",
                         )
                         dgs_densification_max = gr.Slider(
                             label="Max densification factor",
                             minimum=1,
                             maximum=8,
-                            value=4,
+                            value=2,
                             step=1,
-                            info="Empirical results: 2=excellent (95), 4=medium (84), 6=poor (70). Recommended: test 1-4. Set equal to min to fix.",
+                            info="⚠️ Higher values cause hollow/ghosty appearance! Empirical: 2=excellent (95), 4=medium (84), 6=poor (70). Recommended: use 2, or sweep 1-3 max.",
                         )
                         dgs_densification_step = gr.Slider(
                             label="Densification step",
@@ -755,8 +766,8 @@ def create_tuning_tab() -> tuple:
                                 "Simple (Red Cube → Blue Sphere)",
                                 "Photorealistic (City/Interior with Z-Image-Turbo)"
                             ],
-                            value="Simple (Red Cube → Blue Sphere)",
-                            info="Simple = PIL-drawn shapes (instant, no diffusion). Photorealistic = current Forge model (ZIT/Flux/SDXL, real depth/structure)"
+                            value="Photorealistic (City/Interior with Z-Image-Turbo)",
+                            info="⚠️ Simple mode often produces ghosty wireframes (flat colors → poor depth estimation). Photorealistic = better depth gradients → solid geometry. Use Photorealistic for quality testing!"
                         )
                         dgs_blend_factor_min = gr.Slider(
                             label="Min blend factor",
