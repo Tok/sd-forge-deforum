@@ -574,20 +574,21 @@ def create_tuning_tab() -> tuple:
                 - Optimize near-clip distance for quality
                 - Find best balance between keyframe count and splat density
 
-                **🎯 RECOMMENDED SETTINGS (Scene-Type Dependent):**
+                **🎯 RECOMMENDED SETTINGS (Empirically Validated):**
+                - **Densification: 1-2** (CRITICAL! Higher = worse quality)
                 - **Neighbor segments: 4** (empirically optimal, score 95.26)
                 - **Scene type: Photorealistic** (better depth estimation with lighting gradients)
                 - **Subimages per keyframe: 5** (helps DA3 find multi-view commonality)
-                - **Densification: VARIES BY SCENE TYPE** - test to find optimal:
-                  - **Photorealistic scenes:** 4-12 may work better (~22M splats at D=4)
-                  - **Simple scenes:** 2-4 optimal (~1.4M splats at D=2)
                 - **Near-clip: 0.0** (disabled) - previous tests showed minimal quality impact
 
-                **⚠️ EMPIRICAL DISCREPANCY FOUND:**
-                - **Old gradient sphere tests** (simple mode): D=2 optimal, D=4+ caused ghosting
-                - **New photorealistic tests** (city/highway/beach): D=4 looks better, ~22M splats
-                - **Hypothesis:** Scene complexity + subimages → different optimal densification
-                - **Recommendation:** Run your own sweep to find optimal values for your use case!
+                **⚠️ DENSIFICATION PARADOX (COUNTERINTUITIVE!):**
+                - **"Densification" splits splats into MORE but SMALLER/WEAKER pieces**
+                - **D=1**: 1 large opaque splat → solid colors, best quality (score 96.46)
+                - **D=4**: Split into 4 weak splats → faded/ghosty colors (score 84)
+                - **D=8**: Split into 8 tiny splats → very transparent (score 63.41)
+                - **Why:** Splats don't properly alpha-blend, each split piece has reduced opacity
+                - **Result:** More splats = worse quality (opposite of intuition!)
+                - **Confirmed:** Simple AND photorealistic scenes both follow this pattern
 
                 **✨ REAL 3DGS Testing with Actual Depth Estimation & Rendering**
                 - Tests use **gradient sphere images** as input (no ZIT diffusion needed)
@@ -607,10 +608,10 @@ def create_tuning_tab() -> tuple:
 
                 **Quality Tradeoffs:**
                 - **More keyframes** = Better geometry coverage, slower, more VRAM
-                - **Lower densification** = Denser, more solid surfaces (counterintuitive but empirically true!)
-                - **Per-segment** = Fast, minimal VRAM, but coordinate drift
-                - **Per-prompt** = Semantic coherence, eliminates drift, VRAM scales with prompt length
-                - **Rolling window** = Predictable VRAM, fixed window size
+                - **LOWER densification** = **BETTER quality** (D=1 best, D=4+ causes ghosting/fading)
+                  - Why: Densification SPLITS splats into weaker pieces, not adds more coverage
+                  - Each split reduces per-splat opacity → transparent/ghosty appearance
+                  - Empirically confirmed: D=1 (96.46 score) >> D=4 (84 score) >> D=8 (63.41 score)
 
                 **Goal:** Find optimal parameters for your use case (speed vs quality vs VRAM).
                 """)
@@ -662,17 +663,17 @@ def create_tuning_tab() -> tuple:
                             label="Min densification factor",
                             minimum=1,
                             maximum=16,
-                            value=2,
+                            value=1,
                             step=1,
-                            info="💎 Gaussian splat multiplier. Photorealistic scenes: 4=~22M splats (better quality). Simple scenes: 2=~1.4M (optimal). Scene type affects optimal value! Test to find your sweet spot.",
+                            info="⚠️ COUNTERINTUITIVE: Higher = WORSE! Splits splats into more but weaker pieces. D=1: ~705k strong splats (96.46 score, BEST). D=2: ~1.4M weaker splats (95 score). D=4: ~2.8M weak splats (84 score, ghosting starts).",
                         )
                         dgs_densification_max = gr.Slider(
                             label="Max densification factor",
                             minimum=1,
                             maximum=16,
-                            value=2,
+                            value=1,
                             step=1,
-                            info="⚠️ Higher values increase VRAM and render time. Empirical results vary by scene type. Photorealistic: test 4-12. Simple: 2-4. Set equal to min to fix.",
+                            info="⚠️ CRITICAL: D=4+ causes faded colors, ghosting, transparency! Each splat split reduces opacity. D=1 recommended. D=2 acceptable. D=4+ = visible quality degradation. Set equal to min to fix.",
                         )
                         dgs_densification_step = gr.Slider(
                             label="Densification step",

@@ -30,6 +30,25 @@ Metrics:
 - Visual quality (SSIM between frames)
 - Temporal consistency (jitter/smoothness)
 - Render time and VRAM usage
+
+CRITICAL: Densification Paradox (Empirically Validated)
+-------------------------------------------------------
+"Densification" is MISLEADING - it splits splats into MORE but WEAKER pieces:
+
+- D=1: 1 large opaque splat → solid colors, BEST quality (score 96.46, ~705k splats)
+- D=2: Split into 2 weaker splats → good quality (score ~95, ~1.4M splats)
+- D=4: Split into 4 weak splats → faded/ghosty (score 84, ~2.8M splats)
+- D=8: Split into 8 tiny splats → very transparent (score 63.41, ~5.6M splats)
+
+WHY: Each split piece has reduced opacity. Splats don't properly alpha-blend.
+Result: More splats = worse quality (counterintuitive!)
+
+Confirmed by user testing 2025-01-06:
+- Simple scenes: Red cube solid at D=1, "blacked"/faded at D=4
+- Photorealistic: Same pattern (D=1 best despite fewer splats)
+- Colors fade away as individual splats get smaller with higher densification
+
+RECOMMENDATION: Use D=1 (best), D=2 acceptable, avoid D=4+
 """
 
 import time
