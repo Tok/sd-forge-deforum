@@ -999,10 +999,16 @@ def run_blend_factor_test(
         )
 
 
-def run_blend_factor_test_single(
-    blend_factor: float = 0.0,
-    neighbor_segments: int = 4,
-    densification: int = 4,
+def run_parameter_sweep(
+    blend_factor_min: float = 0.0,
+    blend_factor_max: float = 0.0,
+    blend_factor_step: float = 0.25,
+    neighbor_segments_min: int = 4,
+    neighbor_segments_max: int = 4,
+    neighbor_segments_step: int = 1,
+    densification_min: int = 4,
+    densification_max: int = 4,
+    densification_step: int = 1,
     width: int = 512,
     height: int = 512,
     num_frames: int = 720,
@@ -1010,35 +1016,56 @@ def run_blend_factor_test_single(
     scene_type: str = "simple",
     subimages_per_keyframe: int = 5,
     scene_prompts: List[str] = None,
-) -> BlendFactorTestResult:
-    """Run single blend factor test with fixed settings (no sweep).
+) -> List[BlendFactorTestResult]:
+    """Run DA3-3DGS parameter sweep across blend_factor, neighbor_segments, and densification.
+
+    Each parameter can be fixed (min == max) or swept (min < max).
 
     Args:
-        blend_factor: Schedule blend factor (0.0 = pure DA3, 1.0 = pure Deforum)
-        neighbor_segments: Number of neighboring keyframes
-        densification: Gaussian densification factor
+        blend_factor_min: Min schedule blend (0.0 = pure DA3, 1.0 = pure Deforum)
+        blend_factor_max: Max schedule blend
+        blend_factor_step: Blend factor step size
+        neighbor_segments_min: Min neighboring keyframes (2-10, default 4)
+            More keyframes = better geometry coverage but slower + more VRAM
+        neighbor_segments_max: Max neighboring keyframes
+        neighbor_segments_step: Neighbor step size
+        densification_min: Min gaussian splat multiplier (1-8, default 4)
+            1 = ~705k splats (fast), 2 = ~1.4M (optimal), 4 = ~2.8M, 8 = ~5.6M (may OOM)
+        densification_max: Max densification
+        densification_step: Densification step size
         width: Output width
         height: Output height
-        num_frames: Total frames
+        num_frames: Total frames (default 720 = 12 seconds @ 60fps)
         output_dir: Output directory
-        scene_type: Test scene type ('simple' or 'photorealistic')
-        subimages_per_keyframe: Number of subimages per keyframe (variations with different seeds)
+        scene_type: Test scene type ('simple' = PIL-drawn shapes, 'photorealistic' = ZIT diffusion)
+        subimages_per_keyframe: Variations per keyframe with different seeds (helps DA3 find commonality)
         scene_prompts: Custom prompts for 3 scenes [city, highway, beach] (photorealistic only)
 
     Returns:
-        BlendFactorTestResult object
+        List of BlendFactorTestResult objects (one per test configuration)
     """
     if output_dir is None:
-        output_dir = Path("output/deforum-tuning/blend-factor-tests")
+        output_dir = Path("output/deforum-tuning/parameter-sweep")
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"🚀 Starting DA3-3DGS test (fixed blend factor: {blend_factor})")
-    logger.info(f"   Neighbors: {neighbor_segments}, Densify: {densification}")
+    # Generate parameter ranges
+    import numpy as np
+    blend_factors = list(np.arange(blend_factor_min, blend_factor_max + blend_factor_step/2, blend_factor_step))
+    neighbor_segments_range = list(range(neighbor_segments_min, neighbor_segments_max + 1, neighbor_segments_step))
+    densification_range = list(range(densification_min, densification_max + 1, densification_step))
+
+    # Calculate total tests
+    total_tests = len(blend_factors) * len(neighbor_segments_range) * len(densification_range)
+
+    logger.info(f"🚀 Starting DA3-3DGS parameter sweep: {total_tests} total tests")
+    logger.info(f"   Blend factors: {blend_factors}")
+    logger.info(f"   Neighbor segments: {neighbor_segments_range}")
+    logger.info(f"   Densification: {densification_range}")
     logger.info(f"   Resolution: {width}x{height}, Frames: {num_frames}")
     logger.info(f"   Scene type: {scene_type}, Subimages per keyframe: {subimages_per_keyframe}")
 
-    # Generate or reuse batch keyframes from shared location
+    # Generate or reuse batch keyframes from shared location (ONCE for all tests)
     batch_keyframes_dir = Path("output/deforum-tuning/batch_keyframes")
     keyframe_paths = generate_batch_keyframes(
         width=width,
@@ -1055,27 +1082,46 @@ def run_blend_factor_test_single(
     else:
         logger.info(f"✓ Batch keyframes ready: {total_images} images")
 
-    # Run single test with fixed blend factor
-    test_output_dir = output_dir / f"blend_{blend_factor:.2f}"
-    result = run_blend_factor_test(
-        blend_factor=blend_factor,
-        neighbor_segments=neighbor_segments,
-        densification=densification,
-        width=width,
-        height=height,
-        num_frames=num_frames,
-        output_dir=test_output_dir,
-        scene_type=scene_type,
-        keyframe_paths=keyframe_paths,  # Reuse batch keyframes
-    )
+    # Run sweep across all parameter combinations
+    results = []
+    test_count = 0
 
-    # Save result to JSON
-    results_file = output_dir / "blend_factor_test_result.json"
+    for blend_factor in blend_factors:
+        for neighbor_segments in neighbor_segments_range:
+            for densification in densification_range:
+                test_count += 1
+                logger.info(f"\n[{test_count}/{total_tests}] Testing blend={blend_factor:.2f}, neighbors={neighbor_segments}, densify={densification}")
+
+                # Run single test
+                test_output_dir = output_dir / f"blend_{blend_factor:.2f}_neighbors_{neighbor_segments}_densify_{densification}"
+                result = run_blend_factor_test(
+                    blend_factor=blend_factor,
+                    neighbor_segments=neighbor_segments,
+                    densification=densification,
+                    width=width,
+                    height=height,
+                    num_frames=num_frames,
+                    output_dir=test_output_dir,
+                    scene_type=scene_type,
+                    keyframe_paths=keyframe_paths,  # Reuse batch keyframes for all tests
+                )
+
+                results.append(result)
+                logger.info(f"   ✓ Test {test_count} complete: score={result.calculate_overall_score():.1f}/100")
+
+    # Save all results to JSON
+    results_file = output_dir / "parameter_sweep_results.json"
     with open(results_file, 'w') as f:
-        json.dump(result.to_dict(), f, indent=2)
+        json.dump([r.to_dict() for r in results], f, indent=2)
 
-    logger.info(f"✅ Test complete: score={result.calculate_overall_score():.1f}/100")
+    # Find and log best result
+    best_result = max(results, key=lambda r: r.calculate_overall_score())
+    logger.info(f"\n✅ Sweep complete: {len(results)} tests")
     logger.info(f"   Results saved to {results_file}")
-    logger.info(f"   Video saved to {test_output_dir}")
+    logger.info(f"🏆 Best configuration:")
+    logger.info(f"   Blend factor: {best_result.blend_factor:.2f}")
+    logger.info(f"   Neighbor segments: {best_result.neighbor_segments}")
+    logger.info(f"   Densification: {best_result.densification}")
+    logger.info(f"   Score: {best_result.calculate_overall_score():.1f}/100")
 
-    return result
+    return results

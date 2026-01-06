@@ -608,24 +608,15 @@ class TuningTestManager:
             config: Test configuration with blend factor parameters
         """
         from pathlib import Path
-        from deforum.api.tuning_3dgs_blend_factor import run_blend_factor_sweep
         import os
-        import numpy as np
 
-        logger.info(f"Starting blend factor sweep for test {test_id}")
+        logger.info(f"Starting DA3-3DGS parameter sweep for test {test_id}")
 
         # Create output directory
         forge_root = Path(os.getcwd())
         tuning_dir = forge_root / "output" / "deforum-tuning"
-        test_output_dir = tuning_dir / f"blend_factor_{test_id}"
+        test_output_dir = tuning_dir / f"parameter_sweep_{test_id}"
         test_output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Get blend factor (fixed value, not swept anymore)
-        blend_factor = config.dgs_blend_factor_min if config.dgs_blend_factor_min is not None else 0.0
-
-        # Get other 3DGS params
-        neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
-        densification = config.dgs_blend_densification if config.dgs_blend_densification is not None else 4
 
         # Get scene type (simple vs photorealistic)
         scene_type = "simple"
@@ -652,18 +643,38 @@ class TuningTestManager:
                 config.dgs_scene_prompt_3 if config.dgs_scene_prompt_3 else "sandy beach with ocean waves, blue water, clear sky, palm trees, tropical paradise, photorealistic, detailed, 8k",
             ]
 
-        logger.info(f"Fixed blend factor: {blend_factor}")
-        logger.info(f"Neighbor segments: {neighbor_segments}, Densification: {densification}")
+        # Get all sweep parameters (can be fixed or swept)
+        blend_factor_min = config.dgs_blend_factor_min if config.dgs_blend_factor_min is not None else 0.0
+        blend_factor_max = config.dgs_blend_factor_max if config.dgs_blend_factor_max is not None else 0.0
+        blend_factor_step = config.dgs_blend_factor_step if config.dgs_blend_factor_step is not None else 0.25
+
+        neighbor_segments_min = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
+        neighbor_segments_max = config.dgs_neighbor_segments_max if config.dgs_neighbor_segments_max is not None else 4
+        neighbor_segments_step = config.dgs_neighbor_segments_step if config.dgs_neighbor_segments_step is not None else 1
+
+        densification_min = config.dgs_densification_min if config.dgs_densification_min is not None else 4
+        densification_max = config.dgs_densification_max if config.dgs_densification_max is not None else 4
+        densification_step = config.dgs_densification_step if config.dgs_densification_step is not None else 1
+
+        logger.info(f"Blend factor: {blend_factor_min}-{blend_factor_max} step {blend_factor_step}")
+        logger.info(f"Neighbor segments: {neighbor_segments_min}-{neighbor_segments_max} step {neighbor_segments_step}")
+        logger.info(f"Densification: {densification_min}-{densification_max} step {densification_step}")
         logger.info(f"Resolution: {width}x{height}")
         logger.info(f"Scene type: {scene_type}, Subimages per keyframe: {subimages_per_keyframe}")
 
-        # Run single test (no sweep)
-        from deforum.api.tuning_3dgs_blend_factor import run_blend_factor_test_single
+        # Run parameter sweep
+        from deforum.api.tuning_3dgs_blend_factor import run_parameter_sweep
 
-        result = run_blend_factor_test_single(
-            blend_factor=blend_factor,
-            neighbor_segments=neighbor_segments,
-            densification=densification,
+        results = run_parameter_sweep(
+            blend_factor_min=blend_factor_min,
+            blend_factor_max=blend_factor_max,
+            blend_factor_step=blend_factor_step,
+            neighbor_segments_min=neighbor_segments_min,
+            neighbor_segments_max=neighbor_segments_max,
+            neighbor_segments_step=neighbor_segments_step,
+            densification_min=densification_min,
+            densification_max=densification_max,
+            densification_step=densification_step,
             width=width,
             height=height,
             num_frames=720,  # 60fps * 12 seconds = 720 frames
@@ -673,12 +684,12 @@ class TuningTestManager:
             scene_prompts=scene_prompts,
         )
 
-        # Update test status with result
+        # Update test status with results
         with self.test_lock:
             if test_id in self.active_tests:
-                self.active_tests[test_id].results = [result.to_dict()]
+                self.active_tests[test_id].results = [r.to_dict() for r in results]
 
-        logger.info(f"Blend factor test complete")
+        logger.info(f"Parameter sweep complete: {len(results)} tests run")
 
     def _create_3dgs_test_directory(self, test_id: str) -> Path:
         """Create output directory for 3DGS test.

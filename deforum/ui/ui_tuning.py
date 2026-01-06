@@ -673,15 +673,15 @@ def create_tuning_tab() -> tuple:
                             maximum=10,
                             value=4,
                             step=1,
-                            info="Minimum keyframes to include around each segment",
+                            info="🔢 Keyframes used around each segment. More keyframes = better geometry coverage + slower + more VRAM. Fix: set min=max. Sweep: set different values.",
                         )
                         dgs_neighbor_segments_max = gr.Slider(
                             label="Max neighbor segments",
                             minimum=2,
                             maximum=10,
-                            value=6,
+                            value=4,
                             step=1,
-                            info="Results show 3-6 is sweet spot (4 optimal with score 95.26)",
+                            info="Empirical optimal: 4 (score 95.26). Safe range: 3-6. Set equal to min to fix this parameter.",
                         )
                         dgs_neighbor_segments_step = gr.Slider(
                             label="Neighbor segments step",
@@ -689,23 +689,23 @@ def create_tuning_tab() -> tuple:
                             maximum=4,
                             value=1,
                             step=1,
-                            info="Step 1 for fine tuning (3, 4, 5, 6)",
+                            info="Sweep step size. 1 = fine tuning (test 3, 4, 5, 6). Ignored if min=max.",
                         )
                         dgs_densification_min = gr.Slider(
                             label="Min densification factor",
                             minimum=1,
                             maximum=8,
-                            value=1,
+                            value=4,
                             step=1,
-                            info="⚠️ CRITICAL! Results: 2=excellent (95), 4=medium (84), 6=poor (70)",
+                            info="💎 Gaussian splat multiplier. 1=~705k splats (fast), 2=~1.4M (optimal quality), 4=~2.8M, 8=~5.6M (may OOM). Lower is better! Fix: set min=max. Sweep: set different values.",
                         )
                         dgs_densification_max = gr.Slider(
                             label="Max densification factor",
                             minimum=1,
                             maximum=8,
-                            value=5,
+                            value=4,
                             step=1,
-                            info="Test 1-5 (lower is better! 2 is empirically optimal)",
+                            info="Empirical results: 2=excellent (95), 4=medium (84), 6=poor (70). Recommended: test 1-4. Set equal to min to fix.",
                         )
                         dgs_densification_step = gr.Slider(
                             label="Densification step",
@@ -713,7 +713,7 @@ def create_tuning_tab() -> tuple:
                             maximum=4,
                             value=1,
                             step=1,
-                            info="Step 1 for fine tuning around optimal value of 2",
+                            info="Sweep step size. 1 = fine tuning (test 1, 2, 3, 4). Ignored if min=max.",
                         )
                         dgs_nearclip_min = gr.Slider(
                             label="Min near-clip distance",
@@ -740,12 +740,14 @@ def create_tuning_tab() -> tuple:
                             info="Large step OK (minimal impact on quality)",
                         )
 
-                        gr.Markdown("### 🎥 Schedule Blend Factor (NEW!)")
+                        gr.Markdown("### 🎥 Schedule Blend Factor")
                         gr.Markdown("""
-                        **Test blending between DA3 auto-poses and Deforum manual schedules:**
-                        - 0.0 = Pure DA3 (automatic, geometrically accurate)
-                        - 0.5 = Hybrid (DA3 baseline + Deforum offsets)
-                        - 1.0 = Pure Deforum (full manual control)
+                        **Blending between DA3 auto-poses and Deforum manual schedules:**
+                        - **0.0** = Pure DA3 (automatic camera poses, geometrically accurate)
+                        - **0.5** = Hybrid (DA3 baseline + 50% Deforum schedule offsets)
+                        - **1.0** = Pure Deforum (full manual camera schedule control)
+
+                        ⚠️ **Currently NOT IMPLEMENTED in rendering** - all tests use pure DA3 poses regardless of blend_factor value. This parameter is for future integration.
                         """)
                         dgs_test_scene_type = gr.Radio(
                             label="Test Scene Type",
@@ -754,7 +756,7 @@ def create_tuning_tab() -> tuple:
                                 "Photorealistic (City/Interior with Z-Image-Turbo)"
                             ],
                             value="Simple (Red Cube → Blue Sphere)",
-                            info="Simple = fast validation, Photorealistic = real quality testing with depth/structure"
+                            info="Simple = PIL-drawn shapes (instant, no diffusion). Photorealistic = current Forge model (ZIT/Flux/SDXL, real depth/structure)"
                         )
                         dgs_blend_factor_min = gr.Slider(
                             label="Min blend factor",
@@ -762,15 +764,15 @@ def create_tuning_tab() -> tuple:
                             maximum=1.0,
                             value=0.0,
                             step=0.05,
-                            info="Start with pure DA3 (0.0)",
+                            info="🎬 Schedule blend start. 0.0 = pure DA3. Fix: set min=max. Sweep: set different values (e.g., 0.0→1.0 to test all blending ratios)",
                         )
                         dgs_blend_factor_max = gr.Slider(
                             label="Max blend factor",
                             minimum=0.0,
                             maximum=1.0,
-                            value=1.0,
+                            value=0.0,
                             step=0.05,
-                            info="End with pure Deforum (1.0)",
+                            info="Schedule blend end. 1.0 = pure Deforum schedules. Set equal to min to fix. Example sweep: min=0.0, max=1.0, step=0.25 → tests [0.0, 0.25, 0.5, 0.75, 1.0]",
                         )
                         dgs_blend_factor_step = gr.Slider(
                             label="Blend factor step",
@@ -778,15 +780,7 @@ def create_tuning_tab() -> tuple:
                             maximum=0.5,
                             value=0.25,
                             step=0.05,
-                            info="0.25 = test [0.0, 0.25, 0.5, 0.75, 1.0] (5 tests)",
-                        )
-                        dgs_blend_densification = gr.Slider(
-                            label="Densification factor (blend factor test only)",
-                            minimum=1,
-                            maximum=8,
-                            value=4,
-                            step=1,
-                            info="Splat multiplier: 1=~705k (fast), 2=~1.4M (optimal quality), 4=~2.8M (more coverage), 6=~4.2M (max, may OOM)",
+                            info="Sweep step size. 0.25 = 5 tests, 0.1 = 11 tests, 0.05 = 21 tests. Ignored if min=max.",
                         )
                         dgs_subimages_per_keyframe = gr.Slider(
                             label="Subimages per keyframe (photorealistic only)",
@@ -1327,7 +1321,6 @@ def create_tuning_tab() -> tuple:
             dgs_blend_factor_min_val,
             dgs_blend_factor_max_val,
             dgs_blend_factor_step_val,
-            dgs_blend_densification_val,
             dgs_subimages_per_keyframe_val,
             dgs_scene_prompt_1_val,
             dgs_scene_prompt_2_val,
@@ -1367,17 +1360,8 @@ def create_tuning_tab() -> tuple:
                     elif "1:1" in aspect_str:
                         aspect_configs.append([1.0, 512, 512])
 
-                # Create DA3-3DGS test config
-                # If blend factor params are provided, use blend factor test
-                # Otherwise use standard synthetic 3DGS test
-                has_blend_params = (
-                    dgs_blend_factor_min_val is not None and
-                    dgs_blend_factor_max_val is not None and
-                    dgs_blend_factor_step_val is not None and
-                    dgs_blend_factor_min_val != dgs_blend_factor_max_val
-                )
-
-                test_type = "da3_3dgs_blend_factor" if has_blend_params else "da3_3dgs_synthetic"
+                # Always use parameter sweep test (blend_factor, neighbor_segments, densification can all be fixed or swept)
+                test_type = "da3_3dgs_blend_factor"
 
                 # IMPORTANT: Keys must match TuningTestConfig field names (with dgs_ prefix)
                 config = {
@@ -1402,7 +1386,6 @@ def create_tuning_tab() -> tuple:
                     "dgs_blend_factor_min": float(dgs_blend_factor_min_val),
                     "dgs_blend_factor_max": float(dgs_blend_factor_max_val),
                     "dgs_blend_factor_step": float(dgs_blend_factor_step_val),
-                    "dgs_blend_densification": int(dgs_blend_densification_val),
                     "dgs_subimages_per_keyframe": int(dgs_subimages_per_keyframe_val),
                     "dgs_scene_prompt_1": dgs_scene_prompt_1_val,
                     "dgs_scene_prompt_2": dgs_scene_prompt_2_val,
@@ -1436,7 +1419,6 @@ def create_tuning_tab() -> tuple:
                 dgs_blend_factor_min,
                 dgs_blend_factor_max,
                 dgs_blend_factor_step,
-                dgs_blend_densification,
                 dgs_subimages_per_keyframe,
                 dgs_scene_prompt_1,
                 dgs_scene_prompt_2,
