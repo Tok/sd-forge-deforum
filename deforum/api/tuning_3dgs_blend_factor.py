@@ -554,13 +554,36 @@ def generate_batch_keyframes(
     """
     import random
 
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check if keyframes already exist and can be reused
+    existing_keyframes = list(output_dir.glob("keyframe_*.png"))
+    if existing_keyframes:
+        logger.info(f"Found {len(existing_keyframes)} existing keyframes in {output_dir}")
+        logger.info("Reusing existing batch keyframes instead of regenerating")
+
+        # Sort by filename to ensure correct order
+        existing_keyframes.sort()
+
+        # Verify we have the expected structure
+        expected_simple = ["keyframe_000.png", "keyframe_240.png", "keyframe_480.png", "keyframe_720.png"]
+        has_subimages = any("_sub" in kf.name for kf in existing_keyframes)
+
+        if has_subimages:
+            # Photorealistic with subimages
+            logger.info(f"Detected photorealistic mode with subimages")
+        else:
+            # Simple mode or single keyframes
+            logger.info(f"Detected simple mode (no subimages)")
+
+        logger.info(f"✓ Reusing {len(existing_keyframes)} existing keyframes")
+        return existing_keyframes
+
     # Use random seed if not specified
     if base_seed is None:
         base_seed = random.randint(1000, 9999)
 
-    logger.info(f"Generating batch keyframes (scene type: {scene_type}, base seed: {base_seed}, subimages: {subimages_per_keyframe})...")
-
-    output_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Generating NEW batch keyframes (scene type: {scene_type}, base seed: {base_seed}, subimages: {subimages_per_keyframe})...")
 
     all_image_paths = []
 
@@ -976,10 +999,10 @@ def run_blend_factor_test(
         )
 
 
-def run_blend_factor_sweep(
-    blend_factors: List[float],
+def run_blend_factor_test_single(
+    blend_factor: float = 0.0,
     neighbor_segments: int = 4,
-    densification: int = 2,
+    densification: int = 4,
     width: int = 512,
     height: int = 512,
     num_frames: int = 720,
@@ -987,12 +1010,11 @@ def run_blend_factor_sweep(
     scene_type: str = "simple",
     subimages_per_keyframe: int = 5,
     scene_prompts: List[str] = None,
-    progress_callback=None,
-) -> List[BlendFactorTestResult]:
-    """Run sweep across multiple blend factors.
+) -> BlendFactorTestResult:
+    """Run single blend factor test with fixed settings (no sweep).
 
     Args:
-        blend_factors: List of blend factors to test
+        blend_factor: Schedule blend factor (0.0 = pure DA3, 1.0 = pure Deforum)
         neighbor_segments: Number of neighboring keyframes
         densification: Gaussian densification factor
         width: Output width
@@ -1002,65 +1024,58 @@ def run_blend_factor_sweep(
         scene_type: Test scene type ('simple' or 'photorealistic')
         subimages_per_keyframe: Number of subimages per keyframe (variations with different seeds)
         scene_prompts: Custom prompts for 3 scenes [city, highway, beach] (photorealistic only)
-        progress_callback: Optional progress callback
 
     Returns:
-        List of BlendFactorTestResult objects
+        BlendFactorTestResult object
     """
     if output_dir is None:
         output_dir = Path("output/deforum-tuning/blend-factor-tests")
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"🚀 Starting blend factor sweep: {len(blend_factors)} tests")
-    logger.info(f"   Blend factors: {blend_factors}")
+    logger.info(f"🚀 Starting DA3-3DGS test (fixed blend factor: {blend_factor})")
     logger.info(f"   Neighbors: {neighbor_segments}, Densify: {densification}")
     logger.info(f"   Resolution: {width}x{height}, Frames: {num_frames}")
     logger.info(f"   Scene type: {scene_type}, Subimages per keyframe: {subimages_per_keyframe}")
 
-    # Generate batch keyframes ONCE before the sweep (with random seed)
-    batch_keyframes_dir = output_dir / "batch_keyframes"
+    # Generate or reuse batch keyframes from shared location
+    batch_keyframes_dir = Path("output/deforum-tuning/batch_keyframes")
     keyframe_paths = generate_batch_keyframes(
         width=width,
         height=height,
         output_dir=batch_keyframes_dir,
         scene_type=scene_type,
-        base_seed=None,  # Random seed
+        base_seed=None,  # Random seed (only used if generating new)
         subimages_per_keyframe=subimages_per_keyframe,
         scene_prompts=scene_prompts,
     )
     total_images = len(keyframe_paths)
-    logger.info(f"✓ Batch keyframes ready: {total_images} images ({total_images // subimages_per_keyframe} keyframes × {subimages_per_keyframe} subimages)")
+    if scene_type == "photorealistic":
+        logger.info(f"✓ Batch keyframes ready: {total_images} images ({total_images // subimages_per_keyframe} keyframes × {subimages_per_keyframe} subimages)")
+    else:
+        logger.info(f"✓ Batch keyframes ready: {total_images} images")
 
-    results = []
+    # Run single test with fixed blend factor
+    test_output_dir = output_dir / f"blend_{blend_factor:.2f}"
+    result = run_blend_factor_test(
+        blend_factor=blend_factor,
+        neighbor_segments=neighbor_segments,
+        densification=densification,
+        width=width,
+        height=height,
+        num_frames=num_frames,
+        output_dir=test_output_dir,
+        scene_type=scene_type,
+        keyframe_paths=keyframe_paths,  # Reuse batch keyframes
+    )
 
-    for i, blend_factor in enumerate(blend_factors):
-        if progress_callback:
-            progress_callback(i, len(blend_factors), f"Testing blend_factor={blend_factor:.2f}")
-
-        result = run_blend_factor_test(
-            blend_factor=blend_factor,
-            neighbor_segments=neighbor_segments,
-            densification=densification,
-            width=width,
-            height=height,
-            num_frames=num_frames,
-            output_dir=output_dir / f"blend_{blend_factor:.2f}",
-            scene_type=scene_type,
-            keyframe_paths=keyframe_paths,  # Reuse batch keyframes
-        )
-
-        results.append(result)
-
-    # Save results to JSON
-    results_file = output_dir / "blend_factor_sweep_results.json"
+    # Save result to JSON
+    results_file = output_dir / "blend_factor_test_result.json"
     with open(results_file, 'w') as f:
-        json.dump([r.to_dict() for r in results], f, indent=2)
+        json.dump(result.to_dict(), f, indent=2)
 
-    logger.info(f"✅ Sweep complete: {len(results)} tests, results saved to {results_file}")
+    logger.info(f"✅ Test complete: score={result.calculate_overall_score():.1f}/100")
+    logger.info(f"   Results saved to {results_file}")
+    logger.info(f"   Video saved to {test_output_dir}")
 
-    # Print summary
-    best_result = max(results, key=lambda r: r.calculate_overall_score())
-    logger.info(f"🏆 Best blend_factor: {best_result.blend_factor:.2f} (score: {best_result.calculate_overall_score():.1f}/100)")
-
-    return results
+    return result

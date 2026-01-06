@@ -620,13 +620,8 @@ class TuningTestManager:
         test_output_dir = tuning_dir / f"blend_factor_{test_id}"
         test_output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Extract blend factor range from config
-        blend_min = config.dgs_blend_factor_min if config.dgs_blend_factor_min is not None else 0.0
-        blend_max = config.dgs_blend_factor_max if config.dgs_blend_factor_max is not None else 1.0
-        blend_step = config.dgs_blend_factor_step if config.dgs_blend_factor_step is not None else 0.25
-
-        # Generate blend factor values
-        blend_factors = list(np.arange(blend_min, blend_max + blend_step/2, blend_step))
+        # Get blend factor (fixed value, not swept anymore)
+        blend_factor = config.dgs_blend_factor_min if config.dgs_blend_factor_min is not None else 0.0
 
         # Get other 3DGS params
         neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
@@ -657,14 +652,16 @@ class TuningTestManager:
                 config.dgs_scene_prompt_3 if config.dgs_scene_prompt_3 else "sandy beach with ocean waves, blue water, clear sky, palm trees, tropical paradise, photorealistic, detailed, 8k",
             ]
 
-        logger.info(f"Blend factor sweep: {blend_factors}")
+        logger.info(f"Fixed blend factor: {blend_factor}")
         logger.info(f"Neighbor segments: {neighbor_segments}, Densification: {densification}")
         logger.info(f"Resolution: {width}x{height}")
         logger.info(f"Scene type: {scene_type}, Subimages per keyframe: {subimages_per_keyframe}")
 
-        # Run sweep
-        results = run_blend_factor_sweep(
-            blend_factors=blend_factors,
+        # Run single test (no sweep)
+        from deforum.api.tuning_3dgs_blend_factor import run_blend_factor_test_single
+
+        result = run_blend_factor_test_single(
+            blend_factor=blend_factor,
             neighbor_segments=neighbor_segments,
             densification=densification,
             width=width,
@@ -674,15 +671,14 @@ class TuningTestManager:
             scene_type=scene_type,
             subimages_per_keyframe=subimages_per_keyframe,
             scene_prompts=scene_prompts,
-            progress_callback=lambda i, total, desc: logger.info(f"[{i+1}/{total}] {desc}")
         )
 
-        # Update test status with results
+        # Update test status with result
         with self.test_lock:
             if test_id in self.active_tests:
-                self.active_tests[test_id].results = [r.to_dict() for r in results]
+                self.active_tests[test_id].results = [result.to_dict()]
 
-        logger.info(f"Blend factor sweep complete: {len(results)} tests run")
+        logger.info(f"Blend factor test complete")
 
     def _create_3dgs_test_directory(self, test_id: str) -> Path:
         """Create output directory for 3DGS test.
