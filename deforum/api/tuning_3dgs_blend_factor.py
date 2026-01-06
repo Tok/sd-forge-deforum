@@ -696,6 +696,8 @@ def run_blend_factor_test(
     output_dir: Path = None,
     scene_type: str = "simple",
     keyframe_paths: List[Path] = None,
+    use_ray_pose: bool = False,
+    confidence_threshold: float = 0.0,
 ) -> BlendFactorTestResult:
     """Run a single blend factor test with REAL generation.
 
@@ -715,11 +717,15 @@ def run_blend_factor_test(
         output_dir: Directory to save results
         scene_type: Test scene type ('simple' or 'photorealistic')
         keyframe_paths: Optional pre-generated keyframe paths (for batch reuse)
+        use_ray_pose: Use DA3 ray head for more accurate camera poses (slower but better geometry)
+        confidence_threshold: Filter splats by confidence percentile (0=disabled, 50=top 50%, 90=very confident only)
 
     Returns:
         BlendFactorTestResult with metrics
     """
     logger.info(f"🧪 Testing blend_factor={blend_factor:.2f}, neighbors={neighbor_segments}, densify={densification}")
+    if use_ray_pose or confidence_threshold > 0:
+        logger.info(f"   Quality settings: use_ray_pose={use_ray_pose}, confidence_threshold={confidence_threshold}%")
 
     if output_dir is None:
         output_dir = Path("output/deforum-tuning/blend-factor-tests") / f"blend_{blend_factor:.2f}"
@@ -845,7 +851,11 @@ def run_blend_factor_test(
 
         # Build 3DGS scene from keyframes
         logger.info(f"Building 3DGS scene from {len(keyframe_images)} keyframes...")
-        prediction = da3_model.estimate_3d_gaussians(keyframe_images)
+        prediction = da3_model.estimate_3d_gaussians(
+            keyframe_images,
+            use_ray_pose=use_ray_pose,
+            confidence_threshold=confidence_threshold
+        )
 
         if prediction is None or not hasattr(prediction, 'gaussians'):
             raise RuntimeError("DA3 model doesn't support 3DGS. Need model with trained gs_head.")
@@ -1035,6 +1045,8 @@ def run_parameter_sweep(
     scene_type: str = "simple",
     subimages_per_keyframe: int = 5,
     scene_prompts: List[str] = None,
+    use_ray_pose: bool = False,
+    confidence_threshold: float = 0.0,
 ) -> List[BlendFactorTestResult]:
     """Run DA3-3DGS parameter sweep across blend_factor, neighbor_segments, and densification.
 
@@ -1059,6 +1071,8 @@ def run_parameter_sweep(
         scene_type: Test scene type ('simple' = PIL-drawn shapes, 'photorealistic' = ZIT diffusion)
         subimages_per_keyframe: Variations per keyframe with different seeds (helps DA3 find commonality)
         scene_prompts: Custom prompts for 3 scenes [city, highway, beach] (photorealistic only)
+        use_ray_pose: Use DA3 ray head for more accurate camera poses (slower but better geometry)
+        confidence_threshold: Filter splats by confidence percentile (0=disabled, 50=top 50%, 90=very confident only)
 
     Returns:
         List of BlendFactorTestResult objects (one per test configuration)
@@ -1083,6 +1097,7 @@ def run_parameter_sweep(
     logger.info(f"   Densification: {densification_range}")
     logger.info(f"   Resolution: {width}x{height}, Frames: {num_frames}")
     logger.info(f"   Scene type: {scene_type}, Subimages per keyframe: {subimages_per_keyframe}")
+    logger.info(f"   Quality: use_ray_pose={use_ray_pose}, confidence_threshold={confidence_threshold}%")
 
     # Generate or reuse batch keyframes from shared location (ONCE for all tests)
     batch_keyframes_dir = Path("output/deforum-tuning/batch_keyframes")
@@ -1123,6 +1138,8 @@ def run_parameter_sweep(
                     output_dir=test_output_dir,
                     scene_type=scene_type,
                     keyframe_paths=keyframe_paths,  # Reuse batch keyframes for all tests
+                    use_ray_pose=use_ray_pose,
+                    confidence_threshold=confidence_threshold,
                 )
 
                 results.append(result)
