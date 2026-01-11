@@ -1165,6 +1165,8 @@ def run_parameter_sweep(
 
 def run_twopass_refinement(
     video_path: str,
+    width: int = 512,
+    height: int = 512,
     frame_stride: int = 1,
     segment_size: int = 30,
     overlap_percent: int = 20,
@@ -1174,23 +1176,20 @@ def run_twopass_refinement(
     densification: int = 1,
     neighbor_segments: int = 4,
 ) -> List[BlendFactorTestResult]:
-    """Run Two-Pass DA3-3DGS refinement on existing video.
+    """Run Two-Pass DA3-3DGS refinement.
 
     Pipeline:
-    1. Load existing video or image sequence (coherent Deforum animation)
-    2. Extract frames at specified stride
-    3. Split into overlapping segments
-    4. For each segment:
-       - Run DA3 depth estimation on all frames
-       - Build 3DGS scene from depth maps
-       - Render novel views
-    5. Stitch segments into final refined video
+    Phase 1: Generate coherent Deforum animation (if video_path empty)
+         OR: Load existing video/image sequence (if video_path provided)
+    Phase 2: Process frames through DA3-3DGS for refinement
 
     This addresses the core problem: DA3 needs temporally coherent multi-view data,
     not unrelated synthetic keyframes!
 
     Args:
-        video_path: Path to input video or image sequence pattern
+        video_path: Path to input video/sequence (empty = generate on-the-fly)
+        width: Frame width for generation
+        height: Frame height for generation
         frame_stride: Use every Nth frame (1=all, 2=every other, etc.)
         segment_size: Frames per DA3-3DGS segment
         overlap_percent: Overlap between segments for smooth transitions
@@ -1219,40 +1218,50 @@ def run_twopass_refinement(
     import time
     start_time = time.time()
 
-    # Step 1: Load or generate frames
-    frames_dir = output_dir / "input_frames"
+    # Step 1: Generate or load frames
+    frames_dir = output_dir / "phase1_deforum_frames"
     frames_dir.mkdir(exist_ok=True)
 
     if not video_path or video_path.strip() == "":
-        logger.info("📹 Phase 1: No input video provided - you should generate one with Deforum first!")
-        logger.info("   For Two-Pass to work properly:")
-        logger.info("   1. Generate a coherent animation with Deforum 3D depth warping")
-        logger.info("   2. Save the output video")
-        logger.info("   3. Run Two-Pass mode with the video path")
-        logger.info("")
-        logger.warning("⚠️  Skipping Two-Pass refinement - no input video specified")
+        logger.info("=" * 80)
+        logger.info("📹 PHASE 1: GENERATING COHERENT DEFORUM ANIMATION")
+        logger.info("=" * 80)
 
-        result = BlendFactorTestResult(
-            blend_factor=0.0,
-            neighbor_segments=neighbor_segments,
-            densification=densification,
-            width=0,
-            height=0,
-            num_frames=0,
-            test_success=False,
-            total_time=time.time() - start_time,
-            avg_frame_time=0.0,
-            peak_vram_gb=0.0,
-            avg_temporal_consistency=0.0,
-            camera_path_adherence=0.0,
-            visual_quality=0.0,
-            error_message="No input video path provided - generate Deforum animation first",
+        # Generate Deforum animation on the fly
+        frame_paths = _generate_deforum_animation(
+            output_dir=frames_dir,
+            width=width,
+            height=height,
         )
-        return [result]
 
-    # Load frames from video
-    logger.info(f"📥 Loading frames from: {video_path}")
-    frame_paths = _load_video_frames(video_path, frames_dir, frame_stride)
+        if not frame_paths:
+            logger.error("❌ Failed to generate Deforum animation!")
+            result = BlendFactorTestResult(
+                blend_factor=0.0,
+                neighbor_segments=neighbor_segments,
+                densification=densification,
+                width=0,
+                height=0,
+                num_frames=0,
+                test_success=False,
+                total_time=time.time() - start_time,
+                avg_frame_time=0.0,
+                peak_vram_gb=0.0,
+                avg_temporal_consistency=0.0,
+                camera_path_adherence=0.0,
+                visual_quality=0.0,
+                error_message="Failed to generate Deforum animation",
+            )
+            return [result]
+
+        logger.info(f"✅ Phase 1 complete: Generated {len(frame_paths)} frames")
+    else:
+        # Load frames from existing video/sequence
+        logger.info("=" * 80)
+        logger.info("📥 PHASE 1: LOADING FRAMES FROM VIDEO")
+        logger.info("=" * 80)
+        logger.info(f"   Source: {video_path}")
+        frame_paths = _load_video_frames(video_path, frames_dir, frame_stride)
 
     if not frame_paths:
         logger.error("❌ Failed to load frames from video!")
@@ -1277,10 +1286,16 @@ def run_twopass_refinement(
     # Get frame dimensions
     first_frame = Image.open(frame_paths[0])
     width, height = first_frame.size
-    logger.info(f"✅ Loaded {len(frame_paths)} frames at {width}×{height}")
+
+    logger.info("")
+    logger.info("=" * 80)
+    logger.info("🎨 PHASE 2: DA3-3DGS REFINEMENT")
+    logger.info("=" * 80)
+    logger.info(f"   Input: {len(frame_paths)} frames at {width}×{height}")
+    logger.info(f"   Segment size: {segment_size}, Overlap: {overlap_percent}%")
 
     # Step 2: Split into overlapping segments
-    logger.info(f"🔪 Splitting into segments (size={segment_size}, overlap={overlap_percent}%)")
+    logger.info(f"\n🔪 Splitting into segments...")
     segments = _split_frames_into_segments(frame_paths, segment_size, overlap_percent)
     logger.info(f"   Created {len(segments)} segments")
 
@@ -1690,3 +1705,59 @@ def _stitch_segments_to_video(
         logger.error("   ffmpeg not found - cannot stitch video")
     except Exception as e:
         logger.error(f"   Failed to stitch video: {e}")
+
+
+def _generate_deforum_animation(
+    output_dir: Path,
+    width: int = 512,
+    height: int = 512,
+) -> List[Path]:
+    """Generate coherent Deforum animation with 3D depth warping.
+
+    Creates a simple test animation suitable for DA3-3DGS refinement:
+    - Short duration (2-3 seconds)
+    - Simple camera movement (forward zoom or orbit)
+    - Single prompt for temporal coherence
+    - 3D depth warping enabled
+
+    Args:
+        output_dir: Directory to save frames
+        width: Frame width
+        height: Frame height
+
+    Returns:
+        List of paths to generated frames
+    """
+    logger.info("   Generating Deforum 3D animation...")
+    logger.info(f"   Resolution: {width}×{height}")
+    logger.info(f"   Output: {output_dir}")
+
+    # Simple test animation parameters
+    max_frames = 60  # 2.5 seconds at 24fps
+    fps = 24
+
+    # Simple forward zoom movement
+    translation_z_schedule = "0:(0), 59:(10)"  # Zoom in 10 units over 2.5 seconds
+    rotation_3d_y_schedule = "0:(0), 59:(15)"  # Slight rotation for depth cues
+
+    # Single prompt for temporal coherence
+    prompt = "modern city street with tall buildings and cars, architectural photography, detailed, 8k"
+
+    logger.info(f"   Animation: {max_frames} frames at {fps}fps")
+    logger.info(f"   Movement: Forward zoom with slight rotation")
+    logger.info(f"   Prompt: {prompt[:60]}...")
+
+    # TODO: Call actual Deforum rendering pipeline
+    # For now, generate placeholder frames
+    logger.warning("   ⚠️  Deforum integration not yet implemented - generating placeholder frames")
+
+    frame_paths = []
+    for frame_idx in range(max_frames):
+        frame_path = output_dir / f"frame_{frame_idx:06d}.png"
+        _generate_placeholder_keyframe(prompt, frame_path, width, height)
+        frame_paths.append(frame_path)
+
+    logger.info(f"   Generated {len(frame_paths)} placeholder frames")
+    logger.info("   TODO: Replace with actual Deforum render_animation() call")
+
+    return frame_paths

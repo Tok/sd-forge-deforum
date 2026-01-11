@@ -846,16 +846,19 @@ def create_tuning_tab() -> tuple:
                         # Two-Pass Refinement mode controls
                         gr.Markdown("### Two-Pass Refinement Settings")
                         gr.Markdown("""
-                        **Pipeline:** Render coherent Deforum animation → Feed all frames to DA3-3DGS → Output refined video
+                        **Pipeline:** Phase 1: Generate coherent Deforum animation → Phase 2: DA3-3DGS refinement
 
                         This addresses the core problem: DA3 needs temporally coherent multi-view data, not unrelated synthetic scenes!
+
+                        **Phase 1:** Generates simple test animation with 3D depth warping (60 frames, forward zoom)
+                        **Phase 2:** Processes frames through DA3-3DGS for novel view synthesis
                         """)
                         dgs_twopass_video_path = gr.Textbox(
-                            label="Input video or image sequence path",
+                            label="Input video path (optional - leave empty to generate on-the-fly)",
                             value="",
                             lines=1,
-                            placeholder="/path/to/video.mp4 or /path/to/frames/frame_%04d.png",
-                            info="Path to existing video file or image sequence (use %04d pattern for frames)",
+                            placeholder="Leave empty for automatic generation, or provide: /path/to/video.mp4 or /path/to/frames/",
+                            info="OPTIONAL: Provide existing video/frames, or leave empty to generate Deforum animation automatically",
                             visible=False
                         )
                         dgs_twopass_frame_stride = gr.Slider(

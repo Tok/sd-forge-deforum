@@ -743,13 +743,23 @@ class TuningTestManager:
         segment_size = config.dgs_twopass_segment_size if config.dgs_twopass_segment_size is not None else 30
         overlap = config.dgs_twopass_overlap if config.dgs_twopass_overlap is not None else 20
 
+        # Get resolution from aspect ratios or use default
+        if config.aspect_ratios and len(config.aspect_ratios) > 0:
+            aspect_config = config.aspect_ratios[0]
+            width = int(aspect_config[1])
+            height = int(aspect_config[2])
+        else:
+            width = 512
+            height = 512
+
         # Get DA3-3DGS parameters
         use_ray_pose = config.dgs_use_ray_pose if config.dgs_use_ray_pose is not None else False
         confidence_threshold = config.dgs_confidence_threshold if config.dgs_confidence_threshold is not None else 0.0
         densification = config.dgs_densification_min if config.dgs_densification_min is not None else 1
         neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
 
-        logger.info(f"Input video: {video_path}")
+        logger.info(f"Input video: {video_path if video_path else '(generate on-the-fly)'}")
+        logger.info(f"Resolution: {width}×{height}")
         logger.info(f"Frame stride: {frame_stride}, Segment size: {segment_size}, Overlap: {overlap}%")
         logger.info(f"DA3: use_ray_pose={use_ray_pose}, confidence={confidence_threshold}%, densification={densification}, neighbors={neighbor_segments}")
 
@@ -758,6 +768,8 @@ class TuningTestManager:
 
         results = run_twopass_refinement(
             video_path=video_path,
+            width=width,
+            height=height,
             frame_stride=frame_stride,
             segment_size=segment_size,
             overlap_percent=overlap,
