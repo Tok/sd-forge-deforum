@@ -97,6 +97,7 @@ class TuningTestConfig(BaseModel):
     dgs_test_mode: Optional[str] = Field(None, description="DA3-3DGS test mode: 'Standard Parameter Sweep', 'Two-Pass Refinement', or 'Single Scene Multi-Angle'")
 
     # Two-Pass Refinement mode parameters (da3_3dgs_twopass test type)
+    dgs_twopass_resume: Optional[str] = Field(None, description="Resume from previous test (test ID or full directory name)")
     dgs_twopass_video_path: Optional[str] = Field(None, description="Input video or image sequence path for Two-Pass mode")
     dgs_twopass_frame_stride: Optional[int] = Field(None, ge=1, le=10, description="Frame stride (use every Nth frame)")
     dgs_twopass_segment_size: Optional[int] = Field(None, ge=10, le=120, description="Frames per DA3-3DGS segment")
@@ -764,8 +765,8 @@ class TuningTestManager:
         seed = -1  # Always random for test animations
 
         # Check for resume mode (reuse frames from previous test)
-        resume_test_id = config.dgs_twopass_resume if hasattr(config, 'dgs_twopass_resume') else ""
-        logger.debug(f"Resume field value: '{resume_test_id}'")
+        resume_test_id = config.dgs_twopass_resume or ""
+        logger.info(f"Resume field value: '{resume_test_id}'")
         if resume_test_id and resume_test_id.strip():
             # Extract just the ID if full directory name provided
             # Accept: "twopass_tuning_54bec7ce" or just "54bec7ce"
