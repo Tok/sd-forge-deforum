@@ -1747,16 +1747,23 @@ def _generate_deforum_animation(
     logger.info(f"   Resolution: {width}×{height}")
     logger.info(f"   Output: {output_dir}")
 
-    # Simple test animation parameters
-    max_frames = 60  # 2.5 seconds at 24fps
-    fps = 24
+    # Test animation parameters - longer duration, smoother at 60fps
+    fps = 60
+    duration_seconds = 5.0  # 5 seconds for good test coverage
+    max_frames = int(fps * duration_seconds)  # 300 frames at 60fps
 
-    # Simple forward zoom movement
-    translation_z_schedule = "0:(0), 59:(10)"  # Zoom in 10 units over 2.5 seconds
-    rotation_3d_y_schedule = "0:(0), 59:(15)"  # Slight rotation for depth cues
+    # Orbital camera movement (more interesting than forward zoom)
+    # Orbit around center with forward motion
+    last_frame = max_frames - 1
+    orbit_radius = 8.0  # Movement amount (8 units = moderate movement)
 
-    logger.info(f"   Animation: {max_frames} frames at {fps}fps")
-    logger.info(f"   Movement: Forward zoom with slight rotation")
+    # Orbital path: translate in X/Z circle while rotating to face center
+    translation_x_schedule = f"0:(0), {last_frame}:({orbit_radius})"  # Move right
+    translation_z_schedule = f"0:(0), {last_frame}:({orbit_radius})"  # Move forward
+    rotation_3d_y_schedule = f"0:(0), {last_frame}:(45)"  # Rotate 45° to maintain view
+
+    logger.info(f"   Animation: {max_frames} frames at {fps}fps ({duration_seconds}s)")
+    logger.info(f"   Movement: Orbital camera path (radius {orbit_radius})")
     logger.info(f"   Prompt: {prompt[:60]}...")
     logger.info(f"   Steps: {steps}, Seed: {seed}")
     logger.info("")
@@ -1767,10 +1774,14 @@ def _generate_deforum_animation(
         width=width,
         height=height,
         max_frames=max_frames,
+        fps=fps,
         output_dir=output_dir,
         prompt=prompt,
         steps=steps,
         seed=seed,
+        translation_x=translation_x_schedule,
+        translation_z=translation_z_schedule,
+        rotation_y=rotation_3d_y_schedule,
     )
 
     logger.info(f"   ✓ Args created: {width}×{height}, {max_frames} frames, 3D depth warping enabled")
@@ -1811,10 +1822,14 @@ def _create_deforum_args_for_test(
     width: int,
     height: int,
     max_frames: int,
+    fps: int,
     output_dir: Path,
     prompt: str,
     steps: int,
     seed: int,
+    translation_x: str,
+    translation_z: str,
+    rotation_y: str,
 ):
     """Create minimal Deforum args for test animation generation.
 
@@ -1822,10 +1837,14 @@ def _create_deforum_args_for_test(
         width: Frame width
         height: Frame height
         max_frames: Number of frames to generate
+        fps: Frames per second
         output_dir: Output directory for frames
         prompt: Scene prompt (from UI)
         steps: Sampling steps (from UI)
         seed: Random seed
+        translation_x: Translation X schedule
+        translation_z: Translation Z schedule
+        rotation_y: Rotation Y schedule
 
     Returns:
         Tuple of (args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
@@ -1885,11 +1904,11 @@ def _create_deforum_args_for_test(
         'animation_mode': '3D',
         'max_frames': max_frames,
         'border': 'replicate',
-        # Simple forward zoom + slight rotation
-        'translation_z': "0:(0), 59:(10)",
-        'rotation_3d_y': "0:(0), 59:(15)",
-        # Static defaults for other movement
-        'translation_x': "0:(0)",
+        # Orbital camera movement (from parameters)
+        'translation_x': translation_x,  # Move right
+        'translation_z': translation_z,  # Move forward
+        'rotation_3d_y': rotation_y,     # Rotate to maintain view
+        # Static defaults for other movement axes
         'translation_y': "0:(0)",
         'rotation_3d_x': "0:(0)",
         'rotation_3d_z': "0:(0)",
@@ -1919,7 +1938,7 @@ def _create_deforum_args_for_test(
 
     video_defaults.update({
         'skip_video_creation': True,  # We just want frames, not video
-        'fps': 24,
+        'fps': fps,  # From parameters (60fps for smooth motion)
         'output_format': 'PNG',
         'image_path': str(output_dir),
         'mp4_path': str(output_dir / "video.mp4"),
