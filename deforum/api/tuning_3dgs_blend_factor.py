@@ -1851,7 +1851,7 @@ def _generate_deforum_animation(
     width: int = 512,
     height: int = 512,
     prompt: str = "modern city street with tall buildings and cars, architectural photography, detailed, 8k",
-    steps: int = 20,
+    steps: int = 9,
     seed: int = -1,
 ) -> List[Path]:
     """Generate coherent Deforum animation with 3D depth warping.
@@ -1861,13 +1861,14 @@ def _generate_deforum_animation(
     - Simple camera movement (forward zoom or orbit)
     - Single prompt for temporal coherence (from UI)
     - 3D depth warping enabled
+    - Optimized for Z-Image Turbo: 9 steps for txt2img, ~2 steps for I2I (strength=0.9)
 
     Args:
         output_dir: Directory to save frames
         width: Frame width
         height: Frame height
         prompt: Scene prompt (from UI dgs_scene_prompt_1)
-        steps: Sampling steps (from UI steps field)
+        steps: Sampling steps (from UI steps field, default 9 for Z-Image Turbo)
         seed: Random seed (-1 = random)
 
     Returns:
@@ -2018,9 +2019,9 @@ def _create_deforum_args_for_test(
         'H': height,
         'seed': seed,  # From UI (or -1 for random)
         'sampler': 'Euler a',
-        'steps': steps,  # From UI steps field
+        'steps': steps,  # From UI steps field (default 9 for Z-Image Turbo)
         'scale': 7,  # CFG scale
-        'strength': 0.9,  # Cadence strength (maximum preservation, ~2 steps at 20 steps: 1-0.9=0.1 denoising)
+        'strength': 0.78,  # Cadence strength (~2 steps at 9 steps: 1-0.78=0.22 denoising, 9*0.22≈2)
         'strength_0_no_init': True,
         'outdir': str(output_dir),  # Critical: where frames are saved
         # Prompt fields (required by save_settings_from_animation_run)
