@@ -1956,6 +1956,11 @@ def _create_deforum_args_for_test(
     # Set timestring for batch naming
     root.timestring = time.strftime('%Y%m%d%H%M%S')
 
+    # Set job_id for API status tracking (None = skip tracking)
+    # JobStatusTracker checks "if job_id in self.statuses" before updating
+    # None will not be in dict, so updates are silently skipped
+    root.job_id = None
+
     # Ensure strength is clamped [0.0, 1.0]
     args.strength = max(0.0, min(1.0, args.strength))
 
