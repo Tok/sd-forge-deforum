@@ -199,15 +199,12 @@ class DepthModel:
             else:
                 logger.info(f"3D Gaussian Splatting with {len(pil_images)} frames (auto pose estimation)")
 
-            # Call DA3 inference with 3DGS enabled
-            # Note: This requires DA3 model to have gs_head and gs_adapter initialized
-            prediction = self.depth_anything.inference(
+            # Call DA3 3DGS estimation through DepthAnythingV3 wrapper
+            # This delegates to self.depth_anything.model.inference() internally
+            prediction = self.depth_anything.estimate_3d_gaussians(
                 pil_images,
-                extrinsics=extrinsics,
-                intrinsics=intrinsics,
-                infer_gs=True,  # Enable 3DGS estimation
                 use_ray_pose=use_ray_pose,
-                conf_thresh_percentile=conf_thresh_percentile
+                confidence_threshold=conf_thresh_percentile
             )
 
             return prediction

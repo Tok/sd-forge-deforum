@@ -2014,13 +2014,16 @@ def _create_deforum_args_for_test(
     })
 
     anim_defaults.update({
-        'render_mode': 'New 3D',
+        'render_mode': 'Classic 3D',  # Use Classic 3D for fixed cadence-based I2I keyframes
         'animation_mode': '3D',
         'max_frames': max_frames,
         'border': 'replicate',
         # I2I keyframe cadence - generate I2I frame every N frames to prevent degradation
         # At 60fps with cadence=5: 300 frames / 5 = 60 I2I keyframes (every 0.083s)
-        'diffusion_cadence': 5,  # Default for New 3D mode at 60fps
+        # Classic 3D mode enforces uniform cadence placement
+        'diffusion_cadence': 5,  # Generate I2I keyframe every 5 frames
+        # Depth model for Phase 1 depth warping (use Large model for quality)
+        'depth_algorithm': 'Depth-Anything-V3-Mono-Large',
         # Orbital camera movement (from parameters)
         'translation_x': translation_x,  # Move right
         'translation_z': translation_z,  # Move forward
