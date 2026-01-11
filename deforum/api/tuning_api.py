@@ -763,6 +763,27 @@ class TuningTestManager:
         steps = config.steps[0] if config.steps and len(config.steps) > 0 else 20
         seed = -1  # Always random for test animations
 
+        # Check for resume mode (reuse frames from previous test)
+        resume_test_id = config.dgs_twopass_resume if hasattr(config, 'dgs_twopass_resume') else ""
+        if resume_test_id:
+            # Extract just the ID if full directory name provided
+            # Accept: "twopass_tuning_54bec7ce" or just "54bec7ce"
+            if "twopass_tuning_" in resume_test_id:
+                resume_id_clean = resume_test_id  # Already full name
+            else:
+                resume_id_clean = f"twopass_tuning_{resume_test_id.strip()}"
+
+            # Point video_path to the phase1 frames directory
+            resume_frames_dir = Path(config.tuning_output_dir) / resume_id_clean / "phase1_deforum_frames"
+            if resume_frames_dir.exists():
+                video_path = str(resume_frames_dir)
+                logger.info(f"RESUME MODE: Reusing frames from {resume_id_clean}")
+                logger.info(f"  Frame directory: {video_path}")
+            else:
+                logger.warning(f"Resume test not found: {resume_frames_dir}")
+                logger.warning("  Proceeding with normal generation")
+                video_path = ""  # Fall back to generation
+
         logger.info(f"Input video: {video_path if video_path else '(generate on-the-fly)'}")
         logger.info(f"Resolution: {width}×{height}")
         logger.info(f"Prompt: {prompt[:60]}...")

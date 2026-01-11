@@ -853,6 +853,13 @@ def create_tuning_tab() -> tuple:
                         **Phase 1:** Generates simple test animation with 3D depth warping (60 frames, forward zoom)
                         **Phase 2:** Processes frames through DA3-3DGS for novel view synthesis
                         """)
+                        dgs_twopass_resume = gr.Textbox(
+                            label="Resume from previous test (optional)",
+                            value="",
+                            lines=1,
+                            placeholder="Paste test ID like: twopass_tuning_54bec7ce (or just: 54bec7ce)",
+                            info="RESUME: Skip Phase 1 and reuse frames from previous test. Paste the test directory name or just the ID code.",
+                        )
                         dgs_twopass_video_path = gr.Textbox(
                             label="Input video path (optional - leave empty to generate on-the-fly)",
                             value="",
@@ -1458,6 +1465,7 @@ def create_tuning_tab() -> tuple:
             dgs_nearclip_max_val,
             dgs_nearclip_step_val,
             # Two-Pass mode params
+            dgs_twopass_resume_val,
             dgs_twopass_video_path_val,
             dgs_twopass_frame_stride_val,
             dgs_twopass_segment_size_val,
@@ -1535,6 +1543,7 @@ def create_tuning_tab() -> tuple:
                     "dgs_scene_prompt_3": dgs_scene_prompt_3_val,
                     "dgs_test_scene_type": dgs_test_scene_type_val,
                     # Two-Pass mode params
+                    "dgs_twopass_resume": dgs_twopass_resume_val.strip() if dgs_twopass_resume_val else "",
                     "dgs_twopass_video_path": dgs_twopass_video_path_val,
                     "dgs_twopass_frame_stride": int(dgs_twopass_frame_stride_val),
                     "dgs_twopass_segment_size": int(dgs_twopass_segment_size_val),
@@ -1647,6 +1656,7 @@ def create_tuning_tab() -> tuple:
                 dgs_nearclip_max,
                 dgs_nearclip_step,
                 # Two-Pass mode params
+                dgs_twopass_resume,
                 dgs_twopass_video_path,
                 dgs_twopass_frame_stride,
                 dgs_twopass_segment_size,
