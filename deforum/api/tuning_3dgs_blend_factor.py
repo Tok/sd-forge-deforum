@@ -1303,6 +1303,22 @@ def run_twopass_refinement(
     logger.info(f"   Input: {len(frame_paths)} frames at {width}×{height}")
     logger.info(f"   Segment size: {segment_size}, Overlap: {overlap_percent}%")
 
+    # Clean up SD model to free VRAM for DA3-3DGS processing
+    logger.info("")
+    logger.info("🧹 Cleaning up SD model to free VRAM for 3DGS processing...")
+    try:
+        import gc
+        import torch
+        from modules import sd_models
+        sd_models.unload_model_weights()
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+        logger.info("   ✓ SD model unloaded, VRAM freed")
+    except Exception as e:
+        logger.warning(f"   ⚠️  Model cleanup failed (non-critical): {e}")
+
     # Step 2: Split into overlapping segments
     logger.info(f"\n🔪 Splitting into segments...")
     segments = _split_frames_into_segments(frame_paths, segment_size, overlap_percent)
@@ -1645,7 +1661,7 @@ def _process_segment_with_da3gs(
 
         # Step 3: Run DA3 depth estimation on all frames
         logger.info("   🔍 Estimating depth with DA3...")
-        logger.info(f"   Settings: use_ray_pose={use_ray_pose}, confidence_threshold={confidence_threshold}")
+        logger.info(f"   Settings: use_ray_pose={use_ray_pose}, confidence_threshold={confidence_threshold}%")
         depths = []
         for idx, frame in enumerate(frames):
             # DepthModel.predict() expects BGR numpy array (OpenCV format)
@@ -1653,7 +1669,7 @@ def _process_segment_with_da3gs(
             depth = depth_model.predict(
                 frame,
                 use_ray_pose=use_ray_pose,
-                conf_thresh_percentile=confidence_threshold * 100.0  # Convert 0.0-1.0 to percentile
+                conf_thresh_percentile=confidence_threshold  # Already in 0-100 range
             )
             depths.append(depth)
             if idx == 0:
@@ -1669,7 +1685,7 @@ def _process_segment_with_da3gs(
             scene_3dgs = depth_model.estimate_3d_gaussians(
                 frames,
                 use_ray_pose=use_ray_pose,
-                conf_thresh_percentile=confidence_threshold * 100.0,  # Convert to percentile
+                conf_thresh_percentile=confidence_threshold,  # Already in 0-100 range
             )
 
             if scene_3dgs is not None:
@@ -2018,6 +2034,8 @@ def _create_deforum_args_for_test(
         'animation_mode': '3D',
         'max_frames': max_frames,
         'border': 'replicate',
+        # CRITICAL: Disable keyframe distribution to enable uniform cadence
+        'keyframe_distribution': 'Off',  # 'Off' = uniform cadence, 'Keyframes Only' = only prompt boundaries
         # I2I keyframe cadence - generate I2I frame every N frames to prevent degradation
         # At 60fps with cadence=5: 300 frames / 5 = 60 I2I keyframes (every 0.083s)
         # Classic 3D mode enforces uniform cadence placement
