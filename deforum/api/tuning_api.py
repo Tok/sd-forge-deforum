@@ -765,7 +765,8 @@ class TuningTestManager:
 
         # Check for resume mode (reuse frames from previous test)
         resume_test_id = config.dgs_twopass_resume if hasattr(config, 'dgs_twopass_resume') else ""
-        if resume_test_id:
+        logger.debug(f"Resume field value: '{resume_test_id}'")
+        if resume_test_id and resume_test_id.strip():
             # Extract just the ID if full directory name provided
             # Accept: "twopass_tuning_54bec7ce" or just "54bec7ce"
             if "twopass_tuning_" in resume_test_id:

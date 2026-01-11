@@ -1580,6 +1580,7 @@ def create_tuning_tab() -> tuple:
 
             return {
                 # Two-Pass controls
+                dgs_twopass_resume: gr.update(visible=is_twopass),
                 dgs_twopass_video_path: gr.update(visible=is_twopass),
                 dgs_twopass_frame_stride: gr.update(visible=is_twopass),
                 dgs_twopass_segment_size: gr.update(visible=is_twopass),
@@ -1599,6 +1600,7 @@ def create_tuning_tab() -> tuple:
             fn=on_dgs_test_mode_change,
             inputs=[dgs_test_mode],
             outputs=[
+                dgs_twopass_resume,
                 dgs_twopass_video_path,
                 dgs_twopass_frame_stride,
                 dgs_twopass_segment_size,
