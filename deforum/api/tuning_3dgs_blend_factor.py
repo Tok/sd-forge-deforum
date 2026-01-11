@@ -2020,7 +2020,7 @@ def _create_deforum_args_for_test(
         'sampler': 'Euler a',
         'steps': steps,  # From UI steps field
         'scale': 7,  # CFG scale
-        'strength': 0.8,  # Cadence strength (very high preservation, ~2-4 steps at 20 steps)
+        'strength': 0.9,  # Cadence strength (maximum preservation, ~2 steps at 20 steps: 1-0.9=0.1 denoising)
         'strength_0_no_init': True,
         'outdir': str(output_dir),  # Critical: where frames are saved
         # Prompt fields (required by save_settings_from_animation_run)
