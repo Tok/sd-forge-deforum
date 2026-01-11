@@ -1937,4 +1937,8 @@ def _create_deforum_args_for_test(
     # Set animation prompts (use same prompt variable for consistency)
     root.animation_prompts = {0: prompt}
 
+    # CRITICAL: Set prompt_keyframes from animation_prompts keys
+    # This is required by KeyFrameDistribution.select_deforum_keyframes()
+    root.prompt_keyframes = list(root.animation_prompts.keys())
+
     return args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root
