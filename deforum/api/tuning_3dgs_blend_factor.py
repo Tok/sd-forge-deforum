@@ -1833,6 +1833,7 @@ def _create_deforum_args_for_test(width: int, height: int, max_frames: int, outp
         'scale': 7,
         'strength': 0.85,  # Cadence strength
         'strength_0_no_init': True,
+        'outdir': str(output_dir),  # Critical: where frames are saved
     })
 
     anim_defaults.update({
