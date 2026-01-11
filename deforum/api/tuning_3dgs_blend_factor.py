@@ -1746,18 +1746,152 @@ def _generate_deforum_animation(
     logger.info(f"   Animation: {max_frames} frames at {fps}fps")
     logger.info(f"   Movement: Forward zoom with slight rotation")
     logger.info(f"   Prompt: {prompt[:60]}...")
+    logger.info("")
 
-    # TODO: Call actual Deforum rendering pipeline
-    # For now, generate placeholder frames
-    logger.warning("   ⚠️  Deforum integration not yet implemented - generating placeholder frames")
+    # Create Deforum args
+    logger.info("   🔧 Creating Deforum args for test animation...")
+    args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root = _create_deforum_args_for_test(
+        width=width,
+        height=height,
+        max_frames=max_frames,
+        output_dir=output_dir
+    )
 
-    frame_paths = []
-    for frame_idx in range(max_frames):
-        frame_path = output_dir / f"frame_{frame_idx:06d}.png"
-        _generate_placeholder_keyframe(prompt, frame_path, width, height)
-        frame_paths.append(frame_path)
+    logger.info(f"   ✓ Args created: {width}×{height}, {max_frames} frames, 3D depth warping enabled")
+    logger.info("")
 
-    logger.info(f"   Generated {len(frame_paths)} placeholder frames")
-    logger.info("   TODO: Replace with actual Deforum render_animation() call")
+    # Call Deforum render_animation
+    logger.info("   🎬 Calling Deforum render_animation()...")
+    try:
+        from deforum.orchestration.render import render_animation
+        render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
+        logger.info("   ✓ Deforum rendering complete!")
+    except Exception as e:
+        logger.error(f"   ❌ Deforum rendering failed: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        # Fall back to placeholder frames
+        logger.warning("   ⚠️  Falling back to placeholder frames")
+        frame_paths = []
+        for frame_idx in range(max_frames):
+            frame_path = output_dir / f"frame_{frame_idx:06d}.png"
+            _generate_placeholder_keyframe(prompt, frame_path, width, height)
+            frame_paths.append(frame_path)
+        return frame_paths
 
+    # Collect generated frames
+    logger.info("   📁 Collecting generated frames...")
+    frame_paths = sorted(output_dir.glob("*.png"))
+
+    if not frame_paths:
+        logger.error("   ❌ No frames generated!")
+        return []
+
+    logger.info(f"   ✓ Found {len(frame_paths)} frames")
     return frame_paths
+
+
+def _create_deforum_args_for_test(width: int, height: int, max_frames: int, output_dir: Path):
+    """Create minimal Deforum args for test animation generation.
+
+    Args:
+        width: Frame width
+        height: Frame height
+        max_frames: Number of frames to generate
+        output_dir: Output directory for frames
+
+    Returns:
+        Tuple of (args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
+    """
+    from types import SimpleNamespace
+    from deforum.config.args import (
+        DeforumArgs, DeforumAnimArgs, DeforumOutputArgs,
+        ParseqArgs, LoopArgs, RootArgs
+    )
+    import json
+
+    # Extract default values from arg definitions
+    def get_defaults(args_dict):
+        return {key: val.get('value', val.get('default', None))
+                for key, val in args_dict.items()}
+
+    # Create args with defaults
+    args_defaults = get_defaults(DeforumArgs())
+    anim_defaults = get_defaults(DeforumAnimArgs())
+    video_defaults = get_defaults(DeforumOutputArgs())
+    parseq_defaults = get_defaults(ParseqArgs())
+    loop_defaults = get_defaults(LoopArgs())
+    root_defaults = RootArgs()
+
+    # Override with test-specific values
+    args_defaults.update({
+        'W': width,
+        'H': height,
+        'seed': -1,  # Random
+        'sampler': 'Euler a',
+        'steps': 20,
+        'scale': 7,
+        'strength': 0.85,  # Cadence strength
+        'strength_0_no_init': True,
+    })
+
+    anim_defaults.update({
+        'render_mode': 'New 3D',
+        'animation_mode': '3D',
+        'max_frames': max_frames,
+        'border': 'replicate',
+        # Simple forward zoom + slight rotation
+        'translation_z': "0:(0), 59:(10)",
+        'rotation_3d_y': "0:(0), 59:(15)",
+        # Static defaults for other movement
+        'translation_x': "0:(0)",
+        'translation_y': "0:(0)",
+        'rotation_3d_x': "0:(0)",
+        'rotation_3d_z': "0:(0)",
+        'flip_2d_perspective': False,
+        'perspective_flip_theta': "0:(0)",
+        'perspective_flip_phi': "0:(0)",
+        'perspective_flip_gamma': "0:(0)",
+        'perspective_flip_fv': "0:(53)",
+        'noise_schedule': "0: (0.02)",
+        'strength_schedule': "0: (0.85)",
+        'contrast_schedule': "0: (1.0)",
+        'cfg_scale_schedule': "0: (7)",
+        'enable_steps_scheduling': False,
+        'steps_schedule': f"0: ({args_defaults['steps']})",
+        'seed_schedule': "0:(s), 1:(-1)",  # Random after first frame
+        'seed_iter_N': 1,
+        'use_depth_warping': True,
+        'midas_weight': 0.3,
+        'near_plane': 200,
+        'far_plane': 10000,
+        'fov': 40,
+        'padding_mode': 'border',
+        'sampling_mode': 'bicubic',
+        'save_depth_maps': False,
+        'reverse_generation': False,
+    })
+
+    video_defaults.update({
+        'skip_video_creation': True,  # We just want frames, not video
+        'fps': 24,
+        'output_format': 'PNG',
+        'image_path': str(output_dir),
+        'mp4_path': str(output_dir / "video.mp4"),
+    })
+
+    # Create SimpleNamespace objects
+    args = SimpleNamespace(**args_defaults)
+    anim_args = SimpleNamespace(**anim_defaults)
+    video_args = SimpleNamespace(**video_defaults)
+    parseq_args = SimpleNamespace(**parseq_defaults)
+    loop_args = SimpleNamespace(**loop_defaults)
+    controlnet_args = SimpleNamespace()  # Empty
+    root = SimpleNamespace(**root_defaults)
+
+    # Set animation prompts
+    root.animation_prompts = {
+        0: "modern city street with tall buildings and cars, architectural photography, detailed, 8k"
+    }
+
+    return args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root
