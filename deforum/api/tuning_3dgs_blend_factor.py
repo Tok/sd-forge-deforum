@@ -1617,11 +1617,23 @@ def _process_segment_with_da3gs(
         # Step 1: Load DA3 depth model
         logger.info("   📊 Loading DA3 depth model...")
         from deforum.depth import DepthModel
+        import modules.paths as ph
 
-        depth_model = DepthModel()
-        depth_model.load_model('DA3', device='cuda:0')
+        # Determine frame dimensions
+        first_frame = Image.open(segment_frames[0])
+        frame_width, frame_height = first_frame.size
 
-        logger.info(f"   ✓ DA3 loaded: {depth_model.model_type}")
+        depth_model = DepthModel(
+            ph.models_path + '/Deforum',  # models_path
+            'cuda:0',  # device
+            False,  # half_precision (use FP32 for quality)
+            keep_in_vram=False,
+            depth_algorithm='Depth-Anything-V3-AnyView-Large',  # For 3DGS support
+            Width=frame_width,
+            Height=frame_height
+        )
+
+        logger.info(f"   ✓ DA3 loaded: {depth_model.depth_algorithm}")
 
         # Step 2: Load frames as numpy arrays
         logger.info(f"   📁 Loading {len(segment_frames)} frames...")
@@ -1633,9 +1645,16 @@ def _process_segment_with_da3gs(
 
         # Step 3: Run DA3 depth estimation on all frames
         logger.info("   🔍 Estimating depth with DA3...")
+        logger.info(f"   Settings: use_ray_pose={use_ray_pose}, confidence_threshold={confidence_threshold}")
         depths = []
         for idx, frame in enumerate(frames):
-            depth = depth_model.predict(frame, boost=False)
+            # DepthModel.predict() expects BGR numpy array (OpenCV format)
+            # but we have RGB, and it converts internally, so just pass as-is
+            depth = depth_model.predict(
+                frame,
+                use_ray_pose=use_ray_pose,
+                conf_thresh_percentile=confidence_threshold * 100.0  # Convert 0.0-1.0 to percentile
+            )
             depths.append(depth)
             if idx == 0:
                 logger.info(f"   ✓ Depth estimation working (shape: {depth.shape})")
@@ -1650,7 +1669,7 @@ def _process_segment_with_da3gs(
             scene_3dgs = depth_model.estimate_3d_gaussians(
                 frames,
                 use_ray_pose=use_ray_pose,
-                confidence_threshold=confidence_threshold,
+                conf_thresh_percentile=confidence_threshold * 100.0,  # Convert to percentile
             )
 
             if scene_3dgs is not None:
@@ -1999,6 +2018,9 @@ def _create_deforum_args_for_test(
         'animation_mode': '3D',
         'max_frames': max_frames,
         'border': 'replicate',
+        # I2I keyframe cadence - generate I2I frame every N frames to prevent degradation
+        # At 60fps with cadence=5: 300 frames / 5 = 60 I2I keyframes (every 0.083s)
+        'diffusion_cadence': 5,  # Default for New 3D mode at 60fps
         # Orbital camera movement (from parameters)
         'translation_x': translation_x,  # Move right
         'translation_z': translation_z,  # Move forward
