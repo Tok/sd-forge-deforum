@@ -823,24 +823,24 @@ def create_tuning_tab() -> tuple:
                             info="Generate N variations per keyframe with different seeds. Helps DA3 find commonality in synthetic scenes. 5 = 15 total images (3 keyframes × 5 subimages)",
                         )
 
-                        gr.Markdown("### Custom Scene Prompts (photorealistic only)")
+                        gr.Markdown("### Custom Scene Prompts (synthwave/retro aesthetic)")
                         dgs_scene_prompt_1 = gr.Textbox(
-                            label="Scene 1 prompt (keyframe 0)",
-                            value="modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k",
-                            lines=2,
-                            info="First scene prompt (default: city)",
+                            label="Scene 1 prompt (Epic Horizon Drive)",
+                            value="epic cinematic scene, a pristine white Lamborghini Countach LP5000, parked on a neon-grid desert highway under a massive purple and pink dusk sky, digital art, synthwave, retrofuturism, glowing cyan and magenta underglow, reflective paint, trending on ArtStation, ultra-detailed, vibrant, 8k",
+                            lines=3,
+                            info="Synthwave desert highway scene",
                         )
                         dgs_scene_prompt_2 = gr.Textbox(
-                            label="Scene 2 prompt (keyframe 240)",
-                            value="highway road stretching into distance, asphalt with lane markings, trees on sides, blue sky, photorealistic, detailed, 8k",
-                            lines=2,
-                            info="Second scene prompt (default: highway)",
+                            label="Scene 2 prompt (Neon Metropolis Reflection)",
+                            value="low-angle shot of a white Lamborghini Countach, perfectly reflected on a rain-slicked city street at night, towering neon-lit skyscrapers and holographic advertisements in background, synthwave retro 80s aesthetic, volumetric neon light beams, cinematic lighting, sharp details, vibrant colors, depth of field",
+                            lines=3,
+                            info="Neon city with rain reflections",
                         )
                         dgs_scene_prompt_3 = gr.Textbox(
-                            label="Scene 3 prompt (keyframe 480)",
-                            value="sandy beach with ocean waves, blue water, clear sky, palm trees, tropical paradise, photorealistic, detailed, 8k",
-                            lines=2,
-                            info="Third scene prompt (default: beach)",
+                            label="Scene 3 prompt (Vector Grid Escape)",
+                            value="white Lamborghini Countach in side profile, speeding through a glowing cyan vector grid tunnel, trailing light speed streaks, retro sunset with geometric sun in background, outrun style, synthwave album cover, vivid colors, high contrast, dynamic angle, sleek and stylish",
+                            lines=3,
+                            info="Vector grid tunnel with speed streaks",
                         )
 
                         # Two-Pass Refinement mode controls

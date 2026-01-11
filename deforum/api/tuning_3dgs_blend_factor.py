@@ -2020,7 +2020,7 @@ def _create_deforum_args_for_test(
         'sampler': 'Euler a',
         'steps': steps,  # From UI steps field
         'scale': 7,  # CFG scale
-        'strength': 0.85,  # Cadence strength (high preservation)
+        'strength': 0.8,  # Cadence strength (very high preservation, ~2-4 steps at 20 steps)
         'strength_0_no_init': True,
         'outdir': str(output_dir),  # Critical: where frames are saved
         # Prompt fields (required by save_settings_from_animation_run)
@@ -2037,9 +2037,9 @@ def _create_deforum_args_for_test(
         # CRITICAL: Disable keyframe distribution to enable uniform cadence
         'keyframe_distribution': 'Off',  # 'Off' = uniform cadence, 'Keyframes Only' = only prompt boundaries
         # I2I keyframe cadence - generate I2I frame every N frames to prevent degradation
-        # At 60fps with cadence=5: 300 frames / 5 = 60 I2I keyframes (every 0.083s)
+        # At 60fps with cadence=30: 300 frames / 30 = 10 I2I keyframes (every 0.5s)
         # Classic 3D mode enforces uniform cadence placement
-        'diffusion_cadence': 5,  # Generate I2I keyframe every 5 frames
+        'diffusion_cadence': 30,  # Generate I2I keyframe every 30 frames (0.5s intervals)
         # Depth model for Phase 1 depth warping (use Large model for quality)
         'depth_algorithm': 'Depth-Anything-V3-Mono-Large',
         # Orbital camera movement (from parameters)
