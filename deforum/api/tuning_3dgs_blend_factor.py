@@ -1690,16 +1690,25 @@ def _process_segment_with_da3gs(
 
             if scene_3dgs is not None:
                 logger.info("   ✓ 3DGS scene built successfully!")
-                logger.info("   🎬 Rendering refined frames from 3DGS scene...")
+
+                # Debug: Log 3DGS scene structure
+                logger.debug(f"   Scene type: {type(scene_3dgs)}")
+                if hasattr(scene_3dgs, 'gaussians'):
+                    logger.debug(f"   Gaussians: {scene_3dgs.gaussians}")
+                else:
+                    logger.debug("   No 'gaussians' attribute found")
+
+                logger.warning("   ⚠️  3DGS rendering not implemented - saving original frames")
+                logger.info("   TODO: Implement gsplat rendering from 3DGS scene")
 
                 # Step 5: Render frames from original poses with refined geometry
-                # For now, use the depth-refined frames directly
-                # (Full 3DGS rendering requires gsplat integration)
+                # TODO: Actual 3DGS rendering requires gsplat integration
+                # For now, just save the original frames as placeholder
                 for idx, frame in enumerate(frames):
                     output_path = output_frames_dir / f"refined_{idx:06d}.png"
                     Image.fromarray(frame).save(output_path)
 
-                logger.info(f"   ✓ Saved {len(frames)} refined frames")
+                logger.info(f"   ✓ Saved {len(frames)} placeholder frames (original input)")
             else:
                 logger.warning("   ⚠️  3DGS scene building not available - using depth refinement")
                 # Fallback: Save frames with depth-aware processing
@@ -1886,12 +1895,12 @@ def _generate_deforum_animation(
     # Orbital camera movement (more interesting than forward zoom)
     # Orbit around center with forward motion
     last_frame = max_frames - 1
-    orbit_radius = 8.0  # Movement amount (8 units = moderate movement)
+    orbit_radius = 15.0  # Movement amount (15 units = dramatic movement for 5 second clip)
 
     # Orbital path: translate in X/Z circle while rotating to face center
     translation_x_schedule = f"0:(0), {last_frame}:({orbit_radius})"  # Move right
     translation_z_schedule = f"0:(0), {last_frame}:({orbit_radius})"  # Move forward
-    rotation_3d_y_schedule = f"0:(0), {last_frame}:(45)"  # Rotate 45° to maintain view
+    rotation_3d_y_schedule = f"0:(0), {last_frame}:(90)"  # Rotate 90° for more dramatic turn
 
     logger.info(f"   Animation: {max_frames} frames at {fps}fps ({duration_seconds}s)")
     logger.info(f"   Movement: Orbital camera path (radius {orbit_radius})")
