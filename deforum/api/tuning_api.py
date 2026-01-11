@@ -758,8 +758,15 @@ class TuningTestManager:
         densification = config.dgs_densification_min if config.dgs_densification_min is not None else 1
         neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
 
+        # Get Deforum generation parameters from UI
+        prompt = config.dgs_scene_prompt_1 if config.dgs_scene_prompt_1 else "modern city street with tall buildings and cars, architectural photography, detailed, 8k"
+        steps = config.steps[0] if config.steps and len(config.steps) > 0 else 20
+        seed = -1  # Always random for test animations
+
         logger.info(f"Input video: {video_path if video_path else '(generate on-the-fly)'}")
         logger.info(f"Resolution: {width}×{height}")
+        logger.info(f"Prompt: {prompt[:60]}...")
+        logger.info(f"Steps: {steps}, Seed: {seed}")
         logger.info(f"Frame stride: {frame_stride}, Segment size: {segment_size}, Overlap: {overlap}%")
         logger.info(f"DA3: use_ray_pose={use_ray_pose}, confidence={confidence_threshold}%, densification={densification}, neighbors={neighbor_segments}")
 
@@ -770,6 +777,9 @@ class TuningTestManager:
             video_path=video_path,
             width=width,
             height=height,
+            prompt=prompt,
+            steps=steps,
+            seed=seed,
             frame_stride=frame_stride,
             segment_size=segment_size,
             overlap_percent=overlap,

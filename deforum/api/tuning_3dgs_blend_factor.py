@@ -1167,6 +1167,9 @@ def run_twopass_refinement(
     video_path: str,
     width: int = 512,
     height: int = 512,
+    prompt: str = "modern city street with tall buildings and cars, architectural photography, detailed, 8k",
+    steps: int = 20,
+    seed: int = -1,
     frame_stride: int = 1,
     segment_size: int = 30,
     overlap_percent: int = 20,
@@ -1190,6 +1193,9 @@ def run_twopass_refinement(
         video_path: Path to input video/sequence (empty = generate on-the-fly)
         width: Frame width for generation
         height: Frame height for generation
+        prompt: Prompt for test animation generation (from UI dgs_scene_prompt_1)
+        steps: Sampling steps for generation (from UI steps field)
+        seed: Random seed (-1 = random)
         frame_stride: Use every Nth frame (1=all, 2=every other, etc.)
         segment_size: Frames per DA3-3DGS segment
         overlap_percent: Overlap between segments for smooth transitions
@@ -1232,6 +1238,9 @@ def run_twopass_refinement(
             output_dir=frames_dir,
             width=width,
             height=height,
+            prompt=prompt,
+            steps=steps,
+            seed=seed,
         )
 
         if not frame_paths:
@@ -1711,19 +1720,25 @@ def _generate_deforum_animation(
     output_dir: Path,
     width: int = 512,
     height: int = 512,
+    prompt: str = "modern city street with tall buildings and cars, architectural photography, detailed, 8k",
+    steps: int = 20,
+    seed: int = -1,
 ) -> List[Path]:
     """Generate coherent Deforum animation with 3D depth warping.
 
     Creates a simple test animation suitable for DA3-3DGS refinement:
     - Short duration (2-3 seconds)
     - Simple camera movement (forward zoom or orbit)
-    - Single prompt for temporal coherence
+    - Single prompt for temporal coherence (from UI)
     - 3D depth warping enabled
 
     Args:
         output_dir: Directory to save frames
         width: Frame width
         height: Frame height
+        prompt: Scene prompt (from UI dgs_scene_prompt_1)
+        steps: Sampling steps (from UI steps field)
+        seed: Random seed (-1 = random)
 
     Returns:
         List of paths to generated frames
@@ -1740,12 +1755,10 @@ def _generate_deforum_animation(
     translation_z_schedule = "0:(0), 59:(10)"  # Zoom in 10 units over 2.5 seconds
     rotation_3d_y_schedule = "0:(0), 59:(15)"  # Slight rotation for depth cues
 
-    # Single prompt for temporal coherence
-    prompt = "modern city street with tall buildings and cars, architectural photography, detailed, 8k"
-
     logger.info(f"   Animation: {max_frames} frames at {fps}fps")
     logger.info(f"   Movement: Forward zoom with slight rotation")
     logger.info(f"   Prompt: {prompt[:60]}...")
+    logger.info(f"   Steps: {steps}, Seed: {seed}")
     logger.info("")
 
     # Create Deforum args
@@ -1754,7 +1767,10 @@ def _generate_deforum_animation(
         width=width,
         height=height,
         max_frames=max_frames,
-        output_dir=output_dir
+        output_dir=output_dir,
+        prompt=prompt,
+        steps=steps,
+        seed=seed,
     )
 
     logger.info(f"   ✓ Args created: {width}×{height}, {max_frames} frames, 3D depth warping enabled")
@@ -1791,7 +1807,15 @@ def _generate_deforum_animation(
     return frame_paths
 
 
-def _create_deforum_args_for_test(width: int, height: int, max_frames: int, output_dir: Path):
+def _create_deforum_args_for_test(
+    width: int,
+    height: int,
+    max_frames: int,
+    output_dir: Path,
+    prompt: str,
+    steps: int,
+    seed: int,
+):
     """Create minimal Deforum args for test animation generation.
 
     Args:
@@ -1799,6 +1823,9 @@ def _create_deforum_args_for_test(width: int, height: int, max_frames: int, outp
         height: Frame height
         max_frames: Number of frames to generate
         output_dir: Output directory for frames
+        prompt: Scene prompt (from UI)
+        steps: Sampling steps (from UI)
+        seed: Random seed
 
     Returns:
         Tuple of (args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
@@ -1836,22 +1863,19 @@ def _create_deforum_args_for_test(width: int, height: int, max_frames: int, outp
     loop_defaults = get_defaults(LoopArgs())
     root_defaults = RootArgs()
 
-    # Simple prompt for test animation
-    prompt = "modern city street with tall buildings and cars, architectural photography, detailed, 8k"
-
-    # Override with test-specific values
+    # Override with test-specific values (from UI)
     args_defaults.update({
         'W': width,
         'H': height,
-        'seed': -1,  # Random
+        'seed': seed,  # From UI (or -1 for random)
         'sampler': 'Euler a',
-        'steps': 20,
-        'scale': 7,
-        'strength': 0.85,  # Cadence strength
+        'steps': steps,  # From UI steps field
+        'scale': 7,  # CFG scale
+        'strength': 0.85,  # Cadence strength (high preservation)
         'strength_0_no_init': True,
         'outdir': str(output_dir),  # Critical: where frames are saved
         # Prompt fields (required by save_settings_from_animation_run)
-        'prompts': {0: prompt},  # Animation prompts dict
+        'prompts': {0: prompt},  # Animation prompts dict (from UI dgs_scene_prompt_1)
         'positive_prompts': '',  # No additional positive prefix
         'negative_prompts': '',  # No additional negative prefix
     })
