@@ -1941,4 +1941,22 @@ def _create_deforum_args_for_test(
     # This is required by KeyFrameDistribution.select_deforum_keyframes()
     root.prompt_keyframes = list(root.animation_prompts.keys())
 
+    # Set root fields that process_args() normally sets
+    import time
+    from modules.processing import get_fixed_seed
+
+    # Handle seed processing (mimic process_args behavior)
+    if args.seed == -1:
+        root.raw_seed = -1
+        args.seed = get_fixed_seed(-1)  # Generate random seed
+    else:
+        root.raw_seed = args.seed
+        args.seed = get_fixed_seed(args.seed)  # Ensure valid seed
+
+    # Set timestring for batch naming
+    root.timestring = time.strftime('%Y%m%d%H%M%S')
+
+    # Ensure strength is clamped [0.0, 1.0]
+    args.strength = max(0.0, min(1.0, args.strength))
+
     return args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root
