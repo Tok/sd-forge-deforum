@@ -1812,8 +1812,21 @@ def _create_deforum_args_for_test(width: int, height: int, max_frames: int, outp
 
     # Extract default values from arg definitions
     def get_defaults(args_dict):
-        return {key: val.get('value', val.get('default', None))
-                for key, val in args_dict.items()}
+        """Extract default values from Deforum args dict.
+
+        Handles two formats:
+        - Dict with 'value' or 'default' key: {"W": {"value": 1280, "label": "Width", ...}}
+        - Primitive value directly: {"show_info_on_ui": True}
+        """
+        result = {}
+        for key, val in args_dict.items():
+            if isinstance(val, dict):
+                # Extract value from dict (for fields like "W", "seed", etc.)
+                result[key] = val.get('value', val.get('default', None))
+            else:
+                # Use primitive value directly (for fields like "show_info_on_ui": True)
+                result[key] = val
+        return result
 
     # Create args with defaults
     args_defaults = get_defaults(DeforumArgs())
