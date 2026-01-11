@@ -1161,3 +1161,183 @@ def run_parameter_sweep(
     logger.info(f"   Score: {best_result.calculate_overall_score():.1f}/100")
 
     return results
+
+
+def run_twopass_refinement(
+    video_path: str,
+    frame_stride: int = 1,
+    segment_size: int = 30,
+    overlap_percent: int = 20,
+    output_dir: Path = None,
+    use_ray_pose: bool = False,
+    confidence_threshold: float = 0.0,
+    densification: int = 1,
+    neighbor_segments: int = 4,
+) -> List[BlendFactorTestResult]:
+    """Run Two-Pass DA3-3DGS refinement on existing video.
+
+    Pipeline:
+    1. Load existing video or image sequence (coherent Deforum animation)
+    2. Extract frames at specified stride
+    3. Split into overlapping segments
+    4. For each segment:
+       - Run DA3 depth estimation on all frames
+       - Build 3DGS scene from depth maps
+       - Render novel views
+    5. Stitch segments into final refined video
+
+    This addresses the core problem: DA3 needs temporally coherent multi-view data,
+    not unrelated synthetic keyframes!
+
+    Args:
+        video_path: Path to input video or image sequence pattern
+        frame_stride: Use every Nth frame (1=all, 2=every other, etc.)
+        segment_size: Frames per DA3-3DGS segment
+        overlap_percent: Overlap between segments for smooth transitions
+        output_dir: Output directory for results
+        use_ray_pose: Use DA3 ray head for camera poses
+        confidence_threshold: Filter low-confidence splats
+        densification: Densification factor (1 recommended)
+        neighbor_segments: Keyframes per segment
+
+    Returns:
+        List of test results (one per segment)
+    """
+    logger.info("=" * 80)
+    logger.info("TWO-PASS DA3-3DGS REFINEMENT")
+    logger.info("=" * 80)
+    logger.info(f"Input video: {video_path}")
+    logger.info(f"Frame stride: {frame_stride}, Segment size: {segment_size}, Overlap: {overlap_percent}%")
+    logger.info(f"DA3 params: use_ray_pose={use_ray_pose}, confidence={confidence_threshold}%")
+    logger.info(f"3DGS params: densification={densification}, neighbor_segments={neighbor_segments}")
+    logger.info("=" * 80)
+
+    if output_dir is None:
+        output_dir = Path("output/deforum-tuning/twopass")
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    # TODO: Implement full pipeline
+    # For now, return placeholder result
+    logger.warning("⚠️  Two-Pass refinement pipeline not yet fully implemented!")
+    logger.warning("   This is a stub implementation that will be completed in follow-up work.")
+    logger.info("\n📋 Implementation plan:")
+    logger.info("   1. Load video frames (ffmpeg or PIL)")
+    logger.info("   2. Extract frames at stride intervals")
+    logger.info("   3. Split into overlapping segments")
+    logger.info("   4. For each segment:")
+    logger.info("      - Run DA3 depth estimation")
+    logger.info("      - Build 3DGS scene")
+    logger.info("      - Render interpolated frames")
+    logger.info("   5. Blend overlapping regions")
+    logger.info("   6. Stitch final video")
+
+    # Placeholder result with correct dataclass fields
+    result = BlendFactorTestResult(
+        blend_factor=0.0,  # N/A for two-pass
+        neighbor_segments=neighbor_segments,
+        densification=densification,
+        width=0,  # Will be determined from video
+        height=0,  # Will be determined from video
+        num_frames=0,  # Will be determined from video
+        test_success=False,  # Not yet implemented
+        total_time=0.0,
+        avg_frame_time=0.0,
+        peak_vram_gb=0.0,
+        avg_temporal_consistency=0.0,
+        camera_path_adherence=0.0,
+        visual_quality=0.0,
+        error_message="Two-Pass refinement pipeline not yet fully implemented (stub only)",
+    )
+
+    return [result]
+
+
+def run_singlescene_multiangle(
+    base_prompt: str,
+    num_angles: int = 8,
+    angle_variation: float = 0.3,
+    lighting_variation: bool = False,
+    width: int = 1280,
+    height: int = 720,
+    output_dir: Path = None,
+    use_ray_pose: bool = False,
+    confidence_threshold: float = 0.0,
+    densification: int = 1,
+    neighbor_segments: int = 4,
+) -> List[BlendFactorTestResult]:
+    """Run Single Scene Multi-Angle DA3-3DGS test.
+
+    Pipeline:
+    1. Generate N variations of the SAME scene with different camera angles
+    2. Optionally vary lighting/time-of-day
+    3. Feed all variations to DA3-3DGS as keyframes
+    4. Build 3DGS scene from multi-view data
+    5. Render interpolated views
+
+    This gives DA3 proper multi-view data of the same location, instead of
+    unrelated scenes (city → highway → beach).
+
+    Args:
+        base_prompt: Base scene description
+        num_angles: Number of angle variations to generate
+        angle_variation: Camera angle variation strength (0=subtle, 1=dramatic)
+        lighting_variation: Add time-of-day variations to prompts
+        width: Image width
+        height: Image height
+        output_dir: Output directory for results
+        use_ray_pose: Use DA3 ray head for camera poses
+        confidence_threshold: Filter low-confidence splats
+        densification: Densification factor (1 recommended)
+        neighbor_segments: Keyframes per segment
+
+    Returns:
+        List of test results
+    """
+    logger.info("=" * 80)
+    logger.info("SINGLE SCENE MULTI-ANGLE DA3-3DGS")
+    logger.info("=" * 80)
+    logger.info(f"Base prompt: {base_prompt}")
+    logger.info(f"Num angles: {num_angles}, Variation: {angle_variation:.2f}, Lighting: {lighting_variation}")
+    logger.info(f"Resolution: {width}x{height}")
+    logger.info(f"DA3 params: use_ray_pose={use_ray_pose}, confidence={confidence_threshold}%")
+    logger.info(f"3DGS params: densification={densification}, neighbor_segments={neighbor_segments}")
+    logger.info("=" * 80)
+
+    if output_dir is None:
+        output_dir = Path("output/deforum-tuning/singlescene")
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    # TODO: Implement full pipeline
+    # For now, return placeholder result
+    logger.warning("⚠️  Single Scene Multi-Angle pipeline not yet fully implemented!")
+    logger.warning("   This is a stub implementation that will be completed in follow-up work.")
+    logger.info("\n📋 Implementation plan:")
+    logger.info("   1. Generate angle-specific prompts:")
+    logger.info("      - 'from above', 'from street level', 'looking up'")
+    logger.info("      - 'wide angle', 'telephoto', 'close-up'")
+    logger.info("   2. Optionally add lighting variations:")
+    logger.info("      - 'morning light', 'midday sun', 'golden hour', 'sunset'")
+    logger.info("   3. Generate all keyframes with current Forge model")
+    logger.info("   4. Run DA3 depth estimation on all views")
+    logger.info("   5. Build unified 3DGS scene from multi-view data")
+    logger.info("   6. Render smooth interpolation between views")
+
+    # Placeholder result with correct dataclass fields
+    result = BlendFactorTestResult(
+        blend_factor=0.0,  # N/A for single scene
+        neighbor_segments=neighbor_segments,
+        densification=densification,
+        width=width,
+        height=height,
+        num_frames=num_angles,  # Number of angle variations
+        test_success=False,  # Not yet implemented
+        total_time=0.0,
+        avg_frame_time=0.0,
+        peak_vram_gb=0.0,
+        avg_temporal_consistency=0.0,
+        camera_path_adherence=0.0,
+        visual_quality=0.0,
+        error_message="Single Scene Multi-Angle pipeline not yet fully implemented (stub only)",
+    )
+
+    return [result]

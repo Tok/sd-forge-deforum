@@ -31,6 +31,8 @@ class TuningTestType(str, Enum):
     DA3_3DGS_TUNING = "da3_3dgs_tuning"
     DA3_3DGS_SYNTHETIC = "da3_3dgs_synthetic"  # Synthetic test images (no diffusion)
     DA3_3DGS_BLEND_FACTOR = "da3_3dgs_blend_factor"  # Test schedule blending
+    DA3_3DGS_TWOPASS = "da3_3dgs_twopass"  # Two-Pass: coherent video → DA3-3DGS refinement
+    DA3_3DGS_SINGLESCENE = "da3_3dgs_singlescene"  # Single Scene: variations of ONE scene
 
 
 class TuningTestConfig(BaseModel):
@@ -92,6 +94,19 @@ class TuningTestConfig(BaseModel):
     dgs_scene_prompt_2: Optional[str] = Field(None, description="Custom scene 2 prompt (keyframe 240)")
     dgs_scene_prompt_3: Optional[str] = Field(None, description="Custom scene 3 prompt (keyframe 480)")
     dgs_test_scene_type: Optional[str] = Field(None, description="Test scene type: 'simple' or 'photorealistic'")
+    dgs_test_mode: Optional[str] = Field(None, description="DA3-3DGS test mode: 'Standard Parameter Sweep', 'Two-Pass Refinement', or 'Single Scene Multi-Angle'")
+
+    # Two-Pass Refinement mode parameters (da3_3dgs_twopass test type)
+    dgs_twopass_video_path: Optional[str] = Field(None, description="Input video or image sequence path for Two-Pass mode")
+    dgs_twopass_frame_stride: Optional[int] = Field(None, ge=1, le=10, description="Frame stride (use every Nth frame)")
+    dgs_twopass_segment_size: Optional[int] = Field(None, ge=10, le=120, description="Frames per DA3-3DGS segment")
+    dgs_twopass_overlap: Optional[int] = Field(None, ge=0, le=50, description="Segment overlap percentage")
+
+    # Single Scene Multi-Angle mode parameters (da3_3dgs_singlescene test type)
+    dgs_singlescene_base_prompt: Optional[str] = Field(None, description="Base scene prompt for Single Scene mode")
+    dgs_singlescene_num_angles: Optional[int] = Field(None, ge=3, le=20, description="Number of angle variations")
+    dgs_singlescene_angle_variation: Optional[float] = Field(None, ge=0.0, le=1.0, description="Camera angle variation strength (0=subtle, 1=dramatic)")
+    dgs_singlescene_lighting_variation: Optional[bool] = Field(None, description="Enable lighting/time-of-day variation")
 
 
 class TuningTestStatus(BaseModel):
@@ -206,6 +221,10 @@ class TuningTestManager:
                 self._run_synthetic_3dgs_tests(test_id, config)
             elif config.test_type == TuningTestType.DA3_3DGS_BLEND_FACTOR:
                 self._run_blend_factor_tests(test_id, config)
+            elif config.test_type == TuningTestType.DA3_3DGS_TWOPASS:
+                self._run_twopass_tests(test_id, config)
+            elif config.test_type == TuningTestType.DA3_3DGS_SINGLESCENE:
+                self._run_singlescene_tests(test_id, config)
             else:
                 # Run standard I2V chaining tests (color preservation, temporal, flux)
                 self._run_i2v_chaining_tests(test_id, config)
@@ -694,6 +713,140 @@ class TuningTestManager:
                 self.active_tests[test_id].results = [r.to_dict() for r in results]
 
         logger.info(f"Parameter sweep complete: {len(results)} tests run")
+
+    def _run_twopass_tests(self, test_id: str, config: TuningTestConfig):
+        """Run Two-Pass DA3-3DGS refinement tests.
+
+        Pipeline: Render coherent Deforum animation → Feed all frames to DA3-3DGS → Output refined video
+
+        This addresses the core problem: DA3 needs temporally coherent multi-view data,
+        not unrelated synthetic scenes!
+
+        Args:
+            test_id: Test identifier
+            config: Test configuration with two-pass parameters
+        """
+        from pathlib import Path
+        import os
+
+        logger.info(f"Starting Two-Pass DA3-3DGS refinement for test {test_id}")
+
+        # Create output directory
+        forge_root = Path(os.getcwd())
+        tuning_dir = forge_root / "output" / "deforum-tuning"
+        test_output_dir = tuning_dir / f"twopass_{test_id}"
+        test_output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Get two-pass parameters
+        video_path = config.dgs_twopass_video_path if config.dgs_twopass_video_path else ""
+        frame_stride = config.dgs_twopass_frame_stride if config.dgs_twopass_frame_stride is not None else 1
+        segment_size = config.dgs_twopass_segment_size if config.dgs_twopass_segment_size is not None else 30
+        overlap = config.dgs_twopass_overlap if config.dgs_twopass_overlap is not None else 20
+
+        # Get DA3-3DGS parameters
+        use_ray_pose = config.dgs_use_ray_pose if config.dgs_use_ray_pose is not None else False
+        confidence_threshold = config.dgs_confidence_threshold if config.dgs_confidence_threshold is not None else 0.0
+        densification = config.dgs_densification_min if config.dgs_densification_min is not None else 1
+        neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
+
+        logger.info(f"Input video: {video_path}")
+        logger.info(f"Frame stride: {frame_stride}, Segment size: {segment_size}, Overlap: {overlap}%")
+        logger.info(f"DA3: use_ray_pose={use_ray_pose}, confidence={confidence_threshold}%, densification={densification}, neighbors={neighbor_segments}")
+
+        # Run two-pass refinement
+        from deforum.api.tuning_3dgs_blend_factor import run_twopass_refinement
+
+        results = run_twopass_refinement(
+            video_path=video_path,
+            frame_stride=frame_stride,
+            segment_size=segment_size,
+            overlap_percent=overlap,
+            output_dir=test_output_dir,
+            use_ray_pose=use_ray_pose,
+            confidence_threshold=confidence_threshold,
+            densification=densification,
+            neighbor_segments=neighbor_segments,
+        )
+
+        # Update test status with results
+        with self.test_lock:
+            if test_id in self.active_tests:
+                self.active_tests[test_id].results = [r.to_dict() for r in results]
+
+        logger.info(f"Two-Pass refinement complete: {len(results)} segments processed")
+
+    def _run_singlescene_tests(self, test_id: str, config: TuningTestConfig):
+        """Run Single Scene Multi-Angle tests.
+
+        Pipeline: Generate N variations of ONE scene → DA3 gets proper multi-view data of same location
+
+        Instead of feeding DA3 unrelated scenes (city → highway → beach), give it multiple views
+        of the SAME scene!
+
+        Args:
+            test_id: Test identifier
+            config: Test configuration with single scene parameters
+        """
+        from pathlib import Path
+        import os
+
+        logger.info(f"Starting Single Scene Multi-Angle test for test {test_id}")
+
+        # Create output directory
+        forge_root = Path(os.getcwd())
+        tuning_dir = forge_root / "output" / "deforum-tuning"
+        test_output_dir = tuning_dir / f"singlescene_{test_id}"
+        test_output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Get single scene parameters
+        base_prompt = config.dgs_singlescene_base_prompt if config.dgs_singlescene_base_prompt else "modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k"
+        num_angles = config.dgs_singlescene_num_angles if config.dgs_singlescene_num_angles is not None else 8
+        angle_variation = config.dgs_singlescene_angle_variation if config.dgs_singlescene_angle_variation is not None else 0.3
+        lighting_variation = config.dgs_singlescene_lighting_variation if config.dgs_singlescene_lighting_variation is not None else False
+
+        # Get resolution from aspect ratios or use default
+        if config.aspect_ratios and len(config.aspect_ratios) > 0:
+            aspect_config = config.aspect_ratios[0]
+            width = int(aspect_config[1])
+            height = int(aspect_config[2])
+        else:
+            width = 1280
+            height = 720
+
+        # Get DA3-3DGS parameters
+        use_ray_pose = config.dgs_use_ray_pose if config.dgs_use_ray_pose is not None else False
+        confidence_threshold = config.dgs_confidence_threshold if config.dgs_confidence_threshold is not None else 0.0
+        densification = config.dgs_densification_min if config.dgs_densification_min is not None else 1
+        neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
+
+        logger.info(f"Base prompt: {base_prompt}")
+        logger.info(f"Num angles: {num_angles}, Angle variation: {angle_variation}, Lighting: {lighting_variation}")
+        logger.info(f"Resolution: {width}x{height}")
+        logger.info(f"DA3: use_ray_pose={use_ray_pose}, confidence={confidence_threshold}%, densification={densification}, neighbors={neighbor_segments}")
+
+        # Run single scene multi-angle
+        from deforum.api.tuning_3dgs_blend_factor import run_singlescene_multiangle
+
+        results = run_singlescene_multiangle(
+            base_prompt=base_prompt,
+            num_angles=num_angles,
+            angle_variation=angle_variation,
+            lighting_variation=lighting_variation,
+            width=width,
+            height=height,
+            output_dir=test_output_dir,
+            use_ray_pose=use_ray_pose,
+            confidence_threshold=confidence_threshold,
+            densification=densification,
+            neighbor_segments=neighbor_segments,
+        )
+
+        # Update test status with results
+        with self.test_lock:
+            if test_id in self.active_tests:
+                self.active_tests[test_id].results = [r.to_dict() for r in results]
+
+        logger.info(f"Single Scene Multi-Angle complete: {len(results)} views processed")
 
     def _create_3dgs_test_directory(self, test_id: str) -> Path:
         """Create output directory for 3DGS test.

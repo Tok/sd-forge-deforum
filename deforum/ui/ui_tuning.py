@@ -621,6 +621,18 @@ def create_tuning_tab() -> tuple:
                     with gr.Column(scale=1):
                         gr.Markdown("## DA3-3DGS Test Configuration")
 
+                        gr.Markdown("### Test Mode")
+                        dgs_test_mode = gr.Radio(
+                            label="DA3-3DGS Test Mode",
+                            choices=[
+                                "Standard Parameter Sweep",
+                                "Two-Pass Refinement (Coherent Video → DA3-3DGS)",
+                                "Single Scene Multi-Angle"
+                            ],
+                            value="Standard Parameter Sweep",
+                            info="Standard: Sweep parameters with synthetic keyframes. Two-Pass: Feed coherent animation through DA3-3DGS. Single Scene: Variations of ONE scene instead of different scenes."
+                        )
+
                         gr.Markdown("### Test Setup")
 
                         gr.Markdown("#### Resolution (Higher = More Splats Naturally)")
@@ -829,6 +841,88 @@ def create_tuning_tab() -> tuple:
                             value="sandy beach with ocean waves, blue water, clear sky, palm trees, tropical paradise, photorealistic, detailed, 8k",
                             lines=2,
                             info="Third scene prompt (default: beach)",
+                        )
+
+                        # Two-Pass Refinement mode controls
+                        gr.Markdown("### Two-Pass Refinement Settings")
+                        gr.Markdown("""
+                        **Pipeline:** Render coherent Deforum animation → Feed all frames to DA3-3DGS → Output refined video
+
+                        This addresses the core problem: DA3 needs temporally coherent multi-view data, not unrelated synthetic scenes!
+                        """)
+                        dgs_twopass_video_path = gr.Textbox(
+                            label="Input video or image sequence path",
+                            value="",
+                            lines=1,
+                            placeholder="/path/to/video.mp4 or /path/to/frames/frame_%04d.png",
+                            info="Path to existing video file or image sequence (use %04d pattern for frames)",
+                            visible=False
+                        )
+                        dgs_twopass_frame_stride = gr.Slider(
+                            label="Frame stride (use every Nth frame)",
+                            minimum=1,
+                            maximum=10,
+                            value=1,
+                            step=1,
+                            info="1 = use all frames, 2 = every other frame, 4 = every 4th frame (faster but less dense coverage)",
+                            visible=False
+                        )
+                        dgs_twopass_segment_size = gr.Slider(
+                            label="Frames per DA3-3DGS segment",
+                            minimum=10,
+                            maximum=120,
+                            value=30,
+                            step=5,
+                            info="How many consecutive frames to process as one 3DGS scene (30 = 1 sec at 30fps)",
+                            visible=False
+                        )
+                        dgs_twopass_overlap = gr.Slider(
+                            label="Segment overlap percentage",
+                            minimum=0,
+                            maximum=50,
+                            value=20,
+                            step=5,
+                            info="Overlap between consecutive segments for smoother transitions (20% = 6 frames at 30 frame segments)",
+                            visible=False
+                        )
+
+                        # Single Scene Multi-Angle mode controls
+                        gr.Markdown("### Single Scene Multi-Angle Settings")
+                        gr.Markdown("""
+                        **Pipeline:** Generate N variations of ONE scene → DA3 gets proper multi-view data of same location
+
+                        Instead of feeding DA3 unrelated scenes (city → highway → beach), give it multiple views of the SAME scene!
+                        """)
+                        dgs_singlescene_base_prompt = gr.Textbox(
+                            label="Base scene prompt",
+                            value="modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k",
+                            lines=2,
+                            info="Single scene that will be viewed from multiple angles",
+                            visible=False
+                        )
+                        dgs_singlescene_num_angles = gr.Slider(
+                            label="Number of angle variations",
+                            minimum=3,
+                            maximum=20,
+                            value=8,
+                            step=1,
+                            info="How many different camera angles/views to generate (more = better geometry coverage)",
+                            visible=False
+                        )
+                        dgs_singlescene_angle_variation = gr.Slider(
+                            label="Camera angle variation strength",
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.3,
+                            step=0.05,
+                            info="0.0 = slight angle changes (subtle), 1.0 = dramatic angle changes (full 360°)",
+                            visible=False
+                        )
+                        dgs_singlescene_lighting_variation = gr.Checkbox(
+                            label="Enable lighting/time-of-day variation",
+                            value=False,
+                            info="Add 'morning light', 'sunset', 'golden hour' variations to prompt",
+                            visible=False
                         )
 
                         # 3DGS test action buttons
@@ -1335,6 +1429,7 @@ def create_tuning_tab() -> tuple:
 
         # DA3-3DGS Tests button handlers
         def on_run_dgs_tests(
+            dgs_test_mode_val,
             dgs_resolution_preset_val,
             dgs_custom_width_val,
             dgs_custom_height_val,
@@ -1359,6 +1454,16 @@ def create_tuning_tab() -> tuple:
             dgs_nearclip_min_val,
             dgs_nearclip_max_val,
             dgs_nearclip_step_val,
+            # Two-Pass mode params
+            dgs_twopass_video_path_val,
+            dgs_twopass_frame_stride_val,
+            dgs_twopass_segment_size_val,
+            dgs_twopass_overlap_val,
+            # Single Scene mode params
+            dgs_singlescene_base_prompt_val,
+            dgs_singlescene_num_angles_val,
+            dgs_singlescene_angle_variation_val,
+            dgs_singlescene_lighting_variation_val,
         ):
             """Start DA3-3DGS tuning tests via API."""
             try:
@@ -1393,13 +1498,19 @@ def create_tuning_tab() -> tuple:
                     elif "1:1" in aspect_str:
                         aspect_configs.append([1.0, base_width, base_width])  # Square using width
 
-                # Always use parameter sweep test (blend_factor, neighbor_segments, densification can all be fixed or swept)
-                test_type = "da3_3dgs_blend_factor"
+                # Determine test type based on selected mode
+                if "Two-Pass" in dgs_test_mode_val:
+                    test_type = "da3_3dgs_twopass"
+                elif "Single Scene" in dgs_test_mode_val:
+                    test_type = "da3_3dgs_singlescene"
+                else:
+                    test_type = "da3_3dgs_blend_factor"
 
                 # IMPORTANT: Keys must match TuningTestConfig field names (with dgs_ prefix)
                 config = {
                     "test_type": test_type,
                     "aspect_ratios": aspect_configs,
+                    "dgs_test_mode": dgs_test_mode_val,
                     "dgs_use_ray_pose": bool(dgs_use_ray_pose_val),
                     "dgs_confidence_threshold": float(dgs_confidence_threshold_val),
                     "dgs_models": dgs_models_val,
@@ -1420,6 +1531,16 @@ def create_tuning_tab() -> tuple:
                     "dgs_scene_prompt_2": dgs_scene_prompt_2_val,
                     "dgs_scene_prompt_3": dgs_scene_prompt_3_val,
                     "dgs_test_scene_type": dgs_test_scene_type_val,
+                    # Two-Pass mode params
+                    "dgs_twopass_video_path": dgs_twopass_video_path_val,
+                    "dgs_twopass_frame_stride": int(dgs_twopass_frame_stride_val),
+                    "dgs_twopass_segment_size": int(dgs_twopass_segment_size_val),
+                    "dgs_twopass_overlap": int(dgs_twopass_overlap_val),
+                    # Single Scene mode params
+                    "dgs_singlescene_base_prompt": dgs_singlescene_base_prompt_val,
+                    "dgs_singlescene_num_angles": int(dgs_singlescene_num_angles_val),
+                    "dgs_singlescene_angle_variation": float(dgs_singlescene_angle_variation_val),
+                    "dgs_singlescene_lighting_variation": bool(dgs_singlescene_lighting_variation_val),
                 }
 
                 # Submit test
@@ -1439,6 +1560,47 @@ def create_tuning_tab() -> tuple:
                 logger.error(f"Failed to start DA3-3DGS tests: {e}")
                 return f"{cross} Error starting DA3-3DGS tests: {e}"
 
+        # Test mode change handler (show/hide mode-specific controls)
+        def on_dgs_test_mode_change(mode):
+            is_twopass = "Two-Pass" in mode
+            is_singlescene = "Single Scene" in mode
+            is_standard = "Standard" in mode
+
+            return {
+                # Two-Pass controls
+                dgs_twopass_video_path: gr.update(visible=is_twopass),
+                dgs_twopass_frame_stride: gr.update(visible=is_twopass),
+                dgs_twopass_segment_size: gr.update(visible=is_twopass),
+                dgs_twopass_overlap: gr.update(visible=is_twopass),
+                # Single Scene controls
+                dgs_singlescene_base_prompt: gr.update(visible=is_singlescene),
+                dgs_singlescene_num_angles: gr.update(visible=is_singlescene),
+                dgs_singlescene_angle_variation: gr.update(visible=is_singlescene),
+                dgs_singlescene_lighting_variation: gr.update(visible=is_singlescene),
+                # Standard mode controls (scene prompts only in standard mode)
+                dgs_scene_prompt_1: gr.update(visible=is_standard),
+                dgs_scene_prompt_2: gr.update(visible=is_standard),
+                dgs_scene_prompt_3: gr.update(visible=is_standard),
+            }
+
+        dgs_test_mode.change(
+            fn=on_dgs_test_mode_change,
+            inputs=[dgs_test_mode],
+            outputs=[
+                dgs_twopass_video_path,
+                dgs_twopass_frame_stride,
+                dgs_twopass_segment_size,
+                dgs_twopass_overlap,
+                dgs_singlescene_base_prompt,
+                dgs_singlescene_num_angles,
+                dgs_singlescene_angle_variation,
+                dgs_singlescene_lighting_variation,
+                dgs_scene_prompt_1,
+                dgs_scene_prompt_2,
+                dgs_scene_prompt_3,
+            ],
+        )
+
         # Resolution preset change handler (show/hide custom fields)
         def on_resolution_preset_change(preset):
             is_custom = "Custom" in preset
@@ -1456,6 +1618,7 @@ def create_tuning_tab() -> tuple:
         dgs_run_btn.click(
             fn=on_run_dgs_tests,
             inputs=[
+                dgs_test_mode,
                 dgs_resolution_preset,
                 dgs_custom_width,
                 dgs_custom_height,
@@ -1480,6 +1643,16 @@ def create_tuning_tab() -> tuple:
                 dgs_nearclip_min,
                 dgs_nearclip_max,
                 dgs_nearclip_step,
+                # Two-Pass mode params
+                dgs_twopass_video_path,
+                dgs_twopass_frame_stride,
+                dgs_twopass_segment_size,
+                dgs_twopass_overlap,
+                # Single Scene mode params
+                dgs_singlescene_base_prompt,
+                dgs_singlescene_num_angles,
+                dgs_singlescene_angle_variation,
+                dgs_singlescene_lighting_variation,
             ],
             outputs=[dgs_status_box],
         )
