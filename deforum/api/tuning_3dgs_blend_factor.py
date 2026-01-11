@@ -1775,7 +1775,7 @@ def _generate_deforum_animation(
         frame_paths = []
         for frame_idx in range(max_frames):
             frame_path = output_dir / f"frame_{frame_idx:06d}.png"
-            _generate_placeholder_keyframe(prompt, frame_path, width, height)
+            generate_blue_sphere_keyframe(width, height, frame_path)
             frame_paths.append(frame_path)
         return frame_paths
 
@@ -1836,6 +1836,9 @@ def _create_deforum_args_for_test(width: int, height: int, max_frames: int, outp
     loop_defaults = get_defaults(LoopArgs())
     root_defaults = RootArgs()
 
+    # Simple prompt for test animation
+    prompt = "modern city street with tall buildings and cars, architectural photography, detailed, 8k"
+
     # Override with test-specific values
     args_defaults.update({
         'W': width,
@@ -1847,6 +1850,10 @@ def _create_deforum_args_for_test(width: int, height: int, max_frames: int, outp
         'strength': 0.85,  # Cadence strength
         'strength_0_no_init': True,
         'outdir': str(output_dir),  # Critical: where frames are saved
+        # Prompt fields (required by save_settings_from_animation_run)
+        'prompts': {0: prompt},  # Animation prompts dict
+        'positive_prompts': '',  # No additional positive prefix
+        'negative_prompts': '',  # No additional negative prefix
     })
 
     anim_defaults.update({
@@ -1903,9 +1910,7 @@ def _create_deforum_args_for_test(width: int, height: int, max_frames: int, outp
     controlnet_args = SimpleNamespace()  # Empty
     root = SimpleNamespace(**root_defaults)
 
-    # Set animation prompts
-    root.animation_prompts = {
-        0: "modern city street with tall buildings and cars, architectural photography, detailed, 8k"
-    }
+    # Set animation prompts (use same prompt variable for consistency)
+    root.animation_prompts = {0: prompt}
 
     return args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root
