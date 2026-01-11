@@ -776,7 +776,7 @@ class TuningTestManager:
                 resume_id_clean = f"twopass_tuning_{resume_test_id.strip()}"
 
             # Point video_path to the phase1 frames directory
-            resume_frames_dir = Path(config.tuning_output_dir) / resume_id_clean / "phase1_deforum_frames"
+            resume_frames_dir = tuning_dir / resume_id_clean / "phase1_deforum_frames"
             if resume_frames_dir.exists():
                 video_path = str(resume_frames_dir)
                 logger.info(f"RESUME MODE: Reusing frames from {resume_id_clean}")
