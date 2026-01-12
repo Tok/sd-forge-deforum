@@ -826,12 +826,30 @@ class TuningTestManager:
         current_config = 0
 
         for movement_pattern in movement_patterns:
-            for feeding_strategy in feeding_strategies:
+            # Generate Phase 1 frames ONCE per movement pattern (first iteration)
+            # Then reuse for all feeding strategies
+            movement_video_path = video_path  # Start with user-provided path (may be empty or resume)
+
+            # Sanitize movement pattern for directory name (remove special chars including °)
+            movement_slug = (movement_pattern.lower()
+                           .replace(" ", "_")
+                           .replace("(", "")
+                           .replace(")", "")
+                           .replace(",", "")
+                           .replace("°", "")
+                           .replace(".", ""))
+
+            for feeding_idx, feeding_strategy in enumerate(feeding_strategies):
                 current_config += 1
 
-                # Create sanitized directory name
-                movement_slug = movement_pattern.lower().replace(" ", "_").replace("(", "").replace(")", "").replace(",", "")
-                feeding_slug = feeding_strategy.lower().replace(" ", "_").replace("(", "").replace(")", "").replace(",", "")
+                # Sanitize feeding strategy for directory name
+                feeding_slug = (feeding_strategy.lower()
+                              .replace(" ", "_")
+                              .replace("(", "")
+                              .replace(")", "")
+                              .replace(",", "")
+                              .replace("°", "")
+                              .replace(".", ""))
 
                 # Create unique output directory for this combination
                 config_output_dir = base_test_output_dir / f"{movement_slug}__{feeding_slug}"
@@ -842,10 +860,12 @@ class TuningTestManager:
                 logger.info(f"Movement: {movement_pattern}")
                 logger.info(f"Feeding: {feeding_strategy}")
                 logger.info(f"Output: {config_output_dir.name}")
+                if feeding_idx > 0:
+                    logger.info(f"Reusing Phase 1 frames from first iteration (shared across feeding strategies)")
                 logger.info(f"{'='*80}\n")
 
                 results = run_twopass_refinement(
-                    video_path=video_path,
+                    video_path=movement_video_path,  # Use shared frames for this movement
                     width=width,
                     height=height,
                     prompt=prompt,
@@ -865,6 +885,13 @@ class TuningTestManager:
                 )
 
                 all_results.extend(results)
+
+                # After first feeding strategy, point to generated frames for reuse
+                if feeding_idx == 0 and not movement_video_path:
+                    # Phase 1 was just generated - reuse these frames for remaining feeding strategies
+                    movement_video_path = str(base_test_output_dir / "phase1_deforum_frames")
+                    logger.info(f"Phase 1 frames generated at: {movement_video_path}")
+                    logger.info(f"Will reuse for remaining feeding strategies")
 
         # Update test status with results
         with self.test_lock:
