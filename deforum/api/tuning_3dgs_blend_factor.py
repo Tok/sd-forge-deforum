@@ -1242,11 +1242,14 @@ def run_twopass_refinement(
     import time
     start_time = time.time()
 
-    # Step 1: Generate or load frames
-    frames_dir = output_dir / "phase1_deforum_frames"
-    frames_dir.mkdir(exist_ok=True)
-
+    # Step 1: Determine frames directory
+    # IMPORTANT: In resume mode, video_path points to the actual frames directory (base level)
+    # In generation mode, we create frames_dir under output_dir
     if not video_path or video_path.strip() == "":
+        # Generation mode: create new frames directory
+        frames_dir = output_dir / "phase1_deforum_frames"
+        frames_dir.mkdir(exist_ok=True)
+
         logger.info("=" * 80)
         logger.info("📹 PHASE 1: GENERATING COHERENT DEFORUM ANIMATION")
         logger.info("=" * 80)
@@ -1307,11 +1310,15 @@ def run_twopass_refinement(
         except Exception as e:
             logger.warning(f"   ⚠️  Failed to create Phase 1 preview: {e}")
     else:
-        # Load frames from existing video/sequence
+        # Resume mode: video_path points to actual frames directory
+        # Use it directly instead of calculating from output_dir
+        frames_dir = Path(video_path)
+
         logger.info("=" * 80)
         logger.info("📥 PHASE 1: LOADING FRAMES FROM VIDEO")
         logger.info("=" * 80)
         logger.info(f"   Source: {video_path}")
+        logger.info(f"   Frames dir: {frames_dir}")
         frame_paths = _load_video_frames(video_path, frames_dir, frame_stride)
 
     if not frame_paths:
