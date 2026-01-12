@@ -1338,20 +1338,25 @@ def run_twopass_refinement(
     first_frame = Image.open(frame_paths[0])
     width, height = first_frame.size
 
-    # Apply feeding strategy to filter frames before DA3-3DGS processing
-    total_frames_available = len(frame_paths)
+    # Keep ALL frames for final rendering, but extract subset for DA3 scene building
+    all_frame_paths = frame_paths  # All 302 frames (or however many were generated)
+    total_frames_available = len(all_frame_paths)
+
     logger.info(f"\n📊 Applying feeding strategy: {feeding_strategy}")
     logger.info(f"   Total frames available: {total_frames_available}")
 
-    frame_paths = _extract_frames_by_strategy(frame_paths, feeding_strategy)
+    # Extract keyframes for DA3 3DGS scene building (based on feeding strategy)
+    da3_input_frames = _extract_frames_by_strategy(all_frame_paths, feeding_strategy)
 
-    logger.info(f"   Frames selected for DA3: {len(frame_paths)} ({len(frame_paths)/total_frames_available*100:.1f}%)")
+    logger.info(f"   Frames for DA3 scene building: {len(da3_input_frames)} ({len(da3_input_frames)/total_frames_available*100:.1f}%)")
+    logger.info(f"   Frames for final rendering: {total_frames_available} (100%, interpolated from DA3 scene)")
 
     logger.info("")
     logger.info("=" * 80)
     logger.info("🎨 PHASE 2: DA3-3DGS REFINEMENT")
     logger.info("=" * 80)
-    logger.info(f"   Input: {len(frame_paths)} frames at {width}×{height}")
+    logger.info(f"   DA3 Input: {len(da3_input_frames)} frames at {width}×{height} (scene building)")
+    logger.info(f"   Render Output: {total_frames_available} frames (full sequence)")
     logger.info(f"   Movement: {movement_pattern}")
     logger.info(f"   Feeding: {feeding_strategy}")
     logger.info(f"   Segment size: {segment_size}, Overlap: {overlap_percent}%")
@@ -1372,36 +1377,32 @@ def run_twopass_refinement(
     except Exception as e:
         logger.warning(f"   ⚠️  Model cleanup failed (non-critical): {e}")
 
-    # Step 2: Split all frames into segments for 3DGS processing
-    # With 360° rotation, consecutive frames provide good multi-view diversity
-    # Phase 1 uses cadence=30 for fast generation, Phase 2 uses all frames for best 3DGS quality
-    logger.info(f"\n🔪 Splitting frames into segments...")
-    segments = _split_frames_into_segments(frame_paths, segment_size, overlap_percent)
-    logger.info(f"   Created {len(segments)} segments (experimenting with best 3DGS approach)")
+    # Step 2: For Two-Pass mode, we DON'T use segments - build one global 3DGS scene
+    # Build from selected keyframes, but render ALL frames by interpolating camera poses
+    logger.info(f"\n🎨 Building global 3DGS scene from keyframes, rendering all frames...")
+    logger.info(f"   Keyframes for scene building: {len(da3_input_frames)}")
+    logger.info(f"   Total frames to render: {len(all_frame_paths)}")
 
-    # Step 3: Process each segment with DA3-3DGS
-    results = []
-    for seg_idx, segment_frames in enumerate(segments):
-        logger.info(f"\n🎬 Processing segment {seg_idx + 1}/{len(segments)} ({len(segment_frames)} frames)")
+    seg_output_dir = output_dir / "segment_000"
+    seg_output_dir.mkdir(exist_ok=True)
 
-        seg_output_dir = output_dir / f"segment_{seg_idx:03d}"
-        seg_output_dir.mkdir(exist_ok=True)
-
-        # Run DA3-3DGS on this segment (feeding all frames for best reconstruction)
-        seg_result = _process_segment_with_da3gs(
-            segment_frames=segment_frames,
-            output_dir=seg_output_dir,
-            use_ray_pose=use_ray_pose,
-            confidence_threshold=confidence_threshold,
-            densification=densification,
-            neighbor_segments=neighbor_segments,
-            width=width,
-            height=height,
-            da3_model_name=da3_model_name,
-        )
-        results.append(seg_result)
+    # Run DA3-3DGS with keyframes for building, all frames for rendering
+    seg_result = _process_segment_with_da3gs(
+        segment_frames=da3_input_frames,  # Keyframes for building 3DGS scene
+        all_frames=all_frame_paths,  # All frames for final rendering
+        output_dir=seg_output_dir,
+        use_ray_pose=use_ray_pose,
+        confidence_threshold=confidence_threshold,
+        densification=densification,
+        neighbor_segments=neighbor_segments,
+        width=width,
+        height=height,
+        da3_model_name=da3_model_name,
+    )
+    results = [seg_result]
 
     # Step 4: Create comparison video from original Phase 1 frames
+    # IMPORTANT: Use frames_dir (base directory), not the config subdirectory
     logger.info(f"\n🎥 Creating comparison video from original Phase 1 frames...")
     original_video_path = output_dir / "phase1_original.mp4"
     try:
@@ -1411,7 +1412,7 @@ def run_twopass_refinement(
             "-y",
             "-framerate", "60",
             "-start_number", "0",
-            "-i", str(frame_paths[0].parent / "%06d.png"),
+            "-i", str(frames_dir / "%06d.png"),  # Use frames_dir (base), not config subdir
             "-c:v", "libx264",
             "-pix_fmt", "yuv420p",
             "-crf", "18",
@@ -1425,10 +1426,31 @@ def run_twopass_refinement(
     except Exception as e:
         logger.warning(f"   ⚠️  Failed to create original video: {e}")
 
-    # Step 5: Stitch segments into final refined video
-    logger.info(f"\n🎞️  Stitching {len(results)} segments into refined video...")
+    # Step 5: Create final refined video from rendered frames
+    logger.info(f"\n🎞️  Creating final refined video...")
     final_video_path = output_dir / "twopass_refined.mp4"
-    _stitch_segments_to_video(segments, results, output_dir, final_video_path, overlap_percent)
+    # No segmentation needed - all frames rendered in single pass
+    try:
+        import subprocess
+        rendered_frames_dir = seg_output_dir / "output_frames"
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-framerate", "60",
+            "-start_number", "0",
+            "-i", str(rendered_frames_dir / "refined_%06d.png"),
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            "-crf", "18",
+            str(final_video_path)
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            logger.info(f"   ✅ Video saved: {final_video_path}")
+        else:
+            logger.warning(f"   ⚠️  Failed to create video: {result.stderr}")
+    except Exception as e:
+        logger.warning(f"   ⚠️  Failed to create video: {e}")
 
     total_time = time.time() - start_time
     logger.info(f"\n✅ Two-Pass refinement complete!")
@@ -1675,6 +1697,7 @@ def _split_frames_into_segments(frame_paths: List[Path], segment_size: int, over
 
 def _process_segment_with_da3gs(
     segment_frames: List[Path],
+    all_frames: List[Path],
     output_dir: Path,
     use_ray_pose: bool,
     confidence_threshold: float,
@@ -1687,7 +1710,8 @@ def _process_segment_with_da3gs(
     """Process a segment of frames with DA3-3DGS.
 
     Args:
-        segment_frames: List of frame paths for this segment
+        segment_frames: List of frame paths for DA3 scene building (keyframes)
+        all_frames: List of ALL frame paths for final rendering (full sequence)
         output_dir: Output directory for segment results
         use_ray_pose: Use DA3 ray head
         confidence_threshold: Confidence filtering
@@ -1794,18 +1818,56 @@ def _process_segment_with_da3gs(
             logger.info(f"   Camera poses: {camera_poses.shape}")
             logger.info(f"   Intrinsics fx={camera_intrinsics[0,0]:.1f}, fy={camera_intrinsics[1,1]:.1f}, cx={camera_intrinsics[0,2]:.1f}, cy={camera_intrinsics[1,2]:.1f}")
 
-            # Step 4: Render frames using DA3's estimated camera path
+            # Step 4: Interpolate camera poses from keyframes to all frames
+            logger.info("   📐 Interpolating camera poses for all frames...")
+            num_keyframes = len(frames)
+            num_total_frames = len(all_frames)
+            logger.info(f"   Keyframes: {num_keyframes}, Total frames: {num_total_frames}")
+
+            # Interpolate camera poses using linear interpolation (slerp would be better for rotations)
+            if num_keyframes == num_total_frames:
+                # All frames fed to DA3 - no interpolation needed
+                interpolated_poses = camera_poses
+                logger.info(f"   No interpolation needed (all frames used for scene building)")
+            else:
+                # Interpolate camera poses from keyframes to all frames
+                interpolated_poses = []
+                keyframe_indices = np.linspace(0, num_total_frames - 1, num_keyframes)
+
+                for frame_idx in range(num_total_frames):
+                    # Find surrounding keyframes
+                    # Find which keyframe interval this frame falls into
+                    for i in range(len(keyframe_indices) - 1):
+                        if keyframe_indices[i] <= frame_idx <= keyframe_indices[i + 1]:
+                            # Interpolate between keyframe i and i+1
+                            t = (frame_idx - keyframe_indices[i]) / (keyframe_indices[i + 1] - keyframe_indices[i])
+                            pose1 = camera_poses[i] if torch.is_tensor(camera_poses[i]) else torch.from_numpy(camera_poses[i])
+                            pose2 = camera_poses[i + 1] if torch.is_tensor(camera_poses[i + 1]) else torch.from_numpy(camera_poses[i + 1])
+                            interp_pose = (1 - t) * pose1 + t * pose2  # Linear interpolation
+                            interpolated_poses.append(interp_pose.cpu().numpy() if torch.is_tensor(interp_pose) else interp_pose)
+                            break
+                    else:
+                        # Edge case: use nearest keyframe (first or last)
+                        if frame_idx < keyframe_indices[0]:
+                            pose = camera_poses[0]
+                        else:
+                            pose = camera_poses[-1]
+                        interpolated_poses.append(pose.cpu().numpy() if torch.is_tensor(pose) else pose)
+
+                logger.info(f"   ✓ Interpolated {len(interpolated_poses)} camera poses from {num_keyframes} keyframes")
+
+            # Step 5: Render ALL frames using interpolated camera path
             logger.info("   🎨 Rendering frames from 3DGS scene...")
-            logger.info(f"   Using DA3's estimated camera path (rotation, zoom, etc.)")
+            logger.info(f"   Rendering {num_total_frames} frames using interpolated camera path")
             from deforum.rendering.da3_3dgs_novel_view import render_novel_view_from_gaussians
 
-            for idx in range(len(frames)):
-                # Progress logging every 10 frames
-                if idx % 10 == 0:
-                    logger.info(f"      Rendering frame {idx+1}/{len(frames)}...")
+            for idx in range(num_total_frames):
+                # Progress logging every 50 frames (since we're rendering many more)
+                if idx % 50 == 0:
+                    logger.info(f"      Rendering frame {idx+1}/{num_total_frames}...")
 
-                # Get DA3's estimated camera pose for this frame
-                pose_3x4 = camera_poses[idx]  # [3, 4] from DA3 (rotation, translation, zoom)
+                # Get interpolated camera pose for this frame
+                pose_3x4 = interpolated_poses[idx]  # [3, 4] interpolated pose
 
                 # Convert [3, 4] to [4, 4] homogeneous matrix
                 # Add bottom row [0, 0, 0, 1]
@@ -1822,7 +1884,7 @@ def _process_segment_with_da3gs(
                 else:
                     camera_pose = pose_3x4  # Already [4, 4]
 
-                # Render novel view from DA3's estimated viewpoint
+                # Render novel view from interpolated camera pose
                 rendered_image = render_novel_view_from_gaussians(
                     gaussians=gaussians,
                     camera_pose=camera_pose,
@@ -1837,7 +1899,7 @@ def _process_segment_with_da3gs(
                 output_path = output_frames_dir / f"refined_{idx:06d}.png"
                 rendered_image.save(output_path)
 
-            logger.info(f"   ✓ Rendered {len(frames)} frames using DA3's camera path")
+            logger.info(f"   ✓ Rendered {num_total_frames} frames using interpolated camera path")
 
         # Track VRAM usage
         peak_vram = torch.cuda.max_memory_allocated() / (1024 ** 3) if torch.cuda.is_available() else 0.0
@@ -1851,10 +1913,10 @@ def _process_segment_with_da3gs(
             densification=densification,
             width=width,
             height=height,
-            num_frames=len(segment_frames),
+            num_frames=len(all_frames),  # Total frames rendered
             test_success=True,
             total_time=elapsed,
-            avg_frame_time=elapsed / len(segment_frames) if segment_frames else 0.0,
+            avg_frame_time=elapsed / len(all_frames) if all_frames else 0.0,
             peak_vram_gb=peak_vram,
             avg_temporal_consistency=0.0,  # TODO: Calculate SSIM
             camera_path_adherence=0.0,  # N/A for two-pass
@@ -1870,7 +1932,7 @@ def _process_segment_with_da3gs(
         # Fallback: Copy frames as-is
         logger.warning("   ⚠️  Falling back to frame copy")
         import shutil
-        for idx, frame_path in enumerate(segment_frames):
+        for idx, frame_path in enumerate(all_frames):
             output_path = output_frames_dir / f"refined_{idx:06d}.png"
             shutil.copy(frame_path, output_path)
 
@@ -1882,10 +1944,10 @@ def _process_segment_with_da3gs(
             densification=densification,
             width=width,
             height=height,
-            num_frames=len(segment_frames),
+            num_frames=len(all_frames),
             test_success=False,
             total_time=elapsed,
-            avg_frame_time=elapsed / len(segment_frames) if segment_frames else 0.0,
+            avg_frame_time=elapsed / len(all_frames) if all_frames else 0.0,
             peak_vram_gb=0.0,
             avg_temporal_consistency=0.0,
             camera_path_adherence=0.0,
