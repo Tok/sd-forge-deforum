@@ -1694,12 +1694,12 @@ def create_tuning_tab() -> tuple:
                 dgs_nearclip_step,
                 # Two-Pass mode params
                 dgs_twopass_resume,
-                dgs_twopass_movement,
-                dgs_twopass_feeding,
                 dgs_twopass_video_path,
                 dgs_twopass_frame_stride,
                 dgs_twopass_segment_size,
                 dgs_twopass_overlap,
+                dgs_twopass_movement,
+                dgs_twopass_feeding,
                 # Single Scene mode params
                 dgs_singlescene_base_prompt,
                 dgs_singlescene_num_angles,
