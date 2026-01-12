@@ -860,6 +860,33 @@ def create_tuning_tab() -> tuple:
                             placeholder="Paste test ID like: twopass_tuning_54bec7ce (or just: 54bec7ce)",
                             info="RESUME: Skip Phase 1 and reuse frames from previous test. Paste the test directory name or just the ID code.",
                         )
+
+                        # Movement pattern selection
+                        dgs_twopass_movement = gr.CheckboxGroup(
+                            label="Phase 1 Camera Movement Patterns (test multiple at once)",
+                            choices=[
+                                "Orbit Strong (150 units, 360°)",
+                                "Orbit Gentle (30 units, 360°)",
+                                "Forward Zoom (50 units)",
+                                "Sideways Pan (100 units)",
+                            ],
+                            value=["Orbit Strong (150 units, 360°)"],
+                            info="Generate Phase 1 with different camera movements. Each creates a separate test.",
+                        )
+
+                        # Frame feeding strategy
+                        dgs_twopass_feeding = gr.CheckboxGroup(
+                            label="Phase 2 Frame Feeding Strategy (test multiple at once)",
+                            choices=[
+                                "All Frames (best quality, slower)",
+                                "Keyframes Only (faster, was working well)",
+                                "Every 2nd Frame (balanced)",
+                                "Every 5th Frame (very fast)",
+                            ],
+                            value=["Keyframes Only (faster, was working well)"],
+                            info="How many frames to feed DA3-3DGS. Each creates a separate Phase 2 render.",
+                        )
+
                         dgs_twopass_video_path = gr.Textbox(
                             label="Input video path (optional - leave empty to generate on-the-fly)",
                             value="",
@@ -1470,6 +1497,8 @@ def create_tuning_tab() -> tuple:
             dgs_twopass_frame_stride_val,
             dgs_twopass_segment_size_val,
             dgs_twopass_overlap_val,
+            dgs_twopass_movement_val,
+            dgs_twopass_feeding_val,
             # Single Scene mode params
             dgs_singlescene_base_prompt_val,
             dgs_singlescene_num_angles_val,
@@ -1548,6 +1577,8 @@ def create_tuning_tab() -> tuple:
                     "dgs_twopass_frame_stride": int(dgs_twopass_frame_stride_val),
                     "dgs_twopass_segment_size": int(dgs_twopass_segment_size_val),
                     "dgs_twopass_overlap": int(dgs_twopass_overlap_val),
+                    "dgs_twopass_movement": dgs_twopass_movement_val,
+                    "dgs_twopass_feeding": dgs_twopass_feeding_val,
                     # Single Scene mode params
                     "dgs_singlescene_base_prompt": dgs_singlescene_base_prompt_val,
                     "dgs_singlescene_num_angles": int(dgs_singlescene_num_angles_val),
@@ -1581,6 +1612,8 @@ def create_tuning_tab() -> tuple:
             return {
                 # Two-Pass controls
                 dgs_twopass_resume: gr.update(visible=is_twopass),
+                dgs_twopass_movement: gr.update(visible=is_twopass),
+                dgs_twopass_feeding: gr.update(visible=is_twopass),
                 dgs_twopass_video_path: gr.update(visible=is_twopass),
                 dgs_twopass_frame_stride: gr.update(visible=is_twopass),
                 dgs_twopass_segment_size: gr.update(visible=is_twopass),
@@ -1601,6 +1634,8 @@ def create_tuning_tab() -> tuple:
             inputs=[dgs_test_mode],
             outputs=[
                 dgs_twopass_resume,
+                dgs_twopass_movement,
+                dgs_twopass_feeding,
                 dgs_twopass_video_path,
                 dgs_twopass_frame_stride,
                 dgs_twopass_segment_size,
@@ -1659,6 +1694,8 @@ def create_tuning_tab() -> tuple:
                 dgs_nearclip_step,
                 # Two-Pass mode params
                 dgs_twopass_resume,
+                dgs_twopass_movement,
+                dgs_twopass_feeding,
                 dgs_twopass_video_path,
                 dgs_twopass_frame_stride,
                 dgs_twopass_segment_size,

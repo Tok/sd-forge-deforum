@@ -98,6 +98,8 @@ class TuningTestConfig(BaseModel):
 
     # Two-Pass Refinement mode parameters (da3_3dgs_twopass test type)
     dgs_twopass_resume: Optional[str] = Field(None, description="Resume from previous test (test ID or full directory name)")
+    dgs_twopass_movement: Optional[List[str]] = Field(None, description="Movement patterns to test (can select multiple)")
+    dgs_twopass_feeding: Optional[List[str]] = Field(None, description="Frame feeding strategies to test (can select multiple)")
     dgs_twopass_video_path: Optional[str] = Field(None, description="Input video or image sequence path for Two-Pass mode")
     dgs_twopass_frame_stride: Optional[int] = Field(None, ge=1, le=10, description="Frame stride (use every Nth frame)")
     dgs_twopass_segment_size: Optional[int] = Field(None, ge=10, le=120, description="Frames per DA3-3DGS segment")
@@ -723,6 +725,9 @@ class TuningTestManager:
         This addresses the core problem: DA3 needs temporally coherent multi-view data,
         not unrelated synthetic scenes!
 
+        Supports multi-configuration testing: Can test multiple movement patterns × feeding strategies
+        in a single run by selecting multiple checkboxes in the UI.
+
         Args:
             test_id: Test identifier
             config: Test configuration with two-pass parameters
@@ -735,8 +740,6 @@ class TuningTestManager:
         # Create output directory
         forge_root = Path(os.getcwd())
         tuning_dir = forge_root / "output" / "deforum-tuning"
-        test_output_dir = tuning_dir / f"twopass_{test_id}"
-        test_output_dir.mkdir(parents=True, exist_ok=True)
 
         # Get two-pass parameters
         video_path = config.dgs_twopass_video_path if config.dgs_twopass_video_path else ""
@@ -758,15 +761,27 @@ class TuningTestManager:
         confidence_threshold = config.dgs_confidence_threshold if config.dgs_confidence_threshold is not None else 0.0
         densification = config.dgs_densification_min if config.dgs_densification_min is not None else 1
         neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
+        da3_model_name = config.dgs_models[0] if config.dgs_models and len(config.dgs_models) > 0 else "DA3-GIANT"
 
         # Get Deforum generation parameters from UI
         prompt = config.dgs_scene_prompt_1 if config.dgs_scene_prompt_1 else "modern city street with tall buildings and cars, architectural photography, detailed, 8k"
         steps = config.steps[0] if config.steps and len(config.steps) > 0 else 20
         seed = -1  # Always random for test animations
 
-        # Check for resume mode (reuse frames from previous test)
+        # Get multi-configuration parameters
+        movement_patterns = config.dgs_twopass_movement or ["Orbit Strong (150 units, 360°)"]
+        feeding_strategies = config.dgs_twopass_feeding or ["Keyframes Only (faster, was working well)"]
+
+        logger.info(f"Multi-config testing:")
+        logger.info(f"  Movement patterns: {movement_patterns}")
+        logger.info(f"  Feeding strategies: {feeding_strategies}")
+        logger.info(f"  Total combinations: {len(movement_patterns)} × {len(feeding_strategies)} = {len(movement_patterns) * len(feeding_strategies)}")
+
+        # Check for resume mode (reuse frames AND output directory from previous test)
         resume_test_id = config.dgs_twopass_resume or ""
         logger.info(f"Resume field value: '{resume_test_id}'")
+
+        base_test_output_dir = None
         if resume_test_id and resume_test_id.strip():
             # Extract just the ID if full directory name provided
             # Accept: "twopass_tuning_54bec7ce" or just "54bec7ce"
@@ -779,46 +794,89 @@ class TuningTestManager:
             resume_frames_dir = tuning_dir / resume_id_clean / "phase1_deforum_frames"
             if resume_frames_dir.exists():
                 video_path = str(resume_frames_dir)
-                logger.info(f"RESUME MODE: Reusing frames from {resume_id_clean}")
+                # CRITICAL: Reuse the SAME base directory when resuming
+                base_test_output_dir = tuning_dir / resume_id_clean
+                logger.info(f"RESUME MODE: Reusing test directory {resume_id_clean}")
                 logger.info(f"  Frame directory: {video_path}")
+                logger.info(f"  Base output directory: {base_test_output_dir}")
             else:
                 logger.warning(f"Resume test not found: {resume_frames_dir}")
                 logger.warning("  Proceeding with normal generation")
                 video_path = ""  # Fall back to generation
+                base_test_output_dir = tuning_dir / f"twopass_{test_id}"
+        else:
+            # Normal mode: create new directory with current test_id
+            base_test_output_dir = tuning_dir / f"twopass_{test_id}"
+
+        base_test_output_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Input video: {video_path if video_path else '(generate on-the-fly)'}")
         logger.info(f"Resolution: {width}×{height}")
         logger.info(f"Prompt: {prompt[:60]}...")
         logger.info(f"Steps: {steps}, Seed: {seed}")
         logger.info(f"Frame stride: {frame_stride}, Segment size: {segment_size}, Overlap: {overlap}%")
+        logger.info(f"DA3 Model: {da3_model_name}")
         logger.info(f"DA3: use_ray_pose={use_ray_pose}, confidence={confidence_threshold}%, densification={densification}, neighbors={neighbor_segments}")
 
-        # Run two-pass refinement
+        # Run two-pass refinement for each movement pattern × feeding strategy combination
         from deforum.api.tuning_3dgs_blend_factor import run_twopass_refinement
 
-        results = run_twopass_refinement(
-            video_path=video_path,
-            width=width,
-            height=height,
-            prompt=prompt,
-            steps=steps,
-            seed=seed,
-            frame_stride=frame_stride,
-            segment_size=segment_size,
-            overlap_percent=overlap,
-            output_dir=test_output_dir,
-            use_ray_pose=use_ray_pose,
-            confidence_threshold=confidence_threshold,
-            densification=densification,
-            neighbor_segments=neighbor_segments,
-        )
+        all_results = []
+        total_configs = len(movement_patterns) * len(feeding_strategies)
+        current_config = 0
+
+        for movement_pattern in movement_patterns:
+            for feeding_strategy in feeding_strategies:
+                current_config += 1
+
+                # Create sanitized directory name
+                movement_slug = movement_pattern.lower().replace(" ", "_").replace("(", "").replace(")", "").replace(",", "")
+                feeding_slug = feeding_strategy.lower().replace(" ", "_").replace("(", "").replace(")", "").replace(",", "")
+
+                # Create unique output directory for this combination
+                config_output_dir = base_test_output_dir / f"{movement_slug}__{feeding_slug}"
+                config_output_dir.mkdir(parents=True, exist_ok=True)
+
+                logger.info(f"\n{'='*80}")
+                logger.info(f"Configuration {current_config}/{total_configs}")
+                logger.info(f"Movement: {movement_pattern}")
+                logger.info(f"Feeding: {feeding_strategy}")
+                logger.info(f"Output: {config_output_dir.name}")
+                logger.info(f"{'='*80}\n")
+
+                results = run_twopass_refinement(
+                    video_path=video_path,
+                    width=width,
+                    height=height,
+                    prompt=prompt,
+                    steps=steps,
+                    seed=seed,
+                    frame_stride=frame_stride,
+                    segment_size=segment_size,
+                    overlap_percent=overlap,
+                    output_dir=config_output_dir,
+                    use_ray_pose=use_ray_pose,
+                    confidence_threshold=confidence_threshold,
+                    densification=densification,
+                    neighbor_segments=neighbor_segments,
+                    da3_model_name=da3_model_name,
+                    movement_pattern=movement_pattern,
+                    feeding_strategy=feeding_strategy,
+                )
+
+                all_results.extend(results)
 
         # Update test status with results
         with self.test_lock:
             if test_id in self.active_tests:
-                self.active_tests[test_id].results = [r.to_dict() for r in results]
+                self.active_tests[test_id].results = [r.to_dict() for r in all_results]
 
-        logger.info(f"Two-Pass refinement complete: {len(results)} segments processed")
+        logger.info(f"\n{'='*80}")
+        logger.info(f"Two-Pass multi-config testing complete!")
+        logger.info(f"  Configurations tested: {total_configs}")
+        logger.info(f"  Total segments processed: {len(all_results)}")
+        logger.info(f"  Output directory: {base_test_output_dir}")
+        logger.info(f"{'='*80}\n")
 
     def _run_singlescene_tests(self, test_id: str, config: TuningTestConfig):
         """Run Single Scene Multi-Angle tests.

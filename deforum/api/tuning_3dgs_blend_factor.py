@@ -1178,16 +1178,29 @@ def run_twopass_refinement(
     confidence_threshold: float = 0.0,
     densification: int = 1,
     neighbor_segments: int = 4,
+    da3_model_name: str = "DA3-GIANT",
+    movement_pattern: str = "Orbit Strong (150 units, 360°)",
+    feeding_strategy: str = "Keyframes Only (faster, was working well)",
 ) -> List[BlendFactorTestResult]:
     """Run Two-Pass DA3-3DGS refinement.
 
-    Pipeline:
-    Phase 1: Generate coherent Deforum animation (if video_path empty)
-         OR: Load existing video/image sequence (if video_path provided)
-    Phase 2: Process frames through DA3-3DGS for refinement
+    Current Approach (Experimental):
+    - Phase 1: Generate content with configurable camera movement (orbital, zoom, pan)
+      - 300 frames @ 60fps (5 seconds)
+      - Diffusion on every 30th frame (fast generation)
+      - Depth predictions only on diffused frames (tweens use depth warping)
+      - Creates: phase1_preview.mp4, phase1_original.mp4
+    - Phase 2: Feed frames to DA3-3DGS (configurable strategy: all/keyframes/every Nth)
+      - DA3 estimates camera poses (rotation, zoom, translation)
+      - Build 3DGS scene from temporal coherence
+      - Render using DA3's estimated camera path
+      - Creates: twopass_refined.mp4
 
     This addresses the core problem: DA3 needs temporally coherent multi-view data,
     not unrelated synthetic keyframes!
+
+    Supports multi-configuration testing: Different movement patterns and feeding strategies
+    can be tested to find the optimal 3DGS reconstruction approach.
 
     Args:
         video_path: Path to input video/sequence (empty = generate on-the-fly)
@@ -1204,6 +1217,9 @@ def run_twopass_refinement(
         confidence_threshold: Filter low-confidence splats
         densification: Densification factor (1 recommended)
         neighbor_segments: Keyframes per segment
+        da3_model_name: DA3 model to use for 3DGS (e.g., "DA3-GIANT")
+        movement_pattern: Camera movement pattern for Phase 1 (e.g., "Orbit Strong (150 units, 360°)")
+        feeding_strategy: How many frames to feed DA3 (e.g., "Keyframes Only (faster, was working well)")
 
     Returns:
         List of test results (one per segment)
@@ -1211,6 +1227,8 @@ def run_twopass_refinement(
     logger.info("=" * 80)
     logger.info("TWO-PASS DA3-3DGS REFINEMENT")
     logger.info("=" * 80)
+    logger.info(f"Movement Pattern: {movement_pattern}")
+    logger.info(f"Feeding Strategy: {feeding_strategy}")
     logger.info(f"Input video: {video_path}")
     logger.info(f"Frame stride: {frame_stride}, Segment size: {segment_size}, Overlap: {overlap_percent}%")
     logger.info(f"DA3 params: use_ray_pose={use_ray_pose}, confidence={confidence_threshold}%")
@@ -1241,6 +1259,7 @@ def run_twopass_refinement(
             prompt=prompt,
             steps=steps,
             seed=seed,
+            movement_pattern=movement_pattern,
         )
 
         if not frame_paths:
@@ -1264,6 +1283,29 @@ def run_twopass_refinement(
             return [result]
 
         logger.info(f"✅ Phase 1 complete: Generated {len(frame_paths)} frames")
+
+        # Save Phase 1 preview video
+        logger.info("\n🎬 Creating Phase 1 preview video...")
+        phase1_video = output_dir / "phase1_preview.mp4"
+        try:
+            import subprocess
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-framerate", "60",
+                "-i", str(frames_dir / "%06d.png"),
+                "-c:v", "libx264",
+                "-pix_fmt", "yuv420p",
+                "-crf", "18",
+                str(phase1_video)
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                logger.info(f"   ✅ Phase 1 preview saved: {phase1_video}")
+            else:
+                logger.warning(f"   ⚠️  Failed to create Phase 1 preview: {result.stderr}")
+        except Exception as e:
+            logger.warning(f"   ⚠️  Failed to create Phase 1 preview: {e}")
     else:
         # Load frames from existing video/sequence
         logger.info("=" * 80)
@@ -1296,11 +1338,22 @@ def run_twopass_refinement(
     first_frame = Image.open(frame_paths[0])
     width, height = first_frame.size
 
+    # Apply feeding strategy to filter frames before DA3-3DGS processing
+    total_frames_available = len(frame_paths)
+    logger.info(f"\n📊 Applying feeding strategy: {feeding_strategy}")
+    logger.info(f"   Total frames available: {total_frames_available}")
+
+    frame_paths = _extract_frames_by_strategy(frame_paths, feeding_strategy)
+
+    logger.info(f"   Frames selected for DA3: {len(frame_paths)} ({len(frame_paths)/total_frames_available*100:.1f}%)")
+
     logger.info("")
     logger.info("=" * 80)
     logger.info("🎨 PHASE 2: DA3-3DGS REFINEMENT")
     logger.info("=" * 80)
     logger.info(f"   Input: {len(frame_paths)} frames at {width}×{height}")
+    logger.info(f"   Movement: {movement_pattern}")
+    logger.info(f"   Feeding: {feeding_strategy}")
     logger.info(f"   Segment size: {segment_size}, Overlap: {overlap_percent}%")
 
     # Clean up SD model to free VRAM for DA3-3DGS processing
@@ -1319,10 +1372,12 @@ def run_twopass_refinement(
     except Exception as e:
         logger.warning(f"   ⚠️  Model cleanup failed (non-critical): {e}")
 
-    # Step 2: Split into overlapping segments
-    logger.info(f"\n🔪 Splitting into segments...")
+    # Step 2: Split all frames into segments for 3DGS processing
+    # With 360° rotation, consecutive frames provide good multi-view diversity
+    # Phase 1 uses cadence=30 for fast generation, Phase 2 uses all frames for best 3DGS quality
+    logger.info(f"\n🔪 Splitting frames into segments...")
     segments = _split_frames_into_segments(frame_paths, segment_size, overlap_percent)
-    logger.info(f"   Created {len(segments)} segments")
+    logger.info(f"   Created {len(segments)} segments (experimenting with best 3DGS approach)")
 
     # Step 3: Process each segment with DA3-3DGS
     results = []
@@ -1332,7 +1387,7 @@ def run_twopass_refinement(
         seg_output_dir = output_dir / f"segment_{seg_idx:03d}"
         seg_output_dir.mkdir(exist_ok=True)
 
-        # Run DA3-3DGS on this segment
+        # Run DA3-3DGS on this segment (feeding all frames for best reconstruction)
         seg_result = _process_segment_with_da3gs(
             segment_frames=segment_frames,
             output_dir=seg_output_dir,
@@ -1342,18 +1397,45 @@ def run_twopass_refinement(
             neighbor_segments=neighbor_segments,
             width=width,
             height=height,
+            da3_model_name=da3_model_name,
         )
         results.append(seg_result)
 
-    # Step 4: Stitch segments into final video
-    logger.info(f"\n🎞️  Stitching {len(results)} segments into final video...")
+    # Step 4: Create comparison video from original Phase 1 frames
+    logger.info(f"\n🎥 Creating comparison video from original Phase 1 frames...")
+    original_video_path = output_dir / "phase1_original.mp4"
+    try:
+        import subprocess
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-framerate", "60",
+            "-start_number", "0",
+            "-i", str(frame_paths[0].parent / "%06d.png"),
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            "-crf", "18",
+            str(original_video_path)
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            logger.info(f"   ✅ Original video saved: {original_video_path}")
+        else:
+            logger.warning(f"   ⚠️  Failed to create original video: {result.stderr}")
+    except Exception as e:
+        logger.warning(f"   ⚠️  Failed to create original video: {e}")
+
+    # Step 5: Stitch segments into final refined video
+    logger.info(f"\n🎞️  Stitching {len(results)} segments into refined video...")
     final_video_path = output_dir / "twopass_refined.mp4"
     _stitch_segments_to_video(segments, results, output_dir, final_video_path, overlap_percent)
 
     total_time = time.time() - start_time
     logger.info(f"\n✅ Two-Pass refinement complete!")
     logger.info(f"   Total time: {total_time:.1f}s")
-    logger.info(f"   Output: {final_video_path}")
+    logger.info(f"   Outputs:")
+    logger.info(f"     - Original Phase 1: {original_video_path}")
+    logger.info(f"     - 3DGS Refined: {final_video_path}")
 
     return results
 
@@ -1600,6 +1682,7 @@ def _process_segment_with_da3gs(
     neighbor_segments: int,
     width: int,
     height: int,
+    da3_model_name: str = "DA3-GIANT",
 ) -> BlendFactorTestResult:
     """Process a segment of frames with DA3-3DGS.
 
@@ -1612,6 +1695,7 @@ def _process_segment_with_da3gs(
         neighbor_segments: Not used for two-pass (all frames are keyframes)
         width: Frame width
         height: Frame height
+        da3_model_name: DA3 model to use (e.g., "DA3-GIANT")
 
     Returns:
         Test result for this segment
@@ -1630,97 +1714,130 @@ def _process_segment_with_da3gs(
     output_frames_dir.mkdir(exist_ok=True)
 
     try:
-        # Step 1: Load DA3 depth model
-        logger.info("   📊 Loading DA3 depth model...")
-        from deforum.depth import DepthModel
-        import modules.paths as ph
+        # Step 1: Load DA3 depth model (direct instantiation for 3DGS)
+        logger.info(f"   📊 Loading DA3 model: {da3_model_name}...")
+        from deforum.depth.depth_anything_v3 import DepthAnythingV3
 
-        # Determine frame dimensions
-        first_frame = Image.open(segment_frames[0])
-        frame_width, frame_height = first_frame.size
+        # Parse model name to get model_size and variant
+        # DA3-GIANT -> model_size="giant", variant="giant"
+        if da3_model_name == "DA3-GIANT":
+            model_size = "giant"
+            variant = "giant"
+        else:
+            logger.warning(f"Unknown model '{da3_model_name}', using DA3-GIANT")
+            model_size = "giant"
+            variant = "giant"
 
-        depth_model = DepthModel(
-            ph.models_path + '/Deforum',  # models_path
-            'cuda:0',  # device
-            False,  # half_precision (use FP32 for quality)
-            keep_in_vram=False,
-            depth_algorithm='Depth-Anything-V3-AnyView-Large',  # For 3DGS support
-            Width=frame_width,
-            Height=frame_height
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        da3_model = DepthAnythingV3(
+            device=device,
+            model_size=model_size,
+            variant=variant
         )
 
-        logger.info(f"   ✓ DA3 loaded: {depth_model.depth_algorithm}")
+        logger.info(f"   ✓ DA3 loaded: {da3_model_name} ({model_size}, {variant})")
 
-        # Step 2: Load frames as numpy arrays
+        # Step 2: Load frames as PIL images
         logger.info(f"   📁 Loading {len(segment_frames)} frames...")
         frames = []
         for frame_path in segment_frames:
             img = Image.open(frame_path).convert('RGB')
-            frames.append(np.array(img))  # RGB numpy array
-        logger.info(f"   ✓ Loaded {len(frames)} frames ({frames[0].shape})")
+            frames.append(img)  # PIL Image
+        logger.info(f"   ✓ Loaded {len(frames)} frames ({frames[0].size})")
 
-        # Step 3: Run DA3 depth estimation on all frames
-        logger.info("   🔍 Estimating depth with DA3...")
-        logger.info(f"   Settings: use_ray_pose={use_ray_pose}, confidence_threshold={confidence_threshold}%")
-        depths = []
-        for idx, frame in enumerate(frames):
-            # DepthModel.predict() expects BGR numpy array (OpenCV format)
-            # but we have RGB, and it converts internally, so just pass as-is
-            depth = depth_model.predict(
-                frame,
-                use_ray_pose=use_ray_pose,
-                conf_thresh_percentile=confidence_threshold  # Already in 0-100 range
-            )
-            depths.append(depth)
-            if idx == 0:
-                logger.info(f"   ✓ Depth estimation working (shape: {depth.shape})")
-        logger.info(f"   ✓ Estimated depth for {len(depths)} frames")
-
-        # Step 4: Build 3DGS scene using DA3
+        # Step 3: Build 3DGS scene from frames
         logger.info("   🎨 Building 3D Gaussian Splatting scene...")
+        logger.info(f"   Settings: use_ray_pose={use_ray_pose}, confidence_threshold={confidence_threshold}%")
 
-        # Check if DA3 has 3DGS capabilities
-        if hasattr(depth_model, 'estimate_3d_gaussians'):
-            # Try to build 3DGS scene
-            scene_3dgs = depth_model.estimate_3d_gaussians(
-                frames,
-                use_ray_pose=use_ray_pose,
-                conf_thresh_percentile=confidence_threshold,  # Already in 0-100 range
-            )
+        prediction = da3_model.estimate_3d_gaussians(
+            frames,
+            use_ray_pose=use_ray_pose,
+            confidence_threshold=confidence_threshold  # Already in 0-100 range
+        )
 
-            if scene_3dgs is not None:
-                logger.info("   ✓ 3DGS scene built successfully!")
+        if prediction is None or not hasattr(prediction, 'gaussians') or prediction.gaussians is None:
+            logger.error("   ❌ DA3 model didn't produce gaussians!")
+            logger.error(f"   Model: {da3_model_name}, prediction: {type(prediction)}")
+            if prediction is not None:
+                logger.error(f"   Has gaussians attr: {hasattr(prediction, 'gaussians')}")
+                if hasattr(prediction, 'gaussians'):
+                    logger.error(f"   Gaussians value: {prediction.gaussians}")
 
-                # Debug: Log 3DGS scene structure
-                logger.debug(f"   Scene type: {type(scene_3dgs)}")
-                if hasattr(scene_3dgs, 'gaussians'):
-                    logger.debug(f"   Gaussians: {scene_3dgs.gaussians}")
-                else:
-                    logger.debug("   No 'gaussians' attribute found")
-
-                logger.warning("   ⚠️  3DGS rendering not implemented - saving original frames")
-                logger.info("   TODO: Implement gsplat rendering from 3DGS scene")
-
-                # Step 5: Render frames from original poses with refined geometry
-                # TODO: Actual 3DGS rendering requires gsplat integration
-                # For now, just save the original frames as placeholder
-                for idx, frame in enumerate(frames):
-                    output_path = output_frames_dir / f"refined_{idx:06d}.png"
-                    Image.fromarray(frame).save(output_path)
-
-                logger.info(f"   ✓ Saved {len(frames)} placeholder frames (original input)")
-            else:
-                logger.warning("   ⚠️  3DGS scene building not available - using depth refinement")
-                # Fallback: Save frames with depth-aware processing
-                for idx, frame in enumerate(frames):
-                    output_path = output_frames_dir / f"refined_{idx:06d}.png"
-                    Image.fromarray(frame).save(output_path)
-        else:
-            logger.warning("   ⚠️  DA3 3DGS not available - using depth estimation only")
-            # Fallback: Save frames with depth-aware processing
+            # Fallback: Save original frames
+            logger.warning("   ⚠️  Saving original frames as fallback")
             for idx, frame in enumerate(frames):
                 output_path = output_frames_dir / f"refined_{idx:06d}.png"
-                Image.fromarray(frame).save(output_path)
+                frame.save(output_path)
+            logger.info(f"   ✓ Saved {len(frames)} fallback frames")
+        else:
+            logger.info("   ✓ 3DGS scene built successfully!")
+            gaussians = prediction.gaussians
+            camera_poses = prediction.extrinsics  # [N, 3, 4] or [N, 4, 4]
+            camera_intrinsics = prediction.intrinsics[0]  # [3, 3]
+
+            # Convert intrinsics to numpy if needed
+            if torch.is_tensor(camera_intrinsics):
+                camera_intrinsics = camera_intrinsics.cpu().numpy()
+
+            # Determine frame dimensions from first input frame
+            first_frame = frames[0]
+            frame_width, frame_height = first_frame.size
+
+            # Fix principal point (cx, cy) to be image center
+            # DA3 may return off-center principal points, causing misaligned rendering
+            camera_intrinsics[0, 2] = frame_width / 2.0   # cx = width / 2
+            camera_intrinsics[1, 2] = frame_height / 2.0  # cy = height / 2
+            logger.info(f"   ✓ Corrected principal point to image center: ({frame_width/2:.1f}, {frame_height/2:.1f})")
+
+            num_splats = gaussians.means.shape[1] if hasattr(gaussians.means, 'shape') else 'unknown'
+            logger.info(f"   Gaussians: {num_splats} splats")
+            logger.info(f"   Camera poses: {camera_poses.shape}")
+            logger.info(f"   Intrinsics fx={camera_intrinsics[0,0]:.1f}, fy={camera_intrinsics[1,1]:.1f}, cx={camera_intrinsics[0,2]:.1f}, cy={camera_intrinsics[1,2]:.1f}")
+
+            # Step 4: Render frames using DA3's estimated camera path
+            logger.info("   🎨 Rendering frames from 3DGS scene...")
+            logger.info(f"   Using DA3's estimated camera path (rotation, zoom, etc.)")
+            from deforum.rendering.da3_3dgs_novel_view import render_novel_view_from_gaussians
+
+            for idx in range(len(frames)):
+                # Progress logging every 10 frames
+                if idx % 10 == 0:
+                    logger.info(f"      Rendering frame {idx+1}/{len(frames)}...")
+
+                # Get DA3's estimated camera pose for this frame
+                pose_3x4 = camera_poses[idx]  # [3, 4] from DA3 (rotation, translation, zoom)
+
+                # Convert [3, 4] to [4, 4] homogeneous matrix
+                # Add bottom row [0, 0, 0, 1]
+                if pose_3x4.shape == (3, 4):
+                    # Convert to numpy if needed
+                    if torch.is_tensor(pose_3x4):
+                        pose_3x4_np = pose_3x4.cpu().numpy()
+                    else:
+                        pose_3x4_np = pose_3x4
+
+                    # Add bottom row
+                    bottom_row = np.array([[0, 0, 0, 1]], dtype=np.float32)
+                    camera_pose = np.vstack([pose_3x4_np, bottom_row])  # [4, 4]
+                else:
+                    camera_pose = pose_3x4  # Already [4, 4]
+
+                # Render novel view from DA3's estimated viewpoint
+                rendered_image = render_novel_view_from_gaussians(
+                    gaussians=gaussians,
+                    camera_pose=camera_pose,
+                    camera_intrinsics=camera_intrinsics,
+                    image_size=(frame_width, frame_height),
+                    device=device,
+                    densification_factor=densification,
+                    near_clip_distance=0.01
+                )
+
+                # Save rendered frame
+                output_path = output_frames_dir / f"refined_{idx:06d}.png"
+                rendered_image.save(output_path)
+
+            logger.info(f"   ✓ Rendered {len(frames)} frames using DA3's camera path")
 
         # Track VRAM usage
         peak_vram = torch.cuda.max_memory_allocated() / (1024 ** 3) if torch.cuda.is_available() else 0.0
@@ -1855,6 +1972,87 @@ def _stitch_segments_to_video(
         logger.error(f"   Failed to stitch video: {e}")
 
 
+def _get_movement_schedules(movement_pattern: str, max_frames: int):
+    """Get camera movement schedules based on pattern name.
+
+    Returns:
+        tuple: (translation_x_schedule, translation_z_schedule, rotation_3d_y_schedule)
+    """
+    import numpy as np
+
+    if "Orbit Strong" in movement_pattern:
+        # 150-unit radius, full 360°
+        orbit_radius = 150.0
+        rotation_factor = -8.0
+        angles = np.linspace(0, 2 * np.pi, max_frames)
+        x_positions = orbit_radius * np.cos(angles)
+        z_positions = orbit_radius * np.sin(angles)
+        rotation_angles = np.degrees(angles) / rotation_factor
+
+    elif "Orbit Gentle" in movement_pattern:
+        # 30-unit radius, full 360° (the "good" previous approach)
+        orbit_radius = 30.0
+        rotation_factor = -8.0
+        angles = np.linspace(0, 2 * np.pi, max_frames)
+        x_positions = orbit_radius * np.cos(angles)
+        z_positions = orbit_radius * np.sin(angles)
+        rotation_angles = np.degrees(angles) / rotation_factor
+
+    elif "Forward Zoom" in movement_pattern:
+        # Simple forward zoom (50 units)
+        x_positions = np.zeros(max_frames)
+        z_positions = np.linspace(0, 50, max_frames)
+        rotation_angles = np.zeros(max_frames)
+
+    elif "Sideways Pan" in movement_pattern:
+        # Horizontal pan (100 units)
+        x_positions = np.linspace(0, 100, max_frames)
+        z_positions = np.zeros(max_frames)
+        rotation_angles = np.zeros(max_frames)
+
+    else:
+        # Default to orbit strong
+        orbit_radius = 150.0
+        rotation_factor = -8.0
+        angles = np.linspace(0, 2 * np.pi, max_frames)
+        x_positions = orbit_radius * np.cos(angles)
+        z_positions = orbit_radius * np.sin(angles)
+        rotation_angles = np.degrees(angles) / rotation_factor
+
+    # Convert to schedule strings
+    translation_x_schedule = ", ".join([f"{i}:({x:.2f})" for i, x in enumerate(x_positions)])
+    translation_z_schedule = ", ".join([f"{i}:({z:.2f})" for i, z in enumerate(z_positions)])
+    rotation_3d_y_schedule = ", ".join([f"{i}:({r:.2f})" for i, r in enumerate(rotation_angles)])
+
+    return translation_x_schedule, translation_z_schedule, rotation_3d_y_schedule
+
+
+def _extract_frames_by_strategy(frame_paths: List[Path], strategy: str) -> List[Path]:
+    """Extract frames based on feeding strategy.
+
+    Args:
+        frame_paths: All available frame paths
+        strategy: Strategy name from UI
+
+    Returns:
+        List of frame paths to feed to DA3
+    """
+    if "All Frames" in strategy:
+        return frame_paths
+    elif "Keyframes Only" in strategy:
+        # Every 30th frame (cadence from Phase 1)
+        cadence = 30
+        return [frame_paths[i] for i in range(0, len(frame_paths), cadence)]
+    elif "Every 2nd" in strategy:
+        return [frame_paths[i] for i in range(0, len(frame_paths), 2)]
+    elif "Every 5th" in strategy:
+        return [frame_paths[i] for i in range(0, len(frame_paths), 5)]
+    else:
+        # Default to keyframes only (the "good" previous approach)
+        cadence = 30
+        return [frame_paths[i] for i in range(0, len(frame_paths), cadence)]
+
+
 def _generate_deforum_animation(
     output_dir: Path,
     width: int = 512,
@@ -1862,6 +2060,7 @@ def _generate_deforum_animation(
     prompt: str = "modern city street with tall buildings and cars, architectural photography, detailed, 8k",
     steps: int = 9,
     seed: int = -1,
+    movement_pattern: str = "Orbit Strong (150 units, 360°)",
 ) -> List[Path]:
     """Generate coherent Deforum animation with 3D depth warping.
 
@@ -1892,18 +2091,13 @@ def _generate_deforum_animation(
     duration_seconds = 5.0  # 5 seconds for good test coverage
     max_frames = int(fps * duration_seconds)  # 300 frames at 60fps
 
-    # Orbital camera movement (more interesting than forward zoom)
-    # Orbit around center with forward motion
-    last_frame = max_frames - 1
-    orbit_radius = 15.0  # Movement amount (15 units = dramatic movement for 5 second clip)
-
-    # Orbital path: translate in X/Z circle while rotating to face center
-    translation_x_schedule = f"0:(0), {last_frame}:({orbit_radius})"  # Move right
-    translation_z_schedule = f"0:(0), {last_frame}:({orbit_radius})"  # Move forward
-    rotation_3d_y_schedule = f"0:(0), {last_frame}:(90)"  # Rotate 90° for more dramatic turn
+    # Get movement schedules based on selected pattern
+    translation_x_schedule, translation_z_schedule, rotation_3d_y_schedule = _get_movement_schedules(
+        movement_pattern, max_frames
+    )
 
     logger.info(f"   Animation: {max_frames} frames at {fps}fps ({duration_seconds}s)")
-    logger.info(f"   Movement: Orbital camera path (radius {orbit_radius})")
+    logger.info(f"   Movement: {movement_pattern}")
     logger.info(f"   Prompt: {prompt[:60]}...")
     logger.info(f"   Steps: {steps}, Seed: {seed}")
     logger.info("")
