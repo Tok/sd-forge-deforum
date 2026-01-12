@@ -2049,17 +2049,19 @@ def _get_movement_schedules(movement_pattern: str, max_frames: int):
     """
     import numpy as np
 
-    if "Orbit Strong" in movement_pattern:
-        # 150-unit radius, full 360°
-        orbit_radius = 150.0
-        rotation_factor = -8.0
-        angles = np.linspace(0, 2 * np.pi, max_frames)
+    if "Orbit Slow" in movement_pattern:
+        # 30-unit radius, partial 120° rotation (3x slower than full orbit)
+        # Slower apparent movement for detailed 3DGS reconstruction
+        orbit_radius = 30.0
+        rotation_factor = -8.0  # Empirically optimal (see ORBIT_TESTS.md)
+        angles = np.linspace(0, 2 * np.pi / 3, max_frames)  # 120° instead of 360°
         x_positions = orbit_radius * np.cos(angles)
         z_positions = orbit_radius * np.sin(angles)
         rotation_angles = np.degrees(angles) / rotation_factor
 
     elif "Orbit Gentle" in movement_pattern:
-        # 30-unit radius, full 360° (the "good" previous approach)
+        # 30-unit radius, full 360° (TESTED WORKING - was previous default)
+        # Empirically optimal: rotation_factor=-8.0, moderate translation
         orbit_radius = 30.0
         rotation_factor = -8.0
         angles = np.linspace(0, 2 * np.pi, max_frames)
@@ -2067,31 +2069,47 @@ def _get_movement_schedules(movement_pattern: str, max_frames: int):
         z_positions = orbit_radius * np.sin(angles)
         rotation_angles = np.degrees(angles) / rotation_factor
 
-    elif "Forward Zoom" in movement_pattern:
-        # Simple forward zoom (50 units)
-        x_positions = np.zeros(max_frames)
-        z_positions = np.linspace(0, 50, max_frames)
-        rotation_angles = np.zeros(max_frames)
-
-    elif "Sideways Pan" in movement_pattern:
-        # Horizontal pan (100 units)
-        x_positions = np.linspace(0, 100, max_frames)
-        z_positions = np.zeros(max_frames)
-        rotation_angles = np.zeros(max_frames)
-
-    else:
-        # Default to orbit strong
-        orbit_radius = 150.0
+    elif "Orbit Moderate" in movement_pattern:
+        # 40-unit radius, full 360° (moderately stronger than Gentle)
+        # Still safe - won't rotate subject out of frame
+        orbit_radius = 40.0
         rotation_factor = -8.0
         angles = np.linspace(0, 2 * np.pi, max_frames)
         x_positions = orbit_radius * np.cos(angles)
         z_positions = orbit_radius * np.sin(angles)
         rotation_angles = np.degrees(angles) / rotation_factor
 
-    # Convert to schedule strings
-    translation_x_schedule = ", ".join([f"{i}:({x:.2f})" for i, x in enumerate(x_positions)])
-    translation_z_schedule = ", ".join([f"{i}:({z:.2f})" for i, z in enumerate(z_positions)])
-    rotation_3d_y_schedule = ", ".join([f"{i}:({r:.2f})" for i, r in enumerate(rotation_angles)])
+    elif "Forward Zoom" in movement_pattern:
+        # Very subtle forward zoom (5 units total over 5 seconds)
+        x_positions = np.zeros(max_frames)
+        z_positions = np.linspace(0, 5, max_frames)
+        rotation_angles = np.zeros(max_frames)
+
+    elif "Sideways Pan" in movement_pattern:
+        # Gentle horizontal pan (20 units total, matches orbit radius scale)
+        x_positions = np.linspace(0, 20, max_frames)
+        z_positions = np.zeros(max_frames)
+        rotation_angles = np.zeros(max_frames)
+
+    else:
+        # Default to orbit gentle (tested working)
+        orbit_radius = 30.0
+        rotation_factor = -8.0
+        angles = np.linspace(0, 2 * np.pi, max_frames)
+        x_positions = orbit_radius * np.cos(angles)
+        z_positions = orbit_radius * np.sin(angles)
+        rotation_angles = np.degrees(angles) / rotation_factor
+
+    # CRITICAL: Convert absolute positions to DELTAS (frame-to-frame changes)
+    # Depth warping requires deltas, not absolute positions (see CLAUDE.md)
+    x_deltas = np.diff(x_positions, prepend=x_positions[0])
+    z_deltas = np.diff(z_positions, prepend=z_positions[0])
+    rotation_deltas = np.diff(rotation_angles, prepend=rotation_angles[0])
+
+    # Convert to schedule strings (frame:delta format)
+    translation_x_schedule = ", ".join([f"{i}:({dx:.4f})" for i, dx in enumerate(x_deltas)])
+    translation_z_schedule = ", ".join([f"{i}:({dz:.4f})" for i, dz in enumerate(z_deltas)])
+    rotation_3d_y_schedule = ", ".join([f"{i}:({dr:.4f})" for i, dr in enumerate(rotation_deltas)])
 
     return translation_x_schedule, translation_z_schedule, rotation_3d_y_schedule
 

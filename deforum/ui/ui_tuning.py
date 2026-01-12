@@ -865,13 +865,14 @@ def create_tuning_tab() -> tuple:
                         dgs_twopass_movement = gr.CheckboxGroup(
                             label="Phase 1 Camera Movement Patterns (test multiple at once)",
                             choices=[
-                                "Orbit Strong (150 units, 360°)",
+                                "Orbit Slow (30 units, 120°)",
                                 "Orbit Gentle (30 units, 360°)",
-                                "Forward Zoom (50 units)",
-                                "Sideways Pan (100 units)",
+                                "Orbit Moderate (40 units, 360°)",
+                                "Forward Zoom (5 units, subtle)",
+                                "Sideways Pan (20 units)",
                             ],
-                            value=["Orbit Strong (150 units, 360°)"],
-                            info="Generate Phase 1 with different camera movements. Each creates a separate test.",
+                            value=["Orbit Gentle (30 units, 360°)"],
+                            info="Generate Phase 1 with different camera movements. Uses DELTA schedules for proper depth warping. Rotation factor = -8.0 (empirically optimal).",
                         )
 
                         # Frame feeding strategy
