@@ -247,8 +247,20 @@ class DepthModel:
     def delete_model(self):
         """Clean up model from memory"""
         if hasattr(self, 'depth_anything'):
+            # Move model to CPU before deletion (CRITICAL for CUDA cleanup)
+            try:
+                if hasattr(self, 'is_v3') and self.is_v3:
+                    if hasattr(self.depth_anything, 'model'):
+                        self.depth_anything.model.to("cpu")
+                else:
+                    if hasattr(self.depth_anything, 'pipe') and hasattr(self.depth_anything.pipe, 'model'):
+                        self.depth_anything.pipe.model.to("cpu")
+            except Exception as e:
+                logger.debug(f"Error moving depth model to CPU during cleanup: {e}")
+
             del self.depth_anything
 
         gc.collect()
         torch.cuda.empty_cache()
+        torch.cuda.synchronize()  # Wait for all CUDA operations to complete
         devices.torch_gc()

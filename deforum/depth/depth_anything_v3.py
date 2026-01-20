@@ -71,7 +71,7 @@ def _ensure_da3_package_installed() -> bool:
                 ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
                 logger.info("✓ xformers installed successfully")
             except subprocess.CalledProcessError:
-                logger.warning("⚠️  xformers installation failed (common on Python 3.12+)")
+                logger.warning("xformers installation failed (common on Python 3.12+)", emoji='warning')
                 logger.warning("   DA3 will work without it, but may be slower")
                 logger.warning("   To install manually (requires CUDA toolkit):")
                 logger.warning(f"     {sys.executable} -m pip install xformers")
@@ -92,7 +92,7 @@ def _ensure_da3_package_installed() -> bool:
             # Check if it's a dependency conflict
             if 'numpy' in str(e).lower() or 'trimesh' in str(e).lower():
                 logger.error("")
-                logger.error("⚠️  Dependency conflict detected (numpy/trimesh).")
+                logger.error("Dependency conflict detected (numpy/trimesh).", emoji='warning')
                 logger.error("Attempting to fix by upgrading conflicting packages...")
 
                 try:
@@ -306,7 +306,20 @@ _DA3_MODEL_CACHE = {}
 def clear_model_cache():
     """Clear the DA3 model cache. Useful for tests and memory management."""
     global _DA3_MODEL_CACHE
+
+    # Move all cached models to CPU before clearing
+    for cache_key, model in _DA3_MODEL_CACHE.items():
+        try:
+            model.to("cpu")
+        except:
+            pass
+
     _DA3_MODEL_CACHE.clear()
+
+    # Aggressive CUDA cleanup
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
 
 
 class DepthAnythingV3:
@@ -336,12 +349,29 @@ class DepthAnythingV3:
         self.model_size = model_size
         self.variant = variant
 
+        # CRITICAL: Clean CUDA state BEFORE loading model
+        # Prevents "unspecified launch failure" from previous session corruption
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+
         # Check cache first
         cache_key = (variant, model_size, str(device))
         if cache_key in _DA3_MODEL_CACHE:
             logger.debug(f"Using cached DA3 model ({variant} {model_size})")
             self.model = _DA3_MODEL_CACHE[cache_key]
             return
+
+        # VRAM check and warning
+        if torch.cuda.is_available() and str(device) != 'cpu':
+            free_vram_gb = torch.cuda.mem_get_info()[0] / 1024**3
+            model_vram = {'small': 0.12, 'base': 0.39, 'large': 1.4, 'giant': 4.6}.get(model_size.lower(), 1.4)
+
+            if free_vram_gb < model_vram + 1.0:  # Need 1GB headroom
+                logger.warning(f"Low VRAM: {free_vram_gb:.1f}GB free, DA3 {model_size} needs ~{model_vram:.1f}GB", emoji='warning')
+                if model_size.lower() == 'large' and free_vram_gb < 3.0:
+                    logger.warning(f"   Consider using 'Depth-Anything-V3-Mono-Small' instead (saves 1.3GB)")
+                logger.warning(f"   If generation crashes, lower resolution or use --medvram flag")
 
         model_name = _get_model_name(variant, model_size)
 
@@ -590,9 +620,9 @@ class DepthAnythingV3:
 
         # Log quality settings if enabled
         if use_ray_pose:
-            logger.info("🎯 Using ray pose estimation for more accurate camera poses")
+            logger.info("Using ray pose estimation for more accurate camera poses", emoji='target')
         if confidence_threshold > 0:
-            logger.info(f"💎 Filtering splats by confidence threshold: {confidence_threshold}%")
+            logger.info(f"Filtering splats by confidence threshold: {confidence_threshold}%", emoji='gem')
 
         # Run DA3 inference with 3DGS enabled
         try:
@@ -677,7 +707,7 @@ class DepthAnythingV3:
 
         num_original = len(confidence_values)
         num_kept = np.sum(keep_mask)
-        logger.info(f"💎 Confidence filtering: keeping {num_kept}/{num_original} splats ({num_kept/num_original*100:.1f}%)")
+        logger.info(f"Confidence filtering: keeping {num_kept}/{num_original} splats ({num_kept/num_original*100:.1f}%)", emoji='gem')
         logger.info(f"   Threshold: {threshold_value:.4f} (top {100-confidence_threshold:.0f}% of splats)")
 
         # Apply mask to all gaussian attributes

@@ -657,7 +657,7 @@ def DeforumAnimArgs():
                 'Depth-Anything-V2-Large'
             ],
             "value": "Depth-Anything-V3-Mono-Small",
-            "info": "Depth model for 3D depth warping: Mono (120MB/390MB/1.4GB, DA3 recommended), V2 (legacy). For DA3-Multiview interpolation, use Keyframes + Interpolation mode (auto-loads AnyView). For 3DGS, use Keyframes + Interpolation mode with DA3-3DGS method (4.6GB GIANT model)."
+            "info": "Depth model for 3D depth warping: DA3 Mono (120MB/390MB/1.4GB, more accurate per-frame), DA2 (may have better temporal consistency for animations). VRAM: Small=16GB OK, Base=16GB tight, Large=24GB+ recommended. For DA3-Multiview interpolation, use Keyframes + Interpolation mode (auto-loads AnyView). For 3DGS, use Keyframes + Interpolation mode with DA3-3DGS method (4.6GB GIANT model)."
         },
         "tween_generation_mode": {
             "label": "Tween Generation Mode",
@@ -1249,6 +1249,30 @@ def WanArgs():
             "value": 0.5,
             "info": "Controls how strongly each clip continues from the last frame. 0.5-0.7: balanced (recommended for prompt changes), 0.85-0.95: strong continuity, 0.0-0.3: creative variation. Lower values = more prompt freedom."
         },
+        "wan_enable_adaptive_strength": {
+            "label": "Enable Adaptive I2V Strength",
+            "type": "checkbox",
+            "value": True,
+            "info": "Automatically adjust I2V strength based on prompt similarity using CLIP embeddings. Similar prompts → higher strength (preserve more). Different prompts → lower strength (allow change). Overrides fixed strength when enabled."
+        },
+        "wan_adaptive_strength_min": {
+            "label": "Adaptive Strength Min (Max Change)",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 0.5,
+            "step": 0.01,
+            "value": 0.10,
+            "info": "Minimum strength for adaptive mode (used when prompts are completely different). Lower values allow more dramatic changes between keyframes. Range: 0.0-0.5"
+        },
+        "wan_adaptive_strength_max": {
+            "label": "Adaptive Strength Max (Max Preserve)",
+            "type": "slider",
+            "minimum": 0.5,
+            "maximum": 1.0,
+            "step": 0.01,
+            "value": 0.30,
+            "info": "Maximum strength for adaptive mode (used when prompts are very similar). Higher values preserve more from previous keyframe. Range: 0.5-1.0"
+        },
         "wan_guidance_override": {
             "label": "Guidance Scale Override",
             "type": "checkbox",
@@ -1282,12 +1306,38 @@ def WanArgs():
             "value": "blend",
             "info": "How to use prompts for FLF2V interpolation: 'blend' (RECOMMENDED - combine both prompts describing transition), 'last' (use end keyframe prompt as target), 'first' (use start keyframe prompt), 'none' (empty prompt, may not interpolate correctly)"
         },
+        "wan_enable_motion_aware_prompts": {
+            "label": "Enable Motion-Aware FLF2V Prompts",
+            "type": "checkbox",
+            "value": True,
+            "info": "Analyze camera movement schedules and include motion descriptions in FLF2V prompts (e.g., 'smooth camera forward zoom transitioning from city to highway'). Improves semantic understanding of transitions. Only affects 'blend', 'first', and 'last' prompt modes."
+        },
+        "wan_enable_adaptive_flf2v_guidance": {
+            "label": "Enable Adaptive FLF2V Guidance",
+            "type": "checkbox",
+            "value": False,
+            "info": "Automatically adjust FLF2V guidance scale based on prompt similarity. Similar prompts → lower guidance (3.0, smooth morphing). Different prompts → higher guidance (5.5, stronger control). Experimental feature - may need tuning."
+        },
         "diffusion_interpolation_method": {
             "label": "Interpolation Method",
             "type": "dropdown",
-            "choices": ["Wan", "FILM", "DA3-Multiview", "DA3-3DGS"],
+            "choices": ["Wan", "FILM", "DA3-Multiview", "DA3-3DGS", "LTX-2"],
             "value": "Wan",
-            "info": "Interpolation method for Keyframes + Interpolation mode: 'Wan' (AI-generated video, recommended), 'FILM' (optical flow, handles large motion), 'DA3-Multiview' (depth warping with multi-view geometry, geometric interpolation), 'DA3-3DGS' (3D Gaussian Splatting reconstruction, highest quality geometric interpolation). Note: RIFE is available in post-processing for framerate doubling."
+            "info": "Interpolation method for Keyframes + Interpolation mode: 'Wan' (AI-generated video, recommended), 'FILM' (optical flow, handles large motion), 'DA3-Multiview' (depth warping with multi-view geometry), 'DA3-3DGS' (3D Gaussian Splatting reconstruction), 'LTX-2' (audio-video AI model, 4K/50fps, requires 24GB+ VRAM). Note: RIFE is available in post-processing for framerate doubling."
+        },
+        "ltx2_model_variant": {
+            "label": "LTX-2 Model Variant",
+            "type": "dropdown",
+            "choices": ["Auto", "LTX-2-4K-NF4", "LTX-2-4K", "LTX-2-HD"],
+            "value": "Auto",
+            "info": "LTX-2 model variant to use. 'Auto' (recommended) selects based on VRAM. LTX-2-4K-NF4: 4-bit quantized, 12GB VRAM, RECOMMENDED for RTX 4070/4080 (16GB cards). LTX-2-4K: Full precision, 24GB+ VRAM. LTX-2-HD: HD variant, 18GB VRAM."
+        },
+        "ltx2_audio_mode": {
+            "label": "LTX-2 Audio Mode",
+            "type": "dropdown",
+            "choices": ["condition_only", "blend", "replace"],
+            "value": "condition_only",
+            "info": "How to handle LTX-2's generated audio. 'condition_only' (RECOMMENDED): Use Deforum audio as conditioning, discard LTX-2 audio (preserves perfect sync). 'blend': Mix LTX-2 and Deforum audio. 'replace': Use LTX-2 generated audio only (may lose sync)."
         },
         "da3_multiview_model_size": {
             "label": "DA3-Multiview Model Size",

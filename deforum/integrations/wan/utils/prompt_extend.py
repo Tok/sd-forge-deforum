@@ -338,6 +338,22 @@ class QwenPromptExpander(PromptExpander):
                 
         try:
             self.model = self.model.to(self.device)
+
+            # CRITICAL: Clear ALL cached state from previous generations to prevent context carryover
+            # This ensures each generation starts with a clean slate (e.g., bunny → Lamborghini won't mix)
+            if hasattr(self.model, 'past_key_values'):
+                self.model.past_key_values = None
+
+            # Reset generation config cache if present
+            if hasattr(self.model, 'generation_config'):
+                if hasattr(self.model.generation_config, 'cache_implementation'):
+                    self.model.generation_config.cache_implementation = None
+
+            # Clear CUDA cache to ensure clean state
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+
             messages = [{
                 "role": "system",
                 "content": system_prompt
@@ -350,7 +366,13 @@ class QwenPromptExpander(PromptExpander):
             model_inputs = self.tokenizer([text],
                                           return_tensors="pt").to(self.model.device)
 
-            generated_ids = self.model.generate(**model_inputs, max_new_tokens=512)
+            # Force use_cache=False to prevent KV cache accumulation
+            generated_ids = self.model.generate(
+                **model_inputs,
+                max_new_tokens=512,
+                use_cache=False,  # Disable KV caching to prevent context carryover
+                pad_token_id=self.tokenizer.pad_token_id  # Explicit pad token
+            )
             generated_ids = [
                 output_ids[len(input_ids):] for input_ids, output_ids in zip(
                     model_inputs.input_ids, generated_ids)
@@ -395,6 +417,20 @@ class QwenPromptExpander(PromptExpander):
         try:
             self.model = self.model.to(self.device)
 
+            # CRITICAL: Clear ALL cached state from previous generations to prevent context carryover
+            if hasattr(self.model, 'past_key_values'):
+                self.model.past_key_values = None
+
+            # Reset generation config cache if present
+            if hasattr(self.model, 'generation_config'):
+                if hasattr(self.model.generation_config, 'cache_implementation'):
+                    self.model.generation_config.cache_implementation = None
+
+            # Clear CUDA cache to ensure clean state
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+
             if not isinstance(image, (list, tuple)):
                 image = [image]
 
@@ -427,8 +463,12 @@ class QwenPromptExpander(PromptExpander):
             )
             inputs = inputs.to(self.device)
 
-            # Inference: Generation of the output
-            generated_ids = self.model.generate(**inputs, max_new_tokens=512)
+            # Inference: Generation of the output (force use_cache=False to prevent context carryover)
+            generated_ids = self.model.generate(
+                **inputs,
+                max_new_tokens=512,
+                use_cache=False  # Disable KV caching to prevent context carryover
+            )
             generated_ids_trimmed = [
                 out_ids[len(in_ids):]
                 for in_ids, out_ids in zip(inputs.input_ids, generated_ids)

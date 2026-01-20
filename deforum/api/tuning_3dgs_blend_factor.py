@@ -2331,8 +2331,8 @@ def _create_deforum_args_for_test(
         # At 60fps with cadence=30: 300 frames / 30 = 10 I2I keyframes (every 0.5s)
         # Classic 3D mode enforces uniform cadence placement
         'diffusion_cadence': 30,  # Generate I2I keyframe every 30 frames (0.5s intervals)
-        # Depth model for Phase 1 depth warping (use Large model for quality)
-        'depth_algorithm': 'Depth-Anything-V3-Mono-Large',
+        # Depth model for Phase 1 depth warping (use Small model for 16GB VRAM cards)
+        'depth_algorithm': 'Depth-Anything-V3-Mono-Small',
         # Orbital camera movement (from parameters)
         'translation_x': translation_x,  # Move right
         'translation_z': translation_z,  # Move forward

@@ -27,6 +27,37 @@ if extension_root not in sys.path:
     sys.path.insert(0, extension_root)
 
 
+def clear_python_cache():
+    """Clear Python bytecode cache to ensure code changes are loaded.
+
+    This prevents stale .pyc files from being used after code updates.
+    Particularly important for hot-fixes that change module-level behavior.
+    """
+    import shutil
+
+    print("Clearing Python bytecode cache...")
+    cache_cleared = False
+
+    # Clear __pycache__ directories
+    for root, dirs, files in os.walk(extension_root):
+        if '__pycache__' in dirs:
+            pycache_path = os.path.join(root, '__pycache__')
+            try:
+                shutil.rmtree(pycache_path)
+                cache_cleared = True
+            except Exception as e:
+                print(f"Warning: Could not clear {pycache_path}: {e}")
+
+    if cache_cleared:
+        print("✓ Cache cleared")
+    else:
+        print("✓ No cache to clear")
+
+
+# Clear bytecode cache on startup to ensure fresh code load
+clear_python_cache()
+
+
 def is_forge_neo_simple() -> bool:
     """
     Simple Neo detection for preload (before full modules available).
@@ -115,6 +146,13 @@ except Exception as e:
     print(f"[Deforum] Warning: Could not print startup banner: {e}")
     import traceback
     traceback.print_exc()
+
+# Install color filter EARLY to catch Forge's startup messages
+try:
+    from deforum.utils.system.output_filter import install_global_color_filter
+    install_global_color_filter()
+except Exception as e:
+    print(f"[Deforum] Warning: Could not install color filter: {e}")
 
 def preload(parser):
     parser.add_argument(

@@ -185,7 +185,7 @@ class WanModelDiscovery:
             }
             
         except Exception as e:
-            logger.warning(f"   ⚠️ Error analyzing {directory}: {e}")
+            logger.warning(f"   Error analyzing {directory}: {e}", emoji='warning')
             return None
     
     def _detect_model_type(self, directory: Path) -> str:
@@ -354,7 +354,7 @@ if __name__ == "__main__":
         logger.info(f"🏆 Best model: {best['name']} ({best['type']}, {best['size']})")
         logger.info(f"📁 Path: {best['path']}")
     else:
-        logger.info("\n❌ No models found - you may need to download Wan models first", emoji='off')
+        logger.info("\nNo models found - you may need to download Wan models first", emoji='off')
         logger.info("Suggested locations to place models:", emoji='bulb')
         for loc in discovery.common_model_locations:
             logger.info(f"   📂 {loc}")

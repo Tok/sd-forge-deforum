@@ -29,7 +29,7 @@ class WanProceduralPipeline:
         
     def load_components(self):
         """Load pipeline components (no-op for procedural)"""
-        logger.info(f"🚀 Loading procedural WAN pipeline...")
+        logger.info(f"Loading procedural WAN pipeline...", emoji='rocket')
         self.loaded = True
         logger.info(f"{emoji_if_enabled('✅')} Procedural WAN pipeline loaded")
         return True

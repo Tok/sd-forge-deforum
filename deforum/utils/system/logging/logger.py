@@ -42,7 +42,8 @@ class DeforumLogger:
         self,
         theme: str = 'slopcore',
         log_level: str = 'INFO',
-        emojis_enabled: bool = True
+        emojis_enabled: bool = True,
+        log_file: Optional[str] = None
     ):
         """Initialize logger.
 
@@ -50,15 +51,46 @@ class DeforumLogger:
             theme: Output theme ('slopcore', 'classic', 'simple')
             log_level: Minimum log level ('TRACE', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
             emojis_enabled: Whether to show emojis
+            log_file: Optional file path to write logs to (prevents log overwriting in console)
         """
         self.theme = theme
         self.log_level = LogLevel[log_level]
         self.emojis_enabled = emojis_enabled
         self.colors = get_theme_colors(theme)
+        self.log_file = log_file
+        self._log_file_handle = None
+
+        # Open log file if specified
+        if self.log_file:
+            try:
+                self._log_file_handle = open(self.log_file, 'a', encoding='utf-8')
+            except Exception as e:
+                print(f"WARNING: Could not open log file {self.log_file}: {e}")
 
     def _should_log(self, level: LogLevel) -> bool:
         """Check if message should be logged based on level."""
         return level.value >= self.log_level.value
+
+    def _write_output(self, colored_msg: str, plain_msg: str, **kwargs):
+        """Write to both console and file (if enabled).
+
+        Args:
+            colored_msg: Message with ANSI color codes for console
+            plain_msg: Plain text message for file
+            **kwargs: Additional arguments passed to print()
+        """
+        import re
+
+        # Write to console with colors
+        print(colored_msg, **kwargs)
+
+        # Write to file without colors (if file logging enabled)
+        if self._log_file_handle:
+            # Strip ANSI codes from plain_msg just in case
+            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+            clean_msg = ansi_escape.sub('', plain_msg)
+            self._log_file_handle.write(clean_msg + '\n')
+            self._log_file_handle.flush()  # Ensure it's written immediately
 
     def _format_message(self, level: str, msg: str, emoji: Optional[str] = None) -> str:
         """Format log message with colors and optional emoji.
@@ -95,7 +127,9 @@ class DeforumLogger:
             **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
         """
         if self._should_log(LogLevel.TRACE):
-            print(self._format_message('trace', msg, emoji), **kwargs)
+            colored_msg = self._format_message('trace', msg, emoji)
+            plain_msg = f"TRACE: {msg}"
+            self._write_output(colored_msg, plain_msg, **kwargs)
 
     def debug(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log debug message (debugging information, function entry/exit).
@@ -106,7 +140,9 @@ class DeforumLogger:
             **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
         """
         if self._should_log(LogLevel.DEBUG):
-            print(self._format_message('debug', msg, emoji), **kwargs)
+            colored_msg = self._format_message('debug', msg, emoji)
+            plain_msg = f"DEBUG: {msg}"
+            self._write_output(colored_msg, plain_msg, **kwargs)
 
     def info(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log info message (normal operation).
@@ -117,7 +153,9 @@ class DeforumLogger:
             **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
         """
         if self._should_log(LogLevel.INFO):
-            print(self._format_message('info', msg, emoji), **kwargs)
+            colored_msg = self._format_message('info', msg, emoji)
+            plain_msg = f"INFO: {msg}"
+            self._write_output(colored_msg, plain_msg, **kwargs)
 
     def warning(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log warning message.
@@ -128,7 +166,9 @@ class DeforumLogger:
             **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
         """
         if self._should_log(LogLevel.WARNING):
-            print(self._format_message('warning', msg, emoji), **kwargs)
+            colored_msg = self._format_message('warning', msg, emoji)
+            plain_msg = f"WARNING: {msg}"
+            self._write_output(colored_msg, plain_msg, **kwargs)
 
     def error(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log error message.
@@ -142,10 +182,16 @@ class DeforumLogger:
         if self._should_log(LogLevel.ERROR):
             # Extract exc_info if present (print() doesn't support it)
             exc_info = kwargs.pop('exc_info', False)
-            print(self._format_message('error', msg, emoji), **kwargs)
+            colored_msg = self._format_message('error', msg, emoji)
+            plain_msg = f"ERROR: {msg}"
+            self._write_output(colored_msg, plain_msg, **kwargs)
             if exc_info:
                 import traceback
-                traceback.print_exc()
+                tb_str = traceback.format_exc()
+                print(tb_str)
+                if self._log_file_handle:
+                    self._log_file_handle.write(tb_str + '\n')
+                    self._log_file_handle.flush()
 
     def critical(self, msg: str, emoji: Optional[str] = None, **kwargs):
         """Log critical error message.
@@ -156,7 +202,9 @@ class DeforumLogger:
             **kwargs: Additional arguments passed to print() (e.g., end='', flush=True)
         """
         if self._should_log(LogLevel.CRITICAL):
-            print(self._format_message('critical', msg, emoji), **kwargs)
+            colored_msg = self._format_message('critical', msg, emoji)
+            plain_msg = f"CRITICAL: {msg}"
+            self._write_output(colored_msg, plain_msg, **kwargs)
 
     def header(self, msg: str, width: int = 80):
         """Print styled header/section divider.
@@ -461,7 +509,52 @@ def set_logger_config(
         _logger_instance.emojis_enabled = emojis_enabled
 
 
+def enable_file_logging(log_file_path: str):
+    """Enable file logging to preserve all logs (prevents console overwrite issues).
+
+    Args:
+        log_file_path: Path to log file (will be created/appended)
+    """
+    global _logger_instance
+    if _logger_instance is None:
+        _logger_instance = get_logger()
+
+    # Ensure logger is initialized
+    _logger_instance._ensure_initialized()
+
+    # Close existing file if any
+    if _logger_instance._real_logger._log_file_handle:
+        _logger_instance._real_logger._log_file_handle.close()
+
+    # Open new log file
+    try:
+        _logger_instance._real_logger._log_file_handle = open(
+            log_file_path, 'a', encoding='utf-8'
+        )
+        _logger_instance._real_logger.log_file = log_file_path
+        _logger_instance._real_logger.info(
+            f"File logging enabled: {log_file_path}",
+            emoji='check'
+        )
+    except Exception as e:
+        print(f"WARNING: Could not enable file logging: {e}")
+
+
+def disable_file_logging():
+    """Disable file logging and close log file."""
+    global _logger_instance
+    if _logger_instance is None or not hasattr(_logger_instance, '_real_logger'):
+        return
+
+    if _logger_instance._real_logger and _logger_instance._real_logger._log_file_handle:
+        _logger_instance._real_logger._log_file_handle.close()
+        _logger_instance._real_logger._log_file_handle = None
+        _logger_instance._real_logger.log_file = None
+
+
 def reset_logger():
     """Reset logger instance (useful for testing)."""
     global _logger_instance
+    if _logger_instance is not None:
+        disable_file_logging()
     _logger_instance = None

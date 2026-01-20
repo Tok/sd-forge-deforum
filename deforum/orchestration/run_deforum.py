@@ -55,8 +55,22 @@ def run_deforum(*args):
 
     # Convert render_mode to legacy animation_mode and keyframe_distribution
     from deforum.rendering.data.render_mode import RenderMode
-    render_mode_str = args_dict.get('render_mode', 'New 3D')
+
+    # CRITICAL DEBUG: Check if render_mode is in args_dict
+    if 'render_mode' in args_dict:
+        render_mode_str = args_dict['render_mode']
+        logger.info(f"Render Mode from UI: '{render_mode_str}'", emoji='palette')
+    else:
+        render_mode_str = 'New 3D'
+        logger.warning(f"FALLBACK: render_mode NOT in args_dict! Using default: 'New 3D'", emoji='warning')
+        logger.warning(f"  This means the UI component is not connected to the generate button!", emoji='warning')
+        logger.debug(f"  args_dict keys: {list(args_dict.keys())[:20]}...")  # Show first 20 keys
+
     render_mode = RenderMode.from_string(render_mode_str)
+
+    # CRITICAL: Update args_dict with the actual render_mode value
+    # (Otherwise process_args() will use the default "New 3D" from DeforumAnimArgs)
+    args_dict['render_mode'] = render_mode_str
 
     # Override animation_mode and keyframe_distribution based on render_mode
     args_dict['animation_mode'] = render_mode.to_legacy_animation_mode()
@@ -268,6 +282,15 @@ def run_deforum(*args):
             JobStatusTracker().update_phase(job_id, DeforumJobPhase.GENERATING)
             JobStatusTracker().update_output_info(job_id, outdir=args.outdir, timestring=root.timestring)
 
+            # Enable file logging to preserve all logs (prevents console overwrite issues)
+            from deforum.utils.system.logging import enable_file_logging
+            log_file_path = os.path.join(args.outdir, f"deforum_{root.timestring}.log")
+            enable_file_logging(log_file_path)
+
+            # VERIFICATION: Log what render_mode actually is after all processing
+            logger.info(f"VERIFICATION: anim_args.render_mode = '{anim_args.render_mode}'", emoji='magnifying_glass')
+            logger.info(f"VERIFICATION: anim_args.animation_mode = '{anim_args.animation_mode}'", emoji='magnifying_glass')
+
             # Write timing file for live UI timer display
             # Format: Line 1 = start timestamp, Line 2 (optional) = "RESUME" flag
             import time as time_module
@@ -306,6 +329,10 @@ def run_deforum(*args):
             logger.error(f"{e}. Please, check your schedules/ init values.")
             return None, None, None, f"Error: '{e}'. Before reporting, please check your schedules/ init values. Full error message is in your terminal/ cli.", []
         finally:
+            # Disable file logging (close log file)
+            from deforum.utils.system.logging import disable_file_logging
+            disable_file_logging()
+
             shared.total_tqdm = tqdm_backup
             # reset shared.opts.data vals to what they were before we started the animation. Else they will stick to the last value - it actually updates webui settings (config.json)
             shared.opts.data["CLIP_stop_at_last_layers"] = root.initial_clipskip

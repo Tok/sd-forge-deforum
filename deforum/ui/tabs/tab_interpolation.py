@@ -1,4 +1,4 @@
-"""Interpolation tab for Deforum UI.
+"""Interpolation tab for Deforum UI - Wan FLF2V Subtab.
 
 Contains Wan FLF2V settings subtab content. The main Interpolation tab structure
 with method selector and all subtabs is in ui_left.py.
@@ -9,6 +9,8 @@ This file provides the Wan FLF2V subtab content:
 - Generation settings (steps, guidance, seed)
 - FLF2V configuration (prompts, strength scheduling)
 - Extensive documentation and usage notes
+
+Note: LTX-2 settings have been moved to deforum/ui/tabs/tab_ltx2.py (own subtab).
 """
 
 import gradio as gr
@@ -194,27 +196,19 @@ def get_subtab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem
             )
     # END DEPRECATED SECTION
 
-    # GENERATION SECTION - Moved outside deprecated accordion for accessibility
+    # GENERATION NOTE - How to use Wan FLF2V
     gr.Markdown("---")
-    gr.Markdown(f"### {emoji_utils.movie_camera()} Generate Diffusion/Wan")
+    target = emoji_utils.target()
+    check = emoji_utils.maybe_check()
+    gr.Markdown(f"""
+    ### {target} How to Use Wan FLF2V
 
-    # Generate Button with Validation
-    with FormRow():
-        wan_generate_button = gr.Button(
-            f"{emoji_utils.movie_camera()} Generate Diffusion/Wan (I2V Chaining)",
-            variant="primary",
-            elem_id="wan_generate_button",
-            elem_classes=["slopcore-button"]
-        )
+    1. **{check} Select "Wan FLF2V"** from the **Interpolation Method** dropdown (top of this tab)
+    2. **{check} Configure settings** below (model, VRAM optimization, generation settings)
+    3. **{check} Click the main Generate button** at the top of the UI
 
-    # Status output for Wan generation
-    wan_generation_status = gr.Textbox(
-        label="Generation Status",
-        interactive=False,
-        lines=5,
-        placeholder=f"{emoji_utils.warn} Prompts required! Load prompts above first, then click Generate.",
-        info="Status updates will appear here during generation."
-    )
+    **Note:** Wan is now fully integrated - no separate generate button needed!
+    """)
 
     # MODEL SETTINGS - Collapsed by default
     download = emoji_utils.download()
@@ -310,6 +304,12 @@ def get_subtab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem
             wan_strength_override = create_gr_elem(dw.wan_strength_override)
             wan_fixed_strength = create_gr_elem(dw.wan_fixed_strength)
 
+        # Adaptive I2V Strength Settings (NEW)
+        wan_enable_adaptive_strength = create_gr_elem(dw.wan_enable_adaptive_strength)
+        with FormRow():
+            wan_adaptive_strength_min = create_gr_elem(dw.wan_adaptive_strength_min)
+            wan_adaptive_strength_max = create_gr_elem(dw.wan_adaptive_strength_max)
+
         with FormRow():
             wan_guidance_override = create_gr_elem(dw.wan_guidance_override)
             wan_guidance_scale = create_gr_elem(dw.wan_guidance_scale)
@@ -333,6 +333,12 @@ def get_subtab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem
         with FormRow():
             wan_flf2v_guidance_scale = create_gr_elem(dw.wan_flf2v_guidance_scale)
             wan_flf2v_prompt_mode = create_gr_elem(dw.wan_flf2v_prompt_mode)
+
+        # Motion-Aware & Adaptive FLF2V Settings (NEW)
+        gr.Markdown("#### Enhanced FLF2V Features")
+        with FormRow():
+            wan_enable_motion_aware_prompts = create_gr_elem(dw.wan_enable_motion_aware_prompts)
+            wan_enable_adaptive_flf2v_guidance = create_gr_elem(dw.wan_enable_adaptive_flf2v_guidance)
 
         # Advanced FLF2V settings for 3D mode tween interpolation
         # Only show if da (DeforumAnimArgs) is provided
@@ -361,6 +367,8 @@ def get_subtab_wan(dw: SimpleNamespace, da: SimpleNamespace = None, skip_tabitem
                     elem_id="auto_assign_keyframe_types_btn"
                 )
                 gr.Markdown("*Analyzes tween distances and suggests optimal types based on chunk size*")
+
+    # LTX-2 settings moved to its own subtab (see deforum/ui/tabs/tab_ltx2.py and ui_left.py)
 
     with gr.Accordion(f"{emoji_utils.wrench()} Advanced Generation", open=False):
 

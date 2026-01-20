@@ -273,6 +273,10 @@ def hourglass():
     return _select(f'\U000023F3')  # ⏳
 
 
+def gem():
+    return _select('\U0001F48E')  # 💎
+
+
 def package():
     return _select('\U0001F4E6')  # 📦
 

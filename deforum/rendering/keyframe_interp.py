@@ -176,6 +176,17 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                            getattr(wan_args, 'flux_flf2v_interpolation_method', 'Wan'))
     use_da3_3dgs = (interp_method == "DA3-3DGS")
 
+    # CRITICAL DEBUG: Log interpolation method to diagnose DA3 loading issues
+    logger.info(f"Selected interpolation method: '{interp_method}'", emoji='target')
+    if interp_method in ("DA3-Multiview", "DA3-3DGS"):
+        logger.warning(f"DA3-based interpolation will load depth model during Phase 2", emoji='warning')
+        import torch
+        if torch.cuda.is_available():
+            free_vram_gb = torch.cuda.mem_get_info()[0] / 1024**3
+            logger.info(f"Current free VRAM: {free_vram_gb:.1f}GB (DA3 needs ~0.12-1.4GB depending on model size)")
+    else:
+        logger.info(f"No depth model will be loaded for '{interp_method}' interpolation", emoji='check')
+
     # ====================
     # PHASE 1: Batch Generate All Keyframes (Flux/Z-Image/Lumina/SD)
     # ====================
@@ -270,9 +281,44 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         # I2I chaining: Use previous keyframe as init_image for consistency
         if prev_keyframe_image is not None and idx > 0:
             data.args.args.init_images = [prev_keyframe_image]
-            # Use keyframe_strength for I2I (higher = more preservation, less change)
-            # frame.strength is already set to keyframe_strength in distribution logic
-            logger.debug(f"   {emoji_if_enabled('🔗')} Chaining from previous keyframe (strength={frame.strength:.3f})")
+
+            # Adaptive strength: Adjust based on prompt similarity
+            original_strength = frame.strength  # Save original for comparison
+
+            if hasattr(data.args, 'wan_args') and getattr(data.args.wan_args, 'wan_enable_adaptive_strength', False):
+                # Get previous and current prompts
+                prev_frame_idx = min(keyframes[idx - 1].i, data.args.anim_args.max_frames - 1)
+                curr_frame_idx = min(frame.i, data.args.anim_args.max_frames - 1)
+                prev_prompt = data.prompt_series[prev_frame_idx]
+                curr_prompt = data.prompt_series[curr_frame_idx]
+
+                # Get adaptive strength range from args
+                min_strength = getattr(data.args.wan_args, 'wan_adaptive_strength_min', 0.10)
+                max_strength = getattr(data.args.wan_args, 'wan_adaptive_strength_max', 0.30)
+
+                # Calculate adaptive strength based on prompt similarity
+                from deforum.utils.prompt_similarity import adaptive_keyframe_strength
+
+                adaptive_strength, similarity = adaptive_keyframe_strength(
+                    base_strength=original_strength,
+                    prev_prompt=prev_prompt,
+                    curr_prompt=curr_prompt,
+                    min_strength=min_strength,
+                    max_strength=max_strength
+                )
+
+                # Update frame strength
+                frame.strength = adaptive_strength
+
+                logger.debug(
+                    f"   {emoji_if_enabled('🔗')} Adaptive I2V chaining: "
+                    f"similarity={similarity:.3f} → strength={adaptive_strength:.3f} "
+                    f"(was {original_strength:.3f})"
+                )
+            else:
+                # Use fixed keyframe_strength for I2I (higher = more preservation, less change)
+                # frame.strength is already set to keyframe_strength in distribution logic
+                logger.debug(f"   {emoji_if_enabled('🔗')} Fixed I2V chaining (strength={frame.strength:.3f})")
         else:
             # First keyframe: txt2img (no init_image)
             data.args.args.init_images = None
@@ -347,23 +393,44 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     logger.separator(char="=")
     logger.info("PHASE 2: Batch Frame Interpolation")
     logger.separator(char="=")
-    logger.info(f"{emoji_if_enabled('📊')} Interpolation method: {interp_method}")
+    logger.info(f"Interpolation method: {interp_method}", emoji='chart')
+
+    # Warn if DA3-based method selected (loads depth model)
+    if interp_method in ("DA3-Multiview", "DA3-3DGS"):
+        import torch
+        if torch.cuda.is_available():
+            free_vram_gb = torch.cuda.mem_get_info()[0] / 1024**3
+            logger.warning(f"DA3-based interpolation will load depth model (requires ~0.12-1.4GB VRAM)", emoji='warning')
+            logger.info(f"Current free VRAM: {free_vram_gb:.1f}GB")
+            if free_vram_gb < 2.0:
+                logger.warning(f"Low VRAM detected! Consider using 'Wan FLF2V' or 'FILM' instead (no depth model needed)", emoji='warning')
 
     # Unload diffusion models to free GPU memory
-    logger.info(f"{emoji_if_enabled('🗑')}️  Unloading diffusion models to free GPU memory...")
+    logger.info(f"Unloading diffusion models to free GPU memory...", emoji='wastebasket')
     from backend import memory_management
     memory_management.unload_all_models()
     memory_management.soft_empty_cache()
-    logger.info(f"{emoji_if_enabled('✅')} GPU memory freed")
+    logger.info(f"GPU memory freed", emoji='check')
 
     # Initialize depth model if needed for DA3-Multiview
     if interp_method == "DA3-Multiview":
-        logger.info(f"{emoji_if_enabled('🔍')} Initializing DA3 depth model for multi-view geometry...")
+        logger.info(f"Initializing DA3 depth model for multi-view geometry...", emoji='search')
 
         # Get model size from user parameter and build full model name
         model_size = getattr(wan_args, 'da3_multiview_model_size', 'Small')
         depth_algorithm = f'Depth-Anything-V3-AnyView-{model_size}'
-        logger.info(f"{emoji_if_enabled('🎯')} DA3-Multiview will use {depth_algorithm}")
+        logger.info(f"DA3-Multiview will use {depth_algorithm}", emoji='target')
+
+        # VRAM check before loading
+        import torch
+        if torch.cuda.is_available():
+            free_vram_gb = torch.cuda.mem_get_info()[0] / 1024**3
+            model_vram = {'small': 0.12, 'base': 0.39, 'large': 1.4}.get(model_size.lower(), 0.12)
+
+            if free_vram_gb < model_vram + 1.0:
+                logger.warning(f"Low VRAM: {free_vram_gb:.1f}GB free, DA3 {model_size} needs ~{model_vram:.1f}GB", emoji='warning')
+                logger.warning(f"   Consider using 'Wan FLF2V' or 'FILM' interpolation instead (no depth model needed)")
+                logger.warning(f"   Or use smaller DA3 model size if available")
 
         # Initialize depth model
         from deforum.depth.depth import DepthModel
@@ -380,15 +447,17 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
             depth_algorithm=depth_algorithm
         )
 
-        logger.info(f"{emoji_if_enabled('✅')} Depth model loaded: {depth_algorithm}")
+        logger.info(f"Depth model loaded: {depth_algorithm}", emoji='check')
 
     # Initialize Wan only if needed
     wan_integration = None
+    ltx2_pipeline = None
+
     if interp_method == "Wan":
         wan_integration = WanSimpleIntegration(device='cuda')
 
         # Discover and load Wan model
-        logger.info(f"{emoji_if_enabled('🔍')} Discovering Wan FLF2V models...")
+        logger.info(f"Discovering Wan FLF2V models...", emoji='search')
         discovered_models = wan_integration.discover_models()
 
         if not discovered_models:
@@ -398,20 +467,86 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         flf2v_models = [m for m in discovered_models if m['type'] == 'FLF2V']
         if not flf2v_models:
             ti2v_models = [m['name'] for m in discovered_models if m['type'] in ('TI2V', 'T2V', 'I2V')]
-            logger.error(f"{emoji_if_enabled('❌')} No FLF2V model found!")
+            logger.error(f"No FLF2V model found!", emoji='x')
             if ti2v_models:
                 logger.warning(f"   Found T2V/TI2V models: {', '.join(ti2v_models)}")
-                logger.warning(f"   {emoji_if_enabled('⚠')}️  TI2V/T2V models CANNOT do FLF2V interpolation!")
+                logger.warning(f"   TI2V/T2V models CANNOT do FLF2V interpolation!", emoji='warning')
             logger.info("   Download FLF2V model: huggingface-cli download Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers --local-dir models/Deforum/wan/Wan2.1-FLF2V-14B")
             raise RuntimeError("FLF2V model required but not found. TI2V models cannot do FLF2V interpolation.")
 
         model_info = flf2v_models[0]
-        logger.info(f"{emoji_if_enabled('📦')} Loading Wan model: {model_info['name']}")
+        logger.info(f"Loading Wan model: {model_info['name']}", emoji='package')
 
         # Load the Wan pipeline
         success = wan_integration.load_simple_wan_pipeline(model_info, wan_args)
         if not success:
             raise RuntimeError(f"Failed to load Wan model: {model_info['name']}")
+
+        logger.info(f"Wan FLF2V pipeline ready", emoji='check')
+        logger.info(f"Video segments: {len(keyframes) - 1} (keyframes - 1)", emoji='info')
+
+    elif interp_method == "LTX-2":
+        logger.info(f"Initializing LTX-2 Audio-Video pipeline...", emoji='video_camera')
+
+        # Get LTX-2 model variant from args
+        ltx2_variant = getattr(wan_args, 'ltx2_model_variant', 'Auto')
+        ltx2_audio_mode = getattr(wan_args, 'ltx2_audio_mode', 'condition_only')
+
+        logger.info(f"LTX-2 Configuration:", emoji='gear')
+        logger.info(f"  Model Variant: {ltx2_variant}")
+        logger.info(f"  Audio Mode: {ltx2_audio_mode}")
+
+        # Check VRAM requirements
+        import torch
+        if torch.cuda.is_available():
+            free_vram_gb = torch.cuda.mem_get_info()[0] / 1024**3
+            logger.info(f"  Current free VRAM: {free_vram_gb:.1f}GB")
+
+            # VRAM requirements for different variants
+            vram_requirements = {
+                'LTX-2-4K-NF4': 12.0,  # 4-bit quantized
+                'LTX-2-4K': 24.0,      # Full precision
+                'LTX-2-HD': 18.0,      # HD variant
+            }
+
+            # Auto-select variant based on VRAM if Auto
+            if ltx2_variant == 'Auto':
+                if free_vram_gb >= 24.0:
+                    ltx2_variant = 'LTX-2-4K'
+                    logger.info(f"  Auto-selected: LTX-2-4K (24GB+ VRAM available)")
+                elif free_vram_gb >= 18.0:
+                    ltx2_variant = 'LTX-2-HD'
+                    logger.info(f"  Auto-selected: LTX-2-HD (18GB+ VRAM available)")
+                elif free_vram_gb >= 12.0:
+                    ltx2_variant = 'LTX-2-4K-NF4'
+                    logger.info(f"  Auto-selected: LTX-2-4K-NF4 (12GB+ VRAM available, 4-bit quantized)")
+                else:
+                    logger.error(f"Insufficient VRAM for LTX-2! Minimum 12GB required, found {free_vram_gb:.1f}GB", emoji='x')
+                    raise RuntimeError(f"Insufficient VRAM for LTX-2. Minimum 12GB required (for LTX-2-4K-NF4). Found {free_vram_gb:.1f}GB. Use Wan FLF2V or FILM instead.")
+
+            # Check if selected variant fits in VRAM
+            required_vram = vram_requirements.get(ltx2_variant, 24.0)
+            if free_vram_gb < required_vram:
+                logger.warning(f"Low VRAM: {free_vram_gb:.1f}GB free, {ltx2_variant} needs ~{required_vram:.0f}GB", emoji='warning')
+                logger.warning(f"   Generation may fail or be very slow!")
+                logger.warning(f"   Consider selecting a smaller variant or using Wan FLF2V/FILM instead")
+
+        # Check for audio track (required for LTX-2)
+        if not video_args.add_soundtrack or not video_args.soundtrack_path:
+            raise RuntimeError(
+                "LTX-2 requires an audio track for conditioning. "
+                "Please enable 'Add Soundtrack' in the Output tab and provide an audio file."
+            )
+
+        # Initialize LTX-2 pipeline
+        from deforum.integrations.ltx2 import LTX2Pipeline
+
+        ltx2_pipeline = LTX2Pipeline(device='cuda', variant=ltx2_variant)
+        ltx2_pipeline.load_model()
+
+        logger.info(f"LTX-2 pipeline ready", emoji='check')
+        logger.info(f"Video segments: {len(keyframes) - 1} (keyframes - 1)", emoji='info')
+        logger.info(f"Audio mode: {ltx2_audio_mode} (audio drives motion)", emoji='sound')
 
     # Check scene strategy
     scene_strategy = getattr(wan_args, 'da3_3dgs_scene_strategy', 'per_segment')
@@ -626,27 +761,110 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
 
             # For FLF2V interpolation, use balanced guidance for semantic interpolation
             # High guidance forces prompt adherence, low guidance allows natural interpolation
-            flf2v_guidance = getattr(wan_args, 'wan_flf2v_guidance_scale', 3.5)  # Default 3.5 for smooth morphing
+            base_flf2v_guidance = getattr(wan_args, 'wan_flf2v_guidance_scale', 3.5)  # Default 3.5 for smooth morphing
+
+            # Adaptive FLF2V guidance based on prompt similarity (optional enhancement)
+            enable_adaptive_guidance = getattr(wan_args, 'wan_enable_adaptive_flf2v_guidance', False)
+            if enable_adaptive_guidance:
+                from deforum.utils.movement_analysis import adaptive_flf2v_guidance
+                flf2v_guidance = adaptive_flf2v_guidance(
+                    prev_prompt=first_prompt,
+                    next_prompt=last_prompt,
+                    base_guidance=base_flf2v_guidance,
+                    min_guidance=3.0,  # Smooth morphing for similar prompts
+                    max_guidance=5.5   # Stronger control for different prompts
+                )
+                logger.debug(f"   Adaptive FLF2V guidance: {flf2v_guidance:.2f} (base: {base_flf2v_guidance:.2f})")
+            else:
+                flf2v_guidance = base_flf2v_guidance
 
             # Decide how to handle prompts for FLF2V
             # Options: 'none', 'first', 'last', 'blend'
             flf2v_prompt_mode = getattr(wan_args, 'wan_flf2v_prompt_mode', 'blend')  # Default to blend for semantic guidance
-        
-            if flf2v_prompt_mode == 'none':
-                flf2v_prompt = ""
-            elif flf2v_prompt_mode == 'first':
-                flf2v_prompt = first_prompt
-            elif flf2v_prompt_mode == 'last':
-                flf2v_prompt = last_prompt
-            elif flf2v_prompt_mode == 'blend':
-                # Create a blended prompt describing the transition
-                flf2v_prompt = f"{first_prompt} transitioning to {last_prompt}"
+
+            # Motion-aware prompt construction (optional enhancement)
+            enable_motion_prompts = getattr(wan_args, 'wan_enable_motion_aware_prompts', True)  # Default ON
+            if enable_motion_prompts and flf2v_prompt_mode in ['blend', 'first', 'last']:
+                from deforum.utils.movement_analysis import analyze_movement_pattern, construct_motion_prompt
+
+                # Analyze camera movement between keyframes
+                movement_desc = analyze_movement_pattern(
+                    start_frame=first_frame_idx,
+                    end_frame=last_frame_idx,
+                    animation_keys=data.animation_keys.deform_keys
+                )
+
+                # Construct motion-aware prompt
+                flf2v_prompt = construct_motion_prompt(
+                    prev_prompt=first_prompt,
+                    next_prompt=last_prompt,
+                    movement=movement_desc,
+                    prompt_mode=flf2v_prompt_mode
+                )
+                logger.debug(f"   Motion-aware FLF2V prompt: '{flf2v_prompt}'")
             else:
-                flf2v_prompt = ""  # Default to no prompt
+                # Fallback to original simple prompt construction
+                if flf2v_prompt_mode == 'none':
+                    flf2v_prompt = ""
+                elif flf2v_prompt_mode == 'first':
+                    flf2v_prompt = first_prompt
+                elif flf2v_prompt_mode == 'last':
+                    flf2v_prompt = last_prompt
+                elif flf2v_prompt_mode == 'blend':
+                    # Create a blended prompt describing the transition
+                    flf2v_prompt = f"{first_prompt} transitioning to {last_prompt}"
+                else:
+                    flf2v_prompt = ""  # Default to no prompt
         
             # Route to appropriate interpolation function
-            if interp_method == "FILM":
-                logger.info(f"   {emoji_if_enabled('🎯')} Interpolation: FILM (Frame Interpolation for Large Motion)")
+            if interp_method == "LTX-2":
+                logger.info(f"   Interpolation: LTX-2 Audio-Video AI (audio-guided generation)", emoji='target')
+
+                # Calculate audio timing for this segment
+                segment_duration = (last_frame_idx - first_frame_idx) / video_args.fps
+                segment_start_sec = first_frame_idx / video_args.fps
+
+                # Log audio sync info
+                logger.debug(f"   Audio segment: {segment_start_sec:.2f}s-{segment_start_sec + segment_duration:.2f}s ({segment_duration:.2f}s)")
+
+                # Get seed for this segment (use first frame's seed)
+                segment_seed = data.animation_keys.seed_keys.get_value(first_frame_idx)
+
+                # Generate with LTX-2
+                try:
+                    generated_frames = ltx2_pipeline.generate_segment(
+                        start_image=first_image,
+                        audio_path=video_args.soundtrack_path,
+                        audio_start_sec=segment_start_sec,
+                        audio_duration_sec=segment_duration,
+                        prompt=first_prompt,  # Use first keyframe prompt for guidance
+                        negative_prompt=getattr(wan_args, 'wan_negative_prompt', 'blurry, low quality, distorted'),
+                        num_frames=num_tween_frames + 2,  # +2 for first/last keyframes
+                        fps=video_args.fps,
+                        guidance_scale=getattr(wan_args, 'wan_flf2v_guidance_scale', 3.0),
+                        num_inference_steps=getattr(wan_args, 'wan_num_inference_steps', 50),
+                        seed=segment_seed,
+                    )
+
+                    # Convert PIL images to file paths (save to disk)
+                    segment_frames = []
+                    for frame_offset, pil_frame in enumerate(generated_frames[1:-1]):  # Skip first/last (keyframes)
+                        frame_idx = first_frame_idx + frame_offset + 1
+                        frame_filename = f"{frame_idx:09d}.png"
+                        frame_path = os.path.join(data.output_directory, frame_filename)
+
+                        # Save frame
+                        pil_frame.save(frame_path, format='PNG')
+                        segment_frames.append(frame_path)
+
+                    logger.debug(f"   Generated {len(segment_frames)} frames with LTX-2")
+
+                except Exception as e:
+                    logger.error(f"LTX-2 generation failed: {e}", emoji='x')
+                    raise
+
+            elif interp_method == "FILM":
+                logger.info(f"   Interpolation: FILM (Frame Interpolation for Large Motion)", emoji='target')
                 segment_frames = generate_film_segment(
                     first_image=first_image,
                     last_image=last_image,
@@ -735,6 +953,27 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                     deform_keys=data.animation_keys.deform_keys,  # Always pass Deforum schedules
                     schedule_blend_factor=getattr(wan_args, 'da3_3dgs_schedule_blend_factor', 0.0)  # Blend factor (0-1)
                 )
+            elif interp_method == "LTX-2":
+                logger.info(f"   {emoji_if_enabled('🎯')} Interpolation: LTX-2 (Audio-Video AI Generation)")
+                logger.info(f"      Guidance scale: {flf2v_guidance}")
+                logger.info(f"      Prompt: '{flf2v_prompt[:80]}...'")
+                logger.info(f"      Audio conditioning: {'Yes' if video_args.add_soundtrack else 'No'}")
+
+                # Call LTX-2 interpolation
+                segment_frames = generate_ltx2_segment(
+                    first_image=first_image,
+                    last_image=last_image,
+                    prompt=flf2v_prompt,
+                    num_frames=num_tween_frames,
+                    first_frame_idx=first_frame_idx,
+                    last_frame_idx=last_frame_idx,
+                    height=data.height(),
+                    width=data.width(),
+                    output_dir=data.output_directory,
+                    wan_args=wan_args,
+                    video_args=video_args,
+                    guidance_scale=flf2v_guidance
+                )
             else:  # Default: Wan
                 logger.info(f"      Guidance scale: {flf2v_guidance} {'(pure interpolation)' if flf2v_guidance == 0.0 else ''}")
                 logger.info(f"      Prompt mode: {flf2v_prompt_mode}")
@@ -779,16 +1018,180 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         interp_method=interp_method
     )
 
-    logger.info(f"\n{emoji_if_enabled('🎉')} Flux + Interpolation Generation Complete!")
-    logger.info(f"{emoji_if_enabled('📁')} Output: {output_video_path}")
+    logger.info(f"\nFlux + Interpolation Generation Complete!", emoji='party')
+    logger.info(f"Output: {output_video_path}", emoji='folder')
 
-    # Cleanup Wan if it was loaded
+    # Cleanup models
     if wan_integration is not None:
         wan_integration.unload_model()
+
+    if ltx2_pipeline is not None:
+        ltx2_pipeline.cleanup()
 
     # Stop dashboard when done
     if dashboard:
         dashboard.stop()
+
+
+def generate_ltx2_segment(
+    first_image,
+    last_image,
+    prompt: str,
+    num_frames: int,
+    first_frame_idx: int,
+    last_frame_idx: int,
+    height: int,
+    width: int,
+    output_dir: Path,
+    wan_args,
+    video_args,
+    guidance_scale: float = 3.5
+) -> List[str]:
+    """
+    Generate interpolation segment using LTX-2 audio-video model.
+
+    Args:
+        first_image: Starting keyframe (PIL Image)
+        last_image: Ending keyframe (PIL Image)
+        prompt: Text prompt for generation
+        num_frames: Number of frames to generate
+        first_frame_idx: First frame index in timeline
+        last_frame_idx: Last frame index in timeline
+        height: Target height
+        width: Target width
+        output_dir: Output directory for frames
+        wan_args: Wan arguments (contains LTX-2 settings)
+        video_args: Video arguments (contains FPS and audio path)
+        guidance_scale: Classifier-free guidance scale
+
+    Returns:
+        List of paths to generated frames
+    """
+    from deforum.integrations.ltx2.ltx2_model_discovery import LTX2ModelDiscovery
+    from deforum.integrations.ltx2.ltx2_pipeline import LTX2Pipeline
+    from deforum.integrations.ltx2.ltx2_audio_integration import LTX2AudioIntegration
+
+    logger.info(f"{emoji_if_enabled('🎬')} Generating {num_frames} frames with LTX-2...")
+
+    try:
+        # Discover LTX-2 models
+        discovery = LTX2ModelDiscovery()
+        models = discovery.discover_models()
+
+        # Get model variant from args or auto-select
+        ltx2_variant = getattr(wan_args, 'ltx2_model_variant', 'Auto')
+
+        if ltx2_variant == 'Auto':
+            # Auto-select based on VRAM
+            import torch
+            vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3) if torch.cuda.is_available() else 16
+            ltx2_variant = discovery.get_recommended_variant(vram_gb)
+            logger.info(f"Auto-selected LTX-2 variant: {ltx2_variant} (VRAM: {vram_gb:.1f}GB)")
+
+        # Get model path
+        model_path = discovery.get_model_path(ltx2_variant)
+
+        if model_path is None:
+            logger.error(f"LTX-2 model not found: {ltx2_variant}")
+            logger.info("Falling back to first-last frame copy (no interpolation)")
+            # Return first and last frames as fallback
+            from pathlib import Path
+            first_path = Path(output_dir) / f"{first_frame_idx:09d}.png"
+            last_path = Path(output_dir) / f"{last_frame_idx:09d}.png"
+            first_image.save(str(first_path))
+            last_image.save(str(last_path))
+            return [str(first_path), str(last_path)]
+
+        # Check if this is a quantized model variant
+        quantization = None
+        if "NF4" in ltx2_variant or "nf4" in str(model_path).lower():
+            quantization = "nf4"
+        elif "INT8" in ltx2_variant or "int8" in str(model_path).lower():
+            quantization = "int8"
+
+        # Initialize pipeline with quantization support
+        pipeline = LTX2Pipeline(
+            str(model_path),
+            quantization=quantization
+        )
+
+        if quantization:
+            logger.info(f"Using {quantization.upper()} quantization - should fit in ~12GB VRAM")
+
+        # Load pipeline
+        if not pipeline.load_pipeline():
+            raise RuntimeError("Failed to load LTX-2 pipeline")
+
+        # Audio conditioning (CRITICAL for sync)
+        audio_conditioning = None
+        if video_args.add_soundtrack and video_args.soundtrack_path:
+            audio_integration = LTX2AudioIntegration()
+
+            # Calculate audio segment timing
+            start_time, duration = audio_integration.calculate_segment_timing(
+                start_frame=first_frame_idx,
+                end_frame=last_frame_idx,
+                fps=video_args.fps
+            )
+
+            logger.info(f"Extracting audio: {start_time:.2f}s to {start_time + duration:.2f}s")
+
+            # Extract audio conditioning
+            audio_conditioning = audio_integration.condition_ltx2_on_deforum_audio(
+                audio_path=video_args.soundtrack_path,
+                segment_start_sec=start_time,
+                segment_duration_sec=duration
+            )
+
+        # Generate frames
+        generated_frames = pipeline.generate_flf2v(
+            first_image=first_image,
+            last_image=last_image,
+            num_frames=num_frames,
+            prompt=prompt,
+            negative_prompt=getattr(wan_args, 'wan_negative_prompt', ''),
+            audio_conditioning=audio_conditioning,
+            guidance_scale=guidance_scale,
+            num_inference_steps=getattr(wan_args, 'wan_inference_steps', 30),
+            seed=getattr(wan_args, 'wan_seed', -1)
+        )
+
+        # Synchronize output to exact frame count (LTX-2 native is 50fps)
+        if len(generated_frames) != num_frames:
+            audio_integration = LTX2AudioIntegration()
+            generated_frames = audio_integration.synchronize_ltx2_output(
+                generated_frames=generated_frames,
+                target_frame_count=num_frames,
+                source_fps=50,  # LTX-2 native
+                target_fps=video_args.fps
+            )
+
+        # Save frames
+        frame_paths = []
+        frame_counter = first_frame_idx
+
+        for frame_img in generated_frames:
+            frame_path = Path(output_dir) / f"{frame_counter:09d}.png"
+            frame_img.save(str(frame_path))
+            frame_paths.append(str(frame_path))
+            frame_counter += 1
+
+        logger.info(f"{emoji_if_enabled('✅')} LTX-2 segment complete: {len(frame_paths)} frames")
+
+        # Unload pipeline to free VRAM
+        pipeline.unload_pipeline()
+
+        return frame_paths
+
+    except Exception as e:
+        logger.error(f"Error generating LTX-2 segment: {e}")
+        # Fallback: return first and last frames
+        from pathlib import Path
+        first_path = Path(output_dir) / f"{first_frame_idx:09d}.png"
+        last_path = Path(output_dir) / f"{last_frame_idx:09d}.png"
+        first_image.save(str(first_path))
+        last_image.save(str(last_path))
+        return [str(first_path), str(last_path)]
 
 
 def save_keyframe(data: RenderData, frame: DiffusionFrame, image, use_diffusion_subdir=False):

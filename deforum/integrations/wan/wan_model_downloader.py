@@ -125,7 +125,7 @@ class WanModelDownloader:
 
         # Install huggingface_hub if needed
         if not self.check_huggingface_cli():
-            logger.warning("⚠️ huggingface_hub not found, installing...")
+            logger.warning("huggingface_hub not found, installing...", emoji='warning')
             if progress_callback:
                 progress_callback("📦 Installing huggingface_hub...")
             if not self.install_huggingface_hub():
@@ -135,7 +135,7 @@ class WanModelDownloader:
                     progress_callback(error_msg)
                 return False
 
-        logger.info(f"📥 Downloading {model_key} ({model_info['description']})...")
+        logger.info(f"Downloading {model_key} ({model_info['description']})...", emoji='download')
         logger.info(f"   📂 From: {model_info['repo_id']}")
         logger.info(f"   📁 To: {local_dir}")
         logger.info(f"   💾 Size: ~{model_info['size_gb']}GB")

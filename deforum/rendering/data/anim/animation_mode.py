@@ -53,8 +53,10 @@ class AnimationMode:
 
     @staticmethod
     def load_depth_model_if_active(args, anim_args):
-        return AnimationMode._is_load_depth_model_for_3d(args, anim_args) \
-            if opt_utils.keep_3d_models_in_vram() else None
+        # CRITICAL FIX: Never preload depth models - always load on-demand
+        # Preloading causes VRAM corruption crashes when SD/Flux models are loaded
+        # On-demand loading is only slightly slower but much safer
+        return None
 
     @staticmethod
     def create(step_args):

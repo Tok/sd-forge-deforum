@@ -325,26 +325,26 @@ class QwenModelManager:
             logger.error(f"Failed to create QwenPromptExpander: {e}", emoji='off')
             return None
             
-    def enhance_prompts(self, 
-                       prompts: Dict[str, str], 
+    def enhance_prompts(self,
+                       prompts: Dict[str, str],
                        model_name: str = "Auto-Select",
                        language: str = "English",
                        auto_download: bool = True) -> Dict[str, str]:
         """
         Enhance a dictionary of prompts using QwenPromptExpander
-        
+
         Args:
             prompts: Dictionary of frame_number -> prompt
             model_name: Qwen model to use
             language: Target language for enhanced prompts
             auto_download: Whether to auto-download missing models
-            
+
         Returns:
             Dictionary of frame_number -> enhanced_prompt
         """
         if not prompts:
             return {}
-            
+
         # Create or reuse prompt expander
         if self._cached_expander is None or self._cached_expander[0] != model_name:
             expander = self.create_prompt_expander(model_name, auto_download)
@@ -354,6 +354,25 @@ class QwenModelManager:
             self._cached_expander = (model_name, expander)
         else:
             expander = self._cached_expander[1]
+
+        # CRITICAL: Reset model state at START of enhancement session
+        # This prevents context carryover between different prompt batches (e.g., bunny → Lamborghini)
+        if hasattr(expander, 'model') and expander.model is not None:
+            # Clear all cached state from previous enhancement sessions
+            if hasattr(expander.model, 'past_key_values'):
+                expander.model.past_key_values = None
+
+            # Reset generation config if present
+            if hasattr(expander.model, 'generation_config'):
+                if hasattr(expander.model.generation_config, 'cache_implementation'):
+                    expander.model.generation_config.cache_implementation = None
+
+            # Clear CUDA cache to ensure clean state
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+
+            logger.debug(f"🔄 Reset Qwen model state for new enhancement session")
             
         enhanced_prompts = {}
         

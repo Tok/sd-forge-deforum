@@ -31,17 +31,33 @@ def generate_and_save_depth_map_if_active(data, opencv_image, i):
 
 def create_depth_model_and_enable_depth_map_saving_if_active(anim_mode, root, anim_args, args):
     """Create depth model with automatic DA3 upgrade for Gaussian Scene mode."""
+    # CRITICAL: Check if depth is actually needed for this render mode
+    render_mode = getattr(args, 'render_mode', 'New 3D')
+    animation_mode = getattr(anim_args, 'animation_mode', '3D')
+
+    # DEBUG: Log depth model decision factors
+    logger.debug(f"Depth model check: render_mode={render_mode}, animation_mode={animation_mode}")
+    logger.debug(f"  anim_mode.is_predicting_depths={anim_mode.is_predicting_depths}")
+    logger.debug(f"  anim_mode.depth_model={anim_mode.depth_model}")
+    logger.debug(f"  save_depth_maps={getattr(anim_args, 'save_depth_maps', False)}")
+
+    # CRITICAL FIX: Never load depth model for "Keyframes + Interpolation" mode
+    # Depth warping only happens in 3D modes (Classic/New/Keyframes Only)
+    if animation_mode in ('Keyframes + Interpolation', 'Flux + Interpolation'):
+        logger.debug(f"  → Skipping depth model (Keyframes + Interpolation mode doesn't use depth warping)")
+        return None
+
     # Don't override user's save_depth_maps setting - we handle saving and cleanup separately
     if not anim_mode.is_predicting_depths:
+        logger.debug(f"  → Skipping depth model (is_predicting_depths=False)")
         return None
 
     # Auto-override to DA3 for Gaussian Scene mode
     depth_algorithm = anim_args.depth_algorithm
-    render_mode = getattr(args, 'render_mode', 'New 3D')
     tween_mode = getattr(anim_args, 'tween_generation_mode', 'depth_warp')
 
     # DEBUG: Log depth model selection source
-    logger.debug(f"Depth model from args: {depth_algorithm} (render_mode={render_mode}, tween_mode={tween_mode})")
+    logger.debug(f"  → Loading depth model: {depth_algorithm} (render_mode={render_mode}, tween_mode={tween_mode})")
 
     # Check if Gaussian Scene mode or da3_gaussian tween mode requires DA3
     needs_da3 = (render_mode == 'Gaussian Scene' or tween_mode == 'da3_gaussian')

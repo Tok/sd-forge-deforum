@@ -301,6 +301,7 @@ def setup_deforum_left_side_ui():
 
             # Flux + Interpolation mode tab with method-specific subtabs:
             from deforum.ui.tabs.tab_interpolation import get_subtab_wan
+            from deforum.ui.tabs.tab_ltx2 import get_subtab_ltx2
             from deforum.ui.tabs.tab_da3_3dgs import get_tab_da3_3dgs
 
             with gr.TabItem(f"{emoji_utils.frames()} Interpolation", visible=True) as tab_interpolation:
@@ -316,6 +317,9 @@ def setup_deforum_left_side_ui():
                 with gr.Tabs():
                     with gr.TabItem("Wan FLF2V"):
                         tab_wan_params = get_subtab_wan(dw, da, skip_tabitem=True)  # Wan AI video settings
+
+                    with gr.TabItem("LTX-2"):
+                        tab_ltx2_params = get_subtab_ltx2(dw, skip_tabitem=True)  # LTX-2 Audio-Video settings
 
                     with gr.TabItem("FILM"):
                         gr.Markdown("""
@@ -414,9 +418,10 @@ def setup_deforum_left_side_ui():
             # Also unpack Wan FLF2V component from depth tab
             enable_wan_flf2v = tab_depth_params.get('enable_wan_flf2v')
 
-            # Unpack Wan components from wan tab
-            wan_generate_button = tab_wan_params.get('wan_generate_button')
-            wan_generation_status = tab_wan_params.get('wan_generation_status')
+            # DEPRECATED: Standalone Wan generate button removed (now uses main Generate button)
+            # Wan is fully integrated via interpolation method dropdown
+            wan_generate_button = None
+            wan_generation_status = None
 
             # Add top-level settings to locals()
             locals()['render_mode'] = render_mode
@@ -859,64 +864,10 @@ def setup_deforum_left_side_ui():
     show_info_on_ui.change(fn=change_css, inputs=show_info_on_ui, outputs=[gr.HTML()])
     handle_change_functions(locals())
 
-    # Set up Wan Generate button if it exists - with better error handling
-    if 'wan_generate_button' in locals() and 'wan_generation_status' in locals():
-        try:
-            # Import the real Wan generation function from ui_elements
-            from .ui_elements import wan_generate_video as wan_generate_video_main
-            
-            # Get all component values to pass to the Wan generation function
-            from deforum.config.args import get_component_names
-            component_names = get_component_names()
-            
-            # Create list of all UI components in the correct order
-            # Use dummy_component for None values to prevent Gradio errors
-            dummy_component = gr.Button(visible=False)
-            component_inputs = []
-            missing_components = []
-            for name in component_names:
-                if name in locals():
-                    component = locals()[name]
-                    # Replace None with dummy_component
-                    component_inputs.append(component if component is not None else dummy_component)
-                else:
-                    missing_components.append(name)
-                    logger.warning(f"Component '{name}' not found in locals()")
-                    component_inputs.append(dummy_component)  # Add dummy for missing components
-
-            if missing_components:
-                warning = emoji_utils.maybe_warning()
-                logger.warning(f"{warning} Missing {len(missing_components)} components: {missing_components[:5]}...")
-            
-            # Create a wrapper function with better error handling
-            def wan_generate_wrapper(*args):
-                try:
-                    logger.info(f"Wan generate button clicked! Received {len(args)} arguments", emoji='movie_camera')
-                    logger.info("Calling wan_generate_video_main...", emoji='refresh')
-                    result = wan_generate_video_main(*args)
-                    logger.debug(f"{emoji_if_enabled('✅')} Wan generation completed: {str(result)[:100]}...")
-                    return result
-                except Exception as e:
-                    cross = emoji_utils.maybe_cross()
-                    error_msg = f"{cross} Wan generation error: {str(e)}"
-                    logger.info(error_msg)
-                    import traceback
-                    traceback.print_exc()
-                    return error_msg
-
-            # Only connect if button and status exist
-            if wan_generate_button is not None and wan_generation_status is not None:
-                wan_generate_button.click(
-                    fn=wan_generate_wrapper,
-                    inputs=component_inputs,  # Pass all UI component values
-                    outputs=[wan_generation_status]
-                )
-            else:
-                logger.warning(f"Wan generate button or status not found - skipping connection")
-        except Exception as e:
-            logger.error(f"Failed to connect Wan generate button: {e}")
-            import traceback
-            traceback.print_exc()
+    # DEPRECATED: Standalone Wan Generate button removed
+    # Wan is now fully integrated via Interpolation Method dropdown
+    # Use main Generate button at top of UI instead
+    pass
 
     # Set up Wan Prompt Enhancement button with proper wan_enhanced_prompts access
     if 'enhance_prompts_btn' in locals() and 'wan_enhanced_prompts' in locals():

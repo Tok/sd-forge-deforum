@@ -26,6 +26,8 @@ def init_deforum():
     # use sys.path.extend to make sure all of our files are available for importation
     deforum_sys_extend()
 
+    # Color filter already installed in preload.py (before Forge starts)
+
     # Apply compatibility patches for diffusers git main + Forge
     try:
         from deforum.integrations.flux_controlnet.diffusers_compat import apply_all_patches

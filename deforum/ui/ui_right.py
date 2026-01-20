@@ -1281,23 +1281,28 @@ def on_ui_tabs():
                     wormtrail_html = None
                     if frame_overlap_simulator:
                         try:
+                            # Safe bounds checking for args tuple (prevent index out of range)
+                            # Expected: 29 args (0-28), but handle cases where fewer are passed
+                            def safe_get(index, default=None):
+                                return args[index] if len(args) > index else default
+
                             wormtrail_html = update_overlap_viz(
                                 tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
-                                args[19],  # zoom
-                                args[20],  # width (W)
-                                args[21],  # height (H)
-                                args[22],  # shake_name
-                                args[23],  # shake_intensity
-                                args[24],  # shake_speed
-                                args[25],  # apply_shakify_toggle (show_shakify_in_overlap)
-                                args[26],  # prompts (animation_prompts)
-                                args[27],  # max_frames
-                                args[28],  # use_full_quality (wormtrail_quality_full)
+                                safe_get(19, "0: (1.00)"),  # zoom (default: no zoom)
+                                safe_get(20, 512),  # width (W)
+                                safe_get(21, 512),  # height (H)
+                                safe_get(22, "None"),  # shake_name
+                                safe_get(23, 0.0),  # shake_intensity
+                                safe_get(24, 1.0),  # shake_speed
+                                safe_get(25, False),  # apply_shakify_toggle (show_shakify_in_overlap)
+                                safe_get(26, "0: (A scene)"),  # prompts (animation_prompts)
+                                safe_get(27, 120),  # max_frames
+                                safe_get(28, False),  # use_full_quality (wormtrail_quality_full)
                             )
                         except Exception as e:
-                            import traceback
-                            print(f"Warning: Wormtrail update failed: {e}\n{traceback.format_exc()}")
-                            wormtrail_html = f'<div style="color: #FF5050; padding: 20px;">Wormtrail update failed: {e}</div>'
+                            # Simplified error message - don't print full traceback
+                            print(f"Warning: Wormtrail update skipped: {e}")
+                            wormtrail_html = f'<div style="color: #FF9050; padding: 10px;">Wormtrail preview skipped (missing parameters)</div>'
 
                     # Return schedules, camera path plot, and wormtrail
                     return (status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot, wormtrail_html)
@@ -1369,23 +1374,28 @@ def on_ui_tabs():
                     wormtrail_html = None
                     if frame_overlap_simulator:
                         try:
+                            # Safe bounds checking for args tuple (prevent index out of range)
+                            # Expected: 29 args (0-28), but handle cases where fewer are passed
+                            def safe_get(index, default=None):
+                                return args[index] if len(args) > index else default
+
                             wormtrail_html = update_overlap_viz(
                                 tx_val, ty_val, tz_val, rx_val, ry_val, rz_val,
-                                args[19],  # zoom
-                                args[20],  # width (W)
-                                args[21],  # height (H)
-                                args[22],  # shake_name
-                                args[23],  # shake_intensity
-                                args[24],  # shake_speed
-                                args[25],  # apply_shakify_toggle (show_shakify_in_overlap)
-                                args[26],  # prompts (animation_prompts)
-                                args[27],  # max_frames
-                                args[28],  # use_full_quality (wormtrail_quality_full)
+                                safe_get(19, "0: (1.00)"),  # zoom (default: no zoom)
+                                safe_get(20, 512),  # width (W)
+                                safe_get(21, 512),  # height (H)
+                                safe_get(22, "None"),  # shake_name
+                                safe_get(23, 0.0),  # shake_intensity
+                                safe_get(24, 1.0),  # shake_speed
+                                safe_get(25, False),  # apply_shakify_toggle (show_shakify_in_overlap)
+                                safe_get(26, "0: (A scene)"),  # prompts (animation_prompts)
+                                safe_get(27, 120),  # max_frames
+                                safe_get(28, False),  # use_full_quality (wormtrail_quality_full)
                             )
                         except Exception as e:
-                            import traceback
-                            print(f"Warning: Wormtrail update failed: {e}\n{traceback.format_exc()}")
-                            wormtrail_html = f'<div style="color: #FF5050; padding: 20px;">Wormtrail update failed: {e}</div>'
+                            # Simplified error message - don't print full traceback
+                            print(f"Warning: Wormtrail update skipped: {e}")
+                            wormtrail_html = f'<div style="color: #FF9050; padding: 10px;">Wormtrail preview skipped (missing parameters)</div>'
 
                     return (status, tx_val, ty_val, tz_val, rx_val, ry_val, rz_val, plot, wormtrail_html)
 

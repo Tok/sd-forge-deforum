@@ -51,7 +51,7 @@ class WanSimplePipeline:
         
     def load_components(self):
         """Load pipeline components"""
-        logger.info(f"🚀 Loading WAN model components...")
+        logger.info(f"Loading WAN model components...", emoji='rocket')
         
         # Validate model files exist
         required_files = [

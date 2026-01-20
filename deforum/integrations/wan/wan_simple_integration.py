@@ -187,7 +187,7 @@ class WanSimpleIntegration:
 
         best_model = min(usable_models, key=model_priority)
         quantization_info = best_model.get('quantization', 'Unknown')
-        logger.info(f"🎯 Best model selected: {best_model['name']} ({best_model['type']}, {best_model['size']}, {quantization_info})")
+        logger.info(f"Best model selected: {best_model['name']} ({best_model['type']}, {best_model['size']}, {quantization_info})", emoji='target')
         return best_model
     
     def load_simple_wan_pipeline(self, model_info: Dict, wan_args=None) -> bool:

@@ -11,6 +11,8 @@ from .logger import (
     set_logger_config,
     reset_logger,
     emoji_if_enabled,
+    enable_file_logging,
+    disable_file_logging,
     DeforumLogger,
     LogLevel,
 )
@@ -21,5 +23,6 @@ __all__ = [
     "RESET_COLOR",
     "debug", "info", "warning", "error",
     "get_logger", "set_logger_config", "reset_logger", "emoji_if_enabled",
+    "enable_file_logging", "disable_file_logging",
     "DeforumLogger", "LogLevel",
 ]
