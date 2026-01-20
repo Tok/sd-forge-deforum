@@ -401,7 +401,7 @@ def setup_deforum_left_side_ui():
             da3_3dgs_neighbor_segments = tab_da3_3dgs_params.get('da3_3dgs_neighbor_segments')
             da3_3dgs_densification_factor = tab_da3_3dgs_params.get('da3_3dgs_densification_factor')
             da3_3dgs_near_clip_distance = tab_da3_3dgs_params.get('da3_3dgs_near_clip_distance')
-            da3_3dgs_use_deforum_motion = tab_da3_3dgs_params.get('da3_3dgs_use_deforum_motion')
+            da3_3dgs_schedule_blend_factor = tab_da3_3dgs_params.get('da3_3dgs_schedule_blend_factor')
             da3_3dgs_render_keyframes = tab_da3_3dgs_params.get('da3_3dgs_render_keyframes')
 
             # Explicitly unpack components needed for Reset to Defaults button

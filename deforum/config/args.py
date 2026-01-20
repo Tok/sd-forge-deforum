@@ -1535,11 +1535,14 @@ def DA33DGSArgs():
         },
 
         # Camera and Output Settings
-        "da3_3dgs_use_deforum_motion": {
-            "label": "Use Deforum Camera Motion",
-            "type": "checkbox",
-            "value": False,
-            "info": "EXPERIMENTAL: Use Deforum's scheduled camera motion (translation_x/y/z, rotation_3d_x/y/z) instead of DA3's auto-estimated poses. DA3 depth builds 3D scene, Deforum schedules control camera movement. Pros: Smooth continuous motion matching your animation. Cons: DA3's auto-estimation may be more geometrically accurate. Requires non-zero camera schedules to work."
+        "da3_3dgs_schedule_blend_factor": {
+            "label": "Deforum Schedule Blend Factor",
+            "type": "slider",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "step": 0.05,
+            "value": 0.0,
+            "info": "Blend between DA3 auto-estimated camera poses (0.0) and Deforum manual schedules (1.0). 0.0 = Pure DA3 poses (automatic, geometrically accurate), 0.5 = 50/50 blend, 1.0 = Pure Deforum schedules (full manual control). Blending allows you to add manual offsets while keeping DA3's geometric consistency. Requires non-zero Deforum camera schedules (translation_x/y/z, rotation_3d_x/y/z) to have effect."
         },
         "da3_3dgs_render_keyframes": {
             "label": "Render 3DGS Keyframes",

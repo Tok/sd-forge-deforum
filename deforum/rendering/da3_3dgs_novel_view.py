@@ -311,10 +311,10 @@ def render_novel_view_from_gaussians(
     means_cam = (viewmat @ means_homogeneous.T).T  # [N, 4]
     depth = means_cam[:, 2]  # Z coordinate in camera space (negative = in front of camera)
 
-    # Debug: Log depth distribution (use INFO so it always shows)
+    # Debug: Log depth distribution (use DEBUG to avoid spamming when rendering many frames)
     depth_np = depth.detach().cpu().numpy()
-    logger.info(f"   Depth: min={depth_np.min():.2f}, max={depth_np.max():.2f}, "
-                f"mean={depth_np.mean():.2f}, median={np.median(depth_np):.2f}")
+    logger.debug(f"   Depth: min={depth_np.min():.2f}, max={depth_np.max():.2f}, "
+                 f"mean={depth_np.mean():.2f}, median={np.median(depth_np):.2f}")
 
     # Store depth range for dynamic far plane calculation
     global _last_depth_range
@@ -348,16 +348,16 @@ def render_novel_view_from_gaussians(
                 kept_pct = (mask.sum().item() / means.shape[0]) * 100
                 removed = (~mask).sum().item()
 
-                logger.info(f"   Adaptive near-clip (percentile={percentile:.1f}%): "
-                           f"threshold={threshold:.4f}, keeping {kept_pct:.1f}% ({mask.sum()}/{means.shape[0]} splats)")
+                logger.debug(f"   Adaptive near-clip (percentile={percentile:.1f}%): "
+                            f"threshold={threshold:.4f}, keeping {kept_pct:.1f}% ({mask.sum()}/{means.shape[0]} splats)")
             else:
                 # All splats behind camera, don't filter
                 mask = torch.ones(means.shape[0], dtype=torch.bool, device=device)
-                logger.info(f"   All splats behind camera, skipping near-clip filter")
+                logger.debug(f"   All splats behind camera, skipping near-clip filter")
         else:
             # Legacy absolute mode (if user sets value > 1.0)
             mask = depth < -near_clip_distance
-            logger.info(f"   Absolute near-clip (world units={near_clip_distance:.2f})")
+            logger.debug(f"   Absolute near-clip (world units={near_clip_distance:.2f})")
 
         # Safety check: don't filter out ALL splats (would cause black frame)
         if mask.sum() == 0:
@@ -909,7 +909,8 @@ def generate_da3_3dgs_interpolation(
     densification_factor: int = 1,
     near_clip_distance: float = 0.0,
     dashboard=None,
-    deform_keys=None
+    deform_keys=None,
+    schedule_blend_factor: float = 0.0
 ) -> List[str]:
     """Generate interpolated frames using DA3 3D Gaussian Splatting.
 
@@ -1012,13 +1013,24 @@ def generate_da3_3dgs_interpolation(
         da3_cam_positions.append(cam_pos)
     logger.debug(f"   DA3 cameras: {[f'({p[0]:.1f},{p[1]:.1f},{p[2]:.1f})' for p in da3_cam_positions]}")
 
-    # Choose camera pose strategy: Deforum schedules OR DA3 automatic
-    if deform_keys is not None:
-        # Use Deforum movement schedules relative to scene center
+    # Choose camera pose strategy: DA3 automatic, Deforum schedules, or BLEND
+    # Get DA3 automatic poses (always needed as baseline)
+    da3_first_pose, da3_last_pose = get_segment_boundary_poses(
+        extrinsics, keyframe_indices, segment_first_idx, segment_last_idx
+    )
+
+    # Determine blending strategy
+    if deform_keys is None or schedule_blend_factor == 0.0:
+        # Pure DA3 automatic (no blending)
+        first_pose, last_pose = da3_first_pose, da3_last_pose
+        tween_poses_list = None  # Will be interpolated in render_tween_frames
+        logger.info(f"   Camera: DA3 automatic (blend_factor={schedule_blend_factor:.2f})")
+
+    elif schedule_blend_factor == 1.0:
+        # Pure Deforum schedules (no DA3 blending)
         from deforum.rendering.deforum_camera_poses import generate_camera_poses_from_deforum_schedules
 
         # Calculate average distance from DA3 cameras to scene centroid
-        # This gives us the "natural" viewing distance for this scene
         da3_distances = [np.linalg.norm(cam_pos - centroid) for cam_pos in da3_cam_positions]
         avg_da3_distance = np.mean(da3_distances)
 
@@ -1030,23 +1042,50 @@ def generate_da3_3dgs_interpolation(
             deform_keys=deform_keys,
             scene_centroid=centroid,
             scene_bounds=(bbox_min, bbox_max),
-            base_camera_distance=avg_da3_distance  # Use DA3's viewing distance
+            base_camera_distance=avg_da3_distance
         )
-
-        logger.info(f"   Camera: Deforum schedules at centroid=({centroid[0]:.1f},{centroid[1]:.1f},{centroid[2]:.1f}), "
-                    f"{len(tween_poses_list)} poses generated")
+        logger.info(f"   Camera: Deforum schedules (blend_factor={schedule_blend_factor:.2f}), "
+                    f"{len(tween_poses_list)} poses at centroid=({centroid[0]:.1f},{centroid[1]:.1f},{centroid[2]:.1f})")
 
     else:
-        # Use DA3's automatic pose estimation from depth
-        logger.info(f"   Camera: DA3 automatic (Deforum schedules not provided)")
+        # BLEND: Mix DA3 automatic + Deforum schedules
+        from deforum.rendering.deforum_camera_poses import generate_camera_poses_from_deforum_schedules
 
-        # CRITICAL: Get camera poses for SEGMENT BOUNDARIES, not collected keyframes
-        # We may have collected extras (e.g., [0, 12, 22, 32, 43] for segment 12-22)
-        # but we MUST interpolate between segment boundaries to stay in sync
-        first_pose, last_pose = get_segment_boundary_poses(
-            extrinsics, keyframe_indices, segment_first_idx, segment_last_idx
+        # Calculate average distance from DA3 cameras to scene centroid
+        da3_distances = [np.linalg.norm(cam_pos - centroid) for cam_pos in da3_cam_positions]
+        avg_da3_distance = np.mean(da3_distances)
+
+        # Generate Deforum poses
+        deforum_first_pose, deforum_last_pose, deforum_tween_poses = generate_camera_poses_from_deforum_schedules(
+            keyframe_indices=keyframe_indices,
+            segment_first_idx=segment_first_idx,
+            segment_last_idx=segment_last_idx,
+            target_frame_indices=target_frame_indices,
+            deform_keys=deform_keys,
+            scene_centroid=centroid,
+            scene_bounds=(bbox_min, bbox_max),
+            base_camera_distance=avg_da3_distance
         )
-        tween_poses_list = None  # Will be interpolated in render_tween_frames
+
+        # Blend boundary poses
+        first_pose = interpolate_camera_pose(da3_first_pose, deforum_first_pose, schedule_blend_factor)
+        last_pose = interpolate_camera_pose(da3_last_pose, deforum_last_pose, schedule_blend_factor)
+
+        # Blend tween poses
+        tween_poses_list = []
+        for idx, target_idx in enumerate(target_frame_indices):
+            # Interpolate DA3 pose for this frame
+            total_span = segment_last_idx - segment_first_idx
+            t = (target_idx - segment_first_idx) / total_span if total_span > 0 else 0.5
+            da3_tween_pose = interpolate_camera_pose(da3_first_pose, da3_last_pose, t)
+
+            # Blend DA3 tween with Deforum tween
+            deforum_tween_pose = deforum_tween_poses[idx]
+            blended_pose = interpolate_camera_pose(da3_tween_pose, deforum_tween_pose, schedule_blend_factor)
+            tween_poses_list.append(blended_pose)
+
+        logger.info(f"   Camera: BLENDED (DA3 {1.0-schedule_blend_factor:.0%} + Deforum {schedule_blend_factor:.0%}), "
+                    f"{len(tween_poses_list)} blended poses")
 
     # Use average intrinsics (usually constant across views)
     avg_intrinsics = np.mean(intrinsics, axis=0)

@@ -30,6 +30,9 @@ class TuningTestType(str, Enum):
     RAFT_TUNING = "raft_tuning"
     DA3_3DGS_TUNING = "da3_3dgs_tuning"
     DA3_3DGS_SYNTHETIC = "da3_3dgs_synthetic"  # Synthetic test images (no diffusion)
+    DA3_3DGS_BLEND_FACTOR = "da3_3dgs_blend_factor"  # Test schedule blending
+    DA3_3DGS_TWOPASS = "da3_3dgs_twopass"  # Two-Pass: coherent video → DA3-3DGS refinement
+    DA3_3DGS_SINGLESCENE = "da3_3dgs_singlescene"  # Single Scene: variations of ONE scene
 
 
 class TuningTestConfig(BaseModel):
@@ -70,21 +73,43 @@ class TuningTestConfig(BaseModel):
     raft_flow_factor_step: Optional[float] = Field(None, ge=0.05, le=0.5, description="Step size for flow factor sweep")
 
     # DA3-3DGS-specific parameters (for da3_3dgs_tuning test type)
-    dgs_rotation_factor: Optional[float] = Field(None, ge=-50.0, le=-1.0, description="Fixed rotation factor for 3DGS tests (empirical optimal: -8.0)")
-    dgs_test_iterations: Optional[int] = Field(None, ge=10, le=200, description="Number of frames to generate per test")
-    dgs_scene_strategies: Optional[List[str]] = Field(None, description="List of scene strategies to test: ['per_segment', 'per_prompt', 'rolling_window']")
-    dgs_rolling_window_size: Optional[int] = Field(None, ge=10, le=100, description="Rolling window size for rolling_window strategy")
-    dgs_max_prompt_keyframes: Optional[int] = Field(None, ge=10, le=200, description="Max keyframes per prompt scene for per_prompt strategy")
-    dgs_models: Optional[List[str]] = Field(None, description="List of DA3 models to test: ['DA3-GIANT', 'DA3NESTED-GIANT-LARGE']")
+    dgs_use_ray_pose: Optional[bool] = Field(None, description="Use DA3 ray head for more accurate camera poses (slower but better geometry)")
+    dgs_confidence_threshold: Optional[float] = Field(None, ge=0.0, le=100.0, description="Filter splats by confidence percentile (0=disabled, 50=top 50%, 90=very confident only)")
+    dgs_models: Optional[List[str]] = Field(None, description="List of DA3 models to test: ['DA3-GIANT']")
     dgs_neighbor_segments_min: Optional[int] = Field(None, ge=2, le=10, description="Min neighbor segments (keyframes around each segment)")
     dgs_neighbor_segments_max: Optional[int] = Field(None, ge=2, le=10, description="Max neighbor segments")
     dgs_neighbor_segments_step: Optional[int] = Field(None, ge=1, le=4, description="Step size for neighbor segments sweep")
-    dgs_densification_min: Optional[int] = Field(None, ge=1, le=8, description="Min densification factor (1x = 705k splats)")
-    dgs_densification_max: Optional[int] = Field(None, ge=1, le=8, description="Max densification factor (8x = 5.6M splats)")
+    dgs_densification_min: Optional[int] = Field(None, ge=1, le=16, description="Min densification factor (1x = ~705k splats, OPTIMAL)")
+    dgs_densification_max: Optional[int] = Field(None, ge=1, le=16, description="Max densification factor (16x = many splats but lower quality)")
     dgs_densification_step: Optional[int] = Field(None, ge=1, le=4, description="Step size for densification sweep")
-    dgs_nearclip_min: Optional[float] = Field(None, ge=0.01, le=1.0, description="Min near-clip distance (filters close splats)")
-    dgs_nearclip_max: Optional[float] = Field(None, ge=0.01, le=1.0, description="Max near-clip distance")
+    dgs_nearclip_min: Optional[float] = Field(None, ge=0.0, le=1.0, description="Min near-clip distance (0.0=disabled, filters close splats)")
+    dgs_nearclip_max: Optional[float] = Field(None, ge=0.0, le=1.0, description="Max near-clip distance")
     dgs_nearclip_step: Optional[float] = Field(None, ge=0.01, le=0.5, description="Step size for near-clip sweep")
+    dgs_blend_factor_min: Optional[float] = Field(None, ge=0.0, le=1.0, description="Min schedule blend factor (0=pure DA3, 1=pure Deforum)")
+    dgs_blend_factor_max: Optional[float] = Field(None, ge=0.0, le=1.0, description="Max schedule blend factor")
+    dgs_blend_factor_step: Optional[float] = Field(None, ge=0.05, le=0.5, description="Step size for blend factor sweep")
+    dgs_blend_densification: Optional[int] = Field(None, ge=1, le=8, description="Densification factor for blend factor test (1=~705k splats, 4=~2.8M)")
+    dgs_subimages_per_keyframe: Optional[int] = Field(None, ge=1, le=10, description="Number of subimages per keyframe (photorealistic only)")
+    dgs_scene_prompt_1: Optional[str] = Field(None, description="Custom scene 1 prompt (keyframe 0)")
+    dgs_scene_prompt_2: Optional[str] = Field(None, description="Custom scene 2 prompt (keyframe 240)")
+    dgs_scene_prompt_3: Optional[str] = Field(None, description="Custom scene 3 prompt (keyframe 480)")
+    dgs_test_scene_type: Optional[str] = Field(None, description="Test scene type: 'simple' or 'photorealistic'")
+    dgs_test_mode: Optional[str] = Field(None, description="DA3-3DGS test mode: 'Standard Parameter Sweep', 'Two-Pass Refinement', or 'Single Scene Multi-Angle'")
+
+    # Two-Pass Refinement mode parameters (da3_3dgs_twopass test type)
+    dgs_twopass_resume: Optional[str] = Field(None, description="Resume from previous test (test ID or full directory name)")
+    dgs_twopass_movement: Optional[List[str]] = Field(None, description="Movement patterns to test (can select multiple)")
+    dgs_twopass_feeding: Optional[List[str]] = Field(None, description="Frame feeding strategies to test (can select multiple)")
+    dgs_twopass_video_path: Optional[str] = Field(None, description="Input video or image sequence path for Two-Pass mode")
+    dgs_twopass_frame_stride: Optional[int] = Field(None, ge=1, le=10, description="Frame stride (use every Nth frame)")
+    dgs_twopass_segment_size: Optional[int] = Field(None, ge=10, le=120, description="Frames per DA3-3DGS segment")
+    dgs_twopass_overlap: Optional[int] = Field(None, ge=0, le=50, description="Segment overlap percentage")
+
+    # Single Scene Multi-Angle mode parameters (da3_3dgs_singlescene test type)
+    dgs_singlescene_base_prompt: Optional[str] = Field(None, description="Base scene prompt for Single Scene mode")
+    dgs_singlescene_num_angles: Optional[int] = Field(None, ge=3, le=20, description="Number of angle variations")
+    dgs_singlescene_angle_variation: Optional[float] = Field(None, ge=0.0, le=1.0, description="Camera angle variation strength (0=subtle, 1=dramatic)")
+    dgs_singlescene_lighting_variation: Optional[bool] = Field(None, description="Enable lighting/time-of-day variation")
 
 
 class TuningTestStatus(BaseModel):
@@ -197,6 +222,12 @@ class TuningTestManager:
                 self._run_3dgs_tests(test_id, config)
             elif config.test_type == TuningTestType.DA3_3DGS_SYNTHETIC:
                 self._run_synthetic_3dgs_tests(test_id, config)
+            elif config.test_type == TuningTestType.DA3_3DGS_BLEND_FACTOR:
+                self._run_blend_factor_tests(test_id, config)
+            elif config.test_type == TuningTestType.DA3_3DGS_TWOPASS:
+                self._run_twopass_tests(test_id, config)
+            elif config.test_type == TuningTestType.DA3_3DGS_SINGLESCENE:
+                self._run_singlescene_tests(test_id, config)
             else:
                 # Run standard I2V chaining tests (color preservation, temporal, flux)
                 self._run_i2v_chaining_tests(test_id, config)
@@ -582,6 +613,370 @@ class TuningTestManager:
         logger.info(f"Real DA3-3DGS sweep complete: {len(results)} tests run")
 
         # Markdown report is generated automatically by run_real_3dgs_sweep()
+
+    def _run_blend_factor_tests(self, test_id: str, config: TuningTestConfig):
+        """Run blend factor sweep tests.
+
+        Tests DA3-3DGS with varying schedule_blend_factor values to find
+        optimal blending between DA3 auto-poses and Deforum manual schedules.
+
+        Generates red cube → blue sphere keyframes and runs DA3-3DGS interpolation.
+
+        Args:
+            test_id: Test identifier
+            config: Test configuration with blend factor parameters
+        """
+        from pathlib import Path
+        import os
+
+        logger.info(f"Starting DA3-3DGS parameter sweep for test {test_id}")
+
+        # Create output directory
+        forge_root = Path(os.getcwd())
+        tuning_dir = forge_root / "output" / "deforum-tuning"
+        test_output_dir = tuning_dir / f"parameter_sweep_{test_id}"
+        test_output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Get scene type (simple vs photorealistic)
+        scene_type = "simple"
+        if config.dgs_test_scene_type:
+            if "photorealistic" in config.dgs_test_scene_type.lower():
+                scene_type = "photorealistic"
+
+        # Get resolution from aspect ratios or use default
+        if config.aspect_ratios and len(config.aspect_ratios) > 0:
+            aspect_config = config.aspect_ratios[0]
+            width = int(aspect_config[1])
+            height = int(aspect_config[2])
+        else:
+            width = 512
+            height = 512
+
+        # Get subimage and prompt parameters
+        subimages_per_keyframe = config.dgs_subimages_per_keyframe if config.dgs_subimages_per_keyframe is not None else 5
+        scene_prompts = None
+        if scene_type == "photorealistic":
+            scene_prompts = [
+                config.dgs_scene_prompt_1 if config.dgs_scene_prompt_1 else "modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k",
+                config.dgs_scene_prompt_2 if config.dgs_scene_prompt_2 else "highway road stretching into distance, asphalt with lane markings, trees on sides, blue sky, photorealistic, detailed, 8k",
+                config.dgs_scene_prompt_3 if config.dgs_scene_prompt_3 else "sandy beach with ocean waves, blue water, clear sky, palm trees, tropical paradise, photorealistic, detailed, 8k",
+            ]
+
+        # Get all sweep parameters (can be fixed or swept)
+        blend_factor_min = config.dgs_blend_factor_min if config.dgs_blend_factor_min is not None else 0.0
+        blend_factor_max = config.dgs_blend_factor_max if config.dgs_blend_factor_max is not None else 0.0
+        blend_factor_step = config.dgs_blend_factor_step if config.dgs_blend_factor_step is not None else 0.25
+
+        neighbor_segments_min = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
+        neighbor_segments_max = config.dgs_neighbor_segments_max if config.dgs_neighbor_segments_max is not None else 4
+        neighbor_segments_step = config.dgs_neighbor_segments_step if config.dgs_neighbor_segments_step is not None else 1
+
+        densification_min = config.dgs_densification_min if config.dgs_densification_min is not None else 4
+        densification_max = config.dgs_densification_max if config.dgs_densification_max is not None else 4
+        densification_step = config.dgs_densification_step if config.dgs_densification_step is not None else 1
+
+        # Get DA3 quality parameters
+        use_ray_pose = config.dgs_use_ray_pose if config.dgs_use_ray_pose is not None else False
+        confidence_threshold = config.dgs_confidence_threshold if config.dgs_confidence_threshold is not None else 0.0
+
+        logger.info(f"Blend factor: {blend_factor_min}-{blend_factor_max} step {blend_factor_step}")
+        logger.info(f"Neighbor segments: {neighbor_segments_min}-{neighbor_segments_max} step {neighbor_segments_step}")
+        logger.info(f"Densification: {densification_min}-{densification_max} step {densification_step}")
+        logger.info(f"Resolution: {width}x{height}")
+        logger.info(f"Scene type: {scene_type}, Subimages per keyframe: {subimages_per_keyframe}")
+        logger.info(f"DA3 quality: use_ray_pose={use_ray_pose}, confidence_threshold={confidence_threshold}%")
+
+        # Run parameter sweep
+        from deforum.api.tuning_3dgs_blend_factor import run_parameter_sweep
+
+        results = run_parameter_sweep(
+            blend_factor_min=blend_factor_min,
+            blend_factor_max=blend_factor_max,
+            blend_factor_step=blend_factor_step,
+            neighbor_segments_min=neighbor_segments_min,
+            neighbor_segments_max=neighbor_segments_max,
+            neighbor_segments_step=neighbor_segments_step,
+            densification_min=densification_min,
+            densification_max=densification_max,
+            densification_step=densification_step,
+            width=width,
+            height=height,
+            num_frames=720,  # 60fps * 12 seconds = 720 frames
+            output_dir=test_output_dir,
+            scene_type=scene_type,
+            subimages_per_keyframe=subimages_per_keyframe,
+            scene_prompts=scene_prompts,
+            use_ray_pose=use_ray_pose,
+            confidence_threshold=confidence_threshold,
+        )
+
+        # Update test status with results
+        with self.test_lock:
+            if test_id in self.active_tests:
+                self.active_tests[test_id].results = [r.to_dict() for r in results]
+
+        logger.info(f"Parameter sweep complete: {len(results)} tests run")
+
+    def _run_twopass_tests(self, test_id: str, config: TuningTestConfig):
+        """Run Two-Pass DA3-3DGS refinement tests.
+
+        Pipeline: Render coherent Deforum animation → Feed all frames to DA3-3DGS → Output refined video
+
+        This addresses the core problem: DA3 needs temporally coherent multi-view data,
+        not unrelated synthetic scenes!
+
+        Supports multi-configuration testing: Can test multiple movement patterns × feeding strategies
+        in a single run by selecting multiple checkboxes in the UI.
+
+        Args:
+            test_id: Test identifier
+            config: Test configuration with two-pass parameters
+        """
+        from pathlib import Path
+        import os
+
+        logger.info(f"Starting Two-Pass DA3-3DGS refinement for test {test_id}")
+
+        # Create output directory
+        forge_root = Path(os.getcwd())
+        tuning_dir = forge_root / "output" / "deforum-tuning"
+
+        # Get two-pass parameters
+        video_path = config.dgs_twopass_video_path if config.dgs_twopass_video_path else ""
+        frame_stride = config.dgs_twopass_frame_stride if config.dgs_twopass_frame_stride is not None else 1
+        segment_size = config.dgs_twopass_segment_size if config.dgs_twopass_segment_size is not None else 30
+        overlap = config.dgs_twopass_overlap if config.dgs_twopass_overlap is not None else 20
+
+        # Get resolution from aspect ratios or use default
+        if config.aspect_ratios and len(config.aspect_ratios) > 0:
+            aspect_config = config.aspect_ratios[0]
+            width = int(aspect_config[1])
+            height = int(aspect_config[2])
+        else:
+            width = 512
+            height = 512
+
+        # Get DA3-3DGS parameters
+        use_ray_pose = config.dgs_use_ray_pose if config.dgs_use_ray_pose is not None else False
+        confidence_threshold = config.dgs_confidence_threshold if config.dgs_confidence_threshold is not None else 0.0
+        densification = config.dgs_densification_min if config.dgs_densification_min is not None else 1
+        neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
+        da3_model_name = config.dgs_models[0] if config.dgs_models and len(config.dgs_models) > 0 else "DA3-GIANT"
+
+        # Get Deforum generation parameters from UI
+        prompt = config.dgs_scene_prompt_1 if config.dgs_scene_prompt_1 else "modern city street with tall buildings and cars, architectural photography, detailed, 8k"
+        steps = config.steps[0] if config.steps and len(config.steps) > 0 else 20
+        seed = -1  # Always random for test animations
+
+        # Get multi-configuration parameters
+        movement_patterns = config.dgs_twopass_movement or ["Orbit Strong (150 units, 360°)"]
+        feeding_strategies = config.dgs_twopass_feeding or ["Keyframes Only (faster, was working well)"]
+
+        logger.info(f"Multi-config testing:")
+        logger.info(f"  Movement patterns: {movement_patterns}")
+        logger.info(f"  Feeding strategies: {feeding_strategies}")
+        logger.info(f"  Total combinations: {len(movement_patterns)} × {len(feeding_strategies)} = {len(movement_patterns) * len(feeding_strategies)}")
+
+        # Check for resume mode (reuse frames AND output directory from previous test)
+        resume_test_id = config.dgs_twopass_resume or ""
+        logger.info(f"Resume field value: '{resume_test_id}'")
+
+        base_test_output_dir = None
+        if resume_test_id and resume_test_id.strip():
+            # Extract just the ID if full directory name provided
+            # Accept: "twopass_tuning_54bec7ce" or just "54bec7ce"
+            if "twopass_tuning_" in resume_test_id:
+                resume_id_clean = resume_test_id  # Already full name
+            else:
+                resume_id_clean = f"twopass_tuning_{resume_test_id.strip()}"
+
+            # Point video_path to the phase1 frames directory
+            resume_frames_dir = tuning_dir / resume_id_clean / "phase1_deforum_frames"
+            if resume_frames_dir.exists():
+                video_path = str(resume_frames_dir)
+                # CRITICAL: Reuse the SAME base directory when resuming
+                base_test_output_dir = tuning_dir / resume_id_clean
+                logger.info(f"RESUME MODE: Reusing test directory {resume_id_clean}")
+                logger.info(f"  Frame directory: {video_path}")
+                logger.info(f"  Base output directory: {base_test_output_dir}")
+            else:
+                logger.warning(f"Resume test not found: {resume_frames_dir}")
+                logger.warning("  Proceeding with normal generation")
+                video_path = ""  # Fall back to generation
+                base_test_output_dir = tuning_dir / f"twopass_{test_id}"
+        else:
+            # Normal mode: create new directory with current test_id
+            base_test_output_dir = tuning_dir / f"twopass_{test_id}"
+
+        base_test_output_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Input video: {video_path if video_path else '(generate on-the-fly)'}")
+        logger.info(f"Resolution: {width}×{height}")
+        logger.info(f"Prompt: {prompt[:60]}...")
+        logger.info(f"Steps: {steps}, Seed: {seed}")
+        logger.info(f"Frame stride: {frame_stride}, Segment size: {segment_size}, Overlap: {overlap}%")
+        logger.info(f"DA3 Model: {da3_model_name}")
+        logger.info(f"DA3: use_ray_pose={use_ray_pose}, confidence={confidence_threshold}%, densification={densification}, neighbors={neighbor_segments}")
+
+        # Run two-pass refinement for each movement pattern × feeding strategy combination
+        from deforum.api.tuning_3dgs_blend_factor import run_twopass_refinement
+
+        all_results = []
+        total_configs = len(movement_patterns) * len(feeding_strategies)
+        current_config = 0
+
+        for movement_pattern in movement_patterns:
+            # Generate Phase 1 frames ONCE per movement pattern (first iteration)
+            # Then reuse for all feeding strategies
+            movement_video_path = video_path  # Start with user-provided path (may be empty or resume)
+
+            # Sanitize movement pattern for directory name (remove special chars including °)
+            movement_slug = (movement_pattern.lower()
+                           .replace(" ", "_")
+                           .replace("(", "")
+                           .replace(")", "")
+                           .replace(",", "")
+                           .replace("°", "")
+                           .replace(".", ""))
+
+            for feeding_idx, feeding_strategy in enumerate(feeding_strategies):
+                current_config += 1
+
+                # Sanitize feeding strategy for directory name
+                feeding_slug = (feeding_strategy.lower()
+                              .replace(" ", "_")
+                              .replace("(", "")
+                              .replace(")", "")
+                              .replace(",", "")
+                              .replace("°", "")
+                              .replace(".", ""))
+
+                # Create unique output directory for this combination
+                config_output_dir = base_test_output_dir / f"{movement_slug}__{feeding_slug}"
+                config_output_dir.mkdir(parents=True, exist_ok=True)
+
+                logger.info(f"\n{'='*80}")
+                logger.info(f"Configuration {current_config}/{total_configs}")
+                logger.info(f"Movement: {movement_pattern}")
+                logger.info(f"Feeding: {feeding_strategy}")
+                logger.info(f"Output: {config_output_dir.name}")
+                if feeding_idx > 0:
+                    logger.info(f"Reusing Phase 1 frames from first iteration (shared across feeding strategies)")
+                logger.info(f"{'='*80}\n")
+
+                results = run_twopass_refinement(
+                    video_path=movement_video_path,  # Use shared frames for this movement
+                    width=width,
+                    height=height,
+                    prompt=prompt,
+                    steps=steps,
+                    seed=seed,
+                    frame_stride=frame_stride,
+                    segment_size=segment_size,
+                    overlap_percent=overlap,
+                    output_dir=config_output_dir,
+                    use_ray_pose=use_ray_pose,
+                    confidence_threshold=confidence_threshold,
+                    densification=densification,
+                    neighbor_segments=neighbor_segments,
+                    da3_model_name=da3_model_name,
+                    movement_pattern=movement_pattern,
+                    feeding_strategy=feeding_strategy,
+                )
+
+                all_results.extend(results)
+
+                # After first feeding strategy, point to generated frames for reuse
+                if feeding_idx == 0 and not movement_video_path:
+                    # Phase 1 was just generated - reuse these frames for remaining feeding strategies
+                    movement_video_path = str(base_test_output_dir / "phase1_deforum_frames")
+                    logger.info(f"Phase 1 frames generated at: {movement_video_path}")
+                    logger.info(f"Will reuse for remaining feeding strategies")
+
+        # Update test status with results
+        with self.test_lock:
+            if test_id in self.active_tests:
+                self.active_tests[test_id].results = [r.to_dict() for r in all_results]
+
+        logger.info(f"\n{'='*80}")
+        logger.info(f"Two-Pass multi-config testing complete!")
+        logger.info(f"  Configurations tested: {total_configs}")
+        logger.info(f"  Total segments processed: {len(all_results)}")
+        logger.info(f"  Output directory: {base_test_output_dir}")
+        logger.info(f"{'='*80}\n")
+
+    def _run_singlescene_tests(self, test_id: str, config: TuningTestConfig):
+        """Run Single Scene Multi-Angle tests.
+
+        Pipeline: Generate N variations of ONE scene → DA3 gets proper multi-view data of same location
+
+        Instead of feeding DA3 unrelated scenes (city → highway → beach), give it multiple views
+        of the SAME scene!
+
+        Args:
+            test_id: Test identifier
+            config: Test configuration with single scene parameters
+        """
+        from pathlib import Path
+        import os
+
+        logger.info(f"Starting Single Scene Multi-Angle test for test {test_id}")
+
+        # Create output directory
+        forge_root = Path(os.getcwd())
+        tuning_dir = forge_root / "output" / "deforum-tuning"
+        test_output_dir = tuning_dir / f"singlescene_{test_id}"
+        test_output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Get single scene parameters
+        base_prompt = config.dgs_singlescene_base_prompt if config.dgs_singlescene_base_prompt else "modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k"
+        num_angles = config.dgs_singlescene_num_angles if config.dgs_singlescene_num_angles is not None else 8
+        angle_variation = config.dgs_singlescene_angle_variation if config.dgs_singlescene_angle_variation is not None else 0.3
+        lighting_variation = config.dgs_singlescene_lighting_variation if config.dgs_singlescene_lighting_variation is not None else False
+
+        # Get resolution from aspect ratios or use default
+        if config.aspect_ratios and len(config.aspect_ratios) > 0:
+            aspect_config = config.aspect_ratios[0]
+            width = int(aspect_config[1])
+            height = int(aspect_config[2])
+        else:
+            width = 1280
+            height = 720
+
+        # Get DA3-3DGS parameters
+        use_ray_pose = config.dgs_use_ray_pose if config.dgs_use_ray_pose is not None else False
+        confidence_threshold = config.dgs_confidence_threshold if config.dgs_confidence_threshold is not None else 0.0
+        densification = config.dgs_densification_min if config.dgs_densification_min is not None else 1
+        neighbor_segments = config.dgs_neighbor_segments_min if config.dgs_neighbor_segments_min is not None else 4
+
+        logger.info(f"Base prompt: {base_prompt}")
+        logger.info(f"Num angles: {num_angles}, Angle variation: {angle_variation}, Lighting: {lighting_variation}")
+        logger.info(f"Resolution: {width}x{height}")
+        logger.info(f"DA3: use_ray_pose={use_ray_pose}, confidence={confidence_threshold}%, densification={densification}, neighbors={neighbor_segments}")
+
+        # Run single scene multi-angle
+        from deforum.api.tuning_3dgs_blend_factor import run_singlescene_multiangle
+
+        results = run_singlescene_multiangle(
+            base_prompt=base_prompt,
+            num_angles=num_angles,
+            angle_variation=angle_variation,
+            lighting_variation=lighting_variation,
+            width=width,
+            height=height,
+            output_dir=test_output_dir,
+            use_ray_pose=use_ray_pose,
+            confidence_threshold=confidence_threshold,
+            densification=densification,
+            neighbor_segments=neighbor_segments,
+        )
+
+        # Update test status with results
+        with self.test_lock:
+            if test_id in self.active_tests:
+                self.active_tests[test_id].results = [r.to_dict() for r in results]
+
+        logger.info(f"Single Scene Multi-Angle complete: {len(results)} views processed")
 
     def _create_3dgs_test_directory(self, test_id: str) -> Path:
         """Create output directory for 3DGS test.

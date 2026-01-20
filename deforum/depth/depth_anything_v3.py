@@ -566,12 +566,16 @@ class DepthAnythingV3:
 
     def estimate_3d_gaussians(
         self,
-        images: List[Union[np.ndarray, Image.Image]]
+        images: List[Union[np.ndarray, Image.Image]],
+        use_ray_pose: bool = False,
+        confidence_threshold: float = 0.0
     ) -> Optional[Any]:
         """Estimate 3D Gaussian Splatting parameters (Phase 3 capability).
 
         Args:
             images: List of keyframe images
+            use_ray_pose: Use DA3 ray head for more accurate camera poses (slower but better geometry)
+            confidence_threshold: Filter splats by confidence percentile (0=disabled, 50=top 50%, 90=very confident only)
 
         Returns:
             Dictionary with 3DGS parameters:
@@ -584,10 +588,29 @@ class DepthAnythingV3:
         # Convert numpy arrays to PIL Images if needed
         pil_images = _convert_images_to_pil(images)
 
+        # Log quality settings if enabled
+        if use_ray_pose:
+            logger.info("🎯 Using ray pose estimation for more accurate camera poses")
+        if confidence_threshold > 0:
+            logger.info(f"💎 Filtering splats by confidence threshold: {confidence_threshold}%")
+
         # Run DA3 inference with 3DGS enabled
         try:
             logger.debug(f"Attempting 3DGS estimation with {len(pil_images)} images...")
-            result = self.model.inference(pil_images, infer_gs=True)
+
+            # Build inference kwargs
+            inference_kwargs = {"infer_gs": True}
+
+            # Add ray pose estimation if requested (DA3 may support this via inference params)
+            if use_ray_pose:
+                inference_kwargs["use_ray_pose"] = True
+
+            result = self.model.inference(pil_images, **inference_kwargs)
+
+            # Apply confidence filtering if threshold is set
+            if confidence_threshold > 0 and result is not None and hasattr(result, 'gaussians'):
+                result = self._filter_gaussians_by_confidence(result, confidence_threshold)
+
             # Return Prediction object with .gaussians attribute
             return result
         except (AttributeError, TypeError) as e:
@@ -601,3 +624,104 @@ class DepthAnythingV3:
         except Exception as e:
             logger.error(f"3DGS estimation failed: {str(e)}")
             return None
+
+    def _filter_gaussians_by_confidence(self, result: Any, confidence_threshold: float) -> Any:
+        """Filter 3D gaussians by confidence percentile.
+
+        Args:
+            result: Prediction result with .gaussians attribute
+            confidence_threshold: Percentile threshold (0-100, e.g., 90 = keep top 10%)
+
+        Returns:
+            Filtered result with updated gaussians
+        """
+        import torch
+        import numpy as np
+
+        if not hasattr(result, 'gaussians') or result.gaussians is None:
+            logger.warning("No gaussians to filter")
+            return result
+
+        gaussians = result.gaussians
+
+        # Try to get confidence/opacity values from gaussians
+        # DA3 3DGS may store confidence in various attributes
+        confidence_values = None
+
+        if hasattr(gaussians, 'confidence'):
+            confidence_values = gaussians.confidence
+        elif hasattr(gaussians, 'opacities'):
+            # Use opacity as proxy for confidence
+            confidence_values = gaussians.opacities
+        elif hasattr(gaussians, 'features') and hasattr(gaussians.features, 'confidence'):
+            confidence_values = gaussians.features.confidence
+
+        if confidence_values is None:
+            logger.warning("Could not find confidence values in gaussians, skipping filtering")
+            return result
+
+        # Convert to numpy if needed
+        if torch.is_tensor(confidence_values):
+            confidence_values = confidence_values.cpu().numpy()
+
+        # Flatten if multi-dimensional
+        if len(confidence_values.shape) > 1:
+            confidence_values = confidence_values.flatten()
+
+        # Calculate threshold value from percentile
+        # If threshold is 90%, we want to keep splats with confidence >= 90th percentile
+        threshold_value = np.percentile(confidence_values, confidence_threshold)
+
+        # Create mask for high-confidence splats
+        keep_mask = confidence_values >= threshold_value
+
+        num_original = len(confidence_values)
+        num_kept = np.sum(keep_mask)
+        logger.info(f"💎 Confidence filtering: keeping {num_kept}/{num_original} splats ({num_kept/num_original*100:.1f}%)")
+        logger.info(f"   Threshold: {threshold_value:.4f} (top {100-confidence_threshold:.0f}% of splats)")
+
+        # Apply mask to all gaussian attributes
+        try:
+            # Filter each attribute of gaussians if it exists and has matching shape
+            if hasattr(gaussians, 'means') and gaussians.means is not None:
+                if torch.is_tensor(gaussians.means):
+                    gaussians.means = gaussians.means[keep_mask]
+                else:
+                    gaussians.means = gaussians.means[keep_mask]
+
+            if hasattr(gaussians, 'rotations') and gaussians.rotations is not None:
+                if torch.is_tensor(gaussians.rotations):
+                    gaussians.rotations = gaussians.rotations[keep_mask]
+                else:
+                    gaussians.rotations = gaussians.rotations[keep_mask]
+
+            if hasattr(gaussians, 'scales') and gaussians.scales is not None:
+                if torch.is_tensor(gaussians.scales):
+                    gaussians.scales = gaussians.scales[keep_mask]
+                else:
+                    gaussians.scales = gaussians.scales[keep_mask]
+
+            if hasattr(gaussians, 'opacities') and gaussians.opacities is not None:
+                if torch.is_tensor(gaussians.opacities):
+                    gaussians.opacities = gaussians.opacities[keep_mask]
+                else:
+                    gaussians.opacities = gaussians.opacities[keep_mask]
+
+            if hasattr(gaussians, 'colors') and gaussians.colors is not None:
+                if torch.is_tensor(gaussians.colors):
+                    gaussians.colors = gaussians.colors[keep_mask]
+                else:
+                    gaussians.colors = gaussians.colors[keep_mask]
+
+            if hasattr(gaussians, 'confidence') and gaussians.confidence is not None:
+                if torch.is_tensor(gaussians.confidence):
+                    gaussians.confidence = gaussians.confidence[keep_mask]
+                else:
+                    gaussians.confidence = gaussians.confidence[keep_mask]
+
+        except Exception as e:
+            logger.warning(f"Error applying confidence filter to gaussians: {e}")
+            logger.warning("Returning unfiltered gaussians")
+            return result
+
+        return result

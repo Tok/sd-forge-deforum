@@ -574,6 +574,22 @@ def create_tuning_tab() -> tuple:
                 - Optimize near-clip distance for quality
                 - Find best balance between keyframe count and splat density
 
+                **🎯 RECOMMENDED SETTINGS (Empirically Validated):**
+                - **Densification: 1-2** (CRITICAL! Higher = worse quality)
+                - **Neighbor segments: 4** (empirically optimal, score 95.26)
+                - **Scene type: Photorealistic** (better depth estimation with lighting gradients)
+                - **Subimages per keyframe: 5** (helps DA3 find multi-view commonality)
+                - **Near-clip: 0.0** (disabled) - previous tests showed minimal quality impact
+
+                **⚠️ DENSIFICATION PARADOX (COUNTERINTUITIVE!):**
+                - **"Densification" splits splats into MORE but SMALLER/WEAKER pieces**
+                - **D=1**: 1 large opaque splat → solid colors, best quality (score 96.46)
+                - **D=4**: Split into 4 weak splats → faded/ghosty colors (score 84)
+                - **D=8**: Split into 8 tiny splats → very transparent (score 63.41)
+                - **Why:** Splats don't properly alpha-blend, each split piece has reduced opacity
+                - **Result:** More splats = worse quality (opposite of intuition!)
+                - **Confirmed:** Simple AND photorealistic scenes both follow this pattern
+
                 **✨ REAL 3DGS Testing with Actual Depth Estimation & Rendering**
                 - Tests use **gradient sphere images** as input (no ZIT diffusion needed)
                 - Runs **ACTUAL DA3 depth estimation** on keyframes
@@ -588,14 +604,14 @@ def create_tuning_tab() -> tuple:
                 2. Estimates camera poses using DA3 GIANT model
                 3. Builds 3D Gaussian Splatting scene (~705k base splats)
                 4. Renders novel views via camera pose interpolation
-                5. Applies densification to increase splat count (1-8x)
+                5. Applies densification to increase splat count (1-8x, **but 2 is optimal!**)
 
                 **Quality Tradeoffs:**
                 - **More keyframes** = Better geometry coverage, slower, more VRAM
-                - **Higher densification** = Finer detail per scene, more VRAM
-                - **Per-segment** = Fast, minimal VRAM, but coordinate drift
-                - **Per-prompt** = Semantic coherence, eliminates drift, VRAM scales with prompt length
-                - **Rolling window** = Predictable VRAM, fixed window size
+                - **LOWER densification** = **BETTER quality** (D=1 best, D=4+ causes ghosting/fading)
+                  - Why: Densification SPLITS splats into weaker pieces, not adds more coverage
+                  - Each split reduces per-splat opacity → transparent/ghosty appearance
+                  - Empirically confirmed: D=1 (96.46 score) >> D=4 (84 score) >> D=8 (63.41 score)
 
                 **Goal:** Find optimal parameters for your use case (speed vs quality vs VRAM).
                 """)
@@ -605,67 +621,83 @@ def create_tuning_tab() -> tuple:
                     with gr.Column(scale=1):
                         gr.Markdown("## DA3-3DGS Test Configuration")
 
-                        gr.Markdown("### Test Setup")
-                        dgs_aspect_ratios = gr.CheckboxGroup(
-                            label="Aspect ratios to test",
-                            choices=["16:9 (Landscape)", "9:16 (Portrait)", "1:1 (Square)"],
-                            value=["16:9 (Landscape)"],
-                        )
-                        dgs_rotation_factor = gr.Slider(
-                            label="Rotation factor (fixed)",
-                            minimum=-50.0,
-                            maximum=-1.0,
-                            value=-8.0,
-                            step=0.05,
-                            info="Empirically validated optimal from orbit tests (range: -6 to -9)",
-                        )
-                        dgs_orbit_radius = gr.Slider(
-                            label="Movement scale (translation amount)",
-                            minimum=1.0,
-                            maximum=20.0,
-                            value=5.0,
-                            step=0.5,
-                            info="Translation per orbit (2-3 = gentle, 5 = moderate, 10+ = aggressive)",
-                        )
-                        dgs_test_iterations = gr.Slider(
-                            label="Test iterations (frames to generate)",
-                            minimum=10,
-                            maximum=200,
-                            value=50,
-                            step=5,
-                            info="How many frames to generate per test configuration",
+                        gr.Markdown("### Test Mode")
+                        dgs_test_mode = gr.Radio(
+                            label="DA3-3DGS Test Mode",
+                            choices=[
+                                "Standard Parameter Sweep",
+                                "Two-Pass Refinement (Coherent Video → DA3-3DGS)",
+                                "Single Scene Multi-Angle"
+                            ],
+                            value="Standard Parameter Sweep",
+                            info="Standard: Sweep parameters with synthetic keyframes. Two-Pass: Feed coherent animation through DA3-3DGS. Single Scene: Variations of ONE scene instead of different scenes."
                         )
 
-                        gr.Markdown("### Scene Strategy")
-                        dgs_scene_strategies = gr.CheckboxGroup(
-                            label="Scene strategies to test",
-                            choices=["per_segment", "per_prompt", "rolling_window"],
-                            value=["per_segment"],
-                            info="per_segment = fast, per_prompt = semantic coherence, rolling_window = fixed VRAM",
+                        gr.Markdown("### Test Setup")
+
+                        gr.Markdown("#### Resolution (Higher = More Splats Naturally)")
+                        dgs_resolution_preset = gr.Radio(
+                            label="Resolution preset",
+                            choices=[
+                                "480p (854×480, fast)",
+                                "720p (1280×720, recommended)",
+                                "1080p (1920×1080, high quality)",
+                                "Custom"
+                            ],
+                            value="720p (1280×720, recommended)",
+                            info="Higher resolution = more pixels = more initial splats WITHOUT densification! 720p = ~6× more splats than 512×288."
                         )
-                        dgs_rolling_window_size = gr.Slider(
-                            label="Rolling window size (keyframes)",
-                            minimum=10,
+
+                        with gr.Row():
+                            dgs_custom_width = gr.Slider(
+                                label="Custom width",
+                                minimum=256,
+                                maximum=2560,
+                                value=1280,
+                                step=64,
+                                visible=False,
+                                info="Only used if 'Custom' selected above"
+                            )
+                            dgs_custom_height = gr.Slider(
+                                label="Custom height",
+                                minimum=144,
+                                maximum=1440,
+                                value=720,
+                                step=16,
+                                visible=False,
+                                info="Only used if 'Custom' selected above"
+                            )
+
+                        dgs_aspect_ratios = gr.CheckboxGroup(
+                            label="Aspect ratios to test (if multiple presets)",
+                            choices=["16:9 (Landscape)", "9:16 (Portrait)", "1:1 (Square)"],
+                            value=["16:9 (Landscape)"],
+                            info="Tests same resolution in different aspect ratios"
+                        )
+
+                        gr.Markdown("### DA3 Quality Parameters (NEW!)")
+
+                        dgs_use_ray_pose = gr.Checkbox(
+                            label="Use ray pose estimation",
+                            value=False,
+                            info="🎯 More accurate camera poses from DA3 ray head. Slower but better geometry. Recommended: enable for best quality!"
+                        )
+
+                        dgs_confidence_threshold = gr.Slider(
+                            label="Confidence threshold percentile",
+                            minimum=0,
                             maximum=100,
+                            value=0,
                             step=5,
-                            value=30,
-                            info="For rolling_window mode only",
-                        )
-                        dgs_max_prompt_keyframes = gr.Slider(
-                            label="Max keyframes per prompt scene",
-                            minimum=10,
-                            maximum=200,
-                            step=10,
-                            value=50,
-                            info="For per_prompt mode only: Split large prompt segments if they exceed this",
+                            info="💎 Filter low-confidence splats. 0=disabled (keep all), 50=keep top 50% most confident, 90=only very confident splats. Higher = fewer but better quality splats!"
                         )
 
                         gr.Markdown("### Quality Parameters to Sweep")
                         dgs_models = gr.CheckboxGroup(
                             label="DA3 models",
-                            choices=["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
-                            value=["DA3-GIANT", "DA3NESTED-GIANT-LARGE"],
-                            info="GIANT = 4GB VRAM, LARGE = 4.5GB VRAM + better quality (compare both)",
+                            choices=["DA3-GIANT"],
+                            value=["DA3-GIANT"],
+                            info="DA3-GIANT: 1.15B params, 4-5GB VRAM, best quality (DA3NESTED removed due to 3DGS incompatibility)",
                         )
                         dgs_neighbor_segments_min = gr.Slider(
                             label="Min neighbor segments",
@@ -673,15 +705,15 @@ def create_tuning_tab() -> tuple:
                             maximum=10,
                             value=4,
                             step=1,
-                            info="Minimum keyframes to include around each segment",
+                            info="🔢 Keyframes used around each segment. More keyframes = better geometry coverage + slower + more VRAM. Fix: set min=max. Sweep: set different values.",
                         )
                         dgs_neighbor_segments_max = gr.Slider(
                             label="Max neighbor segments",
                             minimum=2,
                             maximum=10,
-                            value=6,
+                            value=4,
                             step=1,
-                            info="Results show 3-6 is sweet spot (4 optimal with score 95.26)",
+                            info="Empirical optimal: 4 (score 95.26). Safe range: 3-6. Set equal to min to fix this parameter.",
                         )
                         dgs_neighbor_segments_step = gr.Slider(
                             label="Neighbor segments step",
@@ -689,23 +721,23 @@ def create_tuning_tab() -> tuple:
                             maximum=4,
                             value=1,
                             step=1,
-                            info="Step 1 for fine tuning (3, 4, 5, 6)",
+                            info="Sweep step size. 1 = fine tuning (test 3, 4, 5, 6). Ignored if min=max.",
                         )
                         dgs_densification_min = gr.Slider(
                             label="Min densification factor",
                             minimum=1,
-                            maximum=8,
+                            maximum=16,
                             value=1,
                             step=1,
-                            info="⚠️ CRITICAL! Results: 2=excellent (95), 4=medium (84), 6=poor (70)",
+                            info="⚠️ COUNTERINTUITIVE: Higher = WORSE! Splits splats into more but weaker pieces. D=1: ~705k strong splats (96.46 score, BEST). D=2: ~1.4M weaker splats (95 score). D=4: ~2.8M weak splats (84 score, ghosting starts).",
                         )
                         dgs_densification_max = gr.Slider(
                             label="Max densification factor",
                             minimum=1,
-                            maximum=8,
-                            value=5,
+                            maximum=16,
+                            value=1,
                             step=1,
-                            info="Test 1-5 (lower is better! 2 is empirically optimal)",
+                            info="⚠️ CRITICAL: D=4+ causes faded colors, ghosting, transparency! Each splat split reduces opacity. D=1 recommended. D=2 acceptable. D=4+ = visible quality degradation. Set equal to min to fix.",
                         )
                         dgs_densification_step = gr.Slider(
                             label="Densification step",
@@ -713,31 +745,222 @@ def create_tuning_tab() -> tuple:
                             maximum=4,
                             value=1,
                             step=1,
-                            info="Step 1 for fine tuning around optimal value of 2",
+                            info="Sweep step size. 1 = fine tuning (test 1, 2, 3, 4). Ignored if min=max.",
                         )
                         dgs_nearclip_min = gr.Slider(
                             label="Min near-clip distance",
-                            minimum=0.00,
+                            minimum=0.0,
                             maximum=1.0,
-                            value=0.00,
+                            value=0.0,
                             step=0.01,
-                            info="Results show minimal impact (0.00-0.15 changes score <0.1)",
+                            info="Depth threshold for filtering near splats. 0.0 = disabled (include all splats). 0.01-0.15 = minimal filtering. Set to 0.0 to disable during sweeps.",
                         )
                         dgs_nearclip_max = gr.Slider(
                             label="Max near-clip distance",
-                            minimum=0.00,
+                            minimum=0.0,
                             maximum=1.0,
-                            value=0.10,
+                            value=0.0,
                             step=0.01,
-                            info="Just test extremes (0.00 disabled, 0.10 moderate filtering)",
+                            info="Previous empirical: minimal quality impact (0.00-0.15). Recommended: start at 0.0 (disabled), sweep to 0.15 if testing filtering effects.",
                         )
                         dgs_nearclip_step = gr.Slider(
                             label="Near-clip step",
                             minimum=0.01,
                             maximum=0.5,
-                            value=0.10,
+                            value=0.05,
                             step=0.01,
-                            info="Large step OK (minimal impact on quality)",
+                            info="Sweep step size. 0.05 = test [0.0, 0.05, 0.10, 0.15]. Previous tests showed minimal impact, so large steps OK.",
+                        )
+
+                        gr.Markdown("### 🎥 Schedule Blend Factor")
+                        gr.Markdown("""
+                        **Blending between DA3 auto-poses and Deforum manual schedules:**
+                        - **0.0** = Pure DA3 (automatic camera poses, geometrically accurate)
+                        - **0.5** = Hybrid (DA3 baseline + 50% Deforum schedule offsets)
+                        - **1.0** = Pure Deforum (full manual camera schedule control)
+
+                        ⚠️ **Currently NOT IMPLEMENTED in rendering** - all tests use pure DA3 poses regardless of blend_factor value. This parameter is for future integration.
+                        """)
+                        dgs_test_scene_type = gr.Radio(
+                            label="Test Scene Type",
+                            choices=[
+                                "Simple (Red Cube → Blue Sphere)",
+                                "Photorealistic (City/Interior with Z-Image-Turbo)"
+                            ],
+                            value="Photorealistic (City/Interior with Z-Image-Turbo)",
+                            info="⚠️ Simple mode often produces ghosty wireframes (flat colors → poor depth estimation). Photorealistic = better depth gradients → solid geometry. Use Photorealistic for quality testing!"
+                        )
+                        dgs_blend_factor_min = gr.Slider(
+                            label="Min blend factor",
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.0,
+                            step=0.05,
+                            info="🎬 Schedule blend start. 0.0 = pure DA3. Fix: set min=max. Sweep: set different values (e.g., 0.0→1.0 to test all blending ratios)",
+                        )
+                        dgs_blend_factor_max = gr.Slider(
+                            label="Max blend factor",
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.0,
+                            step=0.05,
+                            info="Schedule blend end. 1.0 = pure Deforum schedules. Set equal to min to fix. Example sweep: min=0.0, max=1.0, step=0.25 → tests [0.0, 0.25, 0.5, 0.75, 1.0]",
+                        )
+                        dgs_blend_factor_step = gr.Slider(
+                            label="Blend factor step",
+                            minimum=0.05,
+                            maximum=0.5,
+                            value=0.25,
+                            step=0.05,
+                            info="Sweep step size. 0.25 = 5 tests, 0.1 = 11 tests, 0.05 = 21 tests. Ignored if min=max.",
+                        )
+                        dgs_subimages_per_keyframe = gr.Slider(
+                            label="Subimages per keyframe (photorealistic only)",
+                            minimum=1,
+                            maximum=10,
+                            value=5,
+                            step=1,
+                            info="Generate N variations per keyframe with different seeds. Helps DA3 find commonality in synthetic scenes. 5 = 15 total images (3 keyframes × 5 subimages)",
+                        )
+
+                        gr.Markdown("### Custom Scene Prompts (synthwave/retro aesthetic)")
+                        dgs_scene_prompt_1 = gr.Textbox(
+                            label="Scene 1 prompt (Epic Horizon Drive)",
+                            value="epic cinematic scene, a pristine white Lamborghini Countach LP5000, parked on a neon-grid desert highway under a massive purple and pink dusk sky, digital art, synthwave, retrofuturism, glowing cyan and magenta underglow, reflective paint, trending on ArtStation, ultra-detailed, vibrant, 8k",
+                            lines=3,
+                            info="Synthwave desert highway scene",
+                        )
+                        dgs_scene_prompt_2 = gr.Textbox(
+                            label="Scene 2 prompt (Neon Metropolis Reflection)",
+                            value="low-angle shot of a white Lamborghini Countach, perfectly reflected on a rain-slicked city street at night, towering neon-lit skyscrapers and holographic advertisements in background, synthwave retro 80s aesthetic, volumetric neon light beams, cinematic lighting, sharp details, vibrant colors, depth of field",
+                            lines=3,
+                            info="Neon city with rain reflections",
+                        )
+                        dgs_scene_prompt_3 = gr.Textbox(
+                            label="Scene 3 prompt (Vector Grid Escape)",
+                            value="white Lamborghini Countach in side profile, speeding through a glowing cyan vector grid tunnel, trailing light speed streaks, retro sunset with geometric sun in background, outrun style, synthwave album cover, vivid colors, high contrast, dynamic angle, sleek and stylish",
+                            lines=3,
+                            info="Vector grid tunnel with speed streaks",
+                        )
+
+                        # Two-Pass Refinement mode controls
+                        gr.Markdown("### Two-Pass Refinement Settings")
+                        gr.Markdown("""
+                        **Pipeline:** Phase 1: Generate coherent Deforum animation → Phase 2: DA3-3DGS refinement
+
+                        This addresses the core problem: DA3 needs temporally coherent multi-view data, not unrelated synthetic scenes!
+
+                        **Phase 1:** Generates simple test animation with 3D depth warping (60 frames, forward zoom)
+                        **Phase 2:** Processes frames through DA3-3DGS for novel view synthesis
+                        """)
+                        dgs_twopass_resume = gr.Textbox(
+                            label="Resume from previous test (optional)",
+                            value="",
+                            lines=1,
+                            placeholder="Paste test ID like: twopass_tuning_54bec7ce (or just: 54bec7ce)",
+                            info="RESUME: Skip Phase 1 and reuse frames from previous test. Paste the test directory name or just the ID code.",
+                        )
+
+                        # Movement pattern selection
+                        dgs_twopass_movement = gr.CheckboxGroup(
+                            label="Phase 1 Camera Movement Patterns (test multiple at once)",
+                            choices=[
+                                "Orbit Slow (30 units, 120°)",
+                                "Orbit Gentle (30 units, 360°)",
+                                "Orbit Moderate (40 units, 360°)",
+                                "Forward Zoom (5 units, subtle)",
+                                "Sideways Pan (20 units)",
+                            ],
+                            value=["Orbit Gentle (30 units, 360°)"],
+                            info="Generate Phase 1 with different camera movements. Uses DELTA schedules for proper depth warping. Rotation factor = -8.0 (empirically optimal).",
+                        )
+
+                        # Frame feeding strategy
+                        dgs_twopass_feeding = gr.CheckboxGroup(
+                            label="Phase 2 Frame Feeding Strategy (test multiple at once)",
+                            choices=[
+                                "All Frames (best quality, slower)",
+                                "Keyframes Only (faster, was working well)",
+                                "Every 2nd Frame (balanced)",
+                                "Every 5th Frame (very fast)",
+                            ],
+                            value=["Keyframes Only (faster, was working well)"],
+                            info="How many frames to feed DA3-3DGS. Each creates a separate Phase 2 render.",
+                        )
+
+                        dgs_twopass_video_path = gr.Textbox(
+                            label="Input video path (optional - leave empty to generate on-the-fly)",
+                            value="",
+                            lines=1,
+                            placeholder="Leave empty for automatic generation, or provide: /path/to/video.mp4 or /path/to/frames/",
+                            info="OPTIONAL: Provide existing video/frames, or leave empty to generate Deforum animation automatically",
+                            visible=False
+                        )
+                        dgs_twopass_frame_stride = gr.Slider(
+                            label="Frame stride (use every Nth frame)",
+                            minimum=1,
+                            maximum=10,
+                            value=1,
+                            step=1,
+                            info="1 = use all frames, 2 = every other frame, 4 = every 4th frame (faster but less dense coverage)",
+                            visible=False
+                        )
+                        dgs_twopass_segment_size = gr.Slider(
+                            label="Frames per DA3-3DGS segment",
+                            minimum=10,
+                            maximum=120,
+                            value=30,
+                            step=5,
+                            info="How many consecutive frames to process as one 3DGS scene (30 = 1 sec at 30fps)",
+                            visible=False
+                        )
+                        dgs_twopass_overlap = gr.Slider(
+                            label="Segment overlap percentage",
+                            minimum=0,
+                            maximum=50,
+                            value=20,
+                            step=5,
+                            info="Overlap between consecutive segments for smoother transitions (20% = 6 frames at 30 frame segments)",
+                            visible=False
+                        )
+
+                        # Single Scene Multi-Angle mode controls
+                        gr.Markdown("### Single Scene Multi-Angle Settings")
+                        gr.Markdown("""
+                        **Pipeline:** Generate N variations of ONE scene → DA3 gets proper multi-view data of same location
+
+                        Instead of feeding DA3 unrelated scenes (city → highway → beach), give it multiple views of the SAME scene!
+                        """)
+                        dgs_singlescene_base_prompt = gr.Textbox(
+                            label="Base scene prompt",
+                            value="modern city street with tall buildings, shops, and cars, architectural photography, detailed, 8k",
+                            lines=2,
+                            info="Single scene that will be viewed from multiple angles",
+                            visible=False
+                        )
+                        dgs_singlescene_num_angles = gr.Slider(
+                            label="Number of angle variations",
+                            minimum=3,
+                            maximum=20,
+                            value=8,
+                            step=1,
+                            info="How many different camera angles/views to generate (more = better geometry coverage)",
+                            visible=False
+                        )
+                        dgs_singlescene_angle_variation = gr.Slider(
+                            label="Camera angle variation strength",
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.3,
+                            step=0.05,
+                            info="0.0 = slight angle changes (subtle), 1.0 = dramatic angle changes (full 360°)",
+                            visible=False
+                        )
+                        dgs_singlescene_lighting_variation = gr.Checkbox(
+                            label="Enable lighting/time-of-day variation",
+                            value=False,
+                            info="Add 'morning light', 'sunset', 'golden hour' variations to prompt",
+                            visible=False
                         )
 
                         # 3DGS test action buttons
@@ -1244,13 +1467,21 @@ def create_tuning_tab() -> tuple:
 
         # DA3-3DGS Tests button handlers
         def on_run_dgs_tests(
+            dgs_test_mode_val,
+            dgs_resolution_preset_val,
+            dgs_custom_width_val,
+            dgs_custom_height_val,
             dgs_aspect_ratios_val,
-            dgs_rotation_factor_val,
-            dgs_orbit_radius_val,
-            dgs_test_iterations_val,
-            dgs_scene_strategies_val,
-            dgs_rolling_window_size_val,
-            dgs_max_prompt_keyframes_val,
+            dgs_use_ray_pose_val,
+            dgs_confidence_threshold_val,
+            dgs_blend_factor_min_val,
+            dgs_blend_factor_max_val,
+            dgs_blend_factor_step_val,
+            dgs_subimages_per_keyframe_val,
+            dgs_scene_prompt_1_val,
+            dgs_scene_prompt_2_val,
+            dgs_scene_prompt_3_val,
+            dgs_test_scene_type_val,
             dgs_models_val,
             dgs_neighbor_segments_min_val,
             dgs_neighbor_segments_max_val,
@@ -1261,37 +1492,68 @@ def create_tuning_tab() -> tuple:
             dgs_nearclip_min_val,
             dgs_nearclip_max_val,
             dgs_nearclip_step_val,
+            # Two-Pass mode params
+            dgs_twopass_resume_val,
+            dgs_twopass_video_path_val,
+            dgs_twopass_frame_stride_val,
+            dgs_twopass_segment_size_val,
+            dgs_twopass_overlap_val,
+            dgs_twopass_movement_val,
+            dgs_twopass_feeding_val,
+            # Single Scene mode params
+            dgs_singlescene_base_prompt_val,
+            dgs_singlescene_num_angles_val,
+            dgs_singlescene_angle_variation_val,
+            dgs_singlescene_lighting_variation_val,
         ):
             """Start DA3-3DGS tuning tests via API."""
             try:
-                # DEBUG: Log received values to diagnose Gradio caching issue
+                # Parse resolution from preset or custom
+                if "480p" in dgs_resolution_preset_val:
+                    base_width, base_height = 854, 480
+                elif "720p" in dgs_resolution_preset_val:
+                    base_width, base_height = 1280, 720
+                elif "1080p" in dgs_resolution_preset_val:
+                    base_width, base_height = 1920, 1080
+                elif "Custom" in dgs_resolution_preset_val:
+                    base_width, base_height = int(dgs_custom_width_val), int(dgs_custom_height_val)
+                else:
+                    base_width, base_height = 1280, 720  # Default to 720p
+
+                # DEBUG: Log received values
                 logger.info(f"[UI DEBUG] Received DA3-3DGS test parameters:")
+                logger.info(f"  resolution: {base_width}×{base_height} (preset: {dgs_resolution_preset_val})")
+                logger.info(f"  use_ray_pose: {dgs_use_ray_pose_val}, confidence_threshold: {dgs_confidence_threshold_val}%")
                 logger.info(f"  models: {dgs_models_val}")
                 logger.info(f"  neighbor_segments: {dgs_neighbor_segments_min_val}-{dgs_neighbor_segments_max_val} step {dgs_neighbor_segments_step_val}")
                 logger.info(f"  densification: {dgs_densification_min_val}-{dgs_densification_max_val} step {dgs_densification_step_val}")
                 logger.info(f"  nearclip: {dgs_nearclip_min_val}-{dgs_nearclip_max_val} step {dgs_nearclip_step_val}")
 
-                # Parse aspect ratios
+                # Parse aspect ratios using base resolution
                 aspect_configs = []
                 for aspect_str in dgs_aspect_ratios_val:
                     if "16:9" in aspect_str:
-                        aspect_configs.append([1.78, 512, 288])
+                        aspect_configs.append([1.78, base_width, base_height])
                     elif "9:16" in aspect_str:
-                        aspect_configs.append([0.56, 288, 512])
+                        aspect_configs.append([0.56, base_height, base_width])  # Swap width/height
                     elif "1:1" in aspect_str:
-                        aspect_configs.append([1.0, 512, 512])
+                        aspect_configs.append([1.0, base_width, base_width])  # Square using width
 
-                # Create DA3-3DGS test config (using synthetic test images, no diffusion)
+                # Determine test type based on selected mode
+                if "Two-Pass" in dgs_test_mode_val:
+                    test_type = "da3_3dgs_twopass"
+                elif "Single Scene" in dgs_test_mode_val:
+                    test_type = "da3_3dgs_singlescene"
+                else:
+                    test_type = "da3_3dgs_blend_factor"
+
                 # IMPORTANT: Keys must match TuningTestConfig field names (with dgs_ prefix)
                 config = {
-                    "test_type": "da3_3dgs_synthetic",
+                    "test_type": test_type,
                     "aspect_ratios": aspect_configs,
-                    "rotation_factor": dgs_rotation_factor_val,
-                    "orbit_radius": dgs_orbit_radius_val,
-                    "test_iterations": int(dgs_test_iterations_val),
-                    "dgs_scene_strategies": dgs_scene_strategies_val,
-                    "dgs_rolling_window_size": int(dgs_rolling_window_size_val),
-                    "dgs_max_prompt_keyframes": int(dgs_max_prompt_keyframes_val),
+                    "dgs_test_mode": dgs_test_mode_val,
+                    "dgs_use_ray_pose": bool(dgs_use_ray_pose_val),
+                    "dgs_confidence_threshold": float(dgs_confidence_threshold_val),
                     "dgs_models": dgs_models_val,
                     "dgs_neighbor_segments_min": int(dgs_neighbor_segments_min_val),
                     "dgs_neighbor_segments_max": int(dgs_neighbor_segments_max_val),
@@ -1302,6 +1564,27 @@ def create_tuning_tab() -> tuple:
                     "dgs_nearclip_min": float(dgs_nearclip_min_val),
                     "dgs_nearclip_max": float(dgs_nearclip_max_val),
                     "dgs_nearclip_step": float(dgs_nearclip_step_val),
+                    "dgs_blend_factor_min": float(dgs_blend_factor_min_val),
+                    "dgs_blend_factor_max": float(dgs_blend_factor_max_val),
+                    "dgs_blend_factor_step": float(dgs_blend_factor_step_val),
+                    "dgs_subimages_per_keyframe": int(dgs_subimages_per_keyframe_val),
+                    "dgs_scene_prompt_1": dgs_scene_prompt_1_val,
+                    "dgs_scene_prompt_2": dgs_scene_prompt_2_val,
+                    "dgs_scene_prompt_3": dgs_scene_prompt_3_val,
+                    "dgs_test_scene_type": dgs_test_scene_type_val,
+                    # Two-Pass mode params
+                    "dgs_twopass_resume": dgs_twopass_resume_val.strip() if dgs_twopass_resume_val else "",
+                    "dgs_twopass_video_path": dgs_twopass_video_path_val,
+                    "dgs_twopass_frame_stride": int(dgs_twopass_frame_stride_val),
+                    "dgs_twopass_segment_size": int(dgs_twopass_segment_size_val),
+                    "dgs_twopass_overlap": int(dgs_twopass_overlap_val),
+                    "dgs_twopass_movement": dgs_twopass_movement_val,
+                    "dgs_twopass_feeding": dgs_twopass_feeding_val,
+                    # Single Scene mode params
+                    "dgs_singlescene_base_prompt": dgs_singlescene_base_prompt_val,
+                    "dgs_singlescene_num_angles": int(dgs_singlescene_num_angles_val),
+                    "dgs_singlescene_angle_variation": float(dgs_singlescene_angle_variation_val),
+                    "dgs_singlescene_lighting_variation": bool(dgs_singlescene_lighting_variation_val),
                 }
 
                 # Submit test
@@ -1321,16 +1604,85 @@ def create_tuning_tab() -> tuple:
                 logger.error(f"Failed to start DA3-3DGS tests: {e}")
                 return f"{cross} Error starting DA3-3DGS tests: {e}"
 
+        # Test mode change handler (show/hide mode-specific controls)
+        def on_dgs_test_mode_change(mode):
+            is_twopass = "Two-Pass" in mode
+            is_singlescene = "Single Scene" in mode
+            is_standard = "Standard" in mode
+
+            return {
+                # Two-Pass controls
+                dgs_twopass_resume: gr.update(visible=is_twopass),
+                dgs_twopass_movement: gr.update(visible=is_twopass),
+                dgs_twopass_feeding: gr.update(visible=is_twopass),
+                dgs_twopass_video_path: gr.update(visible=is_twopass),
+                dgs_twopass_frame_stride: gr.update(visible=is_twopass),
+                dgs_twopass_segment_size: gr.update(visible=is_twopass),
+                dgs_twopass_overlap: gr.update(visible=is_twopass),
+                # Single Scene controls
+                dgs_singlescene_base_prompt: gr.update(visible=is_singlescene),
+                dgs_singlescene_num_angles: gr.update(visible=is_singlescene),
+                dgs_singlescene_angle_variation: gr.update(visible=is_singlescene),
+                dgs_singlescene_lighting_variation: gr.update(visible=is_singlescene),
+                # Standard mode controls (scene prompts only in standard mode)
+                dgs_scene_prompt_1: gr.update(visible=is_standard),
+                dgs_scene_prompt_2: gr.update(visible=is_standard),
+                dgs_scene_prompt_3: gr.update(visible=is_standard),
+            }
+
+        dgs_test_mode.change(
+            fn=on_dgs_test_mode_change,
+            inputs=[dgs_test_mode],
+            outputs=[
+                dgs_twopass_resume,
+                dgs_twopass_movement,
+                dgs_twopass_feeding,
+                dgs_twopass_video_path,
+                dgs_twopass_frame_stride,
+                dgs_twopass_segment_size,
+                dgs_twopass_overlap,
+                dgs_singlescene_base_prompt,
+                dgs_singlescene_num_angles,
+                dgs_singlescene_angle_variation,
+                dgs_singlescene_lighting_variation,
+                dgs_scene_prompt_1,
+                dgs_scene_prompt_2,
+                dgs_scene_prompt_3,
+            ],
+        )
+
+        # Resolution preset change handler (show/hide custom fields)
+        def on_resolution_preset_change(preset):
+            is_custom = "Custom" in preset
+            return {
+                dgs_custom_width: gr.update(visible=is_custom),
+                dgs_custom_height: gr.update(visible=is_custom),
+            }
+
+        dgs_resolution_preset.change(
+            fn=on_resolution_preset_change,
+            inputs=[dgs_resolution_preset],
+            outputs=[dgs_custom_width, dgs_custom_height],
+        )
+
         dgs_run_btn.click(
             fn=on_run_dgs_tests,
             inputs=[
+                dgs_test_mode,
+                dgs_resolution_preset,
+                dgs_custom_width,
+                dgs_custom_height,
                 dgs_aspect_ratios,
-                dgs_rotation_factor,
-                dgs_orbit_radius,
-                dgs_test_iterations,
-                dgs_scene_strategies,
-                dgs_rolling_window_size,
-                dgs_max_prompt_keyframes,
+                dgs_use_ray_pose,
+                dgs_confidence_threshold,
+                dgs_blend_factor_min,
+                dgs_blend_factor_max,
+                dgs_blend_factor_step,
+                dgs_subimages_per_keyframe,
+                dgs_scene_prompt_1,
+                dgs_scene_prompt_2,
+                dgs_scene_prompt_3,
+                dgs_test_scene_type,
                 dgs_models,
                 dgs_neighbor_segments_min,
                 dgs_neighbor_segments_max,
@@ -1341,6 +1693,19 @@ def create_tuning_tab() -> tuple:
                 dgs_nearclip_min,
                 dgs_nearclip_max,
                 dgs_nearclip_step,
+                # Two-Pass mode params
+                dgs_twopass_resume,
+                dgs_twopass_video_path,
+                dgs_twopass_frame_stride,
+                dgs_twopass_segment_size,
+                dgs_twopass_overlap,
+                dgs_twopass_movement,
+                dgs_twopass_feeding,
+                # Single Scene mode params
+                dgs_singlescene_base_prompt,
+                dgs_singlescene_num_angles,
+                dgs_singlescene_angle_variation,
+                dgs_singlescene_lighting_variation,
             ],
             outputs=[dgs_status_box],
         )
