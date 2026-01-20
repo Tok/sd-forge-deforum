@@ -123,4 +123,49 @@ The new ComfyUI memory management appears less efficient than previous implement
 
 ---
 
-**Next Action:** Monitor Forge Neo updates, test when new commits appear
+## Latest Findings (2026-01-20 22:20)
+
+### Critical Bug: --lowvram Flag Broken
+
+Attempted workaround with `--lowvram` flag failed:
+
+```
+VRAM State: LOW_VRAM                 ← Flag recognized
+loaded completely; full load: True   ← Still loading completely (BUG!)
+```
+
+### Memory Corruption Bug
+
+JointTextEncoder shows corrupted memory calculation:
+```
+loaded completely; 95367431640625005117571072.00 MB usable, 8414.12 MB loaded
+```
+
+**95 septillion MB** - clear memory corruption in new ComfyUI backend.
+
+### Root Cause Analysis
+
+**Old System (backup-pre-comfy-merge):**
+- Models split between GPU and CPU automatically
+- Partial loading: `gpu_modules` on GPU, `cpu_modules` on CPU
+- Z-Image worked: ~16GB total with smart offloading
+
+**New System (current):**
+- Attempts full GPU loading even with `--lowvram` flag
+- Memory calculation corrupted (overflow/underflow bug)
+- Partial loading code path appears broken
+- Result: 20GB+ needed, crashes on 16GB card
+
+### Conclusion
+
+This is a **critical upstream bug in Forge Neo**, not a Deforum issue:
+- ✗ Memory corruption (septillion MB calculation)
+- ✗ `--lowvram` flag ignored
+- ✗ Partial loading broken
+- ✗ Affects plain Forge txt2img (not Deforum-specific)
+
+**Recommendation:** Rollback to `backup-pre-comfy-merge` until upstream fixes the ComfyUI backend regression.
+
+---
+
+**Next Action:** Monitor Forge Neo updates, retest in 3 days
