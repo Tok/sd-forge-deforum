@@ -32,7 +32,8 @@ def generate_and_save_depth_map_if_active(data, opencv_image, i):
 def create_depth_model_and_enable_depth_map_saving_if_active(anim_mode, root, anim_args, args):
     """Create depth model with automatic DA3 upgrade for Gaussian Scene mode."""
     # CRITICAL: Check if depth is actually needed for this render mode
-    render_mode = getattr(args, 'render_mode', 'New 3D')
+    # NOTE: render_mode is in anim_args (DeforumAnimArgs), not args (DeforumArgs)
+    render_mode = getattr(anim_args, 'render_mode', 'New 3D')
     animation_mode = getattr(anim_args, 'animation_mode', '3D')
 
     # DEBUG: Log depth model decision factors
