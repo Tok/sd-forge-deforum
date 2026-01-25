@@ -17,11 +17,11 @@ class LTX2ModelDiscovery:
     """Discovers and manages LTX-2 models"""
 
     # LTX-2 model variants
-    # NOTE: All variants use the same HuggingFace repo "Lightricks/LTX-Video"
+    # NOTE: All variants use the same HuggingFace repo "Lightricks/LTX-2"
     # Quantization is applied via BitsAndBytesConfig, not separate model files
     MODEL_VARIANTS = {
         "LTX-2-4K-NF4": {
-            "huggingface_id": "Lightricks/LTX-Video",
+            "huggingface_id": "Lightricks/LTX-2",
             "description": "4K variant, 4-bit quantized (19B params, NF4)",
             "vram_gb": 12,
             "max_resolution": "4K (3840x2160)",
@@ -31,7 +31,7 @@ class LTX2ModelDiscovery:
             "note": "Recommended for 16GB VRAM (RTX 4070 Ti, 4080, etc.)"
         },
         "LTX-2-4K": {
-            "huggingface_id": "Lightricks/LTX-Video",
+            "huggingface_id": "Lightricks/LTX-2",
             "description": "Full 4K variant (19B params, FP16)",
             "vram_gb": 24,
             "max_resolution": "4K (3840x2160)",
@@ -41,7 +41,7 @@ class LTX2ModelDiscovery:
             "note": "Requires 24GB+ VRAM (RTX 4090, A6000, etc.)"
         },
         "LTX-2-HD": {
-            "huggingface_id": "Lightricks/LTX-Video",
+            "huggingface_id": "Lightricks/LTX-2",
             "description": "HD variant (16B params, FP16)",
             "vram_gb": 18,
             "max_resolution": "1080p (1920x1080)",

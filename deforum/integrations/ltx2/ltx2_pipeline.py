@@ -102,11 +102,11 @@ class LTX2Pipeline:
                 from transformers import BitsAndBytesConfig
                 from diffusers import PipelineQuantizationConfig
 
-                # Create BitsAndBytes config
+                # Create BitsAndBytes config (use bfloat16 as recommended for LTX-2)
                 bnb_config = BitsAndBytesConfig(
                     load_in_4bit=True,
                     bnb_4bit_quant_type="nf4",
-                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_compute_dtype=torch.bfloat16,
                     bnb_4bit_use_double_quant=True,
                 )
 
@@ -117,7 +117,7 @@ class LTX2Pipeline:
                 )
 
                 load_kwargs = {
-                    "torch_dtype": torch.float16,
+                    "torch_dtype": torch.bfloat16,
                     "quantization_config": quantization_config,
                 }
                 if tokenizer is not None:
@@ -125,26 +125,20 @@ class LTX2Pipeline:
 
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
             except (ImportError, Exception) as e:
-                logger.warning(f"Quantization not available, falling back to fp16", emoji='warning')
+                logger.warning(f"Quantization not available, falling back to bfloat16", emoji='warning')
                 logger.debug(f"Quantization error: {e}")
                 load_kwargs = {
-                    "torch_dtype": torch.float16,
-                    "variant": "fp16",
-                    "use_safetensors": True,
+                    "torch_dtype": torch.bfloat16,
                 }
                 if tokenizer is not None:
                     load_kwargs["tokenizer"] = tokenizer
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
         else:
-            # Full precision or fp16
-            dtype = torch.float16 if self.device == 'cuda' else torch.float32
-            variant = "fp16" if dtype == torch.float16 else None
+            # Full precision or bfloat16 (LTX-2 recommends bfloat16, not fp16)
+            dtype = torch.bfloat16 if self.device == 'cuda' else torch.float32
             load_kwargs = {
                 "torch_dtype": dtype,
-                "use_safetensors": True,
             }
-            if variant is not None:
-                load_kwargs["variant"] = variant
             if tokenizer is not None:
                 load_kwargs["tokenizer"] = tokenizer
             self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
