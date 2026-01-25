@@ -1,15 +1,15 @@
 # Testing
-coverage
-pytest
-pytest-cov  # Pytest plugin for coverage reporting
-syrupy
-tenacity
-pydantic_requests
-moviepy<2.0  # Tests use moviepy 1.x import syntax (from moviepy.editor import VideoFileClip)
-scikit-image  # Image quality metrics (SSIM for temporal consistency tests)
+coverage>=7.0
+pytest>=9.0
+pytest-cov>=7.0  # Pytest plugin for coverage reporting
+syrupy>=5.0  # Snapshot testing
+tenacity>=9.0  # Retry logic utilities
+pydantic_requests>=0.1.4  # Pydantic-based HTTP client
+moviepy>=1.0,<2.0  # Tests use moviepy 1.x import syntax (from moviepy.editor import VideoFileClip)
+scikit-image>=0.25  # Image quality metrics (SSIM for temporal consistency tests)
 
 # Linting and Formatting
-black  # Code formatter (100 char line length)
-flake8  # Linting (PEP8 compliance)
-radon  # Complexity analysis (McCabe complexity metrics)
-mypy  # Static type checker
+black>=26.0  # Code formatter (100 char line length)
+flake8>=7.0  # Linting (PEP8 compliance)
+radon>=6.0  # Complexity analysis (McCabe complexity metrics)
+mypy>=1.19  # Static type checker
