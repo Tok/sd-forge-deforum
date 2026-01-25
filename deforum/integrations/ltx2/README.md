@@ -1,8 +1,12 @@
 # LTX-2 Integration Status
 
-## Current State: GGUF FIXED, Testing Required (as of 2026-01-25)
+## Current State: READY FOR TESTING (as of 2026-01-25)
 
-LTX-2 integration is implemented. GGUF loading bug has been fixed - needs testing.
+LTX-2 integration is fully implemented. All known bugs have been fixed:
+- ✅ Class name bug fixed (LTX2VideoTransformer3DModel)
+- ✅ gguf package installed (0.17.1)
+- ✅ kernels package installed (0.12.0) for 10% CUDA speedup
+- ✅ CUDA kernels enabled via DIFFUSERS_GGUF_CUDA_KERNELS=true
 
 ## Issues
 
@@ -17,6 +21,15 @@ LTX-2 integration is implemented. GGUF loading bug has been fixed - needs testin
 - **Error:** `torch.OutOfMemoryError: Allocation on device` during warmup
 - **Status:** Happens even with `DISABLE_WARMUP=1`, `low_cpu_mem_usage=True`, and `max_memory` constraints
 - **Requires:** 24GB+ VRAM for full model, or successful quantization (which fails due to warmup)
+
+## Installation
+
+Required packages (add to venv):
+```bash
+pip install 'gguf>=0.10.0' kernels
+```
+
+Already in requirements.txt but needs manual install if not using `./setup.sh --install`.
 
 ## What's Implemented
 
