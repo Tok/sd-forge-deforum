@@ -182,18 +182,21 @@ class LTX2ModelDiscovery:
             Recommended variant name
         """
         # Prefer GGUF variants (better quantization quality and VRAM efficiency)
+        # CRITICAL: GGUF cannot use CPU offload (metadata loss issue)
+        # Must account for FULL memory: transformer + text_encoder (~5GB) + VAE (~2GB)
         if available_vram_gb >= 24:
             return "LTX-2-4K"  # Full precision for high-end cards
-        elif available_vram_gb >= 13:
-            return "LTX-2-Q4_K_M-GGUF"  # Best quality/VRAM balance (RTX 3080 Ti, 4070 Ti, 4080, etc.)
-        elif available_vram_gb >= 10:
-            return "LTX-2-Q3_K_M-GGUF"  # Lower VRAM, slightly reduced quality
-        elif available_vram_gb >= 8:
+        elif available_vram_gb >= 20:
+            return "LTX-2-Q4_K_M-GGUF"  # 13GB + 5GB + 2GB = 20GB total
+        elif available_vram_gb >= 17:
+            return "LTX-2-Q3_K_M-GGUF"  # 10GB + 5GB + 2GB = 17GB total
+        elif available_vram_gb >= 15:
             logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - using Q2_K (lowest quality)")
-            return "LTX-2-Q2_K-GGUF"  # Minimum viable quantization
+            return "LTX-2-Q2_K-GGUF"  # 8GB + 5GB + 2GB = 15GB total
         else:
-            logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 requires 8GB minimum (with Q2_K quantization)")
-            return "LTX-2-Q2_K-GGUF"  # Return Q2_K as absolute minimum
+            logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 requires 15GB minimum (Q2_K GGUF)")
+            logger.warning(f"Consider using Wan FLF2V or FILM instead")
+            return "LTX-2-Q2_K-GGUF"  # Return Q2_K as absolute minimum (will likely OOM)
 
     def is_any_model_available(self) -> bool:
         """Check if any LTX-2 model is downloaded."""

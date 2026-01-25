@@ -136,14 +136,12 @@ class LTX2Pipeline:
                     torch_dtype=torch.bfloat16,
                 )
 
-                # Enable sequential CPU offload - moves components to GPU one at a time
-                # This prevents transformer (~13GB) + text_encoder (~5GB) from being on GPU simultaneously
-                if self.device == 'cuda':
-                    logger.debug("Enabling sequential CPU offload for GGUF model...")
-                    self.pipeline.enable_sequential_cpu_offload()
-                    logger.debug("Sequential CPU offload enabled successfully")
+                # CRITICAL: Cannot use CPU offload with GGUF due to metadata loss
+                # GGUF tensors have quant_type metadata that becomes None when moved to meta device
+                # This causes KeyError in GGML_QUANT_SIZES lookup
+                # Must keep everything on GPU - requires smaller GGUF variant to fit in 14GB VRAM
 
-                logger.info("GGUF model loaded successfully with sequential CPU offloading", emoji='check')
+                logger.info("GGUF model loaded successfully (no CPU offload - incompatible with GGUF)", emoji='check')
 
             except Exception as e:
                 import traceback

@@ -42,12 +42,14 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
         free_vram_gb = torch.cuda.mem_get_info()[0] / 1024**3
         logger.info(f"  Current free VRAM: {free_vram_gb:.1f}GB")
 
-        # VRAM requirements for different variants (based on actual file sizes)
+        # VRAM requirements for different variants
+        # CRITICAL: GGUF cannot use CPU offload - must fit entirely in VRAM
+        # Total VRAM = transformer + text_encoder (~5GB) + VAE (~2GB)
         vram_requirements = {
-            'LTX-2-Q2_K-GGUF': 8.0,    # 8.1GB GGUF file
-            'LTX-2-Q3_K_M-GGUF': 10.0, # 10.1GB GGUF file
-            'LTX-2-Q4_K_M-GGUF': 13.0, # 12.8GB GGUF file
-            'LTX-2-4K-NF4': 10.0,       # BitsAndBytes NF4 fallback
+            'LTX-2-Q2_K-GGUF': 15.0,   # 8GB + 5GB + 2GB = 15GB total
+            'LTX-2-Q3_K_M-GGUF': 17.0, # 10GB + 5GB + 2GB = 17GB total
+            'LTX-2-Q4_K_M-GGUF': 20.0, # 13GB + 5GB + 2GB = 20GB total
+            'LTX-2-4K-NF4': 10.0,       # BitsAndBytes NF4 fallback (can use CPU offload)
             'LTX-2-4K': 24.0,           # Full precision
         }
 
@@ -56,19 +58,21 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
             if free_vram_gb >= 24.0:
                 ltx2_variant = 'LTX-2-4K'
                 logger.info(f"  Auto-selected: LTX-2-4K (24GB+ VRAM available, full precision)")
-            elif free_vram_gb >= 13.0:
+            elif free_vram_gb >= 20.0:
                 ltx2_variant = 'LTX-2-Q4_K_M-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q4_K_M-GGUF (13GB+ VRAM available, GGUF Q4_K_M quantization)")
-            elif free_vram_gb >= 10.0:
+                logger.info(f"  Auto-selected: LTX-2-Q4_K_M-GGUF (20GB+ VRAM available, GGUF Q4_K_M)")
+            elif free_vram_gb >= 17.0:
                 ltx2_variant = 'LTX-2-Q3_K_M-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (10GB+ VRAM available, GGUF Q3_K_M quantization)")
-            elif free_vram_gb >= 8.0:
+                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (17GB+ VRAM available, GGUF Q3_K_M)")
+            elif free_vram_gb >= 15.0:
                 ltx2_variant = 'LTX-2-Q2_K-GGUF'
-                logger.warning(f"  Auto-selected: LTX-2-Q2_K-GGUF (8GB+ VRAM available, GGUF Q2_K - lowest quality)")
+                logger.warning(f"  Auto-selected: LTX-2-Q2_K-GGUF (15GB+ VRAM available, GGUF Q2_K - lowest quality)")
             else:
-                logger.error(f"Insufficient VRAM for LTX-2! Minimum 8GB required, found {free_vram_gb:.1f}GB", emoji='x')
+                logger.error(f"Insufficient VRAM for LTX-2! Minimum 15GB required, found {free_vram_gb:.1f}GB", emoji='x')
+                logger.error(f"GGUF quantization cannot use CPU offload due to metadata incompatibility", emoji='x')
+                logger.error(f"Recommended: Use Wan FLF2V or FILM instead (both work with 14GB VRAM)", emoji='info')
                 raise RuntimeError(
-                    f"Insufficient VRAM for LTX-2. Minimum 8GB required (for LTX-2-Q2_K-GGUF with quantization). "
+                    f"Insufficient VRAM for LTX-2. Minimum 15GB required (for Q2_K GGUF without CPU offload). "
                     f"Found {free_vram_gb:.1f}GB. Use Wan FLF2V or FILM instead."
                 )
 
