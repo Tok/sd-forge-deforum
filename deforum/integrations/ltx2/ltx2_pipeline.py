@@ -43,11 +43,11 @@ class LTX2Pipeline:
     def load_model(self):
         """Load LTX-2 model from HuggingFace."""
         try:
-            from diffusers import LTXPipeline
+            from diffusers import LTX2ImageToVideoPipeline
         except ImportError:
             logger.error("Failed to import LTX-2 dependencies", emoji='x')
             raise ImportError(
-                "LTX-2 requires diffusers with LTX support. "
+                "LTX-2 requires diffusers with LTX-2 support. "
                 "Install with: pip install 'diffusers>=0.32.0'"
             )
 
@@ -123,7 +123,7 @@ class LTX2Pipeline:
                 if tokenizer is not None:
                     load_kwargs["tokenizer"] = tokenizer
 
-                self.pipeline = LTXPipeline.from_pretrained(model_id, **load_kwargs)
+                self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
             except (ImportError, Exception) as e:
                 logger.warning(f"Quantization not available, falling back to fp16", emoji='warning')
                 logger.debug(f"Quantization error: {e}")
@@ -134,7 +134,7 @@ class LTX2Pipeline:
                 }
                 if tokenizer is not None:
                     load_kwargs["tokenizer"] = tokenizer
-                self.pipeline = LTXPipeline.from_pretrained(model_id, **load_kwargs)
+                self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
         else:
             # Full precision or fp16
             dtype = torch.float16 if self.device == 'cuda' else torch.float32
@@ -147,7 +147,7 @@ class LTX2Pipeline:
                 load_kwargs["variant"] = variant
             if tokenizer is not None:
                 load_kwargs["tokenizer"] = tokenizer
-            self.pipeline = LTXPipeline.from_pretrained(model_id, **load_kwargs)
+            self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
 
         # Move to device
         self.pipeline.to(self.device)
@@ -165,34 +165,37 @@ class LTX2Pipeline:
     def generate_segment(
         self,
         start_image: Image.Image,
-        audio_path: str,
-        audio_start_sec: float,
-        audio_duration_sec: float,
+        audio_path: str = None,  # NOTE: LTX-2 generates audio, doesn't consume it
+        audio_start_sec: float = 0.0,  # Kept for API compatibility
+        audio_duration_sec: float = 0.0,  # Kept for API compatibility
         prompt: str = "",
         negative_prompt: str = "blurry, low quality, distorted",
         num_frames: int = 121,
-        fps: int = 24,
-        guidance_scale: float = 3.0,
-        num_inference_steps: int = 50,
+        fps: float = 24.0,
+        guidance_scale: float = 4.0,
+        num_inference_steps: int = 40,
         seed: Optional[int] = None,
     ) -> List[Image.Image]:
-        """Generate video segment with audio conditioning.
+        """Generate video segment using LTX-2 image-to-video.
+
+        NOTE: LTX-2 GENERATES audio automatically - it doesn't use audio as input!
+        The audio_* parameters are kept for API compatibility but are not used.
 
         Args:
             start_image: Starting keyframe image
-            audio_path: Path to audio file
-            audio_start_sec: Start time in audio (seconds)
-            audio_duration_sec: Duration of audio chunk (seconds)
+            audio_path: NOT USED (LTX-2 generates audio)
+            audio_start_sec: NOT USED (kept for compatibility)
+            audio_duration_sec: NOT USED (kept for compatibility)
             prompt: Text prompt for generation
             negative_prompt: Negative text prompt
-            num_frames: Number of frames to generate (should be 4n+1)
-            fps: Target FPS
-            guidance_scale: Guidance scale (3.0-7.0 recommended)
-            num_inference_steps: Number of denoising steps
+            num_frames: Number of frames to generate (default 121)
+            fps: Target FPS (float, default 24.0)
+            guidance_scale: Guidance scale (default 4.0 for LTX-2)
+            num_inference_steps: Number of denoising steps (default 40)
             seed: Random seed for reproducibility
 
         Returns:
-            List of generated PIL Images
+            List of generated PIL Images (audio is discarded)
         """
         if self.pipeline is None:
             raise RuntimeError("Pipeline not loaded. Call load_model() first.")
@@ -209,35 +212,30 @@ class LTX2Pipeline:
             logger.warning(f"Resizing image to {width}x{height} (LTX-2 requires multiples of 32)", emoji='warning')
             start_image = start_image.resize((width, height), Image.Resampling.LANCZOS)
 
-        # Extract audio chunk
-        audio_tensor = self._extract_audio_segment(
-            audio_path, audio_start_sec, audio_duration_sec
-        )
-
         # Set seed for reproducibility
         generator = None
         if seed is not None:
             generator = torch.Generator(device=self.device).manual_seed(seed)
 
-        logger.debug(f"Generating {num_frames} frames with LTX-2 (audio: {audio_start_sec:.1f}s-{audio_start_sec+audio_duration_sec:.1f}s)")
+        logger.debug(f"Generating {num_frames} frames with LTX-2 I2V")
 
-        # Generate video
-        output = self.pipeline(
+        # Generate video (LTX-2 also generates audio, but we discard it)
+        video, generated_audio = self.pipeline(
             image=start_image,
-            audio=audio_tensor,
             prompt=prompt,
             negative_prompt=negative_prompt,
+            width=width,
+            height=height,
             num_frames=num_frames,
-            fps=fps,
+            frame_rate=fps,  # LTX-2 uses 'frame_rate' parameter
             guidance_scale=guidance_scale,
             num_inference_steps=num_inference_steps,
             generator=generator,
+            return_dict=False,  # Returns tuple (video, audio)
         )
 
-        # Extract frames
-        frames = output.frames[0]
-
-        return frames
+        # Video is already a list of PIL Images
+        return video
 
     def _extract_audio_segment(
         self,
