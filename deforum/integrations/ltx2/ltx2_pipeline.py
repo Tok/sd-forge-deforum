@@ -114,25 +114,53 @@ class LTX2Pipeline:
             try:
                 from huggingface_hub import hf_hub_download
 
-                # Download GGUF file
-                gguf_path = hf_hub_download(
+                # Download GGUF transformer
+                logger.info(f"Downloading GGUF transformer: {gguf_filename}", emoji='download')
+                transformer_gguf_path = hf_hub_download(
                     repo_id=model_id,
                     filename=gguf_filename,
                 )
 
+                # Download GGUF text encoder (Gemma-3-12B Q2_K to save VRAM)
+                logger.info(f"Downloading GGUF text encoder: gemma-3-12b-it-Q2_K.gguf (~4.4GB)", emoji='download')
+                text_encoder_gguf_path = hf_hub_download(
+                    repo_id="unsloth/gemma-3-12b-it-GGUF",
+                    filename="gemma-3-12b-it-Q2_K.gguf",
+                )
+
                 # Load transformer with GGUF quantization (use LTX2VideoTransformer3DModel for LTX-2!)
+                logger.info(f"Loading GGUF transformer...", emoji='robot')
                 transformer = LTX2VideoTransformer3DModel.from_single_file(
-                    gguf_path,
+                    transformer_gguf_path,
                     quantization_config=GGUFQuantizationConfig(compute_dtype=torch.bfloat16),
                     config="Lightricks/LTX-2",  # Use base model config (not GGUF repo)
                     subfolder="transformer",
                     torch_dtype=torch.bfloat16,
                 )
 
-                # Load rest of pipeline with quantized transformer (use base model, not GGUF repo)
+                # Load text encoder with GGUF quantization (use transformers AutoModel)
+                logger.info(f"Loading GGUF text encoder (Gemma-3-12B Q2_K)...", emoji='robot')
+                try:
+                    from transformers import AutoModel
+
+                    text_encoder = AutoModel.from_single_file(
+                        text_encoder_gguf_path,
+                        quantization_config=GGUFQuantizationConfig(compute_dtype=torch.bfloat16),
+                        config="google/gemma-3-12b-it",
+                        torch_dtype=torch.bfloat16,
+                    )
+                    logger.info(f"GGUF text encoder loaded successfully!", emoji='check')
+
+                except Exception as text_enc_error:
+                    logger.warning(f"Failed to load GGUF text encoder: {text_enc_error}", emoji='warning')
+                    logger.info(f"Falling back to full precision text encoder (5GB)...", emoji='info')
+                    text_encoder = None  # Will load from base model
+
+                # Load rest of pipeline with quantized components
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                     "Lightricks/LTX-2",
                     transformer=transformer,
+                    text_encoder=text_encoder,  # Use GGUF text encoder if loaded
                     torch_dtype=torch.bfloat16,
                 )
 
