@@ -136,11 +136,12 @@ class LTX2Pipeline:
                     torch_dtype=torch.bfloat16,
                 )
 
-                # Enable CPU offload for GGUF models
+                # Enable sequential CPU offload for GGUF models (more aggressive than model_cpu_offload)
+                # This moves components to GPU one at a time during forward pass
                 if self.device == 'cuda':
-                    self.pipeline.enable_model_cpu_offload()
+                    self.pipeline.enable_sequential_cpu_offload()
 
-                logger.info("GGUF model loaded successfully with CPU offloading", emoji='check')
+                logger.info("GGUF model loaded successfully with sequential CPU offloading", emoji='check')
 
             except Exception as e:
                 logger.error(f"GGUF loading failed: {e}", emoji='x')
