@@ -8,6 +8,7 @@ rich
 gdown
 easydict
 git+https://github.com/huggingface/diffusers.git
+kornia>=0.7.0  # Required by diffusers.guiders (LTX-2 FrequencyDecoupledGuidance)
 transformers>=4.36.0,<5.0.0
 accelerate>=0.25.0,<2.0.0
 
