@@ -44,9 +44,11 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
 
         # VRAM requirements for different variants
         vram_requirements = {
-            'LTX-2-4K-NF4': 10.0,  # 4-bit quantized (transformer + text_encoder)
-            'LTX-2-4K': 24.0,      # Full precision
-            'LTX-2-HD': 18.0,      # HD variant
+            'LTX-2-Q2_K-GGUF': 7.0,    # Q2_K GGUF quantization (lowest quality, smallest)
+            'LTX-2-Q3_K_M-GGUF': 8.0,  # Q3_K_M GGUF quantization
+            'LTX-2-Q4_K_M-GGUF': 10.0, # Q4_K_M GGUF quantization (recommended)
+            'LTX-2-4K-NF4': 10.0,       # BitsAndBytes NF4 fallback
+            'LTX-2-4K': 24.0,           # Full precision
         }
 
         # Auto-select variant based on VRAM if Auto
@@ -54,16 +56,19 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
             if free_vram_gb >= 24.0:
                 ltx2_variant = 'LTX-2-4K'
                 logger.info(f"  Auto-selected: LTX-2-4K (24GB+ VRAM available, full precision)")
-            elif free_vram_gb >= 18.0:
-                ltx2_variant = 'LTX-2-HD'
-                logger.info(f"  Auto-selected: LTX-2-HD (18GB+ VRAM available)")
             elif free_vram_gb >= 10.0:
-                ltx2_variant = 'LTX-2-4K-NF4'
-                logger.info(f"  Auto-selected: LTX-2-4K-NF4 (10GB+ VRAM available, 4-bit quantized transformer + text encoder)")
+                ltx2_variant = 'LTX-2-Q4_K_M-GGUF'
+                logger.info(f"  Auto-selected: LTX-2-Q4_K_M-GGUF (10GB+ VRAM available, GGUF Q4_K_M quantization)")
+            elif free_vram_gb >= 8.0:
+                ltx2_variant = 'LTX-2-Q3_K_M-GGUF'
+                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (8GB+ VRAM available, GGUF Q3_K_M quantization)")
+            elif free_vram_gb >= 7.0:
+                ltx2_variant = 'LTX-2-Q2_K-GGUF'
+                logger.warning(f"  Auto-selected: LTX-2-Q2_K-GGUF (7GB+ VRAM available, GGUF Q2_K - lowest quality)")
             else:
-                logger.error(f"Insufficient VRAM for LTX-2! Minimum 10GB required, found {free_vram_gb:.1f}GB", emoji='x')
+                logger.error(f"Insufficient VRAM for LTX-2! Minimum 7GB required, found {free_vram_gb:.1f}GB", emoji='x')
                 raise RuntimeError(
-                    f"Insufficient VRAM for LTX-2. Minimum 10GB required (for LTX-2-4K-NF4 with quantization). "
+                    f"Insufficient VRAM for LTX-2. Minimum 7GB required (for LTX-2-Q2_K-GGUF with quantization). "
                     f"Found {free_vram_gb:.1f}GB. Use Wan FLF2V or FILM instead."
                 )
 

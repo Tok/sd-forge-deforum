@@ -17,9 +17,43 @@ class LTX2ModelDiscovery:
     """Discovers and manages LTX-2 models"""
 
     # LTX-2 model variants
-    # NOTE: All variants use the same HuggingFace repo "Lightricks/LTX-2"
-    # Quantization is applied via BitsAndBytesConfig, not separate model files
     MODEL_VARIANTS = {
+        # GGUF variants (recommended - better quantization, lower VRAM)
+        "LTX-2-Q4_K_M-GGUF": {
+            "huggingface_id": "unsloth/LTX-2-GGUF",
+            "gguf_filename": "ltx-2-19b-dev-Q4_K_M.gguf",
+            "description": "4K variant, Q4_K_M quantized (19B params, GGUF)",
+            "vram_gb": 10,
+            "max_resolution": "4K (3840x2160)",
+            "max_fps": 50,
+            "quantization": "gguf-q4_k_m",
+            "recommended": True,
+            "note": "Recommended for 12-16GB VRAM (RTX 3080 Ti, 4070 Ti, 4080, etc.) - best quality/VRAM balance"
+        },
+        "LTX-2-Q3_K_M-GGUF": {
+            "huggingface_id": "unsloth/LTX-2-GGUF",
+            "gguf_filename": "ltx-2-19b-dev-Q3_K_M.gguf",
+            "description": "4K variant, Q3_K_M quantized (19B params, GGUF)",
+            "vram_gb": 8,
+            "max_resolution": "4K (3840x2160)",
+            "max_fps": 50,
+            "quantization": "gguf-q3_k_m",
+            "recommended": False,
+            "note": "For 10-12GB VRAM - slightly lower quality but fits in less VRAM"
+        },
+        "LTX-2-Q2_K-GGUF": {
+            "huggingface_id": "unsloth/LTX-2-GGUF",
+            "gguf_filename": "ltx-2-19b-dev-Q2_K.gguf",
+            "description": "4K variant, Q2_K quantized (19B params, GGUF)",
+            "vram_gb": 7,
+            "max_resolution": "4K (3840x2160)",
+            "max_fps": 50,
+            "quantization": "gguf-q2_k",
+            "recommended": False,
+            "note": "For <10GB VRAM - lowest quality but smallest footprint"
+        },
+
+        # BitsAndBytes NF4 variants (fallback if GGUF doesn't work)
         "LTX-2-4K-NF4": {
             "huggingface_id": "Lightricks/LTX-2",
             "description": "4K variant, 4-bit quantized transformer + text encoder (19B params, NF4)",
@@ -27,9 +61,11 @@ class LTX2ModelDiscovery:
             "max_resolution": "4K (3840x2160)",
             "max_fps": 50,
             "quantization": "nf4",
-            "recommended": True,
-            "note": "Recommended for 12-16GB VRAM (RTX 3080 Ti, 4070 Ti, 4080, etc.)"
+            "recommended": False,
+            "note": "BitsAndBytes quantization fallback (if GGUF doesn't work)"
         },
+
+        # Full precision variants (for high-end cards)
         "LTX-2-4K": {
             "huggingface_id": "Lightricks/LTX-2",
             "description": "Full 4K variant (19B params, FP16)",
@@ -40,16 +76,6 @@ class LTX2ModelDiscovery:
             "recommended": False,
             "note": "Requires 24GB+ VRAM (RTX 4090, A6000, etc.)"
         },
-        "LTX-2-HD": {
-            "huggingface_id": "Lightricks/LTX-2",
-            "description": "HD variant (16B params, FP16)",
-            "vram_gb": 18,
-            "max_resolution": "1080p (1920x1080)",
-            "max_fps": 30,
-            "quantization": None,
-            "recommended": False,
-            "note": "Requires 18GB+ VRAM (fallback for <24GB VRAM)"
-        }
     }
 
     def __init__(self, models_dir: Optional[str] = None):
@@ -155,16 +181,19 @@ class LTX2ModelDiscovery:
         Returns:
             Recommended variant name
         """
+        # Prefer GGUF variants (better quantization quality and VRAM efficiency)
         if available_vram_gb >= 24:
             return "LTX-2-4K"  # Full precision for high-end cards
         elif available_vram_gb >= 10:
-            return "LTX-2-4K-NF4"  # 4-bit quantized transformer + text encoder (RTX 3080 Ti, 4070 Ti, 4080, etc.)
+            return "LTX-2-Q4_K_M-GGUF"  # Best quality/VRAM balance (RTX 3080 Ti, 4070 Ti, 4080, etc.)
         elif available_vram_gb >= 8:
-            logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 may struggle")
-            return "LTX-2-4K-NF4"  # Try NF4, may work with aggressive offloading
+            return "LTX-2-Q3_K_M-GGUF"  # Lower VRAM, slightly reduced quality
+        elif available_vram_gb >= 7:
+            logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - using Q2_K (lowest quality)")
+            return "LTX-2-Q2_K-GGUF"  # Minimum viable quantization
         else:
-            logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 requires 10GB minimum (with quantization)")
-            return "LTX-2-4K-NF4"  # Return NF4 as minimum
+            logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 requires 7GB minimum (with Q2_K quantization)")
+            return "LTX-2-Q2_K-GGUF"  # Return Q2_K as absolute minimum
 
     def is_any_model_available(self) -> bool:
         """Check if any LTX-2 model is downloaded."""

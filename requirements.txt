@@ -13,6 +13,7 @@ transformers>=4.36.0,<5.0.0
 sentencepiece>=0.1.99  # Required by T5Tokenizer (LTX-2)
 huggingface-hub>=0.34.0,<1.0  # Must stay <1.0 for transformers 4.x compatibility
 accelerate>=0.25.0,<2.0.0
+gguf>=0.10.0  # Required for LTX-2 GGUF quantization support
 
 # Depth Anything V3 (Phase 1/2/3 integration)
 # DA3 auto-installs from GitHub (like diffusers above)

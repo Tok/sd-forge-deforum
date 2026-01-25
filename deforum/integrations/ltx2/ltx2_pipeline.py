@@ -43,20 +43,16 @@ class LTX2Pipeline:
     def load_model(self):
         """Load LTX-2 model from HuggingFace."""
         try:
-            from diffusers import LTX2ImageToVideoPipeline
+            from diffusers import LTX2ImageToVideoPipeline, GGUFQuantizationConfig
+            from diffusers.models.transformers import LTXVideoTransformer3DModel
         except ImportError:
             logger.error("Failed to import LTX-2 dependencies", emoji='x')
             raise ImportError(
-                "LTX-2 requires diffusers with LTX-2 support. "
-                "Install with: pip install 'diffusers>=0.32.0'"
+                "LTX-2 requires diffusers with LTX-2 and GGUF support. "
+                "Install with: pip install 'diffusers>=0.32.0' gguf"
             )
 
         logger.info(f"Loading LTX-2 model: {self.variant}...", emoji='download')
-
-        # Fix transformers lazy loading issue - pre-load tokenizer explicitly
-        # This resolves the _LazyModule Placeholder error
-        import transformers.models.t5.tokenization_t5
-        from transformers import T5Tokenizer, T5TokenizerFast
 
         from deforum.integrations.ltx2.ltx2_model_discovery import LTX2ModelDiscovery
 
@@ -69,6 +65,9 @@ class LTX2Pipeline:
 
         model_id = variant_info['huggingface_id']
         logger.info(f"Using model: {model_id} (VRAM requirement: {variant_info['vram_gb']}GB)", emoji='info')
+
+        # Check if this is a GGUF variant
+        is_gguf = variant_info['quantization'] and variant_info['quantization'].startswith('gguf-')
 
         # Pre-load tokenizer to avoid lazy loading issues
         logger.debug("Pre-loading T5 tokenizer...")
@@ -94,8 +93,45 @@ class LTX2Pipeline:
         else:
             logger.info(f"Using cached model from {cache_dir}", emoji='check')
 
-        # Load with appropriate precision
-        if self.variant == 'LTX-2-4K-NF4':
+        # Load with appropriate quantization method
+        if is_gguf:
+            # Load GGUF quantized model (recommended - better quality and VRAM efficiency)
+            gguf_filename = variant_info['gguf_filename']
+            gguf_url = f"https://huggingface.co/{model_id}/resolve/main/{gguf_filename}"
+
+            logger.info(f"Using GGUF quantization: {variant_info['quantization']}", emoji='zap')
+            logger.info(f"Downloading GGUF model: {gguf_filename} (~{variant_info['vram_gb']}GB)...", emoji='download')
+
+            try:
+                # Load transformer separately with GGUF quantization
+                transformer = LTXVideoTransformer3DModel.from_single_file(
+                    gguf_url,
+                    quantization_config=GGUFQuantizationConfig(compute_dtype=torch.bfloat16),
+                    config=model_id,  # Use base model config
+                    subfolder="transformer",
+                    torch_dtype=torch.bfloat16,
+                )
+
+                # Load rest of pipeline with transformer
+                self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
+                    model_id,
+                    transformer=transformer,
+                    torch_dtype=torch.bfloat16,
+                )
+
+                # Enable CPU offload for GGUF models
+                if self.device == 'cuda':
+                    self.pipeline.enable_model_cpu_offload()
+
+                logger.info("GGUF model loaded successfully with CPU offloading", emoji='check')
+
+            except Exception as e:
+                logger.error(f"GGUF loading failed: {e}", emoji='x')
+                logger.info("Falling back to BitsAndBytes NF4 quantization...", emoji='warning')
+                # Fall through to NF4 loading below
+                is_gguf = False  # Trigger fallback
+
+        if not is_gguf and self.variant == 'LTX-2-4K-NF4':
             # Load with 4-bit quantization for transformer AND text encoder
             logger.info("Using 4-bit NF4 quantization for transformer and text encoder (saves ~75% VRAM)", emoji='zap')
             try:
