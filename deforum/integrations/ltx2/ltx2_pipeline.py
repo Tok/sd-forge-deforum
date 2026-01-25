@@ -53,8 +53,20 @@ class LTX2Pipeline:
 
         logger.info(f"Loading LTX-2 model: {self.variant}...", emoji='download')
 
-        # Model repository
-        model_id = 'Lightricks/LTX-Video'
+        # Fix transformers lazy loading issue - import T5Tokenizer explicitly
+        # This resolves the _LazyModule Placeholder error
+        from transformers import T5Tokenizer
+        from deforum.integrations.ltx2.ltx2_model_discovery import LTX2ModelDiscovery
+
+        # Get correct model ID based on variant
+        discovery = LTX2ModelDiscovery()
+        variant_info = discovery.MODEL_VARIANTS.get(self.variant)
+
+        if variant_info is None:
+            raise ValueError(f"Unknown LTX-2 variant: {self.variant}")
+
+        model_id = variant_info['huggingface_id']
+        logger.info(f"Using model: {model_id} (VRAM requirement: {variant_info['vram_gb']}GB)", emoji='info')
 
         # Inform about auto-download
         import os
