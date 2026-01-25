@@ -95,6 +95,19 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
     # NOTE: Resolution validation happens before Phase 1 in keyframe_interp.py
     # If we reach here, resolution is already validated and fixed (if needed)
 
+    # Cleanup any previous failed LTX-2 attempts (critical for resume mode)
+    import torch
+    import gc
+    if torch.cuda.is_available():
+        # Force Python garbage collection to release any LTX-2 pipeline references
+        gc.collect()
+        # Clear CUDA cache
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+
+        vram_before_ltx = torch.cuda.mem_get_info()[0] / 1024**3
+        logger.debug(f"VRAM available before LTX-2 load: {vram_before_ltx:.2f}GB")
+
     # Initialize LTX-2 pipeline
     from deforum.integrations.ltx2 import LTX2Pipeline
 

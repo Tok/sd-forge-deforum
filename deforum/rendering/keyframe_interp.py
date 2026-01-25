@@ -413,10 +413,29 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
 
     # Unload diffusion models to free GPU memory
     logger.info(f"Unloading diffusion models to free GPU memory...", emoji='wastebasket')
+
+    import torch
+    if torch.cuda.is_available():
+        # Show VRAM before cleanup
+        vram_before = torch.cuda.memory_allocated() / 1024**3
+        logger.debug(f"VRAM before cleanup: {vram_before:.2f}GB allocated")
+
     from backend import memory_management
     memory_management.unload_all_models()
     memory_management.soft_empty_cache()
-    logger.info(f"GPU memory freed", emoji='check')
+
+    # Aggressive VRAM cleanup
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+
+        # Show VRAM after cleanup
+        vram_after = torch.cuda.memory_allocated() / 1024**3
+        vram_freed = vram_before - vram_after
+        free_vram = torch.cuda.mem_get_info()[0] / 1024**3
+        logger.info(f"GPU memory freed: {vram_freed:.2f}GB released, {free_vram:.1f}GB available", emoji='check')
+    else:
+        logger.info(f"GPU memory freed", emoji='check')
 
     # Initialize depth model if needed for DA3-Multiview
     if interp_method == "DA3-Multiview":

@@ -162,21 +162,50 @@ class LTX2Pipeline:
                     logger.info("All pipeline components moved to GPU", emoji='zap')
 
                 except torch.OutOfMemoryError as e:
+                    # Cleanup failed components
+                    if hasattr(self, 'pipeline') and self.pipeline is not None:
+                        logger.debug("Cleaning up failed GGUF components...")
+                        del self.pipeline
+                        self.pipeline = None
+                        import gc
+                        gc.collect()
+                        torch.cuda.empty_cache()
+                        torch.cuda.synchronize()
+
                     logger.error(f"Insufficient VRAM to load GGUF variant on GPU", emoji='x')
                     logger.error(f"Q2_K requires 15GB (8GB transformer + 5GB text_encoder + 2GB VAE)", emoji='x')
                     logger.error(f"Available VRAM: {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB", emoji='x')
                     logger.error(f"GGUF cannot use CPU offload due to metadata incompatibility", emoji='x')
                     logger.error(f"Recommended: Use Wan FLF2V or FILM instead (both work with <14GB VRAM)", emoji='info')
-                    raise RuntimeError(
-                        f"Insufficient VRAM for LTX-2 GGUF. Minimum 15GB required. "
-                        f"Found {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB. "
-                        f"Use Wan FLF2V (guidance_scale=3.5) or FILM instead."
-                    ) from e
+
+                    # Re-raise as-is to prevent NF4 fallback (won't work either)
+                    raise
 
             except Exception as e:
                 import traceback
+
+                # Don't fallback to NF4 if it's an OOM error (won't work either)
+                if isinstance(e, torch.OutOfMemoryError):
+                    logger.error(f"GGUF OOM - NF4 fallback skipped (would also OOM)", emoji='x')
+                    raise  # Re-raise OOM to abort
+
                 logger.error(f"GGUF loading failed: {e}", emoji='x')
                 logger.debug(f"GGUF error traceback: {traceback.format_exc()}")
+
+                # CRITICAL: Cleanup failed GGUF pipeline before NF4 fallback
+                if hasattr(self, 'pipeline') and self.pipeline is not None:
+                    logger.debug("Cleaning up failed GGUF pipeline components...")
+                    del self.pipeline
+                    self.pipeline = None
+
+                import gc
+                gc.collect()
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+
+                vram_after_cleanup = torch.cuda.mem_get_info()[0] / 1024**3
+                logger.debug(f"VRAM after GGUF cleanup: {vram_after_cleanup:.2f}GB available")
+
                 logger.info("Falling back to BitsAndBytes NF4 quantization...", emoji='warning')
                 # Fall through to NF4 loading below
                 is_gguf = False  # Trigger fallback
