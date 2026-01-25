@@ -122,6 +122,7 @@ class LTX2Pipeline:
                 load_kwargs = {
                     "torch_dtype": torch.bfloat16,
                     "quantization_config": quantization_config,
+                    "device_map": "sequential",  # Sequential CPU offload during load
                 }
                 if tokenizer is not None:
                     load_kwargs["tokenizer"] = tokenizer
@@ -132,6 +133,7 @@ class LTX2Pipeline:
                 logger.debug(f"Quantization error: {e}")
                 load_kwargs = {
                     "torch_dtype": torch.bfloat16,
+                    "device_map": "sequential",  # Sequential CPU offload during load
                 }
                 if tokenizer is not None:
                     load_kwargs["tokenizer"] = tokenizer
@@ -141,29 +143,17 @@ class LTX2Pipeline:
             dtype = torch.bfloat16 if self.device == 'cuda' else torch.float32
             load_kwargs = {
                 "torch_dtype": dtype,
+                "device_map": "sequential",  # Sequential CPU offload during load
             }
             if tokenizer is not None:
                 load_kwargs["tokenizer"] = tokenizer
             self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
 
-        # Move to device
-        self.pipeline.to(self.device)
+        # Device placement is handled by device_map="sequential", don't call .to() manually
 
-        # Enable aggressive memory optimizations
+        # Enable additional memory optimizations
+        # Note: device_map="sequential" already handles CPU offloading during load
         if self.device == 'cuda':
-            try:
-                # Enable sequential CPU offloading for better memory management
-                self.pipeline.enable_sequential_cpu_offload()
-                logger.info("Enabled sequential CPU offload for memory efficiency", emoji='check')
-            except Exception as e:
-                logger.debug(f"Sequential CPU offload not available: {e}")
-                try:
-                    # Fallback to model CPU offload
-                    self.pipeline.enable_model_cpu_offload()
-                    logger.info("Enabled model CPU offload", emoji='check')
-                except:
-                    pass
-
             # Enable VAE tiling to reduce memory usage during decode
             try:
                 self.pipeline.vae.enable_tiling()
@@ -171,7 +161,7 @@ class LTX2Pipeline:
             except:
                 pass
 
-        logger.info(f"LTX-2 pipeline loaded successfully", emoji='check')
+        logger.info(f"LTX-2 pipeline loaded successfully with sequential CPU offload", emoji='check')
 
     def generate_segment(
         self,
