@@ -62,14 +62,17 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
                 ltx2_variant = 'LTX-2-Q4_K_M-GGUF'
                 logger.info(f"  Auto-selected: LTX-2-Q4_K_M-GGUF (17GB+ VRAM available, GGUF Q4_K_M)")
             elif free_vram_gb >= 14.0:
+                # 16GB total VRAM (14-15GB free) - use Q3_K_M for better quality
                 ltx2_variant = 'LTX-2-Q3_K_M-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (14GB+ VRAM available, GGUF Q3_K_M)")
-                logger.info(f"  Using NF4 text encoder (~2GB) to fit in 14GB VRAM!")
-            elif free_vram_gb >= 12.0:
-                # Q2_K with NF4 text encoder should fit in 12-14GB VRAM!
+                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (16GB total VRAM, better quality)")
+                logger.info(f"  Needs: 9.4GB transformer + 2.5GB text_encoder (8-bit) + 2GB VAE = 13.9GB")
+                logger.info(f"  Using 8-bit text encoder to fit in 16GB VRAM!")
+            elif free_vram_gb >= 11.0:
+                # 12-13GB free VRAM - use Q2_K for maximum compatibility
                 ltx2_variant = 'LTX-2-Q2_K-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q2_K-GGUF ({free_vram_gb:.1f}GB available, needs ~12GB)")
-                logger.info(f"  Using NF4 text encoder (~2GB) to fit in available VRAM!")
+                logger.info(f"  Auto-selected: LTX-2-Q2_K-GGUF ({free_vram_gb:.1f}GB available)")
+                logger.info(f"  Needs: 7.5GB transformer + 2.5GB text_encoder (8-bit) + 2GB VAE = 12GB")
+                logger.info(f"  Using 8-bit text encoder for maximum compatibility!")
             else:
                 logger.error(f"Insufficient VRAM for LTX-2! Minimum 14GB required, found {free_vram_gb:.1f}GB", emoji='x')
                 logger.error(f"GGUF quantization cannot use CPU offload due to metadata incompatibility", emoji='x')
