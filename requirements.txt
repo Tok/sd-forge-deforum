@@ -10,6 +10,7 @@ easydict
 git+https://github.com/huggingface/diffusers.git
 kornia>=0.7.0  # Required by diffusers.guiders (LTX-2 FrequencyDecoupledGuidance)
 transformers>=4.36.0,<5.0.0
+sentencepiece>=0.1.99  # Required by T5Tokenizer (LTX-2)
 huggingface-hub>=0.34.0,<1.0  # Must stay <1.0 for transformers 4.x compatibility
 accelerate>=0.25.0,<2.0.0
 

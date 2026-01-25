@@ -67,6 +67,12 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
             except Exception as e:
                 logger.info(f"Error pre-downloading audio: {e}")
 
+    # Validate and fix resolution for LTX-2 BEFORE generating keyframes (Phase 1)
+    interp_method = getattr(wan_args, 'diffusion_interpolation_method', 'Wan')
+    if interp_method == "LTX-2":
+        from deforum.rendering.resolution_utils import validate_ltx2_resolution
+        validate_ltx2_resolution(args, interp_method, auto_fix=True)
+
     # Create render data
     data = RenderData.create(args, parseq_args, anim_args, video_args, loop_args, controlnet_args, root)
 

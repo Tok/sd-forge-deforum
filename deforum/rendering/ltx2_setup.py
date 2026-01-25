@@ -81,16 +81,8 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
             "Please enable 'Add Soundtrack' in the Output tab and provide an audio file."
         )
 
-    # Validate resolution for LTX-2 (must be multiples of 32)
-    if args.W % 32 != 0 or args.H % 32 != 0:
-        logger.error(f"LTX-2 requires resolution to be multiples of 32", emoji='x')
-        logger.error(f"  Current: {args.W}x{args.H}")
-        logger.error(f"  Nearest valid: {(args.W // 32) * 32}x{(args.H // 32) * 32}")
-        raise ValueError(
-            f"LTX-2 requires resolution multiples of 32. "
-            f"Current: {args.W}x{args.H}. "
-            f"Use: {(args.W // 32) * 32}x{(args.H // 32) * 32} instead."
-        )
+    # NOTE: Resolution validation happens before Phase 1 in keyframe_interp.py
+    # If we reach here, resolution is already validated and fixed (if needed)
 
     # Initialize LTX-2 pipeline
     from deforum.integrations.ltx2 import LTX2Pipeline

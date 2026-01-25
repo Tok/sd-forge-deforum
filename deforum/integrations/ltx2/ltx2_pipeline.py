@@ -53,9 +53,11 @@ class LTX2Pipeline:
 
         logger.info(f"Loading LTX-2 model: {self.variant}...", emoji='download')
 
-        # Fix transformers lazy loading issue - import T5Tokenizer explicitly
+        # Fix transformers lazy loading issue - pre-load tokenizer explicitly
         # This resolves the _LazyModule Placeholder error
-        from transformers import T5Tokenizer
+        import transformers.models.t5.tokenization_t5
+        from transformers import T5Tokenizer, T5TokenizerFast
+
         from deforum.integrations.ltx2.ltx2_model_discovery import LTX2ModelDiscovery
 
         # Get correct model ID based on variant
@@ -67,6 +69,18 @@ class LTX2Pipeline:
 
         model_id = variant_info['huggingface_id']
         logger.info(f"Using model: {model_id} (VRAM requirement: {variant_info['vram_gb']}GB)", emoji='info')
+
+        # Pre-load tokenizer to avoid lazy loading issues
+        logger.debug("Pre-loading T5 tokenizer...")
+        try:
+            tokenizer = T5Tokenizer.from_pretrained(
+                model_id,
+                subfolder="tokenizer",
+            )
+            logger.debug("Tokenizer loaded successfully")
+        except Exception as e:
+            logger.debug(f"Tokenizer pre-load failed (will let pipeline handle it): {e}")
+            tokenizer = None
 
         # Inform about auto-download
         import os
@@ -86,32 +100,54 @@ class LTX2Pipeline:
             logger.info("Using 4-bit NF4 quantization (saves ~75% VRAM)", emoji='zap')
             try:
                 from transformers import BitsAndBytesConfig
+                from diffusers import PipelineQuantizationConfig
 
-                quantization_config = BitsAndBytesConfig(
+                # Create BitsAndBytes config
+                bnb_config = BitsAndBytesConfig(
                     load_in_4bit=True,
                     bnb_4bit_quant_type="nf4",
                     bnb_4bit_compute_dtype=torch.float16,
                     bnb_4bit_use_double_quant=True,
                 )
 
-                self.pipeline = LTXPipeline.from_pretrained(
-                    model_id,
-                    torch_dtype=torch.float16,
-                    quantization_config=quantization_config,
+                # Wrap in PipelineQuantizationConfig with quant_mapping
+                # Maps the transformer component to the quantization config
+                quantization_config = PipelineQuantizationConfig(
+                    quant_mapping={"transformer": bnb_config}
                 )
-            except ImportError:
-                logger.warning("BitsAndBytes not available, falling back to fp16", emoji='warning')
-                self.pipeline = LTXPipeline.from_pretrained(
-                    model_id,
-                    torch_dtype=torch.float16,
-                )
+
+                load_kwargs = {
+                    "torch_dtype": torch.float16,
+                    "quantization_config": quantization_config,
+                }
+                if tokenizer is not None:
+                    load_kwargs["tokenizer"] = tokenizer
+
+                self.pipeline = LTXPipeline.from_pretrained(model_id, **load_kwargs)
+            except (ImportError, Exception) as e:
+                logger.warning(f"Quantization not available, falling back to fp16", emoji='warning')
+                logger.debug(f"Quantization error: {e}")
+                load_kwargs = {
+                    "torch_dtype": torch.float16,
+                    "variant": "fp16",
+                    "use_safetensors": True,
+                }
+                if tokenizer is not None:
+                    load_kwargs["tokenizer"] = tokenizer
+                self.pipeline = LTXPipeline.from_pretrained(model_id, **load_kwargs)
         else:
             # Full precision or fp16
             dtype = torch.float16 if self.device == 'cuda' else torch.float32
-            self.pipeline = LTXPipeline.from_pretrained(
-                model_id,
-                torch_dtype=dtype,
-            )
+            variant = "fp16" if dtype == torch.float16 else None
+            load_kwargs = {
+                "torch_dtype": dtype,
+                "use_safetensors": True,
+            }
+            if variant is not None:
+                load_kwargs["variant"] = variant
+            if tokenizer is not None:
+                load_kwargs["tokenizer"] = tokenizer
+            self.pipeline = LTXPipeline.from_pretrained(model_id, **load_kwargs)
 
         # Move to device
         self.pipeline.to(self.device)
