@@ -144,38 +144,35 @@ class LTX2Pipeline:
                 quantized_text_encoder_worked = False
 
                 try:
-                    from transformers import AutoModelForCausalLM, BitsAndBytesConfig
                     import os
-
                     # Disable warmup to prevent OOM during quantization
                     os.environ["DISABLE_WARMUP"] = "1"
 
-                    # Create 4-bit quantization config for text encoder
+                    # Try 8-bit quantization (more stable than 4-bit)
+                    logger.info(f"Attempting 8-bit quantization (saves ~2.5GB, more stable than NF4)...", emoji='zap')
+                    from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+
+                    # Create 8-bit quantization config (more compatible than 4-bit)
                     bnb_config = BitsAndBytesConfig(
-                        load_in_4bit=True,
-                        bnb_4bit_quant_type="nf4",
-                        bnb_4bit_compute_dtype=torch.bfloat16,
-                        bnb_4bit_use_double_quant=True,
+                        load_in_8bit=True,
+                        llm_int8_threshold=6.0,
                     )
 
-                    logger.info(f"Loading text encoder with NF4 quantization (saves ~3GB)...", emoji='zap')
-                    # Use AutoModelForCausalLM to handle Gemma-3 correctly
+                    logger.info(f"Loading text encoder with 8-bit quantization...", emoji='robot')
                     text_encoder = AutoModelForCausalLM.from_pretrained(
                         "Lightricks/LTX-2",
                         subfolder="text_encoder",
                         quantization_config=bnb_config,
-                        torch_dtype=torch.bfloat16,
-                        device_map="cuda",
+                        device_map="auto",
                         low_cpu_mem_usage=True,
-                        max_memory={0: "7GB"},  # Limit memory (transformer already loaded, ~7GB free)
                     )
 
-                    logger.info(f"Text encoder quantized successfully! (~2GB vs 5GB full)", emoji='check')
+                    logger.info(f"Text encoder quantized to 8-bit! (~2.5GB vs 5GB full)", emoji='check')
                     quantized_text_encoder_worked = True
 
                 except Exception as text_enc_error:
-                    logger.warning(f"Failed to quantize text encoder: {text_enc_error}", emoji='warning')
-                    logger.info(f"Pipeline will load full precision text encoder (5GB)...", emoji='info')
+                    logger.warning(f"8-bit quantization failed: {text_enc_error}", emoji='warning')
+                    logger.warning(f"Using full precision text encoder (5GB) - may OOM on <17GB VRAM", emoji='warning')
                     text_encoder = None
 
                 # Load rest of pipeline with quantized transformer
