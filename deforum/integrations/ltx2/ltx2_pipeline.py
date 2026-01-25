@@ -141,7 +141,37 @@ class LTX2Pipeline:
                 # This causes KeyError in GGML_QUANT_SIZES lookup
                 # Must keep everything on GPU - requires smaller GGUF variant to fit in 14GB VRAM
 
-                logger.info("GGUF model loaded successfully (no CPU offload - incompatible with GGUF)", emoji='check')
+                # Explicitly move all components to GPU (GGUF requires all on GPU)
+                try:
+                    self.pipeline.transformer.to('cuda')
+                    logger.debug(f"Transformer on GPU: {torch.cuda.memory_allocated() / 1024**3:.2f}GB")
+
+                    self.pipeline.text_encoder.to('cuda')
+                    logger.debug(f"Text encoder on GPU: {torch.cuda.memory_allocated() / 1024**3:.2f}GB")
+
+                    self.pipeline.vae.to('cuda')
+                    logger.debug(f"VAE on GPU: {torch.cuda.memory_allocated() / 1024**3:.2f}GB")
+
+                    # Log VRAM usage to verify components fit
+                    if torch.cuda.is_available():
+                        allocated_gb = torch.cuda.memory_allocated() / 1024**3
+                        reserved_gb = torch.cuda.memory_reserved() / 1024**3
+                        logger.info(f"VRAM usage: {allocated_gb:.2f}GB allocated, {reserved_gb:.2f}GB reserved", emoji='info')
+
+                    logger.info("GGUF model loaded successfully (no CPU offload - incompatible with GGUF)", emoji='check')
+                    logger.info("All pipeline components moved to GPU", emoji='zap')
+
+                except torch.OutOfMemoryError as e:
+                    logger.error(f"Insufficient VRAM to load GGUF variant on GPU", emoji='x')
+                    logger.error(f"Q2_K requires 15GB (8GB transformer + 5GB text_encoder + 2GB VAE)", emoji='x')
+                    logger.error(f"Available VRAM: {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB", emoji='x')
+                    logger.error(f"GGUF cannot use CPU offload due to metadata incompatibility", emoji='x')
+                    logger.error(f"Recommended: Use Wan FLF2V or FILM instead (both work with <14GB VRAM)", emoji='info')
+                    raise RuntimeError(
+                        f"Insufficient VRAM for LTX-2 GGUF. Minimum 15GB required. "
+                        f"Found {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB. "
+                        f"Use Wan FLF2V (guidance_scale=3.5) or FILM instead."
+                    ) from e
 
             except Exception as e:
                 import traceback
