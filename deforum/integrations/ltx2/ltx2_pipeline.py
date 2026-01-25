@@ -119,47 +119,39 @@ class LTX2Pipeline:
                     }
                 )
 
-                # NOTE: Do NOT use device_map with quantization - BitsAndBytes handles device placement
+                # Use simple device_map to enable CPU offloading during quantization
+                # device_map={"": device} loads all to single device but allows BitsAndBytes CPU staging
                 load_kwargs = {
                     "torch_dtype": torch.bfloat16,
                     "quantization_config": quantization_config,
+                    "device_map": {"": self.device},  # Single device map for BitsAndBytes
                 }
                 if tokenizer is not None:
                     load_kwargs["tokenizer"] = tokenizer
 
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
-
-                # Move to GPU manually (quantized components stay on GPU, others can be on CPU)
-                if self.device == 'cuda':
-                    self.pipeline = self.pipeline.to(self.device)
 
             except (ImportError, Exception) as e:
-                logger.warning(f"Quantization not available, falling back to bfloat16", emoji='warning')
+                logger.error(f"Quantization failed with insufficient VRAM", emoji='x')
                 logger.debug(f"Quantization error: {e}")
-                # Fallback: Load without quantization
-                load_kwargs = {
-                    "torch_dtype": torch.bfloat16,
-                }
-                if tokenizer is not None:
-                    load_kwargs["tokenizer"] = tokenizer
-                self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
-
-                # Move to GPU manually
-                if self.device == 'cuda':
-                    self.pipeline = self.pipeline.to(self.device)
+                logger.error(f"LTX-2-4K-NF4 requires successful quantization to fit in 14GB VRAM", emoji='x')
+                logger.error(f"The full bfloat16 model requires 24GB+ VRAM", emoji='x')
+                raise RuntimeError(
+                    f"Insufficient VRAM for LTX-2. Quantization failed and full model won't fit. "
+                    f"Available: {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB, Required: 24GB+ (or 10GB with working quantization). "
+                    f"Try closing other programs to free VRAM, or use a different interpolation method (Wan FLF2V or FILM)."
+                )
         else:
             # Full precision or bfloat16 (LTX-2 recommends bfloat16, not fp16)
+            # These variants require 24GB+ VRAM
             dtype = torch.bfloat16 if self.device == 'cuda' else torch.float32
             load_kwargs = {
                 "torch_dtype": dtype,
+                "device_map": "cuda",  # Load to CUDA device
             }
             if tokenizer is not None:
                 load_kwargs["tokenizer"] = tokenizer
             self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
-
-            # Move to GPU manually
-            if self.device == 'cuda':
-                self.pipeline = self.pipeline.to(self.device)
 
         # Enable additional memory optimizations
         if self.device == 'cuda':
