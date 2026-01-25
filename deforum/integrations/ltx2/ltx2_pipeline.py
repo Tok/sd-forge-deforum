@@ -138,184 +138,107 @@ class LTX2Pipeline:
                     torch_dtype=torch.bfloat16,
                 )
 
-                # Load text encoder with 4-bit quantization (GGUF doesn't work with transformers)
-                logger.info(f"Attempting to load text encoder with 4-bit quantization...", emoji='robot')
+                # Load text encoder with CPU offloading to system RAM
+                # CRITICAL: GGUF transformer CANNOT use CPU offload (metadata loss)
+                # Solution: Keep transformer on GPU, offload text encoder to system RAM
+                logger.info(f"Loading text encoder with CPU offload to system RAM...", emoji='robot')
                 text_encoder = None
-                quantized_text_encoder_worked = False
+                use_cpu_offload = False
 
                 try:
-                    import os
-                    # Disable warmup to prevent OOM during quantization
-                    os.environ["DISABLE_WARMUP"] = "1"
+                    from transformers import AutoModelForCausalLM
 
-                    # Try 8-bit quantization (more stable than 4-bit)
-                    logger.info(f"Attempting 8-bit quantization (saves ~2.5GB, more stable than NF4)...", emoji='zap')
-                    from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+                    # Strategy: Load text encoder on CPU, let diffusers manage GPU transfers
+                    # This avoids OOM while keeping GGUF transformer on GPU
+                    logger.info(f"Loading text encoder to CPU (will transfer to GPU only when needed)...", emoji='robot')
+                    logger.info(f"This saves VRAM by offloading to system RAM (~24GB → 0GB VRAM)", emoji='info')
 
-                    # Create 8-bit quantization config with explicit GPU-only placement
-                    bnb_config = BitsAndBytesConfig(
-                        load_in_8bit=True,
-                        llm_int8_threshold=6.0,
-                        llm_int8_enable_fp32_cpu_offload=False,  # Keep everything on GPU
-                    )
-
-                    logger.info(f"Loading text encoder with 8-bit quantization (GPU-only, no CPU offload)...", emoji='robot')
                     text_encoder = AutoModelForCausalLM.from_pretrained(
                         "Lightricks/LTX-2",
                         subfolder="text_encoder",
-                        quantization_config=bnb_config,
-                        device_map={"": "cuda"},  # Explicit GPU placement, no CPU fallback
+                        torch_dtype=torch.bfloat16,
+                        device_map="cpu",  # Keep on CPU/system RAM
                         low_cpu_mem_usage=True,
                     )
 
-                    logger.info(f"Text encoder quantized to 8-bit! (~2.5GB vs 5GB full)", emoji='check')
-                    quantized_text_encoder_worked = True
+                    logger.info(f"Text encoder loaded to CPU! Will use enable_model_cpu_offload()", emoji='check')
+                    logger.info(f"VRAM saved: ~24GB (offloaded to system RAM)", emoji='zap')
+                    use_cpu_offload = True
 
                 except Exception as text_enc_error:
-                    logger.warning(f"8-bit quantization failed: {text_enc_error}", emoji='warning')
-                    logger.warning(f"Using full precision text encoder (5GB) - will OOM on 16GB VRAM", emoji='warning')
-                    logger.info(f"Q3_K_M needs 14.5GB with 8-bit, 17GB with full precision", emoji='info')
-                    text_encoder = None
-
-                # Load rest of pipeline with quantized transformer
-                # Only pass text_encoder if we successfully loaded and quantized it
-                pipeline_kwargs = {
-                    "transformer": transformer,
-                    "torch_dtype": torch.bfloat16,
-                }
-                if quantized_text_encoder_worked:
-                    pipeline_kwargs["text_encoder"] = text_encoder
-                    logger.info(f"Using quantized text encoder in pipeline", emoji='check')
-
-                # Check VRAM before loading pipeline (pipeline loads all components including text_encoder)
-                free_before_pipeline = torch.cuda.mem_get_info()[0] / 1024**3
-                transformer_vram = torch.cuda.memory_allocated() / 1024**3
-                logger.debug(f"Free VRAM before pipeline load: {free_before_pipeline:.2f}GB (transformer: {transformer_vram:.2f}GB)")
-
-                # Pipeline will load: text_encoder (5GB), VAE (2GB), + other components (~1GB)
-                # Total needed: ~8GB
-                if free_before_pipeline < 7.0 and not quantized_text_encoder_worked:
-                    logger.error(f"Insufficient VRAM to load pipeline components", emoji='x')
-                    logger.error(f"  Transformer already loaded: {transformer_vram:.2f}GB", emoji='info')
-                    logger.error(f"  Free VRAM: {free_before_pipeline:.2f}GB", emoji='info')
-                    logger.error(f"  Pipeline needs: ~8GB (text_encoder 5GB + VAE 2GB + overhead 1GB)", emoji='info')
-                    logger.error(f"  Shortfall: {7.0 - free_before_pipeline:.2f}GB", emoji='x')
-                    raise torch.OutOfMemoryError(
-                        f"Cannot load pipeline: need 7GB, have {free_before_pipeline:.2f}GB"
+                    logger.error(f"Failed to load text encoder: {text_enc_error}", emoji='x')
+                    logger.error(f"Cannot proceed without text encoder", emoji='x')
+                    raise RuntimeError(
+                        f"Failed to load LTX-2 text encoder (Gemma-3-12B). "
+                        f"Error: {text_enc_error}"
                     )
 
+                # Load pipeline with GGUF transformer and CPU-offloaded text encoder
+                logger.info(f"Loading LTX-2 pipeline...", emoji='robot')
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                     "Lightricks/LTX-2",
-                    **pipeline_kwargs
+                    transformer=transformer,
+                    text_encoder=text_encoder,
+                    torch_dtype=torch.bfloat16,
                 )
 
-                # CRITICAL: Cannot use CPU offload with GGUF due to metadata loss
-                # GGUF tensors have quant_type metadata that becomes None when moved to meta device
-                # This causes KeyError in GGML_QUANT_SIZES lookup
-                # Must keep everything on GPU - requires smaller GGUF variant to fit in 14GB VRAM
+                # CRITICAL: GGUF transformer stays on GPU (no offload - preserves metadata)
+                # Text encoder uses CPU offload (managed by diffusers)
+                # This hybrid approach: GGUF on GPU + text encoder offloaded to system RAM
 
-                # Explicitly move all components to GPU (GGUF requires all on GPU)
-                try:
-                    self.pipeline.transformer.to('cuda')
-                    transformer_vram = torch.cuda.memory_allocated() / 1024**3
-                    logger.debug(f"Transformer on GPU: {transformer_vram:.2f}GB")
+                # Move transformer to GPU (required for GGUF, no offload allowed)
+                logger.info(f"Moving GGUF transformer to GPU (no CPU offload)...", emoji='robot')
+                self.pipeline.transformer.to('cuda')
 
-                    # Check VRAM before trying to load text encoder
-                    free_before_text_enc = torch.cuda.mem_get_info()[0] / 1024**3
-                    logger.debug(f"Free VRAM before text encoder: {free_before_text_enc:.2f}GB")
+                # Move VAE to GPU (small, always fits)
+                logger.info(f"Moving VAE to GPU...", emoji='robot')
+                self.pipeline.vae.to('cuda')
 
-                    # Estimate text encoder size
-                    text_enc_size = 2.5 if quantized_text_encoder_worked else 5.0
-                    logger.debug(f"Text encoder needs ~{text_enc_size:.1f}GB, have {free_before_text_enc:.2f}GB")
+                # Enable model CPU offload for text encoder only
+                # This keeps text encoder on CPU/system RAM until needed
+                if use_cpu_offload:
+                    logger.info(f"Enabling model CPU offload for text encoder...", emoji='zap')
+                    logger.info(f"Text encoder will transfer to GPU only during prompt encoding", emoji='info')
+                    self.pipeline.enable_model_cpu_offload(gpu_id=0)
 
-                    if free_before_text_enc < text_enc_size:
-                        raise torch.OutOfMemoryError(
-                            f"Insufficient VRAM for text encoder: need {text_enc_size:.1f}GB, have {free_before_text_enc:.2f}GB"
-                        )
-
-                    self.pipeline.text_encoder.to('cuda')
-                    logger.debug(f"Text encoder on GPU: {torch.cuda.memory_allocated() / 1024**3:.2f}GB")
-
-                    self.pipeline.vae.to('cuda')
-                    logger.debug(f"VAE on GPU: {torch.cuda.memory_allocated() / 1024**3:.2f}GB")
-
-                    # Log VRAM usage to verify components fit
-                    if torch.cuda.is_available():
-                        allocated_gb = torch.cuda.memory_allocated() / 1024**3
-                        reserved_gb = torch.cuda.memory_reserved() / 1024**3
-                        logger.info(f"VRAM usage: {allocated_gb:.2f}GB allocated, {reserved_gb:.2f}GB reserved", emoji='info')
-
-                    logger.info("GGUF model loaded successfully (no CPU offload - incompatible with GGUF)", emoji='check')
-                    logger.info("All pipeline components moved to GPU", emoji='zap')
-
-                except torch.OutOfMemoryError as e:
-                    # Cleanup failed components
-                    if hasattr(self, 'pipeline') and self.pipeline is not None:
-                        logger.debug("Cleaning up failed GGUF components...")
-                        del self.pipeline
-                        self.pipeline = None
-                        import gc
-                        gc.collect()
-                        torch.cuda.empty_cache()
-                        torch.cuda.synchronize()
-
-                    # Calculate VRAM requirement based on variant and text encoder status
-                    variant_name = self.variant
-                    text_enc_size = "2GB (NF4)" if quantized_text_encoder_worked else "5GB (full precision)"
-
-                    # Get transformer size from variant
-                    transformer_sizes = {
-                        "LTX-2-Q2_K-GGUF": "8GB",
-                        "LTX-2-Q3_K_M-GGUF": "10GB",
-                        "LTX-2-Q4_K_M-GGUF": "13GB",
-                    }
-                    transformer_size = transformer_sizes.get(variant_name, "8-13GB")
-
-                    logger.error(f"Insufficient VRAM to load {variant_name} on GPU", emoji='x')
-                    logger.error(f"  Transformer ({variant_name}): {transformer_size}", emoji='x')
-                    logger.error(f"  Text encoder: {text_enc_size}", emoji='x')
-                    logger.error(f"  VAE: 2GB", emoji='x')
-                    logger.error(f"Available VRAM: {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB", emoji='x')
-                    logger.error(f"GGUF cannot use CPU offload due to metadata incompatibility", emoji='x')
-
-                    if not quantized_text_encoder_worked:
-                        logger.error(f"Text encoder NF4 quantization failed - using full 5GB instead of 2GB", emoji='x')
-                        logger.error(f"This requires 3GB more VRAM than expected!", emoji='warning')
-
-                    logger.error(f"Recommended: Use Wan FLF2V instead", emoji='info')
-
-                    # Re-raise as-is to prevent NF4 fallback (won't work either)
-                    raise
+                # Log VRAM usage
+                vram_used = torch.cuda.memory_allocated() / 1024**3
+                vram_free = torch.cuda.mem_get_info()[0] / 1024**3
+                logger.info(f"VRAM: {vram_used:.2f}GB used, {vram_free:.2f}GB free", emoji='chart')
+                logger.info(f"Text encoder (24GB) offloaded to system RAM", emoji='check')
+                logger.info("GGUF model loaded successfully with CPU-offloaded text encoder!", emoji='check')
 
             except Exception as e:
                 import traceback
 
-                # Don't fallback to NF4 if it's an OOM error (won't work either)
-                if isinstance(e, torch.OutOfMemoryError):
-                    logger.error(f"GGUF OOM - NF4 fallback skipped (would also OOM)", emoji='x')
-                    raise  # Re-raise OOM to abort
-
-                logger.error(f"GGUF loading failed: {e}", emoji='x')
-                logger.debug(f"GGUF error traceback: {traceback.format_exc()}")
-
-                # CRITICAL: Cleanup failed GGUF pipeline before NF4 fallback
+                # Cleanup failed components
                 if hasattr(self, 'pipeline') and self.pipeline is not None:
-                    logger.debug("Cleaning up failed GGUF pipeline components...")
+                    logger.debug("Cleaning up failed GGUF components...")
                     del self.pipeline
                     self.pipeline = None
+                    import gc
+                    gc.collect()
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
 
-                import gc
-                gc.collect()
-                torch.cuda.empty_cache()
-                torch.cuda.synchronize()
+                # Calculate VRAM requirement for this variant
+                variant_name = self.variant
+                transformer_sizes = {
+                    "LTX-2-Q2_K-GGUF": "8GB",
+                    "LTX-2-Q3_K_M-GGUF": "10GB",
+                    "LTX-2-Q4_K_M-GGUF": "13GB",
+                }
+                transformer_size = transformer_sizes.get(variant_name, "8-13GB")
 
-                vram_after_cleanup = torch.cuda.mem_get_info()[0] / 1024**3
-                logger.debug(f"VRAM after GGUF cleanup: {vram_after_cleanup:.2f}GB available")
-
-                logger.info("Falling back to BitsAndBytes NF4 quantization...", emoji='warning')
-                # Fall through to NF4 loading below
-                is_gguf = False  # Trigger fallback
-                model_id = "Lightricks/LTX-2"  # Reset to base model for fallback
+                logger.error(f"Failed to load {variant_name} with CPU-offloaded text encoder", emoji='x')
+                logger.error(f"Error: {e}", emoji='x')
+                logger.error(f"Traceback: {traceback.format_exc()}", emoji='x')
+                logger.error(f"  Transformer ({variant_name}): {transformer_size} VRAM", emoji='x')
+                logger.error(f"  Text encoder (Gemma-3-12B): Offloaded to system RAM", emoji='x')
+                logger.error(f"  VAE: 2GB VRAM", emoji='x')
+                logger.error(f"  Available VRAM: {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB", emoji='x')
+                logger.error(f"Recommended: Use Wan FLF2V instead (works with 14GB+ VRAM)", emoji='info')
+                raise
 
         if not is_gguf and self.variant == 'LTX-2-4K-NF4':
             # Load with 4-bit quantization for transformer AND text encoder

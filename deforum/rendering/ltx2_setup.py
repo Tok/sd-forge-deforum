@@ -43,14 +43,13 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
         logger.info(f"  Current free VRAM: {free_vram_gb:.1f}GB")
 
         # VRAM requirements for different variants
-        # CRITICAL: GGUF cannot use CPU offload - must fit entirely in VRAM
-        # Total VRAM = transformer + text_encoder (NF4, ~2GB) + VAE (~2GB)
+        # NEW: Text encoder (Gemma-3-12B, 24GB) offloaded to system RAM via CPU offload
+        # Only transformer + VAE use VRAM
         vram_requirements = {
-            'LTX-2-Q2_K-GGUF': 12.0,   # 8GB + 2GB + 2GB = 12GB total (with NF4 text encoder!)
-            'LTX-2-Q3_K_M-GGUF': 14.0, # 10GB + 2GB + 2GB = 14GB total
-            'LTX-2-Q4_K_M-GGUF': 17.0, # 13GB + 2GB + 2GB = 17GB total
-            'LTX-2-4K-NF4': 10.0,       # BitsAndBytes NF4 fallback (can use CPU offload)
-            'LTX-2-4K': 24.0,           # Full precision
+            'LTX-2-Q2_K-GGUF': 10.0,   # 8GB transformer + 0GB text_encoder (CPU offload) + 2GB VAE
+            'LTX-2-Q3_K_M-GGUF': 12.0, # 10GB transformer + 0GB text_encoder (CPU offload) + 2GB VAE
+            'LTX-2-Q4_K_M-GGUF': 15.0, # 13GB transformer + 0GB text_encoder (CPU offload) + 2GB VAE
+            'LTX-2-4K': 24.0,           # Full precision (no offload)
         }
 
         # Auto-select variant based on VRAM if Auto
@@ -58,27 +57,28 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
             if free_vram_gb >= 24.0:
                 ltx2_variant = 'LTX-2-4K'
                 logger.info(f"  Auto-selected: LTX-2-4K (24GB+ VRAM available, full precision)")
-            elif free_vram_gb >= 17.0:
+            elif free_vram_gb >= 15.0:
                 ltx2_variant = 'LTX-2-Q4_K_M-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q4_K_M-GGUF (17GB+ VRAM available, GGUF Q4_K_M)")
-            elif free_vram_gb >= 14.0:
-                # 16GB total VRAM (14-15GB free) - use Q3_K_M for better quality
+                logger.info(f"  Auto-selected: LTX-2-Q4_K_M-GGUF (15GB+ VRAM available)")
+                logger.info(f"  Needs: 13GB transformer + 2GB VAE = 15GB VRAM")
+                logger.info(f"  Text encoder (24GB) offloaded to system RAM ✓")
+            elif free_vram_gb >= 12.0:
+                # 12-16GB VRAM - use Q3_K_M for good quality
                 ltx2_variant = 'LTX-2-Q3_K_M-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (16GB total VRAM, better quality)")
-                logger.info(f"  Needs: 9.4GB transformer + 2.5GB text_encoder (8-bit) + 2GB VAE = 13.9GB")
-                logger.info(f"  Using 8-bit text encoder to fit in 16GB VRAM!")
-            elif free_vram_gb >= 11.0:
-                # 12-13GB free VRAM - use Q2_K for maximum compatibility
+                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (12GB+ VRAM available)")
+                logger.info(f"  Needs: 10GB transformer + 2GB VAE = 12GB VRAM")
+                logger.info(f"  Text encoder (24GB) offloaded to system RAM ✓")
+            elif free_vram_gb >= 10.0:
+                # 10-12GB VRAM - use Q2_K for maximum compatibility
                 ltx2_variant = 'LTX-2-Q2_K-GGUF'
                 logger.info(f"  Auto-selected: LTX-2-Q2_K-GGUF ({free_vram_gb:.1f}GB available)")
-                logger.info(f"  Needs: 7.5GB transformer + 2.5GB text_encoder (8-bit) + 2GB VAE = 12GB")
-                logger.info(f"  Using 8-bit text encoder for maximum compatibility!")
+                logger.info(f"  Needs: 8GB transformer + 2GB VAE = 10GB VRAM")
+                logger.info(f"  Text encoder (24GB) offloaded to system RAM ✓")
             else:
-                logger.error(f"Insufficient VRAM for LTX-2! Minimum 14GB required, found {free_vram_gb:.1f}GB", emoji='x')
-                logger.error(f"GGUF quantization cannot use CPU offload due to metadata incompatibility", emoji='x')
-                logger.error(f"Recommended: Use Wan FLF2V instead (both work with <14GB VRAM)", emoji='info')
+                logger.error(f"Insufficient VRAM for LTX-2! Minimum 10GB required, found {free_vram_gb:.1f}GB", emoji='x')
+                logger.error(f"Recommended: Use Wan FLF2V instead (works with 10GB+ VRAM)", emoji='info')
                 raise RuntimeError(
-                    f"Insufficient VRAM for LTX-2. Minimum 14GB required to attempt Q2_K GGUF. "
+                    f"Insufficient VRAM for LTX-2. Minimum 10GB required for Q2_K GGUF. "
                     f"Found {free_vram_gb:.1f}GB. Use Wan FLF2V instead."
                 )
 

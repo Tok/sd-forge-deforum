@@ -19,39 +19,40 @@ class LTX2ModelDiscovery:
     # LTX-2 model variants
     MODEL_VARIANTS = {
         # GGUF variants (recommended - better quantization, lower VRAM)
-        # NOTE: Uses BitsAndBytes NF4 text encoder (~2GB) to reduce VRAM
+        # NOTE: Text encoder (Gemma-3-12B, 24GB) offloaded to system RAM via CPU offload
+        # Only transformer + VAE use VRAM
         "LTX-2-Q4_K_M-GGUF": {
             "huggingface_id": "unsloth/LTX-2-GGUF",
             "gguf_filename": "ltx-2-19b-dev-Q4_K_M.gguf",
             "description": "4K variant, Q4_K_M quantized (19B params, GGUF)",
-            "vram_gb": 17,  # 13GB transformer + 2GB text_encoder (NF4) + 2GB VAE
+            "vram_gb": 15,  # 13GB transformer + 0GB text_encoder (CPU offload) + 2GB VAE
             "max_resolution": "4K (3840x2160)",
             "max_fps": 50,
             "quantization": "gguf-q4_k_m",
             "recommended": True,
-            "note": "Recommended for 17GB+ VRAM (RTX 4080, 4090, etc.) - best quality/VRAM balance"
+            "note": "Recommended for 15GB+ VRAM (RTX 4080, 4090, etc.) - best quality/VRAM balance"
         },
         "LTX-2-Q3_K_M-GGUF": {
             "huggingface_id": "unsloth/LTX-2-GGUF",
             "gguf_filename": "ltx-2-19b-dev-Q3_K_M.gguf",
             "description": "4K variant, Q3_K_M quantized (19B params, GGUF)",
-            "vram_gb": 14,  # 10GB transformer + 2GB text_encoder (NF4) + 2GB VAE
+            "vram_gb": 12,  # 10GB transformer + 0GB text_encoder (CPU offload) + 2GB VAE
             "max_resolution": "4K (3840x2160)",
             "max_fps": 50,
             "quantization": "gguf-q3_k_m",
             "recommended": False,
-            "note": "For 14GB+ VRAM - good quality/VRAM balance (RTX 4070 Ti SUPER should work!)"
+            "note": "For 12GB+ VRAM - good quality/VRAM balance (RTX 4070 Ti SUPER works!)"
         },
         "LTX-2-Q2_K-GGUF": {
             "huggingface_id": "unsloth/LTX-2-GGUF",
             "gguf_filename": "ltx-2-19b-dev-Q2_K.gguf",
             "description": "4K variant, Q2_K quantized (19B params, GGUF)",
-            "vram_gb": 12,  # 8GB transformer + 2GB text_encoder (NF4) + 2GB VAE
+            "vram_gb": 10,  # 8GB transformer + 0GB text_encoder (CPU offload) + 2GB VAE
             "max_resolution": "4K (3840x2160)",
             "max_fps": 50,
             "quantization": "gguf-q2_k",
             "recommended": False,
-            "note": "For 12GB+ VRAM - lowest quality but very efficient (should work on most GPUs!)"
+            "note": "For 10GB+ VRAM - lowest quality but very efficient (works on most GPUs!)"
         },
 
         # BitsAndBytes NF4 variants (fallback if GGUF doesn't work)
@@ -182,21 +183,20 @@ class LTX2ModelDiscovery:
         Returns:
             Recommended variant name
         """
-        # Prefer GGUF variants (better quantization quality and VRAM efficiency)
-        # CRITICAL: GGUF cannot use CPU offload (metadata loss issue)
-        # Must account for FULL memory: transformer + text_encoder (NF4, ~2GB) + VAE (~2GB)
+        # Text encoder (Gemma-3-12B, 24GB) offloaded to system RAM via CPU offload
+        # Only transformer + VAE consume VRAM
         if available_vram_gb >= 24:
-            return "LTX-2-4K"  # Full precision for high-end cards
-        elif available_vram_gb >= 17:
-            return "LTX-2-Q4_K_M-GGUF"  # 13GB + 2GB + 2GB = 17GB total
-        elif available_vram_gb >= 14:
-            return "LTX-2-Q3_K_M-GGUF"  # 10GB + 2GB + 2GB = 14GB total
+            return "LTX-2-4K"  # Full precision for high-end cards (24GB VRAM)
+        elif available_vram_gb >= 15:
+            return "LTX-2-Q4_K_M-GGUF"  # 13GB transformer + 2GB VAE = 15GB VRAM
         elif available_vram_gb >= 12:
+            return "LTX-2-Q3_K_M-GGUF"  # 10GB transformer + 2GB VAE = 12GB VRAM
+        elif available_vram_gb >= 10:
             logger.info(f"{available_vram_gb:.1f}GB VRAM available - using Q2_K (lowest quality)")
-            logger.info(f"Using NF4 text encoder (~2GB) to fit in available VRAM")
-            return "LTX-2-Q2_K-GGUF"  # 8GB + 2GB + 2GB = 12GB total
+            logger.info(f"Text encoder offloaded to system RAM (saves 24GB VRAM)")
+            return "LTX-2-Q2_K-GGUF"  # 8GB transformer + 2GB VAE = 10GB VRAM
         else:
-            logger.error(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 requires 12GB minimum")
+            logger.error(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 requires 10GB minimum")
             logger.error(f"Consider using Wan FLF2V instead")
             return "LTX-2-Q2_K-GGUF"  # Return Q2_K as absolute minimum (will likely OOM)
 
