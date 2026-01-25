@@ -156,8 +156,8 @@ class InterpolationDashboard:
             return
         self._last_update_time = now
 
-        # Get terminal width for full-width display
-        self._terminal_width = self._get_terminal_width()
+        # Refresh terminal size on every update (handles window resize and detection issues)
+        self._terminal_height, self._terminal_width = self._get_terminal_size()
         content_width = self._terminal_width - 4  # Account for │ borders
 
         # Build dashboard content
