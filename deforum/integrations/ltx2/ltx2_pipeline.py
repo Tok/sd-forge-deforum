@@ -122,7 +122,7 @@ class LTX2Pipeline:
                 load_kwargs = {
                     "torch_dtype": torch.bfloat16,
                     "quantization_config": quantization_config,
-                    "device_map": "sequential",  # Sequential CPU offload during load
+                    "device_map": "balanced",  # Auto-balance across GPU/CPU
                 }
                 if tokenizer is not None:
                     load_kwargs["tokenizer"] = tokenizer
@@ -133,7 +133,7 @@ class LTX2Pipeline:
                 logger.debug(f"Quantization error: {e}")
                 load_kwargs = {
                     "torch_dtype": torch.bfloat16,
-                    "device_map": "sequential",  # Sequential CPU offload during load
+                    "device_map": "balanced",  # Auto-balance across GPU/CPU
                 }
                 if tokenizer is not None:
                     load_kwargs["tokenizer"] = tokenizer
@@ -143,16 +143,16 @@ class LTX2Pipeline:
             dtype = torch.bfloat16 if self.device == 'cuda' else torch.float32
             load_kwargs = {
                 "torch_dtype": dtype,
-                "device_map": "sequential",  # Sequential CPU offload during load
+                "device_map": "balanced",  # Auto-balance across GPU/CPU
             }
             if tokenizer is not None:
                 load_kwargs["tokenizer"] = tokenizer
             self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
 
-        # Device placement is handled by device_map="sequential", don't call .to() manually
+        # Device placement is handled by device_map="balanced", don't call .to() manually
 
         # Enable additional memory optimizations
-        # Note: device_map="sequential" already handles CPU offloading during load
+        # Note: device_map="balanced" already handles GPU/CPU balancing during load
         if self.device == 'cuda':
             # Enable VAE tiling to reduce memory usage during decode
             try:
@@ -161,7 +161,7 @@ class LTX2Pipeline:
             except:
                 pass
 
-        logger.info(f"LTX-2 pipeline loaded successfully with sequential CPU offload", emoji='check')
+        logger.info(f"LTX-2 pipeline loaded successfully with balanced GPU/CPU device mapping", emoji='check')
 
     def generate_segment(
         self,
