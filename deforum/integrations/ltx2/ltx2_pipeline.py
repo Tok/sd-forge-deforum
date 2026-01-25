@@ -144,7 +144,7 @@ class LTX2Pipeline:
                 quantized_text_encoder_worked = False
 
                 try:
-                    from transformers import Gemma2ForCausalLM, BitsAndBytesConfig
+                    from transformers import AutoModelForCausalLM, BitsAndBytesConfig
                     import os
 
                     # Disable warmup to prevent OOM during quantization
@@ -159,14 +159,15 @@ class LTX2Pipeline:
                     )
 
                     logger.info(f"Loading text encoder with NF4 quantization (saves ~3GB)...", emoji='zap')
-                    text_encoder = Gemma2ForCausalLM.from_pretrained(
+                    # Use AutoModelForCausalLM to handle Gemma-3 correctly
+                    text_encoder = AutoModelForCausalLM.from_pretrained(
                         "Lightricks/LTX-2",
                         subfolder="text_encoder",
                         quantization_config=bnb_config,
                         torch_dtype=torch.bfloat16,
                         device_map="cuda",
                         low_cpu_mem_usage=True,
-                        max_memory={0: "12GB"},  # Limit memory to prevent warmup OOM
+                        max_memory={0: "7GB"},  # Limit memory (transformer already loaded, ~7GB free)
                     )
 
                     logger.info(f"Text encoder quantized successfully! (~2GB vs 5GB full)", emoji='check')
@@ -228,11 +229,30 @@ class LTX2Pipeline:
                         torch.cuda.empty_cache()
                         torch.cuda.synchronize()
 
-                    logger.error(f"Insufficient VRAM to load GGUF variant on GPU", emoji='x')
-                    logger.error(f"Q2_K requires 15GB (8GB transformer + 5GB text_encoder + 2GB VAE)", emoji='x')
+                    # Calculate VRAM requirement based on variant and text encoder status
+                    variant_name = self.variant
+                    text_enc_size = "2GB (NF4)" if quantized_text_encoder_worked else "5GB (full precision)"
+
+                    # Get transformer size from variant
+                    transformer_sizes = {
+                        "LTX-2-Q2_K-GGUF": "8GB",
+                        "LTX-2-Q3_K_M-GGUF": "10GB",
+                        "LTX-2-Q4_K_M-GGUF": "13GB",
+                    }
+                    transformer_size = transformer_sizes.get(variant_name, "8-13GB")
+
+                    logger.error(f"Insufficient VRAM to load {variant_name} on GPU", emoji='x')
+                    logger.error(f"  Transformer ({variant_name}): {transformer_size}", emoji='x')
+                    logger.error(f"  Text encoder: {text_enc_size}", emoji='x')
+                    logger.error(f"  VAE: 2GB", emoji='x')
                     logger.error(f"Available VRAM: {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB", emoji='x')
                     logger.error(f"GGUF cannot use CPU offload due to metadata incompatibility", emoji='x')
-                    logger.error(f"Recommended: Use Wan FLF2V instead (both work with <14GB VRAM)", emoji='info')
+
+                    if not quantized_text_encoder_worked:
+                        logger.error(f"Text encoder NF4 quantization failed - using full 5GB instead of 2GB", emoji='x')
+                        logger.error(f"This requires 3GB more VRAM than expected!", emoji='warning')
+
+                    logger.error(f"Recommended: Use Wan FLF2V instead", emoji='info')
 
                     # Re-raise as-is to prevent NF4 fallback (won't work either)
                     raise
