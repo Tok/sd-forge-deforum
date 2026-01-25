@@ -778,7 +778,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 logger.debug(f"   Audio segment: {segment_start_sec:.2f}s-{segment_start_sec + segment_duration:.2f}s ({segment_duration:.2f}s)")
 
                 # Get seed for this segment (use first frame's seed)
-                segment_seed = data.animation_keys.seed_keys.get_value(first_frame_idx)
+                segment_seed = int(data.animation_keys.deform_keys.seed_schedule_series[first_frame_idx])
 
                 # Generate with LTX-2
                 try:
