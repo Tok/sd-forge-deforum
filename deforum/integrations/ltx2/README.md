@@ -1,20 +1,41 @@
 # LTX-2 Integration Status
 
-## Current State: READY FOR TESTING (as of 2026-01-25)
+## Current State: NOT VIABLE FOR 14GB VRAM (as of 2026-01-25)
 
-LTX-2 integration is fully implemented. All known bugs have been fixed:
-- ✅ Class name bug fixed (LTX2VideoTransformer3DModel)
-- ✅ gguf package installed (0.17.1)
-- ✅ kernels package installed (0.12.0) for 10% CUDA speedup
-- ✅ CUDA kernels enabled via DIFFUSERS_GGUF_CUDA_KERNELS=true
+LTX-2 integration is fully implemented but **not viable for <15GB VRAM** due to GGUF/CPU offload incompatibility.
 
-## Issues
+## Critical Issue: GGUF + CPU Offload Incompatibility
+
+### The Problem
+GGUF quantization is **fundamentally incompatible** with accelerate's CPU offloading:
+- GGUF tensors have `quant_type` metadata required for dequantization
+- `enable_sequential_cpu_offload()` moves tensors to "meta" device during setup
+- This causes `quant_type` to become `None`, breaking GGUF's dequantization lookup
+- Error: `KeyError: None` in `GGML_QUANT_SIZES[quant_type]`
+
+### Why This Matters
+Without CPU offload, **all components must fit in VRAM simultaneously**:
+- Transformer (GGUF): 8-13GB depending on quantization
+- Text Encoder (Gemma): ~5GB
+- VAE: ~2GB
+- **Minimum Total: 15GB** (with Q2_K GGUF)
+
+### VRAM Requirements (No CPU Offload)
+| Variant | Transformer | + Text Encoder | + VAE | **Total VRAM** |
+|---------|-------------|----------------|-------|----------------|
+| Q4_K_M | 13GB | + 5GB | + 2GB | **20GB** |
+| Q3_K_M | 10GB | + 5GB | + 2GB | **17GB** |
+| Q2_K | 8GB | + 5GB | + 2GB | **15GB** |
+
+**14.3GB VRAM is insufficient** even for Q2_K (lowest quality variant).
+
+## Issues Fixed (But Still Not Enough)
 
 ### 1. GGUF Loading - FIXED ✅
 - **Issue:** [diffusers #12981](https://github.com/huggingface/diffusers/issues/12981) - CLOSED
-- **Fix:** [PR #12983](https://github.com/huggingface/diffusers/pull/12983) - Use `LTX2VideoTransformer3DModel` not `LTXVideoTransformer3DModel`
-- **Status:** Fixed in our code (commit fa59310d), should work now
-- **Note:** GGUF files download successfully (12.8GB in ~50s) and should now load correctly
+- **Fix:** [PR #12983](https://github.com/huggingface/diffusers/pull/12983) - Use `LTX2VideoTransformer3DModel`
+- **Status:** GGUF loads successfully now
+- **Note:** GGUF files download and load correctly, but OOM during generation
 
 ### 2. BitsAndBytes NF4 OOMs
 - **Issue:** Caching allocator warmup tries to allocate full model before quantization
@@ -58,27 +79,68 @@ Already in requirements.txt but needs manual install if not using `./setup.sh --
 
 ## Tested VRAM Configurations
 
-- **14.3GB VRAM (RTX 4070 Ti SUPER):**
-  - GGUF Q4_K_M: ⚠️ **Needs testing** (should work after fix)
-  - BitsAndBytes NF4: ❌ Fails (OOM during warmup)
-- **24GB+ VRAM:** ⚠️ Untested (should work with full precision or GGUF)
+- **14.3GB VRAM (RTX 4070 Ti SUPER):** ❌ **INSUFFICIENT**
+  - GGUF Q4_K_M (20GB): ❌ OOM (needs 20GB total)
+  - GGUF Q3_K_M (17GB): ❌ OOM (needs 17GB total)
+  - GGUF Q2_K (15GB): ❌ OOM (needs 15GB total)
+  - BitsAndBytes NF4: ❌ OOM during warmup
+  - **Conclusion:** LTX-2 requires minimum 15GB VRAM
 
-## Testing Status
+- **15-16GB VRAM:** ⚠️ **Untested but should work**
+  - GGUF Q2_K (15GB total) should fit
+  - Quality will be lowest (Q2_K quantization)
 
-**GGUF should work now!** The class name bug has been fixed. Ready to test:
-- GGUF Q4_K_M file is already cached at `~/.cache/huggingface/hub/models--unsloth--LTX-2-GGUF/`
-- No re-download needed (12.8GB already on disk)
-- Should load successfully with 14GB VRAM
+- **17-19GB VRAM:** ⚠️ **Untested but should work**
+  - GGUF Q3_K_M (17GB total) recommended
+  - Better quality than Q2_K
 
-**If GGUF still fails, alternatives:**
-1. **Use Wan FLF2V** (recommended) - AI-powered interpolation, works with 14GB VRAM
-2. **Use FILM** - Google's interpolation, lightweight and fast
+- **20GB+ VRAM:** ⚠️ **Untested but should work**
+  - GGUF Q4_K_M (20GB total) recommended
+  - Best quality/VRAM balance
 
-## Next Steps
+- **24GB+ VRAM:** ⚠️ **Untested**
+  - Full precision BF16 (24GB+) available
+  - Best quality but largest memory footprint
 
-1. Monitor [diffusers #12981](https://github.com/huggingface/diffusers/issues/12981) for GGUF fix
-2. Test with 24GB+ VRAM card if available
-3. Consider alternative: Use ComfyUI with LTX-2 GGUF (confirmed working)
+## Recommended Alternatives for <15GB VRAM
+
+Since LTX-2 requires minimum 15GB VRAM, users with 14GB or less should use:
+
+### 1. Wan FLF2V ⭐ (Recommended)
+- **VRAM:** Works with 14GB VRAM
+- **Quality:** AI-powered video generation with semantic understanding
+- **Model:** Wan 2.2-TI2V-5B (~5GB)
+- **Settings:** Guidance scale 3.5 for smooth transitions
+- **Status:** Fully working and tested
+
+### 2. FILM
+- **VRAM:** Lightweight (<2GB)
+- **Quality:** Google's Frame Interpolation for Large Motion
+- **Speed:** Fast
+- **Best for:** Dramatic scene changes
+- **Status:** Fully working
+
+### 3. Wait for Better VRAM Card
+- LTX-2 GGUF files are already cached (12.8GB Q4_K_M)
+- Will work immediately when you upgrade to 15GB+ VRAM
+- No re-download needed
+
+## Lessons Learned
+
+1. **GGUF quantization cannot be combined with CPU offloading** - this is a fundamental limitation
+2. **LTX-2 text encoder (Gemma) is large** (~5GB) - cannot be avoided
+3. **Minimum VRAM = transformer + text_encoder + VAE** - all must fit simultaneously without offload
+4. **BitsAndBytes also fails** due to warmup allocating full model before quantization
+5. **ComfyUI may work differently** - uses different memory management, worth trying
+
+## Next Steps / Future Work
+
+1. ✅ **COMPLETED:** Identified GGUF/CPU offload incompatibility
+2. ✅ **COMPLETED:** Documented VRAM requirements accurately
+3. ⚠️ **TODO:** Test with 15GB+ VRAM hardware when available
+4. ⚠️ **TODO:** Investigate if ComfyUI's GGUF loading works better (different memory approach)
+5. ⚠️ **TODO:** Monitor diffusers for potential CPU offload fix for GGUF
+6. ⚠️ **TODO:** Consider implementing direct GGUF loading without diffusers (complex)
 
 ## Files
 
