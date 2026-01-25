@@ -42,6 +42,11 @@ class LTX2Pipeline:
 
     def load_model(self):
         """Load LTX-2 model from HuggingFace."""
+        import os
+
+        # Enable optimized CUDA kernels for GGUF (10% speedup if available)
+        os.environ["DIFFUSERS_GGUF_CUDA_KERNELS"] = "true"
+
         try:
             from diffusers import LTX2ImageToVideoPipeline, GGUFQuantizationConfig
             from diffusers.models.transformers import LTX2VideoTransformer3DModel
@@ -49,7 +54,7 @@ class LTX2Pipeline:
             logger.error("Failed to import LTX-2 dependencies", emoji='x')
             raise ImportError(
                 "LTX-2 requires diffusers with LTX-2 and GGUF support. "
-                "Install with: pip install 'diffusers>=0.32.0' gguf"
+                "Install with: pip install 'diffusers>=0.32.0' gguf kernels"
             )
 
         logger.info(f"Loading LTX-2 model: {self.variant}...", emoji='download')
@@ -150,7 +155,6 @@ class LTX2Pipeline:
             try:
                 from transformers import BitsAndBytesConfig
                 from diffusers import PipelineQuantizationConfig
-                import os
 
                 # Disable warmup to prevent OOM during loading
                 os.environ["DISABLE_WARMUP"] = "1"
