@@ -152,18 +152,19 @@ class LTX2Pipeline:
                     logger.info(f"Attempting 8-bit quantization (saves ~2.5GB, more stable than NF4)...", emoji='zap')
                     from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
-                    # Create 8-bit quantization config (more compatible than 4-bit)
+                    # Create 8-bit quantization config with explicit GPU-only placement
                     bnb_config = BitsAndBytesConfig(
                         load_in_8bit=True,
                         llm_int8_threshold=6.0,
+                        llm_int8_enable_fp32_cpu_offload=False,  # Keep everything on GPU
                     )
 
-                    logger.info(f"Loading text encoder with 8-bit quantization...", emoji='robot')
+                    logger.info(f"Loading text encoder with 8-bit quantization (GPU-only, no CPU offload)...", emoji='robot')
                     text_encoder = AutoModelForCausalLM.from_pretrained(
                         "Lightricks/LTX-2",
                         subfolder="text_encoder",
                         quantization_config=bnb_config,
-                        device_map="auto",
+                        device_map={"": "cuda"},  # Explicit GPU placement, no CPU fallback
                         low_cpu_mem_usage=True,
                     )
 
@@ -172,7 +173,8 @@ class LTX2Pipeline:
 
                 except Exception as text_enc_error:
                     logger.warning(f"8-bit quantization failed: {text_enc_error}", emoji='warning')
-                    logger.warning(f"Using full precision text encoder (5GB) - may OOM on <17GB VRAM", emoji='warning')
+                    logger.warning(f"Using full precision text encoder (5GB) - will OOM on 16GB VRAM", emoji='warning')
+                    logger.info(f"Q3_K_M needs 14.5GB with 8-bit, 17GB with full precision", emoji='info')
                     text_encoder = None
 
                 # Load rest of pipeline with quantized transformer
