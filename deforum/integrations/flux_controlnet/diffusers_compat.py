@@ -235,11 +235,9 @@ def patch_forge_flux_controlnet():
     This matches diffusers' FluxTransformer2DModel ControlNet implementation.
     """
     try:
-        import sys
         import torch
 
-        # Import Forge's Flux transformer
-        sys.path.insert(0, '/home/zirteq/workspace/stable-diffusion-webui-forge')
+        # Import Forge's Flux transformer (no sys.path needed - we're running as Forge extension)
         from backend.nn.flux import IntegratedFluxTransformer2DModel
 
         # Save original inner_forward method
@@ -372,8 +370,7 @@ def patch_forge_kmodel_for_controlnet():
     and passed to the patched Flux transformer.
     """
     try:
-        import sys
-        sys.path.insert(0, '/home/zirteq/workspace/stable-diffusion-webui-forge')
+        # Import Forge's KModel (no sys.path needed - we're running as Forge extension)
         from backend.modules.k_model import KModel
 
         # Save original apply_model
