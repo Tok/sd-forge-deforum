@@ -486,79 +486,11 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         logger.info(f"Video segments: {len(keyframes) - 1} (keyframes - 1)", emoji='info')
 
     elif interp_method == "LTX-2":
-        logger.info(f"Initializing LTX-2 Audio-Video pipeline...", emoji='video_camera')
-
-        # Get LTX-2 model variant from args
-        ltx2_variant = getattr(wan_args, 'ltx2_model_variant', 'Auto')
-        ltx2_audio_mode = getattr(wan_args, 'ltx2_audio_mode', 'condition_only')
-
-        logger.info(f"LTX-2 Configuration:", emoji='gear')
-        logger.info(f"  Model Variant: {ltx2_variant}")
-        logger.info(f"  Audio Mode: {ltx2_audio_mode}")
-
-        # Check VRAM requirements
-        import torch
-        if torch.cuda.is_available():
-            free_vram_gb = torch.cuda.mem_get_info()[0] / 1024**3
-            logger.info(f"  Current free VRAM: {free_vram_gb:.1f}GB")
-
-            # VRAM requirements for different variants
-            vram_requirements = {
-                'LTX-2-4K-NF4': 12.0,  # 4-bit quantized
-                'LTX-2-4K': 24.0,      # Full precision
-                'LTX-2-HD': 18.0,      # HD variant
-            }
-
-            # Auto-select variant based on VRAM if Auto
-            if ltx2_variant == 'Auto':
-                if free_vram_gb >= 24.0:
-                    ltx2_variant = 'LTX-2-4K'
-                    logger.info(f"  Auto-selected: LTX-2-4K (24GB+ VRAM available)")
-                elif free_vram_gb >= 18.0:
-                    ltx2_variant = 'LTX-2-HD'
-                    logger.info(f"  Auto-selected: LTX-2-HD (18GB+ VRAM available)")
-                elif free_vram_gb >= 12.0:
-                    ltx2_variant = 'LTX-2-4K-NF4'
-                    logger.info(f"  Auto-selected: LTX-2-4K-NF4 (12GB+ VRAM available, 4-bit quantized)")
-                else:
-                    logger.error(f"Insufficient VRAM for LTX-2! Minimum 12GB required, found {free_vram_gb:.1f}GB", emoji='x')
-                    raise RuntimeError(f"Insufficient VRAM for LTX-2. Minimum 12GB required (for LTX-2-4K-NF4). Found {free_vram_gb:.1f}GB. Use Wan FLF2V or FILM instead.")
-
-            # Check if selected variant fits in VRAM
-            required_vram = vram_requirements.get(ltx2_variant, 24.0)
-            if free_vram_gb < required_vram:
-                logger.warning(f"Low VRAM: {free_vram_gb:.1f}GB free, {ltx2_variant} needs ~{required_vram:.0f}GB", emoji='warning')
-                logger.warning(f"   Generation may fail or be very slow!")
-                logger.warning(f"   Consider selecting a smaller variant or using Wan FLF2V/FILM instead")
-
-        # Check for audio track (required for LTX-2)
-        if not video_args.add_soundtrack or not video_args.soundtrack_path:
-            raise RuntimeError(
-                "LTX-2 requires an audio track for conditioning. "
-                "Please enable 'Add Soundtrack' in the Output tab and provide an audio file."
-            )
-
-        # Validate resolution for LTX-2 (must be multiples of 32)
-        if args.W % 32 != 0 or args.H % 32 != 0:
-            logger.error(f"LTX-2 requires resolution to be multiples of 32", emoji='x')
-            logger.error(f"  Current: {args.W}x{args.H}")
-            logger.error(f"  Nearest valid: {(args.W // 32) * 32}x{(args.H // 32) * 32}")
-            raise ValueError(
-                f"LTX-2 requires resolution multiples of 32. "
-                f"Current: {args.W}x{args.H}. "
-                f"Use: {(args.W // 32) * 32}x{(args.H // 32) * 32} instead."
-            )
-
-        # Initialize LTX-2 pipeline
-        from deforum.integrations.ltx2 import LTX2Pipeline
-
-        ltx2_pipeline = LTX2Pipeline(device='cuda', variant=ltx2_variant)
-        ltx2_pipeline.load_model()
-
-        logger.info(f"LTX-2 pipeline ready", emoji='check')
-        logger.info(f"  Resolution: {args.W}x{args.H} ✓", emoji='info')
-        logger.info(f"  Video segments: {len(keyframes) - 1} (keyframes - 1)", emoji='info')
-        logger.info(f"  Audio mode: {ltx2_audio_mode} (audio drives motion)", emoji='sound')
+        # LTX-2 Audio-Video pipeline setup (extracted for clarity)
+        from deforum.rendering.ltx2_setup import setup_ltx2_pipeline
+        ltx2_pipeline, ltx2_variant, ltx2_audio_mode = setup_ltx2_pipeline(
+            args, video_args, wan_args, keyframes
+        )
 
     # Check scene strategy
     scene_strategy = getattr(wan_args, 'da3_3dgs_scene_strategy', 'per_segment')
