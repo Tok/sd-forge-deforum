@@ -69,52 +69,64 @@ class LTX2Pipeline:
         # Check if this is a GGUF variant
         is_gguf = variant_info['quantization'] and variant_info['quantization'].startswith('gguf-')
 
-        # Pre-load tokenizer to avoid lazy loading issues
-        logger.debug("Pre-loading T5 tokenizer...")
-        try:
-            tokenizer = T5Tokenizer.from_pretrained(
-                model_id,
-                subfolder="tokenizer",
-            )
-            logger.debug("Tokenizer loaded successfully")
-        except Exception as e:
-            logger.debug(f"Tokenizer pre-load failed (will let pipeline handle it): {e}")
-            tokenizer = None
+        # Note: LTX-2 uses Gemma tokenizer, not T5
+        # Pre-loading is not needed - pipeline handles tokenizer loading
+        tokenizer = None
 
         # Inform about auto-download
         import os
         cache_dir = os.path.expanduser("~/.cache/huggingface/hub")
-        model_cache = os.path.join(cache_dir, f"models--{model_id.replace('/', '--')}")
 
-        if not os.path.exists(model_cache):
-            logger.info(f"First run: Auto-downloading from HuggingFace ({model_id})", emoji='info')
-            logger.info(f"Download size: ~19GB (caches to {cache_dir})", emoji='download')
-            logger.info(f"This may take 5-15 minutes depending on connection speed...", emoji='hourglass')
+        # Check if model is cached (works for both GGUF and full models)
+        if is_gguf:
+            # Check for GGUF file
+            gguf_cache = os.path.join(cache_dir, f"models--{model_id.replace('/', '--')}")
+            if not os.path.exists(gguf_cache):
+                logger.info(f"First run: Auto-downloading GGUF from HuggingFace ({model_id})", emoji='info')
+                logger.info(f"Download size: ~{variant_info['vram_gb']}GB (caches to {cache_dir})", emoji='download')
+                logger.info(f"This may take 5-15 minutes depending on connection speed...", emoji='hourglass')
+            else:
+                logger.info(f"Using cached GGUF model from {cache_dir}", emoji='check')
         else:
-            logger.info(f"Using cached model from {cache_dir}", emoji='check')
+            # Check for full model (Lightricks/LTX-2)
+            base_model_id = "Lightricks/LTX-2"
+            model_cache = os.path.join(cache_dir, f"models--{base_model_id.replace('/', '--')}")
+            if not os.path.exists(model_cache):
+                logger.info(f"First run: Auto-downloading from HuggingFace ({base_model_id})", emoji='info')
+                logger.info(f"Download size: ~19GB (caches to {cache_dir})", emoji='download')
+                logger.info(f"This may take 5-15 minutes depending on connection speed...", emoji='hourglass')
+            else:
+                logger.info(f"Using cached model from {cache_dir}", emoji='check')
 
         # Load with appropriate quantization method
         if is_gguf:
             # Load GGUF quantized model (recommended - better quality and VRAM efficiency)
             gguf_filename = variant_info['gguf_filename']
-            gguf_url = f"https://huggingface.co/{model_id}/resolve/main/{gguf_filename}"
 
             logger.info(f"Using GGUF quantization: {variant_info['quantization']}", emoji='zap')
             logger.info(f"Downloading GGUF model: {gguf_filename} (~{variant_info['vram_gb']}GB)...", emoji='download')
 
             try:
-                # Load transformer separately with GGUF quantization
+                from huggingface_hub import hf_hub_download
+
+                # Download GGUF file
+                gguf_path = hf_hub_download(
+                    repo_id=model_id,
+                    filename=gguf_filename,
+                )
+
+                # Load transformer with GGUF quantization
                 transformer = LTXVideoTransformer3DModel.from_single_file(
-                    gguf_url,
+                    gguf_path,
                     quantization_config=GGUFQuantizationConfig(compute_dtype=torch.bfloat16),
-                    config=model_id,  # Use base model config
+                    config="Lightricks/LTX-2",  # Use base model config (not GGUF repo)
                     subfolder="transformer",
                     torch_dtype=torch.bfloat16,
                 )
 
-                # Load rest of pipeline with transformer
+                # Load rest of pipeline with quantized transformer (use base model, not GGUF repo)
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
-                    model_id,
+                    "Lightricks/LTX-2",
                     transformer=transformer,
                     torch_dtype=torch.bfloat16,
                 )
@@ -130,6 +142,7 @@ class LTX2Pipeline:
                 logger.info("Falling back to BitsAndBytes NF4 quantization...", emoji='warning')
                 # Fall through to NF4 loading below
                 is_gguf = False  # Trigger fallback
+                model_id = "Lightricks/LTX-2"  # Reset to base model for fallback
 
         if not is_gguf and self.variant == 'LTX-2-4K-NF4':
             # Load with 4-bit quantization for transformer AND text encoder
@@ -157,15 +170,12 @@ class LTX2Pipeline:
 
                 # Use simple device_map to enable CPU offloading during quantization
                 # device_map={"": device} loads all to single device but allows BitsAndBytes CPU staging
-                load_kwargs = {
-                    "torch_dtype": torch.bfloat16,
-                    "quantization_config": quantization_config,
-                    "device_map": {"": self.device},  # Single device map for BitsAndBytes
-                }
-                if tokenizer is not None:
-                    load_kwargs["tokenizer"] = tokenizer
-
-                self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
+                self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.bfloat16,
+                    quantization_config=quantization_config,
+                    device_map={"": self.device},  # Single device map for BitsAndBytes
+                )
 
             except (ImportError, Exception) as e:
                 logger.error(f"Quantization failed with insufficient VRAM", emoji='x')
@@ -177,17 +187,15 @@ class LTX2Pipeline:
                     f"Available: {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB, Required: 24GB+ (or 10GB with working quantization). "
                     f"Try closing other programs to free VRAM, or use a different interpolation method (Wan FLF2V or FILM)."
                 )
-        else:
+        elif not is_gguf:
             # Full precision or bfloat16 (LTX-2 recommends bfloat16, not fp16)
             # These variants require 24GB+ VRAM
             dtype = torch.bfloat16 if self.device == 'cuda' else torch.float32
-            load_kwargs = {
-                "torch_dtype": dtype,
-                "device_map": "cuda",  # Load to CUDA device
-            }
-            if tokenizer is not None:
-                load_kwargs["tokenizer"] = tokenizer
-            self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
+            self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
+                model_id,
+                torch_dtype=dtype,
+                device_map="cuda",  # Load to CUDA device
+            )
 
         # Enable additional memory optimizations
         if self.device == 'cuda':
