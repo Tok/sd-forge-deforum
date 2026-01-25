@@ -185,6 +185,23 @@ class LTX2Pipeline:
                     pipeline_kwargs["text_encoder"] = text_encoder
                     logger.info(f"Using quantized text encoder in pipeline", emoji='check')
 
+                # Check VRAM before loading pipeline (pipeline loads all components including text_encoder)
+                free_before_pipeline = torch.cuda.mem_get_info()[0] / 1024**3
+                transformer_vram = torch.cuda.memory_allocated() / 1024**3
+                logger.debug(f"Free VRAM before pipeline load: {free_before_pipeline:.2f}GB (transformer: {transformer_vram:.2f}GB)")
+
+                # Pipeline will load: text_encoder (5GB), VAE (2GB), + other components (~1GB)
+                # Total needed: ~8GB
+                if free_before_pipeline < 7.0 and not quantized_text_encoder_worked:
+                    logger.error(f"Insufficient VRAM to load pipeline components", emoji='x')
+                    logger.error(f"  Transformer already loaded: {transformer_vram:.2f}GB", emoji='info')
+                    logger.error(f"  Free VRAM: {free_before_pipeline:.2f}GB", emoji='info')
+                    logger.error(f"  Pipeline needs: ~8GB (text_encoder 5GB + VAE 2GB + overhead 1GB)", emoji='info')
+                    logger.error(f"  Shortfall: {7.0 - free_before_pipeline:.2f}GB", emoji='x')
+                    raise torch.OutOfMemoryError(
+                        f"Cannot load pipeline: need 7GB, have {free_before_pipeline:.2f}GB"
+                    )
+
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                     "Lightricks/LTX-2",
                     **pipeline_kwargs
@@ -198,7 +215,21 @@ class LTX2Pipeline:
                 # Explicitly move all components to GPU (GGUF requires all on GPU)
                 try:
                     self.pipeline.transformer.to('cuda')
-                    logger.debug(f"Transformer on GPU: {torch.cuda.memory_allocated() / 1024**3:.2f}GB")
+                    transformer_vram = torch.cuda.memory_allocated() / 1024**3
+                    logger.debug(f"Transformer on GPU: {transformer_vram:.2f}GB")
+
+                    # Check VRAM before trying to load text encoder
+                    free_before_text_enc = torch.cuda.mem_get_info()[0] / 1024**3
+                    logger.debug(f"Free VRAM before text encoder: {free_before_text_enc:.2f}GB")
+
+                    # Estimate text encoder size
+                    text_enc_size = 2.5 if quantized_text_encoder_worked else 5.0
+                    logger.debug(f"Text encoder needs ~{text_enc_size:.1f}GB, have {free_before_text_enc:.2f}GB")
+
+                    if free_before_text_enc < text_enc_size:
+                        raise torch.OutOfMemoryError(
+                            f"Insufficient VRAM for text encoder: need {text_enc_size:.1f}GB, have {free_before_text_enc:.2f}GB"
+                        )
 
                     self.pipeline.text_encoder.to('cuda')
                     logger.debug(f"Text encoder on GPU: {torch.cuda.memory_allocated() / 1024**3:.2f}GB")

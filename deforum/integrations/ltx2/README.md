@@ -20,28 +20,48 @@ Without CPU offload, **all components must fit in VRAM simultaneously**:
 - VAE: ~2GB
 - **Minimum Total: 15GB** (with Q2_K GGUF)
 
-### VRAM Requirements (No CPU Offload)
-| Variant | Transformer | + Text Encoder | + VAE | **Total VRAM** |
-|---------|-------------|----------------|-------|----------------|
+### VRAM Requirements (No CPU Offload, No Text Encoder Quantization)
+| Variant | Transformer (GGUF) | Text Encoder (Full) | VAE | **Total VRAM** |
+|---------|-------------------|---------------------|-----|----------------|
 | Q4_K_M | 13GB | + 5GB | + 2GB | **20GB** |
 | Q3_K_M | 10GB | + 5GB | + 2GB | **17GB** |
 | Q2_K | 8GB | + 5GB | + 2GB | **15GB** |
 
+**Why text encoder can't be quantized:**
+- GGUF: Not supported by transformers library
+- NF4 4-bit: Config incompatibility with Gemma-3
+- 8-bit: Requires CPU offload which conflicts with GGUF transformer
+
 **14.3GB VRAM is insufficient** even for Q2_K (lowest quality variant).
+**Minimum requirement: 15GB VRAM** for Q2_K variant.
 
 ## Issues Fixed (But Still Not Enough)
 
 ### 1. GGUF Loading - FIXED ✅
 - **Issue:** [diffusers #12981](https://github.com/huggingface/diffusers/issues/12981) - CLOSED
 - **Fix:** [PR #12983](https://github.com/huggingface/diffusers/pull/12983) - Use `LTX2VideoTransformer3DModel`
-- **Status:** GGUF loads successfully now
-- **Note:** GGUF files download and load correctly, but OOM during generation
+- **Status:** GGUF transformer loads successfully (8-13GB depending on variant)
+- **Note:** GGUF files download and load correctly, but text encoder OOMs
 
-### 2. BitsAndBytes NF4 OOMs
-- **Issue:** Caching allocator warmup tries to allocate full model before quantization
-- **Error:** `torch.OutOfMemoryError: Allocation on device` during warmup
-- **Status:** Happens even with `DISABLE_WARMUP=1`, `low_cpu_mem_usage=True`, and `max_memory` constraints
-- **Requires:** 24GB+ VRAM for full model, or successful quantization (which fails due to warmup)
+### 2. Text Encoder Quantization - ALL FAILED ❌
+
+**Attempted quantization methods:**
+
+**GGUF Text Encoder:**
+- **Issue:** `transformers.AutoModel.from_single_file()` doesn't exist
+- **Status:** Not possible with current transformers library
+
+**BitsAndBytes NF4 (4-bit):**
+- **Issue:** Config compatibility - `'dict' object has no attribute 'to_dict'`
+- **Error:** Gemma-3 config incompatible with BitsAndBytes NF4
+- **Status:** Fails during model load
+
+**BitsAndBytes 8-bit:**
+- **Issue:** "Some modules are dispatched on the CPU or the disk"
+- **Error:** Needs `llm_int8_enable_fp32_cpu_offload=True` but conflicts with GGUF
+- **Status:** Fails, falls back to full precision (5GB)
+
+**Result:** Text encoder always loads at full 5GB precision
 
 ## Installation
 
