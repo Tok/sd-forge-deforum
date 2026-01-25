@@ -138,30 +138,58 @@ class LTX2Pipeline:
                     torch_dtype=torch.bfloat16,
                 )
 
-                # Load text encoder with GGUF quantization (use transformers AutoModel)
-                logger.info(f"Loading GGUF text encoder (Gemma-3-12B Q2_K)...", emoji='robot')
-                try:
-                    from transformers import AutoModel
+                # Load text encoder with 4-bit quantization (GGUF doesn't work with transformers)
+                logger.info(f"Attempting to load text encoder with 4-bit quantization...", emoji='robot')
+                text_encoder = None
+                quantized_text_encoder_worked = False
 
-                    text_encoder = AutoModel.from_single_file(
-                        text_encoder_gguf_path,
-                        quantization_config=GGUFQuantizationConfig(compute_dtype=torch.bfloat16),
-                        config="google/gemma-3-12b-it",
-                        torch_dtype=torch.bfloat16,
+                try:
+                    from transformers import Gemma2ForCausalLM, BitsAndBytesConfig
+                    import os
+
+                    # Disable warmup to prevent OOM during quantization
+                    os.environ["DISABLE_WARMUP"] = "1"
+
+                    # Create 4-bit quantization config for text encoder
+                    bnb_config = BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_quant_type="nf4",
+                        bnb_4bit_compute_dtype=torch.bfloat16,
+                        bnb_4bit_use_double_quant=True,
                     )
-                    logger.info(f"GGUF text encoder loaded successfully!", emoji='check')
+
+                    logger.info(f"Loading text encoder with NF4 quantization (saves ~3GB)...", emoji='zap')
+                    text_encoder = Gemma2ForCausalLM.from_pretrained(
+                        "Lightricks/LTX-2",
+                        subfolder="text_encoder",
+                        quantization_config=bnb_config,
+                        torch_dtype=torch.bfloat16,
+                        device_map="cuda",
+                        low_cpu_mem_usage=True,
+                        max_memory={0: "12GB"},  # Limit memory to prevent warmup OOM
+                    )
+
+                    logger.info(f"Text encoder quantized successfully! (~2GB vs 5GB full)", emoji='check')
+                    quantized_text_encoder_worked = True
 
                 except Exception as text_enc_error:
-                    logger.warning(f"Failed to load GGUF text encoder: {text_enc_error}", emoji='warning')
-                    logger.info(f"Falling back to full precision text encoder (5GB)...", emoji='info')
-                    text_encoder = None  # Will load from base model
+                    logger.warning(f"Failed to quantize text encoder: {text_enc_error}", emoji='warning')
+                    logger.info(f"Pipeline will load full precision text encoder (5GB)...", emoji='info')
+                    text_encoder = None
 
-                # Load rest of pipeline with quantized components
+                # Load rest of pipeline with quantized transformer
+                # Only pass text_encoder if we successfully loaded and quantized it
+                pipeline_kwargs = {
+                    "transformer": transformer,
+                    "torch_dtype": torch.bfloat16,
+                }
+                if quantized_text_encoder_worked:
+                    pipeline_kwargs["text_encoder"] = text_encoder
+                    logger.info(f"Using quantized text encoder in pipeline", emoji='check')
+
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                     "Lightricks/LTX-2",
-                    transformer=transformer,
-                    text_encoder=text_encoder,  # Use GGUF text encoder if loaded
-                    torch_dtype=torch.bfloat16,
+                    **pipeline_kwargs
                 )
 
                 # CRITICAL: Cannot use CPU offload with GGUF due to metadata loss
@@ -204,7 +232,7 @@ class LTX2Pipeline:
                     logger.error(f"Q2_K requires 15GB (8GB transformer + 5GB text_encoder + 2GB VAE)", emoji='x')
                     logger.error(f"Available VRAM: {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB", emoji='x')
                     logger.error(f"GGUF cannot use CPU offload due to metadata incompatibility", emoji='x')
-                    logger.error(f"Recommended: Use Wan FLF2V or FILM instead (both work with <14GB VRAM)", emoji='info')
+                    logger.error(f"Recommended: Use Wan FLF2V instead (both work with <14GB VRAM)", emoji='info')
 
                     # Re-raise as-is to prevent NF4 fallback (won't work either)
                     raise
@@ -285,7 +313,7 @@ class LTX2Pipeline:
                 raise RuntimeError(
                     f"Insufficient VRAM for LTX-2. Quantization failed and full model won't fit. "
                     f"Available: {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB, Required: 24GB+ (or 10GB with working quantization). "
-                    f"Try closing other programs to free VRAM, or use a different interpolation method (Wan FLF2V or FILM)."
+                    f"Try closing other programs to free VRAM, or use a different interpolation method (Wan FLF2V)."
                 )
         elif not is_gguf:
             # Full precision or bfloat16 (LTX-2 recommends bfloat16, not fp16)

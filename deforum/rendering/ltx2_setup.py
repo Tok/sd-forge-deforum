@@ -44,11 +44,11 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
 
         # VRAM requirements for different variants
         # CRITICAL: GGUF cannot use CPU offload - must fit entirely in VRAM
-        # Total VRAM = transformer + text_encoder (GGUF Q2_K, 4.44GB) + VAE (~2GB)
+        # Total VRAM = transformer + text_encoder (NF4, ~2GB) + VAE (~2GB)
         vram_requirements = {
-            'LTX-2-Q2_K-GGUF': 14.5,   # 8GB + 4.44GB + 2GB = 14.5GB total (with GGUF text encoder!)
-            'LTX-2-Q3_K_M-GGUF': 16.5, # 10GB + 4.44GB + 2GB = 16.5GB total
-            'LTX-2-Q4_K_M-GGUF': 19.5, # 13GB + 4.44GB + 2GB = 19.5GB total
+            'LTX-2-Q2_K-GGUF': 12.0,   # 8GB + 2GB + 2GB = 12GB total (with NF4 text encoder!)
+            'LTX-2-Q3_K_M-GGUF': 14.0, # 10GB + 2GB + 2GB = 14GB total
+            'LTX-2-Q4_K_M-GGUF': 17.0, # 13GB + 2GB + 2GB = 17GB total
             'LTX-2-4K-NF4': 10.0,       # BitsAndBytes NF4 fallback (can use CPU offload)
             'LTX-2-4K': 24.0,           # Full precision
         }
@@ -58,24 +58,25 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
             if free_vram_gb >= 24.0:
                 ltx2_variant = 'LTX-2-4K'
                 logger.info(f"  Auto-selected: LTX-2-4K (24GB+ VRAM available, full precision)")
-            elif free_vram_gb >= 19.5:
+            elif free_vram_gb >= 17.0:
                 ltx2_variant = 'LTX-2-Q4_K_M-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q4_K_M-GGUF (20GB+ VRAM available, GGUF Q4_K_M)")
-            elif free_vram_gb >= 16.5:
-                ltx2_variant = 'LTX-2-Q3_K_M-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (17GB+ VRAM available, GGUF Q3_K_M)")
+                logger.info(f"  Auto-selected: LTX-2-Q4_K_M-GGUF (17GB+ VRAM available, GGUF Q4_K_M)")
             elif free_vram_gb >= 14.0:
-                # Q2_K with GGUF text encoder should fit in 14-15GB VRAM!
+                ltx2_variant = 'LTX-2-Q3_K_M-GGUF'
+                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (14GB+ VRAM available, GGUF Q3_K_M)")
+                logger.info(f"  Using NF4 text encoder (~2GB) to fit in 14GB VRAM!")
+            elif free_vram_gb >= 12.0:
+                # Q2_K with NF4 text encoder should fit in 12-14GB VRAM!
                 ltx2_variant = 'LTX-2-Q2_K-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q2_K-GGUF ({free_vram_gb:.1f}GB available, needs ~14.5GB)")
-                logger.info(f"  Using GGUF text encoder (4.44GB) to fit in 14GB VRAM!")
+                logger.info(f"  Auto-selected: LTX-2-Q2_K-GGUF ({free_vram_gb:.1f}GB available, needs ~12GB)")
+                logger.info(f"  Using NF4 text encoder (~2GB) to fit in available VRAM!")
             else:
                 logger.error(f"Insufficient VRAM for LTX-2! Minimum 14GB required, found {free_vram_gb:.1f}GB", emoji='x')
                 logger.error(f"GGUF quantization cannot use CPU offload due to metadata incompatibility", emoji='x')
-                logger.error(f"Recommended: Use Wan FLF2V or FILM instead (both work with <14GB VRAM)", emoji='info')
+                logger.error(f"Recommended: Use Wan FLF2V instead (both work with <14GB VRAM)", emoji='info')
                 raise RuntimeError(
                     f"Insufficient VRAM for LTX-2. Minimum 14GB required to attempt Q2_K GGUF. "
-                    f"Found {free_vram_gb:.1f}GB. Use Wan FLF2V or FILM instead."
+                    f"Found {free_vram_gb:.1f}GB. Use Wan FLF2V instead."
                 )
 
         # Check if selected variant fits in VRAM
@@ -83,7 +84,7 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
         if free_vram_gb < required_vram:
             logger.warning(f"Low VRAM: {free_vram_gb:.1f}GB free, {ltx2_variant} needs ~{required_vram:.0f}GB", emoji='warning')
             logger.warning(f"   Generation may fail or be very slow!")
-            logger.warning(f"   Consider selecting a smaller variant or using Wan FLF2V/FILM instead")
+            logger.warning(f"   Consider selecting a smaller variant or using Wan FLF2V instead")
 
     # Check for audio track (required for LTX-2)
     if not video_args.add_soundtrack or not video_args.soundtrack_path:
