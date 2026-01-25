@@ -96,8 +96,8 @@ class LTX2Pipeline:
 
         # Load with appropriate precision
         if self.variant == 'LTX-2-4K-NF4':
-            # Load with 4-bit quantization
-            logger.info("Using 4-bit NF4 quantization (saves ~75% VRAM)", emoji='zap')
+            # Load with 4-bit quantization for transformer AND text encoder
+            logger.info("Using 4-bit NF4 quantization for transformer and text encoder (saves ~75% VRAM)", emoji='zap')
             try:
                 from transformers import BitsAndBytesConfig
                 from diffusers import PipelineQuantizationConfig
@@ -111,9 +111,12 @@ class LTX2Pipeline:
                 )
 
                 # Wrap in PipelineQuantizationConfig with quant_mapping
-                # Maps the transformer component to the quantization config
+                # Quantize both transformer (video) and text_encoder (T5-XXL ~11GB)
                 quantization_config = PipelineQuantizationConfig(
-                    quant_mapping={"transformer": bnb_config}
+                    quant_mapping={
+                        "transformer": bnb_config,
+                        "text_encoder": bnb_config,  # Quantize T5-XXL too (11GB → ~3GB)
+                    }
                 )
 
                 load_kwargs = {
@@ -146,11 +149,25 @@ class LTX2Pipeline:
         # Move to device
         self.pipeline.to(self.device)
 
-        # Enable optimizations
+        # Enable aggressive memory optimizations
         if self.device == 'cuda':
             try:
-                self.pipeline.enable_model_cpu_offload()
-                logger.info("Enabled CPU offload for memory efficiency", emoji='check')
+                # Enable sequential CPU offloading for better memory management
+                self.pipeline.enable_sequential_cpu_offload()
+                logger.info("Enabled sequential CPU offload for memory efficiency", emoji='check')
+            except Exception as e:
+                logger.debug(f"Sequential CPU offload not available: {e}")
+                try:
+                    # Fallback to model CPU offload
+                    self.pipeline.enable_model_cpu_offload()
+                    logger.info("Enabled model CPU offload", emoji='check')
+                except:
+                    pass
+
+            # Enable VAE tiling to reduce memory usage during decode
+            try:
+                self.pipeline.vae.enable_tiling()
+                logger.info("Enabled VAE tiling for memory efficiency", emoji='check')
             except:
                 pass
 

@@ -44,7 +44,7 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
 
         # VRAM requirements for different variants
         vram_requirements = {
-            'LTX-2-4K-NF4': 12.0,  # 4-bit quantized
+            'LTX-2-4K-NF4': 10.0,  # 4-bit quantized (transformer + text_encoder)
             'LTX-2-4K': 24.0,      # Full precision
             'LTX-2-HD': 18.0,      # HD variant
         }
@@ -53,17 +53,17 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
         if ltx2_variant == 'Auto':
             if free_vram_gb >= 24.0:
                 ltx2_variant = 'LTX-2-4K'
-                logger.info(f"  Auto-selected: LTX-2-4K (24GB+ VRAM available)")
+                logger.info(f"  Auto-selected: LTX-2-4K (24GB+ VRAM available, full precision)")
             elif free_vram_gb >= 18.0:
                 ltx2_variant = 'LTX-2-HD'
                 logger.info(f"  Auto-selected: LTX-2-HD (18GB+ VRAM available)")
-            elif free_vram_gb >= 12.0:
+            elif free_vram_gb >= 10.0:
                 ltx2_variant = 'LTX-2-4K-NF4'
-                logger.info(f"  Auto-selected: LTX-2-4K-NF4 (12GB+ VRAM available, 4-bit quantized)")
+                logger.info(f"  Auto-selected: LTX-2-4K-NF4 (10GB+ VRAM available, 4-bit quantized transformer + text encoder)")
             else:
-                logger.error(f"Insufficient VRAM for LTX-2! Minimum 12GB required, found {free_vram_gb:.1f}GB", emoji='x')
+                logger.error(f"Insufficient VRAM for LTX-2! Minimum 10GB required, found {free_vram_gb:.1f}GB", emoji='x')
                 raise RuntimeError(
-                    f"Insufficient VRAM for LTX-2. Minimum 12GB required (for LTX-2-4K-NF4). "
+                    f"Insufficient VRAM for LTX-2. Minimum 10GB required (for LTX-2-4K-NF4 with quantization). "
                     f"Found {free_vram_gb:.1f}GB. Use Wan FLF2V or FILM instead."
                 )
 

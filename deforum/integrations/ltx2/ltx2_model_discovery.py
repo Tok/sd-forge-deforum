@@ -22,13 +22,13 @@ class LTX2ModelDiscovery:
     MODEL_VARIANTS = {
         "LTX-2-4K-NF4": {
             "huggingface_id": "Lightricks/LTX-2",
-            "description": "4K variant, 4-bit quantized (19B params, NF4)",
-            "vram_gb": 12,
+            "description": "4K variant, 4-bit quantized transformer + text encoder (19B params, NF4)",
+            "vram_gb": 10,
             "max_resolution": "4K (3840x2160)",
             "max_fps": 50,
             "quantization": "nf4",
             "recommended": True,
-            "note": "Recommended for 16GB VRAM (RTX 4070 Ti, 4080, etc.)"
+            "note": "Recommended for 12-16GB VRAM (RTX 3080 Ti, 4070 Ti, 4080, etc.)"
         },
         "LTX-2-4K": {
             "huggingface_id": "Lightricks/LTX-2",
@@ -157,13 +157,13 @@ class LTX2ModelDiscovery:
         """
         if available_vram_gb >= 24:
             return "LTX-2-4K"  # Full precision for high-end cards
-        elif available_vram_gb >= 12:
-            return "LTX-2-4K-NF4"  # 4-bit quantized for mid-range cards (RTX 4070 Ti, 4080, etc.)
         elif available_vram_gb >= 10:
+            return "LTX-2-4K-NF4"  # 4-bit quantized transformer + text encoder (RTX 3080 Ti, 4070 Ti, 4080, etc.)
+        elif available_vram_gb >= 8:
             logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 may struggle")
             return "LTX-2-4K-NF4"  # Try NF4, may work with aggressive offloading
         else:
-            logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 requires 12GB minimum (with quantization)")
+            logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 requires 10GB minimum (with quantization)")
             return "LTX-2-4K-NF4"  # Return NF4 as minimum
 
     def is_any_model_available(self) -> bool:
