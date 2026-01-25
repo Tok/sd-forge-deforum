@@ -161,6 +161,18 @@ class LTX2Pipeline:
         if self.pipeline is None:
             raise RuntimeError("Pipeline not loaded. Call load_model() first.")
 
+        # Validate and adjust resolution
+        width, height = start_image.size
+
+        # LTX-2 supported resolutions (must be multiples of 32)
+        # Common: 768x512, 1024x576, 1280x720, 1920x1080
+        if width % 32 != 0 or height % 32 != 0:
+            # Round to nearest multiple of 32
+            width = (width // 32) * 32
+            height = (height // 32) * 32
+            logger.warning(f"Resizing image to {width}x{height} (LTX-2 requires multiples of 32)", emoji='warning')
+            start_image = start_image.resize((width, height), Image.Resampling.LANCZOS)
+
         # Extract audio chunk
         audio_tensor = self._extract_audio_segment(
             audio_path, audio_start_sec, audio_duration_sec

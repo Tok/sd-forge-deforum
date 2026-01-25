@@ -538,6 +538,17 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 "Please enable 'Add Soundtrack' in the Output tab and provide an audio file."
             )
 
+        # Validate resolution for LTX-2 (must be multiples of 32)
+        if args.W % 32 != 0 or args.H % 32 != 0:
+            logger.error(f"LTX-2 requires resolution to be multiples of 32", emoji='x')
+            logger.error(f"  Current: {args.W}x{args.H}")
+            logger.error(f"  Nearest valid: {(args.W // 32) * 32}x{(args.H // 32) * 32}")
+            raise ValueError(
+                f"LTX-2 requires resolution multiples of 32. "
+                f"Current: {args.W}x{args.H}. "
+                f"Use: {(args.W // 32) * 32}x{(args.H // 32) * 32} instead."
+            )
+
         # Initialize LTX-2 pipeline
         from deforum.integrations.ltx2 import LTX2Pipeline
 
@@ -545,8 +556,9 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         ltx2_pipeline.load_model()
 
         logger.info(f"LTX-2 pipeline ready", emoji='check')
-        logger.info(f"Video segments: {len(keyframes) - 1} (keyframes - 1)", emoji='info')
-        logger.info(f"Audio mode: {ltx2_audio_mode} (audio drives motion)", emoji='sound')
+        logger.info(f"  Resolution: {args.W}x{args.H} ✓", emoji='info')
+        logger.info(f"  Video segments: {len(keyframes) - 1} (keyframes - 1)", emoji='info')
+        logger.info(f"  Audio mode: {ltx2_audio_mode} (audio drives motion)", emoji='sound')
 
     # Check scene strategy
     scene_strategy = getattr(wan_args, 'da3_3dgs_scene_strategy', 'per_segment')
