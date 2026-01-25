@@ -44,7 +44,7 @@ class LTX2Pipeline:
         """Load LTX-2 model from HuggingFace."""
         try:
             from diffusers import LTX2ImageToVideoPipeline, GGUFQuantizationConfig
-            from diffusers.models.transformers import LTXVideoTransformer3DModel
+            from diffusers.models.transformers import LTX2VideoTransformer3DModel
         except ImportError:
             logger.error("Failed to import LTX-2 dependencies", emoji='x')
             raise ImportError(
@@ -115,8 +115,8 @@ class LTX2Pipeline:
                     filename=gguf_filename,
                 )
 
-                # Load transformer with GGUF quantization
-                transformer = LTXVideoTransformer3DModel.from_single_file(
+                # Load transformer with GGUF quantization (use LTX2VideoTransformer3DModel for LTX-2!)
+                transformer = LTX2VideoTransformer3DModel.from_single_file(
                     gguf_path,
                     quantization_config=GGUFQuantizationConfig(compute_dtype=torch.bfloat16),
                     config="Lightricks/LTX-2",  # Use base model config (not GGUF repo)
