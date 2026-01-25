@@ -136,15 +136,19 @@ class LTX2Pipeline:
                     torch_dtype=torch.bfloat16,
                 )
 
-                # Enable sequential CPU offload for GGUF models (more aggressive than model_cpu_offload)
-                # This moves components to GPU one at a time during forward pass
+                # Enable sequential CPU offload - moves components to GPU one at a time
+                # This prevents transformer (~13GB) + text_encoder (~5GB) from being on GPU simultaneously
                 if self.device == 'cuda':
+                    logger.debug("Enabling sequential CPU offload for GGUF model...")
                     self.pipeline.enable_sequential_cpu_offload()
+                    logger.debug("Sequential CPU offload enabled successfully")
 
                 logger.info("GGUF model loaded successfully with sequential CPU offloading", emoji='check')
 
             except Exception as e:
+                import traceback
                 logger.error(f"GGUF loading failed: {e}", emoji='x')
+                logger.debug(f"GGUF error traceback: {traceback.format_exc()}")
                 logger.info("Falling back to BitsAndBytes NF4 quantization...", emoji='warning')
                 # Fall through to NF4 loading below
                 is_gguf = False  # Trigger fallback
