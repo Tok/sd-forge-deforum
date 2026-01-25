@@ -123,17 +123,19 @@ class LTX2Pipeline:
                     "torch_dtype": torch.bfloat16,
                     "quantization_config": quantization_config,
                     "device_map": "balanced",  # Auto-balance across GPU/CPU
+                    "low_cpu_mem_usage": True,  # Reduce memory usage during load
                 }
                 if tokenizer is not None:
                     load_kwargs["tokenizer"] = tokenizer
 
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
             except (ImportError, Exception) as e:
-                logger.warning(f"Quantization not available, falling back to bfloat16", emoji='warning')
+                logger.warning(f"Quantization not available, falling back to bfloat16 with CPU offload", emoji='warning')
                 logger.debug(f"Quantization error: {e}")
                 load_kwargs = {
                     "torch_dtype": torch.bfloat16,
-                    "device_map": "balanced",  # Auto-balance across GPU/CPU
+                    "device_map": "auto",  # Auto device mapping with CPU offload
+                    "low_cpu_mem_usage": True,  # Reduce memory usage during load
                 }
                 if tokenizer is not None:
                     load_kwargs["tokenizer"] = tokenizer
@@ -143,16 +145,17 @@ class LTX2Pipeline:
             dtype = torch.bfloat16 if self.device == 'cuda' else torch.float32
             load_kwargs = {
                 "torch_dtype": dtype,
-                "device_map": "balanced",  # Auto-balance across GPU/CPU
+                "device_map": "auto",  # Auto device mapping with CPU offload
+                "low_cpu_mem_usage": True,  # Reduce memory usage during load
             }
             if tokenizer is not None:
                 load_kwargs["tokenizer"] = tokenizer
             self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(model_id, **load_kwargs)
 
-        # Device placement is handled by device_map="balanced", don't call .to() manually
+        # Device placement is handled by device_map="auto", don't call .to() manually
 
         # Enable additional memory optimizations
-        # Note: device_map="balanced" already handles GPU/CPU balancing during load
+        # Note: device_map="auto" already handles automatic GPU/CPU offloading
         if self.device == 'cuda':
             # Enable VAE tiling to reduce memory usage during decode
             try:
@@ -161,7 +164,7 @@ class LTX2Pipeline:
             except:
                 pass
 
-        logger.info(f"LTX-2 pipeline loaded successfully with balanced GPU/CPU device mapping", emoji='check')
+        logger.info(f"LTX-2 pipeline loaded successfully with automatic device mapping (CPU offload enabled)", emoji='check')
 
     def generate_segment(
         self,
