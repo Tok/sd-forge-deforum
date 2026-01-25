@@ -45,12 +45,12 @@ class LTX2ModelDiscovery:
             "huggingface_id": "unsloth/LTX-2-GGUF",
             "gguf_filename": "ltx-2-19b-dev-Q2_K.gguf",
             "description": "4K variant, Q2_K quantized (19B params, GGUF)",
-            "vram_gb": 8,  # 8.1GB file size
+            "vram_gb": 15,  # 8GB file + 5GB text_encoder + 2GB VAE = 15GB total (no CPU offload)
             "max_resolution": "4K (3840x2160)",
             "max_fps": 50,
             "quantization": "gguf-q2_k",
             "recommended": False,
-            "note": "For 9-11GB VRAM - lowest quality but smallest footprint"
+            "note": "For 14-16GB VRAM - lowest quality, tight fit (may OOM)"
         },
 
         # BitsAndBytes NF4 variants (fallback if GGUF doesn't work)
@@ -190,12 +190,14 @@ class LTX2ModelDiscovery:
             return "LTX-2-Q4_K_M-GGUF"  # 13GB + 5GB + 2GB = 20GB total
         elif available_vram_gb >= 17:
             return "LTX-2-Q3_K_M-GGUF"  # 10GB + 5GB + 2GB = 17GB total
-        elif available_vram_gb >= 15:
-            logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - using Q2_K (lowest quality)")
-            return "LTX-2-Q2_K-GGUF"  # 8GB + 5GB + 2GB = 15GB total
+        elif available_vram_gb >= 14:
+            # Try Q2_K even though it's theoretically 15GB - might fit with optimizations
+            logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - trying Q2_K (lowest quality, tight fit)")
+            logger.warning(f"Theoretical requirement: 15GB, you have {available_vram_gb:.1f}GB - may OOM")
+            return "LTX-2-Q2_K-GGUF"  # 8GB + 5GB + 2GB = 15GB total (tight!)
         else:
-            logger.warning(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 requires 15GB minimum (Q2_K GGUF)")
-            logger.warning(f"Consider using Wan FLF2V or FILM instead")
+            logger.error(f"Only {available_vram_gb:.1f}GB VRAM available - LTX-2 requires 14GB minimum")
+            logger.error(f"Consider using Wan FLF2V or FILM instead")
             return "LTX-2-Q2_K-GGUF"  # Return Q2_K as absolute minimum (will likely OOM)
 
     def is_any_model_available(self) -> bool:

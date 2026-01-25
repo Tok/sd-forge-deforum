@@ -46,7 +46,7 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
         # CRITICAL: GGUF cannot use CPU offload - must fit entirely in VRAM
         # Total VRAM = transformer + text_encoder (~5GB) + VAE (~2GB)
         vram_requirements = {
-            'LTX-2-Q2_K-GGUF': 15.0,   # 8GB + 5GB + 2GB = 15GB total
+            'LTX-2-Q2_K-GGUF': 15.0,   # 8GB + 5GB + 2GB = 15GB total (theoretical)
             'LTX-2-Q3_K_M-GGUF': 17.0, # 10GB + 5GB + 2GB = 17GB total
             'LTX-2-Q4_K_M-GGUF': 20.0, # 13GB + 5GB + 2GB = 20GB total
             'LTX-2-4K-NF4': 10.0,       # BitsAndBytes NF4 fallback (can use CPU offload)
@@ -64,15 +64,17 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
             elif free_vram_gb >= 17.0:
                 ltx2_variant = 'LTX-2-Q3_K_M-GGUF'
                 logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (17GB+ VRAM available, GGUF Q3_K_M)")
-            elif free_vram_gb >= 15.0:
+            elif free_vram_gb >= 14.0:
+                # Try Q2_K even though theoretical requirement is 15GB
                 ltx2_variant = 'LTX-2-Q2_K-GGUF'
-                logger.warning(f"  Auto-selected: LTX-2-Q2_K-GGUF (15GB+ VRAM available, GGUF Q2_K - lowest quality)")
+                logger.warning(f"  Auto-selected: LTX-2-Q2_K-GGUF ({free_vram_gb:.1f}GB available, needs ~15GB - tight fit!)")
+                logger.warning(f"  This may OOM during generation - have Wan FLF2V or FILM as backup")
             else:
-                logger.error(f"Insufficient VRAM for LTX-2! Minimum 15GB required, found {free_vram_gb:.1f}GB", emoji='x')
+                logger.error(f"Insufficient VRAM for LTX-2! Minimum 14GB required, found {free_vram_gb:.1f}GB", emoji='x')
                 logger.error(f"GGUF quantization cannot use CPU offload due to metadata incompatibility", emoji='x')
-                logger.error(f"Recommended: Use Wan FLF2V or FILM instead (both work with 14GB VRAM)", emoji='info')
+                logger.error(f"Recommended: Use Wan FLF2V or FILM instead (both work with <14GB VRAM)", emoji='info')
                 raise RuntimeError(
-                    f"Insufficient VRAM for LTX-2. Minimum 15GB required (for Q2_K GGUF without CPU offload). "
+                    f"Insufficient VRAM for LTX-2. Minimum 14GB required to attempt Q2_K GGUF. "
                     f"Found {free_vram_gb:.1f}GB. Use Wan FLF2V or FILM instead."
                 )
 
