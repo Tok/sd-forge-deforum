@@ -150,6 +150,10 @@ class LTX2Pipeline:
             try:
                 from transformers import BitsAndBytesConfig
                 from diffusers import PipelineQuantizationConfig
+                import os
+
+                # Disable warmup to prevent OOM during loading
+                os.environ["DISABLE_WARMUP"] = "1"
 
                 # Create BitsAndBytes config (use bfloat16 as recommended for LTX-2)
                 bnb_config = BitsAndBytesConfig(
@@ -157,6 +161,7 @@ class LTX2Pipeline:
                     bnb_4bit_quant_type="nf4",
                     bnb_4bit_compute_dtype=torch.bfloat16,
                     bnb_4bit_use_double_quant=True,
+                    llm_int8_skip_modules=None,  # Don't skip any modules
                 )
 
                 # Wrap in PipelineQuantizationConfig with quant_mapping
@@ -168,13 +173,14 @@ class LTX2Pipeline:
                     }
                 )
 
-                # Use simple device_map to enable CPU offloading during quantization
-                # device_map={"": device} loads all to single device but allows BitsAndBytes CPU staging
+                # Use low_cpu_mem_usage to reduce memory spikes during loading
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                     model_id,
                     torch_dtype=torch.bfloat16,
                     quantization_config=quantization_config,
-                    device_map={"": self.device},  # Single device map for BitsAndBytes
+                    device_map="auto",  # Let accelerate handle device placement
+                    low_cpu_mem_usage=True,  # Reduce memory during load
+                    max_memory={0: "13GB"},  # Limit GPU memory usage
                 )
 
             except (ImportError, Exception) as e:
