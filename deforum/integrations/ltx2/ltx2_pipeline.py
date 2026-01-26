@@ -421,14 +421,39 @@ class LTX2Pipeline:
                 self.pipeline.vae.latents_mean,
                 self.pipeline.vae.latents_std
             )
+            logger.debug(f"Normalized latents: {init_latents.shape}, device: {init_latents.device}")
 
-            # Repeat for all frames
+            # Repeat for all frames (pipeline expects initial latents for all frames)
             init_latents = init_latents.repeat(1, 1, num_frames, 1, 1)
-            logger.debug(f"Repeated latents for {num_frames} frames: {init_latents.shape}")
+            logger.debug(f"Repeated latents for {num_frames} frames: {init_latents.shape}, device: {init_latents.device}")
+
+            # Create conditioning mask (first frame = 1.0, rest = 0.0)
+            # This matches prepare_latents() logic for image path
+            vae_scale_factor_spatial = 2 ** (len(self.pipeline.vae.config.block_out_channels) - 1)
+            vae_scale_factor_temporal = self.pipeline.vae.config.temporal_compression_ratio
+
+            latent_height = height // vae_scale_factor_spatial
+            latent_width = width // vae_scale_factor_spatial
+            latent_num_frames = (num_frames - 1) // vae_scale_factor_temporal + 1
+
+            mask_shape = (1, 1, latent_num_frames, latent_height, latent_width)
+            conditioning_mask = torch.zeros(mask_shape, device='cuda', dtype=torch.bfloat16)
+            conditioning_mask[:, :, 0] = 1.0  # First frame uses init_latents, rest uses noise
+            logger.debug(f"Conditioning mask: {conditioning_mask.shape}, first frame sum: {conditioning_mask[:,:,0].sum()}")
+
+            # Create noise for non-first frames
+            latent_channels = self.pipeline.transformer.config.in_channels
+            shape = (1, latent_channels, latent_num_frames, latent_height, latent_width)
+            noise = torch.randn(shape, generator=generator, device='cuda', dtype=torch.bfloat16)
+            logger.debug(f"Noise shape: {noise.shape}")
+
+            # Blend init_latents with noise (matches prepare_latents image path)
+            blended_latents = init_latents * conditioning_mask + noise * (1 - conditioning_mask)
+            logger.debug(f"Blended latents: {blended_latents.shape}, device: {blended_latents.device}")
 
             # Pack latents (convert to patches)
             latents = self.pipeline._pack_latents(
-                init_latents,
+                blended_latents,
                 self.pipeline.transformer_spatial_patch_size,
                 self.pipeline.transformer_temporal_patch_size
             )
