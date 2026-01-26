@@ -147,56 +147,29 @@ class LTX2Pipeline:
                 vram_free_after_transformer = torch.cuda.mem_get_info()[0] / 1024**3
                 logger.info(f"Transformer loaded: {vram_after_transformer:.2f}GB used, {vram_free_after_transformer:.1f}GB free", emoji='chart')
 
-                # Load text encoder with layerwise CPU/GPU splitting
-                # CRITICAL: GGUF transformer CANNOT use CPU offload (metadata loss)
-                # Solution: Keep transformer on GPU, split text encoder layers across CPU/GPU
-                logger.info(f"Loading text encoder with layerwise CPU/GPU splitting...", emoji='robot')
+                # Load text encoder on CPU (no device_map - avoids accelerate hook issues)
+                # CRITICAL: device_map="auto" installs hooks that break VAE device placement
+                # Solution: Load on CPU, let enable_sequential_cpu_offload handle transfers
+                logger.info(f"Loading text encoder on CPU (will offload to GPU during inference)...", emoji='robot')
                 text_encoder = None
 
                 try:
                     from transformers import AutoModelForCausalLM
 
-                    # Calculate available VRAM for text encoder FROM REMAINING VRAM
-                    # Transformer already on GPU: ~10GB used
-                    # VAE will use: ~2GB
-                    # Reserve for generation: ~2GB
-                    # Available for text encoder: (free now) - 2GB - 2GB
-                    # Should be ~0.5-1GB on 16GB card
-
-                    free_vram_gb = torch.cuda.mem_get_info()[0] / 1024**3
-                    reserved_for_vae_and_gen = 4.0  # Reserve 4GB for VAE (2GB) + generation (2GB)
-                    text_encoder_vram_budget = max(0.5, free_vram_gb - reserved_for_vae_and_gen)
-
-                    logger.info(f"Free VRAM: {free_vram_gb:.1f}GB", emoji='info')
-                    logger.info(f"Text encoder budget: {text_encoder_vram_budget:.1f}GB (rest on CPU)", emoji='info')
-
-                    # Use device_map="auto" with max_memory to split layers
-                    # This puts as many layers as fit in VRAM budget, rest stay on CPU
-                    max_memory = {
-                        0: f"{text_encoder_vram_budget:.1f}GiB",  # GPU budget
-                        "cpu": "48GiB",  # Plenty of system RAM
-                    }
-
-                    logger.info(f"Loading text encoder with automatic layer distribution...", emoji='robot')
-                    logger.info(f"GPU layers: ~{text_encoder_vram_budget:.1f}GB, CPU layers: rest", emoji='info')
-
-                    # Create offload directory
-                    import os
-                    offload_dir = "/tmp/ltx2_offload"
-                    os.makedirs(offload_dir, exist_ok=True)
+                    # Load text encoder entirely on CPU
+                    # enable_sequential_cpu_offload() will handle GPU transfers intelligently
+                    logger.info(f"Loading text encoder to CPU/system RAM...", emoji='robot')
+                    logger.info(f"Text encoder will transfer to GPU only when needed", emoji='info')
 
                     text_encoder = AutoModelForCausalLM.from_pretrained(
                         "Lightricks/LTX-2",
                         subfolder="text_encoder",
                         torch_dtype=torch.bfloat16,
-                        device_map="auto",  # Automatic layer distribution
-                        max_memory=max_memory,  # Constrain GPU usage
+                        device_map={"": "cpu"},  # Explicit CPU placement, no auto hooks
                         low_cpu_mem_usage=True,
-                        offload_folder=offload_dir,  # Disk offload if needed
                     )
 
-                    logger.info(f"Text encoder loaded with layerwise splitting!", emoji='check')
-                    logger.info(f"Some layers on GPU (~{text_encoder_vram_budget:.1f}GB), rest on CPU", emoji='zap')
+                    logger.info(f"Text encoder loaded on CPU (~24GB system RAM)", emoji='check')
 
                 except Exception as text_enc_error:
                     logger.error(f"Failed to load text encoder: {text_enc_error}", emoji='x')
@@ -216,42 +189,28 @@ class LTX2Pipeline:
                 )
 
                 # CRITICAL: Transformer already on GPU (moved earlier)
-                # Text encoder uses device_map="auto" (layers split across CPU/GPU)
-                # This hybrid approach: GGUF on GPU + text encoder layerwise split
+                # Text encoder stays on CPU (no offloading - avoids all accelerate hook issues)
+                # Prompt encoding will be slower but stable
 
-                # Move VAE to GPU (including all submodules)
+                # Move VAE to GPU
                 logger.info(f"Moving VAE to GPU...", emoji='robot')
                 self.pipeline.vae.to('cuda')
 
-                # CRITICAL: Explicitly move VAE submodules to GPU
-                # With device_map="auto" for text encoder, accelerate hooks can interfere
-                # Ensure encoder/decoder submodules are definitely on GPU
-                if hasattr(self.pipeline.vae, 'encoder'):
-                    self.pipeline.vae.encoder.to('cuda')
-                    logger.debug(f"VAE encoder moved to GPU")
-                if hasattr(self.pipeline.vae, 'decoder'):
-                    self.pipeline.vae.decoder.to('cuda')
-                    logger.debug(f"VAE decoder moved to GPU")
-                if hasattr(self.pipeline.vae, 'quant_conv'):
-                    self.pipeline.vae.quant_conv.to('cuda')
-                    logger.debug(f"VAE quant_conv moved to GPU")
-                if hasattr(self.pipeline.vae, 'post_quant_conv'):
-                    self.pipeline.vae.post_quant_conv.to('cuda')
-                    logger.debug(f"VAE post_quant_conv moved to GPU")
-
-                # NOTE: Do NOT call enable_model_cpu_offload()!
-                # Text encoder already has device_map from AutoModelForCausalLM loading
-                # Calling enable_model_cpu_offload() would override device_map and cause OOM
+                # DO NOT use enable_sequential_cpu_offload() or enable_model_cpu_offload()!
+                # Both install accelerate hooks that interfere with GGUF transformer and VAE
+                # Text encoder stays on CPU permanently - slower but stable
+                logger.info(f"Text encoder remains on CPU (slow but stable, no hooks)", emoji='info')
 
                 # Log VRAM usage and component locations
                 vram_used = torch.cuda.memory_allocated() / 1024**3
                 vram_free = torch.cuda.mem_get_info()[0] / 1024**3
                 logger.info(f"VRAM: {vram_used:.2f}GB used, {vram_free:.2f}GB free", emoji='chart')
                 logger.info(f"Component locations:", emoji='info')
-                logger.info(f"  Transformer: GPU (GGUF, no offload)", emoji='gpu')
-                logger.info(f"  Text encoder: Split (~{text_encoder_vram_budget:.1f}GB GPU, rest CPU)", emoji='cpu')
-                logger.info(f"  VAE: GPU", emoji='gpu')
-                logger.info("GGUF model loaded successfully with layerwise text encoder!", emoji='check')
+                logger.info(f"  Transformer: GPU (GGUF, 9.4GB)", emoji='gpu')
+                logger.info(f"  Text encoder: CPU (24GB system RAM, no hooks)", emoji='cpu')
+                logger.info(f"  VAE: GPU (2GB)", emoji='gpu')
+                logger.info("GGUF model loaded successfully!", emoji='check')
+                logger.warning("Text encoder on CPU - prompt encoding will be slower but stable", emoji='warning')
 
             except Exception as e:
                 import traceback
