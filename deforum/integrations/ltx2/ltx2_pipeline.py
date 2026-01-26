@@ -382,16 +382,57 @@ class LTX2Pipeline:
 
         logger.debug(f"Generating {num_frames} frames with LTX-2 I2V")
 
-        # CRITICAL: Pre-process image to tensor on CUDA manually
-        # Pipeline's _execution_device might return CPU if text_encoder is checked first
-        # So we force the image tensor to GPU before passing to pipeline
-        preprocessed_image = self.pipeline.video_processor.preprocess(start_image, height=height, width=width)
-        # Move to CUDA with correct dtype
-        preprocessed_image = preprocessed_image.to(device='cuda', dtype=torch.bfloat16)
+        # CRITICAL: Manually encode image to latents on CUDA to bypass prepare_latents()
+        # prepare_latents() has device mismatch issues when iterating over image tensor
+        # So we manually encode using VAE, then pass latents directly to pipeline
 
-        logger.debug(f"Preprocessed image: {preprocessed_image.shape}, device: {preprocessed_image.device}, dtype: {preprocessed_image.dtype}")
-        logger.debug(f"VAE device: {next(self.pipeline.vae.parameters()).device}")
-        logger.debug(f"Pipeline _execution_device: {self.pipeline._execution_device}")
+        # 1. Preprocess PIL image to tensor
+        preprocessed_image = self.pipeline.video_processor.preprocess(start_image, height=height, width=width)
+        preprocessed_image = preprocessed_image.to(device='cuda', dtype=torch.bfloat16)
+        logger.debug(f"Preprocessed image: {preprocessed_image.shape}, device: {preprocessed_image.device}")
+
+        # 2. Manually encode to latents using VAE (on CUDA)
+        # prepare_latents expects: [batch, channels, num_frames, height, width]
+        # VAE.encode expects: [batch, channels, num_frames, height, width]
+        # preprocessed_image is [batch, channels, height, width], need to add temporal dim
+
+        with torch.no_grad():
+            # Add temporal dimension and encode
+            image_for_encode = preprocessed_image.unsqueeze(2)  # [B, C, 1, H, W]
+            logger.debug(f"Image for VAE encode: {image_for_encode.shape}, device: {image_for_encode.device}")
+
+            # Encode with VAE (ensure on CUDA)
+            from diffusers.models.autoencoders.vae import DiagonalGaussianDistribution
+            latent_dist = self.pipeline.vae.encode(image_for_encode)
+
+            # Get latent sample (argmax mode for I2V)
+            if hasattr(latent_dist, 'mode'):
+                init_latents = latent_dist.mode()
+            elif hasattr(latent_dist, 'sample'):
+                init_latents = latent_dist.sample(generator)
+            else:
+                init_latents = latent_dist.latent_dist.mode()
+
+            logger.debug(f"Encoded latents: {init_latents.shape}, device: {init_latents.device}")
+
+            # Normalize latents
+            init_latents = self.pipeline._normalize_latents(
+                init_latents,
+                self.pipeline.vae.latents_mean,
+                self.pipeline.vae.latents_std
+            )
+
+            # Repeat for all frames
+            init_latents = init_latents.repeat(1, 1, num_frames, 1, 1)
+            logger.debug(f"Repeated latents for {num_frames} frames: {init_latents.shape}")
+
+            # Pack latents (convert to patches)
+            latents = self.pipeline._pack_latents(
+                init_latents,
+                self.pipeline.transformer_spatial_patch_size,
+                self.pipeline.transformer_temporal_patch_size
+            )
+            logger.debug(f"Packed latents: {latents.shape}, device: {latents.device}")
 
         # Progress callback for denoising steps
         def progress_callback(pipe, step_index, timestep, callback_kwargs):
@@ -405,10 +446,11 @@ class LTX2Pipeline:
         logger.info(f"Generating {num_frames} frames (denoising in {num_inference_steps} steps)...", emoji='video_camera')
 
         # Generate video (LTX-2 also generates audio, but we discard it)
-        # CRITICAL: Pass preprocessed tensor on CUDA
-        # Ensures all latent operations happen on GPU regardless of _execution_device
+        # CRITICAL: Pass manually encoded latents instead of image
+        # This bypasses prepare_latents() which has device mismatch issues
         video, generated_audio = self.pipeline(
-            image=preprocessed_image,  # Pass preprocessed tensor on CUDA
+            image=None,  # Don't pass image - we're providing latents directly
+            latents=latents,  # Pass pre-encoded latents on CUDA
             prompt=prompt,
             negative_prompt=negative_prompt,
             width=width,
