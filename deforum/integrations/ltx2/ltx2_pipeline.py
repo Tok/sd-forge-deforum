@@ -167,6 +167,19 @@ class LTX2Pipeline:
                 logger.info(f"Moving VAE to GPU...", emoji='robot')
                 self.pipeline.vae.to('cuda')
 
+                # CRITICAL: Unwrap accelerate decorator from VAE.encode()
+                # Diffusers installs @maybe_allow_in_graph wrapper during VAE loading
+                # This wrapper moves tensors to CPU, breaking our device placement
+                # Access the original unwrapped function via __wrapped__ attribute
+                if hasattr(self.pipeline.vae.encode, '__wrapped__'):
+                    logger.debug("Unwrapping accelerate decorator from VAE.encode()")
+                    self.pipeline.vae.encode = self.pipeline.vae.encode.__wrapped__
+
+                # Also unwrap VAE.decode() if wrapped
+                if hasattr(self.pipeline.vae.decode, '__wrapped__'):
+                    logger.debug("Unwrapping accelerate decorator from VAE.decode()")
+                    self.pipeline.vae.decode = self.pipeline.vae.decode.__wrapped__
+
                 # Log VRAM usage and component locations
                 vram_used = torch.cuda.memory_allocated() / 1024**3
                 vram_free = torch.cuda.mem_get_info()[0] / 1024**3
