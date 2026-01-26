@@ -423,9 +423,15 @@ class LTX2Pipeline:
             )
             logger.debug(f"Normalized latents: {init_latents.shape}, device: {init_latents.device}")
 
-            # Repeat for all frames (pipeline expects initial latents for all frames)
-            init_latents = init_latents.repeat(1, 1, num_frames, 1, 1)
-            logger.debug(f"Repeated latents for {num_frames} frames: {init_latents.shape}, device: {init_latents.device}")
+            # Calculate latent frame count (temporally compressed)
+            # Pipeline's prepare_latents does: (num_frames - 1) // temporal_compression + 1
+            vae_temporal_compression = self.pipeline.vae.config.temporal_compression_ratio
+            latent_num_frames = (num_frames - 1) // vae_temporal_compression + 1
+            logger.debug(f"Output frames: {num_frames}, VAE temporal compression: {vae_temporal_compression}, Latent frames: {latent_num_frames}")
+
+            # Repeat for latent frame count (NOT output frame count!)
+            init_latents = init_latents.repeat(1, 1, latent_num_frames, 1, 1)
+            logger.debug(f"Repeated latents for {latent_num_frames} latent frames: {init_latents.shape}, device: {init_latents.device}")
 
             # Create conditioning mask (first frame = 1.0, rest = 0.0)
             # Use init_latents shape directly to ensure dimensions match
