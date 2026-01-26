@@ -147,87 +147,34 @@ class LTX2Pipeline:
                 vram_free_after_transformer = torch.cuda.mem_get_info()[0] / 1024**3
                 logger.info(f"Transformer loaded: {vram_after_transformer:.2f}GB used, {vram_free_after_transformer:.1f}GB free", emoji='chart')
 
-                # Load text encoder on CPU (no device_map - avoids accelerate hook issues)
-                # CRITICAL: device_map="auto" installs hooks that break VAE device placement
-                # Solution: Load on CPU, let enable_sequential_cpu_offload handle transfers
-                logger.info(f"Loading text encoder on CPU (will offload to GPU during inference)...", emoji='robot')
-                text_encoder = None
-
-                try:
-                    from transformers import AutoModelForCausalLM
-
-                    # Load text encoder entirely on CPU
-                    # enable_sequential_cpu_offload() will handle GPU transfers intelligently
-                    logger.info(f"Loading text encoder to CPU/system RAM...", emoji='robot')
-                    logger.info(f"Text encoder will transfer to GPU only when needed", emoji='info')
-
-                    text_encoder = AutoModelForCausalLM.from_pretrained(
-                        "Lightricks/LTX-2",
-                        subfolder="text_encoder",
-                        torch_dtype=torch.bfloat16,
-                        device_map={"": "cpu"},  # Explicit CPU placement, no auto hooks
-                        low_cpu_mem_usage=True,
-                    )
-
-                    logger.info(f"Text encoder loaded on CPU (~24GB system RAM)", emoji='check')
-
-                except Exception as text_enc_error:
-                    logger.error(f"Failed to load text encoder: {text_enc_error}", emoji='x')
-                    logger.error(f"Cannot proceed without text encoder", emoji='x')
-                    raise RuntimeError(
-                        f"Failed to load LTX-2 text encoder (Gemma-3-12B). "
-                        f"Error: {text_enc_error}"
-                    )
-
-                # Load pipeline with GGUF transformer and layerwise-split text encoder
-                logger.info(f"Loading LTX-2 pipeline...", emoji='robot')
+                # Load pipeline WITHOUT passing text encoder
+                # Let pipeline load text encoder normally (no device_map, no hooks)
+                # We'll move text encoder to CPU manually after loading
+                logger.info(f"Loading LTX-2 pipeline (text encoder will be moved to CPU after)...", emoji='robot')
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                     "Lightricks/LTX-2",
-                    transformer=transformer,  # Already on GPU
-                    text_encoder=text_encoder,  # Already has device_map, don't move!
+                    transformer=transformer,  # Pass GGUF transformer (already on GPU)
+                    # Do NOT pass text_encoder - let pipeline load it normally
                     torch_dtype=torch.bfloat16,
                 )
 
-                # CRITICAL: Transformer already on GPU (moved earlier)
-                # Text encoder stays on CPU (no offloading - avoids all accelerate hook issues)
-                # Prompt encoding will be slower but stable
+                # CRITICAL: Move text encoder to CPU to save VRAM
+                # Pipeline loaded it to GPU by default, move it to CPU manually
+                logger.info(f"Moving text encoder to CPU to save VRAM...", emoji='robot')
+                self.pipeline.text_encoder.to('cpu')
 
-                # Move VAE to GPU and remove any accelerate hooks
+                # Move VAE to GPU
                 logger.info(f"Moving VAE to GPU...", emoji='robot')
                 self.pipeline.vae.to('cuda')
-
-                # CRITICAL: Remove accelerate hooks from VAE
-                # Even though text encoder uses device_map={"": "cpu"}, diffusers might
-                # install hooks on VAE during pipeline loading. Remove them manually.
-                if hasattr(self.pipeline.vae, '_hf_hook'):
-                    logger.debug("Removing accelerate hook from VAE")
-                    self.pipeline.vae._hf_hook = None
-                if hasattr(self.pipeline.vae, '_old_forward'):
-                    logger.debug("Restoring original VAE forward method")
-                    self.pipeline.vae.forward = self.pipeline.vae._old_forward
-
-                # Also remove hooks from VAE submodules
-                for name, module in self.pipeline.vae.named_modules():
-                    if hasattr(module, '_hf_hook'):
-                        logger.debug(f"Removing accelerate hook from VAE.{name}")
-                        module._hf_hook = None
-                    if hasattr(module, '_old_forward'):
-                        module.forward = module._old_forward
-
-                # DO NOT use enable_sequential_cpu_offload() or enable_model_cpu_offload()!
-                # Both install accelerate hooks that interfere with GGUF transformer and VAE
-                # Text encoder stays on CPU permanently - slower but stable
-                logger.info(f"Text encoder remains on CPU (slow but stable, no hooks)", emoji='info')
-                logger.info(f"VAE hooks removed - all operations on GPU", emoji='check')
 
                 # Log VRAM usage and component locations
                 vram_used = torch.cuda.memory_allocated() / 1024**3
                 vram_free = torch.cuda.mem_get_info()[0] / 1024**3
                 logger.info(f"VRAM: {vram_used:.2f}GB used, {vram_free:.2f}GB free", emoji='chart')
                 logger.info(f"Component locations:", emoji='info')
-                logger.info(f"  Transformer: GPU (GGUF, 9.4GB)", emoji='gpu')
+                logger.info(f"  Transformer: GPU (GGUF, 9.4GB, no hooks)", emoji='gpu')
                 logger.info(f"  Text encoder: CPU (24GB system RAM, no hooks)", emoji='cpu')
-                logger.info(f"  VAE: GPU (2GB)", emoji='gpu')
+                logger.info(f"  VAE: GPU (2GB, no hooks)", emoji='gpu')
                 logger.info("GGUF model loaded successfully!", emoji='check')
                 logger.warning("Text encoder on CPU - prompt encoding will be slower but stable", emoji='warning')
 
