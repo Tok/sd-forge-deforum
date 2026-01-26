@@ -376,9 +376,11 @@ class LTX2Pipeline:
             start_image = start_image.resize((width, height), Image.Resampling.LANCZOS)
 
         # Set seed for reproducibility
+        # Use CPU generator to avoid device mismatch with audio latents
+        # (audio latents are created on CPU since _execution_device returns 'cpu')
         generator = None
         if seed is not None:
-            generator = torch.Generator(device=self.device).manual_seed(seed)
+            generator = torch.Generator(device='cpu').manual_seed(seed)
 
         logger.debug(f"Generating {num_frames} frames with LTX-2 I2V")
 
