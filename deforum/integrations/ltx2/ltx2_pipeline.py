@@ -138,32 +138,51 @@ class LTX2Pipeline:
                     torch_dtype=torch.bfloat16,
                 )
 
-                # Load text encoder with CPU offloading to system RAM
+                # Load text encoder with layerwise CPU/GPU splitting
                 # CRITICAL: GGUF transformer CANNOT use CPU offload (metadata loss)
-                # Solution: Keep transformer on GPU, offload text encoder to system RAM
-                logger.info(f"Loading text encoder with CPU offload to system RAM...", emoji='robot')
+                # Solution: Keep transformer on GPU, split text encoder layers across CPU/GPU
+                logger.info(f"Loading text encoder with layerwise CPU/GPU splitting...", emoji='robot')
                 text_encoder = None
-                use_cpu_offload = False
 
                 try:
                     from transformers import AutoModelForCausalLM
 
-                    # Strategy: Load text encoder on CPU, let diffusers manage GPU transfers
-                    # This avoids OOM while keeping GGUF transformer on GPU
-                    logger.info(f"Loading text encoder to CPU (will transfer to GPU only when needed)...", emoji='robot')
-                    logger.info(f"This saves VRAM by offloading to system RAM (~24GB → 0GB VRAM)", emoji='info')
+                    # Calculate available VRAM for text encoder
+                    # Transformer already loaded: ~10GB
+                    # VAE will use: ~2GB
+                    # Reserve for generation: ~2GB
+                    # Available for text encoder: 14.9GB - 10GB - 2GB - 2GB = 0.9GB
+                    # VERY limited! Use device_map="auto" with max_memory to force layerwise split
+
+                    free_vram_gb = torch.cuda.mem_get_info()[0] / 1024**3
+                    reserved_for_generation = 4.0  # Reserve 4GB for VAE + generation overhead
+                    text_encoder_vram_budget = max(0.5, free_vram_gb - reserved_for_generation)
+
+                    logger.info(f"Free VRAM: {free_vram_gb:.1f}GB", emoji='info')
+                    logger.info(f"Text encoder budget: {text_encoder_vram_budget:.1f}GB (rest on CPU)", emoji='info')
+
+                    # Use device_map="auto" with max_memory to split layers
+                    # This puts as many layers as fit in VRAM budget, rest stay on CPU
+                    max_memory = {
+                        0: f"{text_encoder_vram_budget:.1f}GiB",  # GPU budget
+                        "cpu": "48GiB",  # Plenty of system RAM
+                    }
+
+                    logger.info(f"Loading text encoder with automatic layer distribution...", emoji='robot')
+                    logger.info(f"GPU layers: ~{text_encoder_vram_budget:.1f}GB, CPU layers: rest", emoji='info')
 
                     text_encoder = AutoModelForCausalLM.from_pretrained(
                         "Lightricks/LTX-2",
                         subfolder="text_encoder",
                         torch_dtype=torch.bfloat16,
-                        device_map="cpu",  # Keep on CPU/system RAM
+                        device_map="auto",  # Automatic layer distribution
+                        max_memory=max_memory,  # Constrain GPU usage
                         low_cpu_mem_usage=True,
+                        offload_folder="/tmp/ltx2_offload",  # Disk offload if needed
                     )
 
-                    logger.info(f"Text encoder loaded to CPU! Will use enable_model_cpu_offload()", emoji='check')
-                    logger.info(f"VRAM saved: ~24GB (offloaded to system RAM)", emoji='zap')
-                    use_cpu_offload = True
+                    logger.info(f"Text encoder loaded with layerwise splitting!", emoji='check')
+                    logger.info(f"Some layers on GPU (~{text_encoder_vram_budget:.1f}GB), rest on CPU", emoji='zap')
 
                 except Exception as text_enc_error:
                     logger.error(f"Failed to load text encoder: {text_enc_error}", emoji='x')
@@ -173,18 +192,18 @@ class LTX2Pipeline:
                         f"Error: {text_enc_error}"
                     )
 
-                # Load pipeline with GGUF transformer and CPU-offloaded text encoder
+                # Load pipeline with GGUF transformer and layerwise-split text encoder
                 logger.info(f"Loading LTX-2 pipeline...", emoji='robot')
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                     "Lightricks/LTX-2",
                     transformer=transformer,
-                    text_encoder=text_encoder,
+                    text_encoder=text_encoder,  # Already has device_map, don't move!
                     torch_dtype=torch.bfloat16,
                 )
 
                 # CRITICAL: GGUF transformer stays on GPU (no offload - preserves metadata)
-                # Text encoder uses CPU offload (managed by diffusers)
-                # This hybrid approach: GGUF on GPU + text encoder offloaded to system RAM
+                # Text encoder uses device_map="auto" (layers split across CPU/GPU)
+                # This hybrid approach: GGUF on GPU + text encoder layerwise split
 
                 # Move transformer to GPU (required for GGUF, no offload allowed)
                 logger.info(f"Moving GGUF transformer to GPU (no CPU offload)...", emoji='robot')
@@ -194,19 +213,16 @@ class LTX2Pipeline:
                 logger.info(f"Moving VAE to GPU...", emoji='robot')
                 self.pipeline.vae.to('cuda')
 
-                # Enable model CPU offload for text encoder only
-                # This keeps text encoder on CPU/system RAM until needed
-                if use_cpu_offload:
-                    logger.info(f"Enabling model CPU offload for text encoder...", emoji='zap')
-                    logger.info(f"Text encoder will transfer to GPU only during prompt encoding", emoji='info')
-                    self.pipeline.enable_model_cpu_offload(gpu_id=0)
+                # NOTE: Do NOT call enable_model_cpu_offload()!
+                # Text encoder already has device_map from AutoModelForCausalLM loading
+                # Calling enable_model_cpu_offload() would override device_map and cause OOM
 
                 # Log VRAM usage
                 vram_used = torch.cuda.memory_allocated() / 1024**3
                 vram_free = torch.cuda.mem_get_info()[0] / 1024**3
                 logger.info(f"VRAM: {vram_used:.2f}GB used, {vram_free:.2f}GB free", emoji='chart')
-                logger.info(f"Text encoder (24GB) offloaded to system RAM", emoji='check')
-                logger.info("GGUF model loaded successfully with CPU-offloaded text encoder!", emoji='check')
+                logger.info(f"Text encoder: ~{text_encoder_vram_budget:.1f}GB on GPU, rest on CPU", emoji='check')
+                logger.info("GGUF model loaded successfully with layerwise text encoder!", emoji='check')
 
             except Exception as e:
                 import traceback
