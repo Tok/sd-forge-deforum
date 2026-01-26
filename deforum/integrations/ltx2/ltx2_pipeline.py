@@ -428,23 +428,16 @@ class LTX2Pipeline:
             logger.debug(f"Repeated latents for {num_frames} frames: {init_latents.shape}, device: {init_latents.device}")
 
             # Create conditioning mask (first frame = 1.0, rest = 0.0)
-            # This matches prepare_latents() logic for image path
-            vae_scale_factor_spatial = 2 ** (len(self.pipeline.vae.config.block_out_channels) - 1)
-            vae_scale_factor_temporal = self.pipeline.vae.config.temporal_compression_ratio
+            # Use init_latents shape directly to ensure dimensions match
+            batch, channels, frames, latent_h, latent_w = init_latents.shape
 
-            latent_height = height // vae_scale_factor_spatial
-            latent_width = width // vae_scale_factor_spatial
-            latent_num_frames = (num_frames - 1) // vae_scale_factor_temporal + 1
-
-            mask_shape = (1, 1, latent_num_frames, latent_height, latent_width)
+            mask_shape = (batch, 1, frames, latent_h, latent_w)
             conditioning_mask = torch.zeros(mask_shape, device='cuda', dtype=torch.bfloat16)
             conditioning_mask[:, :, 0] = 1.0  # First frame uses init_latents, rest uses noise
             logger.debug(f"Conditioning mask: {conditioning_mask.shape}, first frame sum: {conditioning_mask[:,:,0].sum()}")
 
-            # Create noise for non-first frames
-            latent_channels = self.pipeline.transformer.config.in_channels
-            shape = (1, latent_channels, latent_num_frames, latent_height, latent_width)
-            noise = torch.randn(shape, generator=generator, device='cuda', dtype=torch.bfloat16)
+            # Create noise matching init_latents shape exactly
+            noise = torch.randn(init_latents.shape, generator=generator, device='cuda', dtype=torch.bfloat16)
             logger.debug(f"Noise shape: {noise.shape}")
 
             # Blend init_latents with noise (matches prepare_latents image path)
