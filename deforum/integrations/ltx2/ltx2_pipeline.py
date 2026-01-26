@@ -312,16 +312,16 @@ class LTX2Pipeline:
                 device_map="cuda",  # Load to CUDA device
             )
 
-        # Enable additional memory optimizations
-        if self.device == 'cuda':
-            # Disable VAE tiling temporarily - causes device mismatch with GGUF
-            # TODO: Re-enable once device placement is stable
-            # try:
-            #     self.pipeline.vae.enable_tiling()
-            #     logger.info("Enabled VAE tiling for memory efficiency", emoji='check')
-            # except:
-            #     pass
-            logger.debug("VAE tiling disabled (causes device mismatch with GGUF)")
+        # CRITICAL: Explicitly disable VAE tiling - causes device mismatch with GGUF
+        # LTX-2 VAE has no disable_tiling() method, must set flag manually
+        # Tiling causes tiled_encode() path which moves tensors to CPU
+        if hasattr(self.pipeline.vae, 'use_tiling'):
+            self.pipeline.vae.use_tiling = False
+            logger.info("Disabled VAE tiling (prevents device mismatch)", emoji='check')
+
+        if hasattr(self.pipeline.vae, 'use_framewise_decoding'):
+            self.pipeline.vae.use_framewise_decoding = False
+            logger.debug("Disabled framewise decoding")
 
         logger.info(f"LTX-2 pipeline loaded successfully", emoji='check')
 
