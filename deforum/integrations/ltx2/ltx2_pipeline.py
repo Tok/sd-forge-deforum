@@ -138,6 +138,15 @@ class LTX2Pipeline:
                     torch_dtype=torch.bfloat16,
                 )
 
+                # CRITICAL: Move transformer to GPU FIRST before loading text encoder
+                # This ensures we calculate text encoder budget from REMAINING VRAM
+                logger.info(f"Moving GGUF transformer to GPU...", emoji='robot')
+                transformer.to('cuda')
+
+                vram_after_transformer = torch.cuda.memory_allocated() / 1024**3
+                vram_free_after_transformer = torch.cuda.mem_get_info()[0] / 1024**3
+                logger.info(f"Transformer loaded: {vram_after_transformer:.2f}GB used, {vram_free_after_transformer:.1f}GB free", emoji='chart')
+
                 # Load text encoder with layerwise CPU/GPU splitting
                 # CRITICAL: GGUF transformer CANNOT use CPU offload (metadata loss)
                 # Solution: Keep transformer on GPU, split text encoder layers across CPU/GPU
@@ -147,16 +156,16 @@ class LTX2Pipeline:
                 try:
                     from transformers import AutoModelForCausalLM
 
-                    # Calculate available VRAM for text encoder
-                    # Transformer already loaded: ~10GB
+                    # Calculate available VRAM for text encoder FROM REMAINING VRAM
+                    # Transformer already on GPU: ~10GB used
                     # VAE will use: ~2GB
                     # Reserve for generation: ~2GB
-                    # Available for text encoder: 14.9GB - 10GB - 2GB - 2GB = 0.9GB
-                    # VERY limited! Use device_map="auto" with max_memory to force layerwise split
+                    # Available for text encoder: (free now) - 2GB - 2GB
+                    # Should be ~0.5-1GB on 16GB card
 
                     free_vram_gb = torch.cuda.mem_get_info()[0] / 1024**3
-                    reserved_for_generation = 4.0  # Reserve 4GB for VAE + generation overhead
-                    text_encoder_vram_budget = max(0.5, free_vram_gb - reserved_for_generation)
+                    reserved_for_vae_and_gen = 4.0  # Reserve 4GB for VAE (2GB) + generation (2GB)
+                    text_encoder_vram_budget = max(0.5, free_vram_gb - reserved_for_vae_and_gen)
 
                     logger.info(f"Free VRAM: {free_vram_gb:.1f}GB", emoji='info')
                     logger.info(f"Text encoder budget: {text_encoder_vram_budget:.1f}GB (rest on CPU)", emoji='info')
@@ -201,20 +210,16 @@ class LTX2Pipeline:
                 logger.info(f"Loading LTX-2 pipeline...", emoji='robot')
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                     "Lightricks/LTX-2",
-                    transformer=transformer,
+                    transformer=transformer,  # Already on GPU
                     text_encoder=text_encoder,  # Already has device_map, don't move!
                     torch_dtype=torch.bfloat16,
                 )
 
-                # CRITICAL: GGUF transformer stays on GPU (no offload - preserves metadata)
+                # CRITICAL: Transformer already on GPU (moved earlier)
                 # Text encoder uses device_map="auto" (layers split across CPU/GPU)
                 # This hybrid approach: GGUF on GPU + text encoder layerwise split
 
-                # Move transformer to GPU (required for GGUF, no offload allowed)
-                logger.info(f"Moving GGUF transformer to GPU (no CPU offload)...", emoji='robot')
-                self.pipeline.transformer.to('cuda')
-
-                # Move VAE to GPU (small, always fits)
+                # Move VAE to GPU
                 logger.info(f"Moving VAE to GPU...", emoji='robot')
                 self.pipeline.vae.to('cuda')
 
