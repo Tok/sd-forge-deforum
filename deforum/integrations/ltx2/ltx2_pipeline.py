@@ -314,12 +314,14 @@ class LTX2Pipeline:
 
         # Enable additional memory optimizations
         if self.device == 'cuda':
-            # Enable VAE tiling to reduce memory usage during decode
-            try:
-                self.pipeline.vae.enable_tiling()
-                logger.info("Enabled VAE tiling for memory efficiency", emoji='check')
-            except:
-                pass
+            # Disable VAE tiling temporarily - causes device mismatch with GGUF
+            # TODO: Re-enable once device placement is stable
+            # try:
+            #     self.pipeline.vae.enable_tiling()
+            #     logger.info("Enabled VAE tiling for memory efficiency", emoji='check')
+            # except:
+            #     pass
+            logger.debug("VAE tiling disabled (causes device mismatch with GGUF)")
 
         logger.info(f"LTX-2 pipeline loaded successfully", emoji='check')
 
@@ -381,18 +383,20 @@ class LTX2Pipeline:
         logger.debug(f"Generating {num_frames} frames with LTX-2 I2V")
 
         # CRITICAL: Convert PIL image to tensor and move to GPU
-        # Pipeline expects image on same device as VAE
-        # With device_map="auto", PIL images end up on CPU by default
+        # Pipeline expects batched image tensor on same device as VAE
         import torchvision.transforms as T
 
         # Convert PIL to tensor [0, 1] range
         to_tensor = T.ToTensor()
-        image_tensor = to_tensor(start_image).unsqueeze(0)  # Add batch dimension
+        image_tensor = to_tensor(start_image).unsqueeze(0)  # Add batch dimension: [1, 3, H, W]
 
-        # Move to GPU (VAE device)
+        # CRITICAL: Move to GPU with explicit device placement
+        # Must be on same device as VAE before pipeline processes it
         image_tensor = image_tensor.to(self.device, dtype=torch.bfloat16)
 
+        # Verify device placement
         logger.debug(f"Input image: {image_tensor.shape}, device: {image_tensor.device}, dtype: {image_tensor.dtype}")
+        logger.debug(f"VAE device: {next(self.pipeline.vae.parameters()).device}")
 
         # Progress callback for denoising steps
         def progress_callback(pipe, step_index, timestep, callback_kwargs):
