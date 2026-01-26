@@ -163,11 +163,6 @@ class LTX2Pipeline:
                 logger.info(f"Moving text encoder to CPU to save VRAM...", emoji='robot')
                 self.pipeline.text_encoder.to('cpu')
 
-                # CRITICAL: Set pipeline's execution device to CUDA
-                # This ensures all internal tensor operations use GPU
-                self.pipeline._execution_device = torch.device('cuda')
-                logger.debug(f"Set pipeline execution device to: cuda")
-
                 # Move VAE to GPU (including ALL submodules explicitly)
                 logger.info(f"Moving VAE to GPU...", emoji='robot')
                 self.pipeline.vae.to('cuda')
@@ -387,11 +382,16 @@ class LTX2Pipeline:
 
         logger.debug(f"Generating {num_frames} frames with LTX-2 I2V")
 
-        # CRITICAL: Pass PIL image directly to pipeline
-        # Pipeline will handle conversion to tensor internally
-        # Trying to pre-convert causes device mismatch issues
-        logger.debug(f"Input image: PIL Image.Image, size: {start_image.size}")
+        # CRITICAL: Pre-process image to tensor on CUDA manually
+        # Pipeline's _execution_device might return CPU if text_encoder is checked first
+        # So we force the image tensor to GPU before passing to pipeline
+        preprocessed_image = self.pipeline.video_processor.preprocess(start_image, height=height, width=width)
+        # Move to CUDA with correct dtype
+        preprocessed_image = preprocessed_image.to(device='cuda', dtype=torch.bfloat16)
+
+        logger.debug(f"Preprocessed image: {preprocessed_image.shape}, device: {preprocessed_image.device}, dtype: {preprocessed_image.dtype}")
         logger.debug(f"VAE device: {next(self.pipeline.vae.parameters()).device}")
+        logger.debug(f"Pipeline _execution_device: {self.pipeline._execution_device}")
 
         # Progress callback for denoising steps
         def progress_callback(pipe, step_index, timestep, callback_kwargs):
@@ -405,10 +405,10 @@ class LTX2Pipeline:
         logger.info(f"Generating {num_frames} frames (denoising in {num_inference_steps} steps)...", emoji='video_camera')
 
         # Generate video (LTX-2 also generates audio, but we discard it)
-        # CRITICAL: Pass PIL Image directly - pipeline handles tensor conversion
-        # Pre-converting to tensor causes device mismatch issues
+        # CRITICAL: Pass preprocessed tensor on CUDA
+        # Ensures all latent operations happen on GPU regardless of _execution_device
         video, generated_audio = self.pipeline(
-            image=start_image,  # Pass PIL Image directly
+            image=preprocessed_image,  # Pass preprocessed tensor on CUDA
             prompt=prompt,
             negative_prompt=negative_prompt,
             width=width,
