@@ -219,9 +219,25 @@ class LTX2Pipeline:
                 # Text encoder uses device_map="auto" (layers split across CPU/GPU)
                 # This hybrid approach: GGUF on GPU + text encoder layerwise split
 
-                # Move VAE to GPU
+                # Move VAE to GPU (including all submodules)
                 logger.info(f"Moving VAE to GPU...", emoji='robot')
                 self.pipeline.vae.to('cuda')
+
+                # CRITICAL: Explicitly move VAE submodules to GPU
+                # With device_map="auto" for text encoder, accelerate hooks can interfere
+                # Ensure encoder/decoder submodules are definitely on GPU
+                if hasattr(self.pipeline.vae, 'encoder'):
+                    self.pipeline.vae.encoder.to('cuda')
+                    logger.debug(f"VAE encoder moved to GPU")
+                if hasattr(self.pipeline.vae, 'decoder'):
+                    self.pipeline.vae.decoder.to('cuda')
+                    logger.debug(f"VAE decoder moved to GPU")
+                if hasattr(self.pipeline.vae, 'quant_conv'):
+                    self.pipeline.vae.quant_conv.to('cuda')
+                    logger.debug(f"VAE quant_conv moved to GPU")
+                if hasattr(self.pipeline.vae, 'post_quant_conv'):
+                    self.pipeline.vae.post_quant_conv.to('cuda')
+                    logger.debug(f"VAE post_quant_conv moved to GPU")
 
                 # NOTE: Do NOT call enable_model_cpu_offload()!
                 # Text encoder already has device_map from AutoModelForCausalLM loading
