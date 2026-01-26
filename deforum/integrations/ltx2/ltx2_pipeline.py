@@ -395,9 +395,23 @@ class LTX2Pipeline:
 
         logger.debug(f"Generating {num_frames} frames with LTX-2 I2V")
 
+        # CRITICAL: Convert PIL image to tensor and move to GPU
+        # Pipeline expects image on same device as VAE
+        # With device_map="auto", PIL images end up on CPU by default
+        import torchvision.transforms as T
+
+        # Convert PIL to tensor [0, 1] range
+        to_tensor = T.ToTensor()
+        image_tensor = to_tensor(start_image).unsqueeze(0)  # Add batch dimension
+
+        # Move to GPU (VAE device)
+        image_tensor = image_tensor.to(self.device, dtype=torch.bfloat16)
+
+        logger.debug(f"Input image: {image_tensor.shape}, device: {image_tensor.device}, dtype: {image_tensor.dtype}")
+
         # Generate video (LTX-2 also generates audio, but we discard it)
         video, generated_audio = self.pipeline(
-            image=start_image,
+            image=image_tensor,  # Pass tensor instead of PIL Image
             prompt=prompt,
             negative_prompt=negative_prompt,
             width=width,
