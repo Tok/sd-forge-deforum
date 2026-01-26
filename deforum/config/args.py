@@ -1339,6 +1339,15 @@ def WanArgs():
             "value": "condition_only",
             "info": "How to handle LTX-2's generated audio. 'condition_only' (RECOMMENDED): Use Deforum audio as conditioning, discard LTX-2 audio (preserves perfect sync). 'blend': Mix LTX-2 and Deforum audio. 'replace': Use LTX-2 generated audio only (may lose sync)."
         },
+        "ltx2_num_inference_steps": {
+            "label": "LTX-2 Denoising Steps",
+            "type": "number",
+            "minimum": 10,
+            "maximum": 100,
+            "step": 5,
+            "value": 40,
+            "info": "Number of denoising steps for LTX-2 generation. Default: 40 (balanced quality/speed). Lower values (20-30) are faster but lower quality. Higher values (50-100) are slower but higher quality. Typical range: 30-50 steps."
+        },
         "da3_multiview_model_size": {
             "label": "DA3-Multiview Model Size",
             "type": "dropdown",

@@ -192,14 +192,33 @@ class LTX2Pipeline:
                 # Text encoder stays on CPU (no offloading - avoids all accelerate hook issues)
                 # Prompt encoding will be slower but stable
 
-                # Move VAE to GPU
+                # Move VAE to GPU and remove any accelerate hooks
                 logger.info(f"Moving VAE to GPU...", emoji='robot')
                 self.pipeline.vae.to('cuda')
+
+                # CRITICAL: Remove accelerate hooks from VAE
+                # Even though text encoder uses device_map={"": "cpu"}, diffusers might
+                # install hooks on VAE during pipeline loading. Remove them manually.
+                if hasattr(self.pipeline.vae, '_hf_hook'):
+                    logger.debug("Removing accelerate hook from VAE")
+                    self.pipeline.vae._hf_hook = None
+                if hasattr(self.pipeline.vae, '_old_forward'):
+                    logger.debug("Restoring original VAE forward method")
+                    self.pipeline.vae.forward = self.pipeline.vae._old_forward
+
+                # Also remove hooks from VAE submodules
+                for name, module in self.pipeline.vae.named_modules():
+                    if hasattr(module, '_hf_hook'):
+                        logger.debug(f"Removing accelerate hook from VAE.{name}")
+                        module._hf_hook = None
+                    if hasattr(module, '_old_forward'):
+                        module.forward = module._old_forward
 
                 # DO NOT use enable_sequential_cpu_offload() or enable_model_cpu_offload()!
                 # Both install accelerate hooks that interfere with GGUF transformer and VAE
                 # Text encoder stays on CPU permanently - slower but stable
                 logger.info(f"Text encoder remains on CPU (slow but stable, no hooks)", emoji='info')
+                logger.info(f"VAE hooks removed - all operations on GPU", emoji='check')
 
                 # Log VRAM usage and component locations
                 vram_used = torch.cuda.memory_allocated() / 1024**3

@@ -76,6 +76,9 @@ def get_subtab_ltx2(dw: SimpleNamespace, skip_tabitem=False):
         ltx2_model_variant = create_gr_elem(dw.ltx2_model_variant)
         ltx2_audio_mode = create_gr_elem(dw.ltx2_audio_mode)
 
+    with FormRow():
+        ltx2_num_inference_steps = create_gr_elem(dw.ltx2_num_inference_steps)
+
     # Model Info
     with gr.Accordion(f"{emoji_utils.bulb()} Model Details", open=False):
         gr.Markdown("""
@@ -132,4 +135,5 @@ def get_subtab_ltx2(dw: SimpleNamespace, skip_tabitem=False):
     return {
         'ltx2_model_variant': ltx2_model_variant,
         'ltx2_audio_mode': ltx2_audio_mode,
+        'ltx2_num_inference_steps': ltx2_num_inference_steps,
     }
