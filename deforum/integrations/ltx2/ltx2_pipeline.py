@@ -445,7 +445,12 @@ class LTX2Pipeline:
             logger.debug(f"Conditioning mask: {conditioning_mask.shape}, first frame sum: {conditioning_mask[:,:,0].sum()}")
 
             # Create noise matching init_latents shape exactly
-            noise = torch.randn(init_latents.shape, generator=generator, device='cuda', dtype=torch.bfloat16)
+            # Use separate CUDA generator for noise (pipeline's CPU generator is for audio latents)
+            if seed is not None:
+                noise_generator = torch.Generator(device='cuda').manual_seed(seed)
+                noise = torch.randn(init_latents.shape, generator=noise_generator, device='cuda', dtype=torch.bfloat16)
+            else:
+                noise = torch.randn(init_latents.shape, device='cuda', dtype=torch.bfloat16)
             logger.debug(f"Noise shape: {noise.shape}")
 
             # Blend init_latents with noise (matches prepare_latents image path)
