@@ -816,8 +816,13 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                     )
 
                     # Convert PIL images to file paths (save to disk)
+                    # Write frames one-by-one with progress updates
                     segment_frames = []
-                    for frame_offset, pil_frame in enumerate(generated_frames[1:-1]):  # Skip first/last (keyframes)
+                    total_tween_frames = len(generated_frames[1:-1])  # Skip first/last (keyframes)
+
+                    logger.info(f"   Saving {total_tween_frames} frames...", emoji='floppy_disk')
+
+                    for frame_offset, pil_frame in enumerate(generated_frames[1:-1]):
                         frame_idx = first_frame_idx + frame_offset + 1
                         frame_filename = f"{frame_idx:09d}.png"
                         frame_path = os.path.join(data.output_directory, frame_filename)
@@ -826,7 +831,12 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                         pil_frame.save(frame_path, format='PNG')
                         segment_frames.append(frame_path)
 
-                    logger.debug(f"   Generated {len(segment_frames)} frames with LTX-2")
+                        # Show progress every 5 frames or on last frame
+                        if (frame_offset + 1) % 5 == 0 or frame_offset == total_tween_frames - 1:
+                            progress = (frame_offset + 1) / total_tween_frames * 100
+                            logger.info(f"     Saved {frame_offset + 1}/{total_tween_frames} frames ({progress:.0f}%)", emoji='floppy_disk')
+
+                    logger.info(f"   Completed segment {segment_idx + 1}/{total_segments}: {len(segment_frames)} frames saved", emoji='check')
 
                 except Exception as e:
                     logger.error(f"LTX-2 generation failed: {e}", emoji='x')

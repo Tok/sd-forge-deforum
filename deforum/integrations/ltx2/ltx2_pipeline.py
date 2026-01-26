@@ -409,6 +409,17 @@ class LTX2Pipeline:
 
         logger.debug(f"Input image: {image_tensor.shape}, device: {image_tensor.device}, dtype: {image_tensor.dtype}")
 
+        # Progress callback for denoising steps
+        def progress_callback(pipe, step_index, timestep, callback_kwargs):
+            """Called after each denoising step."""
+            # Log progress every 5 steps
+            if step_index % 5 == 0 or step_index == num_inference_steps - 1:
+                progress_pct = (step_index + 1) / num_inference_steps * 100
+                logger.info(f"  Denoising step {step_index + 1}/{num_inference_steps} ({progress_pct:.0f}%)", emoji='hourglass')
+            return callback_kwargs
+
+        logger.info(f"Generating {num_frames} frames (denoising in {num_inference_steps} steps)...", emoji='video_camera')
+
         # Generate video (LTX-2 also generates audio, but we discard it)
         video, generated_audio = self.pipeline(
             image=image_tensor,  # Pass tensor instead of PIL Image
@@ -421,8 +432,12 @@ class LTX2Pipeline:
             guidance_scale=guidance_scale,
             num_inference_steps=num_inference_steps,
             generator=generator,
+            callback_on_step_end=progress_callback,
+            callback_on_step_end_tensor_inputs=["latents"],  # Access latents during callback
             return_dict=False,  # Returns tuple (video, audio)
         )
+
+        logger.info(f"Denoising complete! Decoding {num_frames} frames...", emoji='check')
 
         # Video is already a list of PIL Images
         return video
