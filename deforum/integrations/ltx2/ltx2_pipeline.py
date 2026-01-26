@@ -163,20 +163,44 @@ class LTX2Pipeline:
                 logger.info(f"Moving text encoder to CPU to save VRAM...", emoji='robot')
                 self.pipeline.text_encoder.to('cpu')
 
-                # Move VAE to GPU
+                # Move VAE to GPU (including ALL submodules explicitly)
                 logger.info(f"Moving VAE to GPU...", emoji='robot')
                 self.pipeline.vae.to('cuda')
+
+                # CRITICAL: Explicitly move ALL VAE submodules to GPU
+                # Forge's memory_management.py patches conv layers and may move tensors to CPU
+                # if it detects mixed devices. Ensure everything in VAE is on GPU.
+                logger.debug("Explicitly moving all VAE submodules to GPU...")
+                for name, module in self.pipeline.vae.named_modules():
+                    if len(list(module.children())) == 0:  # Leaf module
+                        module.to('cuda')
+                        logger.debug(f"  {name} → cuda")
+
+                # Verify VAE encoder is on GPU
+                if hasattr(self.pipeline.vae, 'encoder'):
+                    self.pipeline.vae.encoder.to('cuda')
+                    logger.debug("VAE.encoder explicitly moved to cuda")
 
                 # CRITICAL: Unwrap accelerate decorator from VAE.encode()
                 # Diffusers installs @maybe_allow_in_graph wrapper during VAE loading
                 # This wrapper moves tensors to CPU, breaking our device placement
-                # Access the original unwrapped function via __wrapped__ attribute
-                if hasattr(self.pipeline.vae.encode, '__wrapped__'):
+
+                # Check if __wrapped__ exists
+                has_encode_wrapped = hasattr(self.pipeline.vae.encode, '__wrapped__')
+                has_decode_wrapped = hasattr(self.pipeline.vae.decode, '__wrapped__')
+                logger.debug(f"VAE.encode has __wrapped__: {has_encode_wrapped}")
+                logger.debug(f"VAE.decode has __wrapped__: {has_decode_wrapped}")
+
+                if has_encode_wrapped:
                     logger.debug("Unwrapping accelerate decorator from VAE.encode()")
                     self.pipeline.vae.encode = self.pipeline.vae.encode.__wrapped__
+                else:
+                    # __wrapped__ doesn't exist, wrapper might be applied differently
+                    # Try to bypass by calling _encode directly
+                    logger.warning("VAE.encode doesn't have __wrapped__, wrapper cannot be removed!")
+                    logger.warning("This may cause device mismatch errors during generation")
 
-                # Also unwrap VAE.decode() if wrapped
-                if hasattr(self.pipeline.vae.decode, '__wrapped__'):
+                if has_decode_wrapped:
                     logger.debug("Unwrapping accelerate decorator from VAE.decode()")
                     self.pipeline.vae.decode = self.pipeline.vae.decode.__wrapped__
 
