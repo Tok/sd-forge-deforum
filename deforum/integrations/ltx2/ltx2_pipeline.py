@@ -181,28 +181,35 @@ class LTX2Pipeline:
                     self.pipeline.vae.encoder.to('cuda')
                     logger.debug("VAE.encoder explicitly moved to cuda")
 
-                # CRITICAL: Unwrap accelerate decorator from VAE.encode()
-                # Diffusers installs @maybe_allow_in_graph wrapper during VAE loading
-                # This wrapper moves tensors to CPU, breaking our device placement
+                # CRITICAL: Remove accelerate hooks from ALL pipeline components
+                # The @maybe_allow_in_graph wrapper calls self._hf_hook.pre_forward()
+                # which moves tensors to CPU, breaking our device placement
+                logger.debug("Checking for and removing accelerate hooks...")
 
-                # Check if __wrapped__ exists
-                has_encode_wrapped = hasattr(self.pipeline.vae.encode, '__wrapped__')
-                has_decode_wrapped = hasattr(self.pipeline.vae.decode, '__wrapped__')
-                logger.debug(f"VAE.encode has __wrapped__: {has_encode_wrapped}")
-                logger.debug(f"VAE.decode has __wrapped__: {has_decode_wrapped}")
+                components_to_check = [
+                    ('VAE', self.pipeline.vae),
+                    ('Transformer', self.pipeline.transformer),
+                ]
 
-                if has_encode_wrapped:
-                    logger.debug("Unwrapping accelerate decorator from VAE.encode()")
-                    self.pipeline.vae.encode = self.pipeline.vae.encode.__wrapped__
-                else:
-                    # __wrapped__ doesn't exist, wrapper might be applied differently
-                    # Try to bypass by calling _encode directly
-                    logger.warning("VAE.encode doesn't have __wrapped__, wrapper cannot be removed!")
-                    logger.warning("This may cause device mismatch errors during generation")
+                for component_name, component in components_to_check:
+                    # Check for _hf_hook on main component
+                    if hasattr(component, '_hf_hook'):
+                        logger.debug(f"Removing _hf_hook from {component_name}")
+                        delattr(component, '_hf_hook')
+                    else:
+                        logger.debug(f"{component_name} has no _hf_hook")
 
-                if has_decode_wrapped:
-                    logger.debug("Unwrapping accelerate decorator from VAE.decode()")
-                    self.pipeline.vae.decode = self.pipeline.vae.decode.__wrapped__
+                    # Check for hooks on submodules
+                    hooks_removed = 0
+                    for name, module in component.named_modules():
+                        if hasattr(module, '_hf_hook'):
+                            delattr(module, '_hf_hook')
+                            hooks_removed += 1
+
+                    if hooks_removed > 0:
+                        logger.debug(f"Removed {hooks_removed} hooks from {component_name} submodules")
+                    else:
+                        logger.debug(f"No hooks found in {component_name} submodules")
 
                 # Log VRAM usage and component locations
                 vram_used = torch.cuda.memory_allocated() / 1024**3
