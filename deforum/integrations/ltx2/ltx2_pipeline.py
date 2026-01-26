@@ -171,6 +171,11 @@ class LTX2Pipeline:
                     logger.info(f"Loading text encoder with automatic layer distribution...", emoji='robot')
                     logger.info(f"GPU layers: ~{text_encoder_vram_budget:.1f}GB, CPU layers: rest", emoji='info')
 
+                    # Create offload directory
+                    import os
+                    offload_dir = "/tmp/ltx2_offload"
+                    os.makedirs(offload_dir, exist_ok=True)
+
                     text_encoder = AutoModelForCausalLM.from_pretrained(
                         "Lightricks/LTX-2",
                         subfolder="text_encoder",
@@ -178,7 +183,7 @@ class LTX2Pipeline:
                         device_map="auto",  # Automatic layer distribution
                         max_memory=max_memory,  # Constrain GPU usage
                         low_cpu_mem_usage=True,
-                        offload_folder="/tmp/ltx2_offload",  # Disk offload if needed
+                        offload_folder=offload_dir,  # Disk offload if needed
                     )
 
                     logger.info(f"Text encoder loaded with layerwise splitting!", emoji='check')
@@ -217,11 +222,14 @@ class LTX2Pipeline:
                 # Text encoder already has device_map from AutoModelForCausalLM loading
                 # Calling enable_model_cpu_offload() would override device_map and cause OOM
 
-                # Log VRAM usage
+                # Log VRAM usage and component locations
                 vram_used = torch.cuda.memory_allocated() / 1024**3
                 vram_free = torch.cuda.mem_get_info()[0] / 1024**3
                 logger.info(f"VRAM: {vram_used:.2f}GB used, {vram_free:.2f}GB free", emoji='chart')
-                logger.info(f"Text encoder: ~{text_encoder_vram_budget:.1f}GB on GPU, rest on CPU", emoji='check')
+                logger.info(f"Component locations:", emoji='info')
+                logger.info(f"  Transformer: GPU (GGUF, no offload)", emoji='gpu')
+                logger.info(f"  Text encoder: Split (~{text_encoder_vram_budget:.1f}GB GPU, rest CPU)", emoji='cpu')
+                logger.info(f"  VAE: GPU", emoji='gpu')
                 logger.info("GGUF model loaded successfully with layerwise text encoder!", emoji='check')
 
             except Exception as e:
