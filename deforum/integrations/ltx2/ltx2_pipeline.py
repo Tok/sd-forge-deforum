@@ -433,22 +433,23 @@ class LTX2Pipeline:
             logger.info("This matches the ComfyUI-LTXVideo workflow (works on 16GB cards)", emoji='info')
 
             # Load distilled model with bfloat16 (no quantization needed - already efficient)
-            # Load to GPU first, then manually move text encoder to CPU (same strategy as GGUF)
+            # DON'T move entire pipeline - selectively place components
             self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                 model_id,
                 torch_dtype=torch.bfloat16,
-                device_map=None,  # Load all to default device first
+                device_map=None,  # Load to CPU first (avoids OOM)
                 low_cpu_mem_usage=True,
             )
 
-            # Move entire pipeline to GPU first
-            self.pipeline.to('cuda')
-
             logger.info("Distilled model loaded successfully", emoji='check')
 
-            # CRITICAL: Move text encoder to CPU to save VRAM (same as GGUF path)
-            logger.info(f"Moving text encoder to CPU to save VRAM...", emoji='robot')
-            self.pipeline.text_encoder.to('cpu')
+            # CRITICAL: Selectively move components (avoid moving 12GB text encoder to GPU)
+            # Move transformer to GPU
+            logger.info(f"Moving transformer to GPU...", emoji='robot')
+            self.pipeline.transformer.to('cuda')
+
+            # Keep text encoder on CPU (saves 12GB VRAM)
+            logger.info(f"Text encoder stays on CPU to save VRAM...", emoji='robot')
 
             # CRITICAL: Wrap text encoder with CPU device proxy (same as GGUF path)
             class CPUTextEncoderProxy:
