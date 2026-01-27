@@ -229,10 +229,17 @@ class LTX2Pipeline:
                         # Run packing on CPU (pass device='cpu' to create mask on CPU)
                         packed_embeds = original_pack_text_embeds(text_hidden_states, sequence_lengths_cpu, device='cpu', **kwargs)
                         logger.debug(f"Packed embeds on CPU: {packed_embeds.device}, moving to {device}")
+
+                        # Clear CUDA cache before moving large tensor
+                        vram_before = torch.cuda.memory_allocated() / 1024**3
+                        torch.cuda.empty_cache()
+
                         # Move result to CUDA for downstream operations (explicitly convert device to torch.device)
                         target_device = torch.device(device) if isinstance(device, str) else device
                         result = packed_embeds.to(target_device)
-                        logger.debug(f"Final result device: {result.device}")
+
+                        vram_after = torch.cuda.memory_allocated() / 1024**3
+                        logger.debug(f"Final result device: {result.device}, VRAM: {vram_before:.2f}GB → {vram_after:.2f}GB (+{vram_after-vram_before:.2f}GB)")
                         return result
                     else:
                         # Already on correct device, use original implementation
