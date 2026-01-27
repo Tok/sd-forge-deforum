@@ -163,6 +163,33 @@ class LTX2Pipeline:
                 logger.info(f"Moving text encoder to CPU to save VRAM...", emoji='robot')
                 self.pipeline.text_encoder.to('cpu')
 
+                # CRITICAL: Create a wrapper class that intercepts calls and moves inputs to CPU
+                # When encode_prompt creates input_ids on CUDA, wrapper will move them to CPU
+                class CPUTextEncoderProxy:
+                    """Proxy that automatically moves all tensor inputs to CPU before forwarding to text encoder."""
+                    def __init__(self, text_encoder):
+                        self._text_encoder = text_encoder
+
+                    def __call__(self, *args, **kwargs):
+                        # Move all tensor args to CPU
+                        args = tuple(
+                            arg.to('cpu') if isinstance(arg, torch.Tensor) and arg.device.type != 'cpu' else arg
+                            for arg in args
+                        )
+                        # Move all tensor kwargs to CPU
+                        kwargs = {
+                            k: v.to('cpu') if isinstance(v, torch.Tensor) and v.device.type != 'cpu' else v
+                            for k, v in kwargs.items()
+                        }
+                        return self._text_encoder(*args, **kwargs)
+
+                    def __getattr__(self, name):
+                        # Forward all attribute access to wrapped text encoder
+                        return getattr(self._text_encoder, name)
+
+                self.pipeline.text_encoder = CPUTextEncoderProxy(self.pipeline.text_encoder)
+                logger.debug("Text encoder wrapped with CPU device proxy")
+
                 # CRITICAL: Reorder components dict so transformer is checked first
                 # _execution_device property iterates components and returns first module's device
                 # We want it to return 'cuda' (transformer) not 'cpu' (text_encoder)
