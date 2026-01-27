@@ -53,30 +53,31 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
         }
 
         # Auto-select variant based on VRAM if Auto
-        # NOTE: Thresholds include 3-4GB headroom for intermediate tensors during generation
+        # NOTE: Thresholds include 4-5GB headroom for intermediate tensors during generation
+        # These are VERY conservative to ensure stable generation
         if ltx2_variant == 'Auto':
             if free_vram_gb >= 24.0:
                 ltx2_variant = 'LTX-2-4K'
                 logger.info(f"  Auto-selected: LTX-2-4K (24GB+ VRAM available, full precision)")
-            elif free_vram_gb >= 18.0:
-                # 18GB+ - use Q4_K_M (needs 15GB + 3GB headroom)
+            elif free_vram_gb >= 20.0:
+                # 20GB+ - use Q4_K_M (needs 15GB + 5GB headroom)
                 ltx2_variant = 'LTX-2-Q4_K_M-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q4_K_M-GGUF (18GB+ VRAM available)")
-                logger.info(f"  Needs: 13GB transformer + 2GB VAE + 3GB headroom = 18GB VRAM")
+                logger.info(f"  Auto-selected: LTX-2-Q4_K_M-GGUF (20GB+ VRAM available)")
+                logger.info(f"  Needs: 13GB transformer + 2GB VAE + 5GB headroom = 20GB VRAM")
                 logger.info(f"  Text encoder (24GB) offloaded to system RAM ✓")
-            elif free_vram_gb >= 14.0:
-                # 14-18GB - use Q3_K_M (needs 12GB + 2-3GB headroom)
+            elif free_vram_gb >= 16.0:
+                # 16-20GB - use Q3_K_M (needs 12GB + 4-5GB headroom)
                 ltx2_variant = 'LTX-2-Q3_K_M-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (14GB+ VRAM available)")
-                logger.info(f"  Needs: 10GB transformer + 2GB VAE + 2-3GB headroom = 14-15GB VRAM")
+                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (16GB+ VRAM available)")
+                logger.info(f"  Needs: 10GB transformer + 2GB VAE + 4-5GB headroom = 16-17GB VRAM")
                 logger.info(f"  Text encoder (24GB) offloaded to system RAM ✓")
             elif free_vram_gb >= 10.0:
-                # 10-14GB VRAM - use Q2_K for maximum compatibility (includes 16GB cards)
+                # 10-16GB VRAM - use Q2_K for maximum compatibility (DEFAULT for 16GB cards)
                 ltx2_variant = 'LTX-2-Q2_K-GGUF'
                 logger.info(f"  Auto-selected: LTX-2-Q2_K-GGUF ({free_vram_gb:.1f}GB available)")
-                logger.info(f"  Needs: 8GB transformer + 2GB VAE + 2-3GB headroom = 12-13GB VRAM")
+                logger.info(f"  Needs: 8GB transformer + 2GB VAE + 4-5GB headroom = 14-15GB VRAM")
                 logger.info(f"  Text encoder (24GB) offloaded to system RAM ✓")
-                logger.info(f"  Note: More conservative quantization ensures stable generation on 16GB cards")
+                logger.info(f"  Note: Conservative quantization ensures stable generation on 12-16GB cards")
             else:
                 logger.error(f"Insufficient VRAM for LTX-2! Minimum 10GB required, found {free_vram_gb:.1f}GB", emoji='x')
                 logger.error(f"Recommended: Use Wan FLF2V instead (works with 10GB+ VRAM)", emoji='info')
