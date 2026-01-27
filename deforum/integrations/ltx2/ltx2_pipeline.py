@@ -175,17 +175,18 @@ class LTX2Pipeline:
                         """Recursively move tensors in nested structures to specified device."""
                         if isinstance(obj, torch.Tensor):
                             return obj.to(device)
+                        elif hasattr(obj, '__dict__') and hasattr(obj, '__class__') and not isinstance(obj, type):
+                            # Handle model output objects (BaseModelOutput, etc.)
+                            # Check this BEFORE dict to preserve object type
+                            for key, value in obj.__dict__.items():
+                                # Recursively move nested structures
+                                setattr(obj, key, self._move_to_device(value, device))
+                            return obj
                         elif isinstance(obj, dict):
                             return {k: self._move_to_device(v, device) for k, v in obj.items()}
                         elif isinstance(obj, (list, tuple)):
                             moved = [self._move_to_device(item, device) for item in obj]
                             return type(obj)(moved)
-                        elif hasattr(obj, '__dict__'):
-                            # Handle model output objects (BaseModelOutput, etc.)
-                            for key, value in obj.__dict__.items():
-                                if isinstance(value, torch.Tensor):
-                                    setattr(obj, key, value.to(device))
-                            return obj
                         else:
                             return obj
 
