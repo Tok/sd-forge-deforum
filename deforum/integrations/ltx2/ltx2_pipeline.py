@@ -214,7 +214,8 @@ class LTX2Pipeline:
                 # _pack_text_embeds is a @staticmethod, so we need to patch the class method
                 # Text encoder outputs stay on CPU to save VRAM, but pipeline passes device='cuda'
                 from diffusers.pipelines.ltx2.pipeline_ltx2_image2video import LTX2ImageToVideoPipeline
-                original_pack_text_embeds = LTX2ImageToVideoPipeline._pack_text_embeds.__func__  # Get unbound function from staticmethod
+                # When accessing staticmethod on class, Python unwraps it automatically to a function
+                original_pack_text_embeds = LTX2ImageToVideoPipeline._pack_text_embeds
 
                 @staticmethod
                 def cpu_pack_text_embeds_wrapper(text_hidden_states, sequence_lengths, device, **kwargs):
