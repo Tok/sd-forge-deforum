@@ -195,12 +195,12 @@ class LTX2Pipeline:
                         args = self._move_to_device(args, 'cpu')
                         kwargs = self._move_to_device(kwargs, 'cpu')
 
-                        # Run text encoder on CPU
-                        output = self._text_encoder(*args, **kwargs)
+                        # Run text encoder on CPU (outputs stay on CPU to save VRAM)
+                        with torch.no_grad():  # Don't need gradients for inference
+                            output = self._text_encoder(*args, **kwargs)
 
-                        # Move all outputs back to target device (CUDA)
-                        output = self._move_to_device(output, self._target_device)
-
+                        # DON'T move outputs to CUDA - keep on CPU to save VRAM
+                        # _pack_text_embeds will be patched to handle CPU tensors
                         return output
 
                     def __getattr__(self, name):
@@ -209,6 +209,27 @@ class LTX2Pipeline:
 
                 self.pipeline.text_encoder = CPUTextEncoderProxy(self.pipeline.text_encoder, target_device='cuda')
                 logger.debug("Text encoder wrapped with CPU<->CUDA device proxy")
+
+                # CRITICAL: Patch _pack_text_embeds to handle CPU text_hidden_states
+                # Text encoder outputs stay on CPU to save VRAM, but pipeline passes device='cuda'
+                original_pack_text_embeds = self.pipeline._pack_text_embeds
+
+                def cpu_pack_text_embeds_wrapper(text_hidden_states, sequence_lengths, device, **kwargs):
+                    """Wrapper that performs packing on CPU if text_hidden_states is on CPU, then moves result to CUDA."""
+                    # Check if text_hidden_states is on CPU
+                    if text_hidden_states.device.type == 'cpu':
+                        # Move sequence_lengths to CPU too
+                        sequence_lengths_cpu = sequence_lengths.to('cpu') if isinstance(sequence_lengths, torch.Tensor) else sequence_lengths
+                        # Run packing on CPU (pass device='cpu' to create mask on CPU)
+                        packed_embeds = original_pack_text_embeds(text_hidden_states, sequence_lengths_cpu, device='cpu', **kwargs)
+                        # Move result to CUDA for downstream operations
+                        return packed_embeds.to(device)
+                    else:
+                        # Already on correct device, use original implementation
+                        return original_pack_text_embeds(text_hidden_states, sequence_lengths, device, **kwargs)
+
+                self.pipeline._pack_text_embeds = cpu_pack_text_embeds_wrapper
+                logger.debug("Patched _pack_text_embeds to handle CPU text_hidden_states")
 
                 # CRITICAL: Reorder components dict so transformer is checked first
                 # _execution_device property iterates components and returns first module's device
