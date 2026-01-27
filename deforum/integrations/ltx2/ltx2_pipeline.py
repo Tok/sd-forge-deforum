@@ -211,25 +211,36 @@ class LTX2Pipeline:
                 logger.debug("Text encoder wrapped with CPU<->CUDA device proxy")
 
                 # CRITICAL: Patch _pack_text_embeds to handle CPU text_hidden_states
+                # _pack_text_embeds is a @staticmethod, so we need to patch the class method
                 # Text encoder outputs stay on CPU to save VRAM, but pipeline passes device='cuda'
-                original_pack_text_embeds = self.pipeline._pack_text_embeds
+                from diffusers.pipelines.ltx2.pipeline_ltx2_image2video import LTX2ImageToVideoPipeline
+                original_pack_text_embeds = LTX2ImageToVideoPipeline._pack_text_embeds.__func__  # Get unbound function from staticmethod
 
+                @staticmethod
                 def cpu_pack_text_embeds_wrapper(text_hidden_states, sequence_lengths, device, **kwargs):
                     """Wrapper that performs packing on CPU if text_hidden_states is on CPU, then moves result to CUDA."""
+                    logger.debug(f"_pack_text_embeds called: input device={text_hidden_states.device}, target device={device}")
                     # Check if text_hidden_states is on CPU
                     if text_hidden_states.device.type == 'cpu':
+                        logger.debug(f"Running _pack_text_embeds on CPU, will move result to {device}")
                         # Move sequence_lengths to CPU too
                         sequence_lengths_cpu = sequence_lengths.to('cpu') if isinstance(sequence_lengths, torch.Tensor) else sequence_lengths
                         # Run packing on CPU (pass device='cpu' to create mask on CPU)
                         packed_embeds = original_pack_text_embeds(text_hidden_states, sequence_lengths_cpu, device='cpu', **kwargs)
-                        # Move result to CUDA for downstream operations
-                        return packed_embeds.to(device)
+                        logger.debug(f"Packed embeds on CPU: {packed_embeds.device}, moving to {device}")
+                        # Move result to CUDA for downstream operations (explicitly convert device to torch.device)
+                        target_device = torch.device(device) if isinstance(device, str) else device
+                        result = packed_embeds.to(target_device)
+                        logger.debug(f"Final result device: {result.device}")
+                        return result
                     else:
                         # Already on correct device, use original implementation
+                        logger.debug(f"Input already on {text_hidden_states.device}, using original implementation")
                         return original_pack_text_embeds(text_hidden_states, sequence_lengths, device, **kwargs)
 
-                self.pipeline._pack_text_embeds = cpu_pack_text_embeds_wrapper
-                logger.debug("Patched _pack_text_embeds to handle CPU text_hidden_states")
+                # Patch the class, not the instance
+                LTX2ImageToVideoPipeline._pack_text_embeds = cpu_pack_text_embeds_wrapper
+                logger.debug("Patched LTX2ImageToVideoPipeline._pack_text_embeds (staticmethod) to handle CPU text_hidden_states")
 
                 # CRITICAL: Reorder components dict so transformer is checked first
                 # _execution_device property iterates components and returns first module's device
@@ -273,6 +284,13 @@ class LTX2Pipeline:
                         if len(list(module.children())) == 0:  # Leaf module
                             module.to('cuda')
                     logger.debug("Audio VAE fully on GPU")
+
+                # CRITICAL: Move connectors module to GPU
+                # Connectors processes prompt embeddings, must be on GPU to match downstream modules
+                if hasattr(self.pipeline, 'connectors') and self.pipeline.connectors is not None:
+                    logger.info(f"Moving connectors to GPU...", emoji='robot')
+                    self.pipeline.connectors.to('cuda')
+                    logger.debug("Connectors module on GPU")
 
                 # CRITICAL: Remove accelerate hooks from ALL pipeline components
                 # The @maybe_allow_in_graph wrapper calls self._hf_hook.pre_forward()
