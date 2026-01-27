@@ -1328,9 +1328,9 @@ def WanArgs():
         "ltx2_model_variant": {
             "label": "LTX-2 Model Variant",
             "type": "dropdown",
-            "choices": ["Auto", "LTX-2-4K-NF4", "LTX-2-4K", "LTX-2-HD"],
+            "choices": ["Auto", "LTX-2-Distilled", "LTX-2-Q2_K-GGUF", "LTX-2-Q3_K_M-GGUF", "LTX-2-Q4_K_M-GGUF", "LTX-2-4K-NF4", "LTX-2-4K"],
             "value": "Auto",
-            "info": "LTX-2 model variant to use. 'Auto' (recommended) selects based on VRAM. LTX-2-4K-NF4: 4-bit quantized, 12GB VRAM, RECOMMENDED for RTX 4070/4080 (16GB cards). LTX-2-4K: Full precision, 24GB+ VRAM. LTX-2-HD: HD variant, 18GB VRAM."
+            "info": "LTX-2 model variant to use. 'Auto' (RECOMMENDED) selects based on VRAM. LTX-2-Distilled: Smaller, faster model with FP4 text encoder, 12GB VRAM, matches ComfyUI workflow (works great on 16GB cards!). GGUF variants: Q2_K (10GB), Q3_K_M (12GB), Q4_K_M (15GB). LTX-2-4K-NF4: 4-bit quantized (12GB). LTX-2-4K: Full precision (24GB+)."
         },
         "ltx2_audio_mode": {
             "label": "LTX-2 Audio Mode",
@@ -1347,6 +1347,21 @@ def WanArgs():
             "step": 5,
             "value": 40,
             "info": "Number of denoising steps for LTX-2 generation. Default: 40 (balanced quality/speed). Lower values (20-30) are faster but lower quality. Higher values (50-100) are slower but higher quality. Typical range: 30-50 steps."
+        },
+        "ltx2_guidance_scale": {
+            "label": "LTX-2 Guidance Scale (CFG)",
+            "type": "number",
+            "minimum": 1.0,
+            "maximum": 10.0,
+            "step": 0.5,
+            "value": 4.0,
+            "info": "Classifier-free guidance scale for LTX-2 generation. Default: 4.0 (balanced). Lower values (1.0-3.0) are more creative but may deviate from prompt. Higher values (5.0-10.0) follow prompt more strictly but may be less natural. Typical range: 3.0-6.0."
+        },
+        "ltx2_negative_prompt": {
+            "label": "LTX-2 Negative Prompt",
+            "type": "text",
+            "value": "blurry, low quality, distorted, artifacts, compression, noise",
+            "info": "Negative prompt for LTX-2 generation - describes what to avoid. Default removes common video artifacts. Add specific unwanted elements separated by commas. Examples: 'watermark, text, logo' or 'camera shake, motion blur'."
         },
         "da3_multiview_model_size": {
             "label": "DA3-Multiview Model Size",

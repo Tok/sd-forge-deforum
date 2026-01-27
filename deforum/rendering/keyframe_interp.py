@@ -807,10 +807,10 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                         audio_start_sec=segment_start_sec,
                         audio_duration_sec=segment_duration,
                         prompt=first_prompt,  # Use first keyframe prompt for guidance
-                        negative_prompt=getattr(wan_args, 'wan_negative_prompt', 'blurry, low quality, distorted'),
+                        negative_prompt=getattr(wan_args, 'ltx2_negative_prompt', 'blurry, low quality, distorted'),
                         num_frames=num_tween_frames + 2,  # +2 for first/last keyframes
                         fps=video_args.fps,
-                        guidance_scale=getattr(wan_args, 'wan_flf2v_guidance_scale', 3.0),
+                        guidance_scale=getattr(wan_args, 'ltx2_guidance_scale', 4.0),
                         num_inference_steps=getattr(wan_args, 'ltx2_num_inference_steps', 40),
                         seed=segment_seed,
                     )

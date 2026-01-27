@@ -78,6 +78,12 @@ def get_subtab_ltx2(dw: SimpleNamespace, skip_tabitem=False):
 
     with FormRow():
         ltx2_num_inference_steps = create_gr_elem(dw.ltx2_num_inference_steps)
+        ltx2_guidance_scale = create_gr_elem(dw.ltx2_guidance_scale)
+
+    # Generation Settings
+    gr.Markdown(f"### {emoji_if_enabled('🎨')} Generation Settings")
+
+    ltx2_negative_prompt = create_gr_elem(dw.ltx2_negative_prompt)
 
     # Model Info
     with gr.Accordion(f"{emoji_utils.bulb()} Model Details", open=False):
@@ -136,4 +142,6 @@ def get_subtab_ltx2(dw: SimpleNamespace, skip_tabitem=False):
         'ltx2_model_variant': ltx2_model_variant,
         'ltx2_audio_mode': ltx2_audio_mode,
         'ltx2_num_inference_steps': ltx2_num_inference_steps,
+        'ltx2_guidance_scale': ltx2_guidance_scale,
+        'ltx2_negative_prompt': ltx2_negative_prompt,
     }
