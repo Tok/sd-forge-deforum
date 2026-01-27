@@ -465,6 +465,12 @@ class LTX2Pipeline:
             )
             logger.debug(f"Packed latents: {latents.shape}, device: {latents.device}")
 
+            # CRITICAL: Move packed latents to CPU to match pipeline's _execution_device
+            # Pipeline will create conditioning_mask and intermediate tensors on CPU,
+            # so latents must be on CPU too to avoid device mismatch during denoising
+            latents = latents.to('cpu')
+            logger.debug(f"Moved packed latents to CPU for pipeline compatibility")
+
         # Progress callback for denoising steps
         def progress_callback(pipe, step_index, timestep, callback_kwargs):
             """Called after each denoising step."""
