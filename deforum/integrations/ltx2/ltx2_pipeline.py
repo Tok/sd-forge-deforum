@@ -163,6 +163,19 @@ class LTX2Pipeline:
                 logger.info(f"Moving text encoder to CPU to save VRAM...", emoji='robot')
                 self.pipeline.text_encoder.to('cpu')
 
+                # CRITICAL: Reorder components dict so transformer is checked first
+                # _execution_device property iterates components and returns first module's device
+                # We want it to return 'cuda' (transformer) not 'cpu' (text_encoder)
+                # This ensures all intermediate tensors are created on GPU
+                components = dict(self.pipeline.components)
+                # Move transformer to front
+                if 'transformer' in components:
+                    transformer = components.pop('transformer')
+                    components = {'transformer': transformer, **components}
+                    # Reassign to pipeline (override the property)
+                    object.__setattr__(self.pipeline, '_internal_dict', components)
+                    logger.debug(f"Reordered components: transformer first (for _execution_device)")
+
                 # Move VAE to GPU (including ALL submodules explicitly)
                 logger.info(f"Moving VAE to GPU...", emoji='robot')
                 self.pipeline.vae.to('cuda')
@@ -376,11 +389,10 @@ class LTX2Pipeline:
             start_image = start_image.resize((width, height), Image.Resampling.LANCZOS)
 
         # Set seed for reproducibility
-        # Use CPU generator to avoid device mismatch with audio latents
-        # (audio latents are created on CPU since _execution_device returns 'cpu')
+        # Use CUDA generator since _execution_device returns 'cuda' (transformer first)
         generator = None
         if seed is not None:
-            generator = torch.Generator(device='cpu').manual_seed(seed)
+            generator = torch.Generator(device='cuda').manual_seed(seed)
 
         logger.debug(f"Generating {num_frames} frames with LTX-2 I2V")
 
@@ -445,12 +457,8 @@ class LTX2Pipeline:
             logger.debug(f"Conditioning mask: {conditioning_mask.shape}, first frame sum: {conditioning_mask[:,:,0].sum()}")
 
             # Create noise matching init_latents shape exactly
-            # Use separate CUDA generator for noise (pipeline's CPU generator is for audio latents)
-            if seed is not None:
-                noise_generator = torch.Generator(device='cuda').manual_seed(seed)
-                noise = torch.randn(init_latents.shape, generator=noise_generator, device='cuda', dtype=torch.bfloat16)
-            else:
-                noise = torch.randn(init_latents.shape, device='cuda', dtype=torch.bfloat16)
+            # Use main generator (now on CUDA since _execution_device='cuda')
+            noise = torch.randn(init_latents.shape, generator=generator, device='cuda', dtype=torch.bfloat16)
             logger.debug(f"Noise shape: {noise.shape}")
 
             # Blend init_latents with noise (matches prepare_latents image path)
@@ -465,11 +473,8 @@ class LTX2Pipeline:
             )
             logger.debug(f"Packed latents: {latents.shape}, device: {latents.device}")
 
-            # CRITICAL: Move packed latents to CPU to match pipeline's _execution_device
-            # Pipeline will create conditioning_mask and intermediate tensors on CPU,
-            # so latents must be on CPU too to avoid device mismatch during denoising
-            latents = latents.to('cpu')
-            logger.debug(f"Moved packed latents to CPU for pipeline compatibility")
+            # Keep latents on GPU - components reordering makes _execution_device='cuda'
+            # so all intermediate tensors will be created on GPU too
 
         # Progress callback for denoising steps
         def progress_callback(pipe, step_index, timestep, callback_kwargs):
