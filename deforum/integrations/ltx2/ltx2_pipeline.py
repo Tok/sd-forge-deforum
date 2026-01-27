@@ -163,32 +163,51 @@ class LTX2Pipeline:
                 logger.info(f"Moving text encoder to CPU to save VRAM...", emoji='robot')
                 self.pipeline.text_encoder.to('cpu')
 
-                # CRITICAL: Create a wrapper class that intercepts calls and moves inputs to CPU
-                # When encode_prompt creates input_ids on CUDA, wrapper will move them to CPU
+                # CRITICAL: Create a wrapper class that intercepts calls and handles CPU<->CUDA transfers
+                # Text encoder is on CPU to save VRAM, but pipeline expects CUDA tensors
                 class CPUTextEncoderProxy:
-                    """Proxy that automatically moves all tensor inputs to CPU before forwarding to text encoder."""
-                    def __init__(self, text_encoder):
+                    """Proxy that moves inputs to CPU, runs text encoder, then moves outputs back to CUDA."""
+                    def __init__(self, text_encoder, target_device='cuda'):
                         self._text_encoder = text_encoder
+                        self._target_device = target_device
+
+                    def _move_to_device(self, obj, device):
+                        """Recursively move tensors in nested structures to specified device."""
+                        if isinstance(obj, torch.Tensor):
+                            return obj.to(device)
+                        elif isinstance(obj, dict):
+                            return {k: self._move_to_device(v, device) for k, v in obj.items()}
+                        elif isinstance(obj, (list, tuple)):
+                            moved = [self._move_to_device(item, device) for item in obj]
+                            return type(obj)(moved)
+                        elif hasattr(obj, '__dict__'):
+                            # Handle model output objects (BaseModelOutput, etc.)
+                            for key, value in obj.__dict__.items():
+                                if isinstance(value, torch.Tensor):
+                                    setattr(obj, key, value.to(device))
+                            return obj
+                        else:
+                            return obj
 
                     def __call__(self, *args, **kwargs):
-                        # Move all tensor args to CPU
-                        args = tuple(
-                            arg.to('cpu') if isinstance(arg, torch.Tensor) and arg.device.type != 'cpu' else arg
-                            for arg in args
-                        )
-                        # Move all tensor kwargs to CPU
-                        kwargs = {
-                            k: v.to('cpu') if isinstance(v, torch.Tensor) and v.device.type != 'cpu' else v
-                            for k, v in kwargs.items()
-                        }
-                        return self._text_encoder(*args, **kwargs)
+                        # Move all inputs to CPU
+                        args = self._move_to_device(args, 'cpu')
+                        kwargs = self._move_to_device(kwargs, 'cpu')
+
+                        # Run text encoder on CPU
+                        output = self._text_encoder(*args, **kwargs)
+
+                        # Move all outputs back to target device (CUDA)
+                        output = self._move_to_device(output, self._target_device)
+
+                        return output
 
                     def __getattr__(self, name):
                         # Forward all attribute access to wrapped text encoder
                         return getattr(self._text_encoder, name)
 
-                self.pipeline.text_encoder = CPUTextEncoderProxy(self.pipeline.text_encoder)
-                logger.debug("Text encoder wrapped with CPU device proxy")
+                self.pipeline.text_encoder = CPUTextEncoderProxy(self.pipeline.text_encoder, target_device='cuda')
+                logger.debug("Text encoder wrapped with CPU<->CUDA device proxy")
 
                 # CRITICAL: Reorder components dict so transformer is checked first
                 # _execution_device property iterates components and returns first module's device
