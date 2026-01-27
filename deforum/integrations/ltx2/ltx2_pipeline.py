@@ -427,54 +427,125 @@ class LTX2Pipeline:
                     f"Try closing other programs to free VRAM, or use a different interpolation method (Wan FLF2V)."
                 )
         elif not is_gguf and self.variant == 'LTX-2-Distilled':
-            # Load distilled model with FP4 text encoder (matches ComfyUI workflow)
-            logger.info("Using distilled model with FP4 text encoder quantization", emoji='zap')
+            # Load distilled model (matches ComfyUI workflow)
+            # NOTE: Distilled model is already smaller/more efficient, load directly without quantization
+            logger.info("Using distilled model (smaller, more efficient than full 19B)", emoji='zap')
             logger.info("This matches the ComfyUI-LTXVideo workflow (works on 16GB cards)", emoji='info')
-            try:
-                from transformers import BitsAndBytesConfig
-                from diffusers import PipelineQuantizationConfig
 
-                # Disable warmup to prevent OOM during loading
-                os.environ["DISABLE_WARMUP"] = "1"
+            # Load distilled model with bfloat16 (no quantization needed - already efficient)
+            # Load to GPU first, then manually move text encoder to CPU (same strategy as GGUF)
+            self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
+                model_id,
+                torch_dtype=torch.bfloat16,
+                device_map=None,  # Load all to default device first
+                low_cpu_mem_usage=True,
+            )
 
-                # Create BitsAndBytes FP4 config for text encoder only
-                # Distilled transformer is already smaller, only quantize text encoder
-                bnb_config_fp4 = BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_quant_type="fp4",  # FP4 (not NF4) matches ComfyUI
-                    bnb_4bit_compute_dtype=torch.bfloat16,
-                    bnb_4bit_use_double_quant=False,  # Single quantization for FP4
-                )
+            # Move entire pipeline to GPU first
+            self.pipeline.to('cuda')
 
-                # Quantize ONLY text encoder (distilled transformer doesn't need quantization)
-                quantization_config = PipelineQuantizationConfig(
-                    quant_mapping={
-                        "text_encoder": bnb_config_fp4,  # Gemma-3-12B with FP4 (~3-4GB)
-                    }
-                )
+            logger.info("Distilled model loaded successfully", emoji='check')
 
-                # Load distilled model
-                self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
-                    model_id,
-                    torch_dtype=torch.bfloat16,
-                    quantization_config=quantization_config,
-                    device_map="balanced",  # Balanced device placement (auto not supported)
-                    low_cpu_mem_usage=True,  # Reduce memory during load
-                )
+            # CRITICAL: Move text encoder to CPU to save VRAM (same as GGUF path)
+            logger.info(f"Moving text encoder to CPU to save VRAM...", emoji='robot')
+            self.pipeline.text_encoder.to('cpu')
 
-                logger.info("Distilled model loaded with FP4 text encoder", emoji='check')
+            # CRITICAL: Wrap text encoder with CPU device proxy (same as GGUF path)
+            class CPUTextEncoderProxy:
+                """Proxy that moves inputs to CPU, runs text encoder, returns CPU outputs."""
+                def __init__(self, text_encoder, target_device='cuda'):
+                    self._text_encoder = text_encoder
+                    self._target_device = target_device
 
-            except (ImportError, Exception) as e:
-                logger.error(f"Failed to load distilled model with FP4 text encoder", emoji='x')
-                logger.debug(f"Error: {e}")
-                logger.error(f"Falling back to full precision loading (may require more VRAM)", emoji='warning')
+                def _move_to_device(self, obj, device):
+                    """Recursively move tensors in nested structures to specified device."""
+                    if isinstance(obj, torch.Tensor):
+                        return obj.to(device)
+                    elif hasattr(obj, '__dict__') and hasattr(obj, '__class__') and not isinstance(obj, type):
+                        # Handle model output objects (BaseModelOutput, etc.)
+                        for key, value in obj.__dict__.items():
+                            setattr(obj, key, self._move_to_device(value, device))
+                        return obj
+                    elif isinstance(obj, dict):
+                        return {k: self._move_to_device(v, device) for k, v in obj.items()}
+                    elif isinstance(obj, (list, tuple)):
+                        moved = [self._move_to_device(item, device) for item in obj]
+                        return type(obj)(moved)
+                    else:
+                        return obj
 
-                # Fallback to full precision
-                self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
-                    model_id,
-                    torch_dtype=torch.bfloat16,
-                    device_map="balanced",  # Balanced device placement (auto not supported)
-                )
+                def __call__(self, *args, **kwargs):
+                    # Move all inputs to CPU
+                    args = self._move_to_device(args, 'cpu')
+                    kwargs = self._move_to_device(kwargs, 'cpu')
+
+                    # Run text encoder on CPU (outputs stay on CPU to save VRAM)
+                    with torch.no_grad():
+                        output = self._text_encoder(*args, **kwargs)
+
+                    # DON'T move outputs to CUDA - keep on CPU to save VRAM
+                    return output
+
+                def __getattr__(self, name):
+                    return getattr(self._text_encoder, name)
+
+            self.pipeline.text_encoder = CPUTextEncoderProxy(self.pipeline.text_encoder, target_device='cuda')
+            logger.debug("Text encoder wrapped with CPU<->CUDA device proxy")
+
+            # Patch _pack_text_embeds (same as GGUF path)
+            from diffusers.pipelines.ltx2.pipeline_ltx2_image2video import LTX2ImageToVideoPipeline
+            original_pack_text_embeds = LTX2ImageToVideoPipeline._pack_text_embeds
+
+            @staticmethod
+            def cpu_pack_text_embeds_wrapper(text_hidden_states, sequence_lengths, device, **kwargs):
+                if text_hidden_states.device.type == 'cpu':
+                    logger.debug(f"Running _pack_text_embeds on CPU, will move result to {device}")
+                    sequence_lengths_cpu = sequence_lengths.to('cpu') if isinstance(sequence_lengths, torch.Tensor) else sequence_lengths
+                    packed_embeds = original_pack_text_embeds(text_hidden_states, sequence_lengths_cpu, device='cpu', **kwargs)
+                    torch.cuda.empty_cache()
+                    target_device = torch.device(device) if isinstance(device, str) else device
+                    result = packed_embeds.to(target_device)
+                    return result
+                else:
+                    return original_pack_text_embeds(text_hidden_states, sequence_lengths, device, **kwargs)
+
+            LTX2ImageToVideoPipeline._pack_text_embeds = cpu_pack_text_embeds_wrapper
+            logger.debug("Patched _pack_text_embeds to handle CPU text_hidden_states")
+
+            # Move VAE components to GPU (same as GGUF path)
+            logger.info(f"Moving VAE to GPU...", emoji='robot')
+            self.pipeline.vae.to('cuda')
+            for name, module in self.pipeline.vae.named_modules():
+                if len(list(module.children())) == 0:
+                    module.to('cuda')
+            if hasattr(self.pipeline.vae, 'encoder'):
+                self.pipeline.vae.encoder.to('cuda')
+
+            # Move audio_vae to GPU
+            if hasattr(self.pipeline, 'audio_vae') and self.pipeline.audio_vae is not None:
+                logger.info(f"Moving audio_vae to GPU...", emoji='robot')
+                self.pipeline.audio_vae.to('cuda')
+                for name, module in self.pipeline.audio_vae.named_modules():
+                    if len(list(module.children())) == 0:
+                        module.to('cuda')
+                logger.debug("Audio VAE fully on GPU")
+
+            # Move connectors to GPU
+            if hasattr(self.pipeline, 'connectors') and self.pipeline.connectors is not None:
+                logger.info(f"Moving connectors to GPU...", emoji='robot')
+                self.pipeline.connectors.to('cuda')
+                logger.debug("Connectors module on GPU")
+
+            # Log VRAM usage
+            vram_used = torch.cuda.memory_allocated() / 1024**3
+            vram_free = torch.cuda.mem_get_info()[0] / 1024**3
+            logger.info(f"VRAM: {vram_used:.2f}GB used, {vram_free:.2f}GB free", emoji='chart')
+            logger.info(f"Component locations:", emoji='info')
+            logger.info(f"  Transformer: GPU (Distilled model)", emoji='gpu')
+            logger.info(f"  Text encoder: CPU (12GB system RAM)", emoji='cpu')
+            logger.info(f"  VAE: GPU", emoji='gpu')
+            logger.info(f"  Audio VAE: GPU", emoji='gpu')
+            logger.info("Distilled model configured successfully!", emoji='check')
 
         elif not is_gguf:
             # Full precision or bfloat16 (LTX-2 recommends bfloat16, not fp16)
