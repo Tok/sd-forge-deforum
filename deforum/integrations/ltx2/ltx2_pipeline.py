@@ -194,6 +194,18 @@ class LTX2Pipeline:
                     self.pipeline.vae.encoder.to('cuda')
                     logger.debug("VAE.encoder explicitly moved to cuda")
 
+                # CRITICAL: Also move audio_vae to GPU to avoid generator device mismatch
+                # Audio latents must be created on same device as video latents for generator compatibility
+                if hasattr(self.pipeline, 'audio_vae') and self.pipeline.audio_vae is not None:
+                    logger.info(f"Moving audio_vae to GPU...", emoji='robot')
+                    self.pipeline.audio_vae.to('cuda')
+
+                    # Explicitly move all audio_vae submodules
+                    for name, module in self.pipeline.audio_vae.named_modules():
+                        if len(list(module.children())) == 0:  # Leaf module
+                            module.to('cuda')
+                    logger.debug("Audio VAE fully on GPU")
+
                 # CRITICAL: Remove accelerate hooks from ALL pipeline components
                 # The @maybe_allow_in_graph wrapper calls self._hf_hook.pre_forward()
                 # which moves tensors to CPU, breaking our device placement
@@ -203,6 +215,10 @@ class LTX2Pipeline:
                     ('VAE', self.pipeline.vae),
                     ('Transformer', self.pipeline.transformer),
                 ]
+
+                # Also check audio_vae if it exists
+                if hasattr(self.pipeline, 'audio_vae') and self.pipeline.audio_vae is not None:
+                    components_to_check.append(('Audio VAE', self.pipeline.audio_vae))
 
                 for component_name, component in components_to_check:
                     # Check for _hf_hook on main component
@@ -232,6 +248,7 @@ class LTX2Pipeline:
                 logger.info(f"  Transformer: GPU (GGUF, 9.4GB, no hooks)", emoji='gpu')
                 logger.info(f"  Text encoder: CPU (24GB system RAM, no hooks)", emoji='cpu')
                 logger.info(f"  VAE: GPU (2GB, no hooks)", emoji='gpu')
+                logger.info(f"  Audio VAE: GPU (~300MB, no hooks)", emoji='gpu')
                 logger.info("GGUF model loaded successfully!", emoji='check')
                 logger.warning("Text encoder on CPU - prompt encoding will be slower but stable", emoji='warning')
 
@@ -490,6 +507,7 @@ class LTX2Pipeline:
         # Generate video (LTX-2 also generates audio, but we discard it)
         # CRITICAL: Pass manually encoded latents instead of image
         # This bypasses prepare_latents() which has device mismatch issues
+        # Now that audio_vae is also on GPU, generator device mismatch should be resolved
         video, generated_audio = self.pipeline(
             image=None,  # Don't pass image - we're providing latents directly
             latents=latents,  # Pass pre-encoded latents on CUDA
@@ -501,7 +519,7 @@ class LTX2Pipeline:
             frame_rate=fps,  # LTX-2 uses 'frame_rate' parameter
             guidance_scale=guidance_scale,
             num_inference_steps=num_inference_steps,
-            generator=generator,
+            generator=generator,  # CUDA generator (matches video & audio VAE devices)
             callback_on_step_end=progress_callback,
             callback_on_step_end_tensor_inputs=["latents"],  # Access latents during callback
             return_dict=False,  # Returns tuple (video, audio)
