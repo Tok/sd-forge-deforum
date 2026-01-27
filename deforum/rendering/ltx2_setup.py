@@ -43,9 +43,10 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
         logger.info(f"  Current free VRAM: {free_vram_gb:.1f}GB")
 
         # VRAM requirements for different variants
-        # NEW: Text encoder (Gemma-3-12B, 24GB) offloaded to system RAM via CPU offload
-        # Only transformer + VAE use VRAM
+        # NEW: Distilled model is MOST EFFICIENT (matches ComfyUI workflow)
+        # Text encoder offloaded to system RAM via CPU offload
         vram_requirements = {
+            'LTX-2-Distilled': 12.0,    # Distilled model - most efficient (RECOMMENDED for 16GB cards)
             'LTX-2-Q2_K-GGUF': 10.0,   # 8GB transformer + 0GB text_encoder (CPU offload) + 2GB VAE
             'LTX-2-Q3_K_M-GGUF': 12.0, # 10GB transformer + 0GB text_encoder (CPU offload) + 2GB VAE
             'LTX-2-Q4_K_M-GGUF': 15.0, # 13GB transformer + 0GB text_encoder (CPU offload) + 2GB VAE
@@ -53,31 +54,24 @@ def setup_ltx2_pipeline(args, video_args, wan_args, keyframes):
         }
 
         # Auto-select variant based on VRAM if Auto
-        # NOTE: Thresholds include 4-5GB headroom for intermediate tensors during generation
-        # These are VERY conservative to ensure stable generation
+        # NOTE: Distilled model is MOST EFFICIENT (matches ComfyUI workflow that works on 16GB)
         if ltx2_variant == 'Auto':
             if free_vram_gb >= 24.0:
                 ltx2_variant = 'LTX-2-4K'
                 logger.info(f"  Auto-selected: LTX-2-4K (24GB+ VRAM available, full precision)")
-            elif free_vram_gb >= 20.0:
-                # 20GB+ - use Q4_K_M (needs 15GB + 5GB headroom)
-                ltx2_variant = 'LTX-2-Q4_K_M-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q4_K_M-GGUF (20GB+ VRAM available)")
-                logger.info(f"  Needs: 13GB transformer + 2GB VAE + 5GB headroom = 20GB VRAM")
-                logger.info(f"  Text encoder (24GB) offloaded to system RAM ✓")
-            elif free_vram_gb >= 16.0:
-                # 16-20GB - use Q3_K_M (needs 12GB + 4-5GB headroom)
-                ltx2_variant = 'LTX-2-Q3_K_M-GGUF'
-                logger.info(f"  Auto-selected: LTX-2-Q3_K_M-GGUF (16GB+ VRAM available)")
-                logger.info(f"  Needs: 10GB transformer + 2GB VAE + 4-5GB headroom = 16-17GB VRAM")
-                logger.info(f"  Text encoder (24GB) offloaded to system RAM ✓")
+            elif free_vram_gb >= 12.0:
+                # 12-24GB VRAM - use DISTILLED model (same as ComfyUI workflow)
+                ltx2_variant = 'LTX-2-Distilled'
+                logger.info(f"  Auto-selected: LTX-2-Distilled ({free_vram_gb:.1f}GB available)")
+                logger.info(f"  Distilled model - smaller, faster, more efficient than GGUF")
+                logger.info(f"  Matches ComfyUI-LTXVideo workflow (works on 16GB RTX 4070 Ti SUPER)")
+                logger.info(f"  Text encoder (Gemma-3-12B) will be loaded with FP4 quantization")
             elif free_vram_gb >= 10.0:
-                # 10-16GB VRAM - use Q2_K for maximum compatibility (DEFAULT for 16GB cards)
+                # 10-12GB VRAM - fallback to GGUF Q2_K
                 ltx2_variant = 'LTX-2-Q2_K-GGUF'
                 logger.info(f"  Auto-selected: LTX-2-Q2_K-GGUF ({free_vram_gb:.1f}GB available)")
-                logger.info(f"  Needs: 8GB transformer + 2GB VAE + 4-5GB headroom = 14-15GB VRAM")
+                logger.info(f"  Needs: 8GB transformer + 2GB VAE = 10GB VRAM")
                 logger.info(f"  Text encoder (24GB) offloaded to system RAM ✓")
-                logger.info(f"  Note: Conservative quantization ensures stable generation on 12-16GB cards")
             else:
                 logger.error(f"Insufficient VRAM for LTX-2! Minimum 10GB required, found {free_vram_gb:.1f}GB", emoji='x')
                 logger.error(f"Recommended: Use Wan FLF2V instead (works with 10GB+ VRAM)", emoji='info')

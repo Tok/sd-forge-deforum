@@ -426,6 +426,56 @@ class LTX2Pipeline:
                     f"Available: {torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB, Required: 24GB+ (or 10GB with working quantization). "
                     f"Try closing other programs to free VRAM, or use a different interpolation method (Wan FLF2V)."
                 )
+        elif not is_gguf and self.variant == 'LTX-2-Distilled':
+            # Load distilled model with FP4 text encoder (matches ComfyUI workflow)
+            logger.info("Using distilled model with FP4 text encoder quantization", emoji='zap')
+            logger.info("This matches the ComfyUI-LTXVideo workflow (works on 16GB cards)", emoji='info')
+            try:
+                from transformers import BitsAndBytesConfig
+                from diffusers import PipelineQuantizationConfig
+
+                # Disable warmup to prevent OOM during loading
+                os.environ["DISABLE_WARMUP"] = "1"
+
+                # Create BitsAndBytes FP4 config for text encoder only
+                # Distilled transformer is already smaller, only quantize text encoder
+                bnb_config_fp4 = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_quant_type="fp4",  # FP4 (not NF4) matches ComfyUI
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_use_double_quant=False,  # Single quantization for FP4
+                )
+
+                # Quantize ONLY text encoder (distilled transformer doesn't need quantization)
+                quantization_config = PipelineQuantizationConfig(
+                    quant_mapping={
+                        "text_encoder": bnb_config_fp4,  # Gemma-3-12B with FP4 (~3-4GB)
+                    }
+                )
+
+                # Load distilled model
+                self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.bfloat16,
+                    quantization_config=quantization_config,
+                    device_map="auto",  # Let accelerate handle device placement
+                    low_cpu_mem_usage=True,  # Reduce memory during load
+                )
+
+                logger.info("Distilled model loaded with FP4 text encoder", emoji='check')
+
+            except (ImportError, Exception) as e:
+                logger.error(f"Failed to load distilled model with FP4 text encoder", emoji='x')
+                logger.debug(f"Error: {e}")
+                logger.error(f"Falling back to full precision loading (may require more VRAM)", emoji='warning')
+
+                # Fallback to full precision
+                self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.bfloat16,
+                    device_map="auto",
+                )
+
         elif not is_gguf:
             # Full precision or bfloat16 (LTX-2 recommends bfloat16, not fp16)
             # These variants require 24GB+ VRAM
@@ -433,7 +483,7 @@ class LTX2Pipeline:
             self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                 model_id,
                 torch_dtype=dtype,
-                device_map="cuda",  # Load to CUDA device
+                device_map="auto",  # Let accelerate handle device placement
             )
 
         # CRITICAL: Explicitly disable VAE tiling - causes device mismatch with GGUF

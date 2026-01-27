@@ -18,7 +18,20 @@ class LTX2ModelDiscovery:
 
     # LTX-2 model variants
     MODEL_VARIANTS = {
-        # GGUF variants (recommended - better quantization, lower VRAM)
+        # Distilled variants (BEST - smaller, faster, more efficient)
+        # These are the models used in ComfyUI-LTXVideo workflow
+        "LTX-2-Distilled": {
+            "huggingface_id": "Lightricks/LTX-2",
+            "description": "Distilled 4K variant (smaller, faster, 16GB VRAM compatible)",
+            "vram_gb": 12,  # Distilled model is more efficient
+            "max_resolution": "4K (3840x2160)",
+            "max_fps": 50,
+            "quantization": None,
+            "recommended": True,
+            "note": "RECOMMENDED - Distilled for efficiency, works great on 16GB cards (RTX 4070 Ti SUPER, 4080)"
+        },
+
+        # GGUF variants (fallback - better quantization, lower VRAM)
         # NOTE: Text encoder (Gemma-3-12B, 24GB) offloaded to system RAM via CPU offload
         # Only transformer + VAE use VRAM
         "LTX-2-Q4_K_M-GGUF": {
@@ -183,16 +196,16 @@ class LTX2ModelDiscovery:
         Returns:
             Recommended variant name
         """
-        # Text encoder (Gemma-3-12B, 24GB) offloaded to system RAM via CPU offload
-        # Only transformer + VAE consume VRAM
+        # ALWAYS prefer distilled model for 12-20GB VRAM (most common range)
+        # Distilled is smaller, faster, and more efficient than GGUF quantized models
         if available_vram_gb >= 24:
             return "LTX-2-4K"  # Full precision for high-end cards (24GB VRAM)
-        elif available_vram_gb >= 15:
-            return "LTX-2-Q4_K_M-GGUF"  # 13GB transformer + 2GB VAE = 15GB VRAM
         elif available_vram_gb >= 12:
-            return "LTX-2-Q3_K_M-GGUF"  # 10GB transformer + 2GB VAE = 12GB VRAM
+            # 12-24GB VRAM - use distilled model (matches ComfyUI workflow)
+            return "LTX-2-Distilled"  # Distilled model - efficient and stable on 16GB cards
         elif available_vram_gb >= 10:
-            logger.info(f"{available_vram_gb:.1f}GB VRAM available - using Q2_K (lowest quality)")
+            # 10-12GB VRAM - fallback to GGUF Q2_K
+            logger.info(f"{available_vram_gb:.1f}GB VRAM available - using Q2_K GGUF (lowest quality)")
             logger.info(f"Text encoder offloaded to system RAM (saves 24GB VRAM)")
             return "LTX-2-Q2_K-GGUF"  # 8GB transformer + 2GB VAE = 10GB VRAM
         else:
