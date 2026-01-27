@@ -786,8 +786,28 @@ class LTX2Pipeline:
 
         logger.info(f"Denoising complete! Decoding {num_frames} frames...", emoji='check')
 
-        # Video is already a list of PIL Images
-        return video
+        # Video output format check
+        logger.debug(f"Pipeline output type: {type(video)}")
+        if hasattr(video, 'frames'):
+            logger.debug(f"Video has 'frames' attribute: {type(video.frames)}, len={len(video.frames) if hasattr(video.frames, '__len__') else 'N/A'}")
+            # LTX-2 returns VideoOutput object with .frames attribute
+            frames_list = video.frames
+        elif isinstance(video, (list, tuple)):
+            logger.debug(f"Video is list/tuple: len={len(video)}")
+            frames_list = video
+        else:
+            logger.warning(f"Unexpected video type: {type(video)}, trying direct return")
+            frames_list = video
+
+        # Convert to list if needed
+        if not isinstance(frames_list, list):
+            if hasattr(frames_list, '__iter__'):
+                frames_list = list(frames_list)
+            else:
+                frames_list = [frames_list]
+
+        logger.debug(f"Returning {len(frames_list)} frames (type: {type(frames_list[0]) if frames_list else 'empty'})")
+        return frames_list
 
     def _extract_audio_segment(
         self,
