@@ -511,6 +511,52 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         logger.info(f"Video segments: {len(keyframes) - 1} (keyframes - 1)", emoji='info')
 
     elif interp_method == "LTX-2":
+        # CRITICAL: Aggressively unload Flux models before loading LTX-2 (prevent OOM)
+        logger.info(f"Unloading Flux models before LTX-2 initialization...", emoji='broom')
+
+        import gc
+        import torch
+
+        if torch.cuda.is_available():
+            vram_before_unload = torch.cuda.memory_allocated() / 1024**3
+            free_before_unload = torch.cuda.mem_get_info()[0] / 1024**3
+            logger.info(f"Before unload: {vram_before_unload:.2f}GB used, {free_before_unload:.2f}GB free", emoji='chart')
+
+        # Unload SD model completely (Forge Neo method)
+        try:
+            from modules import sd_models
+            sd_models.unload_model_weights()
+            logger.debug("SD model weights unloaded")
+        except Exception as e:
+            logger.debug(f"SD model unload skipped: {e}")
+
+        # Try to use backend memory management (ComfyUI/Forge system)
+        try:
+            from backend import memory_management
+            if hasattr(memory_management, 'soft_empty_cache'):
+                memory_management.soft_empty_cache()
+                logger.debug("Soft cache empty (Forge backend)")
+            if hasattr(memory_management, 'unload_all_models'):
+                memory_management.unload_all_models()
+                logger.debug("All models unloaded (Forge backend)")
+        except Exception as e:
+            logger.debug(f"Backend memory management skipped: {e}")
+
+        # Force torch cleanup (same as ComfyUI's sequential loading approach)
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+            torch.cuda.ipc_collect()  # Extra cleanup for IPC memory
+
+        # Show VRAM after aggressive cleanup
+        if torch.cuda.is_available():
+            vram_after_unload = torch.cuda.memory_allocated() / 1024**3
+            free_after_unload = torch.cuda.mem_get_info()[0] / 1024**3
+            vram_freed = vram_before_unload - vram_after_unload
+            logger.info(f"After unload: {vram_freed:.2f}GB freed, {free_after_unload:.2f}GB now available", emoji='check')
+            logger.info(f"Ready for LTX-2 loading (sequential, like ComfyUI)", emoji='zap')
+
         # LTX-2 Audio-Video pipeline setup (extracted for clarity)
         from deforum.rendering.ltx2_setup import setup_ltx2_pipeline
         ltx2_pipeline, ltx2_variant, ltx2_audio_mode = setup_ltx2_pipeline(
@@ -836,7 +882,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                             progress = (frame_offset + 1) / total_tween_frames * 100
                             logger.info(f"     Saved {frame_offset + 1}/{total_tween_frames} frames ({progress:.0f}%)", emoji='floppy_disk')
 
-                    logger.info(f"   Completed segment {segment_idx + 1}/{total_segments}: {len(segment_frames)} frames saved", emoji='check')
+                    logger.info(f"   Completed segment {idx + 1}/{len(keyframes) - 1}: {len(segment_frames)} frames saved", emoji='check')
 
                 except Exception as e:
                     logger.error(f"LTX-2 generation failed: {e}", emoji='x')
