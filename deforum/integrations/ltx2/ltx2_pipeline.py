@@ -411,7 +411,7 @@ class LTX2Pipeline:
                     model_id,
                     torch_dtype=torch.bfloat16,
                     quantization_config=quantization_config,
-                    device_map="auto",  # Let accelerate handle device placement
+                    device_map="balanced",  # Balanced device placement (auto not supported)
                     low_cpu_mem_usage=True,  # Reduce memory during load
                     max_memory={0: "13GB"},  # Limit GPU memory usage
                 )
@@ -458,7 +458,7 @@ class LTX2Pipeline:
                     model_id,
                     torch_dtype=torch.bfloat16,
                     quantization_config=quantization_config,
-                    device_map="auto",  # Let accelerate handle device placement
+                    device_map="balanced",  # Balanced device placement (auto not supported)
                     low_cpu_mem_usage=True,  # Reduce memory during load
                 )
 
@@ -473,7 +473,7 @@ class LTX2Pipeline:
                 self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                     model_id,
                     torch_dtype=torch.bfloat16,
-                    device_map="auto",
+                    device_map="balanced",  # Balanced device placement (auto not supported)
                 )
 
         elif not is_gguf:
@@ -483,7 +483,7 @@ class LTX2Pipeline:
             self.pipeline = LTX2ImageToVideoPipeline.from_pretrained(
                 model_id,
                 torch_dtype=dtype,
-                device_map="auto",  # Let accelerate handle device placement
+                device_map="balanced",  # Balanced device placement (auto not supported)
             )
 
         # CRITICAL: Explicitly disable VAE tiling - causes device mismatch with GGUF
