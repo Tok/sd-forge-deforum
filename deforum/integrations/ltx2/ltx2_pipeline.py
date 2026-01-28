@@ -812,6 +812,25 @@ class LTX2Pipeline:
             elif isinstance(first_elem, Image.Image):
                 logger.debug(f"First element is PIL Image")
                 frames_list = list(video)
+            elif isinstance(first_elem, (list, tuple)):
+                # Nested list/tuple - unwrap one level
+                logger.debug(f"First element is nested list/tuple: len={len(first_elem)}")
+                if len(first_elem) > 0:
+                    logger.debug(f"  Nested first element type: {type(first_elem[0])}")
+                    if isinstance(first_elem[0], Image.Image):
+                        logger.debug(f"  Nested list contains PIL Images - using it directly")
+                        frames_list = list(first_elem)
+                    elif isinstance(first_elem[0], torch.Tensor):
+                        logger.debug(f"  Nested list contains tensors - decoding")
+                        frames_list = []
+                        for item in first_elem:
+                            frames_list.extend(self._tensor_to_pil_images(item))
+                    else:
+                        logger.warning(f"  Nested list contains unexpected type: {type(first_elem[0])}")
+                        frames_list = list(first_elem)
+                else:
+                    logger.warning(f"First element is empty list")
+                    frames_list = []
             else:
                 logger.warning(f"Unexpected first element type: {type(first_elem)}")
                 frames_list = list(video)
