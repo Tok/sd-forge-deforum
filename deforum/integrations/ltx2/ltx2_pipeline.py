@@ -788,26 +788,79 @@ class LTX2Pipeline:
 
         # Video output format check
         logger.debug(f"Pipeline output type: {type(video)}")
-        if hasattr(video, 'frames'):
-            logger.debug(f"Video has 'frames' attribute: {type(video.frames)}, len={len(video.frames) if hasattr(video.frames, '__len__') else 'N/A'}")
-            # LTX-2 returns VideoOutput object with .frames attribute
-            frames_list = video.frames
-        elif isinstance(video, (list, tuple)):
-            logger.debug(f"Video is list/tuple: len={len(video)}")
-            frames_list = video
-        else:
-            logger.warning(f"Unexpected video type: {type(video)}, trying direct return")
-            frames_list = video
 
-        # Convert to list if needed
-        if not isinstance(frames_list, list):
-            if hasattr(frames_list, '__iter__'):
-                frames_list = list(frames_list)
+        # Handle different output formats
+        if isinstance(video, torch.Tensor):
+            # Video is a tensor - convert to PIL images
+            logger.debug(f"Video is tensor: shape={video.shape}, device={video.device}")
+            frames_list = self._tensor_to_pil_images(video)
+        elif isinstance(video, (list, tuple)) and len(video) > 0:
+            logger.debug(f"Video is list/tuple: len={len(video)}")
+            # Check first element
+            first_elem = video[0]
+            if isinstance(first_elem, torch.Tensor):
+                logger.debug(f"First element is tensor: shape={first_elem.shape}")
+                # List of tensors or single tensor - decode all
+                frames_list = []
+                for item in video:
+                    if isinstance(item, torch.Tensor):
+                        frames_list.extend(self._tensor_to_pil_images(item))
+                    elif isinstance(item, Image.Image):
+                        frames_list.append(item)
+                    else:
+                        logger.warning(f"Unexpected item type in video list: {type(item)}")
+            elif isinstance(first_elem, Image.Image):
+                logger.debug(f"First element is PIL Image")
+                frames_list = list(video)
             else:
-                frames_list = [frames_list]
+                logger.warning(f"Unexpected first element type: {type(first_elem)}")
+                frames_list = list(video)
+        elif hasattr(video, 'frames'):
+            logger.debug(f"Video has 'frames' attribute: {type(video.frames)}")
+            frames_list = video.frames
+            if isinstance(frames_list, torch.Tensor):
+                frames_list = self._tensor_to_pil_images(frames_list)
+        else:
+            logger.warning(f"Unexpected video type: {type(video)}")
+            frames_list = [video]
 
         logger.debug(f"Returning {len(frames_list)} frames (type: {type(frames_list[0]) if frames_list else 'empty'})")
         return frames_list
+
+    def _tensor_to_pil_images(self, video_tensor: torch.Tensor) -> List[Image.Image]:
+        """Convert video tensor to list of PIL Images.
+
+        Args:
+            video_tensor: Video tensor from pipeline
+                Shape: [batch, channels, frames, height, width] or
+                       [batch, frames, channels, height, width] or
+                       [frames, channels, height, width]
+
+        Returns:
+            List of PIL Images
+        """
+        logger.debug(f"Converting tensor to PIL: shape={video_tensor.shape}, dtype={video_tensor.dtype}")
+
+        # Use pipeline's video processor to decode
+        # video_processor.postprocess expects: [batch, channels, frames, height, width]
+        if video_tensor.ndim == 4:
+            # [frames, channels, height, width] - add batch dim
+            video_tensor = video_tensor.unsqueeze(0)
+        elif video_tensor.ndim == 5:
+            # Check if [batch, frames, C, H, W] - needs to be [batch, C, frames, H, W]
+            batch, dim1, dim2, height, width = video_tensor.shape
+            if dim2 == 3:  # [batch, frames, channels, H, W]
+                video_tensor = video_tensor.permute(0, 2, 1, 3, 4)  # -> [batch, channels, frames, H, W]
+                logger.debug(f"Permuted to: {video_tensor.shape}")
+
+        # Move to CPU for PIL conversion
+        video_tensor = video_tensor.cpu()
+
+        # Use video processor to convert to PIL
+        frames = self.pipeline.video_processor.postprocess_video(video_tensor)
+
+        logger.debug(f"Decoded {len(frames)} PIL images")
+        return frames
 
     def _extract_audio_segment(
         self,
