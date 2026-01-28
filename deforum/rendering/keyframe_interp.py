@@ -769,10 +769,41 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
             # Resize keyframes if resolution changed (e.g., for VRAM savings)
             target_width = data.width()
             target_height = data.height()
+
+            # Create subdirectories for LTX-2 outputs
+            ltx2_keyframes_dir = os.path.join(data.output_directory, "_ltx2_keyframes")
+            ltx2_frames_dir = os.path.join(data.output_directory, "_ltx2_frames")
+            os.makedirs(ltx2_keyframes_dir, exist_ok=True)
+            os.makedirs(ltx2_frames_dir, exist_ok=True)
+
             if first_image.size != (target_width, target_height):
                 logger.debug(f"   Resizing keyframes from {first_image.size} to {target_width}x{target_height}")
-                first_image = first_image.resize((target_width, target_height), Image.LANCZOS)
-                last_image = last_image.resize((target_width, target_height), Image.LANCZOS)
+                first_image_resized = first_image.resize((target_width, target_height), Image.LANCZOS)
+                last_image_resized = last_image.resize((target_width, target_height), Image.LANCZOS)
+
+                # Save resized keyframes to _ltx2_keyframes/ subdirectory
+                first_resized_path = os.path.join(ltx2_keyframes_dir, f"{first_frame_idx:09d}.png")
+                last_resized_path = os.path.join(ltx2_keyframes_dir, f"{last_frame_idx:09d}.png")
+
+                # Only save if not already exists (avoid redundant saves in resume mode)
+                if not os.path.exists(first_resized_path):
+                    first_image_resized.save(first_resized_path, format='PNG')
+                    logger.debug(f"   Saved resized keyframe: _ltx2_keyframes/{first_frame_idx:09d}.png")
+                if not os.path.exists(last_resized_path):
+                    last_image_resized.save(last_resized_path, format='PNG')
+                    logger.debug(f"   Saved resized keyframe: _ltx2_keyframes/{last_frame_idx:09d}.png")
+
+                # Use resized images for LTX-2
+                first_image = first_image_resized
+                last_image = last_image_resized
+            else:
+                # No resize needed - copy keyframes to subdirectory for consistency
+                first_resized_path = os.path.join(ltx2_keyframes_dir, f"{first_frame_idx:09d}.png")
+                last_resized_path = os.path.join(ltx2_keyframes_dir, f"{last_frame_idx:09d}.png")
+                if not os.path.exists(first_resized_path):
+                    first_image.save(first_resized_path, format='PNG')
+                if not os.path.exists(last_resized_path):
+                    last_image.save(last_resized_path, format='PNG')
 
             # For FLF2V interpolation, use balanced guidance for semantic interpolation
             # High guidance forces prompt adherence, low guidance allows natural interpolation
@@ -863,15 +894,22 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
 
                     # Convert PIL images to file paths (save to disk)
                     # Write frames one-by-one with progress updates
+                    # Save LTX-2 frames to _ltx2_frames/ subdirectory
                     segment_frames = []
+
+                    logger.debug(f"   Generated {len(generated_frames)} total frames from LTX-2")
+                    logger.debug(f"   Frame 0 (keyframe): {generated_frames[0].size if generated_frames else 'N/A'}")
+                    logger.debug(f"   Frame -1 (keyframe): {generated_frames[-1].size if generated_frames else 'N/A'}")
+
                     total_tween_frames = len(generated_frames[1:-1])  # Skip first/last (keyframes)
 
-                    logger.info(f"   Saving {total_tween_frames} frames...", emoji='floppy_disk')
+                    logger.info(f"   Saving {total_tween_frames} LTX-2 frames (excluding keyframes) to _ltx2_frames/...", emoji='floppy_disk')
 
                     for frame_offset, pil_frame in enumerate(generated_frames[1:-1]):
                         frame_idx = first_frame_idx + frame_offset + 1
                         frame_filename = f"{frame_idx:09d}.png"
-                        frame_path = os.path.join(data.output_directory, frame_filename)
+                        # Save to _ltx2_frames/ subdirectory
+                        frame_path = os.path.join(ltx2_frames_dir, frame_filename)
 
                         # Save frame
                         pil_frame.save(frame_path, format='PNG')
@@ -882,7 +920,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                             progress = (frame_offset + 1) / total_tween_frames * 100
                             logger.info(f"     Saved {frame_offset + 1}/{total_tween_frames} frames ({progress:.0f}%)", emoji='floppy_disk')
 
-                    logger.info(f"   Completed segment {idx + 1}/{len(keyframes) - 1}: {len(segment_frames)} frames saved", emoji='check')
+                    logger.info(f"   Completed segment {idx + 1}/{len(keyframes) - 1}: {len(segment_frames)} frames saved to _ltx2_frames/", emoji='check')
 
                 except Exception as e:
                     logger.error(f"LTX-2 generation failed: {e}", emoji='x')
