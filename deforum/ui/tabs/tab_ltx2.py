@@ -85,6 +85,13 @@ def get_subtab_ltx2(dw: SimpleNamespace, skip_tabitem=False):
 
     ltx2_negative_prompt = create_gr_elem(dw.ltx2_negative_prompt)
 
+    # Audio Settings
+    gr.Markdown(f"### {emoji_if_enabled('🎵')} Audio Output Settings")
+
+    with FormRow():
+        ltx2_save_generated_audio = create_gr_elem(dw.ltx2_save_generated_audio)
+        ltx2_generate_audio_video = create_gr_elem(dw.ltx2_generate_audio_video)
+
     # Model Info
     with gr.Accordion(f"{emoji_utils.bulb()} Model Details", open=False):
         gr.Markdown("""
@@ -144,4 +151,6 @@ def get_subtab_ltx2(dw: SimpleNamespace, skip_tabitem=False):
         'ltx2_num_inference_steps': ltx2_num_inference_steps,
         'ltx2_guidance_scale': ltx2_guidance_scale,
         'ltx2_negative_prompt': ltx2_negative_prompt,
+        'ltx2_save_generated_audio': ltx2_save_generated_audio,
+        'ltx2_generate_audio_video': ltx2_generate_audio_video,
     }

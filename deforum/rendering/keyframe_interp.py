@@ -695,6 +695,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         # Original per-segment mode (default)
         # Generate FLF2V segments
         all_segment_frames = []
+        all_audio_segments = []  # Collect LTX-2 generated audio segments
 
         for idx in range(len(keyframes) - 1):
             # Update dashboard operation (3DGS sub-operations will update their own progress)
@@ -864,7 +865,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         
             # Route to appropriate interpolation function
             if interp_method == "LTX-2":
-                logger.info(f"   Interpolation: LTX-2 Audio-Video AI (audio-guided generation)", emoji='target')
+                logger.info(f"   Interpolation: LTX-2 Audio-Video AI", emoji='target')
 
                 # Calculate audio timing for this segment
                 segment_duration = (last_frame_idx - first_frame_idx) / video_args.fps
@@ -876,9 +877,15 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                 # Get seed for this segment (use first frame's seed)
                 segment_seed = int(data.animation_keys.deform_keys.seed_schedule_series[first_frame_idx])
 
+                # Prepare audio output path (save to _ltx2_audio/ subdirectory)
+                ltx2_audio_dir = os.path.join(data.output_directory, "_ltx2_audio")
+                os.makedirs(ltx2_audio_dir, exist_ok=True)
+                audio_filename = f"segment_{idx:04d}_{first_frame_idx:09d}_{last_frame_idx:09d}.wav"
+                audio_output_path = os.path.join(ltx2_audio_dir, audio_filename)
+
                 # Generate with LTX-2
                 try:
-                    generated_frames = ltx2_pipeline.generate_segment(
+                    generated_frames, segment_audio_path = ltx2_pipeline.generate_segment(
                         start_image=first_image,
                         audio_path=video_args.soundtrack_path,
                         audio_start_sec=segment_start_sec,
@@ -890,6 +897,7 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                         guidance_scale=getattr(wan_args, 'ltx2_guidance_scale', 4.0),
                         num_inference_steps=getattr(wan_args, 'ltx2_num_inference_steps', 40),
                         seed=segment_seed,
+                        audio_output_path=audio_output_path,  # Save LTX-2 generated audio
                     )
 
                     # Convert PIL images to file paths (save to disk)
@@ -921,6 +929,11 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
                             logger.info(f"     Saved {frame_offset + 1}/{total_tween_frames} frames ({progress:.0f}%)", emoji='floppy_disk')
 
                     logger.info(f"   Completed segment {idx + 1}/{len(keyframes) - 1}: {len(segment_frames)} frames saved to _ltx2_frames/", emoji='check')
+
+                    # Collect audio segment if generated
+                    if segment_audio_path:
+                        all_audio_segments.append(segment_audio_path)
+                        logger.debug(f"   Collected audio segment: {os.path.basename(segment_audio_path)}")
 
                 except Exception as e:
                     logger.error(f"LTX-2 generation failed: {e}", emoji='x')
@@ -1084,6 +1097,46 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     logger.info(f"\nFlux + Interpolation Generation Complete!", emoji='party')
     logger.info(f"Output: {output_video_path}", emoji='folder')
 
+    # PHASE 3.5: Stitch LTX-2 Audio and Generate Second Video (if enabled)
+    if interp_method == "LTX-2" and all_audio_segments and getattr(wan_args, 'ltx2_generate_audio_video', False):
+        logger.separator(char="-")
+        logger.info("PHASE 3.5: Generating Video with LTX-2 Audio", emoji='sound')
+        logger.separator(char="-")
+
+        try:
+            # Stitch audio segments together
+            ltx2_audio_dir = os.path.join(data.output_directory, "_ltx2_audio")
+            stitched_audio_path = os.path.join(ltx2_audio_dir, "ltx2_stitched_audio.wav")
+
+            logger.info(f"Stitching {len(all_audio_segments)} LTX-2 audio segments...", emoji='link')
+            _stitch_audio_segments(all_audio_segments, stitched_audio_path)
+            logger.info(f"LTX-2 audio stitched: {os.path.basename(stitched_audio_path)}", emoji='check')
+
+            # Generate second video with LTX-2 audio
+            ltx2_video_filename = os.path.basename(output_video_path).replace('.mp4', '_ltx2audio.mp4')
+            ltx2_video_path = os.path.join(os.path.dirname(output_video_path), ltx2_video_filename)
+
+            logger.info(f"Generating video with LTX-2 audio...", emoji='video_camera')
+            output_ltx2_video_path = stitch_keyframe_interpolation_video(
+                data=data,
+                frame_paths=all_segment_frames,
+                video_args=video_args,
+                interp_method=interp_method,
+                custom_audio_path=stitched_audio_path,  # Use LTX-2 audio instead of original
+                output_filename=ltx2_video_filename
+            )
+
+            logger.info(f"LTX-2 audio video complete!", emoji='party')
+            logger.info(f"  Original audio: {output_video_path}", emoji='folder')
+            logger.info(f"  LTX-2 audio:    {output_ltx2_video_path}", emoji='folder')
+
+        except Exception as e:
+            logger.error(f"Failed to generate LTX-2 audio video: {e}", emoji='x')
+            logger.warning(f"Original video still available at: {output_video_path}")
+
+    elif interp_method == "LTX-2" and all_audio_segments:
+        logger.info(f"LTX-2 audio segments saved to _ltx2_audio/ (enable 'Generate Video with LTX-2 Audio' to create second video)", emoji='info')
+
     # Cleanup models
     if wan_integration is not None:
         wan_integration.unload_model()
@@ -1094,6 +1147,58 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     # Stop dashboard when done
     if dashboard:
         dashboard.stop()
+
+
+def _stitch_audio_segments(audio_segments: List[str], output_path: str):
+    """Stitch multiple LTX-2 audio WAV files into single continuous audio.
+
+    Args:
+        audio_segments: List of paths to WAV audio files (in order)
+        output_path: Path to save stitched audio
+
+    Raises:
+        RuntimeError: If audio stitching fails
+    """
+    try:
+        import soundfile as sf
+        import numpy as np
+
+        logger.debug(f"Stitching {len(audio_segments)} audio segments...")
+
+        # Read all audio segments
+        all_audio_data = []
+        sample_rate = None
+
+        for i, segment_path in enumerate(audio_segments):
+            if not os.path.exists(segment_path):
+                logger.warning(f"Audio segment {i} missing: {segment_path}")
+                continue
+
+            audio, sr = sf.read(segment_path)
+            logger.debug(f"  Segment {i}: {audio.shape}, {sr}Hz")
+
+            if sample_rate is None:
+                sample_rate = sr
+            elif sr != sample_rate:
+                logger.warning(f"  Sample rate mismatch: expected {sample_rate}Hz, got {sr}Hz - resampling may be needed")
+
+            all_audio_data.append(audio)
+
+        if not all_audio_data:
+            raise RuntimeError("No audio segments to stitch")
+
+        # Concatenate all audio segments
+        stitched_audio = np.concatenate(all_audio_data, axis=0)
+        logger.debug(f"Stitched audio shape: {stitched_audio.shape}, {sample_rate}Hz")
+
+        # Save stitched audio
+        sf.write(output_path, stitched_audio, sample_rate)
+        logger.debug(f"Saved stitched audio to: {output_path}")
+
+    except ImportError:
+        raise RuntimeError("soundfile required for audio stitching. Install with: pip install soundfile")
+    except Exception as e:
+        raise RuntimeError(f"Audio stitching failed: {e}")
 
 
 def generate_ltx2_segment(
@@ -1434,7 +1539,14 @@ def build_output_filename(timestring: str, model_prefix: str, interp_method: str
     return f"{timestring}_{model_prefix}_{method_suffix}.mp4"
 
 
-def stitch_keyframe_interpolation_video(data, frame_paths, video_args, interp_method="Wan"):
+def stitch_keyframe_interpolation_video(
+    data,
+    frame_paths,
+    video_args,
+    interp_method="Wan",
+    custom_audio_path=None,
+    output_filename=None
+):
     """Stitch all frames into final video using ffmpeg concat demuxer.
 
     Args:
@@ -1442,6 +1554,8 @@ def stitch_keyframe_interpolation_video(data, frame_paths, video_args, interp_me
         frame_paths: List of frame file paths (may be unused, frames collected from disk)
         video_args: Video arguments containing fps, audio settings
         interp_method: Interpolation method name for filename
+        custom_audio_path: Optional path to custom audio file (overrides video_args.soundtrack_path)
+        output_filename: Optional custom output filename (overrides generated filename)
 
     Returns:
         str: Path to output video file
@@ -1454,13 +1568,14 @@ def stitch_keyframe_interpolation_video(data, frame_paths, video_args, interp_me
     ffmpeg_location, ffmpeg_crf, ffmpeg_preset = get_ffmpeg_params()
 
     # Build output path with model-aware filename
-    checkpoint_name = getattr(data.args.args, 'checkpoint', '') or ""
-    model_prefix = detect_model_prefix(checkpoint_name)
-    output_filename = build_output_filename(
-        data.args.root.timestring,
-        model_prefix,
-        interp_method
-    )
+    if output_filename is None:
+        checkpoint_name = getattr(data.args.args, 'checkpoint', '') or ""
+        model_prefix = detect_model_prefix(checkpoint_name)
+        output_filename = build_output_filename(
+            data.args.root.timestring,
+            model_prefix,
+            interp_method
+        )
     output_path = os.path.join(data.output_directory, output_filename)
 
     # Collect ALL frame files (keyframes + tweens) sorted numerically
@@ -1511,9 +1626,16 @@ def stitch_keyframe_interpolation_video(data, frame_paths, video_args, interp_me
 
         logger.info(f"{emoji_if_enabled('✅')} Video stitched successfully")
 
-        # Add audio if specified (use pre-downloaded path from video_args)
-        logger.debug(f"Soundtrack: add={video_args.add_soundtrack}, path={video_args.soundtrack_path}")
-        if video_args.add_soundtrack == 'File' and video_args.soundtrack_path:
+        # Add audio if specified (use custom audio or video_args soundtrack)
+        audio_source = custom_audio_path if custom_audio_path else video_args.soundtrack_path
+        should_add_audio = (video_args.add_soundtrack == 'File' and video_args.soundtrack_path) or custom_audio_path
+
+        if custom_audio_path:
+            logger.debug(f"Using custom audio: {custom_audio_path}")
+        else:
+            logger.debug(f"Soundtrack: add={video_args.add_soundtrack}, path={video_args.soundtrack_path}")
+
+        if should_add_audio and audio_source:
             logger.info(f"{emoji_if_enabled('🎵')} Adding audio track...")
             temp_output = output_path + '.temp.mp4'
 
@@ -1521,7 +1643,7 @@ def stitch_keyframe_interpolation_video(data, frame_paths, video_args, interp_me
                 ffmpeg_location,
                 '-y',
                 '-i', output_path,
-                '-i', video_args.soundtrack_path,  # Already downloaded by render orchestrator
+                '-i', audio_source,  # Custom audio or original soundtrack
                 '-map', '0:v',
                 '-map', '1:a',
                 '-c:v', 'copy',

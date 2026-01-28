@@ -1363,6 +1363,18 @@ def WanArgs():
             "value": "blurry, low quality, distorted, artifacts, compression, noise",
             "info": "Negative prompt for LTX-2 generation - describes what to avoid. Default removes common video artifacts. Add specific unwanted elements separated by commas. Examples: 'watermark, text, logo' or 'camera shake, motion blur'."
         },
+        "ltx2_save_generated_audio": {
+            "label": "Save LTX-2 Generated Audio",
+            "type": "checkbox",
+            "value": True,
+            "info": "Save audio that LTX-2 generates alongside video frames (saved to _ltx2_audio/ subdirectory). LTX-2 is an audio-video model that generates synchronized audio with each clip."
+        },
+        "ltx2_generate_audio_video": {
+            "label": "Generate Video with LTX-2 Audio",
+            "type": "checkbox",
+            "value": False,
+            "info": "Create a second final video using stitched LTX-2 audio instead of original Deforum soundtrack. Produces two videos: one with original audio, one with LTX-2's generated audio. Requires 'Save LTX-2 Generated Audio' to be enabled."
+        },
         "da3_multiview_model_size": {
             "label": "DA3-Multiview Model Size",
             "type": "dropdown",
