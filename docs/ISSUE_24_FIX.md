@@ -9,18 +9,44 @@ ImportError: DLL load failed while importing _C: The specified module could not 
 
 This occurs because the deforum extension previously auto-installed Depth-Anything V3, which tried to install xformers/flash-attn. When these compiled CUDA extensions fail to install properly, they break the entire Forge installation.
 
+**Note:** The fix is on the **dev** branch (main branch is unaffected as it doesn't include DA3).
+
 ## Solution: Step-by-Step Repair
 
-### Step 1: Update Forge Neo (Important!)
+### Recommended Approach (Using Extension Setup Scripts)
+
+```bash
+# Step 1: Update Forge Neo from neo branch
+cd /path/to/forge-neo
+git pull origin neo
+
+# Step 2: Switch Deforum to dev branch (where fix is available)
+cd extensions/sd-forge-deforum
+git checkout dev
+git pull origin dev
+
+# Step 3: Use automated setup script
+./setup.sh --install  # Handles cleanup + dependency reinstall
+
+# Step 4: Test launch using extension's start script
+./start-forge.sh      # Linux/Mac
+# OR: start-forge.bat on Windows
+```
+
+Forge should now launch successfully!
+
+### Manual Repair (If Automated Approach Fails)
+
+#### Step 1: Update Forge Neo from neo branch
 
 ```bash
 cd /path/to/forge-neo
 git pull origin neo
 ```
 
-This updates Forge Neo with the latest fixes (19 commits behind, includes FLUX.2 Klein support).
+This updates Forge Neo with the latest fixes (includes FLUX.2 Klein support).
 
-### Step 2: Remove Problematic Packages
+#### Step 2: Remove Problematic Packages
 
 ```bash
 # Activate venv
@@ -32,28 +58,30 @@ venv\Scripts\activate     # Windows
 pip uninstall xformers flash-attn flash-attn-3 depth-anything-3 -y
 ```
 
-### Step 3: Reinstall Forge Requirements
+#### Step 3: Reinstall Forge Requirements
 
 ```bash
 # Still in forge-neo root directory
 pip install -r requirements.txt --force-reinstall
 ```
 
-### Step 4: Update Deforum Extension
+#### Step 4: Update Deforum to dev branch
 
 ```bash
 cd extensions/sd-forge-deforum
+git checkout dev  # IMPORTANT: Fix is on dev branch (main unaffected)!
 git pull origin dev
 
 # Install fixed requirements
 pip install -r requirements.txt
 ```
 
-### Step 5: Test Launch
+#### Step 5: Test Launch
 
 ```bash
-cd /path/to/forge-neo
-python webui.py
+cd extensions/sd-forge-deforum
+./start-forge.sh      # Linux/Mac
+# OR: start-forge.bat on Windows
 ```
 
 Forge should now launch successfully!
@@ -90,7 +118,7 @@ transformers>=4.36.0,<=4.56.2             # Match Forge Neo 4.56.2
 - All keyframe distribution modes
 
 ✅ **All Depth Features:**
-- Depth-Anything V2 (default, excellent quality)
+- Depth-Anything V2 (default, better temporal consistency for video)
 - All depth-based transformations
 - Camera movement and warping
 
@@ -110,8 +138,12 @@ transformers>=4.36.0,<=4.56.2             # Match Forge Neo 4.56.2
 
 ❌ **Only if you need:**
 - Multi-view depth estimation
-- 3D Gaussian Splatting (3DGS)
+- 3D Gaussian Splatting (3DGS) - **currently in incubation/tuning lab**
 - Depth-ray pose estimation
+
+**Why choose DA3 over DA2?**
+- **DA2 (default):** Better temporal consistency (smoother video), always available
+- **DA3 (optional):** More VRAM efficient, required for 3DGS experiments
 
 **To install DA3 (optional):**
 ```bash
@@ -173,17 +205,17 @@ cp extensions/sd-forge-deforum/deforum/config/default_settings.txt ~/deforum_bac
 # 2. Remove extension
 rm -rf extensions/sd-forge-deforum
 
-# 3. Clone fresh
+# 3. Clone fresh on dev branch
 cd extensions
-git clone https://github.com/Tok/sd-forge-deforum.git
+git clone -b dev https://github.com/Tok/sd-forge-deforum.git
 
 # 4. Install with fixes
 cd sd-forge-deforum
 ./setup.sh --install
 
-# 5. Launch
-cd /path/to/forge-neo
-python webui.py
+# 5. Launch using extension's start script
+./start-forge.sh      # Linux/Mac
+# OR: start-forge.bat on Windows
 ```
 
 ## Summary
