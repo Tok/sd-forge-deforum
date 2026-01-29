@@ -44,69 +44,78 @@ read -p "Choice [1-4]: " choice
 download_klein_4b() {
     echo -e "\n${BB0_ZENITH}Downloading Flux 2 Klein 4B (FP8)...${NC}"
 
-    # Download checkpoint
-    echo -e "${BB0_VOID}Downloading transformer (checkpoint)...${NC}"
+    # Download checkpoint (single safetensors file)
+    echo -e "${BB0_VOID}Downloading checkpoint (4.07 GB)...${NC}"
     huggingface-cli download black-forest-labs/FLUX.2-klein-4b-fp8 \
-        transformer/diffusion_pytorch_model-fp8_e4m3fn.safetensors \
-        --local-dir "$FORGE_ROOT/models/Stable-diffusion/Flux2-Klein-4B" \
+        flux-2-klein-4b-fp8.safetensors \
+        --local-dir "$FORGE_ROOT/models/Stable-diffusion" \
         --local-dir-use-symlinks False
 
-    # Download text encoder (Qwen 3 4B)
-    echo -e "${BB0_VOID}Downloading text encoder (Qwen 3 4B fp8)...${NC}"
-    huggingface-cli download Comfy-Org/qwen3_4b_text_encoder_fp8_e4m3fn \
-        model-fp8_e4m3fn.safetensors \
-        --local-dir "$FORGE_ROOT/models/text_encoder/qwen3_4b_fp8" \
+    # Download text encoder (Qwen 3 4B fp8_scaled)
+    echo -e "${BB0_VOID}Downloading text encoder (Qwen 3 4B fp8_scaled)...${NC}"
+    huggingface-cli download jiangchengchengNLP/qwen3-4b-fp8-scaled \
+        qwen3_4b_fp8_scaled.safetensors \
+        --local-dir "$FORGE_ROOT/models/text_encoder" \
         --local-dir-use-symlinks False
 
     # Download VAE (shared with 9B)
     if [ ! -f "$FORGE_ROOT/models/VAE/flux2-vae.safetensors" ]; then
         echo -e "${BB0_VOID}Downloading Flux 2 VAE...${NC}"
-        huggingface-cli download black-forest-labs/FLUX.2-klein-4B \
-            vae/diffusion_pytorch_model.safetensors \
-            --local-dir "$FORGE_ROOT/models/VAE/flux2-vae" \
+        huggingface-cli download Comfy-Org/vae-text-encorder-for-flux-klein-9b \
+            split_files/vae/flux2-vae.safetensors \
+            --local-dir "$FORGE_ROOT/models/VAE" \
             --local-dir-use-symlinks False
+        # Move from nested directory to VAE root
+        mv "$FORGE_ROOT/models/VAE/split_files/vae/flux2-vae.safetensors" "$FORGE_ROOT/models/VAE/" 2>/dev/null || true
+        rm -rf "$FORGE_ROOT/models/VAE/split_files" 2>/dev/null || true
     else
         echo -e "${BB0_ZENITH}Flux 2 VAE already exists, skipping...${NC}"
     fi
 
     echo -e "${BB0_ZENITH}✓ Flux 2 Klein 4B downloaded successfully!${NC}"
-    echo -e "  Checkpoint: models/Stable-diffusion/Flux2-Klein-4B/"
-    echo -e "  Text Encoder: models/text_encoder/qwen3_4b_fp8/"
-    echo -e "  VAE: models/VAE/flux2-vae/"
+    echo -e "  Checkpoint: models/Stable-diffusion/flux-2-klein-4b-fp8.safetensors"
+    echo -e "  Text Encoder: models/text_encoder/qwen3_4b_fp8_scaled.safetensors"
+    echo -e "  VAE: models/VAE/flux2-vae.safetensors"
 }
 
 download_klein_9b() {
     echo -e "\n${BB0_ZENITH}Downloading Flux 2 Klein 9B (FP8)...${NC}"
 
-    # Download checkpoint
-    echo -e "${BB0_VOID}Downloading transformer (checkpoint)...${NC}"
+    # Download checkpoint (single safetensors file)
+    echo -e "${BB0_VOID}Downloading checkpoint (~8 GB)...${NC}"
     huggingface-cli download black-forest-labs/FLUX.2-klein-9b-fp8 \
-        transformer/diffusion_pytorch_model-fp8_e4m3fn.safetensors \
-        --local-dir "$FORGE_ROOT/models/Stable-diffusion/Flux2-Klein-9B" \
+        flux-2-klein-9b-fp8.safetensors \
+        --local-dir "$FORGE_ROOT/models/Stable-diffusion" \
         --local-dir-use-symlinks False
 
-    # Download text encoder (Qwen 3 8B)
-    echo -e "${BB0_VOID}Downloading text encoder (Qwen 3 8B fp8)...${NC}"
-    huggingface-cli download Comfy-Org/qwen3_8b_text_encoder_fp8_e4m3fn \
-        model-fp8_e4m3fn.safetensors \
-        --local-dir "$FORGE_ROOT/models/text_encoder/qwen3_8b_fp8" \
+    # Download text encoder (Qwen 3 8B bf16)
+    echo -e "${BB0_VOID}Downloading text encoder (Qwen 3 8B bf16)...${NC}"
+    huggingface-cli download Comfy-Org/vae-text-encorder-for-flux-klein-9b \
+        split_files/text_encoders/qwen_3_8b.safetensors \
+        --local-dir "$FORGE_ROOT/models/text_encoder" \
         --local-dir-use-symlinks False
+    # Move from nested directory to text_encoder root
+    mv "$FORGE_ROOT/models/text_encoder/split_files/text_encoders/qwen_3_8b.safetensors" "$FORGE_ROOT/models/text_encoder/" 2>/dev/null || true
+    rm -rf "$FORGE_ROOT/models/text_encoder/split_files" 2>/dev/null || true
 
     # Download VAE (shared with 4B)
     if [ ! -f "$FORGE_ROOT/models/VAE/flux2-vae.safetensors" ]; then
         echo -e "${BB0_VOID}Downloading Flux 2 VAE...${NC}"
-        huggingface-cli download black-forest-labs/FLUX.2-klein-9B \
-            vae/diffusion_pytorch_model.safetensors \
-            --local-dir "$FORGE_ROOT/models/VAE/flux2-vae" \
+        huggingface-cli download Comfy-Org/vae-text-encorder-for-flux-klein-9b \
+            split_files/vae/flux2-vae.safetensors \
+            --local-dir "$FORGE_ROOT/models/VAE" \
             --local-dir-use-symlinks False
+        # Move from nested directory to VAE root
+        mv "$FORGE_ROOT/models/VAE/split_files/vae/flux2-vae.safetensors" "$FORGE_ROOT/models/VAE/" 2>/dev/null || true
+        rm -rf "$FORGE_ROOT/models/VAE/split_files" 2>/dev/null || true
     else
         echo -e "${BB0_ZENITH}Flux 2 VAE already exists, skipping...${NC}"
     fi
 
     echo -e "${BB0_ZENITH}✓ Flux 2 Klein 9B downloaded successfully!${NC}"
-    echo -e "  Checkpoint: models/Stable-diffusion/Flux2-Klein-9B/"
-    echo -e "  Text Encoder: models/text_encoder/qwen3_8b_fp8/"
-    echo -e "  VAE: models/VAE/flux2-vae/"
+    echo -e "  Checkpoint: models/Stable-diffusion/flux-2-klein-9b-fp8.safetensors"
+    echo -e "  Text Encoder: models/text_encoder/qwen_3_8b.safetensors"
+    echo -e "  VAE: models/VAE/flux2-vae.safetensors"
 }
 
 case $choice in
