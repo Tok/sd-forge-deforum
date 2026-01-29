@@ -18,18 +18,10 @@ accelerate>=0.25.0,<2.0.0
 gguf>=0.10.0  # Required for LTX-2 GGUF quantization support
 
 # Depth Anything V3 (Phase 1/2/3 integration)
-# DA3 is now OPTIONAL - install manually if you need advanced depth features
-# To install: pip install git+https://github.com/ByteDance-Seed/Depth-Anything-3.git
-#
-# WARNING: DA3 may try to install xformers/flash-attn which can break Forge if they fail!
-# Only install DA3 if you:
-#   1. Have CUDA toolkit installed (for compiling extensions)
-#   2. Are using Python 3.11 (3.12+ often has compatibility issues)
-#   3. Need advanced multi-view depth or 3DGS features
-#
-# Core Deforum works fine with Depth-Anything V2 (default, always available)
-# git+https://github.com/ByteDance-Seed/Depth-Anything-3.git  # DISABLED BY DEFAULT
-# xformers>=0.0.20  # OPTIONAL - Required by DA3, but difficult to install on Python 3.12+
+# WARNING: DA3 requires CUDA toolkit + Python 3.11 for xformers/flash-attn compilation
+# If installation fails, comment this out and use Depth-Anything V2 (default, always available)
+git+https://github.com/ByteDance-Seed/Depth-Anything-3.git
+# xformers>=0.0.20  # OPTIONAL - Required by DA3, installed as dependency
 
 # gsplat for 3D Gaussian Splatting rendering (DA3-3DGS interpolation mode)
 gsplat>=1.0.0  # Install via: pip install gsplat (has prebuilt wheels for CUDA 11.8/12.1)
