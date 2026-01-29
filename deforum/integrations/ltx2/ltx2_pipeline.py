@@ -879,6 +879,11 @@ class LTX2Pipeline:
 
             # Handle different audio output formats
             if isinstance(audio_output, torch.Tensor):
+                # Convert BFloat16 to float32 before numpy conversion (soundfile doesn't support BFloat16)
+                if audio_output.dtype == torch.bfloat16:
+                    audio_output = audio_output.to(torch.float32)
+                    logger.debug("Converted audio from BFloat16 to float32 for saving")
+
                 # Convert tensor to numpy
                 audio_np = audio_output.cpu().numpy()
                 logger.debug(f"Audio tensor shape: {audio_np.shape}")
