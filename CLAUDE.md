@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **sd-forge-deforum** is an experimental fork of the Deforum extension for Stable Diffusion WebUI Forge that generates frame-precise animated videos using keyframe scheduling. This fork adds:
 - **Flux.1 support** for state-of-the-art image generation
+- **Flux 2 Klein support** (Forge Neo neo branch) - 4B/9B parameter models with Qwen3 text encoder
 - **Lumina 2.0 support** (Forge Neo only) - 2B parameter model with 1024x1024 native resolution
 - **Wan 2.1 AI Video Generation** (Alibaba's text-to-video model) with Deforum scheduling integration
 - **Parseq keyframe redistribution** for intelligent frame placement
@@ -85,6 +86,7 @@ source ~/.bashrc                           # Reload environment
 **Model Downloads:**
 ```bash
 ./shell_scripts/download-all-models.sh     # Interactive: Flux, Lumina, Z-Image, Wan, etc.
+./shell_scripts/download-flux2-klein.sh    # Flux 2 Klein 4B/9B (requires Forge Neo neo branch)
 ```
 
 **Script Organization:**
