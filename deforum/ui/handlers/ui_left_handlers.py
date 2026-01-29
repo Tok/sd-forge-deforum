@@ -73,7 +73,7 @@ def build_top_level_controls(d, da, dv):
     with gr.Row(visible=False) as reset_confirm_row:
         with gr.Column(scale=1):
             warning_emoji = emoji_if_enabled("⚠️") or "WARNING"
-            gr.Markdown(f"{warning_emoji} **Reset to Mode Defaults?**\n\nThis will reset Steps, Scheduler, CFG Scale, Strength, FPS, and Cadence to optimized defaults for this render mode. Your prompts and keyframes will NOT be changed.")
+            gr.Markdown(f"{warning_emoji} **Reset to Mode Defaults?**\n\nThis will generate AI-powered defaults including:\n- Settings: Steps, Scheduler, CFG, Strength, FPS, Cadence\n- Audio: Generated music (Meta MusicGen)\n- Prompts: AI-generated prompts synced to audio (Qwen)\n- Camera: Movement keyframes\n\n**This WILL replace your current prompts and camera settings!**")
             with gr.Row():
                 components['reset_confirm_yes'] = gr.Button(
                     "Yes, Reset to Defaults",
