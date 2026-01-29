@@ -599,6 +599,25 @@ Core dependencies (from `requirements.txt`):
 - `transformers>=4.36.0,<4.46.0` - For Wan and Qwen models
 - `accelerate>=0.25.0,<0.31.0` - For model acceleration
 
+**Important Dependency Notes:**
+
+1. **Depth-Anything V3 is OPTIONAL** (as of 2026-01-29 fix for issue #24)
+   - NO longer auto-installed to prevent xformers/flash-attn conflicts
+   - Core Deforum uses Depth-Anything V2 (always available, excellent quality)
+   - Only install DA3 if you need multi-view depth or 3DGS features
+   - Requires: Python 3.11, CUDA toolkit, compatible GPU drivers
+   - See `docs/TROUBLESHOOTING.md` for installation instructions
+
+2. **Version Pinning** (as of 2026-01-29 fix for issue #24)
+   - `diffusers>=0.36.0,<0.37.0` - matches Forge Neo's pinned 0.36.0
+   - `transformers>=4.36.0,<=4.56.2` - matches Forge Neo's pinned 4.56.2
+   - Prevents bleeding-edge main branch conflicts with Forge
+
+3. **Python Version Compatibility**
+   - **Python 3.11.9** - Recommended, best compatibility
+   - **Python 3.12+** - Limited features (no SageAttention, no DA3)
+   - See `./setup.sh --migrate` for Python 3.11 migration
+
 **Model Requirements and Directory Structure:**
 
 **Shared Components (used by multiple models):**
@@ -677,6 +696,9 @@ Known compatibility issues:
 - **Legacy ControlNet** - Removed (use Flux ControlNet V2 instead, available in 3D Depth tab)
 
 ## Troubleshooting
+
+**Critical: Import errors after installation (flash_attn, xformers):**
+See `docs/TROUBLESHOOTING.md` for comprehensive solutions to dependency conflicts.
 
 **Import errors after installation:**
 Restart WebUI completely: `Ctrl+C` then `python launch.py`

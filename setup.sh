@@ -157,9 +157,19 @@ do_install() {
     echo -e "${BB0_ZENITH}========================================${NC}"
     echo ""
 
+    echo -e "${BB0_MIDNIGHT}Installing core dependencies...${NC}"
     pip install -r requirements.txt
     echo ""
     echo -e "${BB0_ZENITH}✓ Dependencies installed${NC}"
+    echo ""
+    echo -e "${BB0_MIDNIGHT}Note: Depth-Anything V3 is NOT installed by default${NC}"
+    echo -e "${BB0_MIDNIGHT}(to prevent xformers/flash-attn conflicts with Forge)${NC}"
+    echo -e "${BB0_MIDNIGHT}Core Deforum uses Depth-Anything V2 (always available)${NC}"
+    echo ""
+    echo -e "${BB0_GLITCH}To install DA3 (optional, advanced features):${NC}"
+    echo -e "  pip install git+https://github.com/ByteDance-Seed/Depth-Anything-3.git"
+    echo -e "${BB0_GLITCH}⚠ Only if you have CUDA toolkit and Python 3.11!${NC}"
+    echo ""
 }
 
 # Function: Prepare Forge for first launch (install PyTorch + SageAttention)

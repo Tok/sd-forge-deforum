@@ -7,20 +7,28 @@ imageio_ffmpeg
 rich
 gdown
 easydict
-git+https://github.com/huggingface/diffusers.git
+# Use Forge's pinned diffusers version instead of bleeding-edge main
+# This prevents dependency conflicts with Forge Neo's requirements
+diffusers>=0.36.0,<0.37.0  # Match Forge Neo's pinned version (0.36.0)
 kornia>=0.7.0  # Required by diffusers.guiders (LTX-2 FrequencyDecoupledGuidance)
-transformers>=4.36.0,<5.0.0
+transformers>=4.36.0,<=4.56.2  # Upper bound matches Forge Neo 4.56.2
 sentencepiece>=0.1.99  # Required by T5Tokenizer (LTX-2)
 huggingface-hub>=0.34.0,<1.0  # Must stay <1.0 for transformers 4.x compatibility
 accelerate>=0.25.0,<2.0.0
 gguf>=0.10.0  # Required for LTX-2 GGUF quantization support
 
 # Depth Anything V3 (Phase 1/2/3 integration)
-# DA3 auto-installs from GitHub (like diffusers above)
-# NOTE: xformers is optional - DA3 will auto-install it if needed
-# If xformers install fails (common on Python 3.12+), DA3 features will be unavailable
-# but core Deforum functionality will still work
-git+https://github.com/ByteDance-Seed/Depth-Anything-3.git
+# DA3 is now OPTIONAL - install manually if you need advanced depth features
+# To install: pip install git+https://github.com/ByteDance-Seed/Depth-Anything-3.git
+#
+# WARNING: DA3 may try to install xformers/flash-attn which can break Forge if they fail!
+# Only install DA3 if you:
+#   1. Have CUDA toolkit installed (for compiling extensions)
+#   2. Are using Python 3.11 (3.12+ often has compatibility issues)
+#   3. Need advanced multi-view depth or 3DGS features
+#
+# Core Deforum works fine with Depth-Anything V2 (default, always available)
+# git+https://github.com/ByteDance-Seed/Depth-Anything-3.git  # DISABLED BY DEFAULT
 # xformers>=0.0.20  # OPTIONAL - Required by DA3, but difficult to install on Python 3.12+
 
 # gsplat for 3D Gaussian Splatting rendering (DA3-3DGS interpolation mode)
