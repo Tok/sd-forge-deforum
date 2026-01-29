@@ -44,6 +44,12 @@ FLUX_CONFIG = ModelConfig(
     recommended_steps=20,
 )
 
+FLUX2_KLEIN_CONFIG = ModelConfig(
+    name="Flux 2 Klein",
+    cfg_range=(1.0, 5.0),  # Klein supports wider CFG range
+    recommended_steps=20,
+)
+
 ZIMAGE_CONFIG = ModelConfig(
     name="Z-Image-Turbo",
     cfg_range=(0.0, 0.0),  # Z-Image requires CFG=0.0 (distilled model)
@@ -330,17 +336,64 @@ def is_zimage_model() -> bool:
         return False
 
 
+def is_flux2_klein_model() -> bool:
+    """Detect if Flux 2 Klein is the currently loaded model.
+
+    Returns:
+        True if Flux 2 Klein is loaded, False otherwise
+    """
+    try:
+        shared = _get_shared_module()
+        if shared is None or not hasattr(shared, 'sd_model'):
+            return False
+
+        model = shared.sd_model
+
+        # Check 1: Model class name contains 'Flux2'
+        class_name = _get_model_class_name(model)
+        if class_name and 'Flux2' in class_name:
+            logger.debug(f"Detected Flux 2 Klein via class name: {class_name}")
+            return True
+
+        # Check 2: Checkpoint name contains 'klein' or 'flux-2' or 'flux2'
+        checkpoint_name = _get_checkpoint_name(shared)
+        if checkpoint_name:
+            klein_patterns = ['klein', 'flux-2', 'flux2', 'flux_2']
+            if any(pattern in checkpoint_name for pattern in klein_patterns):
+                logger.debug(f"Detected Flux 2 Klein via checkpoint name: {checkpoint_name}")
+                return True
+
+        return False
+
+    except Exception as e:
+        logger.debug(f"Flux 2 Klein detection failed: {e}")
+        return False
+
+
 def _detect_flux_variant(checkpoint_name: Optional[str]) -> str:
-    """Detect Flux variant (Dev or Schnell) from checkpoint name.
+    """Detect Flux variant (Klein, Dev, or Schnell) from checkpoint name.
 
     Args:
         checkpoint_name: Lowercase checkpoint filename
 
     Returns:
-        "Flux Schnell", "Flux Dev", or "Flux"
+        "Flux 2 Klein", "Flux Schnell", "Flux Dev", or "Flux"
     """
-    if checkpoint_name and 'schnell' in checkpoint_name:
-        return "Flux Schnell"
+    if checkpoint_name:
+        # Check for Klein first (Flux 2)
+        klein_patterns = ['klein', 'flux-2', 'flux2', 'flux_2']
+        if any(pattern in checkpoint_name for pattern in klein_patterns):
+            # Determine size variant
+            if '4b' in checkpoint_name or '4-b' in checkpoint_name:
+                return "Flux 2 Klein 4B"
+            elif '9b' in checkpoint_name or '9-b' in checkpoint_name:
+                return "Flux 2 Klein 9B"
+            return "Flux 2 Klein"
+
+        # Check for Schnell (Flux 1)
+        if 'schnell' in checkpoint_name:
+            return "Flux Schnell"
+
     return "Flux Dev" if checkpoint_name else "Flux"
 
 
@@ -348,10 +401,16 @@ def get_model_name() -> str:
     """Get friendly name of currently loaded model.
 
     Returns:
-        Model name string ("Lumina 2.0", "Flux Dev", "Flux Schnell", "SDXL", "Z-Image-Turbo", "Unknown")
+        Model name string ("Flux 2 Klein", "Lumina 2.0", "Flux Dev", "Flux Schnell", "SDXL", "Z-Image-Turbo", "Unknown")
     """
     if is_lumina_model():
         return LUMINA_CONFIG.name
+
+    # Check Flux 2 Klein before general Flux
+    if is_flux2_klein_model():
+        shared = _get_shared_module()
+        checkpoint_name = _get_checkpoint_name(shared) if shared else None
+        return _detect_flux_variant(checkpoint_name)
 
     if is_flux_model():
         shared = _get_shared_module()
@@ -377,6 +436,8 @@ def get_recommended_cfg_scale() -> tuple[float, float]:
         return LUMINA_CONFIG.cfg_range
     if is_zimage_model():
         return ZIMAGE_CONFIG.cfg_range
+    if is_flux2_klein_model():
+        return FLUX2_KLEIN_CONFIG.cfg_range
     if is_flux_model():
         return FLUX_CONFIG.cfg_range
     return DEFAULT_CONFIG.cfg_range
@@ -392,6 +453,8 @@ def get_recommended_steps() -> int:
         return LUMINA_CONFIG.recommended_steps
     if is_zimage_model():
         return ZIMAGE_CONFIG.recommended_steps
+    if is_flux2_klein_model():
+        return FLUX2_KLEIN_CONFIG.recommended_steps
     if is_flux_model():
         return FLUX_CONFIG.recommended_steps
     return DEFAULT_CONFIG.recommended_steps
