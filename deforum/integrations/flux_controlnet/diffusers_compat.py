@@ -233,14 +233,40 @@ def patch_forge_flux_controlnet():
     to inner_forward() method and injects control after each block.
 
     This matches diffusers' FluxTransformer2DModel ControlNet implementation.
+
+    Returns:
+        bool: True if patching succeeded or not needed, False if failed
     """
     try:
         import torch
+        import inspect
+        from deforum.utils.system.logging import get_logger
+
+        logger = get_logger()
 
         # Import Forge's Flux transformer (no sys.path needed - we're running as Forge extension)
         from backend.nn.flux import IntegratedFluxTransformer2DModel
 
-        # Save original inner_forward method
+        # Check if Forge Neo already has ControlNet support (post-2026 update)
+        # In newer Forge Neo, forward_orig() already handles control parameter
+        if hasattr(IntegratedFluxTransformer2DModel, 'forward_orig'):
+            # Forge Neo now has native ControlNet support in forward_orig()
+            # No patching needed - just verify control parameter exists
+            import inspect
+            sig = inspect.signature(IntegratedFluxTransformer2DModel.forward_orig)
+            if 'control' in sig.parameters:
+                logger.info("✓ Forge Neo has native Flux ControlNet support - no patching needed")
+                return True
+
+        # Fallback: Check for legacy inner_forward method
+        if not hasattr(IntegratedFluxTransformer2DModel, 'inner_forward'):
+            logger.warning(
+                "⚠️ Flux ControlNet patch skipped: Forge Flux model API has changed. "
+                "If you need Flux ControlNet, please report this issue."
+            )
+            return False
+
+        # Save original inner_forward method (legacy path)
         original_inner_forward = IntegratedFluxTransformer2DModel.inner_forward
 
         def patched_inner_forward(self, img, img_ids, txt, txt_ids, timesteps, y, guidance=None,
