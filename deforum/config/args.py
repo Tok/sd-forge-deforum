@@ -1375,6 +1375,12 @@ def WanArgs():
             "value": False,
             "info": "Create a second final video using stitched LTX-2 audio instead of original Deforum soundtrack. Produces two videos: one with original audio, one with LTX-2's generated audio. Requires 'Save LTX-2 Generated Audio' to be enabled."
         },
+        "ltx2_enable_motion_aware_prompts": {
+            "label": "Enable Motion-Aware LTX-2 Prompts",
+            "type": "checkbox",
+            "value": True,
+            "info": "Analyze camera movement schedules and include motion descriptions in LTX-2 prompts (e.g., 'smooth camera forward zoom'). Improves semantic understanding of camera motion. Works independently from Wan FLF2V motion prompts setting."
+        },
         "da3_multiview_model_size": {
             "label": "DA3-Multiview Model Size",
             "type": "dropdown",

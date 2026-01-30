@@ -52,8 +52,15 @@ class InterpolationDashboard:
         self.phase2_3dgs_tweens_current = 0
         self.phase2_3dgs_tweens_total = 0
 
+        # Phase 2 (non-3DGS) tracking for simpler methods
+        self.phase2_current = 0
+        self.phase2_total = 0
+
         self.current_phase = 1
         self.current_operation = ""
+
+        # Interpolation method - determines which Phase 2 bars to show
+        self.interp_method = None  # Will be set to "LTX-2", "Wan", "FILM", or "DA3-3DGS"
 
         # VRAM tracking
         self.vram_used_gb = 0.0
@@ -186,29 +193,40 @@ class InterpolationDashboard:
         p1_padding = " " * (self._terminal_width - len(self._strip_ansi(p1_line)) - 1)
         lines.append(f"{p1_line}{p1_padding}│")
 
-        # 2. Phase 2a: 3DGS Scene Build (slightly redder)
-        p2a_pct = (self.phase2_3dgs_build_current / self.phase2_3dgs_build_total * 100) if self.phase2_3dgs_build_total > 0 else 0
-        p2a_bar = self._progress_bar(self.phase2_3dgs_build_current, self.phase2_3dgs_build_total, width=bar_width, phase=2)
-        p2a_status = check if self.phase2_3dgs_build_current == self.phase2_3dgs_build_total and self.phase2_3dgs_build_total > 0 else dot
-        p2a_line = f"│ {p2a_status} 3DGS Scene Build:    {p2a_bar} {self.phase2_3dgs_build_current:3d}/{self.phase2_3dgs_build_total:<3d} ({p2a_pct:5.1f}%) keyframes"
-        p2a_padding = " " * (self._terminal_width - len(self._strip_ansi(p2a_line)) - 1)
-        lines.append(f"{p2a_line}{p2a_padding}│")
+        # Phase 2: Show 3DGS sub-stages ONLY if using DA3-3DGS interpolation
+        if self.interp_method == "DA3-3DGS":
+            # 2. Phase 2a: 3DGS Scene Build (slightly redder)
+            p2a_pct = (self.phase2_3dgs_build_current / self.phase2_3dgs_build_total * 100) if self.phase2_3dgs_build_total > 0 else 0
+            p2a_bar = self._progress_bar(self.phase2_3dgs_build_current, self.phase2_3dgs_build_total, width=bar_width, phase=2)
+            p2a_status = check if self.phase2_3dgs_build_current == self.phase2_3dgs_build_total and self.phase2_3dgs_build_total > 0 else dot
+            p2a_line = f"│ {p2a_status} 3DGS Scene Build:    {p2a_bar} {self.phase2_3dgs_build_current:3d}/{self.phase2_3dgs_build_total:<3d} ({p2a_pct:5.1f}%) keyframes"
+            p2a_padding = " " * (self._terminal_width - len(self._strip_ansi(p2a_line)) - 1)
+            lines.append(f"{p2a_line}{p2a_padding}│")
 
-        # 3. Phase 2b: 3DGS Keyframes (redder)
-        p2b_pct = (self.phase2_3dgs_keyframes_current / self.phase2_3dgs_keyframes_total * 100) if self.phase2_3dgs_keyframes_total > 0 else 0
-        p2b_bar = self._progress_bar(self.phase2_3dgs_keyframes_current, self.phase2_3dgs_keyframes_total, width=bar_width, phase=3)
-        p2b_status = check if self.phase2_3dgs_keyframes_current == self.phase2_3dgs_keyframes_total and self.phase2_3dgs_keyframes_total > 0 else dot
-        p2b_line = f"│ {p2b_status} 3DGS Keyframes:      {p2b_bar} {self.phase2_3dgs_keyframes_current:3d}/{self.phase2_3dgs_keyframes_total:<3d} ({p2b_pct:5.1f}%) gs-frames"
-        p2b_padding = " " * (self._terminal_width - len(self._strip_ansi(p2b_line)) - 1)
-        lines.append(f"{p2b_line}{p2b_padding}│")
+            # 3. Phase 2b: 3DGS Keyframes (redder)
+            p2b_pct = (self.phase2_3dgs_keyframes_current / self.phase2_3dgs_keyframes_total * 100) if self.phase2_3dgs_keyframes_total > 0 else 0
+            p2b_bar = self._progress_bar(self.phase2_3dgs_keyframes_current, self.phase2_3dgs_keyframes_total, width=bar_width, phase=3)
+            p2b_status = check if self.phase2_3dgs_keyframes_current == self.phase2_3dgs_keyframes_total and self.phase2_3dgs_keyframes_total > 0 else dot
+            p2b_line = f"│ {p2b_status} 3DGS Keyframes:      {p2b_bar} {self.phase2_3dgs_keyframes_current:3d}/{self.phase2_3dgs_keyframes_total:<3d} ({p2b_pct:5.1f}%) gs-frames"
+            p2b_padding = " " * (self._terminal_width - len(self._strip_ansi(p2b_line)) - 1)
+            lines.append(f"{p2b_line}{p2b_padding}│")
 
-        # 4. Phase 2c: 3DGS Tweens (reddest/watermelon)
-        p2c_pct = (self.phase2_3dgs_tweens_current / self.phase2_3dgs_tweens_total * 100) if self.phase2_3dgs_tweens_total > 0 else 0
-        p2c_bar = self._progress_bar(self.phase2_3dgs_tweens_current, self.phase2_3dgs_tweens_total, width=bar_width, phase=4)
-        p2c_status = check if self.phase2_3dgs_tweens_current == self.phase2_3dgs_tweens_total and self.phase2_3dgs_tweens_total > 0 else dot
-        p2c_line = f"│ {p2c_status} 3DGS Tweens:         {p2c_bar} {self.phase2_3dgs_tweens_current:3d}/{self.phase2_3dgs_tweens_total:<3d} ({p2c_pct:5.1f}%) gs-frames"
-        p2c_padding = " " * (self._terminal_width - len(self._strip_ansi(p2c_line)) - 1)
-        lines.append(f"{p2c_line}{p2c_padding}│")
+            # 4. Phase 2c: 3DGS Tweens (reddest/watermelon)
+            p2c_pct = (self.phase2_3dgs_tweens_current / self.phase2_3dgs_tweens_total * 100) if self.phase2_3dgs_tweens_total > 0 else 0
+            p2c_bar = self._progress_bar(self.phase2_3dgs_tweens_current, self.phase2_3dgs_tweens_total, width=bar_width, phase=4)
+            p2c_status = check if self.phase2_3dgs_tweens_current == self.phase2_3dgs_tweens_total and self.phase2_3dgs_tweens_total > 0 else dot
+            p2c_line = f"│ {p2c_status} 3DGS Tweens:         {p2c_bar} {self.phase2_3dgs_tweens_current:3d}/{self.phase2_3dgs_tweens_total:<3d} ({p2c_pct:5.1f}%) gs-frames"
+            p2c_padding = " " * (self._terminal_width - len(self._strip_ansi(p2c_line)) - 1)
+            lines.append(f"{p2c_line}{p2c_padding}│")
+        else:
+            # Simple Phase 2: Interpolation for LTX-2, Wan, FILM
+            method_name = self.interp_method or "Interpolation"
+            p2_pct = (self.phase2_current / self.phase2_total * 100) if self.phase2_total > 0 else 0
+            p2_bar = self._progress_bar(self.phase2_current, self.phase2_total, width=bar_width, phase=2)
+            p2_status = check if self.phase2_current == self.phase2_total and self.phase2_total > 0 else dot
+            p2_line = f"│ {p2_status} {method_name} Interpolation: {p2_bar} {self.phase2_current:3d}/{self.phase2_total:<3d} ({p2_pct:5.1f}%) segments"
+            p2_padding = " " * (self._terminal_width - len(self._strip_ansi(p2_line)) - 1)
+            lines.append(f"{p2_line}{p2_padding}│")
 
         # VRAM (right-aligned, smaller bar)
         vram_pct = (self.vram_used_gb / self.vram_total_gb * 100) if self.vram_total_gb > 0 else 0
@@ -355,3 +373,23 @@ class InterpolationDashboard:
                 self.update_vram(reserved, total)
         except Exception:
             pass
+
+    def set_interpolation_method(self, method: str):
+        """Set interpolation method to determine Phase 2 display.
+
+        Args:
+            method: One of "LTX-2", "Wan", "FILM", "DA3-3DGS"
+        """
+        self.interp_method = method
+
+    def update_phase2(self, current: int, total: int):
+        """Update Phase 2 (simple interpolation) progress for non-3DGS methods.
+
+        Args:
+            current: Current segment number
+            total: Total segments
+        """
+        self.phase2_current = current
+        self.phase2_total = total
+        self.current_phase = 2
+        self._render_dashboard()

@@ -105,15 +105,15 @@ OPTIMAL_PRESETS: Dict[ModelType, ModelPreset] = {
         guidance_scale=3.5,  # Diffusers guidance (img2img not used for txt2img Flux)
         scheduler="karras",  # Excellent for 20 steps
         sampler="euler",
-        width=1024,
-        height=1024,
+        width=1280,  # 720p 16:9 - better for video (was 1024x1024)
+        height=720,  # Multiples of 32, optimal for LTX-2 compatibility
         cfg_scale=1.0,  # Deforum CFG (Flux doesn't use CFG in txt2img)
         strength_keyframe=0.20,  # Low preservation → 16/20 steps
         strength_cadence=0.85,   # High preservation → 3/20 steps
         fps=60,
         cadence=5,
         torch_dtype="bfloat16",
-        notes="Flux Dev: 20 steps, Karras scheduler, 1024x1024 native resolution. "
+        notes="Flux Dev: 20 steps, Karras scheduler, 1280x720 (720p 16:9 - optimal for video). "
               "Guidance scale used only for img2img workflows (I2V chaining)."
     ),
 

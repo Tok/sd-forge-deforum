@@ -96,6 +96,8 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
     if opt_utils.is_dashboard_enabled():
         from deforum.utils.ui.interpolation_dashboard import InterpolationDashboard
         dashboard = InterpolationDashboard()
+        # Set interpolation method to control Phase 2 display
+        dashboard.set_interpolation_method(interp_method)
         # Initialize progress totals
         # Phase 1: Keyframes to generate
         dashboard.phase1_total = len(keyframes)
@@ -698,9 +700,12 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
         all_audio_segments = []  # Collect LTX-2 generated audio segments
 
         for idx in range(len(keyframes) - 1):
-            # Update dashboard operation (3DGS sub-operations will update their own progress)
+            # Update dashboard operation and Phase 2 progress
             if dashboard:
                 dashboard.set_operation(f"Interpolating segment {idx + 1}/{len(keyframes) - 1}")
+                # For non-3DGS methods (LTX-2, Wan, FILM), update simple Phase 2 progress
+                if interp_method != "DA3-3DGS":
+                    dashboard.update_phase2(idx, len(keyframes) - 1)
 
             first_kf = keyframes[idx]
             last_kf = keyframes[idx + 1]
@@ -885,12 +890,23 @@ def render_flux_interp(args, anim_args, video_args, parseq_args, loop_args, cont
 
                 # Generate with LTX-2
                 try:
+                    # LTX-2 has separate motion prompt control (independent from Wan FLF2V)
+                    ltx2_enable_motion = getattr(wan_args, 'ltx2_enable_motion_aware_prompts', True)  # Default ON
+
+                    # Use motion-aware prompt if enabled and available
+                    if ltx2_enable_motion and enable_motion_prompts and flf2v_prompt:
+                        ltx2_prompt = flf2v_prompt
+                        logger.debug(f"   Using motion-aware prompt for LTX-2: '{ltx2_prompt}'")
+                    else:
+                        ltx2_prompt = first_prompt
+                        logger.debug(f"   Using simple prompt for LTX-2: '{ltx2_prompt}'")
+
                     generated_frames, segment_audio_path = ltx2_pipeline.generate_segment(
                         start_image=first_image,
                         audio_path=video_args.soundtrack_path,
                         audio_start_sec=segment_start_sec,
                         audio_duration_sec=segment_duration,
-                        prompt=first_prompt,  # Use first keyframe prompt for guidance
+                        prompt=ltx2_prompt,  # Use motion-aware prompt for better guidance
                         negative_prompt=getattr(wan_args, 'ltx2_negative_prompt', 'blurry, low quality, distorted'),
                         num_frames=num_tween_frames + 2,  # +2 for first/last keyframes
                         fps=video_args.fps,
