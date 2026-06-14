@@ -45,7 +45,6 @@ from deforum.pipeline.resume import get_resume_vars
 from deforum.core.masking.masks import do_overlay_mask
 from deforum.core.prompts import prepare_prompt
 from modules.shared import opts, cmd_opts, state, sd_model
-from modules import devices, sd_hijack
 
 # Try to import lowvram for backward compatibility with older Forge versions
 # Forge Neo removed lowvram/medvram modules (integrated into core)
