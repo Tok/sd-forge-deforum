@@ -1,0 +1,30 @@
+# Codecov configuration — keep coverage reporting, but make it strictly
+# non-blocking so it can never fail CI or leave PRs stuck "pending".
+#
+# NOTE: actual uploads still require a valid CODECOV_TOKEN repo secret.
+# Without it the upload is rejected and no report is produced; the settings
+# below ensure that once a report IS received, it is informational only.
+
+codecov:
+  # Report immediately; don't wait on other CI jobs (avoids stuck pending).
+  require_ci_to_pass: false
+  notify:
+    # Don't hold the status waiting for a fixed number of uploads.
+    after_n_builds: 1
+
+coverage:
+  status:
+    project:
+      default:
+        # Report coverage delta but never set a failing/blocking status.
+        informational: true
+    patch:
+      default:
+        informational: true
+
+# Don't post inline PR code annotations.
+github_checks:
+  annotations: false
+
+# Don't post the Codecov summary comment on PRs.
+comment: false
