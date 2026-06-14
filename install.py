@@ -22,6 +22,9 @@ req_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "requiremen
 with open(req_file) as file:
     for lib in file:
         lib = lib.strip()
+        # Remove inline comments
+        if '#' in lib:
+            lib = lib[:lib.index('#')].strip()
         if not lib or lib.startswith('#'):
             continue
         
