@@ -129,6 +129,11 @@ else:
 with open(req_file) as file:
     for lib in file:
         lib = lib.strip()
+        # Strip inline comments before passing to pip. pip treats ' #' (hash
+        # preceded by whitespace) as a comment, but not '#' inside URLs such as
+        # git+https://...#egg=foo, so only split on the whitespace-prefixed form.
+        if ' #' in lib:
+            lib = lib[:lib.index(' #')].strip()
         if not lib or lib.startswith('#'):
             continue
 
