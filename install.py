@@ -110,7 +110,7 @@ if not is_forge_neo_simple():
     # Force upgrade critical dependencies for Wan 2.2 TI2V support
     critical_upgrades = {
         'peft': '0.17.1',
-        'accelerate': '1.10.1',
+        'accelerate': '1.13.0',
     }
 
     for package, version in critical_upgrades.items():

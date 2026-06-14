@@ -9,12 +9,12 @@ gdown
 easydict
 # Use Forge's pinned diffusers version instead of bleeding-edge main
 # This prevents dependency conflicts with Forge Neo's requirements
-diffusers>=0.36.0,<0.37.0  # Match Forge Neo's pinned version (0.36.0)
-kornia>=0.7.0  # Required by diffusers.guiders (LTX-2 FrequencyDecoupledGuidance)
+diffusers>=0.37.0,<0.38.0  # Match Forge Neo's pinned version (0.37.1)
+kornia>=0.7.0  # Required by diffusers.guiders (LTX-2 FrequencyDecoupledGuidance); Neo pins 0.6.12 but 0.7+ needed for LTX-2
 transformers>=4.36.0,<=4.56.2  # Upper bound matches Forge Neo 4.56.2
 sentencepiece>=0.1.99  # Required by T5Tokenizer (LTX-2)
-huggingface-hub>=0.34.0,<1.0  # Must stay <1.0 for transformers 4.x compatibility
-accelerate>=0.25.0,<2.0.0
+huggingface-hub>=0.34.0,<1.0  # Neo pins 0.36.2; must stay <1.0 for transformers 4.x compatibility
+accelerate>=0.25.0,<2.0.0  # Neo pins 1.13.0
 gguf>=0.10.0  # Required for LTX-2 GGUF quantization support
 
 # Depth Anything V3 (Phase 1/2/3 integration)
